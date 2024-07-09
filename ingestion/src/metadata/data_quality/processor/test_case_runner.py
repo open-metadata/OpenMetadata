@@ -90,15 +90,6 @@ class TestCaseRunner(Processor):
             ),
             table_fqn=record.table.fullyQualifiedName.root,
         )
-
-        if not test_cases:
-            return Either(
-                left=StackTraceError(
-                    name="No test Cases",
-                    error=f"No tests cases found for table {record.table.fullyQualifiedName.root}",
-                )
-            )
-
         openmetadata_test_cases = self.filter_for_om_test_cases(test_cases)
         openmetadata_test_cases = self.filter_incompatible_test_cases(
             record.table, openmetadata_test_cases
@@ -116,21 +107,20 @@ class TestCaseRunner(Processor):
             for test_case in openmetadata_test_cases
             if (test_case_result := self._run_test_case(test_case, test_suite_runner))
         ]
-
+        logger.debug(
+            f"Found {len(test_results)} test results for table {record.table.fullyQualifiedName.root}"
+        )
         return Either(right=TestCaseResults(test_results=test_results))
 
     def get_test_cases(
-        self, test_cases: Optional[List[TestCase]], test_suite_fqn: str, table_fqn: str
+        self, test_cases: List[TestCase], test_suite_fqn: str, table_fqn: str
     ) -> List[TestCase]:
         """
         Based on the test suite test cases that we already know, pick up
         the rest from the YAML config, compare and create the new ones
         """
         if self.processor_config.testCases is not None:
-            cli_test_cases = self.get_test_case_from_cli_config()  # type: ignore
-            cli_test_cases = cast(
-                List[TestCaseDefinition], cli_test_cases
-            )  # satisfy type checker
+            cli_test_cases = self.get_test_case_from_cli_config()
             return self.compare_and_create_test_cases(
                 cli_test_cases_definitions=cli_test_cases,
                 test_cases=test_cases,
@@ -142,15 +132,13 @@ class TestCaseRunner(Processor):
 
     def get_test_case_from_cli_config(
         self,
-    ) -> Optional[List[TestCaseDefinition]]:
+    ) -> List[TestCaseDefinition]:
         """Get all the test cases names defined in the CLI config file"""
-        if self.processor_config.testCases is not None:
-            return list(self.processor_config.testCases)
-        return None
+        return list(self.processor_config.testCases or [])
 
     def compare_and_create_test_cases(
         self,
-        cli_test_cases_definitions: Optional[List[TestCaseDefinition]],
+        cli_test_cases_definitions: List[TestCaseDefinition],
         test_cases: List[TestCase],
         table_fqn: str,
         test_suite_fqn: str,

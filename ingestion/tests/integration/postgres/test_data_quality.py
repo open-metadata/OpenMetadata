@@ -34,8 +34,16 @@ if not sys.version_info >= (3, 9):
 
 @pytest.fixture()
 def run_data_quality_workflow(
-    run_workflow, ingestion_config, db_service: DatabaseService, metadata: OpenMetadata
+    run_workflow,
+    ingestion_config,
+    db_service: DatabaseService,
+    metadata: OpenMetadata,
+    cleanup_fqns,
 ):
+    cleanup_fqns(
+        TestSuite,
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer.testSuite",
+    )
     run_workflow(MetadataWorkflow, ingestion_config)
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
@@ -95,12 +103,6 @@ def run_data_quality_workflow(
     test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
     test_suite_procesor.execute()
     test_suite_procesor.raise_from_status()
-    yield
-    test_suite: TestSuite = metadata.get_by_name(
-        TestSuite, "MyTestSuite", nullable=True
-    )
-    if test_suite:
-        metadata.delete(TestSuite, test_suite.id, recursive=True, hard_delete=True)
 
 
 @pytest.mark.parametrize(

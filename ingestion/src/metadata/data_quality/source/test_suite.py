@@ -93,6 +93,8 @@ class TestSuiteSource(Source):
                 test_cases = [
                     t for t in test_cases if t.name in self.source_config.testCases
                 ]
+                if len(test_cases) == 0:
+                    return None
             return test_cases
 
         return None
@@ -159,7 +161,7 @@ class TestSuiteSource(Source):
 
         else:
             test_suite_cases = self._get_test_cases_from_test_suite(test_suite)
-
+            
             yield Either(
                 right=TableAndTests(
                     table=table,

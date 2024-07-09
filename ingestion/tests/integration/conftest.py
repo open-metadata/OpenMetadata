@@ -1,13 +1,16 @@
 import logging
 import sys
+from typing import List, Tuple, Type
 
 import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
+from metadata.workflow.workflow_output_handler import print_status
 
 if not sys.version_info >= (3, 9):
     collect_ignore = ["trino"]
@@ -85,22 +88,22 @@ def run_workflow():
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
-            workflow.raise_from_status()
+            try:
+                workflow.raise_from_status()
+            except Exception:
+                print_status(workflow)
+                raise
         return workflow
 
     return _run
 
 
 @pytest.fixture(scope="module")
-def db_service(metadata, create_service_request, patch_password):
+def db_service(metadata, create_service_request, patch_password, cleanup_fqns):
     service_entity = metadata.create_or_update(data=create_service_request)
     fqn = service_entity.fullyQualifiedName.root
     yield patch_password(service_entity)
-    service_entity = metadata.get_by_name(DatabaseService, fqn)
-    if service_entity:
-        metadata.delete(
-            DatabaseService, service_entity.id, recursive=True, hard_delete=True
-        )
+    cleanup_fqns(DatabaseService, fqn)
 
 
 @pytest.fixture(scope="module")
@@ -137,3 +140,17 @@ def patch_passwords_for_db_services(db_service, patch_password, monkeypatch):
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id",
         override_password(OpenMetadata.get_by_id),
     )
+
+
+@pytest.fixture
+def cleanup_fqns(metadata):
+    fqns: List[Tuple[Type[Entity], str]] = []
+
+    def inner(entity_type: Type[Entity], fqn: str):
+        fqns.append((entity_type, fqn))
+
+    yield inner
+    for etype, fqn in fqns:
+        entity = metadata.get_by_name(etype, fqn, fields=["*"])
+        if entity:
+            metadata.delete(etype, entity.id, recursive=True, hard_delete=True)
