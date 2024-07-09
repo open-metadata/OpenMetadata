@@ -1,10 +1,10 @@
 {
 	"type": "REST",
-	"serviceName": "demo api service",
+	"serviceName": "sample_api_service", 
 	"serviceConnection": {
 		"config": {
 			"type": "REST",
-			"openAPISchemaURL": "http://localhost:2000",
+			"openAPISchemaURL": "https://petstore3.swagger.io/",
     		"token":"mock_token"
 		}
 	},

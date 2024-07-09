@@ -90,6 +90,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
@@ -542,17 +543,17 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
-        # self.api_service_json = json.load(
-        #     open(  # pylint: disable=consider-using-with
-        #         sample_data_folder + "/api_service/service.json",
-        #         "r",
-        #         encoding=UTF_8,
-        #     )
-        # )
-        # self.api_service = self.metadata.get_service_or_create(
-        #     entity=ApiService,
-        #     config=WorkflowSource(**self.api_service_json),
-        # )
+        self.api_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/api_service/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.api_service = self.metadata.get_service_or_create(
+            entity=ApiService,
+            config=WorkflowSource(**self.api_service_json),
+        )
         self.api_collection = json.load(
             open(
                 sample_data_folder + "/api_service/api_collection.json",
@@ -1691,14 +1692,9 @@ class SampleDataSource(
     def ingest_api_service(self) -> Iterable[Either[Entity]]:
         """Ingest API services"""
 
-        collection_request = CreateAPICollectionRequest(
-            name=self.api_collection["name"], service=self.api_collection["service"]
-        )
+        collection_request = CreateAPICollectionRequest(**self.api_collection)
         yield Either(right=collection_request)
 
-        endpoint_request = CreateAPIEndpointRequest(
-            name=self.api_endpoint["name"],
-            apiCollection=self.api_endpoint["apiCollection"],
-            endpointURL=self.api_endpoint["endpointURL"],
-        )
-        yield Either(right=endpoint_request)
+        for endpoint in self.api_endpoint.get("endpoints"):
+            endpoint_request = CreateAPIEndpointRequest(**endpoint)
+            yield Either(right=endpoint_request)

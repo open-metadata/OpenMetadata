@@ -1,4 +1,5 @@
 {
-  "name": "sample collection",
-  "service": "MOCK_API_SERVICE"
+  "name": "pet",
+  "service": "sample_api_service",
+  "endpointURL": "https://petstore3.swagger.io/#/pet"
 }
