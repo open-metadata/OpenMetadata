@@ -8,7 +8,6 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-
 __all__ = [
     "postgres_container",
 ]
