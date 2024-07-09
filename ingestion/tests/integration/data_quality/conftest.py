@@ -12,8 +12,8 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
     PostgresConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
     DatabaseConnection,
+    DatabaseService,
     DatabaseServiceType,
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels

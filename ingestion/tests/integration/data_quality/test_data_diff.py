@@ -2,10 +2,10 @@ import sys
 
 import pytest
 from pydantic import BaseModel
+from sqlalchemy import VARBINARY
 from sqlalchemy import Column as SQAColumn
 from sqlalchemy import MetaData
 from sqlalchemy import Table as SQATable
-from sqlalchemy import VARBINARY
 from sqlalchemy import create_engine
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection, make_url
@@ -15,9 +15,7 @@ from _openmetadata_testutils.postgres.conftest import postgres_container
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
 )

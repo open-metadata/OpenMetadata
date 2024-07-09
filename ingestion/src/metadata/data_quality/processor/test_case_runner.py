@@ -14,7 +14,7 @@ This Processor is in charge of executing the test cases
 """
 import traceback
 from copy import deepcopy
-from typing import List, Optional, cast
+from typing import List, Optional
 
 from metadata.data_quality.api.models import (
     TableAndTests,
