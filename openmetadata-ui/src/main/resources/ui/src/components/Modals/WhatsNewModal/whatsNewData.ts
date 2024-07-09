@@ -21,9 +21,9 @@ import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 29;
+export const LATEST_VERSION_ID = 30;
 
-export const COOKIE_VERSION = 'VERSION_1_4_4'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_4_5'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1785,6 +1785,16 @@ API:
 -   Fixed issues in Salesforce connector.
 -   FIxed issues in Alation connector.
 -   Verified for changes in new env for claim mapping.`,
+    },
+  },
+  {
+    id: 30,
+    version: 'v1.4.5',
+    description: `Released on 9th July 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Improve query filtering with prepared statements.
+-   Backend performance improvements for Activity Feed.`,
     },
   },
 ];
