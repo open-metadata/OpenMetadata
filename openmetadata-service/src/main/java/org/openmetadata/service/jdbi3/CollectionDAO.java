@@ -4658,10 +4658,10 @@ public interface CollectionDAO {
         @Bind("after") String after);
 
     @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM doc_store WHERE entityType LIKE CONCAT('%', :pattern)",
+        value = "SELECT json FROM doc_store WHERE entityType = :pattern",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM doc_store WHERE entityType LIKE '%' || :pattern",
+        value = "SELECT json FROM doc_store WHERE entityType = :pattern",
         connectionType = POSTGRES)
     List<String> findEmailTemplatesFromDocStore(@Bind("pattern") String pattern);
   }

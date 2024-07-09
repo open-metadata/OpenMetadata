@@ -329,7 +329,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
 
     Response emailTemplateValidationResponse = null;
-    if (doc.getEntityType().endsWith(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+    if (doc.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
       emailTemplateValidationResponse = validateTemplate(doc);
     }
 

@@ -21,6 +21,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
+import org.openmetadata.service.util.DefaultTemplateProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -40,7 +41,9 @@ public class DocumentRepository extends EntityRepository<Document> {
   }
 
   public List<String> fetchEmailTemplatesFromDocStore() {
-    return Entity.getCollectionDAO().docStoreDAO().findEmailTemplatesFromDocStore("_emailTemplate");
+    return Entity.getCollectionDAO()
+        .docStoreDAO()
+        .findEmailTemplatesFromDocStore(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE);
   }
 
   @Override
