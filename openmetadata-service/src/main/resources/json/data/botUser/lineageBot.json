@@ -1,0 +1,9 @@
+{
+  "name": "lineage-bot",
+  "roles": [
+    {
+        "name": "LineageBotRole",
+        "type": "role"
+    }
+  ]
+}

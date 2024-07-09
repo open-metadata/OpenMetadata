@@ -74,6 +74,8 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -95,6 +97,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.services.APIService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -281,6 +284,9 @@ public interface CollectionDAO {
   SearchServiceDAO searchServiceDAO();
 
   @CreateSqlObject
+  APIServiceDAO apiServiceDAO();
+
+  @CreateSqlObject
   ContainerDAO containerDAO();
 
   @CreateSqlObject
@@ -333,6 +339,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
+
+  @CreateSqlObject
+  APICollectionDAO apiCollectionDAO();
+
+  @CreateSqlObject
+  APIEndpointDAO apiEndpointDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -603,6 +615,23 @@ public interface CollectionDAO {
     @Override
     default Class<SearchService> getEntityClass() {
       return SearchService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface APIServiceDAO extends EntityDAO<APIService> {
+    @Override
+    default String getTableName() {
+      return "api_service_entity";
+    }
+
+    @Override
+    default Class<APIService> getEntityClass() {
+      return APIService.class;
     }
 
     @Override
@@ -4712,5 +4741,39 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
+  }
+
+  interface APICollectionDAO extends EntityDAO<APICollection> {
+    @Override
+    default String getTableName() {
+      return "api_collection_entity";
+    }
+
+    @Override
+    default Class<APICollection> getEntityClass() {
+      return APICollection.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface APIEndpointDAO extends EntityDAO<APIEndpoint> {
+    @Override
+    default String getTableName() {
+      return "api_endpoint_entity";
+    }
+
+    @Override
+    default Class<APIEndpoint> getEntityClass() {
+      return APIEndpoint.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
   }
 }

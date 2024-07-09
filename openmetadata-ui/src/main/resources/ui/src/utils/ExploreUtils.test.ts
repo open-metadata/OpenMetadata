@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   extractTermKeys,
   getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
-} from './Explore.utils';
+  getSubLevelHierarchyKey,
+  updateTreeData,
+} from './ExploreUtils';
 
 describe('Explore Utils', () => {
   it('should return undefined if data is empty', () => {
@@ -169,5 +172,101 @@ describe('Explore Utils', () => {
     expect(getSelectedValuesFromQuickFilter(dropdownData, queryFilter)).toEqual(
       selectedFilters
     );
+  });
+
+  describe('getSubLevelHierarchyKey', () => {
+    it('returns the correct bucket and queryFilter when isDatabaseHierarchy is true', () => {
+      const result = getSubLevelHierarchyKey(
+        true,
+        EntityFields.SERVICE,
+        'testValue'
+      );
+
+      expect(result).toEqual({
+        bucket: EntityFields.DATABASE,
+        queryFilter: {
+          query: {
+            bool: {
+              must: {
+                term: {
+                  [EntityFields.SERVICE]: 'testValue',
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('returns the correct bucket and queryFilter when isDatabaseHierarchy is false', () => {
+      const result = getSubLevelHierarchyKey(
+        false,
+        EntityFields.SERVICE,
+        'testValue'
+      );
+
+      expect(result).toEqual({
+        bucket: EntityFields.ENTITY_TYPE,
+        queryFilter: {
+          query: {
+            bool: {
+              must: {
+                term: {
+                  [EntityFields.SERVICE]: 'testValue',
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    it('returns the default bucket and an empty queryFilter when key and value are not provided', () => {
+      const result = getSubLevelHierarchyKey();
+
+      expect(result).toEqual({
+        bucket: EntityFields.SERVICE_TYPE,
+        queryFilter: {
+          query: {
+            bool: {},
+          },
+        },
+      });
+    });
+  });
+
+  describe('updateTreeData', () => {
+    it('updates the correct node in the tree', () => {
+      const treeData = [
+        { title: '1', key: '1', children: [{ title: '1.1', key: '1.1' }] },
+        { title: '2', key: '2', children: [{ title: '2.1', key: '2.1' }] },
+      ];
+
+      const newChildren = [{ title: '1.1.1', key: '1.1.1' }];
+
+      const updatedTreeData = updateTreeData(treeData, '1.1', newChildren);
+
+      expect(updatedTreeData).toEqual([
+        {
+          key: '1',
+          title: '1',
+          children: [{ title: '1.1', key: '1.1', children: newChildren }],
+        },
+        { key: '2', title: '2', children: [{ title: '2.1', key: '2.1' }] },
+      ]);
+    });
+
+    it('does not modify the tree if the key is not found', () => {
+      const treeData = [
+        { title: '1', key: '1', children: [{ title: '1.1', key: '1.1' }] },
+        { title: '2', key: '2', children: [{ title: '2.1', key: '2.1' }] },
+      ];
+
+      const newChildren = [{ title: '1.1.1', key: '1.1.1' }];
+
+      const updatedTreeData = updateTreeData(treeData, '3', newChildren);
+
+      expect(updatedTreeData).toEqual(treeData);
+    });
   });
 });

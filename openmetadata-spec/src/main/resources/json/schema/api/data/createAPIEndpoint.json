@@ -1,0 +1,88 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createAPIEndpoint.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateAPIEndpointRequest",
+  "description": "Create a APIEndpoint entity request",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateAPIEndpoint",
+  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "properties": {
+    "name": {
+      "description": "Name that identifies this APIEndpoint instance uniquely. We use operationId from OpenAPI specification.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this APIEndpoint.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the APIEndpoint instance. What it has and how to use it.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "apiCollection": {
+      "description": "Reference to API Collection that contains this API Endpoint.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "endpointURL": {
+      "title": "Endpoint URL",
+      "description": "EndPoint URL for the API Collection. Capture the Root URL of the collection.",
+      "type": "string",
+      "format": "uri"
+    },
+    "requestMethod": {
+      "description": "Request Method for the API Endpoint.",
+      "$ref": "../../entity/data/apiEndpoint.json#/definitions/apiRequestMethod"
+    },
+    "requestSchema": {
+      "description": "Request Schema for the API Endpoint.",
+      "$ref": "../../type/apiSchema.json"
+    },
+    "responseSchema": {
+      "description": "Response Schema for the API Endpoint.",
+      "$ref": "../../type/apiSchema.json"
+    },
+    "owner": {
+      "description": "Owner of this topic",
+      "$ref": "../../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this topic",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "sourceUrl": {
+      "description": "Source URL of topic.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the API belongs to.",
+      "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "dataProducts" : {
+      "description": "List of fully qualified names of data products this entity is part of.",
+      "type": "array",
+      "items" : {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
+    },
+    "lifeCycle": {
+      "description": "Life Cycle of the entity",
+      "$ref": "../../type/lifeCycle.json"
+    },
+    "sourceHash": {
+      "description": "Source hash of the entity",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32
+    }
+  },
+  "required": ["name", "service", "endpointURL", "apiCollection"],
+  "additionalProperties": false
+}
