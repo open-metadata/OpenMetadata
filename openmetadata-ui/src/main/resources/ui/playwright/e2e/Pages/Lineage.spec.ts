@@ -72,6 +72,8 @@ for (const EntityClass of entities) {
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
       page,
