@@ -80,10 +80,10 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
     def get_columns(self) -> Column:
         """Get columns from table"""
         columns = []
-        for idx, column in enumerate(self.table_entity.columns):
-            if column.dataType == DataType.STRUCT:
+        for idx, column_obj in enumerate(self.table_entity.columns):
+            if column_obj.dataType == DataType.STRUCT:
                 columns.extend(
-                    self._get_struct_columns(column.children, column.name.root)
+                    self._get_struct_columns(column_obj.children, column_obj.name.root)
                 )
             else:
                 col = build_orm_col(idx, column, DatabaseServiceType.Databricks)
