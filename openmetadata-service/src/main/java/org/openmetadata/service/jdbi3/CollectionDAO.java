@@ -1253,37 +1253,18 @@ public interface CollectionDAO {
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType);
 
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
-                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-                + "((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
-                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
-                + " OR (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username)"
-                + "GROUP BY te.type, te.taskStatus",
-        connectionType = POSTGRES)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
-                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-                + "((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
-                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) OR "
-                + "(JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) OR createdBy = :username)"
-                + " GROUP BY te.type, te.taskStatus",
-        connectionType = MYSQL)
+    @SqlQuery(
+        "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
+            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
+            + "((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
+            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
+            + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
+            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
+            + "GROUP BY te.type, te.taskStatus")
     @RegisterRowMapper(OwnerCountFieldMapper.class)
     List<List<String>> listCountByOwner(
-        @BindUUID("userId") UUID userId,
-        @BindList("teamIds") List<String> teamIds,
-        @Bind("username") String username,
-        @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres);
+        @BindUUID("userId") UUID userId, @BindList("teamIds") List<String> teamIds);
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
