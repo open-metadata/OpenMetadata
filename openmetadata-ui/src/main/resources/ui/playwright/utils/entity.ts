@@ -130,7 +130,7 @@ export const assignTier = async (page: Page, tier: string) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`radio-btn-${tier}`).click();
-  await page.getByTestId('Tier').click();
+  await page.mouse.click(1280, 0); // click mouse to top right corner
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -139,7 +139,7 @@ export const removeTier = async (page: Page) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('clear-tier').click();
-  await page.getByTestId('Tier').click();
+  await page.mouse.click(1280, 0); // click mouse to top right corner
 
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
