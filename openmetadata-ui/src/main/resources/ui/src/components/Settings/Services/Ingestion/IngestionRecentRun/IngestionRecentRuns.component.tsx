@@ -40,6 +40,8 @@ interface Props {
   classNames?: string;
   appRuns?: PipelineStatus[];
   isApplicationType?: boolean;
+  pipelineIdToFetchStatus?: string;
+  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
 }
 const queryParams = {
   startTs: getEpochMillisForPastDays(1),
@@ -51,6 +53,8 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   classNames,
   appRuns,
   isApplicationType,
+  pipelineIdToFetchStatus = '',
+  handlePipelineIdToFetchStatus,
 }: Props) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
@@ -85,6 +89,15 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
       fetchPipelineStatus();
     }
   }, [ingestion, ingestion?.fullyQualifiedName]);
+
+  useEffect(() => {
+    // To fetch pipeline status on demand
+    // If pipelineIdToFetchStatus is present and equal to current pipeline id
+    if (pipelineIdToFetchStatus === ingestion?.id) {
+      fetchPipelineStatus();
+      handlePipelineIdToFetchStatus?.(); // Clear the id after fetching status
+    }
+  }, [pipelineIdToFetchStatus]);
 
   const handleRunStatusClick = (status: PipelineStatus) => {
     setSelectedStatus(status);
