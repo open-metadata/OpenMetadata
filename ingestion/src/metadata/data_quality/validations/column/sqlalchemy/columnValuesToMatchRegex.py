@@ -13,7 +13,7 @@
 Validator for column values to match regex test case
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 
 from sqlalchemy import Column, inspect
 from sqlalchemy.exc import CompileError, SQLAlchemyError
@@ -46,7 +46,9 @@ class ColumnValuesToMatchRegexValidator(
             inspect(self.runner.table).c,
         )
 
-    def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
+    def _run_results(
+        self, metric: Tuple[Metrics], column: Column, **kwargs
+    ) -> Tuple[Optional[int], Optional[int]]:
         """compute result of the test case
 
         Args:
@@ -54,14 +56,41 @@ class ColumnValuesToMatchRegexValidator(
             column: column
         """
         try:
-            return self.run_query_results(self.runner, metric, column, **kwargs)
+            regex_count = Metrics.REGEX_COUNT(column)
+            regex_count.expression = kwargs.get("expression")
+            regex_count_fn = regex_count.fn()
+
+            res = dict(
+                self.runner.dispatch_query_select_first(
+                    Metrics.COUNT(column).fn(),
+                    regex_count_fn,
+                )
+            )
         except (CompileError, SQLAlchemyError) as err:
             logger.warning(
                 f"Could not use `REGEXP` due to - {err}. Falling back to `LIKE`"
             )
-            return self.run_query_results(
-                self.runner, Metrics.LIKE_COUNT, column, **kwargs
+            regex_count = Metrics.LIKE_COUNT(column)
+            regex_count.expression = kwargs.get("expression")
+            regex_count_fn = regex_count.fn()
+            res = dict(
+                self.runner.dispatch_query_select_first(
+                    Metrics.COUNT(column).fn(),
+                    regex_count,
+                )
             )
+
+        if not res:
+            # pylint: disable=line-too-long
+            raise ValueError(
+                f"\nQuery on table/column {column.name if column is not None else ''} returned None. Your table might be empty. "
+                "If you confirmed your table is not empty and are still seeing this message you can:\n"
+                "\t1. check the documentation: https://docs.open-metadata.org/v1.3.x/connectors/ingestion/workflows/data-quality/tests\n"
+                "\t2. reach out to the Collate team for support"
+            )
+            # pylint: enable=line-too-long
+
+        return res.get(Metrics.COUNT.name), res.get(regex_count.name())
 
     def compute_row_count(self, column: Column):
         """Compute row count for the given column
