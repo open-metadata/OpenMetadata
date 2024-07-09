@@ -27,7 +27,7 @@ const TestSummaryCustomTooltip = (
   const { t } = useTranslation();
   const { active, payload = [] } = props;
   const data = payload.length
-    ? entries(omit(payload[0].payload, ['name', 'incidentId']))
+    ? entries(omit(payload[0].payload, ['name', 'incidentId', 'boundArea']))
     : [];
 
   if (!active || payload.length === 0) {
