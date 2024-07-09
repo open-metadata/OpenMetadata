@@ -1794,7 +1794,9 @@ API:
     features: [],
     changeLogs: {
       Improvements: `-   Improve query filtering with prepared statements.
--   Backend performance improvements for Activity Feed.`,
+-   Backend performance improvements for Activity Feed.
+-   Big fix in regex to match test case  when using sampled data
+-   Bug fix in global profiler config for Snowflake, Redshift and BigQuery`,
     },
   },
 ];
