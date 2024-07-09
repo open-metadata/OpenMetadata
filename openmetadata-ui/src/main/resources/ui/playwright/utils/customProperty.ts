@@ -40,6 +40,10 @@ export enum CustomPropertyTypeByName {
   TIMESTAMP = 'timestamp',
   ENTITY_REFERENCE = 'entityReference',
   ENTITY_REFERENCE_LIST = 'entityReferenceList',
+  TIME_INTERVAL = 'timeInterval',
+  TIME_CP = 'time-cp',
+  DATE_CP = 'date-cp',
+  DATE_TIME_CP = 'dateTime-cp',
 }
 
 export interface CustomProperty {
@@ -132,6 +136,23 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="start-input"]').fill(startValue);
       await page.locator('[data-testid="end-input"]').isVisible();
       await page.locator('[data-testid="end-input"]').fill(endValue);
+      await page.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'time-cp': {
+      await page.locator('[data-testid="time-picker"]').isVisible();
+      await page.locator('[data-testid="time-picker"]').fill(value);
+      await page.locator('[data-testid="inline-save-btn"]').click();
+
+      break;
+    }
+
+    case 'date-cp':
+    case 'dateTime-cp': {
+      await page.locator('[data-testid="date-time-picker"]').isVisible();
+      await page.locator('[data-testid="date-time-picker"]').fill(value);
       await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -268,6 +289,30 @@ export const getPropertyValues = (
         newValue: users.user4,
       };
 
+    case 'timeInterval':
+      return {
+        value: '1710831125922,1710831125924',
+        newValue: '1710831125924,1710831125922',
+      };
+
+    case 'time-cp':
+      return {
+        value: '15:35:59',
+        newValue: '17:35:59',
+      };
+
+    case 'date-cp':
+      return {
+        value: '2024-07-09',
+        newValue: '2025-07-09',
+      };
+
+    case 'dateTime-cp':
+      return {
+        value: '2024-07-09 15:07:59',
+        newValue: '2025-07-09 15:07:59',
+      };
+
     default:
       return {
         value: '',
@@ -348,6 +393,30 @@ export const createCustomPropertyForEntity = async (
             ? {
                 customPropertyConfig: {
                   config: ['user', 'team'],
+                },
+              }
+            : {}),
+
+          ...(item.name === 'time-cp'
+            ? {
+                customPropertyConfig: {
+                  config: 'HH:mm:ss',
+                },
+              }
+            : {}),
+
+          ...(item.name === 'date-cp'
+            ? {
+                customPropertyConfig: {
+                  config: 'yyyy-MM-dd',
+                },
+              }
+            : {}),
+
+          ...(item.name === 'dateTime-cp'
+            ? {
+                customPropertyConfig: {
+                  config: 'yyyy-MM-dd HH:mm:ss',
                 },
               }
             : {}),
