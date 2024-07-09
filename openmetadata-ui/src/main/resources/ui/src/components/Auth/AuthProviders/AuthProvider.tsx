@@ -115,6 +115,7 @@ export const AuthProvider = ({
     setAuthorizerConfig,
     setIsSigningUp,
     setJwtPrincipalClaims,
+    setJwtPrincipalClaimsMapping,
     removeRefreshToken,
     removeOidcToken,
     getOidcToken,
@@ -278,9 +279,11 @@ export const AuthProvider = ({
    * if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = async (forceLogout?: boolean) => {
-    const pathName = location.pathname;
+    const pathName = window.location.pathname;
     // Do not try silent sign in for SignIn or SignUp route
-    if ([ROUTES.SIGNIN, ROUTES.SIGNUP].includes(pathName)) {
+    if (
+      [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
+    ) {
       return;
     }
 
@@ -303,14 +306,6 @@ export const AuthProvider = ({
         resetUserDetails(forceLogout);
       }
     } catch (error) {
-      const err = error as AxiosError;
-      if (err.message.includes('Frame window timed out')) {
-        // Start expiry timer if silent signIn is timed out
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        startTokenExpiryTimer();
-
-        return;
-      }
       // reset user details if silent signIn fails
       resetUserDetails(forceLogout);
     }
@@ -364,43 +359,55 @@ export const AuthProvider = ({
     history.push(ROUTES.SIGNIN);
   };
 
-  const handleSuccessfulLogin = async (user: OidcUser) => {
-    setApplicationLoading(true);
-    setIsAuthenticated(true);
-    const fields =
-      authConfig?.provider === AuthProviderEnum.Basic
-        ? userAPIQueryFields + ',' + isEmailVerifyField
-        : userAPIQueryFields;
-    try {
-      const res = await getLoggedInUser({ fields });
-      if (res) {
-        const updatedUserData = getUserDataFromOidc(res, user);
-        if (!matchUserDetails(res, updatedUserData, ['email'])) {
-          getUpdatedUser(updatedUserData, res);
-        } else {
-          setCurrentUser(res);
-        }
+  const handleSuccessfulLogin = useCallback(
+    async (user: OidcUser) => {
+      setApplicationLoading(true);
+      setIsAuthenticated(true);
+      const fields =
+        authConfig?.provider === AuthProviderEnum.Basic
+          ? userAPIQueryFields + ',' + isEmailVerifyField
+          : userAPIQueryFields;
+      try {
+        const res = await getLoggedInUser({ fields });
+        if (res) {
+          const updatedUserData = getUserDataFromOidc(res, user);
+          if (!matchUserDetails(res, updatedUserData, ['email'])) {
+            getUpdatedUser(updatedUserData, res);
+          } else {
+            setCurrentUser(res);
+          }
 
-        handledVerifiedUser();
-        // Start expiry timer on successful login
-        startTokenExpiryTimer();
+          handledVerifiedUser();
+          // Start expiry timer on successful login
+          startTokenExpiryTimer();
+        }
+      } catch (error) {
+        const err = error as AxiosError;
+        if (err?.response?.status === 404 && authConfig?.enableSelfSignup) {
+          setNewUserProfile(user.profile);
+          setCurrentUser({} as User);
+          setIsSigningUp(true);
+          history.push(ROUTES.SIGNUP);
+        } else {
+          // eslint-disable-next-line no-console
+          console.error(err);
+          showErrorToast(err);
+          resetUserDetails();
+          history.push(ROUTES.SIGNIN);
+        }
+      } finally {
+        setApplicationLoading(false);
       }
-    } catch (error) {
-      const err = error as AxiosError;
-      if (err && err.response && err.response.status === 404) {
-        setNewUserProfile(user.profile);
-        setCurrentUser({} as User);
-        setIsSigningUp(true);
-        history.push(ROUTES.SIGNUP);
-      } else {
-        // eslint-disable-next-line no-console
-        console.error(err);
-        history.push(ROUTES.SIGNIN);
-      }
-    } finally {
-      setApplicationLoading(false);
-    }
-  };
+    },
+    [
+      authConfig?.enableSelfSignup,
+      setIsSigningUp,
+      setIsAuthenticated,
+      setApplicationLoading,
+      setCurrentUser,
+      setNewUserProfile,
+    ]
+  );
 
   const handleSuccessfulLogout = () => {
     resetUserDetails();
@@ -544,6 +551,7 @@ export const AuthProvider = ({
         if (provider && Object.values(AuthProviderEnum).includes(provider)) {
           const configJson = getAuthConfig(authConfig);
           setJwtPrincipalClaims(authConfig.jwtPrincipalClaims);
+          setJwtPrincipalClaimsMapping(authConfig.jwtPrincipalClaimsMapping);
           setAuthConfig(configJson);
           setAuthorizerConfig(authorizerConfig);
           updateAuthInstance(configJson);
@@ -551,7 +559,12 @@ export const AuthProvider = ({
             handleStoreProtectedRedirectPath();
             setApplicationLoading(false);
           } else {
-            if (location.pathname !== ROUTES.AUTH_CALLBACK) {
+            // get the user details if token is present and route is not auth callback and saml callback
+            if (
+              ![ROUTES.AUTH_CALLBACK, ROUTES.SAML_CALLBACK].includes(
+                location.pathname
+              )
+            ) {
               getLoggedInUserDetails();
             }
           }
@@ -695,6 +708,19 @@ export const AuthProvider = ({
 
     return cleanup;
   }, []);
+
+  useEffect(() => {
+    setHelperFunctionsRef({
+      onLoginHandler,
+      onLogoutHandler,
+      handleSuccessfulLogin,
+      trySilentSignIn,
+      handleFailedLogin,
+      updateAxiosInterceptors: initializeAxiosInterceptors,
+    });
+
+    return cleanup;
+  }, [handleSuccessfulLogin]);
 
   const isConfigLoading =
     !authConfig ||

@@ -78,6 +78,7 @@ export const getIngestionName = (
       IngestionPipelineType.Lineage,
       IngestionPipelineType.Dbt,
       IngestionPipelineType.Application,
+      IngestionPipelineType.TestSuite,
     ].includes(type)
   ) {
     return `${replaceAllSpacialCharWith_(

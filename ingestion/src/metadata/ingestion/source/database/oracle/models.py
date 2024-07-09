@@ -20,7 +20,7 @@ class OracleStoredProcedure(BaseModel):
 class FetchProcedure(BaseModel):
     """Oracle Fetch Stored Procedure Raw Model"""
 
-    owner: Optional[str]
+    owner: Optional[str] = None
     name: str
     line: int
     text: str

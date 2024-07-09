@@ -18,6 +18,7 @@ import io.dropwizard.Configuration;
 import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.health.conf.HealthConfiguration;
 import io.federecio.dropwizard.swagger.SwaggerBundleConfiguration;
+import java.util.LinkedHashMap;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import lombok.Getter;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -66,6 +68,20 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("pipelineServiceClientConfiguration")
   private PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
 
+  private static final String CERTIFICATE_PATH = "certificatePath";
+
+  public PipelineServiceClientConfiguration getPipelineServiceClientConfiguration() {
+
+    LinkedHashMap<String, String> temporarySSLConfig =
+        (LinkedHashMap<String, String>) pipelineServiceClientConfiguration.getSslConfig();
+    if (temporarySSLConfig != null && temporarySSLConfig.containsKey(CERTIFICATE_PATH)) {
+      temporarySSLConfig.put("caCertificate", temporarySSLConfig.get(CERTIFICATE_PATH));
+      temporarySSLConfig.remove(CERTIFICATE_PATH);
+    }
+    pipelineServiceClientConfiguration.setSslConfig(temporarySSLConfig);
+    return pipelineServiceClientConfiguration;
+  }
+
   @JsonProperty("migrationConfiguration")
   @NotNull
   private MigrationConfiguration migrationConfiguration;
@@ -100,6 +116,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("applications")
   private AppsPrivateConfiguration appsPrivateConfiguration;
+
+  @JsonProperty("limits")
+  private LimitsConfiguration limitsConfiguration;
 
   @Override
   public String toString() {

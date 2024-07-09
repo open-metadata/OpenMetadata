@@ -17,8 +17,8 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
-- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 {% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
@@ -49,8 +49,8 @@ serviceConnectionPath: "/images/v1.4/connectors/doris/service-connection.png",
 - **Host and Port**: Enter the fully qualified hostname and port number for your Doris deployment in the Host and Port field.
 - **databaseName**: Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.
 - **databaseSchema**: databaseSchema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata Ingestion attempts to scan all the databaseSchema.
-- **sslCA**: Provide the path to ssl ca file.
-- **sslCert**: Provide the path to ssl client certificate file (ssl_cert).
+- **caCertificate**: Provide the path to ssl ca file.
+- **sslCertificate**: Provide the path to ssl client certificate file (ssl_cert).
 - **sslKey**: Provide the path to ssl client certificate file (ssl_key).
 
 {% partial file="/v1.4/connectors/database/advanced-configuration.md" /%}

@@ -18,7 +18,7 @@ import {
 } from '@azure/msal-browser';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
-import { first, isNil } from 'lodash';
+import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
@@ -35,9 +35,10 @@ import { isDev } from './EnvironmentUtils';
 
 const cookieStorage = new CookieStorage();
 
-// 25s for server auth approch
+// 25s for server auth approach
 export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
-// 2 minutes for client auth approch
+
+// 2 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES_PUBLIC = 2 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
@@ -103,6 +104,7 @@ export const getAuthConfig = (
           pkce: true,
           provider,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -118,6 +120,7 @@ export const getAuthConfig = (
           scope: 'openid email profile',
           responseType,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -132,6 +135,7 @@ export const getAuthConfig = (
           scope: 'openid email profile',
           responseType,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -142,6 +146,7 @@ export const getAuthConfig = (
           samlConfiguration,
           provider,
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -156,6 +161,7 @@ export const getAuthConfig = (
           scope: 'openid email profile',
           responseType: 'code',
           clientType,
+          enableSelfSignup,
         };
       }
 
@@ -167,6 +173,7 @@ export const getAuthConfig = (
         callbackUrl: redirectUri,
         provider,
         clientType,
+        enableSelfSignup,
       };
 
       break;
@@ -204,6 +211,7 @@ export const getAuthConfig = (
           },
           provider,
           clientType,
+          enableSelfSignup,
         } as Configuration;
       }
 
@@ -230,36 +238,59 @@ export const getNameFromEmail = (email: string) => {
 export const getNameFromUserData = (
   user: UserProfile,
   jwtPrincipalClaims: AuthenticationConfiguration['jwtPrincipalClaims'] = [],
-  principleDomain = ''
+  principleDomain = '',
+  jwtPrincipalClaimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping'] = []
 ) => {
-  // filter and extract the present claims in user profile
-  const jwtClaims = jwtPrincipalClaims.reduce(
-    (prev: string[], curr: string) => {
-      const currentClaim = user[curr as keyof UserProfile];
-      if (currentClaim) {
-        return [...prev, currentClaim];
-      } else {
-        return prev;
-      }
-    },
-    []
-  );
-
-  // get the first claim from claims list
-  const firstClaim = first(jwtClaims);
-
   let userName = '';
   let domain = principleDomain;
+  let email = '';
+  if (isEmpty(jwtPrincipalClaimsMapping)) {
+    // filter and extract the present claims in user profile
+    const jwtClaims = jwtPrincipalClaims.reduce(
+      (prev: string[], curr: string) => {
+        const currentClaim = user[curr as keyof UserProfile];
+        if (currentClaim) {
+          return [...prev, currentClaim];
+        } else {
+          return prev;
+        }
+      },
+      []
+    );
 
-  // if claims contains the "@" then split it out otherwise assign it to username as it is
-  if (firstClaim?.includes('@')) {
-    userName = firstClaim.split('@')[0];
-    domain = firstClaim.split('@')[1];
+    // get the first claim from claims list
+    const firstClaim = first(jwtClaims);
+
+    // if claims contains the "@" then split it out otherwise assign it to username as it is
+    if (firstClaim?.includes('@')) {
+      userName = firstClaim.split('@')[0];
+      domain = firstClaim.split('@')[1];
+    } else {
+      userName = firstClaim ?? '';
+    }
+
+    email = userName + '@' + domain;
   } else {
-    userName = firstClaim ?? '';
+    const mappingObj: Record<string, string> = {};
+    jwtPrincipalClaimsMapping.reduce((acc, value) => {
+      const [key, claim] = value.split(':');
+      acc[key] = claim;
+
+      return acc;
+    }, mappingObj);
+
+    if (mappingObj['username'] && mappingObj['email']) {
+      userName = get(user, mappingObj['username'], '');
+      email = get(user, mappingObj['email']);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error(
+        'username or email is not present in jwtPrincipalClaimsMapping'
+      );
+    }
   }
 
-  return { name: userName, email: userName + '@' + domain };
+  return { name: userName, email: email };
 };
 
 export const isProtectedRoute = (pathname: string) => {

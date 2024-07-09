@@ -12,11 +12,14 @@
  */
 import { getEntityDetailsPath } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
 import { TestSuite } from '../generated/tests/testCase';
+import { MOCK_CHART_DATA } from '../mocks/Chart.mock';
 import {
   columnSorter,
   getBreadcrumbForTestSuite,
   getEntityLinkFromType,
+  getEntityOverview,
   highlightEntityNameAndDescription,
 } from './EntityUtils';
 import {
@@ -28,6 +31,7 @@ import {
 
 jest.mock('../constants/constants', () => ({
   getEntityDetailsPath: jest.fn(),
+  getServiceDetailsPath: jest.fn(),
 }));
 
 jest.mock('./RouterUtils', () => ({
@@ -104,6 +108,27 @@ describe('EntityUtils unit tests', () => {
         { name: 'label.test-suite-plural', url: undefined },
         { name: 'testSuite', url: '' },
       ]);
+    });
+  });
+
+  describe('getEntityOverview', () => {
+    it('should call getChartOverview and get ChartData if ExplorePageTabs is charts', () => {
+      const result = JSON.stringify(
+        getEntityOverview(ExplorePageTabs.CHARTS, MOCK_CHART_DATA)
+      );
+
+      expect(result).toContain('label.owner');
+      expect(result).toContain('label.chart');
+      expect(result).toContain('label.url-uppercase');
+      expect(result).toContain('Are you an ethnic minority in your city?');
+      expect(result).toContain(
+        `http://localhost:8088/superset/explore/?form_data=%7B%22slice_id%22%3A%20127%7D`
+      );
+      expect(result).toContain('label.service');
+      expect(result).toContain('sample_superset');
+      expect(result).toContain('Other');
+      expect(result).toContain('label.service-type');
+      expect(result).toContain('Superset');
     });
   });
 });

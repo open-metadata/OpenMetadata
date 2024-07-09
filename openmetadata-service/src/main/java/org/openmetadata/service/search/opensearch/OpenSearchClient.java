@@ -3,9 +3,15 @@ package org.openmetadata.service.search.opensearch;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
@@ -345,8 +351,12 @@ public class OpenSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("all")
-        || request.getIndex().equalsIgnoreCase("dataAsset")) {
+    if (request
+            .getIndex()
+            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
@@ -358,12 +368,36 @@ public class OpenSearchClient implements SearchClient {
               .must(searchSourceBuilder.query())
               .mustNot(QueryBuilders.existsQuery("deleted")));
       searchSourceBuilder.query(boolQueryBuilder);
-    } else if (request.getIndex().equalsIgnoreCase("domain_search_index")
-        || request.getIndex().equalsIgnoreCase("data_product_search_index")
-        || request.getIndex().equalsIgnoreCase("query_search_index")
-        || request.getIndex().equalsIgnoreCase("knowledge_page_search_index")
-        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
-        || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
+    } else if (request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository()
+                    .getIndexMapping(DATA_PRODUCT)
+                    .getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository().getIndexMapping(QUERY).getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository().getIndexOrAliasName("knowledge_page_search_index"))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository()
+                    .getIndexMapping(RAW_COST_ANALYSIS_REPORT_DATA)
+                    .getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository()
+                    .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
+                    .getIndexName(clusterAlias))) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
@@ -377,11 +411,13 @@ public class OpenSearchClient implements SearchClient {
           request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
     }
 
-    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.matchQuery("status", "Approved")));
+    if (request
+        .getIndex()
+        .equalsIgnoreCase(
+            Entity.getSearchRepository()
+                .getIndexMapping(GLOSSARY_TERM)
+                .getIndexName(clusterAlias))) {
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
 
       if (request.isGetHierarchy()) {
         /*
@@ -469,7 +505,8 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
     try {
-      GetRequest request = new GetRequest(indexName, entityId);
+      GetRequest request =
+          new GetRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName), entityId);
       GetResponse response = client.get(request, RequestOptions.DEFAULT);
 
       if (response.isExists()) {
@@ -489,7 +526,12 @@ public class OpenSearchClient implements SearchClient {
 
   public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
     List<?> response = new ArrayList<>();
-    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
+    if (request
+        .getIndex()
+        .equalsIgnoreCase(
+            Entity.getSearchRepository()
+                .getIndexMapping(GLOSSARY_TERM)
+                .getIndexName(clusterAlias))) {
       response = buildGlossaryTermSearchHierarchy(searchResponse);
     }
     return response;
@@ -643,7 +685,8 @@ public class OpenSearchClient implements SearchClient {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
     os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
@@ -691,7 +734,8 @@ public class OpenSearchClient implements SearchClient {
       return;
     }
     os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)));
@@ -752,7 +796,8 @@ public class OpenSearchClient implements SearchClient {
     Set<Map<String, Object>> nodes = new HashSet<>();
     responseMap.put("entity", null);
     os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery()
@@ -812,7 +857,8 @@ public class OpenSearchClient implements SearchClient {
     }
     if (edges.isEmpty()) {
       os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
-          new os.org.opensearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+          new os.org.opensearch.action.search.SearchRequest(
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
       SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
       searchSourceBuilderForEntity.query(
           QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
@@ -1169,6 +1215,7 @@ public class OpenSearchClient implements SearchClient {
         AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("status").field("status"));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -1764,7 +1811,8 @@ public class OpenSearchClient implements SearchClient {
     }
 
     os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(dataReportIndex);
+        new os.org.opensearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(dataReportIndex));
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }
@@ -2067,7 +2115,7 @@ public class OpenSearchClient implements SearchClient {
 
   private static SearchSourceBuilder getSearchSourceBuilder(
       String index, String q, int from, int size) {
-    return switch (index) {
+    return switch (Entity.getSearchRepository().getIndexNameWithoutAlias(index)) {
       case "topic_search_index", "topic" -> buildTopicSearchBuilder(q, from, size);
       case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(q, from, size);
       case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(q, from, size);

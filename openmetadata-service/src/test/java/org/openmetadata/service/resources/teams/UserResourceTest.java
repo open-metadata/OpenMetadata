@@ -41,6 +41,7 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.operationNotAllowed;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -51,6 +52,8 @@ import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_HEADERS;
+import static org.openmetadata.service.util.TestUtils.USER_WITH_CREATE_PERMISSION_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
@@ -153,6 +156,14 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   public void setupUsers(TestInfo test) throws HttpResponseException {
+    CreateUser createUserWithAccess =
+        new CreateUser()
+            .withName(USER_WITH_CREATE_PERMISSION_NAME)
+            .withEmail(USER_WITH_CREATE_PERMISSION_NAME + "@open-metadata.org")
+            .withProfile(PROFILE)
+            .withRoles(List.of(CREATE_ACCESS_ROLE.getId()))
+            .withIsBot(false);
+    USER_WITH_CREATE_ACCESS = createEntity(createUserWithAccess, ADMIN_AUTH_HEADERS);
     CreateUser create = createRequest(test).withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     USER1 = createEntity(create, ADMIN_AUTH_HEADERS);
     USER1_REF = USER1.getEntityReference();
@@ -317,7 +328,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withIsAdmin(true);
 
     assertResponse(
-        () -> createAndCheckEntity(create, TEST_AUTH_HEADERS), FORBIDDEN, notAdmin(TEST_USER_NAME));
+        () -> createAndCheckEntity(create, TEST_AUTH_HEADERS),
+        FORBIDDEN,
+        operationNotAllowed(TEST_USER_NAME, MetadataOperation.CREATE));
   }
 
   @Test
@@ -613,7 +626,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     User user =
         createEntity(
             createRequest(test, 6).withName("test2").withEmail("test2@email.com"),
-            authHeaders("test2@email.com"));
+            USER_WITH_CREATE_HEADERS);
     String userJson = JsonUtils.pojoToJson(user);
     user.setIsAdmin(Boolean.TRUE);
     assertResponse(
@@ -871,7 +884,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             .withEmail("ingestion-bot-jwt@email.com")
             .withRoles(List.of(ROLE1_REF.getId()))
             .withAuthenticationMechanism(authMechanism);
-    User user = createEntity(create, authHeaders("ingestion-bot-jwt@email.com"));
+    User user = createEntity(create, USER_WITH_CREATE_HEADERS);
     user = getEntity(user.getId(), "*", ADMIN_AUTH_HEADERS);
     assertEquals(1, user.getRoles().size());
     TestUtils.put(
@@ -922,7 +935,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
                 .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
                 .withPassword("Test@1234")
                 .withConfirmPassword("Test@1234"),
-            authHeaders("testBasicAuth@email.com"));
+            USER_WITH_CREATE_HEADERS);
 
     // jwtAuth Response should be null always
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
@@ -1146,29 +1159,30 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     String user =
         "userImportExport,d,s,userImportExport@domain.com,America/Los_Angeles,true,teamImportExport,";
     String user1 =
-        "userImportExport1,,,userImportExport1@domain.com,,,teamImportExport1,DataConsumer";
-    String user11 = "userImportExport11,,,userImportExport11@domain.com,,,teamImportExport11,";
+        "userImportExport1,,,userImportExport1@domain.com,,false,teamImportExport1,DataConsumer";
+    String user11 = "userImportExport11,,,userImportExport11@domain.com,,false,teamImportExport11,";
     List<String> createRecords = listOf(user, user1, user11);
 
     // Update user descriptions
-    user = "userImportExport,displayName,,userImportExport@domain.com,,,teamImportExport,";
-    user1 = "userImportExport1,displayName1,,userImportExport1@domain.com,,,teamImportExport1,";
+    user = "userImportExport,displayName,,userImportExport@domain.com,,false,teamImportExport,";
+    user1 =
+        "userImportExport1,displayName1,,userImportExport1@domain.com,,false,teamImportExport1,";
     user11 =
-        "userImportExport11,displayName11,,userImportExport11@domain.com,,,teamImportExport11,";
+        "userImportExport11,displayName11,,userImportExport11@domain.com,,false,teamImportExport11,";
     List<String> updateRecords = listOf(user, user1, user11);
 
     // Add new users
     String user2 =
-        "userImportExport2,displayName2,,userImportExport2@domain.com,,,teamImportExport1,";
+        "userImportExport2,displayName2,,userImportExport2@domain.com,,false,teamImportExport1,";
     String user21 =
-        "userImportExport21,displayName21,,userImportExport21@domain.com,,,teamImportExport11,";
+        "userImportExport21,displayName21,,userImportExport21@domain.com,,false,teamImportExport11,";
     List<String> newRecords = listOf(user2, user21);
     testImportExport("teamImportExport", UserCsv.HEADERS, createRecords, updateRecords, newRecords);
 
     // Import to team11 a user in team1 - since team1 is not under team11 hierarchy, import should
     // fail
     String user3 =
-        "userImportExport3,displayName3,,userImportExport3@domain.com,,,teamImportExport1,";
+        "userImportExport3,displayName3,,userImportExport3@domain.com,,false,teamImportExport1,";
     csv = EntityCsvTest.createCsv(UserCsv.HEADERS, listOf(user3), null);
     result = importCsv("teamImportExport11", csv, false);
     String error =

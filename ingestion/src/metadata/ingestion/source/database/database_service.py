@@ -15,8 +15,9 @@ import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set, Tuple, Union
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.engine import Inspector
+from typing_extensions import Annotated
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -93,7 +94,9 @@ class DatabaseServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -115,7 +118,9 @@ class DatabaseServiceTopology(ServiceTopology):
             "yield_external_table_lineage",
         ],
     )
-    database = TopologyNode(
+    database: Annotated[
+        TopologyNode, Field(description="Database Node")
+    ] = TopologyNode(
         producer="get_database_names",
         stages=[
             NodeStage(
@@ -136,7 +141,9 @@ class DatabaseServiceTopology(ServiceTopology):
         ],
         children=["databaseSchema"],
     )
-    databaseSchema = TopologyNode(
+    databaseSchema: Annotated[
+        TopologyNode, Field(description="Database Schema Node")
+    ] = TopologyNode(
         producer="get_database_schema_names",
         stages=[
             NodeStage(
@@ -159,7 +166,9 @@ class DatabaseServiceTopology(ServiceTopology):
         post_process=["mark_tables_as_deleted", "mark_stored_procedures_as_deleted"],
         threads=True,
     )
-    table = TopologyNode(
+    table: Annotated[
+        TopologyNode, Field(description="Main table processing logic")
+    ] = TopologyNode(
         producer="get_tables_name_and_type",
         stages=[
             NodeStage(
@@ -183,7 +192,9 @@ class DatabaseServiceTopology(ServiceTopology):
             ),
         ],
     )
-    stored_procedure = TopologyNode(
+    stored_procedure: Annotated[
+        TopologyNode, Field(description="Stored Procedure Node")
+    ] = TopologyNode(
         producer="get_stored_procedures",
         stages=[
             NodeStage(
@@ -212,7 +223,7 @@ class DatabaseServiceSource(
     database_source_state: Set = set()
     stored_procedure_source_state: Set = set()
     # Big union of types we want to fetch dynamically
-    service_connection: DatabaseConnection.__fields__["config"].type_
+    service_connection: DatabaseConnection.model_fields["config"].annotation
 
     # When processing the database, the source will update the inspector if needed
     inspector: Inspector
@@ -254,7 +265,7 @@ class DatabaseServiceSource(
         """
 
     @abstractmethod
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, str]]]:
+    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:
         """
         Prepares the table name to be sent to stage.
         Filtering happens here.
@@ -387,11 +398,11 @@ class DatabaseServiceSource(
 
         tag_labels = []
         for tag_and_category in self.context.get().tags or []:
-            if tag_and_category.fqn and tag_and_category.fqn.__root__ == entity_fqn:
+            if tag_and_category.fqn and tag_and_category.fqn.root == entity_fqn:
                 tag_label = get_tag_label(
                     metadata=self.metadata,
-                    tag_name=tag_and_category.tag_request.name.__root__,
-                    classification_name=tag_and_category.classification_request.name.__root__,
+                    tag_name=tag_and_category.tag_request.name.root,
+                    classification_name=tag_and_category.classification_request.name.root,
                 )
                 if tag_label:
                     tag_labels.append(tag_label)
@@ -472,7 +483,7 @@ class DatabaseServiceSource(
             service_name=self.context.get().database_service,
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            table_name=table_request.name.__root__,
+            table_name=table_request.name.root,
             skip_es_search=True,
         )
 
@@ -490,7 +501,7 @@ class DatabaseServiceSource(
             service_name=self.context.get().database_service,
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
-            procedure_name=stored_proc_request.name.__root__,
+            procedure_name=stored_proc_request.name.root,
         )
 
         self.stored_procedure_source_state.add(table_fqn)

@@ -20,6 +20,7 @@ import json
 from typing import List
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.configuration.profilerConfiguration import (
     MetricConfigurationDefinition,
     MetricType,
@@ -35,7 +36,6 @@ from ...utils.docker_service_builders.test_container_builder import ContainerBui
 from ..integration_base import (
     METADATA_INGESTION_CONFIG_TEMPLATE,
     PROFILER_INGESTION_CONFIG_TEMPLATE,
-    int_admin_ometa,
 )
 
 
@@ -112,7 +112,7 @@ class TestSQAProfiler(TestCase):
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
-            if table.name.__root__ != "users":
+            if table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
             columns = table.columns
@@ -162,7 +162,7 @@ class TestSQAProfiler(TestCase):
 
         tables: List[Table] = self.metadata.list_all_entities(Table)
         for table in tables:
-            if table.name.__root__ != "users":
+            if table.name.root != "users":
                 continue
             table = self.metadata.get_latest_table_profile(table.fullyQualifiedName)
             columns = table.columns

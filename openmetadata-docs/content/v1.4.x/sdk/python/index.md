@@ -15,7 +15,7 @@ Make sure to use the same `openmetadata-ingestion` version as your server versio
 server at version 0.13.0, you will need to install:
 
 ```python
-pip install "openmetadata-ingestion~=0.13.0"
+pip install "openmetadata-ingestion~=1.4.0.1"
 ```
 
 {% /note %}
@@ -180,6 +180,31 @@ metadata = OpenMetadata(server_config)
 ```
 
 For local development, we can get a JWT token for the ingestion bot as described [here](/deployment/security/enable-jwt-tokens#generate-token) and use that when we specify the `jwtToken`. For a real-world deployment, we can also use [different authentication methods](/deployment/security) and specify other settings of the connection (such as `sslConfig`).
+
+Below is an example of how the user can configure `sslConfig` using `Python SDK`.
+
+```python
+from metadata.generated.schema.security.ssl.validateSSLClientConfig import ValidateSslClientConfig
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    AuthProvider,
+    OpenMetadataConnection
+)
+from metadata.generated.schema.security.client.openMetadataJWTClientConfig import OpenMetadataJWTClientConfig
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+
+server_config = OpenMetadataConnection(
+    hostPort="http://localhost:8585/api",
+    authProvider=AuthProvider.openmetadata,
+    securityConfig=OpenMetadataJWTClientConfig(
+        jwtToken="<YOUR-INGESTION-BOT-JWT-TOKEN>",
+    ),
+    verifySSL="validate" # ignore, validate or no-ssl,
+    sslConfig=ValidateSslClientConfig(caCertificate="/path/to/rootCert"),
+)
+
+metadata = OpenMetadata(server_config)
+```
 
 {% note %}
 

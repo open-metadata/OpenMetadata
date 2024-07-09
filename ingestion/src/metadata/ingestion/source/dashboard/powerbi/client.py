@@ -18,7 +18,7 @@ from time import sleep
 from typing import List, Optional, Tuple
 
 import msal
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection,
@@ -46,6 +46,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
+
 
 # Similar inner methods with mode client. That's fine.
 # pylint: disable=duplicate-code
@@ -326,8 +327,7 @@ class PowerBiApiClient:
 
 
 class PowerBiClient(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     api_client: PowerBiApiClient
     file_client: Optional[PowerBiFileClient]

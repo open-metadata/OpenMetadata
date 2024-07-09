@@ -35,7 +35,6 @@ from openmetadata_managed_apis.utils.logger import operations_logger
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 
 logger = operations_logger()
@@ -63,7 +62,7 @@ class DagDeployer:
             ingestion_pipeline.openMetadataServerConnection.secretsManagerLoader,
         )
         self.ingestion_pipeline = ingestion_pipeline
-        self.dag_id = clean_dag_id(self.ingestion_pipeline.name.__root__)
+        self.dag_id = clean_dag_id(self.ingestion_pipeline.name.root)
 
     def store_airflow_pipeline_config(
         self, dag_config_file_path: Path
@@ -75,7 +74,9 @@ class DagDeployer:
 
         logger.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
-            outfile.write(self.ingestion_pipeline.json(encoder=show_secrets_encoder))
+            outfile.write(
+                self.ingestion_pipeline.model_dump_json(exclude_defaults=False)
+            )
 
         return {"workflow_config_file": str(dag_config_file_path)}
 

@@ -30,7 +30,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.json.JsonPatch;
-import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -271,9 +270,7 @@ public final class UserUtil {
   }
 
   public static Set<String> getRolesFromAuthorizationToken(
-      ContainerRequestContext containerRequestContext) {
-    CatalogSecurityContext catalogSecurityContext =
-        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
+      CatalogSecurityContext catalogSecurityContext) {
     return catalogSecurityContext.getUserRoles();
   }
 

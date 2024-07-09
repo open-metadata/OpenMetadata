@@ -53,8 +53,8 @@ export interface LineageContextType {
   reactFlowInstance?: ReactFlowInstance;
   nodes: Node[];
   edges: Edge[];
-  expandedNodes: string[];
   tracedNodes: string[];
+  columnsHavingLineage: string[];
   tracedColumns: string[];
   lineageConfig: LineageConfig;
   zoomValue: number;
@@ -67,8 +67,9 @@ export interface LineageContextType {
   selectedNode: SourceType;
   upstreamDownstreamData: UpstreamDownstreamData;
   selectedColumn: string;
-  expandAllColumns: boolean;
   activeLayer: LineageLayerView[];
+  expandAllColumns: boolean;
+  toggleColumnView: () => void;
   onInitReactFlow: (reactFlowInstance: ReactFlowInstance) => void;
   onPaneClick: () => void;
   onNodeClick: (node: Node) => void;
@@ -83,7 +84,6 @@ export interface LineageContextType {
   onNodeCollapse: (node: Node | NodeProps, direction: EdgeTypeEnum) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
-  toggleColumnView: () => void;
   loadChildNodesHandler: (
     node: SourceType,
     direction: EdgeTypeEnum

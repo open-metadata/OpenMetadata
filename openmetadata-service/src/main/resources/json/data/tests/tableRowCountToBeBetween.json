@@ -27,5 +27,7 @@
       }
     }
   ],
-  "provider": "system"
+  "supportsDynamicAssertion": true,
+  "provider": "system",
+  "datatQualityDimension": "Integrity"
 }

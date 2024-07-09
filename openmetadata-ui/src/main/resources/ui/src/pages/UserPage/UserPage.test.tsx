@@ -21,8 +21,10 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import Users from '../../components/Settings/Users/Users.component';
+import { ROUTES } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { USER_DATA } from '../../mocks/User.mock';
+import { UPDATED_USER_DATA, USER_DATA } from '../../mocks/User.mock';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import UserPage from './UserPage.component';
 
@@ -31,6 +33,7 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
 );
 
 const mockUpdateCurrentUser = jest.fn();
+const mockPush = jest.fn();
 
 jest.mock('../../hooks/useApplicationStore', () => {
   return {
@@ -42,9 +45,15 @@ jest.mock('../../hooks/useApplicationStore', () => {
 });
 
 jest.mock('react-router-dom', () => ({
-  useHistory: jest.fn(),
-  useParams: jest.fn().mockImplementation(() => ({ username: 'xyz' })),
-  useLocation: jest.fn().mockImplementation(() => new URLSearchParams()),
+  useHistory: jest.fn().mockImplementation(() => ({
+    push: mockPush,
+  })),
+}));
+
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockImplementation(() => ({
+    fqn: 'xyz',
+  })),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => {
@@ -52,17 +61,23 @@ jest.mock('../../components/common/Loader/Loader', () => {
 });
 
 jest.mock('../../components/Settings/Users/Users.component', () => {
-  return jest.fn().mockImplementation(({ updateUserDetails }) => (
-    <div>
-      <p>User Component</p>
-      <button
-        onClick={() =>
-          updateUserDetails({ defaultPersona: undefined }, 'defaultPersona')
-        }>
-        UserComponentSaveButton
-      </button>
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ updateUserDetails, afterDeleteAction }) => (
+      <div>
+        <p>User Component</p>
+        <button
+          onClick={() =>
+            updateUserDetails({ defaultPersona: undefined }, 'defaultPersona')
+          }>
+          UserComponentSaveButton
+        </button>
+
+        <button onClick={() => afterDeleteAction(false)}>
+          UserComponentAfterDeleteActionButton
+        </button>
+      </div>
+    ));
 });
 
 jest.mock('../../rest/userAPI', () => ({
@@ -86,6 +101,15 @@ jest.mock('../../rest/feedsAPI', () => ({
 }));
 
 describe('Test the User Page', () => {
+  it('Should call getUserByName  API on load', async () => {
+    render(<UserPage />, { wrapper: MemoryRouter });
+
+    expect(getUserByName).toHaveBeenCalledWith('xyz', {
+      fields: 'profile,roles,teams,personas,defaultPersona,domain',
+      include: 'all',
+    });
+  });
+
   it('Should render the user component', async () => {
     const { container } = render(<UserPage />, { wrapper: MemoryRouter });
 
@@ -145,6 +169,45 @@ describe('Test the User Page', () => {
     expect(mockUpdateCurrentUser).toHaveBeenCalled();
   });
 
+  it('should update user isAdmin details if changes along with user', async () => {
+    (Users as jest.Mock).mockImplementationOnce(({ updateUserDetails }) => (
+      <div>
+        <button
+          onClick={() =>
+            updateUserDetails(
+              {
+                isAdmin: false,
+                roles: [
+                  {
+                    id: '7f8de4ae-8b08-431c-9911-8a355aa2976e',
+                    name: 'ProfilerBotRole',
+                    type: 'role',
+                  },
+                ],
+              },
+              'roles'
+            )
+          }>
+          UserComponentSaveButton
+        </button>
+      </div>
+    ));
+
+    (updateUserDetail as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(UPDATED_USER_DATA)
+    );
+
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentSaveButton'));
+    });
+
+    expect(mockUpdateCurrentUser).toHaveBeenCalledWith(UPDATED_USER_DATA);
+  });
+
   it('Should not call updateCurrentUser if user is not currentUser logged in', async () => {
     (useApplicationStore as unknown as jest.Mock).mockImplementation(() => ({
       currentUser: { ...USER_DATA, id: '123' },
@@ -160,5 +223,17 @@ describe('Test the User Page', () => {
     });
 
     expect(mockUpdateCurrentUser).not.toHaveBeenCalled();
+  });
+
+  it('Should trigger routeChange to landingPage on afterDeleteAction if hardDeleted', async () => {
+    await act(async () => {
+      render(<UserPage />, { wrapper: MemoryRouter });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('UserComponentAfterDeleteActionButton'));
+    });
+
+    expect(mockPush).toHaveBeenCalledWith(ROUTES.HOME);
   });
 });

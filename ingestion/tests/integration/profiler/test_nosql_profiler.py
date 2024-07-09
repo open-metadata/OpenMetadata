@@ -33,8 +33,10 @@ from unittest import TestCase
 from pymongo import MongoClient, database
 from testcontainers.mongodb import MongoDbContainer
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.api.models import TableConfig
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
@@ -44,8 +46,6 @@ from metadata.utils.time_utils import get_end_of_day_timestamp_mill
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.workflow_output_handler import print_status
-
-from ..integration_base import int_admin_ometa
 
 SERVICE_NAME = Path(__file__).stem
 
@@ -156,9 +156,7 @@ class NoSQLProfiler(TestCase):
     @classmethod
     def delete_service(cls):
         service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=SERVICE_NAME
-            ).id.__root__
+            cls.metadata.get_by_name(entity=DatabaseService, fqn=SERVICE_NAME).id.root
         )
         cls.metadata.delete(
             entity=DatabaseService,
@@ -208,7 +206,7 @@ class NoSQLProfiler(TestCase):
                     "columns": [
                         ColumnProfile(
                             name="age",
-                            timestamp=datetime.now().timestamp(),
+                            timestamp=Timestamp(int(datetime.now().timestamp())),
                             max=60,
                             min=20,
                         ),
@@ -246,7 +244,7 @@ class NoSQLProfiler(TestCase):
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
         )
         sample_data = self.metadata.get_sample_data(table)
-        assert [c.__root__ for c in sample_data.sampleData.columns] == [
+        assert [c.root for c in sample_data.sampleData.columns] == [
             "_id",
             "name",
             "age",
@@ -291,7 +289,7 @@ class NoSQLProfiler(TestCase):
                     "columns": [
                         ColumnProfile(
                             name="age",
-                            timestamp=datetime.now().timestamp(),
+                            timestamp=Timestamp(int(datetime.now().timestamp())),
                             max=query_age,
                             min=query_age,
                         ),
@@ -326,9 +324,9 @@ class NoSQLProfiler(TestCase):
             Table, f"{SERVICE_NAME}.default.{TEST_DATABASE}.{TEST_COLLECTION}"
         )
         sample_data = self.metadata.get_sample_data(table)
-        age_column_index = [
-            col.__root__ for col in sample_data.sampleData.columns
-        ].index("age")
+        age_column_index = [col.root for col in sample_data.sampleData.columns].index(
+            "age"
+        )
         assert all(
             [r[age_column_index] == query_age for r in sample_data.sampleData.rows]
         )

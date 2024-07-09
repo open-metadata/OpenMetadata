@@ -15,6 +15,7 @@ import {
   findByRole,
   findByTestId,
   findByText,
+  fireEvent,
   queryByTestId,
   render,
   screen,
@@ -45,7 +46,15 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
 jest.mock(
   './UsersProfile/UserProfileDetails/UserProfileDetails.component',
   () => {
-    return jest.fn().mockReturnValue(<div>UserProfileDetails</div>);
+    return jest
+      .fn()
+      .mockImplementation(({ afterDeleteAction, updateUserDetails }) => (
+        <>
+          <div>UserProfileDetails</div>
+          <button onClick={afterDeleteAction}>AfterDeleteActionButton</button>
+          <button onClick={updateUserDetails}>UpdateUserDetailsButton</button>
+        </>
+      ));
   }
 );
 
@@ -155,6 +164,7 @@ const mockProp = {
   },
   updateUserDetails: jest.fn(),
   handlePaginate: jest.fn(),
+  afterDeleteAction: jest.fn(),
 };
 
 jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
@@ -166,6 +176,16 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
     </div>
   ))
 );
+
+const mockGetResourceLimit = jest.fn().mockResolvedValue({
+  configuredLimit: { disabledFields: [] },
+});
+
+jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockImplementation(() => ({
+    getResourceLimit: mockGetResourceLimit,
+  })),
+}));
 
 describe('Test User Component', () => {
   it('Should render user component', async () => {
@@ -182,6 +202,26 @@ describe('Test User Component', () => {
     );
 
     expect(UserProfileDetails).toBeInTheDocument();
+  });
+
+  it('should trigger afterDeleteAction from UserProfileDetails', async () => {
+    render(<Users userData={mockUserData} {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByText('AfterDeleteActionButton'));
+
+    expect(mockProp.afterDeleteAction).toHaveBeenCalled();
+  });
+
+  it('should trigger updateUserDetails from UserProfileDetails', async () => {
+    render(<Users userData={mockUserData} {...mockProp} />, {
+      wrapper: MemoryRouter,
+    });
+
+    fireEvent.click(screen.getByText('UpdateUserDetailsButton'));
+
+    expect(mockProp.updateUserDetails).toHaveBeenCalled();
   });
 
   it('User profile should render when open collapsible header', async () => {
@@ -339,5 +379,25 @@ describe('Test User Component', () => {
     const assetComponent = await screen.findByTestId('center-panel');
 
     expect(assetComponent).toBeInTheDocument();
+  });
+
+  it('should disable access token tab, if limit has personalAccessToken as disabledFields', async () => {
+    mockGetResourceLimit.mockResolvedValueOnce({
+      configuredLimit: { disabledFields: ['personalAccessToken'] },
+    });
+    render(
+      <Users
+        authenticationMechanism={mockAccessData}
+        userData={mockUserData}
+        {...mockProp}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(
+      (await screen.findByTestId('access-token'))?.closest('.ant-tabs-tab')
+    ).toHaveClass('ant-tabs-tab-disabled');
   });
 });

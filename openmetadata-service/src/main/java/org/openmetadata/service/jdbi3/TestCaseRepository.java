@@ -8,6 +8,8 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -77,7 +79,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String UPDATE_FIELDS =
       "owner,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
-      "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
+      "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
@@ -104,14 +106,32 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             : test.getTestCaseResult());
     test.setIncidentId(
         fields.contains(INCIDENTS_FIELD) ? getIncidentId(test) : test.getIncidentId());
+    test.setTags(fields.contains(FIELD_TAGS) ? getTestCaseTags(test) : test.getTags());
   }
 
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner,domain", ALL);
+    Table table = Entity.getEntity(entityLink, "owner,domain,tags,columns", ALL);
     inheritOwner(testCase, fields, table);
     inheritDomain(testCase, fields, table);
+    inheritTags(testCase, fields, table);
+  }
+
+  private void inheritTags(TestCase testCase, Fields fields, Table table) {
+    if (fields.contains(FIELD_TAGS)) {
+      List<TagLabel> tags = new ArrayList<>();
+      EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
+      tags.addAll(table.getTags());
+      if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
+        // if we have a column test case get the columns tags as well
+        table.getColumns().stream()
+            .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
+            .findFirst()
+            .ifPresent(column -> tags.addAll(column.getTags()));
+      }
+      testCase.setTags(tags);
+    }
   }
 
   @Override
@@ -293,10 +313,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
-    ArrayList<String> fields = new ArrayList<>();
-    fields.add("testDefinition");
-    fields.add("owner");
-    fields.add(TEST_SUITE_FIELD);
+    ArrayList<String> fields =
+        new ArrayList<>(List.of("testDefinition", FIELD_OWNER, FIELD_TAGS, TEST_SUITE_FIELD));
 
     // set the test case resolution status reference if test failed, by either
     // creating a new incident or returning the stateId of an unresolved incident
@@ -397,6 +415,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  @Transaction
+  @Override
+  protected void cleanup(TestCase entityInterface) {
+    super.cleanup(entityInterface);
+    deleteTestCaseResults(entityInterface.getFullyQualifiedName());
+  }
+
   public RestUtil.PutResponse<TestCaseResult> deleteTestCaseResult(
       String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
@@ -425,6 +450,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     throw new EntityNotFoundException(
         String.format(
             "Failed to find testCase result for %s at %s", testCase.getName(), timestamp));
+  }
+
+  private void deleteTestCaseResults(String fqn) {
+    // Delete all the test case results
+    daoCollection.dataQualityDataTimeSeriesDao().deleteAll(fqn);
   }
 
   private ResultSummary getResultSummary(
@@ -627,6 +657,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return ongoingIncident;
   }
 
+  private List<TagLabel> getTestCaseTags(TestCase test) {
+    List<TagLabel> tags = new ArrayList<>();
+    EntityLink entityLink = EntityLink.parse(test.getEntityLink());
+    Table table = Entity.getEntity(entityLink, "tags,columns", ALL);
+    tags.addAll(table.getTags());
+    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
+      // if we have a column test case get the columns tags as well
+      table.getColumns().stream()
+          .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
+          .findFirst()
+          .ifPresent(column -> tags.addAll(column.getTags()));
+    }
+    return tags;
+  }
+
   public int getTestCaseCount(List<UUID> testCaseIds) {
     return daoCollection.testCaseDAO().countOfTestCases(testCaseIds);
   }
@@ -718,12 +763,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Transaction
-  public TestCase addFailedRowsSample(TestCase testCase, TableData tableData) {
+  public TestCase addFailedRowsSample(
+      TestCase testCase, TableData tableData, boolean validateColumns) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
     Table table = Entity.getEntity(entityLink, "owner", ALL);
     // Validate all the columns
-    for (String columnName : tableData.getColumns()) {
-      validateColumn(table, columnName);
+    if (validateColumns) {
+      for (String columnName : tableData.getColumns()) {
+        validateColumn(table, columnName);
+      }
     }
     // Make sure each row has number values for all the columns
     for (List<Object> row : tableData.getRows()) {
@@ -742,6 +790,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             "failedRowsSample",
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
+    // deep copy the test case to avoid updating the cached entity
+    testCase = JsonUtils.deepCopy(testCase, TestCase.class);
     return testCase.withFailedRowsSample(tableData);
   }
 
@@ -924,6 +974,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
           updated.getComputePassedFailedRowCount());
+      recordChange(
+          "useDynamicAssertion",
+          original.getUseDynamicAssertion(),
+          updated.getUseDynamicAssertion());
       recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
     }
   }
@@ -947,7 +1001,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
-      return maskSampleData(testCase.getFailedRowsSample(), table, table.getColumns());
+      return maskSampleData(sampleData, table, table.getColumns());
     }
     return sampleData;
   }

@@ -54,7 +54,9 @@
         "Doris",
         "UnityCatalog",
         "SAS",
-        "Iceberg"
+        "Iceberg",
+        "Teradata",
+        "SapErp"
       ],
       "javaEnums": [
         {
@@ -176,6 +178,12 @@
         },
         {
           "name": "Iceberg"
+        },
+        {
+          "name": "Teradata"
+        },
+        {
+          "name": "SapErp"
         }
       ]
     },
@@ -302,6 +310,12 @@
             },
             {
               "$ref": "./connections/database/icebergConnection.json"
+            },
+            {
+              "$ref": "./connections/database/teradataConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapErpConnection.json"
             }
           ]
         }

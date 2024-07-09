@@ -104,6 +104,20 @@
           }
         }
       }
+    },
+    "dataQualityDimensions": {
+      "javaType": "org.openmetadata.schema.type.DataQualityDimensions",
+      "description": "This enum defines the dimension a test case belongs to.",
+      "type": "string",
+      "enum": [
+        "Completeness",
+        "Accuracy",
+        "Consistency",
+        "Validity",
+        "Uniqueness",
+        "Integrity",
+        "SQL"
+      ]
     }
   },
   "properties": {
@@ -148,6 +162,9 @@
         "$ref": "#/definitions/testCaseParameterDefinition"
       }
     },
+    "datatQualityDimension": {
+      "$ref": "#/definitions/dataQualityDimensions"
+    },
     "owner": {
       "description": "Owner of this TestCase definition.",
       "$ref": "../type/entityReference.json",
@@ -183,6 +200,11 @@
     },
     "supportsRowLevelPassedFailed": {
       "description": "When `true` indicates the test case supports row level passed/failed.",
+      "type": "boolean",
+      "default": false
+    },
+    "supportsDynamicAssertion": {
+      "description": "When `true` indicates the test case supports dynamic assertions.",
       "type": "boolean",
       "default": false
     }

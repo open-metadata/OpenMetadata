@@ -86,7 +86,7 @@ This is a sample config for Nifi:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: nifi
   serviceName: nifi_source

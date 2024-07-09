@@ -14,7 +14,7 @@
                     "parameterValues": [
                         {
                             "name": "columnCount",
-                            "value": 10
+                            "value": "10"
                         }
                     ],
                     "resolutions": {
@@ -95,19 +95,15 @@
                     "parameterValues": [
                         {
                             "name": "minColValue",
-                            "value": 1
+                            "value": "1"
                         },
                         {
                             "name": "maxColValue",
-                            "value": 10
+                            "value": "10"
                         }
                     ],
                     "resolutions": {
                         "sequenceOne": [
-                            {
-                                "testCaseResolutionStatusType": "Ack",
-                                "severity": "Severity1"
-                            },
                             {
                                 "testCaseResolutionStatusType": "Assigned",
                                 "severity": "Severity1",
@@ -169,11 +165,11 @@
                     "parameterValues": [
                         {
                             "name": "minValueForMaxInCol",
-                            "value": 50
+                            "value": "50"
                         },
                         {
                             "name": "maxValueForMaxInCol",
-                            "value": 100
+                            "value": "100"
                         }
                     ],
                     "resolutions": {
@@ -243,11 +239,11 @@
                     "parameterValues": [
                         {
                             "name": "min",
-                            "value": 90001
+                            "value": "90001"
                         },
                         {
                             "name": "max",
-                            "value": 96162
+                            "value": "96162"
                         }
                     ],
                     "resolutions": {
@@ -332,11 +328,37 @@
                     "parameterValues": [
                         {
                             "name": "min",
-                            "value": 90001
+                            "value": "90001"
                         },
                         {
                             "name": "max",
-                            "value": 96162
+                            "value": "96162"
+                        }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "diff_with_production",
+                    "description": "compare with production data",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "diff_columns",
+                    "description": "compare with a table with different columns",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
                         }
                     ],
                     "resolutions": {}

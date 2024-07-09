@@ -14,6 +14,9 @@ Base class for ingesting database services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -57,7 +60,9 @@ class PipelineServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -72,7 +77,9 @@ class PipelineServiceTopology(ServiceTopology):
         children=["pipeline"],
         post_process=["mark_pipelines_as_deleted"],
     )
-    pipeline = TopologyNode(
+    pipeline: Annotated[
+        TopologyNode, Field(description="Processing Pipelines Node")
+    ] = TopologyNode(
         producer="get_pipeline",
         stages=[
             NodeStage(
@@ -113,7 +120,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: PipelineConnection.__fields__["config"].type_
+    service_connection: PipelineConnection.model_fields["config"].annotation
 
     topology = PipelineServiceTopology()
     context = TopologyContextManager(topology)
@@ -127,7 +134,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -214,8 +221,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         pipeline_fqn = fqn.build(
             self.metadata,
             entity_type=Pipeline,
-            service_name=pipeline_request.service.__root__,
-            pipeline_name=pipeline_request.name.__root__,
+            service_name=pipeline_request.service.root,
+            pipeline_name=pipeline_request.name.root,
         )
 
         self.pipeline_source_state.add(pipeline_fqn)

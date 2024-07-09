@@ -105,8 +105,8 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: MssqlConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: MssqlConnection = config.serviceConnection.root.config
         if not isinstance(connection, MssqlConnection):
             raise InvalidSourceException(
                 f"Expected MssqlConnection, but got {connection}"
@@ -122,8 +122,8 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(MSSQL_GET_DATABASE)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.__root__.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -164,7 +164,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
             ).all()
             for row in results:
                 try:
-                    stored_procedure = MssqlStoredProcedure.parse_obj(dict(row))
+                    stored_procedure = MssqlStoredProcedure.model_validate(dict(row))
                     yield stored_procedure
                 except Exception as exc:
                     logger.error()
@@ -183,7 +183,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 description=None,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
@@ -216,11 +216,21 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
+            start_date=start.replace(tzinfo=None),
         )
-
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
+        try:
+            queries_dict = self.procedure_queries_dict(
+                query=query,
+            )
+        except Exception as ex:  # pylint: disable=broad-except
+            logger.debug(f"Error runnning query:\n{query}")
+            self.status.failed(
+                StackTraceError(
+                    name="Stored Procedure",
+                    error=f"Error trying to get stored procedure queries: {ex}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return {}
 
         return queries_dict

@@ -81,8 +81,7 @@ import {
 import {
   getAggregations,
   getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-} from '../../../../utils/Explore.utils';
+} from '../../../../utils/ExploreUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -743,15 +742,10 @@ const AssetsTabs = forwardRef(
 
     useEffect(() => {
       const dropdownItems = getAssetsPageQuickFilters(type);
-
       setFilters(
         dropdownItems.map((item) => ({
           ...item,
-          value: getSelectedValuesFromQuickFilter(
-            item,
-            dropdownItems,
-            undefined // pass in state variable
-          ),
+          value: [],
         }))
       );
     }, [type]);

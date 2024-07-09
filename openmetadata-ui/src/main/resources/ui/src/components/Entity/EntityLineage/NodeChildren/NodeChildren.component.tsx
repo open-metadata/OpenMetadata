@@ -16,7 +16,10 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BORDER_COLOR } from '../../../../constants/constants';
-import { LINEAGE_COLUMN_NODE_SUPPORTED } from '../../../../constants/Lineage.constants';
+import {
+  DATATYPES_HAVING_SUBFIELDS,
+  LINEAGE_COLUMN_NODE_SUPPORTED,
+} from '../../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -31,7 +34,14 @@ import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
 const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { t } = useTranslation();
   const { Panel } = Collapse;
-  const { tracedColumns, activeLayer, onColumnClick } = useLineageProvider();
+  const {
+    tracedColumns,
+    activeLayer,
+    onColumnClick,
+    columnsHavingLineage,
+    isEditMode,
+    expandAllColumns,
+  } = useLineageProvider();
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
@@ -79,6 +89,17 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [children]
   );
 
+  const isColumnVisible = useCallback(
+    (record: Column) => {
+      if (expandAllColumns || isEditMode) {
+        return true;
+      }
+
+      return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
+    },
+    [isEditMode, columnsHavingLineage, expandAllColumns]
+  );
+
   useEffect(() => {
     if (!isEmpty(children)) {
       setFilteredColumns(children);
@@ -98,6 +119,10 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
       );
 
       if (!record.children || record.children.length === 0) {
+        if (!isColumnVisible(record)) {
+          return null;
+        }
+
         return headerContent;
       }
 
@@ -111,12 +136,16 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
             {record?.children?.map((child) => {
               const { fullyQualifiedName, dataType } = child;
-              if (['RECORD', 'STRUCT', 'ARRAY'].includes(dataType)) {
+              if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
                 return renderRecord(child);
               } else {
                 const isColumnTraced = tracedColumns.includes(
                   fullyQualifiedName ?? ''
                 );
+
+                if (!isColumnVisible(child)) {
+                  return null;
+                }
 
                 return getColumnContent(
                   child,
@@ -130,16 +159,19 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         </Collapse>
       );
     },
-    [isConnectable, tracedColumns, onColumnClick]
+    [isConnectable, tracedColumns, onColumnClick, isColumnVisible]
   );
 
   const renderColumnsData = useCallback(
     (column: Column) => {
       const { fullyQualifiedName, dataType } = column;
-      if (['RECORD', 'STRUCT', 'ARRAY'].includes(dataType)) {
+      if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
         return renderRecord(column);
       } else {
         const isColumnTraced = tracedColumns.includes(fullyQualifiedName ?? '');
+        if (!isColumnVisible(column)) {
+          return null;
+        }
 
         return getColumnContent(
           column,
@@ -149,7 +181,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         );
       }
     },
-    [isConnectable, tracedColumns]
+    [isConnectable, tracedColumns, isColumnVisible]
   );
 
   if (supportsColumns && (showColumns || showDataObservability)) {

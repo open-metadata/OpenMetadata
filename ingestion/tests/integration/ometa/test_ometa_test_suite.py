@@ -12,14 +12,17 @@
 """
 OpenMetadata API test suite mixin test
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import TestCase
 
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.api.tests.createTestSuite import (
+    CreateTestSuiteRequest,
+    TestSuiteEntityName,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -40,6 +43,12 @@ from metadata.generated.schema.tests.testDefinition import (
     TestPlatform,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.basic import (
+    EntityLink,
+    FullyQualifiedEntityName,
+    Markdown,
+    TestCaseEntityName,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.time_utils import (
@@ -69,8 +78,10 @@ class OMetaTestSuiteTest(TestCase):
 
     test_definition = metadata.create_or_update(
         CreateTestDefinitionRequest(
-            name="testDefinitionForIntegration",
-            description="this is a test definition for integration tests",
+            name=TestCaseEntityName("testDefinitionForIntegration"),
+            description=Markdown(
+                root="this is a test definition for integration tests"
+            ),
             entityType=EntityType.TABLE,
             testPlatforms=[TestPlatform.GreatExpectations],
             parameterDefinition=[TestCaseParameterDefinition(name="foo")],
@@ -83,25 +94,33 @@ class OMetaTestSuiteTest(TestCase):
 
         cls.test_suite: TestSuite = cls.metadata.create_or_update_executable_test_suite(
             CreateTestSuiteRequest(
-                name="sample_data.ecommerce_db.shopify.dim_address.TestSuite",
-                description="This is a test suite for the integration tests",
-                executableEntityReference="sample_data.ecommerce_db.shopify.dim_address",
+                name=TestSuiteEntityName(
+                    root="sample_data.ecommerce_db.shopify.dim_address.TestSuite"
+                ),
+                description=Markdown(
+                    root="This is a test suite for the integration tests"
+                ),
+                executableEntityReference=FullyQualifiedEntityName(
+                    "sample_data.ecommerce_db.shopify.dim_address"
+                ),
             )
         )
 
         cls.metadata.create_or_update(
             CreateTestCaseRequest(
-                name="testCaseForIntegration",
-                entityLink="<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                name=TestCaseEntityName("testCaseForIntegration"),
+                entityLink=EntityLink(
+                    "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
+                ),
                 testSuite=cls.test_suite.fullyQualifiedName,
                 testDefinition=cls.test_definition.fullyQualifiedName,
-                parameterValues=[TestCaseParameterValue(name="foo", value=10)],
+                parameterValues=[TestCaseParameterValue(name="foo", value="10")],
             )
         )
 
         cls.metadata.add_test_case_results(
             test_results=TestCaseResult(
-                timestamp=datetime_to_ts(datetime.utcnow()),
+                timestamp=datetime_to_ts(datetime.now(timezone.utc)),
                 testCaseStatus=TestCaseStatus.Success,
                 result="Test Case Success",
                 sampleData=None,
@@ -116,7 +135,7 @@ class OMetaTestSuiteTest(TestCase):
             "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert (
-            test_suite.name.__root__
+            test_suite.name.root
             == "sample_data.ecommerce_db.shopify.dim_address.TestSuite"
         )
         assert isinstance(test_suite, TestSuite)
@@ -126,7 +145,7 @@ class OMetaTestSuiteTest(TestCase):
         test_definition = self.metadata.get_or_create_test_definition(
             "testDefinitionForIntegration"
         )
-        assert test_definition.name.__root__ == "testDefinitionForIntegration"
+        assert test_definition.name.root == "testDefinitionForIntegration"
         assert isinstance(test_definition, TestDefinition)
 
     def test_get_or_create_test_case(self):
@@ -134,7 +153,7 @@ class OMetaTestSuiteTest(TestCase):
         test_case = self.metadata.get_or_create_test_case(
             "sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration"
         )
-        assert test_case.name.__root__ == "testCaseForIntegration"
+        assert test_case.name.root == "testCaseForIntegration"
         assert isinstance(test_case, OMetaTestCase)
 
     def test_create_test_case(self):
@@ -150,11 +169,14 @@ class OMetaTestSuiteTest(TestCase):
 
         test_case = self.metadata.get_or_create_test_case(
             test_case_fqn,
-            test_suite_fqn=self.test_suite.fullyQualifiedName.__root__,
+            test_suite_fqn=self.test_suite.fullyQualifiedName.root,
             test_definition_fqn="columnValuesToMatchRegex",
             entity_link="<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::last_name>",
+            test_case_parameter_values=[
+                TestCaseParameterValue(name="regex", value=".*")
+            ],
         )
-        assert test_case.name.__root__ == "aNonExistingTestCase"
+        assert test_case.name.root == "aNonExistingTestCase"
         assert isinstance(test_case, OMetaTestCase)
 
     def test_get_test_case_results(self):

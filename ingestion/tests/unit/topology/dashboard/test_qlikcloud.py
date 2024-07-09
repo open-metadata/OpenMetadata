@@ -72,7 +72,7 @@ mock_qlikcloud_config = {
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="qlikcloud_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="qlikcloud_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("qlikcloud_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QlikCloud,
 )
@@ -160,14 +160,16 @@ class QlikCloudUnitTest(TestCase):
         with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
             super().__init__(methodName)
             # test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.parse_obj(mock_qlikcloud_config)
+            self.config = OpenMetadataWorkflowConfig.model_validate(
+                mock_qlikcloud_config
+            )
             self.qlikcloud = QlikcloudSource.create(
                 mock_qlikcloud_config["source"],
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
             self.qlikcloud.context.get().__dict__[
                 "dashboard_service"
-            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+            ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
             self.qlikcloud.context.get().__dict__["project_name"] = None
 
     @pytest.mark.order(1)

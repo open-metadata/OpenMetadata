@@ -15,7 +15,7 @@ import urllib
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from requests.utils import quote
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
@@ -35,16 +35,16 @@ class SnowflakeStoredProcedure(BaseModel):
     """Snowflake stored procedure list query results"""
 
     name: str = Field(..., alias="NAME")
-    owner: Optional[str] = Field(..., alias="OWNER")
+    owner: Optional[str] = Field(None, alias="OWNER")
     language: str = Field(..., alias="LANGUAGE")
-    definition: str = Field(None, alias="DEFINITION")
+    definition: Optional[str] = Field(None, alias="DEFINITION")
     signature: Optional[str] = Field(
-        ..., alias="SIGNATURE", description="Used to build the source URL"
+        None, alias="SIGNATURE", description="Used to build the source URL"
     )
-    comment: Optional[str] = Field(..., alias="COMMENT")
+    comment: Optional[str] = Field(None, alias="COMMENT")
 
     # Update the signature to clean it up on read
-    @validator("signature")
+    @field_validator("signature")
     def clean_signature(  # pylint: disable=no-self-argument
         cls, signature
     ) -> Optional[str]:
@@ -82,7 +82,7 @@ class SnowflakeTable(BaseModel):
     """
 
     name: str
-    deleted: Optional[datetime]
+    deleted: Optional[datetime] = None
 
 
 class SnowflakeTableList(BaseModel):

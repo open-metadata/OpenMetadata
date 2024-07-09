@@ -18,6 +18,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/data-model.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
@@ -35,6 +36,7 @@ import { ReactComponent as RolesIcon } from '../assets/svg/role-colored.svg';
 import { ReactComponent as SearchIcon } from '../assets/svg/search-colored.svg';
 import { ReactComponent as AccessControlIcon } from '../assets/svg/setting-access-control.svg';
 import { ReactComponent as CustomProperties } from '../assets/svg/setting-custom-properties.svg';
+import { ReactComponent as DataObservability } from '../assets/svg/setting-data-observability.svg';
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services.svg';
@@ -53,7 +55,8 @@ import {
   UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
-import { userPermissions } from '../utils/PermissionsUtils';
+import globalSettingsClassBase from './GlobalSettingsClassBase';
+import { userPermissions } from './PermissionsUtils';
 import { getSettingPath } from './RouterUtils';
 import { getEncodedFqn } from './StringsUtils';
 
@@ -158,6 +161,15 @@ export const getGlobalSettingsMenuWithPermission = (
           ),
           key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
           icon: OpenMetadataIcon,
+        },
+        {
+          label: i18next.t('label.data-observability'),
+          description: i18next.t(
+            'message.page-sub-header-for-data-observability'
+          ),
+          isProtected: true,
+          key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
+          icon: DataObservability,
         },
       ],
     },
@@ -355,6 +367,15 @@ export const getGlobalSettingsMenuWithPermission = (
           icon: DashboardIcon,
         },
         {
+          label: i18next.t('label.dashboard-data-model-plural'),
+          description: i18next.t('message.define-custom-property-for-entity', {
+            entity: i18next.t('label.dashboard-data-model-plural'),
+          }),
+          isProtected: Boolean(isAdminUser),
+          key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+          icon: DashboardDataModelIcon,
+        },
+        {
           label: i18next.t('label.pipeline-plural'),
           description: i18next.t('message.define-custom-property-for-entity', {
             entity: i18next.t('label.pipeline-plural'),
@@ -462,46 +483,11 @@ export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
     .replace(':pageFqn', pageFqn);
 };
 
-export const settingCategories = {
-  [GlobalSettingsMenuCategory.SERVICES]: {
-    name: i18next.t('label.service-plural'),
-    url: GlobalSettingsMenuCategory.SERVICES,
-  },
-  [GlobalSettingsMenuCategory.NOTIFICATIONS]: {
-    name: i18next.t('label.notification-plural'),
-    url: GlobalSettingsMenuCategory.NOTIFICATIONS,
-  },
-  [GlobalSettingsMenuCategory.MEMBERS]: {
-    name: i18next.t('label.member-plural'),
-    url: GlobalSettingsMenuCategory.MEMBERS,
-  },
-  [GlobalSettingsMenuCategory.ACCESS]: {
-    name: i18next.t('label.access-control'),
-    url: GlobalSettingsMenuCategory.ACCESS,
-  },
-  [GlobalSettingsMenuCategory.PREFERENCES]: {
-    name: i18next.t('label.preference-plural'),
-    url: GlobalSettingsMenuCategory.PREFERENCES,
-  },
-  [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES]: {
-    name: i18next.t('label.custom-property-plural'),
-    url: GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-  },
-  [GlobalSettingsMenuCategory.BOTS]: {
-    name: i18next.t('label.bot-plural'),
-    url: GlobalSettingsMenuCategory.BOTS,
-  },
-  [GlobalSettingsMenuCategory.APPLICATIONS]: {
-    name: i18next.t('label.application-plural'),
-    url: GlobalSettingsMenuCategory.APPLICATIONS,
-  },
-};
-
 export const getSettingPageEntityBreadCrumb = (
   category: GlobalSettingsMenuCategory,
   entityName?: string
 ) => {
-  const categoryObject = settingCategories[category];
+  const categoryObject = globalSettingsClassBase.settingCategories[category];
 
   return [
     {
@@ -509,7 +495,7 @@ export const getSettingPageEntityBreadCrumb = (
       url: ROUTES.SETTINGS,
     },
     {
-      name: categoryObject.name,
+      name: categoryObject?.name ?? '',
       url: entityName ? getSettingPath(categoryObject.url) : '',
       activeTitle: !entityName,
     },

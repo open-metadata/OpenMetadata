@@ -305,168 +305,6 @@ export const NEW_TAG = {
   color: '#FF5733',
   icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
 };
-const cypressGlossaryName = `Cypress Glossary ${uuid()}`;
-
-export const NEW_GLOSSARY = {
-  name: cypressGlossaryName,
-  description: 'This is the Cypress Glossary',
-  reviewer: 'Aaron Johnson',
-  addReviewer: true,
-  tag: 'PersonalData.Personal',
-  isMutually: true,
-};
-
-const cypressProductGlossaryName = `Cypress Product%Glossary ${uuid()}`;
-
-export const NEW_GLOSSARY_1 = {
-  name: cypressProductGlossaryName,
-  description: 'This is the Product glossary with percentage',
-  reviewer: 'Brandy Miller',
-  addReviewer: false,
-};
-const cypressAssetsGlossaryName = `Cypress Assets Glossary ${uuid()}`;
-
-export const CYPRESS_ASSETS_GLOSSARY = {
-  name: cypressAssetsGlossaryName,
-  description: 'This is the Assets Cypress Glossary',
-  reviewer: '',
-  addReviewer: false,
-  tag: 'PII.None',
-};
-
-const cypressAssetsGlossary1Name = `Cypress Assets Glossary 1 ${uuid()}`;
-
-export const CYPRESS_ASSETS_GLOSSARY_1 = {
-  name: cypressAssetsGlossary1Name,
-  description: 'Cypress Assets Glossary 1 desc',
-  reviewer: '',
-  addReviewer: false,
-  tag: 'PII.None',
-};
-
-const COMMON_ASSETS = [
-  {
-    name: 'dim_customer',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
-  },
-  {
-    name: 'raw_order',
-    fullyQualifiedName: 'sample_data.ecommerce_db.shopify.raw_order',
-  },
-  {
-    name: 'presto_etl',
-    fullyQualifiedName: 'sample_airflow.presto_etl',
-  },
-];
-
-export const CYPRESS_ASSETS_GLOSSARY_TERMS = {
-  term_1: {
-    name: `Cypress%PercentTerm`,
-    description: 'This is the Cypress PercentTerm',
-    synonyms: 'buy,collect,acquire',
-    fullyQualifiedName: `${cypressAssetsGlossaryName}.Cypress%PercentTerm`,
-    assets: COMMON_ASSETS,
-  },
-  term_2: {
-    name: 'Cypress Space GTerm',
-    description: 'This is the Cypress Sales',
-    synonyms: 'give,disposal,deal',
-    fullyQualifiedName: `${cypressAssetsGlossaryName}.Cypress Space GTerm`,
-    assets: COMMON_ASSETS,
-  },
-  term_3: {
-    name: 'Cypress.Dot.GTerm',
-    description: 'This is the Cypress with space',
-    synonyms: 'tea,coffee,water',
-    fullyQualifiedName: `${cypressAssetsGlossaryName}."Cypress.Dot.GTerm"`,
-    displayFqn: `${cypressAssetsGlossaryName}.&quot;Cypress.Dot.GTerm&quot;`,
-    assets: COMMON_ASSETS,
-  },
-};
-
-const assetTermsUUId = uuid();
-
-export const CYPRESS_ASSETS_GLOSSARY_TERMS_1 = {
-  term_1: {
-    name: `Term1_${assetTermsUUId}`,
-    description: 'term1 desc',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term1_${assetTermsUUId}`,
-    synonyms: 'buy,collect,acquire',
-    assets: COMMON_ASSETS,
-  },
-  term_2: {
-    name: `Term2_${assetTermsUUId}`,
-    description: 'term2 desc',
-    synonyms: 'give,disposal,deal',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term2_${assetTermsUUId}`,
-    assets: COMMON_ASSETS,
-  },
-  term_3: {
-    name: `Term3_${assetTermsUUId}`,
-    synonyms: 'tea,coffee,water',
-    description: 'term3 desc',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term3_${assetTermsUUId}`,
-    assets: COMMON_ASSETS,
-  },
-  term_4: {
-    name: `Term4_${assetTermsUUId}`,
-    description: 'term4 desc',
-    synonyms: 'milk,biscuit,water',
-    fullyQualifiedName: `${cypressAssetsGlossary1Name}.Term4_${assetTermsUUId}`,
-    assets: COMMON_ASSETS,
-  },
-};
-
-export const NEW_GLOSSARY_TERMS = {
-  term_1: {
-    name: 'CypressPurchase',
-    description: 'This is the Cypress Purchase',
-    synonyms: 'buy,collect,acquire',
-    fullyQualifiedName: `${cypressGlossaryName}.CypressPurchase`,
-  },
-  term_2: {
-    name: 'CypressSales',
-    description: 'This is the Cypress Sales',
-    synonyms: 'give,disposal,deal',
-    fullyQualifiedName: `${cypressGlossaryName}.CypressSales`,
-  },
-  term_3: {
-    name: 'Cypress Space',
-    description: 'This is the Cypress with space',
-    synonyms: 'tea,coffee,water',
-    fullyQualifiedName: `${cypressGlossaryName}.Cypress Space`,
-    assets: COMMON_ASSETS,
-  },
-};
-export const GLOSSARY_TERM_WITH_DETAILS = {
-  name: 'Accounts',
-  description: 'This is the Accounts',
-  tag: 'PersonalData.Personal',
-  synonyms: 'book,ledger,results',
-  relatedTerms: 'CypressSales',
-  reviewer: 'Colin Ho',
-  inheritedReviewer: 'Aaron Johnson',
-  fullyQualifiedName: `${cypressGlossaryName}.Accounts`,
-};
-
-export const NEW_GLOSSARY_1_TERMS = {
-  term_1: {
-    name: 'Features%Term',
-    description: 'This is the Features',
-    synonyms: 'data,collect,time',
-    fullyQualifiedName: `${cypressProductGlossaryName}.Features%Term`,
-    color: '#FF5733',
-    icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAF8AAACFCAMAAAAKN9SOAAAAA1BMVEXmGSCqexgYAAAAI0lEQVRoge3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAHgaMeAAAUWJHZ4AAAAASUVORK5CYII=',
-  },
-  term_2: {
-    name: 'Uses',
-    description: 'This is the Uses',
-    synonyms: 'home,business,adventure',
-    fullyQualifiedName: `${cypressProductGlossaryName}.Uses`,
-    color: '#50C878',
-    icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKEAAAB5CAMAAABm4rHGAAAAA1BMVEUA7gBnh+O4AAAAKUlEQVR4nO3BAQEAAACCIP+vbkhAAQAAAAAAAAAAAAAAAAAAAAAAAL8GTJIAAVDbVToAAAAASUVORK5CYII=',
-  },
-};
 
 export const service = {
   name: 'Glue',
@@ -689,7 +527,7 @@ export const ENTITIES = {
 };
 
 export const LOGIN = {
-  username: 'admin',
+  username: 'admin@openmetadata.org',
   password: 'admin',
 };
 
@@ -783,9 +621,8 @@ export const NAME_VALIDATION_ERROR =
 
 export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 2 and 64';
-
-export const NAME_MAX_LENGTH_VALIDATION_ERROR =
-  'Name can be a maximum of 128 characters';
+export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR_1_128 =
+  'Name size must be between 1 and 128';
 
 export const DOMAIN_1 = {
   name: 'Cypress%Domain',
@@ -993,3 +830,10 @@ export const ID: Record<
     api: '/api/v1/services/storageServices?*',
   },
 };
+
+export const JWT_EXPIRY_TIME_MAP = {
+  '1 hour': 3600,
+  '2 hours': 7200,
+};
+
+export const EXAMPLE_LONG_STRING = 'name'.repeat(33); // 132 characters

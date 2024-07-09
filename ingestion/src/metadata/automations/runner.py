@@ -37,7 +37,7 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
     )
 
     automation_workflow = metadata.get_by_name(
-        entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.__root__
+        entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.root
     )
 
     return run_workflow(automation_workflow.request, automation_workflow, metadata)

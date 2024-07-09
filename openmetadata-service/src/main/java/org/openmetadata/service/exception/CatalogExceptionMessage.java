@@ -81,6 +81,12 @@ public final class CatalogExceptionMessage {
 
   public static final String SELF_SIGNUP_NOT_ENABLED = "SELF_SIGNUP_NOT_ENABLED";
   public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
+  public static final String OTHER_USER_SIGN_UP_ERROR = "OTHER_USER_SIGN_UP_ERROR";
+  public static final String OTHER_USER_SIGN_UP =
+      "Self Signup can only create user for self. Only Admin can create other users.";
+  public static final String SELF_SIGNUP_DISABLED_MESSAGE =
+      "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
   public static final String AUTHENTICATOR_OPERATION_NOT_SUPPORTED =
@@ -180,6 +186,12 @@ public final class CatalogExceptionMessage {
 
   public static String notAdmin(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
+  }
+
+  public static String operationNotAllowed(String name, MetadataOperation operation) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operations [%s] not allowed",
+        name, operation.value());
   }
 
   public static String notReviewer(String name) {
@@ -311,6 +323,10 @@ public final class CatalogExceptionMessage {
 
   public static String invalidFieldForTask(String fieldName, TaskType type) {
     return String.format("The field name %s is not supported for %s task.", fieldName, type);
+  }
+
+  public static String invalidReviewerType(String type) {
+    return String.format("Reviewers can only be a Team or User. Given Reviewer Type : %s", type);
   }
 
   public static String invalidEnumValue(Class<? extends Enum<?>> enumClass) {

@@ -33,12 +33,19 @@ A standard CSV should be comma separated, and each row represented as a single l
 {% /note %}
 
 - **query_text:** This field contains the literal query that has been executed in the database. It is quite possible
-    that your query has commas `,` inside. Then, wrap each query in quotes `"<query>"` to not have any clashes
+    that your query has commas `,` inside. Then, wrap each query in quotes to not have any clashes
     with the comma as a separator.
 - **database_name (optional):** Enter the database name on which the query was executed.
 - **schema_name (optional):** Enter the schema name to which the query is associated.
 
 Checkout a sample query log file [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/examples/sample_data/glue/query_log.csv).
+
+```csv
+query_text,database_name,schema_name
+"select * from sales",default,information_schema
+"select * from marketing",default,information_schema
+"insert into marketing select * from sales",default,information_schema
+```
 
 ## Lineage Workflow
 In order to run a Lineage Workflow we need to make sure that Metadata Ingestion Workflow for corresponding service has already been executed. We will follow the steps to create a JSON configuration able to collect the query log file and execute the lineage workflow.

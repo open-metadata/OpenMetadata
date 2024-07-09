@@ -205,7 +205,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         if not self._run_id:
             if self.config.pipelineRunId:
-                self._run_id = str(self.config.pipelineRunId.__root__)
+                self._run_id = str(self.config.pipelineRunId.root)
             else:
                 self._run_id = str(uuid.uuid4())
 

@@ -21,9 +21,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = ingestion_logger()
 
@@ -52,10 +53,12 @@ class QueryParserSource(Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
         self.start, self.end = get_start_and_end(self.source_config.queryLogDuration)
-        self.engine = get_connection(self.service_connection) if get_engine else None
+        self.engine = (
+            get_ssl_connection(self.service_connection) if get_engine else None
+        )
 
     @property
     def name(self) -> str:

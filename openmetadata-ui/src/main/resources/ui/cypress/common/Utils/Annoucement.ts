@@ -36,7 +36,7 @@ const announcementForm = ({ title, description, startDate, endDate }) => {
   cy.get('[id="announcement-submit"]').scrollIntoView().click();
 };
 
-export const createAnnouncement = (announcement) => {
+export const createAnnouncement = (announcement, entityName, updatedName) => {
   interceptURL(
     'GET',
     '/api/v1/feed?entityLink=*type=Announcement',
@@ -74,6 +74,19 @@ export const createAnnouncement = (announcement) => {
     'contain',
     announcement.title
   );
+  // Todo: Need to check announcement flow on home page @Ashish8689
+  //   cy.goToHomePage();
+
+  //   cy.get('[data-testid="announcement-container"]')
+  //     .find(`a[href*="${encodeURIComponent(entityName)}"]`)
+  //     .filter(':visible')
+  //     .first()
+  //     .click();
+
+  //   cy.get('[data-testid="entity-header-display-name"]').should(
+  //     'contain',
+  //     `Cypress ${updatedName} updated`
+  //   );
 };
 
 export const deleteAnnouncement = () => {
