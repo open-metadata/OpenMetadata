@@ -101,6 +101,9 @@ Our global manifest looks like follows:
             "containerName": "collate-demo-storage"
         },
         {
+            "dataPath": "solution.pdf",
+        },
+        {
             "dataPath": "transactions_separator",
             "structureFormat": "csv",
             "isPartitioned": false,
