@@ -12,8 +12,8 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import {
-  ENTITY_PATH,
   EntityTypeEndpoint,
+  ENTITY_PATH,
 } from '../support/entity/Entity.interface';
 import { UserClass } from '../support/user/UserClass';
 import { uuid } from './common';
