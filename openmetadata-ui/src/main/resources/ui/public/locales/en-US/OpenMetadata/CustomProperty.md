@@ -62,7 +62,6 @@ $$
 **Supported Time formats**
 
 - `HH:mm:ss`
-- `hh:mm:ss`
 
 
 $$section
