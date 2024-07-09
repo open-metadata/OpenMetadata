@@ -243,7 +243,7 @@ class StorageUnitTest(TestCase):
                 data_model=None,
                 creation_date=bucket_response.creation_date.isoformat(),
                 sourceUrl=SourceUrl(
-                    __root__="https://console.cloud.google.com/storage/browser/test_bucket;tab=objects?project=test_project"
+                    "https://console.cloud.google.com/storage/browser/test_bucket;tab=objects?project=test_project"
                 ),
                 fullPath="gs://test_bucket",
             ),
@@ -259,13 +259,13 @@ class StorageUnitTest(TestCase):
         self.object_store_source._fetch_metric = lambda bucket_name, metric: 100.0
         columns: List[Column] = [
             Column(
-                name=ColumnName(__root__="transaction_id"),
+                name=ColumnName("transaction_id"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
                 displayName="transaction_id",
             ),
             Column(
-                name=ColumnName(__root__="transaction_value"),
+                name=ColumnName("transaction_value"),
                 dataType=DataType.INT,
                 dataTypeDisplay="INT",
                 displayName="transaction_value",
@@ -288,7 +288,7 @@ class StorageUnitTest(TestCase):
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
                 sourceUrl=SourceUrl(
-                    __root__=f"https://console.cloud.google.com/storage/browser/_details/test_bucket/transactions;tab=live_object?project=test_project"
+                    f"https://console.cloud.google.com/storage/browser/_details/test_bucket/transactions;tab=live_object?project=test_project"
                 ),
                 fullPath="gs://test_bucket/transactions",
             ),
@@ -328,13 +328,13 @@ class StorageUnitTest(TestCase):
             self.assertListEqual(
                 [
                     Column(
-                        name=ColumnName(__root__="transaction_id"),
+                        name=ColumnName("transaction_id"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
                         displayName="transaction_id",
                     ),
                     Column(
-                        name=ColumnName(__root__="transaction_value"),
+                        name=ColumnName("transaction_value"),
                         dataType=DataType.INT,
                         dataTypeDisplay="INT",
                         displayName="transaction_value",
@@ -403,7 +403,7 @@ class StorageUnitTest(TestCase):
         self.object_store_source._get_sample_file_prefix = (
             lambda metadata_entry: "/transactions"
         )
-        self.object_store_source.gcs_clients.storage_client.cliens[
+        self.object_store_source.gcs_clients.storage_client.clients[
             0
         ].list_blobs = lambda bucket, prefix, max_results: MOCK_OBJECT_FILE_PATHS
 

@@ -27,8 +27,8 @@ class MultiProjectClient:
     ```
     from google.cloud.storage import Client
     client = MultiProjectClient(Client, project_ids=["project1", "project2"])
-    instances_project1 = client.list_instances("project1")
-    instances_project2 = client.list_instances("project2")
+    buckets_project1 = client.list_buckets("project1")
+    buckets_project2 = client.list_buckets("project2")
     """
 
     def __init__(

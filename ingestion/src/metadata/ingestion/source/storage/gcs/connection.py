@@ -10,9 +10,9 @@
 #  limitations under the License.
 """GCS storage connection"""
 from dataclasses import dataclass
-from functools import partial
 from typing import Optional
 
+from google.cloud.exceptions import NotFound
 from google.cloud.monitoring_v3 import MetricServiceClient
 from google.cloud.storage import Client
 
@@ -26,7 +26,10 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     SingleProjectId,
 )
-from metadata.ingestion.connections.test_connections import test_connection_steps
+from metadata.ingestion.connections.test_connections import (
+    SourceConnectionException,
+    test_connection_steps,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.storage.gcs.client import MultiProjectClient
 from metadata.utils.credentials import set_google_credentials
@@ -46,14 +49,86 @@ def get_connection(connection: GcsConnection):
     project_ids = None
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
         project_ids = (
-            [connection.credentials.gcpConfig.projectId.__root__]
+            [connection.credentials.gcpConfig.projectId.root]
             if isinstance(connection.credentials.gcpConfig.projectId, SingleProjectId)
-            else connection.credentials.gcpConfig.projectId.__root__
+            else connection.credentials.gcpConfig.projectId.root
         )
     return GcsObjectStoreClient(
         storage_client=MultiProjectClient(client_class=Client, project_ids=project_ids),
         metrics_client=MetricServiceClient(),
     )
+
+
+@dataclass
+class BucketTestState:
+    project_id: str
+    bucket_name: str
+    blob_name: str = None
+
+
+class Tester:
+    """
+    A wrapper class that holds state. We need it because the different testing stages
+    are not independent of each other. For example, we need to list buckets before we can list
+    blobs within a bucket.
+    """
+
+    def __init__(self, client: GcsObjectStoreClient, connection: GcsConnection):
+        self.client = client
+        self.connection = connection
+        self.bucket_tests = []
+
+    def list_buckets(self):
+        if self.connection.bucketNames:
+            for bucket_name in self.connection.bucketNames:
+                for project_id, client in self.client.storage_client.clients.items():
+                    try:
+                        client.get_bucket(bucket_name)
+                    except NotFound:
+                        continue
+                    else:
+                        self.bucket_tests.append(
+                            BucketTestState(project_id, bucket_name)
+                        )
+                        break
+                else:
+                    raise SourceConnectionException(
+                        f"Bucket {bucket_name} not found in provided projects."
+                    )
+            return
+        else:
+            for project_id, client in self.client.storage_client.clients.items():
+                bucket = next(client.list_buckets())
+                self.bucket_tests.append(BucketTestState(project_id, bucket.name))
+
+    def get_bucket(self):
+        if not self.bucket_tests:
+            raise SourceConnectionException("No buckets found in provided projects")
+        for bucket_test in self.bucket_tests:
+            client = self.client.storage_client.clients[bucket_test.project_id]
+            client.get_bucket(bucket_test.bucket_name)
+
+    def list_blobs(self):
+        if not self.bucket_tests:
+            raise SourceConnectionException("No buckets found in provided projects")
+        for bucket_test in self.bucket_tests:
+            client = self.client.storage_client.clients[bucket_test.project_id]
+            blob = next(client.list_blobs(bucket_test.bucket_name))
+            bucket_test.blob_name = blob.name
+
+    def get_blob(self):
+        if not self.bucket_tests:
+            raise SourceConnectionException("No buckets found in provided projects")
+        for bucket_test in self.bucket_tests:
+            client = self.client.storage_client.clients[bucket_test.project_id]
+            bucket = client.get_bucket(bucket_test.bucket_name)
+            bucket.get_blob(bucket_test.blob_name)
+
+    def get_metrics(self):
+        for project_id in self.client.storage_client.clients.keys():
+            self.client.metrics_client.list_metric_descriptors(
+                name=f"projects/{project_id}"
+            )
 
 
 def test_connection(
@@ -66,28 +141,14 @@ def test_connection(
     Test connection. This can be executed either as part
     of a metadata workflow or during an Automation Workflow
     """
-    project_id = client.storage_client.project_ids()[0]
-
-    def test_buckets(
-        connection: GcsConnection, client: GcsObjectStoreClient, project_id: str
-    ):
-        if connection.bucketNames:
-            for bucket_name in connection.bucketNames:
-                client.storage_client.list_blobs(bucket_name, project_id=project_id)
-            return
-        client.storage_client.list_buckets(project_id=project_id)
+    tester = Tester(client, service_connection)
 
     test_fn = {
-        "ListBuckets": partial(
-            test_buckets,
-            client=client,
-            connection=service_connection,
-            project_id=project_id,
-        ),
-        "GetMetrics": partial(
-            client.metrics_client.list_metric_descriptors,
-            name=f"projects/{project_id}",
-        ),
+        "ListBuckets": tester.list_buckets,
+        "GetBucket": tester.get_bucket,
+        "ListBlobs": tester.list_blobs,
+        "GetBlob": tester.get_blob,
+        "GetMetrics": tester.get_metrics,
     }
 
     test_connection_steps(
