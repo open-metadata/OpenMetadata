@@ -26,7 +26,8 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         CREATE TABLE IF NOT EXISTS e2e_cli_tests.dbt_jaffle.persons (
             person_id int,
             full_name varchar(255),
-            birthdate date
+            birthdate date,
+            bigint_col bigint
         )
     """
 
@@ -38,13 +39,13 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         """
-    INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate) VALUES
-        (1,'Peter Parker', '2004-08-10'),
-        (2,'Bruce Banner', '1988-12-18'),
-        (3,'Steve Rogers', '1988-07-04'),
-        (4,'Natasha Romanoff', '1997-12-03'),
-        (5,'Wanda Maximoff', '1998-02-10'),
-        (6,'Diana Prince', '1976-03-17');
+    INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate, bigint_col) VALUES
+        (1,'Peter Parker', '2004-08-10', 9223372036854775807),
+        (2,'Bruce Banner', '1988-12-18', 9223372036854775807),
+        (3,'Steve Rogers', '1988-07-04', 9223372036854775807),
+        (4,'Natasha Romanoff', '1997-12-03', 9223372036854775807),
+        (5,'Wanda Maximoff', '1998-02-10', 9223372036854775807),
+        (6,'Diana Prince', '1976-03-17', 9000000000000000007);
     """
     ]
 
