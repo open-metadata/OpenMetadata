@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def mssql_container(tmp_path_factory):
     container = SqlServerContainer(
         "mcr.microsoft.com/mssql/server:2017-latest", dbname="AdventureWorks"
@@ -103,7 +103,10 @@ def create_service_request(mssql_container, scheme, tmp_path_factory):
                 database="AdventureWorks",
                 scheme=scheme,
                 ingestAllDatabases=True,
-                connectionOptions={"TrustServerCertificate": "yes"},
+                connectionOptions={
+                    "TrustServerCertificate": "yes",
+                    "MARS_Connection": "yes",
+                },
             )
         ),
     )
