@@ -33,49 +33,56 @@ OpenMetadata also allows the user to customise the webhook with a wide range of 
 ## How to Set up Generic Type Webhook:
 1. **Name**: Add the name of the webhook
 2. **Description**: Describe the webhook.
-3. **Endpoint URL**: Enter the Consumer/client URL to consume the event's data.
-4. **Activity Filter**: Can be used to activate or disable the webhook.
-5. **Event Filters**: Filters are provided for all the entities and for all the events.
+3. **Destination**: Enter the Consumer/client URL to consume the event's data.
+4. **Source**: Can be used to activate or disable the webhook.
+5. **Filters**: Filters are provided for all the entities and for all the events.
    Event data for specific action can be achieved.
-6. **Batch Size**: Enter the batch size.
-7. **Connection Timeout**: Enter the desired connection timeout.
-8. **Secret Key**: Secret key can be used to secure the webhook connection.
 
-![webhook-generic](https://user-images.githubusercontent.com/83201188/188461969-7f318869-4048-4625-a896-da88bce811c2.png)
+{% image
+src="/images/v1.5/developers/webhook.png"
+alt="Generic Webhook"
+caption="Generic Webhook"
+/%}
 
 ## How to Set up Slack Type Webhook:
 1. **Name**: Add the name of the webhook
 2. **Description**: Describe the webhook.
-3. **Endpoint URL**: Enter the Slack endpoint URL.
-4. **Activity Filter**: Can be used to activate or disable the webhook.
-5. **Event Filters**: Filters are provided for all the entities and for all the events.
+3. **Destination**: Enter the Slack endpoint URL.
+4. **Source**: Can be used to activate or disable the webhook.
+5. **Filters**: Filters are provided for all the entities and for all the events.
    Event data for specific action can be achieved.
-6. **Batch Size**: Enter the batch size.
-7. **Connection Timeout**: Enter the desired connection timeout.
-8. **Secret Key**: Secret key can be used to secure the webhook connection.
 
-![webhook-slack](https://user-images.githubusercontent.com/83201188/188462920-2028f777-af0e-4868-b4d2-01e45f520a25.png)
+
+{% image
+src="/images/v1.5/developers/slack.png"
+alt="Slack Webhook"
+caption="Slack Webhook"
+/%}
 
 ## How to Set up Microsoft Teams Type Webhook:
 1. **Name**: Add the name of the webhook
 2. **Description**: Describe the webhook.
-3. **Endpoint URL**: Enter the MS Teams endpoint URL.  You can find this by going to the Teams channel where you want the posts to appear, clicking the three dots `...`, and clicking "Connectors".  Then add the "Incoming Webhook" connector.  Copy this connector's URL and supply it here to OpenMetadata.  It may be in the form of `https://your-domain.webhook.office.com/webhookb2/...@.../IncomingWebhook/.../...`.  For more on MS Teams webhooks, see [Create an Incoming Webhook](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
-4. **Activity Filter**: Can be used to activate or disable the webhook.
-5. **Event Filters**: Filters are provided for all the entities and for all the events.
+3. **Destination**: Enter the MS Teams endpoint URL.  You can find this by going to the Teams channel where you want the posts to appear, clicking the three dots `...`, and clicking "Connectors".  Then add the "Incoming Webhook" connector.  Copy this connector's URL and supply it here to OpenMetadata.  It may be in the form of `https://your-domain.webhook.office.com/webhookb2/...@.../IncomingWebhook/.../...`.  For more on MS Teams webhooks, see [Create an Incoming Webhook](https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook).
+4. **Source**: Can be used to activate or disable the webhook.
+5. **Filters**: Filters are provided for all the entities and for all the events.
    Event data for specific action can be achieved.
-6. **Batch Size**: Enter the batch size.
-7. **Connection Timeout**: Enter the desired connection timeout.
-8. **Secret Key**: Secret key can be used to secure the webhook connection.
 
-![webhook-msteams](https://user-images.githubusercontent.com/83201188/188462667-bd8443ce-a07d-4742-ae5d-42da3fc2d402.png)  
+{% image
+src="/images/v1.5/developers/msteam.png"
+alt="MS Team Webhook"
+caption="MS Team Webhook"
+/%} 
 
 ## How to Set up Google Chat Type Webhook:
 1. **Name**: Add the name of the webhook
 2. **Description**: Describe the webhook.
-3. **Endpoint URL**: Enter the GChat endpoint URL.  For more on creating GChat webhooks, see [Create a Webhook](https://developers.google.com/chat/how-tos/webhooks#create_a_webhook).
-4. **Activity Filter**: Can be used to activate or disable the webhook.
-5. **Event Filters**: Filters are provided for all the entities and for all the events.
+3. **Destination**: Enter the GChat endpoint URL.  For more on creating GChat webhooks, see [Create a Webhook](https://developers.google.com/chat/how-tos/webhooks#create_a_webhook).
+4. **Source**: Can be used to activate or disable the webhook.
+5. **Filters**: Filters are provided for all the entities and for all the events.
    Event data for specific action can be achieved.
-6. **Batch Size**: Enter the batch size.
-7. **Connection Timeout**: Enter the desired connection timeout.
-8. **Secret Key**: Secret key can be used to secure the webhook connection.
+
+{% image
+src="/images/v1.5/developers/gchat.png"
+alt="Gchat Webhook"
+caption="Gchat Webhook"
+/%} 

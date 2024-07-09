@@ -175,7 +175,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 runtime_params = setter.get_parameters(test_case)
                 test_case.parameterValues.append(
                     TestCaseParameterValue(
-                        name="runtimeParams", value=runtime_params.json()
+                        name="runtimeParams", value=runtime_params.model_dump_json()
                     )
                 )
 
