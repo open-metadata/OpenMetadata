@@ -267,6 +267,23 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "applicationType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "airflowConfig" : {
+        "properties" : {
+          "scheduleInterval" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          }
+        }
       }
     }
   }
