@@ -62,7 +62,16 @@ MOCK_OBJECT_STORE_CONFIG = {
                 "credentials": {
                     "gcpConfig": {
                         "type": "service_account",
-                        "projectId": "test_project",
+                        "projectId": "my-gcp-project",
+                        "privateKeyId": "private_key_id",
+                        # this is a valid key that was generated on a local machine and is not used for any real project
+                        "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpQIBAAKCAQEAw3vHG9fDIkcYB0xi2Mv4fS2gUzKR9ZRrcVNeKkqGFTT71AVB\nOzgIqYVe8b2aWODuNye6sipcrqTqOt05Esj+sxhk5McM9bE2RlxXC5QH/Bp9zxMP\n/Yksv9Ov7fdDt/loUk7sTXvI+7LDJfmRYU6MtVjyyLs7KpQIB2xBWEToU1xZY+v0\ndRC1NA+YWc+FjXbAiFAf9d4gXkYO8VmU5meixVh4C8nsjokEXk0T/HEItpZCxadk\ndZ7LKUE/HDmWCO2oNG6sCf4ET2crjSdYIfXuREopX1aQwnk7KbI4/YIdlRz1I369\nAz3+Hxlf9lLJVH3+itN4GXrR9yWWKWKDnwDPbQIDAQABAoIBAQC3X5QuTR7SN8iV\niBUtc2D84+ECSmza5shG/UJW/6N5n0Mf53ICgBS4GNEwiYCRISa0/ILIgK6CcVb7\nsuvH8F3kWNzEMui4TO0x4YsR5GH9HkioCCS224frxkLBQnL20HIIy9ok8Rpe6Zjg\nNZUnp4yczPyqSeA9l7FUbTt69uDM2Cx61m8REOpFukpnYLyZGbmNPYmikEO+rq9r\nwNID5dkSeVuQYo4MQdRavOGFUWvUYXzkEQ0A6vPyraVBfolESX8WaLNVjic7nIa3\nujdSNojnJqGJ3gslntcmN1d4JOfydc4bja4/NdNlcOHpWDGLzY1QnaDe0Koxn8sx\nLT9MVD2NAoGBAPy7r726bKVGWcwqTzUuq1OWh5c9CAc4N2zWBBldSJyUdllUq52L\nWTyva6GRoRzCcYa/dKLLSM/k4eLf9tpxeIIfTOMsvzGtbAdm257ndMXNvfYpxCfU\nK/gUFfAUGHZ3MucTHRY6DTkJg763Sf6PubA2fqv3HhVZDK/1HGDtHlTPAoGBAMYC\npdV7O7lAyXS/d9X4PQZ4BM+P8MbXEdGBbPPlzJ2YIb53TEmYfSj3z41u9+BNnhGP\n4uzUyAR/E4sxrA2+Ll1lPSCn+KY14WWiVGfWmC5j1ftdpkbrXstLN8NpNYzrKZwx\njdR0ZkwvZ8B5+kJ1hK96giwWS+SJxJR3TohcQ18DAoGAJSfmv2r//BBqtURnHrd8\nwq43wvlbC8ytAVg5hA0d1r9Q4vM6w8+vz+cuWLOTTyobDKdrG1/tlXrd5r/sh9L0\n15SIdkGm3kPTxQbPNP5sQYRs8BrV1tEvoao6S3B45DnEBwrdVN42AXOvpcNGoqE4\nuHpahyeuiY7s+ZV8lZdmxSsCgYEAolr5bpmk1rjwdfGoaKEqKGuwRiBX5DHkQkxE\n8Zayt2VOBcX7nzyRI05NuEIMrLX3rZ61CktN1aH8fF02He6aRaoE/Qm9L0tujM8V\nNi8WiLMDeR/Ifs3u4/HAv1E8v1byv0dCa7klR8J257McJ/ID4X4pzcxaXgE4ViOd\nGOHNu9ECgYEApq1zkZthEQymTUxs+lSFcubQpaXyf5ZC61cJewpWkqGDtSC+8DxE\nF/jydybWuoNHXymnvY6QywxuIooivbuib6AlgpEJeybmnWlDOZklFOD0abNZ+aNO\ndUk7XVGffCakXQ0jp1kmZA4lGsYK1h5dEU5DgXqu4UYJ88Vttax2W+Y=\n-----END RSA PRIVATE KEY-----\n",
+                        "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
+                        "clientId": "client_id",
+                        "authUri": "https://accounts.google.com/o/oauth2/auth",
+                        "tokenUri": "https://oauth2.googleapis.com/token",
+                        "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                        "clientX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
                     }
                 },
             }
@@ -72,12 +81,6 @@ MOCK_OBJECT_STORE_CONFIG = {
                 "type": "StorageMetadata",
                 "containerFilterPattern": {"includes": ["^test_*"]},
                 "storageMetadataConfigSource": {
-                    "securityConfig": {
-                        "gcpConfig": {
-                            "type": "service_account",
-                            "projectId": "test_project",
-                        }
-                    },
                     "prefixConfig": {
                         "containerName": "test_bucket",
                         "objectPrefix": "manifest",
@@ -115,12 +118,12 @@ MOCK_METADATA_FILE_RESPONSE = {
 EXPECTED_BUCKETS: List[GCSBucketResponse] = [
     GCSBucketResponse(
         name="test_transactions",
-        project_id="test_project",
+        project_id="my-gcp-project",
         creation_date=datetime.datetime(2000, 1, 1),
     ),
     GCSBucketResponse(
         name="test_sales",
-        project_id="test_project",
+        project_id="my-gcp-project",
         creation_date=datetime.datetime(2000, 2, 2),
     ),
 ]
@@ -173,7 +176,7 @@ class StorageUnitTest(TestCase):
         self.gcs_reader = get_reader(
             config_source=GCSConfig(),
             client=self.object_store_source.gcs_clients.storage_client.clients[
-                "test_project"
+                "my-gcp-project"
             ],
         )
 
@@ -197,12 +200,6 @@ class StorageUnitTest(TestCase):
                 "config": {
                     "type": "StorageMetadata",
                     "storageMetadataConfigSource": {
-                        "securityConfig": {
-                            "gcpConfig": {
-                                "type": "service_account",
-                                "projectId": "test_project",
-                            }
-                        },
                         "prefixConfig": {
                             "containerName": "test_bucket",
                             "objectPrefix": "manifest",
@@ -220,7 +217,7 @@ class StorageUnitTest(TestCase):
 
     def test_gcs_buckets_fetching(self):
         self.object_store_source.gcs_clients.storage_client.clients[
-            "test_project"
+            "my-gcp-project"
         ].list_buckets = lambda: MOCK_BUCKETS_RESPONSE
         self.assertListEqual(self.object_store_source.fetch_buckets(), EXPECTED_BUCKETS)
 
@@ -248,7 +245,7 @@ class StorageUnitTest(TestCase):
     def test_generate_unstructured_container(self):
         bucket_response = GCSBucketResponse(
             name="test_bucket",
-            project_id="test_project",
+            project_id="my-gcp-project",
             creation_date=datetime.datetime(2000, 1, 1),
         )
         self.object_store_source._fetch_metric = lambda bucket, metric: 100.0
@@ -262,7 +259,7 @@ class StorageUnitTest(TestCase):
                 data_model=None,
                 creation_date=bucket_response.creation_date.isoformat(),
                 sourceUrl=SourceUrl(
-                    "https://console.cloud.google.com/storage/browser/test_bucket;tab=objects?project=test_project"
+                    "https://console.cloud.google.com/storage/browser/test_bucket;tab=objects?project=my-gcp-project"
                 ),
                 fullPath="gs://test_bucket",
             ),
@@ -307,14 +304,14 @@ class StorageUnitTest(TestCase):
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
                 parent=entity_ref,
                 sourceUrl=SourceUrl(
-                    f"https://console.cloud.google.com/storage/browser/_details/test_bucket/transactions;tab=live_object?project=test_project"
+                    f"https://console.cloud.google.com/storage/browser/_details/test_bucket/transactions;tab=live_object?project=my-gcp-project"
                 ),
                 fullPath="gs://test_bucket/transactions",
             ),
             self.object_store_source._generate_container_details(
                 GCSBucketResponse(
                     name="test_bucket",
-                    project_id="test_project",
+                    project_id="my-gcp-project",
                     creation_date=datetime.datetime(2000, 1, 1),
                 ),
                 MetadataEntry(
@@ -411,7 +408,7 @@ class StorageUnitTest(TestCase):
             self.object_store_source._get_sample_file_path(
                 bucket=GCSBucketResponse(
                     name="test_bucket",
-                    project_id="test_project",
+                    project_id="my-gcp-project",
                     creation_date=datetime.datetime(2000, 1, 1),
                 ),
                 metadata_entry=MetadataEntry(
@@ -427,13 +424,13 @@ class StorageUnitTest(TestCase):
             lambda metadata_entry: "/transactions"
         )
         self.object_store_source.gcs_clients.storage_client.clients[
-            "test_project"
+            "my-gcp-project"
         ].list_blobs = lambda bucket, prefix, max_results: MOCK_OBJECT_FILE_PATHS
 
         candidate = self.object_store_source._get_sample_file_path(
             bucket=GCSBucketResponse(
                 name="test_bucket",
-                project_id="test_project",
+                project_id="my-gcp-project",
                 creation_date=datetime.datetime(2000, 1, 1),
             ),
             metadata_entry=MetadataEntry(
