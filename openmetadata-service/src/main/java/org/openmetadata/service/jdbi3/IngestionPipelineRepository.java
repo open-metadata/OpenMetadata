@@ -25,9 +25,12 @@ import lombok.Setter;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.json.JSONObject;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -347,5 +350,21 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     double profileSample = sourceConfigJson.optDouble("profileSample");
 
     EntityUtil.validateProfileSample(profileSampleType, profileSample);
+  }
+
+  /**
+   * Get either the pipelineType or the application Type.
+   */
+  public static String getPipelineWorkflowType(IngestionPipeline ingestionPipeline) {
+    if (PipelineType.APPLICATION.equals(ingestionPipeline.getPipelineType())) {
+      ApplicationPipeline applicationPipeline =
+          JsonUtils.convertValue(
+              ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
+      ApplicationConfig appConfig =
+          JsonUtils.convertValue(applicationPipeline.getAppConfig(), ApplicationConfig.class);
+      return (String) appConfig.getAdditionalProperties().get("type");
+    } else {
+      return ingestionPipeline.getPipelineType().value();
+    }
   }
 }

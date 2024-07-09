@@ -27,7 +27,7 @@ SET json = JSON_ARRAY_APPEND(
       "name": "BotRule-IngestionPipeline",
       "description": "A bot can Edit ingestion pipelines to pass the status",
       "resources": ["ingestionPipeline"],
-      "operations": ["ViewAll","EditAll"],
+      "operations": ["ViewAll","EditIngestionPipelineStatus"],
       "effect": "allow"
     }' AS JSON)
   )

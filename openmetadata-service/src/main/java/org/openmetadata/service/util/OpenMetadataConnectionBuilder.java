@@ -20,11 +20,9 @@ import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineS
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.Bot;
-import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerClientLoader;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
@@ -36,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.BotRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -87,12 +86,7 @@ public class OpenMetadataConnectionBuilder {
     switch (ingestionPipeline.getPipelineType()) {
       case METADATA, DBT -> botName = Entity.INGESTION_BOT_NAME;
       case APPLICATION -> {
-        ApplicationPipeline applicationPipeline =
-            JsonUtils.convertValue(
-                ingestionPipeline.getSourceConfig().getConfig(), ApplicationPipeline.class);
-        ApplicationConfig appConfig =
-            JsonUtils.convertValue(applicationPipeline.getAppConfig(), ApplicationConfig.class);
-        String type = (String) appConfig.getAdditionalProperties().get("type");
+        String type = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
         botName = String.format("%sApplicationBot", type);
       }
         // TODO: Remove this once we internalize the DataInsights app

@@ -22,7 +22,7 @@ SET json = jsonb_set(
       'name', 'BotRule-IngestionPipeline',
       'description', 'A bot can Edit ingestion pipelines to pass the status',
       'resources', jsonb_build_array('ingestionPipeline'),
-      'operations', jsonb_build_array('ViewAll', 'EditAll'),
+      'operations', jsonb_build_array('ViewAll', 'EditIngestionPipelineStatus'),
       'effect', 'allow'
     )
   ]),
