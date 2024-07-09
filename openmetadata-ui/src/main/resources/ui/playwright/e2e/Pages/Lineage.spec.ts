@@ -111,6 +111,9 @@ for (const EntityClass of entities) {
     });
 
     await test.step('Remove lineage between nodes for the entity', async () => {
+      await redirectToHomePage(page);
+      await currentEntity.visitEntityPage(page);
+      await visitLineageTab(page);
       await page.click('[data-testid="edit-lineage"]');
       await performZoomOut(page);
 
