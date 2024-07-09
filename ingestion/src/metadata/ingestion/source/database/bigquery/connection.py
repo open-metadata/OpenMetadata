@@ -31,6 +31,9 @@ from metadata.generated.schema.security.credentials.gcpValues import (
     MultipleProjectId,
     SingleProjectId,
 )
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpCredentialsPath,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -55,10 +58,6 @@ def get_connection_url(connection: BigQueryConnection) -> str:
     environment variable when needed
     """
 
-    # If projectId is defined in config, use it by default
-    if connection.projectId:
-        return f"{connection.scheme.value}://{connection.projectId}"
-
     if isinstance(connection.credentials.gcpConfig, GcpCredentialsValues):
         if isinstance(  # pylint: disable=no-else-return
             connection.credentials.gcpConfig.projectId, SingleProjectId
@@ -79,6 +78,10 @@ def get_connection_url(connection: BigQueryConnection) -> str:
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
                 return f"{connection.scheme.value}://{project_id}"
             return f"{connection.scheme.value}://"
+
+    # If gcpConfig is the JSON key path and projectId is defined, we use it by default
+    elif isinstance(connection.credentials.gcpConfig, GcpCredentialsPath) and connection.credentials.gcpConfig.projectId:
+        return f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId}"
 
     return f"{connection.scheme.value}://"
 
