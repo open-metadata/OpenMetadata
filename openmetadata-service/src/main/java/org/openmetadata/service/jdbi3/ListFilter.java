@@ -113,8 +113,6 @@ public class ListFilter extends Filter<ListFilter> {
             "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
                 + "relation=10))",
             nullOrEmpty(tableName) ? "id" : String.format("%s.id", tableName), domainId);
-        : "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId=:domainId AND "
-            + "relation=10))";
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {
