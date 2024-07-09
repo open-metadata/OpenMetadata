@@ -143,7 +143,9 @@ export const setValueForProperty = async (data: {
 
     case 'time-cp': {
       await page.locator('[data-testid="time-picker"]').isVisible();
+      await page.locator('[data-testid="time-picker"]').click();
       await page.locator('[data-testid="time-picker"]').fill(value);
+      await page.getByRole('button', { name: 'OK' }).click();
       await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -152,7 +154,13 @@ export const setValueForProperty = async (data: {
     case 'date-cp':
     case 'dateTime-cp': {
       await page.locator('[data-testid="date-time-picker"]').isVisible();
+      await page.locator('[data-testid="date-time-picker"]').click();
       await page.locator('[data-testid="date-time-picker"]').fill(value);
+      if (propertyType === 'dateTime-cp') {
+        await page.getByText('Now').click();
+      } else {
+        await page.getByText('Today').click();
+      }
       await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -217,7 +225,12 @@ export const validateValueForProperty = async (data: {
       page.getByLabel('Custom Properties').locator('.CodeMirror-scroll')
     ).toContainText(value);
   } else if (
-    !['entityReference', 'entityReferenceList'].includes(propertyType)
+    ![
+      'entityReference',
+      'entityReferenceList',
+      'date-cp',
+      'dateTime-cp',
+    ].includes(propertyType)
   ) {
     await expect(page.getByRole('row', { name: propertyName })).toContainText(
       value.replace(/\*|_/gi, '')
