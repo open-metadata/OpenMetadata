@@ -13,6 +13,7 @@
 
 import { CloseOutlined } from '@ant-design/icons';
 import { Col, Drawer, Row } from 'antd';
+import { cloneDeep } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
@@ -25,6 +26,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
@@ -173,7 +175,14 @@ const EntityInfoDrawer = ({
   }, [entityDetail, tags, selectedNode]);
 
   useEffect(() => {
-    setEntityDetail(selectedNode);
+    const node = cloneDeep(selectedNode);
+    // Since selectedNode is a source object, modify the tags to contain tier information
+    node.tags = [
+      ...(node.tags ?? []),
+      ...(node.tier ? [node.tier as TagLabel] : []),
+    ];
+
+    setEntityDetail(node);
   }, [selectedNode]);
 
   return (

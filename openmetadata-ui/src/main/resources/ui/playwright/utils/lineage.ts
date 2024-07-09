@@ -53,23 +53,19 @@ export const deleteEdge = async (
   const fromNodeFqn = get(fromNode, 'entityResponseData.fullyQualifiedName');
   const toNodeFqn = get(toNode, 'entityResponseData.fullyQualifiedName');
 
-  page.click(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`, {
-    force: true,
-  });
+  await page
+    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .dispatchEvent('click');
 
-  if (
-    ['Table', 'Topic'].indexOf(fromNode.getType()) > -1 &&
-    ['Table', 'Topic'].indexOf(toNode.getType()) > -1
-  ) {
-    await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
-    await page
-      .locator(
-        '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
-      )
-      .dispatchEvent('click');
-  } else {
-    await page.locator('[data-testid="delete-button"]').dispatchEvent('click');
-  }
+  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
+
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+
+  await page
+    .locator(
+      '[data-testid="add-edge-modal"] [data-testid="remove-edge-button"]'
+    )
+    .dispatchEvent('click');
 
   await expect(page.locator('[role="dialog"]')).toBeVisible();
 
@@ -118,7 +114,13 @@ export const connectEdgeBetweenNodes = async (
 
   await page.locator('[data-testid="suggestion-node"]').dispatchEvent('click');
 
+  const waitForSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*&from=0&size=10&*`
+  );
+
   await page.locator('[data-testid="suggestion-node"] input').fill(toNodeName);
+
+  await waitForSearchResponse;
 
   await page
     .locator(`[data-testid="node-suggestion-${toNodeFqn}"]`)
@@ -142,7 +144,7 @@ export const verifyNodePresent = async (page: Page, node: EntityClass) => {
     '[data-testid="entity-header-name"]'
   );
 
-  expect(entityHeaderName).toHaveText(name);
+  await expect(entityHeaderName).toHaveText(name);
 };
 
 export const setupEntitiesForLineage = async (
@@ -257,16 +259,20 @@ export const applyPipelineFromModal = async (
     'entityResponseData.fullyQualifiedName'
   );
 
-  await page.click(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`, {
-    force: true,
-  });
+  await page
+    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .dispatchEvent('click');
+  await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
-  await page.click('[data-testid="add-pipeline"]');
-  const field = await page.locator(
-    '[data-testid="add-edge-modal"] [data-testid="field-input"]'
+  const waitForSearchResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*&from=0&size=10&*`
   );
-  await field.click();
-  await field.fill(pipelineName);
+
+  await page
+    .locator('[data-testid="add-edge-modal"] [data-testid="field-input"]')
+    .fill(pipelineName);
+
+  await waitForSearchResponse;
 
   await page.click(`[data-testid="pipeline-entry-${pipelineFqn}"]`);
 
@@ -306,10 +312,10 @@ export const addColumnLineage = async (
   await lineageRes;
 
   if (exitEditMode) {
-    page.click('[data-testid="edit-lineage"]');
+    await page.click('[data-testid="edit-lineage"]');
   }
 
-  expect(
+  await expect(
     page.locator(
       `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
         toColumnNode
@@ -341,7 +347,7 @@ export const removeColumnLineage = async (
 
   await page.click('[data-testid="edit-lineage"]');
 
-  expect(
+  await expect(
     page.locator(
       `[data-testid="column-edge-${btoa(fromColumnNode)}-${btoa(
         toColumnNode
@@ -380,4 +386,10 @@ export const addPipelineBetweenNodes = async (
       bVerifyPipeline
     );
   }
+};
+
+export const visitLineageTab = async (page: Page) => {
+  const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
+  await page.click('[data-testid="lineage"]');
+  await lineageRes;
 };
