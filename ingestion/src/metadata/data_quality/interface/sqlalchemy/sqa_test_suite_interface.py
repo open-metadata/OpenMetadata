@@ -21,21 +21,20 @@ from sqlalchemy.orm import DeclarativeMeta
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult
-from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.constants import TEN_MIN
 from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 from metadata.utils.timeout import cls_timeout
 
 logger = test_suite_logger()
@@ -72,7 +71,7 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
 
     def create_session(self):
         self.session = create_and_bind_session(
-            get_connection(self.service_connection_config)
+            get_ssl_connection(self.service_connection_config)
         )
 
     @property
@@ -166,13 +165,26 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 test_case.testDefinition.fullyQualifiedName,
             )
 
+            if TestHandler.runtime_parameter_setter:
+                setter = TestHandler.runtime_parameter_setter(
+                    self.ometa_client,
+                    self.service_connection_config,
+                    self.table_entity,
+                    self.sampler,
+                )
+                runtime_params = setter.get_parameters(test_case)
+                test_case.parameterValues.append(
+                    TestCaseParameterValue(
+                        name="runtimeParams", value=runtime_params.model_dump_json()
+                    )
+                )
+
             test_handler = TestHandler(
                 self.runner,
                 test_case=test_case,
                 execution_date=int(datetime.now().timestamp() * 1000),
             )
-
-            return Validator(validator_obj=test_handler).validate()
+            return test_handler.run_validation()
         except Exception as err:
             logger.error(
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"

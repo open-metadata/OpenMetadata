@@ -328,7 +328,8 @@ class TopologyRunnerMixin(Generic[C]):
         """
         return PatchRequest(
             original_entity=original_entity,
-            new_entity=original_entity.copy(update=create_request.__dict__),
+            new_entity=original_entity.model_copy(update=create_request.__dict__),
+            override_metadata=self.source_config.overrideMetadata,
         )
 
     @singledispatchmethod

@@ -17,10 +17,8 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserTag } from '../../../components/common/UserTag/UserTag.component';
 import { UserTagSize } from '../../../components/common/UserTag/UserTag.interface';
-import {
-  ENTITY_NAME_REGEX,
-  HEX_COLOR_CODE_REGEX,
-} from '../../../constants/regex.constants';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
@@ -72,20 +70,7 @@ const AddDomainForm = ({
       props: {
         'data-testid': 'name',
       },
-      rules: [
-        {
-          pattern: ENTITY_NAME_REGEX,
-          message: t('message.entity-name-validation'),
-        },
-        {
-          min: 1,
-          max: 128,
-          message: `${t('message.entity-maximum-size', {
-            entity: `${t('label.name')}`,
-            max: '128',
-          })}`,
-        },
-      ],
+      rules: NAME_FIELD_RULES,
     },
     {
       name: 'displayName',

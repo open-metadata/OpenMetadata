@@ -468,6 +468,7 @@ function ServiceVersionPage() {
 
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={entityType}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

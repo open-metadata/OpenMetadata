@@ -272,6 +272,7 @@ const TeamsPage = () => {
         parents: fqn ? [selectedTeam.id] : undefined,
         email: data.email || undefined,
         teamDomains: teamDomains,
+        isJoinable: data.isJoinable,
       };
 
       const res = await createTeam(teamData);

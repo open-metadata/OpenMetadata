@@ -91,6 +91,22 @@ jest.mock(
     ))
 );
 jest.mock(
+  '../../components/DataQuality/AddTestCaseList/AddTestCaseList.component',
+  () => ({
+    AddTestCaseList: jest.fn().mockImplementation(({ onSubmit, onCancel }) => (
+      <div>
+        <p>AddTestCaseList.component</p>
+        <button data-testid="next-btn" onClick={onSubmit}>
+          Next
+        </button>
+        <button data-testid="back-btn" onClick={onCancel}>
+          Back
+        </button>
+      </div>
+    )),
+  })
+);
+jest.mock(
   '../../components/DataQuality/AddDataQualityTest/components/RightPanel',
   () => jest.fn().mockReturnValue(<div>RightPanel.component</div>)
 );
@@ -104,8 +120,9 @@ describe('TestSuiteIngestionPage', () => {
     expect(
       await screen.findByText('TitleBreadcrumb.component')
     ).toBeInTheDocument();
+    expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
     expect(
-      await screen.findByText('TestSuiteIngestion.component')
+      await screen.findByText('AddTestCaseList.component')
     ).toBeInTheDocument();
     expect(await screen.findByText('RightPanel.component')).toBeInTheDocument();
   });

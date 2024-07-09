@@ -22,7 +22,7 @@ import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.com
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../components/common/RichTextEditor/RichTextEditor.interface';
 import { VALIDATION_MESSAGES } from '../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   EntityReference,
@@ -112,6 +112,19 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
     },
   };
 
+  const isJoinableField: FieldProp = {
+    name: 'isJoinable',
+    label: t('label.public-team'),
+    type: FieldTypes.SWITCH,
+    required: false,
+    props: {
+      'data-testid': 'isJoinable-switch-button',
+    },
+    id: 'isJoinable-switch-button',
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    helperText: t('message.access-to-collaborate'),
+  };
+
   useEffect(() => {
     if (visible) {
       fetchAllTeams();
@@ -129,6 +142,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         type: 'primary',
         htmlType: 'submit',
       }}
+      okText={t('label.save')}
       open={visible}
       title={t('label.add-entity', { entity: t('label.team') })}
       width={750}
@@ -138,6 +152,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         id="add-team-form"
         initialValues={{
           teamType: TeamType.Group,
+          isJoinable: false,
         }}
         layout="vertical"
         name="add-team-nest-messages"
@@ -147,17 +162,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           label={t('label.name')}
           name="name"
           rules={[
-            {
-              required: true,
-              type: 'string',
-              min: 1,
-              max: 128,
-              whitespace: true,
-            },
-            {
-              pattern: ENTITY_NAME_REGEX,
-              message: t('message.entity-name-validation'),
-            },
+            ...NAME_FIELD_RULES,
             {
               validator: (_, value) => {
                 if (
@@ -214,6 +219,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
             placeholder={t('message.select-team')}
           />
         </Form.Item>
+        {getField(isJoinableField)}
         <Form.Item
           label={t('label.description')}
           name="description"

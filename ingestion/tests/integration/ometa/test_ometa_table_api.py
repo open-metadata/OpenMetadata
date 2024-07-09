@@ -22,6 +22,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -74,8 +75,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 
-from ..integration_base import int_admin_ometa
-
 BAD_RESPONSE = {
     "data": [
         {
@@ -109,7 +108,9 @@ BAD_RESPONSE = {
             ],
             "tags": [
                 {
-                    "tagFQN": "myTaghasMoreThanOneHundredAndTwentyCharactersAndItShouldBreakPydanticModelValidation.myTaghasMoreThanOneHundredAndTwentyCharactersAndItShouldBreakPydanticModelValidation",
+                    # Certain test cases are expected to fail as tagFQN's
+                    # value is not a string to test out the skip_on_failure
+                    "tagFQN": 123,
                     "source": "Classification",
                     "labelType": "Manual",
                     "state": "Confirmed",
@@ -230,7 +231,7 @@ class OMetaTableTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.create.dict(exclude_unset=True)
+        updated = self.create.model_dump(exclude_unset=True)
         updated["owner"] = self.owner
         updated_entity = CreateTableRequest(**updated)
 

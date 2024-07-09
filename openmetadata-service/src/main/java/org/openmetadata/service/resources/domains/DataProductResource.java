@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -80,8 +81,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
   static final String FIELDS = "domain,owner,experts,assets";
 
-  public DataProductResource(Authorizer authorizer) {
-    super(Entity.DATA_PRODUCT, authorizer);
+  public DataProductResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATA_PRODUCT, authorizer, limits);
   }
 
   @Override

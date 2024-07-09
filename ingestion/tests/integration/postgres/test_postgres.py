@@ -1,7 +1,10 @@
 import sys
+import time
+from os import path
 
 import pytest
 
+from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -80,6 +83,7 @@ def db_service(metadata, postgres_container):
 
 @pytest.fixture(scope="module")
 def ingest_metadata(db_service, metadata: OpenMetadata):
+    search_cache.clear()
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=db_service.connection.config.type.value.lower(),
@@ -99,7 +103,8 @@ def ingest_metadata(db_service, metadata: OpenMetadata):
 
 
 @pytest.fixture(scope="module")
-def ingest_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
+def ingest_postgres_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
+    search_cache.clear()
     workflow_config = OpenMetadataWorkflowConfig(
         source=Source(
             type="postgres-lineage",
@@ -111,11 +116,66 @@ def ingest_lineage(db_service, ingest_metadata, metadata: OpenMetadata):
             type="metadata-rest",
             config={},
         ),
-        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
+        workflowConfig=WorkflowConfig(
+            loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
+        ),
     )
     metadata_ingestion = MetadataWorkflow.create(workflow_config)
     metadata_ingestion.execute()
+    metadata_ingestion.raise_from_status()
     return
+
+
+def test_ingest_query_log(db_service, ingest_metadata, metadata: OpenMetadata):
+    search_cache.clear()
+    reindex_search(
+        metadata
+    )  # since query cache is stored in ES, we need to reindex to avoid having a stale cache
+    workflow_config = {
+        "source": {
+            "type": "query-log-lineage",
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {
+                    "type": "DatabaseLineage",
+                    "queryLogFilePath": path.dirname(__file__) + "/bad_query_log.csv",
+                }
+            },
+        },
+        "sink": {"type": "metadata-rest", "config": {}},
+        "workflowConfig": {
+            "loggerLevel": "DEBUG",
+            "openMetadataServerConfig": metadata.config.model_dump(),
+        },
+    }
+    metadata_ingestion = MetadataWorkflow.create(workflow_config)
+    metadata_ingestion.execute()
+    assert len(metadata_ingestion.source.status.failures) == 2
+    for failure in metadata_ingestion.source.status.failures:
+        assert "Table entity not found" in failure.error
+    customer_table: Table = metadata.get_by_name(
+        Table,
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
+        nullable=False,
+    )
+    actor_table: Table = metadata.get_by_name(
+        Table,
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.actor",
+        nullable=False,
+    )
+    staff_table: Table = metadata.get_by_name(
+        Table,
+        f"{db_service.fullyQualifiedName.root}.dvdrental.public.staff",
+        nullable=False,
+    )
+    edge = metadata.get_lineage_edge(
+        str(customer_table.id.root), str(actor_table.id.root)
+    )
+    assert edge is not None
+    edge = metadata.get_lineage_edge(
+        str(customer_table.id.root), str(staff_table.id.root)
+    )
+    assert edge is not None
 
 
 @pytest.fixture(scope="module")
@@ -139,7 +199,7 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
             loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
         ),
     )
-    metadata_ingestion = ProfilerWorkflow.create(workflow_config.dict())
+    metadata_ingestion = ProfilerWorkflow.create(workflow_config.model_dump())
     search_cache.clear()
     metadata_ingestion.execute()
     return
@@ -147,11 +207,12 @@ def run_profiler_workflow(ingest_metadata, db_service, metadata):
 
 @pytest.fixture(scope="module")
 def ingest_query_usage(ingest_metadata, db_service, metadata):
+    search_cache.clear()
     workflow_config = {
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -172,7 +233,7 @@ def ingest_query_usage(ingest_metadata, db_service, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -208,7 +269,7 @@ def test_profiler(run_profiler_workflow):
     pass
 
 
-def test_lineage(ingest_lineage):
+def test_db_lineage(ingest_postgres_lineage):
     pass
 
 
@@ -217,7 +278,7 @@ def run_usage_workflow(db_service, metadata):
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -238,7 +299,7 @@ def run_usage_workflow(db_service, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -251,12 +312,12 @@ def run_usage_workflow(db_service, metadata):
     reason="'metadata.ingestion.lineage.sql_lineage.search_cache' gets corrupted with invalid data."
     " See issue https://github.com/open-metadata/OpenMetadata/issues/16408"
 )
-def test_usage_delete_usage(db_service, ingest_lineage, metadata):
+def test_usage_delete_usage(db_service, ingest_postgres_lineage, metadata):
     workflow_config = {
         "source": {
             "type": "postgres-usage",
             "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
+            "serviceConnection": db_service.connection.model_dump(),
             "sourceConfig": {
                 "config": {"type": DatabaseUsageConfigType.DatabaseUsage.value}
             },
@@ -277,7 +338,7 @@ def test_usage_delete_usage(db_service, ingest_lineage, metadata):
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     workflow = UsageWorkflow.create(workflow_config)
@@ -303,3 +364,29 @@ def test_usage_delete_usage(db_service, ingest_lineage, metadata):
     metadata_ingestion.execute()
     metadata_ingestion.raise_from_status()
     run_usage_workflow(db_service, metadata)
+
+
+def reindex_search(metadata: OpenMetadata, timeout=60):
+    start = time.time()
+    status = None
+    while status is None or status == "running":
+        response = metadata.client.get(
+            "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"
+        )
+        status = response["data"][0]["status"]
+        if time.time() - start > timeout:
+            raise TimeoutError("Timed out waiting for reindexing to start")
+        time.sleep(1)
+    time.sleep(
+        0.5
+    )  # app interactivity is not immediate (probably bc async operations), so we wait a bit
+    metadata.client.post("/apps/trigger/SearchIndexingApplication")
+    time.sleep(0.5)  # here too
+    while status != "success":
+        response = metadata.client.get(
+            "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"
+        )
+        status = response["data"][0]["status"]
+        if time.time() - start > timeout:
+            raise TimeoutError("Timed out waiting for reindexing to complete")
+        time.sleep(1)

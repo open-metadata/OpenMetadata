@@ -44,10 +44,9 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -255,7 +254,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       CollectionRegistry.initialize();
       ApplicationHandler.initialize(config);
       // load seed data so that repositories are initialized
-      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, true);
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
       ApplicationHandler.initialize(config);
       // creates the default search index application
       AppScheduler.initialize(config, collectionDAO, searchRepository);
@@ -379,7 +378,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Deploying Pipelines");
       parseConfig();
-      PipelineServiceClient pipelineServiceClient =
+      PipelineServiceClientInterface pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(
               config.getPipelineServiceClientConfiguration());
       IngestionPipelineRepository pipelineRepository =
@@ -449,16 +448,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private void deployPipeline(
       IngestionPipeline pipeline,
-      PipelineServiceClient pipelineServiceClient,
+      PipelineServiceClientInterface pipelineServiceClient,
       List<List<String>> pipelineStatuses) {
     try {
+      // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
-      pipeline.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(config).build());
-      secretsManager.decryptIngestionPipeline(pipeline);
-      OpenMetadataConnection openMetadataServerConnection =
-          new OpenMetadataConnectionBuilder(config).build();
       pipeline.setOpenMetadataServerConnection(
-          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+          new OpenMetadataConnectionBuilder(config, pipeline).build());
+      secretsManager.decryptIngestionPipeline(pipeline);
       ServiceEntityInterface service =
           Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
       pipelineServiceClient.deployPipeline(pipeline, service);

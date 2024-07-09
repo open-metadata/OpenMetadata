@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -2479,6 +2492,48 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  void put_failedRowSample_without_validation_200(TestInfo test)
+      throws IOException, ParseException {
+    CreateTestCase create =
+        createRequest(test)
+            .withEntityLink(TABLE_LINK)
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(
+                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    List<String> columns = Arrays.asList("NOT_A_COLUMN", C1, C2, C3);
+
+    // Add 3 rows of sample data for 3 columns
+    List<List<Object>> rows =
+        Arrays.asList(
+            Arrays.asList("to be", "c1Value1", 1, true),
+            Arrays.asList("or not", "c1Value2", null, false),
+            Arrays.asList("to be", "c1Value3", 3, true));
+
+    // Add failed test case, which will create a NEW incident
+    putTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // fail to put sample row with invalid column
+    assertResponse(
+        () -> putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid column name NOT_A_COLUMN");
+
+    // successfully put sample row with invalid column when set query param validate=false
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("validate", "false");
+    putFailedRowsSample(testCase, columns, rows, ADMIN_AUTH_HEADERS, queryParams);
+  }
+
+  @Test
   void resolved_test_case_deletes_sample_data(TestInfo test) throws IOException, ParseException {
     CreateTestCase create =
         createRequest(test)
@@ -2610,6 +2665,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
   }
 
+  @Test
+  void createUpdate_DynamicAssertionTests(TestInfo testInfo) throws IOException {
+    CreateTestCase create = createRequest(testInfo).withUseDynamicAssertion(true);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertTrue(testCase.getUseDynamicAssertion());
+    CreateTestCase update = create.withUseDynamicAssertion(false);
+    updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertFalse(testCase.getUseDynamicAssertion());
+  }
+
   private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)
       throws IOException {
     TestCase putResponse = putInspectionQuery(testCase.getId(), sql, authHeaders);
@@ -2622,8 +2689,19 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       List<List<Object>> rows,
       Map<String, String> authHeaders)
       throws IOException {
+    putFailedRowsSample(testCase, columns, rows, authHeaders, Collections.emptyMap());
+  }
+
+  private void putFailedRowsSample(
+      TestCase testCase,
+      List<String> columns,
+      List<List<Object>> rows,
+      Map<String, String> authHeaders,
+      Map<String, String> queryParams)
+      throws IOException {
     TableData tableData = new TableData().withColumns(columns).withRows(rows);
-    TestCase putResponse = putFailedRowsSample(testCase.getId(), tableData, authHeaders);
+    TestCase putResponse =
+        putFailedRowsSample(testCase.getId(), tableData, authHeaders, queryParams);
     assertEquals(tableData, putResponse.getFailedRowsSample());
 
     TableData data = getSampleData(testCase.getId(), ADMIN_AUTH_HEADERS);
@@ -2637,9 +2715,15 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   public TestCase putFailedRowsSample(
-      UUID testCaseId, TableData data, Map<String, String> authHeaders)
+      UUID testCaseId,
+      TableData data,
+      Map<String, String> authHeaders,
+      Map<String, String> queryParams)
       throws HttpResponseException {
     WebTarget target = getResource(testCaseId).path("/failedRowsSample");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
     return TestUtils.put(target, data, TestCase.class, OK, authHeaders);
   }
 

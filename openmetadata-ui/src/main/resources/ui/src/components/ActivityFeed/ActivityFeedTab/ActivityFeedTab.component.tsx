@@ -432,6 +432,7 @@ export const ActivityFeedTab = ({
               className={classNames('cursor-pointer d-flex items-center', {
                 'font-medium': taskFilter === 'close',
               })}
+              data-testid="closed-task"
               onClick={() => {
                 handleUpdateTaskFilter('close');
                 setActiveThread();
@@ -465,7 +466,8 @@ export const ActivityFeedTab = ({
           style={{ height: '2px' }}
         />
       </div>
-      <div className=" right-container">
+
+      <div className="right-container">
         {loader}
         {selectedThread &&
           !loading &&

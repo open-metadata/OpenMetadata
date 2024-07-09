@@ -49,6 +49,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity
@@ -204,7 +205,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: DashboardConnection.__fields__["config"].annotation
+    service_connection: DashboardConnection.model_fields["config"].annotation
 
     topology = DashboardServiceTopology()
     context = TopologyContextManager(topology)
@@ -549,28 +550,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing to prepare"""
 
-    def fqn_from_context(self, stage: NodeStage, entity_name: C) -> str:
-        """
-        We are overriding this method since CreateDashboardDataModelRequest needs to add an extra value to the context
-        names.
-
-        Read the context
-        :param stage: Topology node being processed
-        :param entity_request: Request sent to the sink
-        :return: Entity FQN derived from context
-        """
-        context_names = [
-            self.context.get().__dict__[dependency]
-            for dependency in stage.consumer or []  # root nodes do not have consumers
-        ]
-
-        if isinstance(stage.type_, DashboardDataModel):
-            context_names.append("model")
-
-        return fqn._build(  # pylint: disable=protected-access
-            *context_names, entity_name
-        )
-
     def check_database_schema_name(self, database_schema_name: str):
         """
         Check if the input database schema name is equal to "<default>" and return the input name if it is not.
@@ -607,7 +586,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         patch_request = PatchRequest(
             original_entity=original_entity,
-            new_entity=original_entity.copy(update=create_request.__dict__),
+            new_entity=original_entity.model_copy(update=create_request.__dict__),
         )
         if isinstance(original_entity, Dashboard):
             # For patch the charts need to be entity ref instead of fqn
@@ -621,7 +600,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                             type=LINEAGE_MAP[type(chart_entity)],
                         )
                     )
-            patch_request.new_entity.charts = charts_entity_ref_list
+            patch_request.new_entity.charts = EntityReferenceList(
+                charts_entity_ref_list
+            )
 
             # For patch the datamodels need to be entity ref instead of fqn
             datamodel_entity_ref_list = []
@@ -636,7 +617,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                             type=LINEAGE_MAP[type(datamodel_entity)],
                         )
                     )
-            patch_request.new_entity.dataModels = datamodel_entity_ref_list
+            patch_request.new_entity.dataModels = EntityReferenceList(
+                datamodel_entity_ref_list
+            )
         return patch_request
 
     def _get_column_lineage(

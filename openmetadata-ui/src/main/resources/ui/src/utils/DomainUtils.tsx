@@ -47,7 +47,9 @@ export const getOwner = (
   owner?: EntityReference
 ) => {
   if (owner) {
-    return <OwnerLabel owner={owner} ownerDisplayName={ownerDisplayName} />;
+    return (
+      <OwnerLabel pills owner={owner} ownerDisplayName={ownerDisplayName} />
+    );
   }
   if (!hasPermission) {
     return <div>{NO_DATA_PLACEHOLDER}</div>;

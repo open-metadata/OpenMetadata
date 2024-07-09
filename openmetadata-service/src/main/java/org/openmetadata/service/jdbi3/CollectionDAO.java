@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
@@ -73,6 +74,8 @@ import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -94,6 +97,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.services.APIService;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -113,6 +117,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -279,6 +284,9 @@ public interface CollectionDAO {
   SearchServiceDAO searchServiceDAO();
 
   @CreateSqlObject
+  APIServiceDAO apiServiceDAO();
+
+  @CreateSqlObject
   ContainerDAO containerDAO();
 
   @CreateSqlObject
@@ -331,6 +339,12 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   SuggestionDAO suggestionDAO();
+
+  @CreateSqlObject
+  APICollectionDAO apiCollectionDAO();
+
+  @CreateSqlObject
+  APIEndpointDAO apiEndpointDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -495,7 +509,7 @@ public interface CollectionDAO {
       }
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-      return listBefore(getTableName(), sqlCondition, limit, before);
+      return listBefore(getTableName(), filter.getQueryParams(), sqlCondition, limit, before);
     }
 
     @Override
@@ -509,7 +523,7 @@ public interface CollectionDAO {
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
 
-      return listAfter(getTableName(), sqlCondition, limit, after);
+      return listAfter(getTableName(), filter.getQueryParams(), sqlCondition, limit, after);
     }
 
     @Override
@@ -522,7 +536,7 @@ public interface CollectionDAO {
       }
 
       String sqlCondition = String.format("%s AND er.toId is NULL", condition);
-      return listCount(getTableName(), getNameHashColumn(), sqlCondition);
+      return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), sqlCondition);
     }
 
     @SqlQuery(
@@ -541,6 +555,7 @@ public interface CollectionDAO {
                 + ") last_rows_subquery ORDER BY name")
     List<String> listBefore(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
         @Bind("limit") int limit,
         @Bind("before") String before);
@@ -559,6 +574,7 @@ public interface CollectionDAO {
                 + "LIMIT :limit")
     List<String> listAfter(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
         @Bind("limit") int limit,
         @Bind("after") String after);
@@ -586,6 +602,7 @@ public interface CollectionDAO {
     int listCount(
         @Define("table") String table,
         @Define("nameHashColumn") String nameHashColumn,
+        @BindMap Map<String, ?> params,
         @Define("sqlCondition") String mysqlCond);
   }
 
@@ -598,6 +615,23 @@ public interface CollectionDAO {
     @Override
     default Class<SearchService> getEntityClass() {
       return SearchService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface APIServiceDAO extends EntityDAO<APIService> {
+    @Override
+    default String getTableName() {
+      return "api_service_entity";
+    }
+
+    @Override
+    default Class<APIService> getEntityClass() {
+      return APIService.class;
     }
 
     @Override
@@ -1007,7 +1041,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> AND "
-                + "JSON_OVERLAPS(json_extract(taskAssignees, '$[*].id'), :userTeamJsonMysql) "
+                + "JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -1025,7 +1059,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> AND "
-                + "JSON_OVERLAPS(json_extract(taskAssignees, '$[*].id'), :userTeamJsonMysql) ",
+                + "JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) ",
         connectionType = MYSQL)
     int listCountTasksAssignedTo(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
@@ -1042,7 +1076,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> "
-                + "AND (JSON_OVERLAPS(JSON_EXTRACT(taskAssignees, '$[*].id'), :userTeamJsonMysql) OR createdBy = :username) "
+                + "AND (JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
@@ -1061,7 +1095,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> "
-                + "AND (JSON_OVERLAPS(JSON_EXTRACT(taskAssignees, '$[*].id'), :userTeamJsonMysql) OR createdBy = :username) ",
+                + "AND (JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) OR createdBy = :username) ",
         connectionType = MYSQL)
     int listCountTasksOfUser(
         @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
@@ -1240,7 +1274,7 @@ public interface CollectionDAO {
                 + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
                 + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
                 + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) OR "
-                + "(JSON_OVERLAPS(JSON_EXTRACT(taskAssignees, '$[*].id'), :userTeamJsonMysql) OR createdBy = :username)"
+                + "(JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) OR createdBy = :username)"
                 + " GROUP BY te.type, te.taskStatus",
         connectionType = MYSQL)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
@@ -1334,6 +1368,79 @@ public interface CollectionDAO {
         @BindList("teamNames") List<String> teamNames,
         @Bind("relation") int relation,
         @Define("condition") String condition);
+
+    @SqlQuery(
+        "SELECT json FROM thread_entity <condition> "
+            + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
+            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
+            + "((:toType1 IS NULL OR toType LIKE CONCAT(:toType1, '.%') OR toType=:toType1) OR "
+            + "(:toType2 IS NULL OR toType LIKE CONCAT(:toType2, '.%') OR toType=:toType2)) AND relation= :relation)"
+            + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
+            + " ((fromType='user' AND fromFQNHash= :userName) OR"
+            + " (fromType='team' AND fromFQNHash IN (<teamNames>))) AND toType='THREAD' AND relation= :filterRelation) )"
+            + "ORDER BY createdAt DESC "
+            + "LIMIT :limit")
+    List<String> listThreadsByGlossaryAndTerms(
+        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
+        @Bind("toType1") String toType1,
+        @Bind("toType2") String toType2,
+        @Bind("limit") int limit,
+        @Bind("relation") int relation,
+        @BindFQN("userName") String userName,
+        @BindList("teamNames") List<String> teamNames,
+        @Bind("filterRelation") int filterRelation,
+        @Define("condition") String condition);
+
+    default List<List<String>> listCountThreadsByGlossaryAndTerms(
+        EntityLink entityLink, EntityReference reference) {
+      EntityLink glossaryTermLink =
+          new EntityLink(GLOSSARY_TERM, entityLink.getFullyQualifiedFieldValue());
+      return listCountThreadsByGlossaryAndTerms(
+          reference.getId(),
+          reference.getFullyQualifiedName(),
+          entityLink.getFullyQualifiedFieldType(),
+          glossaryTermLink.getFullyQualifiedFieldType());
+    }
+
+    @SqlQuery(
+        "SELECT entityLink, type, taskStatus, COUNT(id) count "
+            + "FROM ( "
+            + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
+            + "    FROM thread_entity te  "
+            + "    WHERE te.entityId = :entityId  "
+            + "    OR EXISTS ( "
+            + "        SELECT 1  "
+            + "        FROM field_relationship fr  "
+            + "        WHERE fr.fromFQNHash = MD5(te.id) "
+            + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
+            + "        AND fr.fromType = 'THREAD' "
+            + "        AND (:toType1 IS NULL OR fr.toType LIKE CONCAT(:toType1, '.%') OR fr.toType = :toType1) "
+            + "        AND fr.relation = 3 "
+            + "    ) "
+            + "    UNION ALL "
+            + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
+            + "    FROM thread_entity te  "
+            + "    WHERE te.type = 'Task'  "
+            + "    AND (  "
+            + "     EXISTS ( "
+            + "        SELECT 1  "
+            + "        FROM field_relationship fr  "
+            + "        JOIN thread_entity te2 ON MD5(te2.id) = fr.fromFQNHash  "
+            + "        WHERE fr.fromFQNHash = MD5(te.id) "
+            + "        AND te2.type = 'Task'   "
+            + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
+            + "        AND fr.fromType = 'THREAD' "
+            + "        AND (:toType2 IS NULL OR fr.toType LIKE CONCAT(:toType2, '.%') OR fr.toType = :toType2) "
+            + "        AND fr.relation = 3 "
+            + "    )) "
+            + ") AS combined_results "
+            + "GROUP BY entityLink, type, taskStatus ")
+    @RegisterRowMapper(ThreadCountFieldMapper.class)
+    List<List<String>> listCountThreadsByGlossaryAndTerms(
+        @BindUUID("entityId") UUID entityId,
+        @BindFQN("fqnPrefixHash") String fqnPrefixHash,
+        @Bind("toType1") String toType1,
+        @Bind("toType2") String toType2);
 
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
@@ -1779,13 +1886,15 @@ public interface CollectionDAO {
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
+        filter.queryParams.put(
+            "directChildrenOfHash", FullyQualifiedName.buildHash(directChildrenOf));
         condition =
             String.format(
-                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
-                condition, FullyQualifiedName.buildHash(directChildrenOf));
+                " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition);
       }
 
-      return listCount(getTableName(), getNameHashColumn(), condition);
+      return listCount(getTableName(), getNameHashColumn(), filter.getQueryParams(), condition);
     }
 
     @Override
@@ -1794,13 +1903,15 @@ public interface CollectionDAO {
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
+        filter.queryParams.put(
+            "directChildrenOfHash", FullyQualifiedName.buildHash(directChildrenOf));
         condition =
             String.format(
-                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
-                condition, FullyQualifiedName.buildHash(directChildrenOf));
+                " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition);
       }
 
-      return listBefore(getTableName(), condition, limit, before);
+      return listBefore(getTableName(), filter.getQueryParams(), condition, limit, before);
     }
 
     @Override
@@ -1809,13 +1920,15 @@ public interface CollectionDAO {
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
       if (!nullOrEmpty(directChildrenOf)) {
+        filter.queryParams.put(
+            "directChildrenOfHash", FullyQualifiedName.buildHash(directChildrenOf));
         condition =
             String.format(
-                " %s AND fqnHash = CONCAT('%s', '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
-                condition, FullyQualifiedName.buildHash(directChildrenOf));
+                " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
+                condition);
       }
 
-      return listAfter(getTableName(), condition, limit, after);
+      return listAfter(getTableName(), filter.getQueryParams(), condition, limit, after);
     }
 
     @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
@@ -1876,8 +1989,7 @@ public interface CollectionDAO {
                 "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation",
                 condition);
         bindMap.put("relation", CONTAINS.ordinal());
-        bindMap.put("serviceType", serviceType);
-        return listIngestionPipelineCount(condition, bindMap);
+        return listIngestionPipelineCount(condition, bindMap, filter.getQueryParams());
       }
       return EntityDAO.super.listCount(filter);
     }
@@ -1913,11 +2025,10 @@ public interface CollectionDAO {
                 "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name > :after order by ingestion_pipeline_entity.name ASC LIMIT :limit",
                 condition);
 
-        bindMap.put("serviceType", serviceType);
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("after", after);
         bindMap.put("limit", limit);
-        return listAfterIngestionPipelineByserviceType(condition, bindMap);
+        return listAfterIngestionPipelineByserviceType(condition, bindMap, filter.getQueryParams());
       }
       return EntityDAO.super.listAfter(filter, limit, after);
     }
@@ -1952,27 +2063,33 @@ public interface CollectionDAO {
                 "%s WHERE entity_relationship.fromEntity = :serviceType and entity_relationship.relation = :relation and ingestion_pipeline_entity.name < :before order by ingestion_pipeline_entity.name DESC LIMIT :limit",
                 condition);
 
-        bindMap.put("serviceType", serviceType);
         bindMap.put("relation", CONTAINS.ordinal());
         bindMap.put("before", before);
         bindMap.put("limit", limit);
-        return listBeforeIngestionPipelineByserviceType(condition, bindMap);
+        return listBeforeIngestionPipelineByserviceType(
+            condition, bindMap, filter.getQueryParams());
       }
       return EntityDAO.super.listBefore(filter, limit, before);
     }
 
     @SqlQuery("SELECT ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>")
     List<String> listAfterIngestionPipelineByserviceType(
-        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+        @Define("cond") String cond,
+        @BindMap Map<String, Object> bindings,
+        @BindMap Map<String, String> params);
 
     @SqlQuery(
         "SELECT json FROM (SELECT ingestion_pipeline_entity.name, ingestion_pipeline_entity.json FROM ingestion_pipeline_entity <cond>) last_rows_subquery ORDER BY last_rows_subquery.name")
     List<String> listBeforeIngestionPipelineByserviceType(
-        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+        @Define("cond") String cond,
+        @BindMap Map<String, Object> bindings,
+        @BindMap Map<String, String> params);
 
     @SqlQuery("SELECT count(*) FROM ingestion_pipeline_entity <cond> ")
     int listIngestionPipelineCount(
-        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+        @Define("cond") String cond,
+        @BindMap Map<String, Object> bindings,
+        @BindMap Map<String, String> params);
   }
 
   interface PipelineServiceDAO extends EntityDAO<PipelineService> {
@@ -2074,11 +2191,17 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listCount(getTableName(), getNameHashColumn(), mySqlCondition, postgresCondition);
+        return listCount(
+            getTableName(),
+            getNameHashColumn(),
+            filter.getQueryParams(),
+            mySqlCondition,
+            postgresCondition);
       }
 
       String condition = filter.getCondition(getTableName());
-      return listCount(getTableName(), getNameHashColumn(), condition, condition);
+      return listCount(
+          getTableName(), getNameHashColumn(), filter.getQueryParams(), condition, condition);
     }
 
     @Override
@@ -2096,10 +2219,17 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listBefore(getTableName(), mySqlCondition, postgresCondition, limit, before);
+        return listBefore(
+            getTableName(),
+            filter.getQueryParams(),
+            mySqlCondition,
+            postgresCondition,
+            limit,
+            before);
       }
       String condition = filter.getCondition(getTableName());
-      return listBefore(getTableName(), condition, condition, limit, before);
+      return listBefore(
+          getTableName(), filter.getQueryParams(), condition, condition, limit, before);
     }
 
     @Override
@@ -2117,10 +2247,16 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listAfter(getTableName(), mySqlCondition, postgresCondition, limit, after);
+        return listAfter(
+            getTableName(),
+            filter.getQueryParams(),
+            mySqlCondition,
+            postgresCondition,
+            limit,
+            after);
       }
       String condition = filter.getCondition(getTableName());
-      return listAfter(getTableName(), condition, condition, limit, after);
+      return listAfter(getTableName(), filter.getQueryParams(), condition, condition, limit, after);
     }
   }
 
@@ -2320,7 +2456,12 @@ public interface CollectionDAO {
 
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-      return listCount(getTableName(), getNameHashColumn(), mySqlCondition, postgresCondition);
+      return listCount(
+          getTableName(),
+          getNameHashColumn(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition);
     }
 
     @Override
@@ -2358,7 +2499,13 @@ public interface CollectionDAO {
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
 
-      return listBefore(getTableName(), mySqlCondition, postgresCondition, limit, before);
+      return listBefore(
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          before);
     }
 
     @Override
@@ -2395,7 +2542,8 @@ public interface CollectionDAO {
 
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-      return listAfter(getTableName(), mySqlCondition, postgresCondition, limit, after);
+      return listAfter(
+          getTableName(), filter.getQueryParams(), mySqlCondition, postgresCondition, limit, after);
     }
   }
 
@@ -2778,13 +2926,18 @@ public interface CollectionDAO {
       if (isJoinable != null) {
         mySqlCondition =
             String.format(
-                "%s AND JSON_EXTRACT(json, '$.isJoinable') = %s ", mySqlCondition, isJoinable);
+                "%s AND JSON_EXTRACT(json, '$.isJoinable') = :isJoinable ", mySqlCondition);
         postgresCondition =
             String.format(
-                "%s AND ((json#>'{isJoinable}')::boolean)  = %s ", postgresCondition, isJoinable);
+                "%s AND ((json#>'{isJoinable}')::boolean)  = :isJoinable ", postgresCondition);
       }
 
-      return listCount(getTableName(), getNameHashColumn(), mySqlCondition, postgresCondition);
+      return listCount(
+          getTableName(),
+          getNameHashColumn(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition);
     }
 
     @Override
@@ -2813,15 +2966,21 @@ public interface CollectionDAO {
       if (isJoinable != null) {
         mySqlCondition =
             String.format(
-                "%s AND JSON_EXTRACT(json, '$.isJoinable') = %s ", mySqlCondition, isJoinable);
+                "%s AND JSON_EXTRACT(json, '$.isJoinable') = :isJoinable ", mySqlCondition);
         postgresCondition =
             String.format(
-                "%s AND ((json#>'{isJoinable}')::boolean)  = %s ", postgresCondition, isJoinable);
+                "%s AND ((json#>'{isJoinable}')::boolean)  = :isJoinable ", postgresCondition);
       }
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
       before = FullyQualifiedName.unquoteName(before);
-      return listBefore(getTableName(), mySqlCondition, postgresCondition, limit, before);
+      return listBefore(
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          before);
     }
 
     @Override
@@ -2858,7 +3017,8 @@ public interface CollectionDAO {
 
       // Quoted name is stored in fullyQualifiedName column and not in the name column
       after = FullyQualifiedName.unquoteName(after);
-      return listAfter(getTableName(), mySqlCondition, postgresCondition, limit, after);
+      return listAfter(
+          getTableName(), filter.getQueryParams(), mySqlCondition, postgresCondition, limit, after);
     }
 
     default List<String> listTeamsUnderOrganization(UUID teamId) {
@@ -3428,27 +3588,29 @@ public interface CollectionDAO {
       psqlCondition.append(String.format("%s ", condition));
 
       if (testPlatform != null) {
-        mysqlCondition.append(
-            String.format(
-                "AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", testPlatform));
-        psqlCondition.append(
-            String.format("AND json->>'testPlatforms' LIKE '%%%s%%' ", testPlatform));
+        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
+        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
+        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
       }
 
       if (entityType != null) {
-        mysqlCondition.append(String.format("AND entityType='%s' ", entityType));
-        psqlCondition.append(String.format("AND entityType='%s' ", entityType));
+        mysqlCondition.append("AND entityType=:entityType ");
+        psqlCondition.append("AND entityType=:entityType ");
       }
 
       if (supportedDataType != null) {
-        mysqlCondition.append(
-            String.format("AND supported_data_types LIKE '%%%s%%' ", supportedDataType));
-        String psqlStr = String.format("AND supported_data_types @> '`%s`' ", supportedDataType);
-        psqlCondition.append(psqlStr.replace('`', '"'));
+        filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
+        mysqlCondition.append("AND supported_data_types LIKE :supportedDataTypeLike");
+        psqlCondition.append("AND supported_data_types @> :supportedDataTypeLike ");
       }
 
       return listBefore(
-          getTableName(), mysqlCondition.toString(), psqlCondition.toString(), limit, before);
+          getTableName(),
+          filter.getQueryParams(),
+          mysqlCondition.toString(),
+          psqlCondition.toString(),
+          limit,
+          before);
     }
 
     @Override
@@ -3469,27 +3631,29 @@ public interface CollectionDAO {
       psqlCondition.append(String.format("%s ", condition));
 
       if (testPlatform != null) {
-        mysqlCondition.append(
-            String.format(
-                "AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", testPlatform));
-        psqlCondition.append(
-            String.format("AND json->>'testPlatforms' LIKE '%%%s%%' ", testPlatform));
+        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
+        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
+        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
       }
 
       if (entityType != null) {
-        mysqlCondition.append(String.format("AND entityType='%s' ", entityType));
-        psqlCondition.append(String.format("AND entityType='%s' ", entityType));
+        mysqlCondition.append("AND entityType = :entityType ");
+        psqlCondition.append("AND entityType = :entityType ");
       }
 
       if (supportedDataType != null) {
-        mysqlCondition.append(
-            String.format("AND supported_data_types LIKE '%%%s%%' ", supportedDataType));
-        String psqlStr = String.format("AND supported_data_types @> '`%s`' ", supportedDataType);
-        psqlCondition.append(psqlStr.replace('`', '"'));
+        filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
+        mysqlCondition.append("AND supported_data_types LIKE :supportedDataTypeLike");
+        psqlCondition.append("AND supported_data_types @> :supportedDataTypeLike ");
       }
 
       return listAfter(
-          getTableName(), mysqlCondition.toString(), psqlCondition.toString(), limit, after);
+          getTableName(),
+          filter.getQueryParams(),
+          mysqlCondition.toString(),
+          psqlCondition.toString(),
+          limit,
+          after);
     }
 
     @Override
@@ -3510,26 +3674,27 @@ public interface CollectionDAO {
       psqlCondition.append(String.format("%s ", condition));
 
       if (testPlatform != null) {
-        mysqlCondition.append(
-            String.format(
-                "AND json_extract(json, '$.testPlatforms') LIKE '%%%s%%' ", testPlatform));
-        psqlCondition.append(
-            String.format("AND json->>'testPlatforms' LIKE '%%%s%%' ", testPlatform));
+        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
+        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
+        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
       }
 
       if (entityType != null) {
-        mysqlCondition.append(String.format("AND entityType='%s' ", entityType));
-        psqlCondition.append(String.format("AND entityType='%s' ", entityType));
+        mysqlCondition.append("AND entityType=:entityType ");
+        psqlCondition.append("AND entityType=:entityType ");
       }
 
       if (supportedDataType != null) {
-        mysqlCondition.append(
-            String.format("AND supported_data_types LIKE '%%%s%%' ", supportedDataType));
-        String psqlStr = String.format("AND supported_data_types @> '`%s`' ", supportedDataType);
-        psqlCondition.append(psqlStr.replace('`', '"'));
+        filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
+        mysqlCondition.append("AND supported_data_types LIKE :supportedDataTypeLike");
+        psqlCondition.append("AND supported_data_types @> :supportedDataTypeLike ");
       }
       return listCount(
-          getTableName(), getNameHashColumn(), mysqlCondition.toString(), psqlCondition.toString());
+          getTableName(),
+          filter.getQueryParams(),
+          getNameHashColumn(),
+          mysqlCondition.toString(),
+          psqlCondition.toString());
     }
 
     @ConnectionAwareSqlQuery(
@@ -3552,6 +3717,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
@@ -3565,6 +3731,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
@@ -3578,6 +3745,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int listCount(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("nameHashColumn") String nameHashColumn,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond);
@@ -3900,12 +4068,14 @@ public interface CollectionDAO {
             + "<outerCond> AND ranked.row_num = 1 LIMIT :limit OFFSET :offset")
     List<String> listWithOffset(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("cond") String cond,
         @Define("partition") String partition,
         @Bind("limit") int limit,
         @Bind("offset") int offset,
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
+        @BindMap Map<String, ?> outerParams,
         @Define("outerCond") String outerFilter);
 
     @Override
@@ -3926,16 +4096,24 @@ public interface CollectionDAO {
 
         return listWithOffset(
             getTimeSeriesTableName(),
+            filter.getQueryParams(),
             filter.getCondition(),
             getPartitionFieldName(),
             limit,
             offset,
             startTs,
             endTs,
+            filter.getQueryParams(),
             outerFilter.getCondition());
       }
       return listWithOffset(
-          getTimeSeriesTableName(), filter.getCondition(), limit, offset, startTs, endTs);
+          getTimeSeriesTableName(),
+          filter.getQueryParams(),
+          filter.getCondition(),
+          limit,
+          offset,
+          startTs,
+          endTs);
     }
   }
 
@@ -4198,15 +4376,15 @@ public interface CollectionDAO {
       sqlCondition.append(String.format("%s ", condition));
 
       if (workflowType != null) {
-        sqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        sqlCondition.append("AND workflowType=:workflowType ");
       }
 
       if (status != null) {
-        sqlCondition.append(String.format("AND status='%s' ", status));
+        sqlCondition.append("AND status=:status ");
       }
 
       return listBefore(
-          getTableName(), getNameHashColumn(), sqlCondition.toString(), limit, before);
+          getTableName(), filter.getQueryParams(), sqlCondition.toString(), limit, before);
     }
 
     @Override
@@ -4223,14 +4401,15 @@ public interface CollectionDAO {
       sqlCondition.append(String.format("%s ", condition));
 
       if (workflowType != null) {
-        sqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        sqlCondition.append("AND workflowType=:workflowType ");
       }
 
       if (status != null) {
-        sqlCondition.append(String.format("AND status='%s' ", status));
+        sqlCondition.append("AND status=:status ");
       }
 
-      return listAfter(getTableName(), getNameHashColumn(), sqlCondition.toString(), limit, after);
+      return listAfter(
+          getTableName(), filter.getQueryParams(), sqlCondition.toString(), limit, after);
     }
 
     @Override
@@ -4247,14 +4426,14 @@ public interface CollectionDAO {
       sqlCondition.append(String.format("%s ", condition));
 
       if (workflowType != null) {
-        sqlCondition.append(String.format("AND workflowType='%s' ", workflowType));
+        sqlCondition.append("AND workflowType=:workflowType ");
       }
 
       if (status != null) {
-        sqlCondition.append(String.format("AND status='%s' ", status));
+        sqlCondition.append("AND status=:status ");
       }
 
-      return listCount(getTableName(), sqlCondition.toString());
+      return listCount(getTableName(), filter.getQueryParams(), sqlCondition.toString());
     }
 
     @SqlQuery(
@@ -4267,6 +4446,7 @@ public interface CollectionDAO {
                 + ") last_rows_subquery ORDER BY name")
     List<String> listBefore(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
         @Bind("limit") int limit,
         @Bind("before") String before);
@@ -4276,12 +4456,16 @@ public interface CollectionDAO {
             "SELECT json FROM <table> <sqlCondition> AND name > :after ORDER BY name LIMIT :limit")
     List<String> listAfter(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition,
         @Bind("limit") int limit,
         @Bind("after") String after);
 
     @SqlQuery(value = "SELECT count(*) FROM <table> <sqlCondition>")
-    int listCount(@Define("table") String table, @Define("sqlCondition") String sqlCondition);
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("sqlCondition") String sqlCondition);
   }
 
   interface DataModelDAO extends EntityDAO<DashboardDataModel> {
@@ -4338,21 +4522,25 @@ public interface CollectionDAO {
 
       if (fqnPrefix != null) {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
         String fqnCond =
-            String.format(
-                " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)",
-                fqnPrefixHash);
+            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
 
       if (entityType != null) {
-        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
-        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        mysqlCondition.append(" AND entityType=:entityType ");
+        psqlCondition.append(" AND entityType=:entityType ");
       }
 
       return listBefore(
-          getTableName(), mysqlCondition.toString(), psqlCondition.toString(), limit, before);
+          getTableName(),
+          filter.getQueryParams(),
+          mysqlCondition.toString(),
+          psqlCondition.toString(),
+          limit,
+          before);
     }
 
     @Override
@@ -4372,19 +4560,24 @@ public interface CollectionDAO {
 
       if (fqnPrefix != null) {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
         String fqnCond =
-            String.format(
-                " AND (fqnHash LIKE '%s' OR fqnHash='%s')", fqnPrefixHash + ".%", fqnPrefixHash);
+            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
       if (entityType != null) {
-        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
-        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        mysqlCondition.append(" AND entityType=:entityType ");
+        psqlCondition.append(" AND entityType=:entityType ");
       }
 
       return listAfter(
-          getTableName(), mysqlCondition.toString(), psqlCondition.toString(), limit, after);
+          getTableName(),
+          filter.getQueryParams(),
+          mysqlCondition.toString(),
+          psqlCondition.toString(),
+          limit,
+          after);
     }
 
     @Override
@@ -4404,20 +4597,24 @@ public interface CollectionDAO {
 
       if (fqnPrefix != null) {
         String fqnPrefixHash = FullyQualifiedName.buildHash(fqnPrefix);
+        filter.queryParams.put("fqnPrefixHash", fqnPrefixHash);
         String fqnCond =
-            String.format(
-                " AND (fqnHash LIKE '%s' OR fqnHash='%s')", fqnPrefixHash + ".%", fqnPrefixHash);
+            " AND (fqnHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fqnHash=:fqnPrefixHash)";
         mysqlCondition.append(fqnCond);
         psqlCondition.append(fqnCond);
       }
 
       if (entityType != null) {
-        mysqlCondition.append(String.format(" AND entityType='%s' ", entityType));
-        psqlCondition.append(String.format(" AND entityType='%s' ", entityType));
+        mysqlCondition.append(" AND entityType=:entityType ");
+        psqlCondition.append(" AND entityType=:entityType ");
       }
 
       return listCount(
-          getTableName(), getNameHashColumn(), mysqlCondition.toString(), psqlCondition.toString());
+          getTableName(),
+          getNameHashColumn(),
+          filter.getQueryParams(),
+          mysqlCondition.toString(),
+          psqlCondition.toString());
     }
 
     @ConnectionAwareSqlQuery(
@@ -4440,6 +4637,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
@@ -4453,6 +4651,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
+        @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
@@ -4534,5 +4733,39 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
+  }
+
+  interface APICollectionDAO extends EntityDAO<APICollection> {
+    @Override
+    default String getTableName() {
+      return "api_collection_entity";
+    }
+
+    @Override
+    default Class<APICollection> getEntityClass() {
+      return APICollection.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface APIEndpointDAO extends EntityDAO<APIEndpoint> {
+    @Override
+    default String getTableName() {
+      return "api_endpoint_entity";
+    }
+
+    @Override
+    default Class<APIEndpoint> getEntityClass() {
+      return APIEndpoint.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
   }
 }

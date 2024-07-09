@@ -14,19 +14,233 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.4/releases/latest.md" /%}
 
-# 1.3.4 Release 🎉
+# 1.4.2 Release
 
 {% note noteType="Tip" %}
-**2024, May 12th**
+**June 10th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.2-release).
+
+## Enhancements
+
+- In OpenMetadata, we support connecting the data assets to the knowledge articles. The knowledge articles that are pulled from the Alation connector have image URLs. We have enhanced the Alation connector to download and display the images in the Knowledge Articles.
+- Test cases can now be filtered by Service, Tag, and Tier.
+
+## Changes
+
+- One team or multiple users can be selected as reviewers for a Glossary term.,
+- Updated the openmetadata.yaml to remove WebAnalyticsHandler.,
+- Add appType as part of the schema in the ingestion pipeline.,
+- We now sanitize the Activity Feed editor content.
+
+## Improvements
+
+- Fixed the lineage view for tables with many columns.
+- Fixed an issue with updating the lineage edge descriptions.
+- Fixed an issue with Null Schema Field.
+- Fixed the glossary term review process issues.
+- Fixed the Kafka SSL connection arguments.
+- Fixed an issue with dbt ingestion pipeline that was occurring due to non enum values.
+- Fixed an issue with Announcements.
+- Fixed redirection issues for Tags and Glossary Terms.
+- Fixed a minor issue with filtering the Profiler.
+- Fixed the registration Issue with Event Handlers.
+- Fixed the sign-in issues with SAML.
+- Fixed issues with partition migration with Redshift services.
+- Fixed an issue with the Quicksight connector.
+- Fixed some minor issues with the user Profile page.
+- Fixed some issues with the Teams page.
+
+# 1.4.1 Release
+
+{% note noteType="Tip" %}
+**May 27th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.1-release).
+
+In 1.4.1, we provide migration fixes on top of the 1.4.0 release. Do check out the 1.4.0 release highlights below.
+
+# 1.4.0 Release 🎉
+
+{% note noteType="Tip" %} 
+**May 21th, 2024**
+
+[OpenMetadata 1.4.0 Release](https://blog.open-metadata.org/openmetadata-release-1-4-0-f6fb11ec34d7)
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.0-release).
+
+## Backward Incompatible Changes
+
+### Tooling
+- Metadata Backup/Recovery is deprecated. No further support will be provided.
+- Users are advised to use database native tools to backup and store it in their object store for recovery.
+- `bootstrap/bootstrap_storage.sh` has been deprecated in favor of bootstrap/openmetadata-ops.sh
+
+### UI
+- Activity has been improved. New update specific cards display critical information such as data quality test case updates, description, tag update or removal.
+- For Lineage, the Expand All button has been removed. A new Layers button is introduced at the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
+- View Definition is now renamed as Schema Definition.
+- Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
+- For Classification, users can set classification to be mutually exclusive only at the time of creation. Once created, you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
+
+### API
+- Table Schema's `ViewDefinition` is now renamed to `SchemaDefinition` to capture Tables' Create Schema.
+- Bulk Import API now creates entities if they are not present during the import.
+- Table's TestSuite is migrated to EntityReference. Previously it used to store entire payload of TestSuite.
+
+## Automator (Collate only)
+
+{% youtube videoId="zdh4yzHw4w0" start="0:00" end="2:29" width="560px" height="315px" /%}
+
+- Easily maintain high-quality metadata at scale with automations. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency.
+- You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
+- Easily see which assets have been selected by jumping to the Explore page in one click.
+- For tables, data models, topics, and search indexes, you can apply the action to their columns or fields.
+- We added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.
+
+## Bulk Upload Data Assets (Collate only)
+
+{% youtube videoId="CXxDdS6AifY" start="0:00" end="2:19" width="560px" height="315px" /%}
+
+- Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
+- Supports an inline editor to validate/update assets before performing the upload.
+- APIs are available in OSS.
+
+## Data Quality Improvements
+{% youtube videoId="UNOHvBMVcYM" start="0:00" end="1:28" width="560px" height="315px" /%}
+
+- The Table schema page now shows the Data Quality tests for each column.
+- Improved filtering options for test suite and test cases.
+- We have improved how the UI fetches the Data Quality details for improved performance.
+- We now compute Unique and Count in the same query to avoid inconsistency due to the high frequency of data insertion.
+- Fixed the issue with removing the test case description upon the test case display name change.
+- Support has been added for an empty string as a missing count.
+
+## Data Profiler
+- Implemented a global profiler configuration page, allowing admin to exclude certain metric computations for specific data types.
+- Added profiler support for Redshift complex types and DynamoDB.
+- Fixed an issue with performing sum operations for large values in profiler ingestion.
+- Fixed the histogram unit's issues with scientific notation.
+
+## Incident Manager
+- We now display a sample of failed rows for the latest failed test cases. Once the issue is resolved, the failed sample will be deleted. (Collate Only)
+- Fixed the Date time filter for the Incident Manager.
+- Notifications are sent for the tasks created by the Incident Manager.
+
+## Lineage Improvements
+https://www.youtube.com/watch?v=KZdVb8DiHJs - Video on Column Lineage Search
+
+- Column Lineage Search
+
+{% youtube videoId="KZdVb8DiHJs" start="0:00" end="0:30" width="560px" height="315px" /%}
+
+- Lineage Layers
+
+{% youtube videoId="wtBMeLvA6Sw" start="0:00" end="0:43" width="560px" height="315px" /%}
+
+- OpenMetadata already supports Column-level lineage, and now we have introduced Task-level lineage for Pipelines, Chart-level lineage for Dashboards, Feature-level lineage for ML Models, Field-level lineage for Topics, and columns for dashboard Data Models.
+- Automated column-level lineage is now supported for Tableau, Superset, QlikCloud, and QlikSense between Data Models and Tables.
+- The child nodes in a lineage graph are sorted in alphabetical order.
+- Improved the log of failed-to-parse queries.
+- Fixed an issue with automated column-level lineage overwriting the pipeline lineage and manual column lineage.
+- Snowflake & Databricks now support automated lineage between external tables and their origin storage container.
+- Lineage can be exported as a CSV file.
+- OpenMetadata spark agent now supports automated lineage between tables and their origin storage container.
+- Fixed an issue with parsing lineage queries for Redshift.
+- Now, we support pipeline as an edge between any two entity types.
+- We now parse PowerBi DAX files for lineage.
+- Support has been added for dynamic tables.
+
+## Data Insights
+- Previously, the data insights reports displayed only the percentage coverage of ownership and description. Now, users can drill down to view the data assets with no owner or description.
+- Improved the UX for data insight filters.
+
+## Cost Analysis (Collate Only)
+- Lifecycle data for Cost Analysis has been implemented for BigQuery, Snowflake, and Redshift.
+
+## Custom Theme
+
+{% youtube videoId="-NiU1flBHs0" start="0:00" end="1:02" width="560px" height="315px" /%}
+
+- Previously supported adding logo, monogram, and favicon to your OpenMetadata instance.
+- Now, it supports customizing the theme with colors to suit your company branding.
+
+## Landing Page Widgets (Collate Only)
+
+{% youtube videoId="Kakfa-lYGOU" start="0:00" end="0:59" width="560px" height="315px" /%}
+
+- A widget was added to list the pipelines that belong to a user or their team.
+- Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.
+
+## Ingestion Performance Improvements
+- Bigquery, Redshift, and Snowflake now support incremental metadata ingestions by scanning DML operations on the query history.
+- Database Services now support parallelizing the metadata ingestion at each schema.
+
+## Connectors
+- Now supports a new connector for QlikCloud.
+- New Kafka Connect connector
+- We now parse complex protobuf schemas for Kafka
+- Improved model storage ingestion for Sagemaker and Mlflow.
+- Added an option to include or exclude drafts from dashboards.
+- Added an option to include or exclude paused pipelines in Airflow.
+- Revamped SSL support to allow users to upload the required certificates directly in the UI.
+- The character support has been enhanced for tag ingestion to include /.
+- In the Oracle connector, we rolled back to use all_ tables instead of dba_.
+- Added support for Azure auth in Trino.
+- For QlikSense, we have added an option to disable SSL validation.
+
+## Custom Properties
+
+{% youtube videoId="lZoSeKkErBk" start="0:00" end="1:07" width="560px" height="315px" /%}
+
+- Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.
+
+## Glossary
+- The glossary term parent can now be changed from the Details page.
+- On the data assets page, glossary terms are displayed by hierarchy.
+
+## Alerts & Notification Improvements
+- The Activity Feed provides more contextual information, removing the need to move to entity pages.
+- Alerts give more accurate information about the entity, as well as conversations and tasks.
+
+## Localization
+- Fixed localization issues in the confirmation logic for the delete function.
+- Fixed the search index language configuration.
+
+## Roles
+- Now, roles can be inherited from the user configuration in SSO.
+
+## Search
+- You can now filter by assets without a description or an owner.
+- Improved the match results for search results.
+
+## Others
+- The description is auto-expanded when the data asset has no data and has the space to accommodate a lengthy description.
+- User email IDs have been masked and are only visible to Admins.
+- Users can filter Queries by owner, tag, and creation date in the UI.
+- Added a button in the Query Editor to copy the Query.
+- Improved Elasticsearch re-indexing.
+- Improved the charts based on custom metrics.
+- Improved the usage of the refresh token.
+- Redundant scroll bars have been removed from the UI.
+- Improved the bot role binding to provide more control over which roles are passed to the system bots.
+
+# 1.3.4 Release
+
+{% note noteType="Tip" %}
+**May 12th, 2024**
 {% /note %}
 
 - Fixes reindex issues related to the `changeDescription` payload of some entities
 - Adds Cypress tests to validate reindex app execution
 
-# 1.3.3 Release 🎉
+# 1.3.3 Release
 
 {% note noteType="Tip" %}
-**2024, April 19th**
+**April 19th, 2024**
 {% /note %}
 
 - Fix Application installation
@@ -89,10 +303,10 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 **Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.1-release...1.3.2-release)
 
-# 1.3.1 Release 🎉
+# 1.3.1 Release
 
 {% note noteType="Tip" %}
-**2024, February 29th**
+**February 29th, 2024**
 
 You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.1-release).
 {% /note %}
@@ -145,7 +359,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.3.0 Release
 
 {% note noteType="Tip" %} 
-**2024, February 5th**
+**February 5th, 2024**
 
 [OpenMetadata 1.3 Release - Intuitive Lineage UI, Data Observability Alerts, Data Quality Incident Manager, Custom Metrics for Profiler, Knowledge Center Improvements, and lots more](https://blog.open-metadata.org/openmetadata-release-1-3-ac801834ee80)
 {% /note %}
@@ -269,7 +483,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.2.0 Release
 
 {% note noteType="Tip" %} 
-**2023, October 26th**
+**October 26th, 2023**
 
 [OpenMetadata 1.2 Release - Domains, Data Products, Search Index, Stored Procedures, Glossary Approval Workflow, Customizable Landing Page, Applications, Knowledge Center, Cost Analysis, and lots more](https://blog.open-metadata.org/openmetadata-release-1-2-531f0e3c6d9a)
 {% /note %}
@@ -357,7 +571,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.1.2 Release
 
 {% note noteType="Tip" %} 
-**2023, August 24th**
+**August 24th, 2023**
 {% /note %}
 
 ## Data Quality
@@ -390,7 +604,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.1.1 Release
 
 {% note noteType="Tip" %} 
-**2023, August 7th**
+**August 7th, 2023**
 {% /note %}
 
 ## UI Improvements
@@ -427,7 +641,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.1.0 Release
 
 {% note noteType="Tip" %} 
-**2023, June 30th**
+**June 30th, 2023**
 
 [OpenMetadata 1.1.0 Release - UI Overhaul, New Connectors, Improved Lineage Parsing, PII Masking, and lots more](https://blog.open-metadata.org/openmetadata-1-1-0-release-97c1fb603bcf)
 {% /note %}
@@ -479,7 +693,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 1.0.0 Release
 
 {% note noteType="Tip" %} 
-**2023, April 25th**
+**April 25th, 2023**
 
 [OpenMetadata 1.0 Release - Improved Schemas & APIs, Ingestion Improvements, Storage Services, Dashboard Data Models, Auto PII Classification, Localization, and much more](https://blog.open-metadata.org/openmetadata-1-0-release-beb34762d916)
 {% /note %}
@@ -549,7 +763,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 0.13.3 Release
 
 {% note noteType="Tip" %} 
-**2023, March 30th**
+**March 30th, 2023**
 {% /note %}
 
 ## Ingestion Framework
@@ -592,7 +806,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 0.13.2 Release
 
 {% note noteType="Tip" %} 
-**2023, January 30th**
+**January 30th, 2023**
 
 [OpenMetadata 0.13.2 Release - Improved SQL Lineage, Glossary Bulk Upload, Unified Tag Category API, Mutually Exclusive Tags, Chrome Extension, and lots more](https://blog.open-metadata.org/openmetadata-0-13-2-release-e32c0de93361)
 {% /note %}
@@ -632,7 +846,7 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 # 0.13.1 Release
 
 {% note noteType="Tip" %} 
-**2022, December 20th**
+**December 20th, 2022**
 {% /note %}
 
 ## Profiler and Data Quality
@@ -661,7 +875,7 @@ The logic for Notification Support has been improved. Users can define Alerts ba
 # 0.13.0 Release
 
 {% note noteType="Tip" %} 
-**2022, December 8th**
+**December 8th, 2022**
 
 [OpenMetadata 0.13.0 Release — Data Insights & KPIs, Lineage Traceability, Data Lake Profiler, Search Improvements, and lots more](https://blog.open-metadata.org/openmetadata-0-13-0-release-ac8ac5bd87c1)
 {% /note %}
@@ -699,7 +913,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.3 Release
 
 {% note noteType="Tip" %} 
-**2022, November 18th**
+**November 18th, 2022**
 {% /note %}
 
 ## Bug Fixes
@@ -709,7 +923,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.2 Release
 
 {% note noteType="Tip" %} 
-**2022, October 20th**
+**October 20th, 2022**
 {% /note %}
 
 ## Ingestion
@@ -721,7 +935,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.1 Release
 
 {% note noteType="Tip" %} 
-**2022, October 3rd**
+**October 3rd, 2022**
 {% /note %}
 
 ## Basic Authentication
@@ -753,7 +967,7 @@ Major enhancements have been made to how data is extracted from Kafka and Redpan
 # 0.12.0 Release
 
 {% note noteType="Tip" %} 
-**2022, September 7th**
+**September 7th, 2022**
 
 [OpenMetadata 0.12.0 Release](https://blog.open-metadata.org/openmetadata-0-12-0-release-1ac059700de4)
 {% /note %}
@@ -833,7 +1047,7 @@ Manage Tab has been replaced with the manage button on the UI.
 # 0.11.0 Release
 
 {% note noteType="Tip" %} 
-**2022, July 1st**
+**July 1st, 2022**
 
 [OpenMetadata 0.11.0 Release](https://blog.open-metadata.org/openmetadata-0-11-release-8b82c85636a)
 {% /note %}
@@ -913,7 +1127,7 @@ Manage Tab has been replaced with the manage button on the UI.
 # 0.10.1 Release
 
 {% note noteType="Tip" %} 
-**2022, May 17th**
+**May 17th, 2022**
 {% /note %}
 
 - Support for Postgres as OpenMetadata Store [#4601](https://github.com/open-metadata/OpenMetadata/issues/4601)
@@ -925,7 +1139,7 @@ Manage Tab has been replaced with the manage button on the UI.
 # 0.10.0 Release
 
 {% note noteType="Tip" %} 
-**2022, April 27th**
+**April 27th, 2022**
 
 [OpenMetadata 0.10.0 Release](https://blog.open-metadata.org/openmetadata-0-10-0-release-82c4f5533c3f)
 {% /note %}
@@ -996,7 +1210,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.9.0 Release
 
 {% note noteType="Tip" %} 
-**2022, March 10th**
+**March 10th, 2022**
 
 [OpenMetadata 0.9.0 Release](https://blog.open-metadata.org/openmetadata-0-9-0-release-8e7b93ab1882)
 {% /note %}
@@ -1054,7 +1268,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.8.0 Release
 
 {% note noteType="Tip" %} 
-**2022, January 22nd**
+**January 22nd, 2022**
 
 [OpenMetadata 0.8.0 Release](https://blog.open-metadata.org/openmetadata-0-8-0-release-ca09bd2fbf54)
 {% /note %}
@@ -1078,7 +1292,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.7.0 Release
 
 {% note noteType="Tip" %} 
-**2021, November 17th**
+**November 17th, 2021**
 
 [OpenMetadata 0.7.0 Release](https://blog.open-metadata.org/openmetadata-0-7-0-release-9f741b8d5089)
 {% /note %}
@@ -1111,7 +1325,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.6.0 Release
 
 {% note noteType="Tip" %} 
-**2021, November 17th**
+**November 17th, 2021**
 
 [OpenMetadata 0.6.0 Release — Metadata Versioning, Events API, One-Click Ingestion, and more](https://blog.open-metadata.org/openmetadata-0-6-0-release-metadata-versioning-events-api-one-click-ingestion-and-more-4394c4f08e0b)
 {% /note %}
@@ -1136,7 +1350,7 @@ and prepares handy methods to help us test the connection to the source before c
 # 0.5.0 Release
 
 {% note noteType="Tip" %} 
-**2021, October 19th**
+**October 19th, 2021**
 
 [OpenMetadata 0.5.0 Release is here — Lineage, Pipelines, Complex Types, Data Profiler and so much more](https://blog.open-metadata.org/openmetadata-0-5-0-1144a4000644)
 {% /note %}
@@ -1164,7 +1378,7 @@ and prepares handy methods to help us test the connection to the source before c
 
 # 0.4.0 Release
 {% note noteType="Tip" %} 
-**2021, September 20th**
+**September 20th, 2021**
 
 [OpenMetadata 0.4.0 Release — Dashboards, Topics, Data Reliability](https://blog.open-metadata.org/openmetadata-0-4-0-release-dashboards-topics-data-reliability-14e8672ae0f5)
 {% /note %}

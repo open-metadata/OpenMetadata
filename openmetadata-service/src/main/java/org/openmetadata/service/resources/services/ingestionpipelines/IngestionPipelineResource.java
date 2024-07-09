@@ -65,12 +65,13 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -78,6 +79,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -96,7 +98,7 @@ import org.openmetadata.service.util.ResultList;
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   static final String FIELDS = FIELD_OWNER;
 
@@ -107,8 +109,8 @@ public class IngestionPipelineResource
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(Authorizer authorizer) {
-    super(Entity.INGESTION_PIPELINE, authorizer);
+  public IngestionPipelineResource(Authorizer authorizer, Limits limits) {
+    super(Entity.INGESTION_PIPELINE, authorizer, limits);
   }
 
   @Override
@@ -489,7 +491,7 @@ public class IngestionPipelineResource
   @Path("/deploy/{id}")
   @Operation(
       summary = "Deploy an ingestion pipeline run",
-      description = "Trigger a ingestion pipeline run by Id.",
+      description = "Deploy a ingestion pipeline run by Id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -922,6 +924,10 @@ public class IngestionPipelineResource
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, ingestionPipeline);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DEPLOY);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
@@ -937,6 +943,10 @@ public class IngestionPipelineResource
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
     Fields fields = getFields(FIELD_OWNER);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, ingestionPipeline);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
     if (CommonUtil.nullOrEmpty(botName)) {
       // Use Default Ingestion Bot
       ingestionPipeline.setOpenMetadataServerConnection(
@@ -964,7 +974,7 @@ public class IngestionPipelineResource
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {

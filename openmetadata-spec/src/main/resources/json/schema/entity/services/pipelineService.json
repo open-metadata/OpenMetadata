@@ -21,6 +21,7 @@
         "GluePipeline",
         "Airbyte",
         "Fivetran",
+        "Flink",
         "Dagster",
         "Nifi",
         "DomoPipeline",
@@ -29,7 +30,8 @@
         "Spline",
         "Spark",
         "OpenLineage",
-        "KafkaConnect"
+        "KafkaConnect",
+        "DBTCloud"
       ],
       "javaEnums": [
         {
@@ -43,6 +45,9 @@
         },
         {
           "name": "Fivetran"
+        },
+        {
+          "name": "Flink"
         },
         {
           "name": "Dagster"
@@ -70,6 +75,9 @@
         },
         {
           "name": "KafkaConnect"
+        },
+        {
+          "name": "DBTCloud"
         }
       ]
     },
@@ -97,6 +105,9 @@
               "$ref": "./connections/pipeline/fivetranConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/flinkConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/dagsterConnection.json"
             },
             {
@@ -122,6 +133,9 @@
             },
             {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dbtCloudConnection.json"
             }
           ]
         }

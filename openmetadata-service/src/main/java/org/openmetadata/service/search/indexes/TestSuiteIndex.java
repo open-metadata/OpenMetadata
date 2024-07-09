@@ -8,6 +8,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
@@ -30,6 +31,8 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
     doc.put("entityType", Entity.TEST_SUITE);
     doc.put("owner", getEntityWithDisplayName(testSuite.getOwner()));
     doc.put("followers", SearchIndexUtils.parseFollowers(testSuite.getFollowers()));
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TEST_SUITE, testSuite));
+    doc.put("tags", parseTags.getTags());
     setParentRelationships(doc, testSuite);
     return doc;
   }

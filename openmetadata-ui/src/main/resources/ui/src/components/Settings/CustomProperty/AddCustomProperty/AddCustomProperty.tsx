@@ -427,7 +427,9 @@ const AddCustomProperty = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
@@ -437,13 +439,9 @@ const AddCustomProperty = () => {
       })}
       secondPanel={{
         children: secondPanelChildren,
-        className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

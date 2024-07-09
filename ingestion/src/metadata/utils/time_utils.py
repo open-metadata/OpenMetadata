@@ -55,7 +55,7 @@ def get_beginning_of_day_timestamp_mill(
     Returns:
         int: timestamp milliseconds
     """
-    now_utc = datetime.utcnow()
+    now_utc = datetime.now(timezone.utc)
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -87,7 +87,7 @@ def get_end_of_day_timestamp_mill(
     Returns:
         int: timestamp milliseconds
     """
-    now_utc = datetime.utcnow()
+    now_utc = datetime.now(timezone.utc)
     delta = timedelta(
         weeks=weeks,
         days=days,
@@ -123,4 +123,4 @@ def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:
     """
     if len(str(round(timestamp))) == 13:
         return timestamp
-    return timestamp * 1000
+    return round(timestamp * 1000)

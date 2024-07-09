@@ -16,7 +16,6 @@ import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   CreateGlossary,
   EntityReference,
@@ -25,10 +24,12 @@ import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
+  HelperTextType,
 } from '../../../interface/FormUtils.interface';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
@@ -67,6 +68,11 @@ const AddGlossary = ({
   const reviewersList = Array.isArray(reviewersData)
     ? reviewersData
     : [reviewersData];
+
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
 
   const handleSave: FormProps['onFinish'] = (formData) => {
     const { name, displayName, description, tags, mutuallyExclusive, owner } =
@@ -113,20 +119,7 @@ const AddGlossary = ({
       props: {
         'data-testid': 'name',
       },
-      rules: [
-        {
-          pattern: ENTITY_NAME_REGEX,
-          message: t('message.entity-name-validation'),
-        },
-        {
-          min: 1,
-          max: 128,
-          message: `${t('message.entity-maximum-size', {
-            entity: `${t('label.name')}`,
-            max: '128',
-          })}`,
-        },
-      ],
+      rules: NAME_FIELD_RULES,
     },
     {
       name: 'displayName',
@@ -168,6 +161,12 @@ const AddGlossary = ({
       label: t('label.mutually-exclusive'),
       type: FieldTypes.SWITCH,
       required: false,
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary'),
+        'child-entity': t('label.glossary-term'),
+      }),
+      helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
       props: {
         'data-testid': 'mutually-exclusive-button',
       },
@@ -255,7 +254,9 @@ const AddGlossary = ({
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -346,13 +347,9 @@ const AddGlossary = ({
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

@@ -34,6 +34,7 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
@@ -511,47 +512,65 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
-                  <DescriptionV1
-                    description={description}
-                    entityFqn={decodedDatabaseFQN}
-                    entityName={getEntityName(database)}
-                    entityType={EntityType.DATABASE}
-                    hasEditAccess={editDescriptionPermission}
-                    isDescriptionExpanded={isEmpty(database)}
-                    isEdit={isEdit}
-                    showActions={!database.deleted}
-                    onCancel={onCancel}
-                    onDescriptionEdit={onDescriptionEdit}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                    onThreadLinkSelect={onThreadLinkSelect}
-                  />
-                </Col>
-                <Col span={24}>
-                  <DatabaseSchemaTable isDatabaseDeleted={deleted} />
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.DATABASE>
-                customProperties={database}
-                dataProducts={database?.dataProducts ?? []}
-                domain={database?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedDatabaseFQN}
-                entityId={database?.id ?? ''}
-                entityType={EntityType.DATABASE}
-                selectedTags={tags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={settingsUpdateHandler}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="p-t-sm m-x-lg">
+                      <Row gutter={[16, 16]}>
+                        <Col data-testid="description-container" span={24}>
+                          <DescriptionV1
+                            description={description}
+                            entityFqn={decodedDatabaseFQN}
+                            entityName={getEntityName(database)}
+                            entityType={EntityType.DATABASE}
+                            hasEditAccess={editDescriptionPermission}
+                            isDescriptionExpanded={isEmpty(database)}
+                            isEdit={isEdit}
+                            showActions={!database.deleted}
+                            onCancel={onCancel}
+                            onDescriptionEdit={onDescriptionEdit}
+                            onDescriptionUpdate={onDescriptionUpdate}
+                            onThreadLinkSelect={onThreadLinkSelect}
+                          />
+                        </Col>
+                        <Col span={24}>
+                          <DatabaseSchemaTable isDatabaseDeleted={deleted} />
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.DATABASE>
+                        customProperties={database}
+                        dataProducts={database?.dataProducts ?? []}
+                        domain={database?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedDatabaseFQN}
+                        entityId={database?.id ?? ''}
+                        entityType={EntityType.DATABASE}
+                        selectedTags={tags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={settingsUpdateHandler}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>

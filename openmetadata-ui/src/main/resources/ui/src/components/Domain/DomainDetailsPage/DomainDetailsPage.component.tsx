@@ -51,7 +51,6 @@ import AssetsTabs, {
 } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
-import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
@@ -93,6 +92,7 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
@@ -505,30 +505,43 @@ const DomainDetailsPage = ({
               ),
               key: DomainTabs.ASSETS,
               children: (
-                <PageLayoutV1
-                  className="domain-asset-page-layout"
+                <ResizablePanels
+                  className="domain-height-with-resizable-panel"
+                  firstPanel={{
+                    className: 'domain-resizable-panel-container',
+                    children: (
+                      <div className="p-x-md p-y-md">
+                        <AssetsTabs
+                          assetCount={assetCount}
+                          entityFqn={domainFqn}
+                          isSummaryPanelOpen={false}
+                          permissions={domainPermission}
+                          ref={assetTabRef}
+                          type={AssetsOfEntity.DOMAIN}
+                          onAddAsset={() => setAssetModelVisible(true)}
+                          onAssetClick={handleAssetClick}
+                          onRemoveAsset={handleAssetSave}
+                        />
+                      </div>
+                    ),
+                    minWidth: 800,
+                    flex: 0.87,
+                  }}
+                  hideSecondPanel={!previewAsset}
                   pageTitle={t('label.domain')}
-                  rightPanel={
-                    previewAsset && (
+                  secondPanel={{
+                    children: previewAsset && (
                       <EntitySummaryPanel
                         entityDetails={previewAsset}
                         handleClosePanel={() => setPreviewAsset(undefined)}
                       />
-                    )
-                  }
-                  rightPanelWidth={400}>
-                  <AssetsTabs
-                    assetCount={assetCount}
-                    entityFqn={domainFqn}
-                    isSummaryPanelOpen={false}
-                    permissions={domainPermission}
-                    ref={assetTabRef}
-                    type={AssetsOfEntity.DOMAIN}
-                    onAddAsset={() => setAssetModelVisible(true)}
-                    onAssetClick={handleAssetClick}
-                    onRemoveAsset={handleAssetSave}
-                  />
-                </PageLayoutV1>
+                    ),
+                    minWidth: 400,
+                    flex: 0.13,
+                    className:
+                      'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
+                  }}
+                />
               ),
             },
           ]

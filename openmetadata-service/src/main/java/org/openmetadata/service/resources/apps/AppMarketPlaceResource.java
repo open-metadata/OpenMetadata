@@ -44,13 +44,14 @@ import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -68,7 +69,7 @@ import org.openmetadata.service.util.ResultList;
 public class AppMarketPlaceResource
     extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
 
   static final String FIELDS = "owner,tags";
 
@@ -96,8 +97,8 @@ public class AppMarketPlaceResource
     }
   }
 
-  public AppMarketPlaceResource(Authorizer authorizer) {
-    super(Entity.APP_MARKET_PLACE_DEF, authorizer);
+  public AppMarketPlaceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.APP_MARKET_PLACE_DEF, authorizer, limits);
   }
 
   public static class AppMarketPlaceDefinitionList extends ResultList<AppMarketPlaceDefinition> {

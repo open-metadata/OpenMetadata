@@ -30,6 +30,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -46,6 +47,7 @@ import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/Activity
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
@@ -391,51 +393,69 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.FEATURES,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={mlModelDetail.description}
-                  entityFqn={decodedMlModelFqn}
-                  entityName={mlModelName}
-                  entityType={EntityType.MLMODEL}
-                  hasEditAccess={editDescriptionPermission}
-                  isDescriptionExpanded={isEmpty(mlModelDetail.mlFeatures)}
-                  isEdit={isEdit}
-                  owner={mlModelDetail.owner}
-                  showActions={!deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={handleThreadLinkSelect}
-                />
-                <MlModelFeaturesList
-                  entityFqn={decodedMlModelFqn}
-                  handleFeaturesUpdate={onFeaturesUpdate}
-                  isDeleted={mlModelDetail.deleted}
-                  mlFeatures={mlModelDetail.mlFeatures}
-                  permissions={mlModelPermissions}
-                  onThreadLinkSelect={handleThreadLinkSelect}
-                />
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.MLMODEL>
-                customProperties={mlModelDetail}
-                dataProducts={mlModelDetail?.dataProducts ?? []}
-                domain={mlModelDetail?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedMlModelFqn}
-                entityId={mlModelDetail.id}
-                entityType={EntityType.MLMODEL}
-                selectedTags={mlModelTags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={onExtensionUpdate}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={handleThreadLinkSelect}
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
+                      <DescriptionV1
+                        description={mlModelDetail.description}
+                        entityFqn={decodedMlModelFqn}
+                        entityName={mlModelName}
+                        entityType={EntityType.MLMODEL}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(
+                          mlModelDetail.mlFeatures
+                        )}
+                        isEdit={isEdit}
+                        owner={mlModelDetail.owner}
+                        showActions={!deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={handleThreadLinkSelect}
+                      />
+                      <MlModelFeaturesList
+                        entityFqn={decodedMlModelFqn}
+                        handleFeaturesUpdate={onFeaturesUpdate}
+                        isDeleted={mlModelDetail.deleted}
+                        mlFeatures={mlModelDetail.mlFeatures}
+                        permissions={mlModelPermissions}
+                        onThreadLinkSelect={handleThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.MLMODEL>
+                        customProperties={mlModelDetail}
+                        dataProducts={mlModelDetail?.dataProducts ?? []}
+                        domain={mlModelDetail?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedMlModelFqn}
+                        entityId={mlModelDetail.id}
+                        entityType={EntityType.MLMODEL}
+                        selectedTags={mlModelTags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={handleThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -570,6 +590,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         </Col>
       </Row>
+
+      <LimitWrapper resource="mlmodel">
+        <></>
+      </LimitWrapper>
 
       {threadLink ? (
         <ActivityThreadPanel

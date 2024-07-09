@@ -199,6 +199,9 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
+  - category: Deployment / Metrics
+    url: /deployment/metrics
+
   - category: How-to Guides
     url: /how-to-guides
     color: violet-70
@@ -393,6 +396,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
   - category: Releases / All Releases / 1.3.1 Release
     url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release

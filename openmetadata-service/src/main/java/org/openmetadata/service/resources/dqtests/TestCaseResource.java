@@ -56,6 +56,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -63,6 +64,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -99,8 +101,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     return test;
   }
 
-  public TestCaseResource(Authorizer authorizer) {
-    super(Entity.TEST_CASE, authorizer);
+  public TestCaseResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TEST_CASE, authorizer, limits);
   }
 
   @Override
@@ -630,6 +632,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext =
         TestCaseResourceContext.builder().entityLink(entityLink).build();
+    limits.enforceLimits(
+        securityContext,
+        new CreateResourceContext<>(entityType, test),
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
     authorizer.authorize(securityContext, operationContext, resourceContext);
     repository.isTestSuiteExecutable(create.getTestSuite());
     test = addHref(uriInfo, repository.create(uriInfo, test));
@@ -1005,7 +1011,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Parameter(description = "Id of the test case", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id,
-      @Valid TableData tableData) {
+      @Valid TableData tableData,
+      @DefaultValue("true") @QueryParam("validate") boolean validate) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_TESTS);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
@@ -1014,7 +1021,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
       throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
     }
-    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData));
+    return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData, validate));
   }
 
   @PUT
@@ -1168,6 +1175,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         .withParameterValues(create.getParameterValues())
         .withEntityLink(create.getEntityLink())
         .withComputePassedFailedRowCount(create.getComputePassedFailedRowCount())
+        .withUseDynamicAssertion(create.getUseDynamicAssertion())
         .withEntityFQN(entityLink.getFullyQualifiedFieldValue())
         .withTestSuite(getEntityReference(Entity.TEST_SUITE, create.getTestSuite()))
         .withTestDefinition(getEntityReference(Entity.TEST_DEFINITION, create.getTestDefinition()));

@@ -12,6 +12,7 @@
  */
 import { ErrorTransformer } from '@rjsf/utils';
 import {
+  Alert,
   Divider,
   Form,
   FormItemProps,
@@ -21,8 +22,11 @@ import {
   Switch,
   TooltipProps,
 } from 'antd';
+import { RuleObject } from 'antd/lib/form';
 import { TooltipPlacement } from 'antd/lib/tooltip';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { t } from 'i18next';
 import { compact, startCase } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
@@ -33,6 +37,7 @@ import { DomainSelectableListProps } from '../components/common/DomainSelectable
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
@@ -41,11 +46,18 @@ import { UserSelectableList } from '../components/common/UserSelectableList/User
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
-import { FieldProp, FieldTypes } from '../interface/FormUtils.interface';
+import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+  HelperTextType,
+} from '../interface/FormUtils.interface';
 import TagSuggestion, {
   TagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
 import i18n from './i18next/LocalUtil';
+import { getErrorText } from './StringsUtils';
 
 export const getField = (field: FieldProp) => {
   const {
@@ -53,6 +65,8 @@ export const getField = (field: FieldProp) => {
     name,
     type,
     helperText,
+    helperTextType,
+    showHelperText = true,
     required,
     props = {},
     rules = [],
@@ -60,13 +74,19 @@ export const getField = (field: FieldProp) => {
     id,
     formItemProps,
     hasSeparator = false,
-    formItemLayout = 'vertical',
+    formItemLayout = FormItemLayout.VERTICAL,
+    isBeta = false,
   } = field;
 
   let internalFormItemProps: FormItemProps = {};
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
-  if (required) {
+  // Check if required rule is already present to avoid rule duplication
+  const isRequiredRulePresent = rules.some(
+    (rule) => (rule as RuleObject).required ?? false
+  );
+
+  if (required && !isRequiredRulePresent) {
     fieldRules = [
       ...fieldRules,
       {
@@ -204,8 +224,9 @@ export const getField = (field: FieldProp) => {
     <Fragment key={id}>
       <Form.Item
         className={classNames({
-          'form-item-horizontal': formItemLayout === 'horizontal',
-          'form-item-vertical': formItemLayout === 'vertical',
+          'form-item-horizontal': formItemLayout === FormItemLayout.HORIZONTAL,
+          'form-item-vertical': formItemLayout === FormItemLayout.VERTICAL,
+          'm-b-xss': helperTextType === HelperTextType.ALERT,
         })}
         id={id}
         key={id}
@@ -213,10 +234,13 @@ export const getField = (field: FieldProp) => {
           <FormItemLabel
             align={props.tooltipAlign as TooltipProps['align']}
             helperText={helperText}
+            helperTextType={helperTextType}
+            isBeta={isBeta}
             label={label}
             overlayClassName={props.overlayClassName as string}
             overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
             placement={props.tooltipPlacement as TooltipPlacement}
+            showHelperText={showHelperText}
           />
         }
         name={name}
@@ -225,6 +249,19 @@ export const getField = (field: FieldProp) => {
         {...formItemProps}>
         {fieldElement}
       </Form.Item>
+
+      {helperTextType === HelperTextType.ALERT &&
+        helperText &&
+        showHelperText && (
+          <Alert
+            showIcon
+            className="m-b-lg alert-icon"
+            data-testid="form-item-alert"
+            message={helperText}
+            type="warning"
+          />
+        )}
+
       {hasSeparator && <Divider />}
     </Fragment>
   );
@@ -263,4 +300,67 @@ export const transformErrors: ErrorTransformer = (errors) => {
   });
 
   return compact(errorRet);
+};
+
+export const handleEntityCreationError = ({
+  error,
+  setInlineAlertDetails,
+  entity,
+  entityLowercase,
+  entityLowercasePlural,
+  name,
+  defaultErrorType,
+}: {
+  error: AxiosError;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
+  entity: string;
+  entityLowercase?: string;
+  entityLowercasePlural?: string;
+  name: string;
+  defaultErrorType?: 'create';
+}) => {
+  if (error.response?.status === HTTP_STATUS_CODE.CONFLICT) {
+    setInlineErrorValue(
+      t('server.entity-already-exist', {
+        entity,
+        entityPlural: entityLowercasePlural ?? entity,
+        name: name,
+      }),
+      setInlineAlertDetails
+    );
+
+    return;
+  }
+
+  if (error.response?.status === HTTP_STATUS_CODE.LIMIT_REACHED) {
+    setInlineErrorValue(
+      t('server.entity-limit-reached', {
+        entity,
+      }),
+      setInlineAlertDetails
+    );
+
+    return;
+  }
+
+  setInlineErrorValue(
+    defaultErrorType === 'create'
+      ? t(`server.entity-creation-error`, {
+          entity: entityLowercase ?? entity,
+        })
+      : getErrorText(error, t('server.unexpected-error')),
+    setInlineAlertDetails
+  );
+};
+
+export const setInlineErrorValue = (
+  description: string,
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void
+) => {
+  setInlineAlertDetails({
+    type: 'error',
+    heading: t('label.error'),
+    description,
+    onClose: () => setInlineAlertDetails(undefined),
+  });
 };

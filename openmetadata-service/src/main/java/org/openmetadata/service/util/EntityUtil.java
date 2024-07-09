@@ -44,6 +44,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.data.Table;
@@ -374,6 +375,16 @@ public final class EntityUtil {
     // Remove topic FQN from schemaField FQN to get the local name
     String localFieldName =
         EntityUtil.getLocalColumnName(topic.getFullyQualifiedName(), field.getFullyQualifiedName());
+    return fieldName == null
+        ? FullyQualifiedName.build("schemaFields", localFieldName)
+        : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
+  }
+
+  public static String getSchemaField(APIEndpoint apiEndpoint, Field field, String fieldName) {
+    // Remove APIEndpoint FQN from schemaField FQN to get the local name
+    String localFieldName =
+        EntityUtil.getLocalColumnName(
+            apiEndpoint.getFullyQualifiedName(), field.getFullyQualifiedName());
     return fieldName == null
         ? FullyQualifiedName.build("schemaFields", localFieldName)
         : FullyQualifiedName.build("schemaFields", localFieldName, fieldName);
