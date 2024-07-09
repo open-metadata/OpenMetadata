@@ -1,6 +1,6 @@
 {
-	"type": "API",
-	"serviceName": "sample_api",
+	"type": "REST",
+	"serviceName": "demo api service",
 	"serviceConnection": {
 		"config": {
 			"type": "REST",
