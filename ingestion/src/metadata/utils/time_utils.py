@@ -143,17 +143,24 @@ def timedelta_to_string(td: timedelta):
     res = []
     current = td
     if current.days:
-        res.append(f"{floor(td.days)} days")
+        res.append(f"{floor(td.days)} day")
+        if current.days > 1:
+            res[-1] += "s"
         current -= timedelta(days=floor(td.days))
     hours = current.seconds // 3600
     if hours:
-        res.append(f"{hours} hours")
+        res.append(f"{hours} hour")
+        if hours > 1:
+            res[-1] += "s"
         current -= timedelta(hours=hours)
     minutes = current.seconds // 60
     if minutes:
-        res.append(f"{minutes} minutes")
+        res.append(f"{minutes} minute")
+        if minutes > 1:
+            res[-1] += "s"
         current -= timedelta(minutes=minutes)
-    if current.seconds:
-        res.append(f"{current.seconds} seconds")
+    res.append(f"{current.seconds} second")
+    if current.seconds != 1:
+        res[-1] += "s"
     total_seconds = "total seconds: " + str(td.total_seconds())
     return " ".join(res) + f" ({total_seconds})"
