@@ -201,7 +201,10 @@ export const AddTestCaseList = ({
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
-                      <Checkbox checked={selectedItems?.has(test.id ?? '')} />
+                      <Checkbox
+                        checked={selectedItems?.has(test.id ?? '')}
+                        data-testid={`checkbox-${test.name}`}
+                      />
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
