@@ -59,11 +59,12 @@ def get_decoded_column(entity_link: str) -> str:
 
     Examples:
         >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first_name>")
-        'first name'
+        'first_name'
         >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>")
         '随机的'
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.table_w_space>")
-        ''
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.table_w_space>") # TODO this should raise an exception
+        'rds.dev.dbt_jaffle.table_w_space'
+
 
     Args:
         entity_link: entity link

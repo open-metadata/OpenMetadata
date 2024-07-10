@@ -404,7 +404,7 @@ setup(
     extras_require={
         "base": list(base_requirements),
         "dev": list(dev),
-        "test": list(test),
+        "test": list(test) + list(plugins["bigquery"]),
         "e2e_test": list(e2e_test),
         "extended_testing": list(extended_testing),
         "data-insight": list(plugins["elasticsearch"]),

@@ -61,9 +61,14 @@ unit_ingestion:  ## Run Python unit tests
 run_ometa_integration_tests:  ## Run Python integration tests
 	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
 
+.PHONY: doc_tests
+doc_tests:  ## Run the doc tests
+	pytest -c $(INGESTION_DIR)/pyproject.toml --doctest-modules $(INGESTION_DIR)/src/metadata/utils
+
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
+	$(MAKE) doc_tests
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
 	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
