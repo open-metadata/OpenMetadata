@@ -1,5 +1,6 @@
-import pytest
 from datetime import timedelta
+
+import pytest
 
 from metadata.utils.time_utils import timedelta_to_string
 
