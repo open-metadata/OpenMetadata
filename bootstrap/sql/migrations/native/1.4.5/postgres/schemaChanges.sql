@@ -1,5 +1,6 @@
 ALTER TABLE thread_entity
-ADD COLUMN hash_id VARCHAR(32) GENERATED ALWAYS AS (MD5(id)) STORED;
+ADD COLUMN hash_id VARCHAR(32)
+    GENERATED ALWAYS AS (MD5(json ->> 'id')) STORED;
 CREATE INDEX idx_thread_entity_hash_id ON thread_entity(hash_id);
 
 ALTER TABLE thread_entity
