@@ -17,6 +17,7 @@ from metadata.utils.time_utils import timedelta_to_string
             "0 seconds",
         ),
         (timedelta(days=1), "1 day"),
+        (timedelta(hours=1000000.123456), "41666 days 16 hours 7 minutes 24 seconds"),
     ],
 )
 def test_timedelta_to_string(parameter, expected):
