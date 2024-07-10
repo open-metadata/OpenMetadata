@@ -13,7 +13,11 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { clickOnLogo } from '../../utils/sidebar';
 import {
   createDescriptionTask,
@@ -110,21 +114,13 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Task resolved successfully/
-    );
-
-    await page.getByLabel('close').first().click();
+    await toastNotification(page, /Task resolved successfully/);
 
     // Task 1 - Request to update tag to be resolved
 
     await page.getByText('Accept Suggestion').click();
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Task resolved successfully/
-    );
-
-    await page.getByLabel('close').first().click();
+    await toastNotification(page, /Task resolved successfully/);
 
     const closedTask = await page.getByTestId('closed-task').textContent();
 

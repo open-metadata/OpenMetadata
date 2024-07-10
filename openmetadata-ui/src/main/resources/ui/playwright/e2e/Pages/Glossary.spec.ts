@@ -21,6 +21,7 @@ import {
   performAdminLogin,
   performUserLogin,
   redirectToHomePage,
+  toastNotification,
 } from '../../utils/common';
 import {
   approveGlossaryTermTask,
@@ -228,11 +229,10 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('saveAssociatedTag').click();
         await patchRequest;
 
-        await expect(page.getByRole('alert').first()).toContainText(
-          "mutually exclusive and can't be assigned together"
+        await toastNotification(
+          page,
+          /mutually exclusive and can't be assigned together/
         );
-
-        await page.getByLabel('close').first().click();
 
         // Add non mutually exclusive tags
         await page.click(

@@ -12,19 +12,15 @@
  */
 import test, { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-const verifyApplicationTriggerToastData = async (page: Page) => {
-  await expect(page.getByRole('alert').first()).toHaveText(
-    /Application triggered successfully/
-  );
-
-  await page.getByLabel('close').first().click();
-};
 
 const verifyLastExecutionStatus = async (page: Page) => {
   const { apiContext } = await getApiContext(page);
@@ -100,11 +96,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('.ant-modal-body [data-testid="deploy-button"]');
     await deployResponse;
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Schedule saved successfully/
-    );
-
-    await page.getByLabel('close').first().click();
+    await toastNotification(page, 'Schedule saved successfully');
 
     expect(await page.innerText('[data-testid="schedule-type"]')).toContain(
       'None'
@@ -124,11 +116,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="submit-btn"]');
     await responseAfterSubmit;
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Configuration saved successfully/
-    );
-
-    await page.getByLabel('close').first().click();
+    await toastNotification(page, 'Configuration saved successfully');
   });
 
   await test.step('Uninstall application', async () => {
@@ -141,11 +129,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="save-button"]');
     await deleteRequest;
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Application uninstalled/
-    );
-
-    await page.getByLabel('close').first().click();
+    await toastNotification(page, 'Application uninstalled successfully');
 
     const card1 = page.locator(
       '[data-testid="search-indexing-application-card"]'
@@ -179,11 +163,7 @@ test('Search Index Application', async ({ page }) => {
     await page.click('[data-testid="deploy-button"]');
     await installApplicationResponse;
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Application installed successfully/
-    );
-
-    await page.getByLabel('close').first().click();
+    await toastNotification(page, 'Application installed successfully');
 
     const card = page.locator(
       '[data-testid="search-indexing-application-card"]'
@@ -207,7 +187,7 @@ test('Search Index Application', async ({ page }) => {
 
       await triggerPipelineResponse;
 
-      await verifyApplicationTriggerToastData(page);
+      await toastNotification(page, 'Application triggered successfully');
 
       await page.reload();
 
