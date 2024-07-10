@@ -4,7 +4,7 @@ ADD COLUMN hash_id VARCHAR(32)
 CREATE INDEX idx_thread_entity_hash_id ON thread_entity(hash_id);
 
 ALTER TABLE thread_entity
-ADD COLUMN testCaseResolutionStatusId TEXT GENERATED ALWAYS AS (jsonb -> 'task' ->> 'testCaseResolutionStatusId') STORED;
+ADD COLUMN testCaseResolutionStatusId TEXT GENERATED ALWAYS AS (json -> 'task' ->> 'testCaseResolutionStatusId') STORED;
 CREATE INDEX idx_testCaseResolutionStatusId ON thread_entity (testCaseResolutionStatusId);
 
 CREATE INDEX idx_entity_relationship_fromEntity_fromId_relation
