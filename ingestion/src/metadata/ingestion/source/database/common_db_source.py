@@ -567,8 +567,10 @@ class CommonDbSourceService(
                 self.context.get_global().table_views.append(table_view)
 
         except Exception as exc:
-            error = f"Unexpected exception to yield table [{table_name}]: {exc}"
-            logger.debug(f"Context: {self.context.get()}")
+            error = (
+                f"Unexpected exception to yield table "
+                f"(database=[{self.context.get().database}], schema=[{schema_name}], table=[{table_name}]): {exc}"
+            )
             yield Either(
                 left=StackTraceError(
                     name=table_name, error=error, stackTrace=traceback.format_exc()
