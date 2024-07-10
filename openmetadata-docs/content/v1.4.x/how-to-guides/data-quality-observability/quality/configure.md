@@ -44,7 +44,6 @@ A Logical Test Suite is a collection of various test cases, which may pertain to
 ## Executable Test Suite
 An Executable Test Suite is specifically associated with a single table, ensuring that all test cases within this suite are relevant to that particular table. The term "executable entity reference" refers to the specific table that the test suite is connected to, signifying that the tests can be run directly on this table. This suite is designed for execution, allowing for direct testing of the table's data integrity and functionality.
 
-
 ### Test Definition
 Test Definitions are generic tests definition elements specific to a test such as:
 - test name
