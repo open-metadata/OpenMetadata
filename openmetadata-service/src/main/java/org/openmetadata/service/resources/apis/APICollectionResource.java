@@ -514,6 +514,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
     return repository
         .copy(new APICollection(), create, user)
         .withService(getEntityReference(Entity.API_SERVICE, create.getService()))
+        .withEndpointURL(create.getEndpointURL())
         .withApiEndpoints(getEntityReferences(Entity.API_ENDPOINT, create.getApiEndpoints()))
         .withSourceHash(create.getSourceHash());
   }

@@ -70,12 +70,6 @@
       "description": "Type of API service such as REST, WEBHOOK..",
       "$ref": "#/definitions/apiServiceType"
     },
-    "endpointURL": {
-      "title": "Endpoint URL",
-      "description": "EndPoint URL for the Service. Capture the Root URL of the service.",
-      "type": "string",
-      "format": "uri"
-    },
     "description": {
       "description": "Description of a API service instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
@@ -137,6 +131,6 @@
       "$ref": "../../type/entityReference.json"
     }
   },
-  "required": ["id", "name", "serviceType", "endpointURL"],
+  "required": ["id", "name", "serviceType"],
   "additionalProperties": false
 }
