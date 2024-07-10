@@ -13,7 +13,10 @@
 Common Class For Profiler Converter.
 """
 
+from typing import Dict, Set
+
 import sqlalchemy
+from sqlalchemy.sql.sqltypes import TypeEngine
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source import sqa_types
@@ -81,7 +84,7 @@ class CommonMapTypes:
         return self._TYPE_MAP.get(col.dataType)
 
     @staticmethod
-    def map_sqa_to_om_types() -> dict:
+    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:
         """returns an ORM type"""
         return {
             sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},
