@@ -20,7 +20,7 @@ import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
-from sqlparse.sql import Function, Identifier
+from sqlparse.sql import Function, Identifier, Token
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -330,6 +330,21 @@ class SnowflakeSource(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
+    def __clean_append(self, token: Token, result_list: List) -> None:
+        """
+        Appends the real name of the given token to the result list if it exists.
+
+        Args:
+            token (Token): The token whose real name is to be appended.
+            result_list (List): The list to which the real name will be appended.
+
+        Returns:
+            None
+        """
+        name = token.get_real_name()
+        if name is not None:
+            result_list.append(name)
+
     def __get_identifier_from_function(self, function_token: Function) -> List:
         identifiers = []
         for token in function_token.get_parameters():
@@ -337,7 +352,7 @@ class SnowflakeSource(
                 # get column names from nested functions
                 identifiers.extend(self.__get_identifier_from_function(token))
             elif isinstance(token, Identifier):
-                identifiers.append(token.get_real_name())
+                self.__clean_append(token, identifiers)
         return identifiers
 
     def parse_column_name_from_expr(self, cluster_key_expr: str) -> Optional[List[str]]:
@@ -351,7 +366,7 @@ class SnowflakeSource(
                 if isinstance(token, Function):
                     result.extend(self.__get_identifier_from_function(token))
                 elif isinstance(token, Identifier):
-                    result.append(token.get_real_name())
+                    self.__clean_append(token, result)
             return result
         except Exception as err:
             logger.debug(traceback.format_exc())
