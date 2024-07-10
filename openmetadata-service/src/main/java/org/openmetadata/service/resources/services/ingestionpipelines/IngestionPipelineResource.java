@@ -13,7 +13,9 @@
 
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
@@ -123,8 +125,45 @@ public class IngestionPipelineResource
     repository.setPipelineServiceClient(pipelineServiceClient);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return listOf(
+        MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
+        MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
+  }
+
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
     /* Required for serde */
+  }
+
+  /**
+   * Handle permissions based on the pipeline type
+   */
+  @Override
+  public Response create(
+      UriInfo uriInfo, SecurityContext securityContext, IngestionPipeline entity) {
+    OperationContext operationContext =
+        new OperationContext(entityType, getOperationForPipelineType(entity));
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, createResourceContext);
+    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    return Response.created(entity.getHref()).entity(entity).build();
+  }
+
+  /**
+   * Dynamically get the MetadataOperation based on the pipelineType (or application Type).
+   * E.g., for the Automator, the Operation will be `CREATE_INGESTION_PIPELINE_AUTOMATOR`.
+   */
+  private MetadataOperation getOperationForPipelineType(IngestionPipeline ingestionPipeline) {
+    String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+    try {
+      return MetadataOperation.valueOf(
+          String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase()));
+    } catch (IllegalArgumentException | NullPointerException e) {
+      return CREATE;
+    }
   }
 
   @GET
@@ -794,7 +833,7 @@ public class IngestionPipelineResource
           String fqn,
       @Valid PipelineStatus pipelineStatus) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
@@ -974,7 +1013,7 @@ public class IngestionPipelineResource
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {

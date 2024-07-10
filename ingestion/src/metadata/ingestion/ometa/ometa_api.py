@@ -223,6 +223,8 @@ class OpenMetadata(
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
             .replace("dashboarddatamodel", "dashboardDataModel")
+            .replace("apiendpoint", "apiEndpoint")
+            .replace("apicollection", "apiCollection")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")

@@ -189,6 +189,8 @@ plugins: Dict[str, Set[str]] = {
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
         "pyasn1~=0.6.0",
+        # databricks has a dependency on pyhive for metadata as well as profiler
+        VERSIONS["pyhive"],
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],

@@ -44,8 +44,6 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / FAQs
-    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
@@ -140,6 +138,12 @@ site_menu:
     url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
+  - category: Deployment / Enable Security / Saml / Docker 
+    url: /deployment/security/saml/docker
+  - category: Deployment / Enable Security / Saml / Bare Metal 
+    url: /deployment/security/saml/bare-metal
+  - category: Deployment / Enable Security / Saml / Kubernetes
+    url: /deployment/security/saml/kubernetes
   - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
@@ -776,6 +780,8 @@ site_menu:
     url: /how-to-guides/data-quality-observability/observability
   - category: How-to Guides / Data Quality and Observability / Data Observability / Observability Alerts
     url: /how-to-guides/data-quality-observability/observability/alerts
+  - category: How-to Guides / Data Quality and Observability / Data Observability / Webhooks
+    url: /how-to-guides/data-quality-observability/observability/webhooks
   - category: How-to Guides / Data Quality and Observability / Incident Manager
     url: /how-to-guides/data-quality-observability/incident-manager
   - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
@@ -854,6 +860,12 @@ site_menu:
     url: /how-to-guides/data-governance/classification/tiers
   - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
     url: /how-to-guides/data-governance/classification/best-practices
+  - category: How-to Guides / Data Governance / Domains & Data Product
+    url: /how-to-guides/data-governance/domains-&-data-products
+  - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Domains
+    url: /how-to-guides/data-governance/domains-&-data-products/domains
+  - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
+    url: /how-to-guides/data-governance/domains-&-data-products/data-products
 
   - category: Releases
     url: /releases
@@ -1898,8 +1910,6 @@ site_menu:
     url: /developers/contribute/developing-a-new-connector/update-documentation
   - category: Developers / Contribute / UX Style Guide
     url: /developers/contribute/ux-style-guide
-  - category: Developers / Webhooks
-    url: /developers/webhooks
   - category: Developers / Bots
     url: /developers/bots
   - category: Developers / Add Language Support
