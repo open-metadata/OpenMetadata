@@ -24,8 +24,8 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
-    TableData,
 )
+from metadata.profiler.api.models import SerializableTableData
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects
@@ -134,7 +134,9 @@ class SQASampler(SamplerInterface):
         # Assign as an alias
         return aliased(self.table, sampled)
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:
+    def fetch_sample_data(
+        self, columns: Optional[List[Column]] = None
+    ) -> SerializableTableData:
         """
         Use the sampler to retrieve sample data rows as per limit given by user
 
@@ -177,12 +179,12 @@ class SQASampler(SamplerInterface):
                 self.client.query(*sqa_columns).select_from(self.table).limit(100).all()
             )
 
-        return TableData(
+        return SerializableTableData(
             columns=[column.name for column in sqa_columns],
             rows=[list(row) for row in sqa_sample],
         )
 
-    def _fetch_sample_data_from_user_query(self) -> TableData:
+    def _fetch_sample_data_from_user_query(self) -> SerializableTableData:
         """Returns a table data object using results from query execution"""
         if not is_safe_sql_query(self._profile_sample_query):
             raise RuntimeError(
@@ -194,7 +196,7 @@ class SQASampler(SamplerInterface):
             columns = [col.name for col in rnd.cursor.description]
         except AttributeError:
             columns = list(rnd.keys())
-        return TableData(
+        return SerializableTableData(
             columns=columns,
             rows=[list(row) for row in rnd.fetchmany(100)],
         )

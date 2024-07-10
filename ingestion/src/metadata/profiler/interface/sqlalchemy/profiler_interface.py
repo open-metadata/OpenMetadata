@@ -20,17 +20,17 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
-from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
+from metadata.generated.schema.entity.data.table import CustomMetricProfile
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
-from metadata.profiler.api.models import ThreadPoolMetrics
+from metadata.profiler.api.models import SerializableTableData, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
@@ -487,7 +487,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             for future in futures:
                 if future.cancelled():
                     continue
-
                 try:
                     profile, column, metric_type = future.result(
                         timeout=self.timeout_seconds
@@ -518,7 +517,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def fetch_sample_data(self, table, columns) -> TableData:
+    def fetch_sample_data(self, table, columns) -> SerializableTableData:
         """Fetch sample data from database
 
         Args:
@@ -530,15 +529,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         sampler = self._get_sampler(
             table=table,
         )
-        sample = sampler.fetch_sample_data(columns)
-        # TODO: this is innefficient, we should change the schema to be a string and
-        # manage the casting when creating the TableData object with the logic coupled to OpenMetdata
-        # DataType / Pydantic instead of letting the underlying ORM / DB client handle it.
-        for i, row in enumerate(sample.rows):
-            sample.rows[i] = list(row)
-            for j, value in enumerate(row):
-                sample.rows[i][j] = self._json_safe(value)
-        return sample
+        return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
         self, column: Column, metric: Metrics, column_results: Dict
@@ -596,14 +587,3 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """Clean up session"""
         self.session.close()
         self.connection.pool.dispose()
-
-    @staticmethod
-    def _json_safe(data: Any):
-        try:
-            TableData(rows=[[data]]).model_dump_json()
-            return data
-        except Exception:  # noqa
-            logger.debug(
-                f"Failed to serialize data: {type(data).__name__} to JSON. Returning as string."
-            )
-            return str(data)

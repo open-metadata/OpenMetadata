@@ -53,7 +53,7 @@ def sink_config(metadata):
 def workflow_config(metadata):
     return {
         "loggerLevel": LogLevels.DEBUG.value,
-        "openMetadataServerConfig": metadata.config.dict(),
+        "openMetadataServerConfig": metadata.config.model_dump(),
     }
 
 
@@ -67,6 +67,7 @@ def profiler_config(db_service, workflow_config, sink_config):
                 "config": {
                     "type": "Profiler",
                     "generateSampleData": True,
+                    "timeoutSeconds": 30,
                 }
             },
         },
@@ -92,10 +93,10 @@ def run_workflow():
 
 
 @pytest.fixture(scope="module")
-def db_service(metadata, create_service_request, patch_password):
+def db_service(metadata, create_service_request, unmask_password):
     service_entity = metadata.create_or_update(data=create_service_request)
     fqn = service_entity.fullyQualifiedName.root
-    yield patch_password(service_entity)
+    yield unmask_password(service_entity)
     service_entity = metadata.get_by_name(DatabaseService, fqn)
     if service_entity:
         metadata.delete(
@@ -104,26 +105,59 @@ def db_service(metadata, create_service_request, patch_password):
 
 
 @pytest.fixture(scope="module")
-def patch_password():
-    """Implement in the test module to override the password for a specific service
+def unmask_password(create_service_request):
+    """Unmask the db passwrod returned by the metadata service.
+    You can override this at the test_module level to implement custom password handling.
 
     Example:
-    def patch_password(service: DatabaseService, my_contianer):
-        service.connection.config.authType.password = SecretStr(my_contianer.password)
+    @pytest.fixture(scope="module")
+    def unmask_password(my_container1, my_container2):
+        def patch_password(service: DatabaseService):
+            if service.connection.config.authType.password == "my_password":
+              ... # do something else
+            return service
+        return patch_password
+    """
+
+    def patch_password(service: DatabaseService):
+        service.connection.config.authType.password = (
+            create_service_request.connection.config.authType.password
+        )
         return service
+
     return patch_password
+
+
+@pytest.fixture(scope="module")
+def create_service_request():
+    """
+    Implement in the test module to create a service request
+    Example:
+    def create_service_request(scope="module"):
+        return CreateDatabaseServiceRequest(
+            name="my_service",
+            serviceType=DatabaseServiceType.MyService,
+            connection=DatabaseConnection(
+                config=MyServiceConnection(
+                    username="my_user",
+                    password="my_password",
+                    host="localhost",
+                    port="5432",
+                )
+            ),
+        )
     """
     raise NotImplementedError("Implement in the test module")
 
 
 @pytest.fixture()
-def patch_passwords_for_db_services(db_service, patch_password, monkeypatch):
+def patch_passwords_for_db_services(db_service, unmask_password, monkeypatch):
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
             if isinstance(result, DatabaseService):
                 if result.fullyQualifiedName.root == db_service.fullyQualifiedName.root:
-                    return patch_password(result)
+                    return unmask_password(result)
             return result
 
         return inner

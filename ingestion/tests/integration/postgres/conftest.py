@@ -1,5 +1,3 @@
-from typing import cast
-
 import pytest
 
 from _openmetadata_testutils.postgres.conftest import postgres_container
@@ -14,7 +12,6 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
-    DatabaseService,
     DatabaseServiceType,
 )
 
@@ -34,18 +31,6 @@ def create_service_request(postgres_container, tmp_path_factory):
             )
         ),
     )
-
-
-@pytest.fixture(scope="module")
-def patch_password(postgres_container):
-    def inner(service: DatabaseService):
-        service.connection.config = cast(PostgresConnection, service.connection.config)
-        service.connection.config.authType.password = type(
-            service.connection.config.authType.password
-        )(postgres_container.password)
-        return service
-
-    return inner
 
 
 @pytest.fixture(scope="module")

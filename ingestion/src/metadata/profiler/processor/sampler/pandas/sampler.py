@@ -23,8 +23,8 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
-    TableData,
 )
+from metadata.profiler.api.models import SerializableTableData
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -71,10 +71,10 @@ class DatalakeSampler(SamplerInterface):
             for df in self.table
         ]
 
-    def _fetch_sample_data_from_user_query(self) -> TableData:
+    def _fetch_sample_data_from_user_query(self) -> SerializableTableData:
         """Fetch sample data from user query"""
         cols, rows = self.get_col_row(data_frame=self._rdn_sample_from_user_query())
-        return TableData(columns=cols, rows=rows)
+        return SerializableTableData(columns=cols, rows=rows)
 
     def _rdn_sample_from_user_query(self):
         """Generate sample from user query"""
@@ -157,7 +157,7 @@ class DatalakeSampler(SamplerInterface):
 
     def fetch_sample_data(
         self, columns: Optional[List[SQALikeColumn]] = None
-    ) -> TableData:
+    ) -> SerializableTableData:
         """Fetch sample data from the table
 
         Returns:
@@ -167,4 +167,4 @@ class DatalakeSampler(SamplerInterface):
             return self._fetch_sample_data_from_user_query()
 
         cols, rows = self.get_col_row(data_frame=self.table, columns=columns)
-        return TableData(columns=cols, rows=rows)
+        return SerializableTableData(columns=cols, rows=rows)
