@@ -145,7 +145,7 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="time-picker"]').isVisible();
       await page.locator('[data-testid="time-picker"]').click();
       await page.locator('[data-testid="time-picker"]').fill(value);
-      await page.getByRole('button', { name: 'OK' }).click();
+      await page.getByRole('button', { name: 'OK', exact: true }).click();
       await page.locator('[data-testid="inline-save-btn"]').click();
 
       break;
@@ -157,9 +157,9 @@ export const setValueForProperty = async (data: {
       await page.locator('[data-testid="date-time-picker"]').click();
       await page.locator('[data-testid="date-time-picker"]').fill(value);
       if (propertyType === 'dateTime-cp') {
-        await page.getByText('Now').click();
+        await page.getByText('Now', { exact: true }).click();
       } else {
-        await page.getByText('Today').click();
+        await page.getByText('Today', { exact: true }).click();
       }
       await page.locator('[data-testid="inline-save-btn"]').click();
 
