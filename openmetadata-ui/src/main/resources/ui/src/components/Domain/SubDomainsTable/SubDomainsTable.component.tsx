@@ -56,7 +56,7 @@ const SubDomainsTable = ({ isVersionsView }: { isVersionsView: boolean }) => {
               data-testid={name}
               style={{ color: record.style?.color }}
               to={getDomainDetailsPath(
-                record.fullyQualifiedName || record.name
+                record.fullyQualifiedName ?? record.name
               )}>
               {getEntityName(record)}
             </Link>

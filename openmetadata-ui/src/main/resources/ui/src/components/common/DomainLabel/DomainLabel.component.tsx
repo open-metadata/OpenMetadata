@@ -19,13 +19,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
-import { renderDomainLink } from '../../../utils/DomainUtils';
+import {
+  getDomainFieldFromEntityType,
+  renderDomainLink,
+} from '../../../utils/DomainUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { DataAssetWithDomains } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -49,12 +51,7 @@ export const DomainLabel = ({
 
   const handleDomainSave = useCallback(
     async (selectedDomain: EntityReference | EntityReference[]) => {
-      const fieldData =
-        entityType === EntityType.TEAM
-          ? 'teamDomains'
-          : entityType === EntityType.USER
-          ? 'userDomains'
-          : 'domain';
+      const fieldData = getDomainFieldFromEntityType(entityType);
 
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
@@ -95,7 +92,7 @@ export const DomainLabel = ({
       if (Array.isArray(domain)) {
         setActiveDomain(domain);
       } else {
-        setActiveDomain([domain as EntityReference]);
+        setActiveDomain([domain]);
       }
     }
   }, [domain]);
@@ -107,7 +104,7 @@ export const DomainLabel = ({
       activeDomain.length > 0
     ) {
       return activeDomain.map((domain, index) => (
-        <React.Fragment key={index}>
+        <React.Fragment key={domain.id}>
           {renderDomainLink(
             domain,
             domainDisplayName,
