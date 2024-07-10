@@ -363,6 +363,7 @@ public interface EntityTimeSeriesDAO {
       @Define("table") String table, @BindFQN("entityFQNHash") String entityFQNHash);
 
   default String getLatestRecord(String entityFQNHash) {
+    System.out.println("getLatestRecord: entityFQNHash= " + getTimeSeriesTableName());
     return getLatestRecord(getTimeSeriesTableName(), entityFQNHash);
   }
 
