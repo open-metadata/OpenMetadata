@@ -25,6 +25,15 @@
       "description": "GCP Credentials",
       "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
+    "bucketNames": {
+      "title": "Bucket Names",
+      "description": "Bucket Names of the data source.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

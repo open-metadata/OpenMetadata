@@ -11,16 +11,16 @@
       "mandatory": true
     },
     {
-      "name": "ListBlobs",
-      "description": "List all the blobs available to the user.",
-      "errorMessage": "Failed to fetch blobs, please validate the credentials if the user has access to list blobs",
+      "name": "GetBucket",
+      "description": "Get the bucket available to the user.",
+      "errorMessage": "Failed to fetch bucket, please validate the credentials if the user has access to get bucket",
       "shortCircuit": true,
       "mandatory": true
     },
     {
-      "name": "GetBucket",
-      "description": "Get the bucket available to the user.",
-      "errorMessage": "Failed to fetch bucket, please validate the credentials if the user has access to get bucket",
+      "name": "ListBlobs",
+      "description": "List all the blobs available to the user.",
+      "errorMessage": "Failed to fetch blobs, please validate the credentials if the user has access to list blobs",
       "shortCircuit": true,
       "mandatory": true
     },
@@ -30,6 +30,12 @@
       "errorMessage": "Failed to fetch blobs, please validate the credentials if the user has access to get blob",
       "shortCircuit": true,
       "mandatory": true
+    },
+    {
+      "name": "GetMetrics",
+      "description": "Get Google Cloud bucket resource metrics.",
+      "errorMessage": "Failed to fetch Google Cloud bucket resource metrics, please validate if user has access to fetch these metrics",
+      "mandatory": false
     }
   ]
 }
