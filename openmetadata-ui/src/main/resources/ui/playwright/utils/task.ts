@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { descriptionBox } from './common';
+import { descriptionBox, toastNotification } from './common';
 
 export type TaskDetails = {
   term: string;
@@ -65,11 +65,7 @@ export const createDescriptionTask = async (
   await page.locator(descriptionBox).fill('Updated description');
   await page.click('button[type="submit"]');
 
-  await expect(page.getByRole('alert').first()).toHaveText(
-    /Task created successfully./
-  );
-
-  await page.getByLabel('close').first().click();
+  await toastNotification(page, /Task created successfully./);
 };
 
 export const createTagTask = async (
@@ -133,9 +129,5 @@ export const createTagTask = async (
 
   await page.click('button[type="submit"]');
 
-  await expect(page.getByRole('alert').first()).toHaveText(
-    /Task created successfully./
-  );
-
-  await page.getByLabel('close').first().click();
+  await toastNotification(page, /Task created successfully./);
 };
