@@ -151,3 +151,72 @@ test('TestSuite multi pipeline support', async ({ page }) => {
   await table.delete(apiContext);
   await afterAction();
 });
+
+test("Edit the pipeline's test case", async ({ page }) => {
+  test.slow(true);
+
+  await redirectToHomePage(page);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  await table.create(apiContext);
+  for (let index = 0; index < 4; index++) {
+    await table.createTestCase(apiContext);
+  }
+  const testCaseNames = [
+    table.testCasesResponseData[0]?.['name'],
+    table.testCasesResponseData[1]?.['name'],
+  ];
+  const pipeline = await table.createTestSuitePipeline(
+    apiContext,
+    testCaseNames
+  );
+  await table.visitEntityPage(page);
+  await page.getByText('Profiler & Data Quality').click();
+  await page.getByRole('menuitem', { name: 'Data Quality' }).click();
+
+  await page.getByRole('tab', { name: 'Pipeline' }).click();
+  await page
+    .getByRole('row', {
+      name: new RegExp(pipeline?.['name']),
+    })
+    .getByTestId('edit')
+    .click();
+
+  for (const testCaseName of testCaseNames) {
+    await expect(page.getByTestId(`checkbox-${testCaseName}`)).toBeChecked();
+  }
+
+  await page.getByTestId(`checkbox-${testCaseNames[0]}`).click();
+
+  await expect(
+    page.getByTestId(`checkbox-${testCaseNames[0]}`)
+  ).not.toBeChecked();
+
+  await page.getByTestId('submit').click();
+  await page.getByTestId('deploy-button').click();
+  await page.waitForSelector('[data-testid="body-text"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('success-line')).toContainText(
+    /has been updated and deployed successfully/
+  );
+
+  await page.getByTestId('view-service-button').click();
+
+  await page.getByRole('tab', { name: 'Pipeline' }).click();
+  await page
+    .getByRole('row', {
+      name: new RegExp(pipeline?.['name']),
+    })
+    .getByTestId('edit')
+    .click();
+
+  await expect(
+    page.getByTestId(`checkbox-${testCaseNames[0]}`)
+  ).not.toBeChecked();
+  await expect(page.getByTestId(`checkbox-${testCaseNames[1]}`)).toBeChecked();
+
+  await table.delete(apiContext);
+  await afterAction();
+});

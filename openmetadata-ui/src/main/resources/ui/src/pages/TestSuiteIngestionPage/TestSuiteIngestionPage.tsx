@@ -120,7 +120,7 @@ const TestSuiteIngestionPage = () => {
 
   const handleAddTestSubmit = (testCases: TestCase[]) => {
     const testCaseNames = testCases.map((testCase) => testCase.name);
-    setTestCases((pre) => uniq([...pre, ...testCaseNames]));
+    setTestCases(uniq(testCaseNames));
     setActiveServiceStep(2);
   };
 
