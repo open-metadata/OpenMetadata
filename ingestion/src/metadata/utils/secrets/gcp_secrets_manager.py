@@ -99,7 +99,7 @@ class GCPSecretsManager(ExternalSecretsManager, ABC):
 
         # Build the resource name of the secret version.
 
-        project_id = self.credentials.gcpConfig.projectId.__root__
+        project_id = self.credentials.gcpConfig.projectId.root
         secret_id = (
             f"projects/{project_id}/secrets/{secret_id}/versions/{FIXED_VERSION_ID}"
         )

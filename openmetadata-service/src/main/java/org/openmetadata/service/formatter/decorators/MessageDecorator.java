@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
+import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
 import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
 import java.time.Instant;
@@ -94,6 +95,11 @@ public interface MessageDecorator<T> {
       return getEntityUrl("tags", fqn.split("\\.")[0], "");
     }
 
+    // IngestionPipeline
+    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
+      return getIngestionPipelineUrl(this, entityType, entityInterface);
+    }
+
     return getEntityUrl(entityType, fqn, "");
   }
 
@@ -124,6 +130,11 @@ public interface MessageDecorator<T> {
     if (entityType.equals(Entity.TAG)) {
       // Tags need to be redirected to Classification Page
       return getEntityUrl("tags", fqn.split("\\.")[0], "");
+    }
+
+    // IngestionPipeline
+    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
+      return getIngestionPipelineUrl(this, entityType, entityInterface);
     }
 
     return getEntityUrl(entityType, fqn, activeTab);
