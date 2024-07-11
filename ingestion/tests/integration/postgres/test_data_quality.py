@@ -4,9 +4,6 @@ from typing import List
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
-)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
     TestSuitePipeline,
@@ -24,6 +21,7 @@ from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
+from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 
@@ -172,7 +170,7 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
     test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
     test_suite_procesor.execute()
     assert test_suite_procesor.steps[0].get_status().failures == [
-        StackTraceError(
+        TruncatedStackTraceError(
             name="Incompatible Column for Test Case",
             error="Test case incompatible_column_type of type columnValueMaxToBeBetween is not compatible with column first_name of type VARCHAR",
         )
