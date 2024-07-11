@@ -87,6 +87,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [currentColumnType, setCurrentColumnType] = useState<string>();
 
   const columnName = Form.useWatch('column', form);
 
@@ -105,17 +106,13 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     },
   ];
 
-  const fetchAllTestDefinitions = async () => {
+  const fetchAllTestDefinitions = async (columnType?: string) => {
     try {
       const { data } = await getListTestDefinitions({
         limit: PAGE_SIZE_LARGE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
         testPlatform: TestPlatform.OpenMetadata,
-        supportedDataType: isColumnFqn
-          ? table.columns.find(
-              (column) => column.fullyQualifiedName === columnName
-            )?.dataType
-          : undefined,
+        supportedDataType: columnType,
       });
       const updatedData = data.filter((definition) => {
         if (definition.fullyQualifiedName === TABLE_DIFF) {
@@ -227,6 +224,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
       setSelectedTestType(value.testTypeId);
+    } else if (value.column) {
+      form.setFieldsValue({ testTypeId: undefined });
+      setSelectedTestType(undefined);
     }
   };
 
@@ -237,10 +237,14 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   useEffect(() => {
-    fetchAllTestDefinitions();
     const selectedColumn = table.columns.find(
       (column) => column.name === columnName
     );
+
+    if (selectedColumn?.dataType !== currentColumnType) {
+      fetchAllTestDefinitions(selectedColumn?.dataType);
+      setCurrentColumnType(selectedColumn?.dataType);
+    }
     if (selectedColumn) {
       history.push({
         search: Qs.stringify({
@@ -253,6 +257,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   useEffect(() => {
     if (isEmpty(testCases)) {
       fetchAllTestCases();
+    }
+    if (!isColumnFqn) {
+      fetchAllTestDefinitions();
     }
     form.setFieldsValue({
       testName: replaceAllSpacialCharWith_(initialValue?.name ?? ''),
