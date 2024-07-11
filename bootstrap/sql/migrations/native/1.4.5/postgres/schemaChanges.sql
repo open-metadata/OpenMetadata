@@ -13,6 +13,6 @@ ON entity_relationship (fromEntity, fromId, relation);
 CREATE INDEX idx_field_relationship_from ON field_relationship (fromType, fromFQNHash, toType, relation);
 CREATE INDEX idx_field_relationship_to ON field_relationship (fromType, toFQNHash, toType, relation);
 
-CREATE INDEX idx_thread_entity_on_entityId ON thread_entity (entityId);
+CREATE INDEX idx_entity_id ON thread_entity (entityId);
 
-CREATE INDEX idx_thread_entity_on_type_taskStatus ON thread_entity (type, taskStatus);
+CREATE INDEX idx_type_task_status ON thread_entity (type, taskStatus);
