@@ -30,7 +30,7 @@ from metadata.generated.schema.entity.data.table import CustomMetricProfile
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
-from metadata.profiler.api.models import SerializableTableData, ThreadPoolMetrics
+from metadata.profiler.api.models import TableData, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
@@ -517,7 +517,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
         return profile_results
 
-    def fetch_sample_data(self, table, columns) -> SerializableTableData:
+    def fetch_sample_data(self, table, columns) -> TableData:
         """Fetch sample data from database
 
         Args:

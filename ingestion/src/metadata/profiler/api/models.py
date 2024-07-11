@@ -37,7 +37,6 @@ from metadata.generated.schema.entity.services.connections.connectionBasicType i
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.ingestion.models.custom_pydantic import MustSerialize
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.processor.models import ProfilerDef
@@ -132,7 +131,3 @@ class ThreadPoolMetrics(ConfigModel):
     metric_type: MetricTypes
     column: Optional[Union[Column, SQALikeColumn]] = None
     table: Union[Table, DeclarativeMeta]
-
-
-class SerializableTableData(TableData):
-    rows: Optional[List[List[MustSerialize]]]

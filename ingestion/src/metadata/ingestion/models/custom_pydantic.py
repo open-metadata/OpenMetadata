@@ -20,10 +20,9 @@ import logging
 from typing import Any, Dict, Literal, Optional, Union
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import PlainSerializer, WrapSerializer
+from pydantic import PlainSerializer
 from pydantic.main import IncEx
 from pydantic.types import SecretStr
-from pydantic_core.core_schema import SerializerFunctionWrapHandler
 from typing_extensions import Annotated
 
 logger = logging.getLogger("metadata")
@@ -135,13 +134,3 @@ def ignore_type_decoder(type_: Any) -> None:
     BaseModel.model_config[JSON_ENCODERS][type_] = {
         lambda v: v.decode("utf-8", "ignore")
     }
-
-
-def ser_wrap(v: Any, nxt: SerializerFunctionWrapHandler) -> str:
-    try:
-        return nxt(v)
-    except Exception:
-        return f"<UNSERIALIZABLE OBJECT [{type(v).__name__}]>: '{str(v)[:128]}'"
-
-
-MustSerialize = Annotated[Any, WrapSerializer(ser_wrap, when_used="json")]

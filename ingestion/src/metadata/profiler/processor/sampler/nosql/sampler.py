@@ -2,7 +2,7 @@ from typing import Dict, List, Optional, Tuple
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-from metadata.profiler.api.models import SerializableTableData
+from metadata.profiler.api.models import TableData
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -20,7 +20,7 @@ class NoSQLSampler(SamplerInterface):
             self.table, self.table.columns, self._profile_sample_query, limit
         )
 
-    def _fetch_sample_data_from_user_query(self) -> SerializableTableData:
+    def _fetch_sample_data_from_user_query(self) -> TableData:
         """
         Fetch sample data based on a user query. Assuming the enging has one (example: MongoDB)
         If the engine does not support a custom query, an error will be raised.
@@ -31,24 +31,24 @@ class NoSQLSampler(SamplerInterface):
             for column in self.table.columns
         ]
         rows, cols = self.transpose_records(records, columns)
-        return SerializableTableData(rows=rows, columns=[c.name for c in cols])
+        return TableData(rows=rows, columns=[c.name for c in cols])
 
     def random_sample(self):
         pass
 
-    def fetch_sample_data(self, columns: List[SQALikeColumn]) -> SerializableTableData:
+    def fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:
         if self._profile_sample_query:
             return self._fetch_sample_data_from_user_query()
         return self._fetch_sample_data(columns)
 
-    def _fetch_sample_data(self, columns: List[SQALikeColumn]) -> SerializableTableData:
+    def _fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:
         """
         returns sampled ometa dataframes
         """
         limit = self._get_limit()
         records = self.client.scan(self.table, self.table.columns, limit)
         rows, cols = self.transpose_records(records, columns)
-        return SerializableTableData(rows=rows, columns=[col.name for col in cols])
+        return TableData(rows=rows, columns=[col.name for col in cols])
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.table)

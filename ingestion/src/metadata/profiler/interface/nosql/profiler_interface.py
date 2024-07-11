@@ -24,7 +24,7 @@ from sqlalchemy import Column
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.profiler.adaptors.factory import factory
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-from metadata.profiler.api.models import SerializableTableData, ThreadPoolMetrics
+from metadata.profiler.api.models import TableData, ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import Metric, MetricTypes
 from metadata.profiler.metrics.registry import Metrics
@@ -153,9 +153,7 @@ class NoSQLProfilerInterface(ProfilerInterface):
             column = None
         return row, column, metric_func.metric_type.value
 
-    def fetch_sample_data(
-        self, table, columns: List[SQALikeColumn]
-    ) -> SerializableTableData:
+    def fetch_sample_data(self, table, columns: List[SQALikeColumn]) -> TableData:
         return self.sampler.fetch_sample_data(columns)
 
     def _get_sampler(self) -> NoSQLSampler:
