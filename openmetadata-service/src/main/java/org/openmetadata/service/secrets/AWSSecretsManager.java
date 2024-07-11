@@ -71,7 +71,7 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
         UpdateSecretRequest.builder()
             .secretId(secretName)
             .description("This secret was created by OpenMetadata")
-            .secretString(Objects.isNull(secretValue) ? NULL_SECRET_STRING : secretValue)
+            .secretString(cleanNullOrEmpty(secretValue))
             .build();
     this.secretsClient.updateSecret(updateSecretRequest);
   }

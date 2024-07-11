@@ -17,6 +17,8 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.teams.UserResource;
+import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -64,6 +66,8 @@ public class BotTokenCache {
               NON_DELETED,
               true);
       AuthenticationMechanism authenticationMechanism = user.getAuthenticationMechanism();
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+      secretsManager.decryptAuthenticationMechanism(user.getName(), authenticationMechanism);
       if (authenticationMechanism != null) {
         JWTAuthMechanism jwtAuthMechanism =
             JsonUtils.convertValue(authenticationMechanism.getConfig(), JWTAuthMechanism.class);

@@ -113,28 +113,14 @@ We believe this update will bring greater consistency and clarity to our version
 
 # Backward Incompatible Changes
 
-## 1.4.0
+## 1.5.0
 
-### Tooling
+### Secrets Manager
 
-- **Metadata Backup & Restore**: The Metadata Backup/Recovery has been deprecated, and no further support will be provided. Users are advised to use database-native tools to back up data and store it in their object store for recovery.
-  You can check the [docs](/deployment/backup-restore-metadata) for more information.
-- **Metadata Docker CLI**: For the past releases, we have been updating the documentation to point users to directly run the docker quickstart
-  with the docker compose files in the release page ([docs](/quick-start/local-docker-deployment)). In this release, we're completely removing the support for `metadata docker`.
-- **bootstrap_storage.sh**: We have deprecated `bootstrap/bootstrap_storage.sh` and replaced it with `bootstrap/openmetadata-ops.sh`. The documentation has been updated accordingly.
-
+- Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. 
+  It won't appear anymore in your `dag_generated_configs` in Airflow.
 
 ### UI
 
-- **Activity Feed**: The Activity Feed has been improved with new, updated cards that display critical information such as data quality test case updates, descriptions, tag updates, or asset removal.
-- **Lineage**: The Expand All button has been removed. A new Layers button is introduced in the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
-- **View Definition**: View Definition is now renamed to Schema Definition
-- **Glossary**: Adding Glossary Term view has been improved. Now, we show glossary terms hierarchically, enabling a better understanding of how the terms are set up while labeling a table or dashboard.
-- **Classifications**: users can set it to be mutually exclusive **only** at the time of creation. Once created, you cannot change it back to mutually non-exclusive or vice versa. 
-    This is to prevent conflicts between adding multiple tags that belong to the same classification and later turning the mutually exclusive flag back to true.
-
 ### API
 
-- **View Definition**: Table Schema's `ViewDefinition` is now renamed to `SchemaDefinition` to capture Tables' Create Schema.
-- **Bulk Import**: Bulk Import API now creates entities if they are not present during the import.
-- **Test Suites**: Table's `TestSuite` is migrated to an `EntityReference`. Previously it used to store entire payload of `TestSuite`.

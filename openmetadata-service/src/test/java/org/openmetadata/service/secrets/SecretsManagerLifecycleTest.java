@@ -15,10 +15,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -45,6 +48,30 @@ public class SecretsManagerLifecycleTest {
     lenient().when(fernet.decryptIfApplies(anyString())).thenReturn(DECRYPTED_VALUE);
     lenient().when(fernet.encrypt(anyString())).thenReturn(ENCRYPTED_VALUE);
     secretsManager.setFernet(fernet);
+  }
+
+  @Test
+  void testJWTTokenEncryption() {
+    AuthenticationMechanism authenticationMechanism =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(
+                new JWTAuthMechanism()
+                    .withJWTToken("token")
+                    .withJWTTokenExpiry(JWTTokenExpiry.Unlimited));
+
+    AuthenticationMechanism encrypted =
+        (AuthenticationMechanism)
+            secretsManager.encryptAuthenticationMechanism("ingestion-bot", authenticationMechanism);
+    // Validate that the JWT Token gets properly encrypted
+    JWTAuthMechanism encryptedAuth = (JWTAuthMechanism) encrypted.getConfig();
+    assertEquals(ENCRYPTED_VALUE, encryptedAuth.getJWTToken());
+
+    AuthenticationMechanism decrypted =
+        secretsManager.decryptAuthenticationMechanism("ingestion-bot", encrypted);
+
+    JWTAuthMechanism decryptedAuth = (JWTAuthMechanism) decrypted.getConfig();
+    assertEquals(DECRYPTED_VALUE, decryptedAuth.getJWTToken());
   }
 
   @Test

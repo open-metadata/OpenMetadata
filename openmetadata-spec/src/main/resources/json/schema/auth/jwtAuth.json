@@ -38,8 +38,11 @@
   },
   "properties": {
     "JWTToken": {
+      "title": "JWT Token",
       "description": "JWT Auth Token.",
-      "type": "string"
+      "type": "string",
+      "format": "password",
+      "expose": true
     },
     "JWTTokenExpiry": {
       "$ref": "#/definitions/JWTTokenExpiry"

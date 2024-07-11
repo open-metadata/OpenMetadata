@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -48,6 +49,8 @@ import org.openmetadata.service.util.ReflectionUtil;
 
 @Slf4j
 public abstract class SecretsManager {
+  public static final String SECRET_FIELD_PREFIX = "secret:";
+
   public record SecretsConfig(
       String clusterName, String prefix, List<String> tags, Parameters parameters) {}
 
@@ -71,6 +74,20 @@ public abstract class SecretsManager {
     this.fernet = Fernet.getInstance();
     this.secretsIdConfig = builSecretsIdConfig();
   }
+
+  public Boolean isSecret(String string) {
+    return string.startsWith(SECRET_FIELD_PREFIX);
+  }
+
+  public String getSecretValue(String secretWithPrefix) {
+    String secretName = secretWithPrefix.split(SECRET_FIELD_PREFIX, 2)[1];
+    return getSecret(secretName);
+  }
+
+  /**
+   * GET a secret using the SM implementation if the string starts with `secret:/`
+   */
+  abstract String getSecret(String secretName);
 
   /**
    * Override this method in any Secrets Manager implementation
@@ -124,32 +141,43 @@ public abstract class SecretsManager {
     }
   }
 
-  public void encryptAuthenticationMechanism(
+  public Object encryptAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
-        encryptPasswordFields(authenticationMechanism, buildSecretId(true, "bot", name), true);
+        return encryptPasswordFields(
+            authenticationMechanism, buildSecretId(true, "bot", name), true);
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
             String.format("Failed to encrypt user bot instance [%s]", name));
       }
     }
+    return null;
   }
 
-  public void decryptAuthenticationMechanism(
+  /**
+   * This is used to handle the JWT Token internally, in the JWTFilter, when
+   * calling for the auth-mechanism in the UI, etc.
+   * If using SM, we need to decrypt and GET the secret to ensure we are comparing
+   * the right values.
+   */
+  public AuthenticationMechanism decryptAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
-        decryptPasswordFields(authenticationMechanism);
+        AuthenticationMechanism fernetDecrypted =
+            (AuthenticationMechanism) decryptPasswordFields(authenticationMechanism);
+        return (AuthenticationMechanism) getSecretFields(fernetDecrypted);
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
             String.format("Failed to decrypt user bot instance [%s]", name));
       }
     }
+    return null;
   }
 
   public void encryptIngestionPipeline(IngestionPipeline ingestionPipeline) {
@@ -261,6 +289,22 @@ public abstract class SecretsManager {
     return null;
   }
 
+  /**
+   * Used only in the OM Connection Builder, which sends the credentials to Ingestion Workflows
+   */
+  public JWTAuthMechanism decryptJWTAuthMechanism(JWTAuthMechanism authMechanism) {
+    if (authMechanism != null) {
+      try {
+        decryptPasswordFields(authMechanism);
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST, "Failed to decrypt OpenMetadataConnection instance.");
+      }
+      return authMechanism;
+    }
+    return null;
+  }
+
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
@@ -335,6 +379,45 @@ public abstract class SecretsManager {
       throw new SecretsManagerException(
           String.format(
               "Error trying to decrypt object [%s] due to [%s]",
+              toDecryptObject.toString(), e.getMessage()));
+    }
+  }
+
+  /**
+   * Get the object and use the secrets manager to get the right value to show
+   */
+  private Object getSecretFields(Object toDecryptObject) {
+    try {
+      // for each get method
+      Arrays.stream(toDecryptObject.getClass().getMethods())
+          .filter(ReflectionUtil::isGetMethodOfObject)
+          .forEach(
+              method -> {
+                Object obj = ReflectionUtil.getObjectFromMethod(method, toDecryptObject);
+                String fieldName = method.getName().replaceFirst("get", "");
+                // if the object matches the package of openmetadata
+                if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(obj))) {
+                  // encryptPasswordFields
+                  getSecretFields(obj);
+                  // check if it has annotation
+                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                  String fieldValue = (String) obj;
+                  // get setMethod
+                  Method toSet = ReflectionUtil.getToSetMethod(toDecryptObject, obj, fieldName);
+                  // set new value
+                  ReflectionUtil.setValueInMethod(
+                      toDecryptObject,
+                      Boolean.TRUE.equals(isSecret(fieldValue))
+                          ? getSecretValue(fieldValue)
+                          : fieldValue,
+                      toSet);
+                }
+              });
+      return toDecryptObject;
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          String.format(
+              "Error trying to GET secret [%s] due to [%s]",
               toDecryptObject.toString(), e.getMessage()));
     }
   }
