@@ -23,8 +23,8 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
+    TableData,
 )
-from metadata.profiler.api.models import TableData
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.sqa_like_column import SQALikeColumn
 

@@ -1,8 +1,7 @@
 from typing import Dict, List, Optional, Tuple
 
-from metadata.generated.schema.entity.data.table import ProfileSampleType
+from metadata.generated.schema.entity.data.table import ProfileSampleType, TableData
 from metadata.profiler.adaptors.nosql_adaptor import NoSQLAdaptor
-from metadata.profiler.api.models import TableData
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.sqa_like_column import SQALikeColumn

@@ -24,8 +24,8 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
     ProfileSampleType,
+    TableData,
 )
-from metadata.profiler.api.models import TableData
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.orm.registry import Dialects

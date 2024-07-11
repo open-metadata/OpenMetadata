@@ -1,8 +1,7 @@
 import pytest
 
 from _openmetadata_testutils.helpers.markers import xfail_param
-from ingestion.src.metadata.generated.schema.entity.data.table import TableData
-from ingestion.src.metadata.profiler.api.models import TableData
+from metadata.generated.schema.entity.data.table import TableData
 
 
 @pytest.mark.parametrize(
