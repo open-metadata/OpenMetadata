@@ -135,7 +135,7 @@ kubectl port-forward service/openmetadata 8585:http
 
 The above command will port forward traffic from local machine port 8585 to a named port of OpenMetadata kubernetes service `http`.
 
-Browse the Application with url `http://localhost:8585` from your Browser. The default login credentials are `admin:admin` to log into OpenMetadata Application.
+Browse the Application with url `http://localhost:8585` from your Browser. The default login credentials are `admin@openmetadata.org:admin` to log into OpenMetadata Application.
 
 ### 7. Cleanup
 

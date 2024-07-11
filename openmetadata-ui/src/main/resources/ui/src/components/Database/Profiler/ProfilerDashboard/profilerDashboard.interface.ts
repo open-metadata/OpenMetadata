@@ -133,7 +133,7 @@ export type TestCaseAction = {
 
 export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
-  data: Record<string, string | number | undefined | Thread>[];
+  data: Record<string, string | number | undefined | Thread | number[]>[];
 };
 
 export interface LineChartRef {
