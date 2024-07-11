@@ -43,14 +43,16 @@
       "dashboardService",
       "pipelineService",
       "mlmodelService",
+      "storageService",
+      "metadataService",
       "searchService",
       "entityReportData",
       "webAnalyticEntityViewReportData",
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
-      "storageService",
-      "dataProduct"
+      "dataProduct",
+      "testCaseResolutionStatus"
     ],
     "recreateIndex": true,
     "batchSize": "100",

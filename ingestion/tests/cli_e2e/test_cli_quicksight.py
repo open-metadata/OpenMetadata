@@ -23,10 +23,10 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return "quicksight"
 
     def get_includes_dashboards(self) -> List[str]:
-        return [".*"]
+        return ["^test$"]
 
     def get_excludes_dashboards(self) -> List[str]:
-        return ["test"]
+        return ["test_redshift_lineage"]
 
     def get_includes_charts(self) -> List[str]:
         return [".*Sheet 1.*", ".*"]
@@ -47,10 +47,10 @@ class QuicksightCliTest(CliCommonDashboard.TestSuite):
         return 7
 
     def expected_filtered_mix(self) -> int:
-        return 0
+        return 2
 
     def expected_filtered_sink_mix(self) -> int:
-        return 0
+        return 2
 
     # Quicksight do not ingest tags
     def expected_tags(self) -> int:
