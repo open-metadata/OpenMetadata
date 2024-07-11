@@ -27,7 +27,7 @@ public interface CreateEntity {
 
   String getDescription();
 
-  default EntityReference getOwner() {
+  default List<EntityReference> getOwner() {
     return null;
   }
 

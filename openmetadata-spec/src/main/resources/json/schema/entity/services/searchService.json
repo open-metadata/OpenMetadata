@@ -121,7 +121,7 @@
     },
     "owner": {
       "description": "Owner of this search service.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

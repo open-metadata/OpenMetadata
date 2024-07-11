@@ -59,9 +59,10 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this pipeline",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "service": {
       "description": "Link to the pipeline service fqn where this pipeline is hosted in",

@@ -213,7 +213,7 @@
     },
     "owner": {
       "description": "Owner of this ML Model.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this ML Model.",

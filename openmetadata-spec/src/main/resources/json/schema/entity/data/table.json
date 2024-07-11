@@ -875,8 +875,8 @@
           }
         },
         "owner": {
-          "description": "Owner of this Model.",
-          "$ref": "../../type/entityReference.json",
+          "description": "Owner of this Table.",
+          "$ref": "../../type/entityReferenceList.json",
           "default": null
         },
         "tags": {
@@ -972,7 +972,7 @@
     },
     "owner": {
       "description": "Owner of this table.",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "databaseSchema": {

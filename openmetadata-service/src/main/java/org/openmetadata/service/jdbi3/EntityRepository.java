@@ -485,14 +485,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T copy(T entity, CreateEntity request, String updatedBy) {
-    EntityReference owner = validateOwner(request.getOwner());
+    List<EntityReference> owners = validateOwners(request.getOwner());
     EntityReference domain = validateDomain(request.getDomain());
     validateReviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
     entity.setDescription(request.getDescription());
-    entity.setOwner(owner);
+    entity.setOwners(owners);
     entity.setDomain(domain);
     entity.setTags(request.getTags());
     entity.setDataProducts(getEntityReferences(Entity.DATA_PRODUCT, request.getDataProducts()));
@@ -782,7 +782,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void storeRelationshipsInternal(T entity) {
-    storeOwner(entity, entity.getOwner());
+    storeOwners(entity, entity.getOwners());
     applyTags(entity);
     storeDomain(entity, entity.getDomain());
     storeDataProducts(entity, entity.getDataProducts());
@@ -791,7 +791,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
-    entity.setOwner(fields.contains(FIELD_OWNER) ? getOwner(entity) : entity.getOwner());
+    entity.setOwners(fields.contains(FIELD_OWNER) ? getOwners(entity) : entity.getOwners());
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
@@ -811,7 +811,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void clearFieldsInternal(T entity, Fields fields) {
-    entity.setOwner(fields.contains(FIELD_OWNER) ? entity.getOwner() : null);
+    entity.setOwners(fields.contains(FIELD_OWNER) ? entity.getOwner() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
     entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
@@ -878,7 +878,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setUpdatedAt(System.currentTimeMillis());
 
     prepareInternal(updated, true);
-    populateOwner(updated.getOwner());
+    populateOwners(updated.getOwners());
     restorePatchAttributes(original, updated);
 
     // Update the attributes and relationships of an entity
@@ -1832,7 +1832,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final EntityReference getOwner(T entity) {
+  public final List<EntityReference> getOwner(T entity) {
     return !supportsOwner ? null : getFromEntityRef(entity.getId(), Relationship.OWNS, null, false);
   }
 
@@ -1926,17 +1926,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @Transaction
-  protected void storeOwner(T entity, EntityReference owner) {
-    if (supportsOwner && owner != null) {
-      // Add relationship owner --- owns ---> ownedEntity
-      LOG.info(
-          "Adding owner {}:{} for entity {}:{}",
-          owner.getType(),
-          owner.getFullyQualifiedName(),
-          entityType,
-          entity.getId());
-      addRelationship(
-          owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
+  protected void storeOwners(T entity, List<EntityReference> owners) {
+    if (supportsOwner && !nullOrEmpty(owners)) {
+      for (EntityReference owner: owners) {
+        // Add relationship owner --- owns ---> ownedEntity
+        LOG.info(
+            "Adding owner {}:{} for entity {}:{}",
+            owner.getType(),
+            owner.getFullyQualifiedName(),
+            entityType,
+            entity.getId());
+        addRelationship(
+            owner.getId(), entity.getId(), owner.getType(), entityType, Relationship.OWNS);
+      }
     }
   }
 
@@ -2124,23 +2126,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final EntityReference validateOwner(EntityReference owner) {
-    if (owner == null) {
+  public final List<EntityReference> validateOwners(List<EntityReference> owners) {
+    if (nullOrEmpty(owners)) {
       return null;
     }
-    if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidOwnerType(owner.getType()));
-    } else if (owner
-        .getType()
-        .equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
-      Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
-      if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+    List<EntityReference> validatedOwners = new ArrayList<>();
+    for (EntityReference owner: owners) {
+      if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
+        throw new IllegalArgumentException(CatalogExceptionMessage.invalidOwnerType(owner.getType()));
+      } else if (owner
+          .getType()
+          .equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
+        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
+        if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+        }
+
       }
-      return team.getEntityReference();
+      validatedOwners.add(Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL));
     }
-    return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+    return validatedOwners;
   }
 
   protected void validateTags(T entity) {

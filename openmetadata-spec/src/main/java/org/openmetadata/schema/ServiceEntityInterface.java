@@ -25,7 +25,7 @@ public interface ServiceEntityInterface extends EntityInterface {
 
   ServiceConnectionEntityInterface getConnection();
 
-  ServiceEntityInterface withOwner(EntityReference owner);
+  ServiceEntityInterface withOwner(List<EntityReference> owner);
 
   void setPipelines(List<EntityReference> pipelines);
 

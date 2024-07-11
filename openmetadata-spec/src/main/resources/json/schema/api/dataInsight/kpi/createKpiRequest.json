@@ -19,9 +19,10 @@
       "description": "Description of the Kpi.",
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Kpi",
-      "$ref": "../../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this Kpi",
+      "$ref": "../../../type/entityReferenceList.json",
+      "default": null
     },
     "dataInsightChart": {
       "description": "Fully qualified name of the Chart this kpi refers to",

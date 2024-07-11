@@ -104,7 +104,7 @@
     },
     "owner": {
       "description": "Owner of this glossary term.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {
       "description": "Count of how many times this and it's children glossary terms are used as labels.",

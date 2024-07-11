@@ -103,7 +103,7 @@
     },
     "owner": {
       "description": "Owner of this chart.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this chart.",

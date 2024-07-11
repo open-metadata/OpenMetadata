@@ -21,9 +21,10 @@
       "description": "Description of the schema instance. What it has and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this schema",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this schema",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "database": {
       "description": "Link to the database fully qualified name where this schema is hosted in",

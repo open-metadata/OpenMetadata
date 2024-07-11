@@ -49,7 +49,7 @@
     },
     "owner": {
       "description": "Owner of this Query.",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "duration": {

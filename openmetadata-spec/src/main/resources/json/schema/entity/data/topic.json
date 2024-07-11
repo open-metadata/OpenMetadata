@@ -122,7 +122,7 @@
     },
     "owner": {
       "description": "Owner of this topic.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this table.",

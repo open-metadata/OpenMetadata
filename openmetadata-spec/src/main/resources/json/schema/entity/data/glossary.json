@@ -53,7 +53,7 @@
     },
     "owner": {
       "description": "Owner of this glossary.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {
       "description": "Count of how many times terms from this glossary are used.",

@@ -81,7 +81,7 @@
     },
     "owner": {
       "description": "Owner of this Pipeline.",
-      "$ref": "../type/entityReference.json",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {

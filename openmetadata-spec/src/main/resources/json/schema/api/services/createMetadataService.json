@@ -25,9 +25,10 @@
     "connection": {
       "$ref": "../../entity/services/metadataService.json#/definitions/metadataConnection"
     },
-    "owner": {
-      "description": "Owner of this Metadata service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this Metadata service.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this Metadata Service.",

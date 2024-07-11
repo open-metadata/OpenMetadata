@@ -90,7 +90,7 @@
     },
     "owner": {
       "description": "Owner of this container.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the storage service where this container is hosted in.",

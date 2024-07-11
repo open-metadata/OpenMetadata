@@ -35,7 +35,8 @@
     },
     "owner": {
       "description": "Owner of this dashboard service.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "dataProducts" : {
       "description": "List of fully qualified names of data products this entity is part of.",

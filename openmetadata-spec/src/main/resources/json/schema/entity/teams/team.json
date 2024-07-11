@@ -95,7 +95,7 @@
     },
     "owner": {
       "description": "Owner of this team. ",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "isJoinable": {

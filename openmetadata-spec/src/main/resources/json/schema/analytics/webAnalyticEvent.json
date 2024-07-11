@@ -37,7 +37,7 @@
     },
     "owner": {
       "description": "Owner of this report.",
-      "$ref": "../type/entityReference.json",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {

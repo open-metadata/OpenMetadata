@@ -201,7 +201,7 @@
     },
     "owner": {
       "description": "Owner of this searchIndex.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this searchIndex.",

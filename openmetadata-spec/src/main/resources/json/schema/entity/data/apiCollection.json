@@ -57,7 +57,8 @@
     },
     "owner": {
       "description": "Owner of this API Collection.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this API Collection.",

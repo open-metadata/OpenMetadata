@@ -116,7 +116,7 @@
         },
         "owner": {
           "description": "Owner of this task.",
-          "$ref": "../../type/entityReference.json"
+          "$ref": "../../type/entityReferenceList.json"
         }
       },
       "required": ["name"],
@@ -231,7 +231,7 @@
     },
     "owner": {
       "description": "Owner of this pipeline.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to service where this pipeline is hosted in.",

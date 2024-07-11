@@ -71,7 +71,7 @@
     },
     "owner": {
       "description": "Owner of this Domain.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "experts": {
       "description": "List of users who are experts in this Domain.",

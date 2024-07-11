@@ -23,9 +23,10 @@
       "description": "dimension(s) and metric(s) for a report",
       "$ref": "../../analytics/basic.json#/definitions/webAnalyticEventType"
     },
-    "owner": {
-      "description": "Owner of this report definition",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this report definition",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     }
   },
   "required": ["name", "eventType"],

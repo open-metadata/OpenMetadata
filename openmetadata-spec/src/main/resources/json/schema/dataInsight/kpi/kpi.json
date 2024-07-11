@@ -55,7 +55,7 @@
     },
     "owner": {
       "description": "Owner of this KPI definition.",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "version": {

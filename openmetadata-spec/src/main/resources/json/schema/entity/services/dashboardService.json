@@ -180,7 +180,7 @@
     },
     "owner": {
       "description": "Owner of this dashboard service.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

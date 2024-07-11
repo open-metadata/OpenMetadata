@@ -53,7 +53,7 @@
     },
     "owner": {
       "description": "Owner of this schema.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the database cluster/service where this schema is hosted in.",

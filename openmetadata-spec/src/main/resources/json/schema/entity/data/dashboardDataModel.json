@@ -86,7 +86,7 @@
     },
     "owner": {
       "description": "Owner of this data model.",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "dataProducts" : {

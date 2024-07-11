@@ -21,7 +21,7 @@
     },
     "owner": {
       "description": "Owner of this Alert.",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "enabled": {

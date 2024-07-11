@@ -116,7 +116,7 @@
     },
     "owner": {
       "description": "Owner of this workflow.",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "version": {
