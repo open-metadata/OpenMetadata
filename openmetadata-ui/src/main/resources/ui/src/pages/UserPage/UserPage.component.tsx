@@ -48,7 +48,7 @@ const UserPage = () => {
   const fetchUserData = async () => {
     try {
       const res = await getUserByName(username, {
-        fields: 'profile,roles,teams,personas,defaultPersona,domain',
+        fields: 'profile,roles,teams,personas,defaultPersona,userDomains',
         include: Include.All,
       });
       setUserData(res);
