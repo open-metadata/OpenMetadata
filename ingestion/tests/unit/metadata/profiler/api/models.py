@@ -7,14 +7,30 @@ from ingestion.src.metadata.profiler.api.models import SerializableTableData
 @pytest.mark.parametrize(
     "parameter",
     [
-        TableData(
+        SerializableTableData(
             columns=[],
             rows=[],
-        )
+        ),
+        SerializableTableData(
+            columns=[],
+            rows=[[1]],
+        ),
+        SerializableTableData(
+            columns=[],
+            rows=[["a"]],
+        ),
+        SerializableTableData(
+            columns=[],
+            rows=[[b"\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"]],
+        ),
     ],
 )
 def test_table_data_serialization(parameter):
-    parameter = SerializableTableData.model_validate(parameter.model_dump())
+    for row in parameter.rows:
+        for i, cell in enumerate(row):
+            if isinstance(cell, bytes):
+                # bytes are written as strings and deserialize as strings
+                row[i] = cell.decode("utf-8")
     assert (
         SerializableTableData.model_validate_json(parameter.model_dump_json())
         == parameter
