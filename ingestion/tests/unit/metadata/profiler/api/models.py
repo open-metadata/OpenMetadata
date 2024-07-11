@@ -1,3 +1,5 @@
+import warnings
+
 import pytest
 
 from ingestion.src.metadata.generated.schema.entity.data.table import TableData
@@ -21,11 +23,14 @@ from ingestion.src.metadata.profiler.api.models import SerializableTableData
         ),
         SerializableTableData(
             columns=[],
-            rows=[[b"\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"]],
+            rows=[
+                [b"\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"]
+            ],
         ),
     ],
 )
 def test_table_data_serialization(parameter):
+    warnings.warn(UserWarning("api v1, should use functions from v2"))
     for row in parameter.rows:
         for i, cell in enumerate(row):
             if isinstance(cell, bytes):

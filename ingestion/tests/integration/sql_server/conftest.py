@@ -133,7 +133,9 @@ def ingestion_config(db_service, tmp_path_factory, workflow_config, sink_config)
 @pytest.fixture(scope="module")
 def unmask_password(create_service_request):
     def inner(service: DatabaseService):
-        service.connection.config.password = create_service_request.connection.config.password
+        service.connection.config.password = (
+            create_service_request.connection.config.password
+        )
         return service
 
     return inner
