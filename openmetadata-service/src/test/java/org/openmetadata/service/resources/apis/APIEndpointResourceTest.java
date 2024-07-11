@@ -94,16 +94,20 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     List<APIEndpoint> sampleAPIEndpoints = new ArrayList<>();
 
     // Create API Endpoints for each service and test APIs
-    for (int i=0; i < 5; i++) {
-     omAPIEndpoints.add(createAndCheckEntity(
-          createRequest(String.format("%s%d", test.getDisplayName(), i)).withApiCollection(OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
-          ADMIN_AUTH_HEADERS));
+    for (int i = 0; i < 5; i++) {
+      omAPIEndpoints.add(
+          createAndCheckEntity(
+              createRequest(String.format("%s%d", test.getDisplayName(), i))
+                  .withApiCollection(OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS));
     }
 
-    for (int i=0; i < 3; i++) {
-     sampleAPIEndpoints.add(createAndCheckEntity(
-          createRequest(String.format("%s%s%d", test.getDisplayName(), "S", i)).withApiCollection(SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
-          ADMIN_AUTH_HEADERS));
+    for (int i = 0; i < 3; i++) {
+      sampleAPIEndpoints.add(
+          createAndCheckEntity(
+              createRequest(String.format("%s%s%d", test.getDisplayName(), "S", i))
+                  .withApiCollection(SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS));
     }
 
     Map<String, String> queryParams = new HashMap<>();
