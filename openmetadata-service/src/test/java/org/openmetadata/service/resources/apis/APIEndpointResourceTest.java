@@ -26,6 +26,7 @@ import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
@@ -88,6 +89,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
         "[endpointURL must not be null]");
   }
 
+  @Order(1)
   @Test
   void post_apiEndpointWithDifferentService_200_ok(TestInfo test) throws IOException {
     List<APIEndpoint> omAPIEndpoints = new ArrayList<>();
