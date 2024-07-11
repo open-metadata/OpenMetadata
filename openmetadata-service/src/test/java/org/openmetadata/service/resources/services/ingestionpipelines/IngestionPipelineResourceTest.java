@@ -14,11 +14,13 @@
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -26,6 +28,7 @@ import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -51,6 +54,8 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.app.external.AutomatorAppConfig;
+import org.openmetadata.schema.entity.app.external.Resource;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -58,6 +63,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
@@ -73,6 +79,7 @@ import org.openmetadata.schema.services.connections.database.ConnectionArguments
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
@@ -780,6 +787,54 @@ public class IngestionPipelineResourceTest
                 ADMIN_AUTH_HEADERS)
             .get();
     TestUtils.readResponse(response, PipelineStatus.class, Status.NO_CONTENT.getStatusCode());
+  }
+
+  @Test
+  void put_pipelineStatus_403(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create a status without having the EDIT_INGESTION_PIPELINE_STATUS permission
+    assertResponse(
+        () ->
+            TestUtils.put(
+                getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+                new PipelineStatus()
+                    .withPipelineState(PipelineStatusType.RUNNING)
+                    .withRunId(runId)
+                    .withTimestamp(3L),
+                Response.Status.CREATED,
+                authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(
+            USER2.getName(), List.of(MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS)));
+  }
+
+  @Test
+  void post_ingestionPipeline_403(TestInfo test) throws HttpResponseException {
+    CreateIngestionPipeline create = createRequest(getEntityName(test));
+    create
+        .withPipelineType(PipelineType.APPLICATION)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    new ApplicationPipeline()
+                        .withAppConfig(
+                            new AutomatorAppConfig()
+                                .withResources(new Resource().withQueryFilter(""))
+                                .withActions(List.of()))));
+
+    // Create ingestion pipeline without having the CREATE_INGESTION_PIPELINE_AUTOMATOR permission
+    assertResponse(
+        () -> createEntity(create, authHeaders(USER1.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(
+            USER1.getName(), List.of(MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR)));
+
+    // Admin has permissions and can create it
+    createEntity(create, ADMIN_AUTH_HEADERS);
   }
 
   @Test

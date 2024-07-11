@@ -24,6 +24,12 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 from pydantic import ValidationError
 
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
+from metadata.generated.schema.api.data.createAPICollection import (
+    CreateAPICollectionRequest,
+)
+from metadata.generated.schema.api.data.createAPIEndpoint import (
+    CreateAPIEndpointRequest,
+)
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -84,6 +90,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
@@ -536,6 +543,31 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.api_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/api_service/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.api_service = self.metadata.get_service_or_create(
+            entity=ApiService,
+            config=WorkflowSource(**self.api_service_json),
+        )
+        self.api_collection = json.load(
+            open(
+                sample_data_folder + "/api_service/api_collection.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.api_endpoint = json.load(
+            open(
+                sample_data_folder + "/api_service/api_endpoint.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
 
     @classmethod
     def create(
@@ -578,6 +610,7 @@ class SampleDataSource(
         yield from self.ingest_logical_test_suite()
         yield from self.ingest_data_insights()
         yield from self.ingest_life_cycle()
+        yield from self.ingest_api_service()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -1607,8 +1640,8 @@ class SampleDataSource(
                             ).timestamp()
                         )
                     ),
-                    accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
-                )
+                ),
+                accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
             )
 
             life_cycle_data.accessed = AccessDetails(
@@ -1621,8 +1654,8 @@ class SampleDataSource(
                             ).timestamp()
                         )
                     ),
-                    accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
-                )
+                ),
+                accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
             )
 
             if life_cycle["created"].get("accessedBy"):
@@ -1655,3 +1688,13 @@ class SampleDataSource(
 
     def test_connection(self) -> None:
         """Custom sources don't support testing connections"""
+
+    def ingest_api_service(self) -> Iterable[Either[Entity]]:
+        """Ingest API services"""
+
+        collection_request = CreateAPICollectionRequest(**self.api_collection)
+        yield Either(right=collection_request)
+
+        for endpoint in self.api_endpoint.get("endpoints"):
+            endpoint_request = CreateAPIEndpointRequest(**endpoint)
+            yield Either(right=endpoint_request)

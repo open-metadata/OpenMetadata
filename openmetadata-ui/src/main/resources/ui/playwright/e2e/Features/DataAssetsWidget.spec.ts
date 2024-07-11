@@ -19,9 +19,11 @@ import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { UserClass } from '../../support/user/UserClass';
 import {
-  createNewPage,
   getEntityTypeSearchIndexMapping,
+  performAdminLogin,
+  performUserLogin,
   redirectToHomePage,
 } from '../../utils/common';
 import { checkDataAssetWidget } from '../../utils/entity';
@@ -46,35 +48,33 @@ const menuLabel = {
   SearchIndex: 'search Search Indexes',
 };
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
 entities.forEach((EntityClass) => {
+  const user = new UserClass();
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
-
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await user.create(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
 
-    test.beforeEach('Visit landing page', async ({ page }) => {
+    test('Check Data Asset and Service Filtration', async ({ browser }) => {
+      const { page, afterAction } = await performUserLogin(browser, user);
       await redirectToHomePage(page);
-    });
-
-    test('Check Data Asset and Service Filtration', async ({ page }) => {
       await checkDataAssetWidget(
         page,
         menuLabel[entity.type],
         getEntityTypeSearchIndexMapping(entity.type),
         toLower(entity.service.serviceType)
       );
+      await afterAction();
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await user.delete(apiContext);
       await entity.delete(apiContext);
       await afterAction();
     });
