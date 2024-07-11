@@ -411,7 +411,7 @@ class AirflowSource(PipelineServiceSource):
         until the next run.
         """
         try:
-            return self.metadata.get_reference_by_name(name=owner)
+            return self.metadata.get_reference_by_name(name=owner, is_owner=True)
         except Exception as exc:
             logger.warning(f"Error while getting details of user {owner} - {exc}")
         return None
