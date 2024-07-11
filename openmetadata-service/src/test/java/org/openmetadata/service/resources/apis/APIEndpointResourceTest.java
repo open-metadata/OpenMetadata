@@ -90,25 +90,30 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
 
   @Test
   void post_apiEndpointWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentAPICollections = {
-      OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName(),
-      SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()
-    };
+    List<APIEndpoint> omAPIEndpoints = new ArrayList<>();
+    List<APIEndpoint> sampleAPIEndpoints = new ArrayList<>();
 
-    // Create topic for each service and test APIs
-    for (String apiCollection : differentAPICollections) {
-      createAndCheckEntity(
-          createRequest(test).withApiCollection(apiCollection), ADMIN_AUTH_HEADERS);
-
-      // List topics by filtering on service name and ensure right endPoints in the response
-      Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("apiCollection", apiCollection);
-
-      ResultList<APIEndpoint> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-      for (APIEndpoint endpoint : list.getData()) {
-        assertEquals(apiCollection, endpoint.getApiCollection().getFullyQualifiedName());
-      }
+    // Create API Endpoints for each service and test APIs
+    for (int i=0; i < 5; i++) {
+     omAPIEndpoints.add(createAndCheckEntity(
+          createRequest(String.format("%s%d", test.getDisplayName(), i)).withApiCollection(OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+          ADMIN_AUTH_HEADERS));
     }
+
+    for (int i=0; i < 3; i++) {
+     sampleAPIEndpoints.add(createAndCheckEntity(
+          createRequest(String.format("%s%s%d", test.getDisplayName(), "S", i)).withApiCollection(SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+          ADMIN_AUTH_HEADERS));
+    }
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("apiCollection", OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName());
+    ResultList<APIEndpoint> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(omAPIEndpoints.size(), list.getPaging().getTotal());
+
+    queryParams.put("apiCollection", SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName());
+    list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(sampleAPIEndpoints.size(), list.getPaging().getTotal());
   }
 
   @Test
