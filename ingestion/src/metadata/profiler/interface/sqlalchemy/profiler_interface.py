@@ -26,11 +26,11 @@ from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
-from metadata.generated.schema.entity.data.table import CustomMetricProfile
+from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
 from metadata.generated.schema.tests.customMetric import CustomMetric
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.mixins.sqalchemy.sqa_mixin import SQAInterfaceMixin
-from metadata.profiler.api.models import TableData, ThreadPoolMetrics
+from metadata.profiler.api.models import ThreadPoolMetrics
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
 from metadata.profiler.metrics.core import MetricTypes
 from metadata.profiler.metrics.registry import Metrics
@@ -487,6 +487,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             for future in futures:
                 if future.cancelled():
                     continue
+
                 try:
                     profile, column, metric_type = future.result(
                         timeout=self.timeout_seconds
@@ -529,6 +530,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         sampler = self._get_sampler(
             table=table,
         )
+
         return sampler.fetch_sample_data(columns)
 
     def get_composed_metrics(
