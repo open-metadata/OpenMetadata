@@ -49,7 +49,7 @@ def test_table_data_serialization(parameter):
                     ]
                 ],
             ),
-            reason="fails due to serialization of Any in TableData",
+            reason="TODO: change TableData.rows to List[List[str]]",
         ),
     ],
 )
