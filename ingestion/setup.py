@@ -376,6 +376,7 @@ test = {
     "requests==2.31.0",
     f"{DATA_DIFF['mysql']}==0.11.2",
     *plugins["deltalake"],
+    *plugins["mssql"],
 }
 
 e2e_test = {
