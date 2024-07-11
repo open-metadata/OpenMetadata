@@ -13,13 +13,11 @@
 import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
-import { DashboardClass } from '../../support/entity/DashboardClass';
-import { TableClass } from '../../support/entity/TableClass';
-import { TopicClass } from '../../support/entity/TopicClass';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDomain,
   createDomain,
+  setupAssetsForDomain,
   verifyDomain,
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
@@ -44,22 +42,14 @@ test.describe('Domains', () => {
 
   test('Add assets to domain', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
+    const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
-    const table = new TableClass();
-    const topic = new TopicClass();
-    const dashboard = new DashboardClass();
     await domain.create(apiContext);
-    await table.create(apiContext);
-    await topic.create(apiContext);
-    await dashboard.create(apiContext);
-    const assets = [table, topic, dashboard];
     await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
     await addAssetsToDomain(page, domain.data, assets);
     await domain.delete(apiContext);
-    await table.delete(apiContext);
-    await topic.delete(apiContext);
-    await dashboard.delete(apiContext);
+    await assetCleanup();
     await afterAction();
   });
 });

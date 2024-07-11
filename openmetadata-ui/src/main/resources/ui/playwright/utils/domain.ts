@@ -13,10 +13,14 @@
 import { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { Domain } from '../support/domain/Domain';
+import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
+import { TableClass } from '../support/entity/TableClass';
+import { TopicClass } from '../support/entity/TopicClass';
 import {
   descriptionBox,
+  getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
@@ -232,4 +236,26 @@ export const addAssetsToDomain = async (
   await assetsAddRes;
 
   await checkAssetsCount(page, assets.length);
+};
+
+export const setupAssetsForDomain = async (page: Page) => {
+  const { afterAction, apiContext } = await getApiContext(page);
+  const table = new TableClass();
+  const topic = new TopicClass();
+  const dashboard = new DashboardClass();
+  await table.create(apiContext);
+  await topic.create(apiContext);
+  await dashboard.create(apiContext);
+
+  const assetCleanup = async () => {
+    await table.create(apiContext);
+    await topic.create(apiContext);
+    await dashboard.create(apiContext);
+    await afterAction();
+  };
+
+  return {
+    assets: [table, topic, dashboard],
+    assetCleanup,
+  };
 };
