@@ -10,10 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, Page, request } from '@playwright/test';
+import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
+import { AdminClass } from '../support/user/AdminClass';
+import { UserClass } from '../support/user/UserClass';
 
 export const uuid = () => randomUUID().split('-')[0];
+
+export const descriptionBox =
+  '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
+export const INVALID_NAMES = {
+  MAX_LENGTH:
+    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890abName can be a maximum of 128 characters',
+  WITH_SPECIAL_CHARS: '::normalName::',
+};
+
+export const NAME_VALIDATION_ERROR =
+  'Name must contain only letters, numbers, underscores, hyphens, periods, parenthesis, and ampersands.';
+
+export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
+  'Name size must be between 2 and 64';
+
+export const NAME_MAX_LENGTH_VALIDATION_ERROR =
+  'Name can be a maximum of 128 characters';
 
 export const getToken = async (page: Page) => {
   return page.evaluate(
@@ -66,4 +85,65 @@ export const getApiContext = async (page: Page) => {
   const afterAction = async () => await apiContext.dispose();
 
   return { apiContext, afterAction };
+};
+
+export const getEntityTypeSearchIndexMapping = (entityType: string) => {
+  const entityMapping = {
+    Table: 'table_search_index',
+    Topic: 'topic_search_index',
+    Dashboard: 'dashboard_search_index',
+    Pipeline: 'pipeline_search_index',
+    MlModel: 'mlmodel_search_index',
+    Container: 'container_search_index',
+    SearchIndex: 'search_entity_search_index',
+  };
+
+  return entityMapping[entityType];
+};
+
+export const performAdminLogin = async (browser) => {
+  const admin = new AdminClass();
+  const page = await browser.newPage();
+  await admin.login(page);
+  await redirectToHomePage(page);
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
+
+  return { page, apiContext, afterAction };
+};
+
+export const performUserLogin = async (browser, user: UserClass) => {
+  const page = await browser.newPage();
+  await user.login(page);
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
+  };
+
+  return { page, apiContext, afterAction };
+};
+
+export const toastNotification = async (
+  page: Page,
+  message: string | RegExp
+) => {
+  await expect(page.getByRole('alert').first()).toHaveText(message);
+
+  await page.getByLabel('close').first().click();
+};
+
+export const clickOutside = async (page: Page) => {
+  await page.locator('body').click({
+    position: {
+      x: 0,
+      y: 0,
+    },
+  }); // with this action left menu bar is getting opened
+  await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
 };

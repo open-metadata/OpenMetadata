@@ -100,7 +100,7 @@ jobs:
     - name: Start Server and Ingest Sample Data
       uses: nick-fields/retry@v2.8.3
       env:
-        INGESTION_DEPENDENCY: "mysql,elasticsearch"
+        INGESTION_DEPENDENCY: "mysql,elasticsearch,sample-data"
       with:
         timeout_minutes: 60
         max_attempts: 2

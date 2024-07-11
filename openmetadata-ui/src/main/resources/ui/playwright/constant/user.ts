@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 export const DEFAULT_ADMIN_USER = {
-  userName: 'admin',
+  userName: 'admin@openmetadata.org',
   password: 'admin',
 };
 

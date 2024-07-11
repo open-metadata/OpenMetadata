@@ -21,6 +21,7 @@ import sqlalchemy
 from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
@@ -479,6 +480,14 @@ class SupersetUnitTest(TestCase):
         """
         self.superset_api.prepare()
         result = self.superset_api.yield_datamodel(MOCK_DASHBOARD)
+        self.assertEqual(len(list(result)), 1)
+
+    def test_datamodels_of_db_dashboard(self):
+        """
+        Mock the db client and check that we get a list
+        """
+        self.superset_db.prepare()
+        result = self.superset_db.yield_datamodel(MOCK_DASHBOARD_DB)
         self.assertEqual(len(list(result)), 1)
 
     def test_fetch_chart_db(self):

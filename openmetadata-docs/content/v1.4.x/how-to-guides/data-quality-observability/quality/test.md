@@ -142,12 +142,12 @@ alt="Resolved Status: Reason"
 caption="Resolved Status: Reason"
 /%}
 
-Users can also set up [alerts](/how-to-guides/data-quality-observability/quality/alerts) to be notified when a test fails.
+Users can also set up [alerts](/how-to-guides/data-quality-observability/observability/alerts) to be notified when a test fails.
 
  {%inlineCallout
   color="violet-70"
   bold="How to Set Alerts for Test Case Fails"
   icon="MdArrowForward"
-  href="/how-to-guides/data-quality-observability/quality/alerts"%}
+  href="/how-to-guides/data-quality-observability/observability/alerts"%}
   Get notified when a data quality test fails.
  {%/inlineCallout%}

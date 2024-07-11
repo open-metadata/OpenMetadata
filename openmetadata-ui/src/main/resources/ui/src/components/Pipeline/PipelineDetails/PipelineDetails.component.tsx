@@ -44,6 +44,7 @@ import {
 } from '../../../generated/entity/data/pipeline';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { postThread } from '../../../rest/feedsAPI';
@@ -592,10 +593,10 @@ const PipelineDetails = ({
         key: EntityTabs.TASKS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="p-t-sm m-x-lg">
                       <Row gutter={[0, 16]}>
@@ -674,7 +675,8 @@ const PipelineDetails = ({
                   ),
                   minWidth: 320,
                   flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
@@ -836,6 +838,10 @@ const PipelineDetails = ({
           onSave={onTaskUpdate}
         />
       )}
+
+      <LimitWrapper resource="pipeline">
+        <></>
+      </LimitWrapper>
 
       {threadLink ? (
         <ActivityThreadPanel

@@ -34,6 +34,13 @@
         <version>${awssdk.version}</version>
         <type>pom</type>
       </dependency>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>26.34.0</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -604,6 +611,10 @@
       <artifactId>json-patch</artifactId>
       <version>1.13</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-secretmanager</artifactId>
     </dependency>
   </dependencies>
 

@@ -58,6 +58,7 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -378,10 +379,10 @@ function SearchIndexDetailsPage() {
         key: EntityTabs.FIELDS,
         children: (
           <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
                       <DescriptionV1
@@ -439,7 +440,8 @@ function SearchIndexDetailsPage() {
                   ),
                   minWidth: 320,
                   flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
@@ -792,6 +794,10 @@ function SearchIndexDetailsPage() {
             onChange={handleTabChange}
           />
         </Col>
+
+        <LimitWrapper resource="searchIndex">
+          <></>
+        </LimitWrapper>
 
         {threadLink ? (
           <ActivityThreadPanel

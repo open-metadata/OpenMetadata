@@ -102,7 +102,7 @@
       "$ref": "../../type/basic.json#/definitions/href"
     },
     "owner": {
-      "description": "Owner of this dashboard.",
+      "description": "Owner of this chart.",
       "$ref": "../../type/entityReference.json"
     },
     "followers": {
@@ -160,6 +160,11 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 32
+    },
+    "dashboards": {
+      "description": "All the dashboards containing this chart.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     }
   },
   "required": ["id", "name", "service"],

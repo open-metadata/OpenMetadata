@@ -594,7 +594,7 @@ export const digitFormatter = (value: number) => {
   // convert 1000 to 1k
   return Intl.NumberFormat('en', {
     notation: 'compact',
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   }).format(value);
 };
 
@@ -688,13 +688,13 @@ export const getEntityIdArray = (entities: EntityReference[]): string[] =>
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
       ? tag.split(FQN_SEPARATOR_CHAR)[1]
       : tag;
   } else {
     return {
       ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
         ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : tag.tagFQN,
     };
@@ -836,3 +836,30 @@ export const handleSearchFilterOption = (
   }
 ) => toLower(option?.label).includes(toLower(searchValue));
 // Check label while searching anything and filter that options out if found matching
+
+/**
+ * @param serviceType key for quick filter
+ * @returns json filter query string
+ */
+
+export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};

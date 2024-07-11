@@ -24,7 +24,7 @@ import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -246,7 +246,7 @@ public class SystemRepository {
 
   public ValidationResponse validateSystem(
       OpenMetadataApplicationConfig applicationConfig,
-      PipelineServiceClient pipelineServiceClient,
+      PipelineServiceClientInterface pipelineServiceClient,
       JwtFilter jwtFilter) {
     ValidationResponse validation = new ValidationResponse();
 
@@ -298,7 +298,7 @@ public class SystemRepository {
 
   private StepValidation getPipelineServiceClientValidation(
       OpenMetadataApplicationConfig applicationConfig,
-      PipelineServiceClient pipelineServiceClient) {
+      PipelineServiceClientInterface pipelineServiceClient) {
     PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
     if (pipelineResponse.getCode() == 200) {
       return new StepValidation()
@@ -322,7 +322,7 @@ public class SystemRepository {
     OpenMetadataConnection openMetadataServerConnection =
         new OpenMetadataConnectionBuilder(applicationConfig).build();
     try {
-      jwtFilter.validateAndReturnDecodedJwtToken(
+      jwtFilter.validateJwtAndGetClaims(
           openMetadataServerConnection.getSecurityConfig().getJwtToken());
       return new StepValidation()
           .withDescription(ValidationStepDescription.JWT_TOKEN.key)

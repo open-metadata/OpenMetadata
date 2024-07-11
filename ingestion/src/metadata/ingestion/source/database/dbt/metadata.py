@@ -721,7 +721,7 @@ class DbtSource(DbtServiceSource):
                     get_tag_labels(
                         metadata=self.metadata,
                         tags=dbt_meta_info.openmetadata.glossary,
-                        include_tags=self.source_config.includeTags,
+                        include_tags=True,
                         tag_type=GlossaryTerm,
                     )
                     or []
@@ -734,7 +734,7 @@ class DbtSource(DbtServiceSource):
                         metadata=self.metadata,
                         tags=[tier_fqn.split(fqn.FQN_SEPARATOR)[-1]],
                         classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
-                        include_tags=self.source_config.includeTags,
+                        include_tags=True,
                     )
                     or []
                 )
@@ -898,6 +898,12 @@ class DbtSource(DbtServiceSource):
                     f"Adding DBT Test Case Results for node: {manifest_node.name}"
                 )
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
+                if not dbt_test_result:
+                    logger.warning(
+                        f"DBT Test Case Results not found for node: {manifest_node.name}"
+                    )
+                    return
+
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
                 if dbt_test_result.status.value in [

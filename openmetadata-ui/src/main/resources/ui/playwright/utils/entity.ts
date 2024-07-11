@@ -22,8 +22,9 @@ import {
   LIST_OF_FIELDS_TO_EDIT_NOT_TO_BE_PRESENT,
   LIST_OF_FIELDS_TO_EDIT_TO_BE_DISABLED,
 } from '../constant/delete';
+import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
-import { redirectToHomePage } from './common';
+import { clickOutside, redirectToHomePage } from './common';
 
 export const visitEntityPage = async (data: {
   page: Page;
@@ -130,7 +131,7 @@ export const assignTier = async (page: Page, tier: string) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId(`radio-btn-${tier}`).click();
-  await page.getByTestId('Tier').click();
+  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
 };
@@ -139,7 +140,7 @@ export const removeTier = async (page: Page) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('clear-tier').click();
-  await page.getByTestId('Tier').click();
+  await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText('No Tier');
 };
@@ -872,4 +873,48 @@ export const hardDeleteEntity = async (
   );
 
   await page.click('.Toastify__close-button');
+};
+
+export const checkDataAssetWidget = async (
+  page: Page,
+  type: string,
+  index: string,
+  serviceType: string
+) => {
+  await page.click('[data-testid="welcome-screen-close-btn"]');
+
+  const quickFilterResponse = page.waitForResponse(
+    `/api/v1/search/query?q=&index=${index}*${serviceType}*`
+  );
+
+  await page
+    .locator(`[data-testid="data-asset-service-${serviceType}"]`)
+    .click();
+
+  await quickFilterResponse;
+
+  await expect(
+    page.locator('[data-testid="search-dropdown-Service Type"]')
+  ).toContainText(serviceType);
+
+  const isSelected = await page
+    .getByRole('menuitem', { name: type })
+    .evaluate((element) => {
+      return element.classList.contains('ant-menu-item-selected');
+    });
+
+  expect(isSelected).toBe(true);
+};
+
+export const escapeESReservedCharacters = (text?: string) => {
+  const reUnescapedHtml = /[\\[\]#+=&|><!(){}^"~*?:/-]/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  const getReplacedChar = (char: string) => {
+    return ES_RESERVED_CHARACTERS[char] ?? char;
+  };
+
+  return text && reHasUnescapedHtml.test(text)
+    ? text.replace(reUnescapedHtml, getReplacedChar)
+    : text ?? '';
 };

@@ -20,8 +20,8 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Metadata Ingestion](#metadata-ingestion)
     - [Incremental Extraction](/connectors/ingestion/workflows/metadata/incremental-extraction/bigquery)
 - [Query Usage](/connectors/ingestion/workflows/usage)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
-- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
@@ -30,6 +30,17 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 {% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
+
+You need to create an service account in order to ingest metadata from bigquery refer [this](/connectors/database/bigquery/create-credentials) guide on how to create service account.
+
+{% tilesContainer %}
+{% tile
+icon="manage_accounts"
+title="Create Custom GCP Role"
+description="Check out this documentation on how to create a custom role and assign it to the service account."
+link="/connectors/database/bigquery/roles"
+  / %}
+{% /tilesContainer %}
 
 ### Data Catalog API Permissions 
 
@@ -58,22 +69,13 @@ To execute metadata extraction and usage workflow successfully the user or the s
 | 11   | datacatalog.taxonomies.list   | Fetch Policy Tags       |
 | 12   | bigquery.readsessions.create  | Bigquery Usage & Lineage Workflow |
 | 13   | bigquery.readsessions.getData | Bigquery Usage & Lineage Workflow |
+| 14   | logging.operations.list       | Incremental Metadata Ingestion    |
 
 {% /multiTablesWrapper %}
 
 {% note %}
 If the user has `External Tables`, please attach relevant permissions needed for external tables, alongwith the above list of permissions.
 {% /note %}
-
-{% tilesContainer %}
-{% tile
-icon="manage_accounts"
-title="Create Custom GCP Role"
-description="Checkout this documentation on how to create a custom role and assign it to the service account."
-link="/connectors/database/bigquery/roles"
-  / %}
-{% /tilesContainer %}
-
 
 {% note %}
 If you are using BigQuery and have sharded tables, you might want to consider using partitioned tables instead. Partitioned tables allow you to efficiently query data by date or other criteria, without having to manage multiple tables. Partitioned tables also have lower storage and query costs than sharded tables. 
@@ -104,7 +106,7 @@ This will help you simplify your data management and optimize your performance i
 **GCP Credentials**: 
 You can authenticate with your bigquery instance using either `GCP Credentials Path` where you can specify the file path of the service account key or you can pass the values directly by choosing the `GCP Credentials Values` from the service account key file.
 
-You can checkout [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
+You can check out [this](https://cloud.google.com/iam/docs/keys-create-delete#iam-service-account-keys-create-console) documentation on how to create the service account keys and download it.
 
 **GCP Credentials Values**: Passing the raw credential values provided by BigQuery. This requires us to provide the following information, all provided by BigQuery:
 

@@ -1,9 +1,10 @@
+import logging
 import os
 import sys
 
 import pytest
 
-from .integration_base import int_admin_ometa
+from _openmetadata_testutils.ometa import int_admin_ometa
 
 if not sys.version_info >= (3, 9):
     collect_ignore = ["trino"]
@@ -14,6 +15,12 @@ def pytest_configure():
     sys.path.insert(0, helpers_path)
 
 
+@pytest.fixture(scope="session", autouse=True)
+def configure_logging():
+    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
+    logging.getLogger("pytds").setLevel(logging.CRITICAL)
+
+
 @pytest.fixture(scope="module")
 def metadata():
     return int_admin_ometa()
@@ -21,9 +28,11 @@ def metadata():
 
 def pytest_pycollect_makeitem(collector, name, obj):
     try:
-        if obj.__base__.__name__ in ("BaseModel", "Enum"):
-            return []
-    except AttributeError:
+        bases = [base.__name__ for base in obj.mro()]
+        for cls in ("BaseModel", "Enum"):
+            if cls in bases:
+                return []
+    except (AttributeError, TypeError):
         pass
 
 

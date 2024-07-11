@@ -98,7 +98,6 @@ body.reflex-row-resize {
 
 .reflex-container.vertical > .reflex-splitter {
   cursor: col-resize;
-  height: 100%;
   width: 2px;
 }
 
@@ -209,7 +208,7 @@ h2.rotated-header {
 }
 
 .panel-grabber-vertical {
-  height: calc(100vh - 64px);
+  height: calc(100vh - @om-navbar-height);
   width: 10px;
   display: flex;
   flex-direction: row;

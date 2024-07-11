@@ -23,6 +23,7 @@ import {
 } from '../../../../constants/TestSuite.constant';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import { OwnerType } from '../../../../enums/user.enum';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
@@ -56,7 +57,10 @@ const TestSuiteStepper = () => {
     setActiveServiceStep(2);
   };
 
-  const onSubmit = async (data: string[]) => {
+  const onSubmit = async (data: TestCase[]) => {
+    const testCaseIds = data.reduce((ids, curr) => {
+      return curr.id ? [...ids, curr.id] : ids;
+    }, [] as string[]);
     try {
       const owner = {
         id: currentUser?.id ?? '',
@@ -70,7 +74,7 @@ const TestSuiteStepper = () => {
       });
       setTestSuiteResponse(response);
       await addTestCaseToLogicalTestSuite({
-        testCaseIds: data,
+        testCaseIds: testCaseIds,
         testSuiteId: response.id ?? '',
       });
       setActiveServiceStep(3);
@@ -127,7 +131,9 @@ const TestSuiteStepper = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -171,7 +177,7 @@ const TestSuiteStepper = () => {
             )}
           />
         ),
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

@@ -21,9 +21,9 @@ import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 28;
+export const LATEST_VERSION_ID = 30;
 
-export const COOKIE_VERSION = 'VERSION_1_4_3'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_4_5'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1772,6 +1772,31 @@ API:
     changeLogs: {
       Improvements: `- Fixed User Signup Flow Issue missing authorize.
 -   Fixed vulnerabilities for azure-identity and msal4j.`,
+    },
+  },
+  {
+    id: 29,
+    version: 'v1.4.4',
+    description: `Released on 3rd July 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Introduced SSL for Salesforce.
+-   Fixed the claim mappings and usernames.
+-   Fixed issues in Salesforce connector.
+-   FIxed issues in Alation connector.
+-   Verified for changes in new env for claim mapping.`,
+    },
+  },
+  {
+    id: 30,
+    version: 'v1.4.5',
+    description: `Released on 9th July 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Improve query filtering with prepared statements.
+-   Big fix in regex to match test case when using sampled data.
+-   Bug fix in global profiler config for Snowflake, Redshift, and BigQuery.
+-   Bug fix for Arg mismatch for DataModels in QlikSense.`,
     },
   },
 ];

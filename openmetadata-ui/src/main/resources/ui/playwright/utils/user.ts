@@ -13,7 +13,7 @@
 
 import { expect, Page } from '@playwright/test';
 import { adjectives, nouns } from '../constant/user';
-import { uuid } from './common';
+import { toastNotification, uuid } from './common';
 
 export const getRandomFirstName = () => {
   return `${
@@ -143,11 +143,7 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
 
   await restoreResponse;
 
-  await expect(page.getByRole('alert')).toHaveText(
-    /User restored successfully/
-  );
-
-  await page.getByLabel('close').click();
+  await toastNotification(page, /User restored successfully/);
 
   await nonDeletedUserChecks(page);
 };
@@ -175,9 +171,5 @@ export const hardDeleteUserProfilePage = async (
 
   await deleteResponse;
 
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
-    /deleted successfully!/
-  );
-
-  await page.click('.Toastify__close-button');
+  await toastNotification(page, /deleted successfully!/);
 };

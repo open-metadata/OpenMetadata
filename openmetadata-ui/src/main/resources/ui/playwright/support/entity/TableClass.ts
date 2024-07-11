@@ -99,6 +99,9 @@ export class TableClass extends EntityClass {
   databaseResponseData: unknown;
   schemaResponseData: unknown;
   entityResponseData: unknown;
+  testSuiteResponseData: unknown;
+  testSuitePipelineResponseData: unknown[] = [];
+  testCasesResponseData: unknown[] = [];
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);
@@ -156,6 +159,87 @@ export class TableClass extends EntityClass {
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
       dataTestId: `${this.service.name}-${this.entity.name}`,
     });
+  }
+
+  async createTestSuiteAndPipelines(apiContext: APIRequestContext) {
+    if (!this.entityResponseData) {
+      return this.create(apiContext);
+    }
+
+    const testSuiteData = await apiContext
+      .post('/api/v1/dataQuality/testSuites/executable', {
+        data: {
+          name: `pw-test-suite-${uuid()}`,
+          executableEntityReference:
+            this.entityResponseData['fullyQualifiedName'],
+          description: 'Playwright test suite for table',
+        },
+      })
+      .then((res) => res.json());
+
+    this.testSuiteResponseData = testSuiteData;
+
+    const pipeline = await this.createTestSuitePipeline(apiContext);
+
+    return {
+      testSuiteData,
+      pipeline,
+    };
+  }
+
+  async createTestSuitePipeline(
+    apiContext: APIRequestContext,
+    testCases?: string[]
+  ) {
+    const pipelineData = await apiContext
+      .post(`/api/v1/services/ingestionPipelines`, {
+        data: {
+          airflowConfig: {},
+          name: `pw-test-suite-pipeline-${uuid()}`,
+          pipelineType: 'TestSuite',
+          service: {
+            id: this.testSuiteResponseData?.['id'],
+            type: 'testSuite',
+          },
+          sourceConfig: {
+            config: {
+              type: 'TestSuite',
+              entityFullyQualifiedName:
+                this.entityResponseData?.['fullyQualifiedName'],
+              testCases,
+            },
+          },
+        },
+      })
+      .then((res) => res.json());
+    this.testSuitePipelineResponseData.push(pipelineData);
+
+    return pipelineData;
+  }
+
+  async createTestCase(apiContext: APIRequestContext) {
+    if (!this.testSuiteResponseData) {
+      await this.createTestSuiteAndPipelines(apiContext);
+    }
+
+    const testCase = await apiContext
+      .post('/api/v1/dataQuality/testCases', {
+        data: {
+          name: `pw-test-case-${uuid()}`,
+          entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
+          testDefinition: 'tableRowCountToBeBetween',
+          testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
+          parameterValues: [
+            { name: 'minValue', value: 12 },
+            { name: 'maxValue', value: 34 },
+          ],
+        },
+      })
+      .then((res) => res.json());
+
+    this.testCasesResponseData.push(testCase);
+
+    return testCase;
   }
 
   async delete(apiContext: APIRequestContext) {

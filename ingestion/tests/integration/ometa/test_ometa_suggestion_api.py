@@ -14,6 +14,7 @@ OpenMetadata high-level API Suggestion test
 """
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.feed.createSuggestion import CreateSuggestionRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -31,12 +32,7 @@ from metadata.generated.schema.type.tagLabel import (
 )
 from metadata.utils.entity_link import get_entity_link
 
-from ..integration_base import (
-    generate_name,
-    get_create_entity,
-    get_create_service,
-    int_admin_ometa,
-)
+from ..integration_base import generate_name, get_create_entity, get_create_service
 
 
 class OMetaSuggestionTest(TestCase):

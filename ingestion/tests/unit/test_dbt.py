@@ -251,6 +251,21 @@ MOCK_TAG_LABELS = [
     ),
 ]
 
+MOCK_GLOASSARY_LABELS = [
+    TagLabel(
+        tagFQN="Test_Glossary.term_one",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Glossary,
+    ),
+    TagLabel(
+        tagFQN="Test_Glossary.term_two.nested_term.more_nested_term",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Glossary,
+    ),
+]
+
 
 class DbtUnitTest(TestCase):
     """
@@ -511,3 +526,32 @@ class DbtUnitTest(TestCase):
             zip(expected_data_models, data_model_list)
         ):
             self.assertEqual(expected, original)
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_glossary_tiers(self, get_tag_label):
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="Test_Glossary.term_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+            TagLabel(
+                tagFQN="Test_Glossary.term_two.nested_term.more_nested_term",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+        ]
+
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_V8
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "model.jaffle_shop.customers"
+        )
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_node.meta
+        )
+
+        self.assertEqual(dbt_meta_tags, MOCK_GLOASSARY_LABELS)

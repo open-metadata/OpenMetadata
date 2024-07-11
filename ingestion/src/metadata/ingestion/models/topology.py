@@ -21,6 +21,7 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
+from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils import fqn
@@ -202,6 +203,11 @@ class TopologyContext(BaseModel):
             self.__dict__[dependency]
             for dependency in stage.consumer or []  # root nodes do not have consumers
         ]
+
+        # DashboardDataModel requires extra parameter to build the correct FQN
+        if stage.type_ == DashboardDataModel:
+            context_names.append("model")
+
         return fqn._build(  # pylint: disable=protected-access
             *context_names, entity_name
         )
@@ -296,7 +302,7 @@ class TopologyContextManager:
 
         # If it does not exist yet, copies the Parent Context in order to have all context gathered until this point.
         self.contexts.setdefault(
-            thread_id, self.contexts[parent_thread_id].copy(deep=True)
+            thread_id, self.contexts[parent_thread_id].model_copy(deep=True)
         )
 
 

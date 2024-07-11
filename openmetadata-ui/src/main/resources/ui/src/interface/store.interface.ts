@@ -16,6 +16,7 @@ import {
   IAuthContext,
   OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import {
   EntityUnion,
   ExploreSearchIndex,
@@ -53,6 +54,8 @@ export interface ApplicationStore
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
   theme: UIThemePreference['customTheme'];
+  inlineAlertDetails?: InlineAlertProps;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
   setCurrentUser: (user: User) => void;
@@ -60,6 +63,9 @@ export interface ApplicationStore
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
   setJwtPrincipalClaims: (
     claims: AuthenticationConfiguration['jwtPrincipalClaims']
+  ) => void;
+  setJwtPrincipalClaimsMapping: (
+    claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
   ) => void;
   setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;

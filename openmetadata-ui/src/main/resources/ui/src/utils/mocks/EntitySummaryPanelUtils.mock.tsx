@@ -25,6 +25,7 @@ import {
   State,
   TagSource,
 } from '../../generated/entity/data/table';
+import { EntityReference } from '../../generated/type/entityReference';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 
 const { Text } = Typography;
@@ -51,6 +52,17 @@ export const mockLinkBasedSummaryTitleResponse = (
       </Text>
       <Icon component={IconExternalLink} style={ICON_DIMENSION} />
     </div>
+  </Link>
+);
+
+export const mockLinkBasedSummaryTitleDashboardResponse = (
+  <Link to="/dashboard/sample_superset.10">
+    <Text
+      className="entity-title text-link-color font-medium m-r-xss"
+      data-testid="entity-title"
+      ellipsis={{ tooltip: true }}>
+      deck.gl Demo
+    </Text>
   </Link>
 );
 
@@ -129,6 +141,16 @@ export const mockEntityDataWithoutNesting: Task[] = [
     tags: [],
   },
 ];
+
+export const mockEntityReferenceDashboardData: EntityReference = {
+  deleted: false,
+  description: '',
+  displayName: 'deck.gl Demo',
+  fullyQualifiedName: 'sample_superset.10',
+  id: '77a0ac8a-ca1a-4f21-9a37-406faa482008',
+  name: '10',
+  type: 'dashboard',
+};
 
 export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
   {
