@@ -13,9 +13,9 @@ Status output utilities
 """
 import pprint
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field, create_model
 from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -25,6 +25,20 @@ from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.utils.logger import get_log_name, ingestion_logger
 
 logger = ingestion_logger()
+
+
+# Update StackTraceError to limit the payload size, since some connectors can make it explode
+MAX_STACK_TRACE_LENGTH = 1_000_000
+TruncatedStr = Annotated[
+    Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)
+]
+
+TruncatedStackTraceError = create_model(
+    "TruncatedStackTraceError",
+    error=(TruncatedStr, ...),
+    stackTrace=(TruncatedStr, ...),
+    __base__=StackTraceError,
+)
 
 
 class Status(BaseModel):
@@ -40,7 +54,7 @@ class Status(BaseModel):
     updated_records: Annotated[List[Any], Field(default_factory=list)]
     warnings: Annotated[List[Any], Field(default_factory=list)]
     filtered: Annotated[List[Dict[str, str]], Field(default_factory=list)]
-    failures: Annotated[List[StackTraceError], Field(default_factory=list)]
+    failures: Annotated[List[TruncatedStackTraceError], Field(default_factory=list)]
 
     def scanned(self, record: Any) -> None:
         """
@@ -74,7 +88,14 @@ class Status(BaseModel):
         """
         logger.warning(error.error)
         logger.debug(error.stackTrace)
-        self.failures.append(error)
+        # Truncate StackTrace to avoid payload explosion
+        self.failures.append(
+            TruncatedStackTraceError(
+                name=error.name,
+                error=error.error,
+                stackTrace=error.stackTrace,
+            )
+        )
 
     def fail_all(self, failures: List[StackTraceError]) -> None:
         """
