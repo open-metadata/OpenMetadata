@@ -41,6 +41,7 @@ import {
   SearchedDataProps,
   SourceType,
 } from '../components/SearchedData/SearchedData.interface';
+import TagsV1 from '../components/Tag/TagsV1/TagsV1.component';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getBotsPagePath,
@@ -56,6 +57,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
+import { TAG_START_WITH } from '../constants/Tag.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   AssetsType,
@@ -190,6 +192,14 @@ export const getEntityTags = (
   }
 };
 
+const entityTierRenderer = (tier?: TagLabel) => {
+  return tier ? (
+    <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={tier} />
+  ) : (
+    NO_DATA
+  );
+};
+
 const getUsageData = (usageSummary: UsageDetails | undefined) =>
   !isNil(usageSummary?.weeklyStats?.percentileRank)
     ? getUsagePercentile(usageSummary?.weeklyStats?.percentileRank ?? 0)
@@ -302,7 +312,7 @@ const getTableOverview = (tableDetails: Table) => {
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -382,7 +392,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
@@ -431,7 +441,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       isExternal: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -466,7 +476,7 @@ export const getSearchIndexOverview = (
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       isExternal: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
@@ -695,7 +705,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
 
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       isExternal: false,
       visible: [
@@ -779,7 +789,7 @@ const getStoredProcedureOverview = (
     },
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       visible: [
         DRAWER_NAVIGATION_OPTIONS.lineage,
@@ -822,7 +832,7 @@ const getDatabaseOverview = (databaseDetails: Database) => {
 
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -865,7 +875,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
 
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
@@ -913,10 +923,9 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
       isLink: !isEmpty(owner?.name),
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
-
     {
       name: i18next.t('label.tier'),
-      value: tier ? tier.tagFQN.split(FQN_SEPARATOR_CHAR)[1] : NO_DATA,
+      value: entityTierRenderer(tier),
       isLink: false,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
