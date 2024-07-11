@@ -15,7 +15,7 @@ import pprint
 import time
 from typing import Any, Dict, List, Optional
 
-from pydantic import AfterValidator, BaseModel, Field, create_model
+from pydantic import AfterValidator, BaseModel, Field
 from typing_extensions import Annotated
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -27,18 +27,20 @@ from metadata.utils.logger import get_log_name, ingestion_logger
 logger = ingestion_logger()
 
 
-# Update StackTraceError to limit the payload size, since some connectors can make it explode
 MAX_STACK_TRACE_LENGTH = 1_000_000
 TruncatedStr = Annotated[
     Optional[str], AfterValidator(lambda v: v[:MAX_STACK_TRACE_LENGTH] if v else None)
 ]
 
-TruncatedStackTraceError = create_model(
-    "TruncatedStackTraceError",
-    error=(TruncatedStr, ...),
-    stackTrace=(TruncatedStr, ...),
-    __base__=StackTraceError,
-)
+
+class TruncatedStackTraceError(StackTraceError):
+    """
+    Update StackTraceError to limit the payload size,
+    since some connectors can make it explode
+    """
+
+    error: TruncatedStr
+    stackTrace: TruncatedStr = None
 
 
 class Status(BaseModel):

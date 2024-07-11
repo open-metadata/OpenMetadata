@@ -88,9 +88,9 @@ def run_data_quality_workflow(
             loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
         ),
     )
-    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
-    test_suite_procesor.execute()
-    test_suite_procesor.raise_from_status()
+    test_suite_processor = TestSuiteWorkflow.create(workflow_config)
+    test_suite_processor.execute()
+    test_suite_processor.raise_from_status()
     yield
     test_suite: TestSuite = metadata.get_by_name(
         TestSuite, "MyTestSuite", nullable=True
@@ -167,9 +167,9 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
             "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
-    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
-    test_suite_procesor.execute()
-    assert test_suite_procesor.steps[0].get_status().failures == [
+    test_suite_processor = TestSuiteWorkflow.create(workflow_config)
+    test_suite_processor.execute()
+    assert test_suite_processor.steps[0].get_status().failures == [
         TruncatedStackTraceError(
             name="Incompatible Column for Test Case",
             error="Test case incompatible_column_type of type columnValueMaxToBeBetween is not compatible with column first_name of type VARCHAR",
@@ -177,5 +177,5 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
     ], "Test case incompatible_column_type should fail"
     assert (
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer.customer_id.compatible_test"
-        in test_suite_procesor.steps[1].get_status().records
+        in test_suite_processor.steps[1].get_status().records
     ), "Test case compatible_test should pass"
