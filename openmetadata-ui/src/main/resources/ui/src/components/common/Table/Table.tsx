@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Skeleton, SpinProps, Table as AntdTable, TableProps } from 'antd';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { SMALL_TABLE_LOADER_SIZE } from '../../../constants/constants';
 import { getUniqueArray } from '../../../utils/CommonUtils';
@@ -49,7 +50,7 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
         {...rest}
         columns={column}
         data-testid="skeleton-table"
-        dataSource={dataSource}
+        dataSource={isEmpty(rest.dataSource) ? dataSource : rest.dataSource}
         expandable={undefined}
       />
     );
