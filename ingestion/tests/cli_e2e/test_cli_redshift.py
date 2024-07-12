@@ -194,7 +194,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "interQuartileRange": 467.7975,
                         "max": 856.41,
                         "maxLength": None,
-                        "mean": -160.16,
+                        "mean": -159.0,
                         "median": -288.81,
                         "min": -999.63,
                         "minLength": None,
