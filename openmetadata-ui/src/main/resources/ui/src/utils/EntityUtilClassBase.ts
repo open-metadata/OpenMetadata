@@ -122,6 +122,7 @@ class EntityUtilClassBase {
       case EntityType.METADATA_SERVICE:
       case EntityType.STORAGE_SERVICE:
       case EntityType.SEARCH_SERVICE:
+      case EntityType.API_SERVICE:
         return getServiceDetailsPath(fullyQualifiedName, `${indexType}s`);
 
       case EntityType.WEBHOOK:
@@ -228,6 +229,24 @@ class EntityUtilClassBase {
       case EntityType.PERSONA:
         return getPersonaDetailsPath(fullyQualifiedName);
 
+      case SearchIndex.API_COLLECTION_INDEX:
+      case EntityType.API_COLLECTION:
+        return getEntityDetailsPath(
+          EntityType.API_COLLECTION,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
+      case SearchIndex.API_ENDPOINT_INDEX:
+      case EntityType.API_ENDPOINT:
+        return getEntityDetailsPath(
+          EntityType.API_ENDPOINT,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+
       case SearchIndex.TABLE:
       case EntityType.TABLE:
       default:
@@ -266,6 +285,10 @@ class EntityUtilClassBase {
         return DataProductsPage;
       case EntityType.TABLE:
         return TableDetailsPageV1;
+      case EntityType.API_COLLECTION:
+      case EntityType.API_ENDPOINT:
+        return null;
+
       default:
         return null;
     }
@@ -312,6 +335,13 @@ class EntityUtilClassBase {
       case EntityType.DATA_PRODUCT: {
         return ResourceEntity.DATA_PRODUCT;
       }
+      case EntityType.API_COLLECTION: {
+        return ResourceEntity.API_COLLECTION;
+      }
+      case EntityType.API_ENDPOINT: {
+        return ResourceEntity.API_ENDPOINT;
+      }
+
       default: {
         return ResourceEntity.TABLE;
       }

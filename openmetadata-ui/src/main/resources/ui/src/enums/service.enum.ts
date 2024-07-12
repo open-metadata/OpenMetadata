@@ -29,6 +29,7 @@ export enum ServiceCategory {
   METADATA_SERVICES = 'metadataServices',
   STORAGE_SERVICES = 'storageServices',
   SEARCH_SERVICES = 'searchServices',
+  API_SERVICES = 'apiServices',
 }
 
 export enum ServiceCategoryPlural {

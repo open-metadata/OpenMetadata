@@ -42,6 +42,7 @@ import {
 } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import { MessagingService } from '../generated/entity/services/messagingService';
@@ -288,6 +289,15 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getEntityBreadcrumbs(
         databaseServiceDetails,
         EntityType.DATABASE_SERVICE
+      );
+
+      break;
+    case EntityType.API_SERVICE:
+      const apiServiceDetails = dataAsset as APIService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        apiServiceDetails,
+        EntityType.API_SERVICE
       );
 
       break;

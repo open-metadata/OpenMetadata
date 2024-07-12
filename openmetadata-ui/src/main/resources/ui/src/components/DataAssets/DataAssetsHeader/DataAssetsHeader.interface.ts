@@ -27,6 +27,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
@@ -60,7 +61,8 @@ export type DataAssetsType =
   | MlmodelService
   | MetadataService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIService;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -70,7 +72,8 @@ export type DataAssetsWithoutServiceField =
   | MlmodelService
   | MetadataService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIService;
 
 export type DataAssetsWithFollowersField = Exclude<
   DataAssetsType,
@@ -124,6 +127,7 @@ export type DataAssetsHeaderProps = {
   | DataAssetMetadataService
   | DataAssetStorageService
   | DataAssetSearchService
+  | DataAssetApiService
 );
 
 export interface DataAssetTable {
@@ -210,6 +214,11 @@ export interface DataAssetStorageService {
 export interface DataAssetSearchService {
   dataAsset: ServicesType;
   entityType: EntityType.SEARCH_SERVICE;
+}
+
+export interface DataAssetApiService {
+  dataAsset: ServicesType;
+  entityType: EntityType.API_SERVICE;
 }
 
 export interface DataAssetHeaderInfo {

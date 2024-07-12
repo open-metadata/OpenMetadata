@@ -24,6 +24,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
@@ -64,7 +65,8 @@ export type AssetsUnion =
   | EntityType.MLMODEL_SERVICE
   | EntityType.STORAGE_SERVICE
   | EntityType.DATABASE_SERVICE
-  | EntityType.SEARCH_SERVICE;
+  | EntityType.SEARCH_SERVICE
+  | EntityType.API_SERVICE;
 
 export type MapPatchAPIResponse = {
   [EntityType.TABLE]: Table;
@@ -88,4 +90,5 @@ export type MapPatchAPIResponse = {
   [EntityType.DATABASE_SERVICE]: DatabaseService;
   [EntityType.SEARCH_SERVICE]: SearchService;
   [EntityType.TEAM]: Team;
+  [EntityType.API_SERVICE]: APIService;
 };

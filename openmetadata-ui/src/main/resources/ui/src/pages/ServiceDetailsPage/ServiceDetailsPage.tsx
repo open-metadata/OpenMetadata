@@ -58,6 +58,7 @@ import {
 import { ServiceCategory } from '../../enums/service.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
+import { APICollection } from '../../generated/entity/data/apiCollection';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -76,6 +77,7 @@ import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
+import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import {
   getDashboards,
   getDataModels,
@@ -130,7 +132,8 @@ export type ServicePageData =
   | Container
   | DashboardDataModel
   | SearchIndex
-  | StoredProcedure;
+  | StoredProcedure
+  | APICollection;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -552,6 +555,20 @@ const ServiceDetailsPage: FunctionComponent = () => {
     },
     [decodedServiceFQN, include]
   );
+  const fetchCollections = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getApiCollections({
+        service: decodedServiceFQN,
+        fields: 'owner,tags',
+        paging,
+        include,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [decodedServiceFQN, include]
+  );
 
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
@@ -590,6 +607,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
           }
           case ServiceCategory.SEARCH_SERVICES: {
             await fetchSearchIndexes(paging);
+
+            break;
+          }
+          case ServiceCategory.API_SERVICES: {
+            await fetchCollections(paging);
 
             break;
           }
@@ -1014,21 +1036,22 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
     }
 
-    tabs.push(
-      {
+    if (serviceCategory !== ServiceCategory.API_SERVICES) {
+      tabs.push({
         name: t('label.ingestion-plural'),
         key: EntityTabs.INGESTIONS,
         isHidden: !showIngestionTab,
         count: ingestionPaging.total,
         children: ingestionTab,
-      },
-      {
-        name: t('label.connection'),
-        isHidden: !servicePermission.EditAll,
-        key: EntityTabs.CONNECTION,
-        children: testConnectionTab,
-      }
-    );
+      });
+    }
+
+    tabs.push({
+      name: t('label.connection'),
+      isHidden: !servicePermission.EditAll,
+      key: EntityTabs.CONNECTION,
+      children: testConnectionTab,
+    });
 
     return tabs
       .filter((tab) => !tab.isHidden)

@@ -1821,6 +1821,16 @@ export const getEntityBreadcrumbs = (
           ),
         },
       ];
+    case EntityType.API_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.API_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+          ),
+        },
+      ];
 
     case EntityType.CONTAINER: {
       const data = entity as Container;

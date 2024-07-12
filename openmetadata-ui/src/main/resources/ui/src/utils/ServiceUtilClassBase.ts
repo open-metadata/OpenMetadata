@@ -112,8 +112,10 @@ import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
+import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
@@ -130,6 +132,7 @@ class ServiceUtilClassBase {
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
     MetadataServiceType.Alation,
+    APIServiceType.Webhook,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -205,6 +208,9 @@ class ServiceUtilClassBase {
       ).sort(customServiceComparator),
       searchServices: this.filterUnsupportedServiceType(
         Object.values(SearchServiceType) as string[]
+      ).sort(customServiceComparator),
+      apiServices: this.filterUnsupportedServiceType(
+        Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
     };
   }
@@ -625,6 +631,10 @@ class ServiceUtilClassBase {
 
   public getMetadataServiceConfig(type: MetadataServiceType) {
     return getMetadataConfig(type);
+  }
+
+  public getAPIServiceConfig(type: APIServiceType) {
+    return getAPIConfig(type);
   }
 
   /**

@@ -14,6 +14,7 @@ import { t } from 'i18next';
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
+import { ReactComponent as IconAPI } from '../assets/svg/api.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
@@ -111,6 +112,16 @@ class GlobalSettingsClassBase {
         icon: ServiceIcon,
         description: t('message.service-description'),
         items: [
+          {
+            label: t('label.api-uppercase-plural'),
+            description: t('message.page-sub-header-for-apis'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.API_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
+            icon: IconAPI,
+          },
           {
             label: t('label.database-plural'),
             description: t('message.page-sub-header-for-databases'),

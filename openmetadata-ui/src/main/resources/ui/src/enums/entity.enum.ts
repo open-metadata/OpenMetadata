@@ -69,6 +69,9 @@ export enum EntityType {
   TEST_CASE_RESOLUTION_STATUS = 'test_case_resolution_status_search_index',
   EVENT_SUBSCRIPTION = 'eventsubscription',
   LINEAGE_EDGE = 'lineageEdge',
+  API_SERVICE = 'apiService',
+  API_COLLECTION = 'apiCollection',
+  API_ENDPOINT = 'apiEndpoint',
 }
 
 export enum AssetsType {
