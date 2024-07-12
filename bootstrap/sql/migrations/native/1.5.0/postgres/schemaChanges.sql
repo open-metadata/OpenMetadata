@@ -69,3 +69,6 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+-- Clean dangling workflows not removed after test connection
+truncate automations_workflow;
