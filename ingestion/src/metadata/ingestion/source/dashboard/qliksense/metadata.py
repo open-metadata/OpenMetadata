@@ -167,7 +167,7 @@ class QliksenseSource(DashboardServiceSource):
         self, dashboard_details: QlikDashboard
     ) -> Iterable[CreateChartRequest]:
         """Get chart method"""
-        charts = self.client.get_dashboard_charts(dashboard_id=dashboard_details.qDocId)
+        charts = self.client.get_dashboard_charts(dashboard=dashboard_details.qDocId)
         for chart in charts:
             try:
                 if not chart.qInfo.qId:
