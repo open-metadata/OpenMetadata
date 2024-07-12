@@ -38,6 +38,12 @@ This section will show you how to configure and run Data Quality pipelines with 
 ### Test Suite
 Test Suites are logical container allowing you to group related Test Cases together from different tables. This is a great approach to group test case alerts and reduce alerting overload.
 
+## Logical Test Suite
+A Logical Test Suite is a collection of various test cases, which may pertain to different tables, grouped together under a single framework. Unlike Executable Test Suites, Logical Test Suites do not have an associated pipeline to execute the tests. Their primary purpose is to provide a consolidated view of related test cases, facilitating easier management and visualization without the need to run them as a single unit.
+
+## Executable Test Suite
+An Executable Test Suite is specifically associated with a single table, ensuring that all test cases within this suite are relevant to that particular table. The term "executable entity reference" refers to the specific table that the test suite is connected to, signifying that the tests can be run directly on this table. This suite is designed for execution, allowing for direct testing of the table's data integrity and functionality.
+
 ### Test Definition
 Test Definitions are generic tests definition elements specific to a test such as:
 - test name
