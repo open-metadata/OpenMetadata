@@ -12,8 +12,9 @@
  */
 import { Tree, Typography } from 'antd';
 import classNames from 'classnames';
-import { uniqueId } from 'lodash';
-import React, { useCallback, useState } from 'react';
+import { isString, uniqueId } from 'lodash';
+import Qs from 'qs';
+import React, { useCallback, useMemo, useState } from 'react';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
@@ -21,6 +22,7 @@ import { getCountBadge } from '../../../utils/CommonUtils';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import {
   getAggregations,
+  getQuickFilterObject,
   getSubLevelHierarchyKey,
   updateTreeData,
 } from '../../../utils/ExploreUtils';
@@ -47,6 +49,20 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
 
+  const [searchQueryParam] = useMemo(() => {
+    const parsedSearch = Qs.parse(
+      location.search.startsWith('?')
+        ? location.search.substring(1)
+        : location.search
+    );
+
+    const searchQueryParam = isString(parsedSearch.search)
+      ? parsedSearch.search
+      : '';
+
+    return [searchQueryParam];
+  }, [location.search]);
+
   const onLoadData = useCallback(
     async (treeNode: ExploreTreeNode) => {
       if (treeNode.children) {
@@ -65,16 +81,24 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         ? treeNode.key
         : treeNode?.data?.parentSearchIndex;
 
-      const { bucket: bucketToFind, queryFilter } = getSubLevelHierarchyKey(
-        rootIndex === SearchIndex.DATABASE,
-        currentBucketKey as EntityFields,
-        currentBucketValue
-      );
+      const { bucket: bucketToFind, queryFilter } =
+        searchQueryParam !== ''
+          ? {
+              bucket: EntityFields.ENTITY_TYPE,
+              queryFilter: {
+                query: { bool: {} },
+              },
+            }
+          : getSubLevelHierarchyKey(
+              rootIndex === SearchIndex.DATABASE,
+              currentBucketKey as EntityFields,
+              currentBucketValue
+            );
 
       const res = await getAggregateFieldOptions(
         searchIndex as SearchIndex,
         bucketToFind,
-        '',
+        searchQueryParam,
         JSON.stringify(queryFilter)
       );
       const aggregations = getAggregations(res.data.aggregations);
@@ -120,16 +144,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             currentBucketValue: bucket.key,
             filterField: [
               ...filterField,
-              {
-                label: bucketToFind,
-                key: bucketToFind,
-                value: [
-                  {
-                    key: bucket.key,
-                    label: bucket.key,
-                  },
-                ],
-              },
+              getQuickFilterObject(bucketToFind, bucket.key),
             ],
             isRoot: false,
             rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
@@ -139,7 +154,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
       setTreeData((origin) => updateTreeData(origin, treeNode.key, children));
     },
-    [updateTreeData]
+    [updateTreeData, searchQueryParam]
   );
 
   const onNodeSelect = useCallback(
@@ -149,16 +164,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         onFieldValueSelect(filterField);
       } else if (node.isLeaf) {
         const filterField = [
-          {
-            label: EntityFields.ENTITY_TYPE,
-            key: EntityFields.ENTITY_TYPE,
-            value: [
-              {
-                key: node.data?.entityType,
-                label: node.data?.entityType,
-              },
-            ],
-          },
+          getQuickFilterObject(EntityFields.ENTITY_TYPE, node.data?.entityType),
         ];
         onFieldValueSelect(filterField);
       }
@@ -170,8 +176,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     <Tree
       blockNode
       showIcon
+      // switcherIcon={<IconDown />}
       className="explore-tree p-sm"
       data-testid="explore-tree"
+      defaultExpandAll={searchQueryParam !== ''}
       defaultExpandedKeys={[SearchIndex.DATABASE]}
       loadData={onLoadData}
       titleRender={(node) => <ExploreTreeTitle node={node} />}

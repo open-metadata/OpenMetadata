@@ -81,7 +81,7 @@ const ExplorePageV1: FunctionComponent = () => {
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
 
-  const { sidebarActiveTab, setSidebarActiveTab } = useExploreStore();
+  const { sidebarActiveTab } = useExploreStore();
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
     useState<boolean>(false);
@@ -423,10 +423,6 @@ const ExplorePageV1: FunctionComponent = () => {
       })
       .finally(() => setIsLoading(false));
   };
-
-  useEffect(() => {
-    setSidebarActiveTab(ExploreSidebarTab.ASSETS);
-  }, []);
 
   useEffect(() => {
     if (isTourOpen) {

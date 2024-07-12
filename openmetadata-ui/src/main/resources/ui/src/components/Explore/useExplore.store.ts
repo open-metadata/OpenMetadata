@@ -17,7 +17,7 @@ export const useExploreStore = create<{
   sidebarActiveTab: ExploreSidebarTab;
   setSidebarActiveTab: (tab: ExploreSidebarTab) => void;
 }>()((set) => ({
-  sidebarActiveTab: ExploreSidebarTab.ASSETS,
+  sidebarActiveTab: ExploreSidebarTab.TREE,
   setSidebarActiveTab: (tab: ExploreSidebarTab) => {
     set({ sidebarActiveTab: tab });
   },
