@@ -454,7 +454,6 @@ export const ActivityFeedTab = ({
           feedList={threads}
           isForFeedTab={isForFeedTab}
           isLoading={false}
-          selectedThread={selectedThread}
           showThread={false}
           onFeedClick={handleFeedClick}
         />

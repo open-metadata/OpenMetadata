@@ -654,7 +654,11 @@ export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
       break;
   }
 
-  return icon && <Icon component={icon} height={16} width={16} />;
+  return (
+    icon && (
+      <Icon component={icon} height={16} name={fieldOperation} width={16} />
+    )
+  );
 };
 
 export const getTestCaseNameListForResult = (
