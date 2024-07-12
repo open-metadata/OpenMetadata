@@ -200,7 +200,7 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "minLength": None,
                         "missingCount": None,
                         "missingPercentage": None,
-                        "nonParametricSkew": 0.24351799263849705,
+                        "nonParametricSkew": 0.24571372424720792,
                         "nullCount": 0.0,
                         "nullProportion": 0.0,
                         "stddev": 528.297718809555,
