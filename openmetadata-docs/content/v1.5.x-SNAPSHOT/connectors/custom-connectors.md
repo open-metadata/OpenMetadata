@@ -14,9 +14,9 @@ process is the same for Pipelines, Dashboard or Messaging services.
 
 {% note %}
 
-This guide is based on a working example in the OpenMetadata Demos repository: [link](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector).
+#### This guide is based on a working example in the OpenMetadata Demos repository: [link](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector).
 
-We'd recommend to go through the example to better understand how all the pieces should look like.
+#### We'd recommend to go through the example to better understand how all the pieces should look like.
 
 {% /note %}
 
@@ -55,11 +55,11 @@ If you want to use the connector from the UI, the Python environment running the
 the new code you just created. For example, if running via Docker, the `openmetadata-ingestion` image should be 
 aware of your new package.
 
-We will be running the demo against the OpenMetadata version `0.13.2`, therefore, our Dockerfile looks like:
+We will be running the demo against the OpenMetadata version `1.4.4`, therefore, our Dockerfile looks like:
 
 ```Dockerfile
 # Base image from the right version
-FROM openmetadata/ingestion:0.13.2
+FROM openmetadata/ingestion:1.4.4
 
 # Let's use the same workdir as the ingestion image
 WORKDIR ingestion
