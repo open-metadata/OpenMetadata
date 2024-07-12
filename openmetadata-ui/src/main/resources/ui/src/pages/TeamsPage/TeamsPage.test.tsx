@@ -94,11 +94,7 @@ jest.mock('../../rest/teamsAPI', () => ({
 }));
 
 jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockResolvedValue(() =>
-      Promise.resolve({ data: [], paging: { total: 0 } })
-    ),
+  searchData: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
