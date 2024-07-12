@@ -17,6 +17,7 @@ import {
   createNewPage,
   redirectToHomePage,
   toastNotification,
+  visitUserProfilePage,
 } from '../../utils/common';
 import { clickOnLogo } from '../../utils/sidebar';
 import {
@@ -43,7 +44,6 @@ test.describe('Activity feed', () => {
 
   test.beforeEach('Visit on landing page', async ({ page }) => {
     await redirectToHomePage(page);
-    await entity.visitEntityPage(page);
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
@@ -59,6 +59,7 @@ test.describe('Activity feed', () => {
       term: entity.entity.name,
       assignee: `${user.data.firstName}.${user.data.lastName}`,
     };
+    await entity.visitEntityPage(page);
 
     await page.getByTestId('request-description').click();
 
@@ -125,5 +126,61 @@ test.describe('Activity feed', () => {
     const closedTask = await page.getByTestId('closed-task').textContent();
 
     expect(closedTask).toContain('2 Closed');
+  });
+
+  test('User should be able to reply on feeds in ActivityFeed', async ({
+    page,
+  }) => {
+    const reply_message_1 = 'Reply message 1';
+    const reply_message_2 = 'Reply message 2';
+    const reply_message_3 = 'Reply message 3';
+
+    await visitUserProfilePage(page);
+
+    const secondFeedConversation = page
+      .locator('#center-container [data-testid="message-container"]')
+      .nth(1);
+
+    await secondFeedConversation.locator('.feed-card-v2-sidebar').click();
+
+    await page.waitForSelector('#feed-panel', {
+      state: 'visible',
+    });
+
+    // Compare the text of the second feed in the center container with the right panel feed
+    const secondFeedText = await secondFeedConversation
+      .locator('[data-testid="headerText"]')
+      .innerText();
+
+    const rightPanelFeedText = await page
+      .locator(
+        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
+      )
+      .innerText();
+
+    expect(secondFeedText).toBe(rightPanelFeedText);
+
+    for (const message of [reply_message_1, reply_message_2, reply_message_3]) {
+      await page.fill('[data-testid="editor-wrapper"] .ql-editor', message);
+
+      const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
+      await page.getByTestId('send-button').click();
+      await sendReply;
+    }
+
+    // Compare after adding some feeds in the right panel
+    const rightPanelFeedTextCurrent = await page
+      .locator(
+        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
+      )
+      .innerText();
+
+    expect(secondFeedText).toBe(rightPanelFeedTextCurrent);
+
+    for (const message of [reply_message_1, reply_message_2, reply_message_3]) {
+      await expect(
+        page.locator('.right-container [data-testid="feed-replies"]')
+      ).toContainText(message);
+    }
   });
 });
