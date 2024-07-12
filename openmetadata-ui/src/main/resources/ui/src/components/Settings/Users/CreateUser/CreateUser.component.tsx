@@ -23,7 +23,7 @@ import {
   Switch,
 } from 'antd';
 import { AxiosError } from 'axios';
-import { compact, isEmpty, isUndefined, lowerCase, map, trim } from 'lodash';
+import { compact, isEmpty, isUndefined, map, toLower, trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSync } from '../../../../assets/svg/ic-sync.svg';
@@ -123,7 +123,7 @@ const CreateUser = ({
       displayName: trim(displayName),
       roles: selectedRoles,
       teams: validTeam.length ? validTeam : undefined,
-      email: lowerCase(email),
+      email: toLower(email),
       isAdmin: isAdmin,
       isBot: isBot,
       ...(forceBot

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEqual, lowerCase } from 'lodash';
+import { isEqual, toLower } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
 import { SettledStatus } from '../enums/Axios.enum';
@@ -42,7 +42,7 @@ export const getUserDataFromOidc = (
 
   return {
     ...userData,
-    email: lowerCase(email),
+    email: toLower(email),
     displayName: oidcUser.profile.name,
     profile: images ? { images } : userData.profile,
   };

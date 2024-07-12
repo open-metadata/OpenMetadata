@@ -12,12 +12,11 @@
  */
 
 import { Button, Col, Divider, Form, Input, Row, Typography } from 'antd';
-import { isEmpty, lowerCase } from 'lodash';
+import { isEmpty, toLower } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
@@ -57,7 +56,7 @@ const BasicSignUp = () => {
       delete data['confirmPassword'];
     }
 
-    const request = { ...data, email: lowerCase(data.email) };
+    const request = { ...data, email: toLower(data.email) };
 
     if (request) {
       handleRegister(request);
