@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { capitalize, cloneDeep, toLower } from 'lodash';
+import { capitalize, toLower } from 'lodash';
 import {
   AIRBYTE,
   AIRFLOW,
@@ -23,7 +23,6 @@ import {
   BIGQUERY,
   BIGTABLE,
   CLICKHOUSE,
-  COMMON_UI_SCHEMA,
   COUCHBASE,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
@@ -41,6 +40,7 @@ import {
   ELASTIC_SEARCH,
   FIVETRAN,
   FLINK,
+  GCS,
   GLUE,
   GREENPLUM,
   HIVE,
@@ -114,8 +114,6 @@ import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
-import customConnection from '../jsons/connectionSchemas/connections/storage/customStorageConnection.json';
-import s3Connection from '../jsons/connectionSchemas/connections/storage/s3Connection.json';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
@@ -123,6 +121,7 @@ import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
 import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
+import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringsUtils';
 
 class ServiceUtilClassBase {
@@ -130,7 +129,6 @@ class ServiceUtilClassBase {
     StorageServiceType.Adls,
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
-    StorageServiceType.Gcs,
     MetadataServiceType.Alation,
   ];
 
@@ -438,6 +436,9 @@ class ServiceUtilClassBase {
       case this.StorageServiceTypeSmallCase.S3:
         return AMAZON_S3;
 
+      case this.StorageServiceTypeSmallCase.Gcs:
+        return GCS;
+
       case this.SearchServiceTypeSmallCase.ElasticSearch:
         return ELASTIC_SEARCH;
 
@@ -594,25 +595,6 @@ class ServiceUtilClassBase {
     }
   };
 
-  public getStorageServiceConfig(type: StorageServiceType) {
-    let schema = {};
-    const uiSchema = { ...COMMON_UI_SCHEMA };
-    switch (type) {
-      case StorageServiceType.S3: {
-        schema = s3Connection;
-
-        break;
-      }
-      case StorageServiceType.CustomStorage: {
-        schema = customConnection;
-
-        break;
-      }
-    }
-
-    return cloneDeep({ schema, uiSchema });
-  }
-
   public getPipelineServiceConfig(type: PipelineServiceType) {
     return getPipelineConfig(type);
   }
@@ -635,6 +617,10 @@ class ServiceUtilClassBase {
 
   public getSearchServiceConfig(type: SearchServiceType) {
     return getSearchServiceConfig(type);
+  }
+
+  public getStorageServiceConfig(type: StorageServiceType) {
+    return getStorageConfig(type);
   }
 
   public getMetadataServiceConfig(type: MetadataServiceType) {

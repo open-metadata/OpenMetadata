@@ -163,6 +163,56 @@ workflowConfig:
     #   caCertificate: /local/path/to/certificate
 ```
 
+#### JWT Token with Secrets Manager
+
+If you are using the [Secrets Manager](/deployment/secrets-manager), you can let the Ingestion client to pick up
+the JWT Token dynamically from the Secrets Manager at runtime. Let's show an example:
+
+We have an OpenMetadata server running with the `managed-aws` Secrets Manager. Since we used the `OPENMETADATA_CLUSTER_NAME` env var
+as `test`, our `ingestion-bot` JWT Token is safely stored under the secret ID `
+/test/bot/ingestion-bot/config/jwttoken`.
+
+Now, we can use the following workflow config to run the ingestion without having to pass the token, but just pointing to the secret itself:
+
+```yaml
+workflowConfig:
+  loggerLevel: INFO  # DEBUG, INFO, WARNING or ERROR
+  openMetadataServerConfig:
+    hostPort: "http://localhost:8585/api"
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "secret:/test/bot/ingestion-bot/config/jwttoken"
+    secretsManagerProvider: aws
+    secretsManagerLoader: env
+```
+
+Notice how:
+1. We specify the `secretsManagerProvider` pointing to `aws`, since that's the manager we are using.
+2. We set `secretsManagerLoader` as `env`. Since we're running this from our local, we'll let the AWS credentials to be 
+  loaded from the local env vars. (When running this using the UI, note that the generated workflows will have this
+  value set as `airflow`!)
+3. We set the `jwtToken` value as `secret:/test/bot/ingestion-bot/config/jwttoken`, which tells the client that
+  this value is a `secret` located under `/test/bot/ingestion-bot/config/jwttoken`.
+
+
+Those are our env vars:
+
+```
+export AWS_ACCESS_KEY_ID=...
+export AWS_SECRET_ACCESS_KEY=...
+export AWS_DEFAULT_REGION=...
+```
+
+And we can run this normally with `metadata ingest -c <path to yaml>`.
+
+{% note %}
+
+Note that **even if you are not using the Secrets Manager for the OpenMetadata Server**, you can still apply the same
+approach by storing the JWT token manually to the secrets manager, and let the Ingestion client pick it up
+from there automatically.
+
+{% /note %}
+
 ## 3. (Optional) Ingestion Pipeline
 
 Additionally, if you want to see your runs logged in the `Ingestions` tab of the connectors page in the UI as you would

@@ -184,3 +184,8 @@ class OMetaUserTest(TestCase):
             self.team.id,
             self.metadata.get_reference_by_name(name="OPS Team").id,
         )
+
+        # if team is not group, return none
+        self.assertIsNone(
+            self.metadata.get_reference_by_name(name="Organization", is_owner=True)
+        )
