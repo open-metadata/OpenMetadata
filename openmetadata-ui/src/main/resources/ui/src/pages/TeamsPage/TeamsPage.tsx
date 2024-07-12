@@ -80,11 +80,6 @@ const TeamsPage = () => {
   const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
 
-  const isGroupType = useMemo(
-    () => selectedTeam.teamType === TeamType.Group,
-    [selectedTeam]
-  );
-
   const hasViewPermission = useMemo(
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
     [entityPermissions]
@@ -193,8 +188,8 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAssets = async () => {
-    if (selectedTeam.id && isGroupType) {
+  const fetchAssets = async (selectedTeam: Team) => {
+    if (selectedTeam.id && selectedTeam.teamType === TeamType.Group) {
       try {
         const res = await searchData(
           ``,
@@ -241,7 +236,7 @@ const TeamsPage = () => {
       });
 
       setSelectedTeam((prev) => ({ ...prev, ...data }));
-      fetchAssets();
+      fetchAssets(data);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
