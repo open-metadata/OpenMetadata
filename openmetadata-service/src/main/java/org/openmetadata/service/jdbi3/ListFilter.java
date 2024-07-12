@@ -115,7 +115,7 @@ public class ListFilter extends Filter<ListFilter> {
     String apiCollection = queryParams.get("apiCollection");
     return apiCollection == null
         ? ""
-        : getFqnPrefixCondition(apiEndpoint, apiEndpoint, "apiCollection");
+        : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
   }
 
   private String getEntityFQNHashCondition() {
