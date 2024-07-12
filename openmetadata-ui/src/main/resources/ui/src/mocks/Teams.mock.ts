@@ -63,7 +63,7 @@ export const MOCK_CURRENT_TEAM = {
       type: 'policy',
     },
   ],
-  teamType: TeamType.Group,
+  teamType: undefined,
   updatedAt: 1669719624263,
   updatedBy: 'ag939431',
   users: [],

@@ -212,6 +212,10 @@ describe('Test Teams Page', () => {
       })),
     }));
 
+    (getTeamByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve({ ...MOCK_CURRENT_TEAM, teamType: TeamType.Group })
+    );
+
     await act(async () => {
       render(<TeamsPage />);
     });
