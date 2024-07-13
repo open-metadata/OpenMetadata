@@ -441,6 +441,7 @@ public final class EntityUtil {
         .withDeleted(from.getDeleted());
   }
 
+
   public static List<TagLabel> toTagLabels(GlossaryTerm... terms) {
     List<TagLabel> list = new ArrayList<>();
     for (GlossaryTerm term : terms) {

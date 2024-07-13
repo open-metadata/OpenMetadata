@@ -1272,8 +1272,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Don't store owner, database, href and tags as JSON. Build it on the fly based on
     // relationships
     entity.withHref(null);
-    EntityReference owner = entity.getOwner();
-    entity.setOwner(null);
+    List<EntityReference> owners = entity.getOwner();
+    entity.setOwners(null);
     List<EntityReference> children = entity.getChildren();
     entity.setChildren(null);
     List<TagLabel> tags = entity.getTags();
@@ -1297,7 +1297,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Restore the relationships
-    entity.setOwner(owner);
+    entity.setOwners(owners);
     entity.setChildren(children);
     entity.setTags(tags);
     entity.setDomain(domain);
@@ -1917,12 +1917,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  protected void populateOwner(EntityReference owner) {
-    if (owner == null) {
+  protected void populateOwner(List<EntityReference> owners) {
+    if (nullOrEmpty(owners)) {
       return;
     }
-    EntityReference ref = validateOwner(owner);
-    EntityUtil.copy(ref, owner);
+    List<EntityReference> refs = validateOwners(owners);
+    //EntityUtil.copy(refs, owners);
   }
 
   @Transaction
@@ -2072,11 +2072,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final void updateOwner(
-      T ownedEntity, EntityReference originalOwner, EntityReference newOwner) {
-    if (Objects.equals(getId(originalOwner), getId(newOwner))) {
+      T ownedEntity, List<EntityReference> originalOwners, List<EntityReference> newOwners) {
+    if (Objects.equals(getId(originalOwners), getId(newOwner))) {
       return;
     }
-    validateOwner(newOwner);
+    validateOwners(newOwners);
     removeOwner(ownedEntity, originalOwner);
     storeOwner(ownedEntity, newOwner);
   }
