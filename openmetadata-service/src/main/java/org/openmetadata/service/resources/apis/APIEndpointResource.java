@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.apis;
 
-import com.google.api.Endpoint;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -173,7 +172,8 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -230,9 +230,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
                 @Content(
                     mediaType = "application/json",
                     schema = @Schema(implementation = APIEndpoint.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "Endpoint for instance {fqn} is not found")
+        @ApiResponse(responseCode = "404", description = "Endpoint for instance {fqn} is not found")
       })
   public APIEndpoint getByName(
       @Context UriInfo uriInfo,
