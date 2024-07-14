@@ -91,7 +91,7 @@ public class DataInsightChartResourceTest
             .withName("denyDataInsightViewPolicy")
             .withDescription("denyDataInsightViewPolicy")
             .withRules(rules)
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
     CreateRole createRole =
         roleResourceTest

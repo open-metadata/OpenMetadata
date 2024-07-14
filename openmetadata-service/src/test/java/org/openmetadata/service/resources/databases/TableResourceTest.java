@@ -44,7 +44,7 @@ import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TAG;
@@ -587,7 +587,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create table without table constraints
     CreateTable request =
         createRequest(test)
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withDescription("description")
             .withTableConstraints(null);
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -1050,7 +1050,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void put_tableSampleData_200(TestInfo test) throws IOException {
     Table table =
-        createAndCheckEntity(createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
     List<String> columns = Arrays.asList(C1, C2, C3);
 
     // Add 3 rows of sample data for 3 columns
@@ -1141,7 +1142,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void put_profileConfig_200(TestInfo test) throws IOException {
-    CreateTable request = createRequest(test).withOwner(USER1_REF);
+    CreateTable request = createRequest(test).withOwners(List.of(USER1_REF));
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Admin can PUT profile configuration
@@ -1204,15 +1205,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void put_tableProfile_200(TestInfo test) throws IOException, ParseException {
-    Table table = createEntity(createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
-    Table table1 = createEntity(createRequest(test, 1).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+    Table table =
+        createEntity(createRequest(test).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
+    Table table1 =
+        createEntity(createRequest(test, 1).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
 
     // Admin can PUT table profile
     putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
 
     // Owner can PUT table profile
-    Table table3 = createEntity(createRequest(test, 2).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
-    Table table4 = createEntity(createRequest(test, 3).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+    Table table3 =
+        createEntity(createRequest(test, 2).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
+    Table table4 =
+        createEntity(createRequest(test, 3).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
     putTableProfile(table3, table4, authHeaders(USER1.getName()));
 
     // Others can't PUT table profile data
@@ -1506,7 +1511,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withSql(query)
             .withGeneratedAt(new Date())
             .withColumns(columns)
-            .withOwner(reduceEntityReference(user));
+            .withOwners(reduceEntityReferences(List.of(user.getEntityReference())));
     Table putResponse = putTableDataModel(table.getId(), dataModel, ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, putResponse.getDataModel());
 
@@ -1532,12 +1537,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void createUpdateDelete_tableCustomMetrics_200(TestInfo test) throws IOException {
     // Creating custom metric is allowed for the admin
     Table table =
-        createAndCheckEntity(createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
     createUpdateDeleteCustomMetrics(table, ADMIN_AUTH_HEADERS);
 
     // Creating custom metric is allowed for the owner
     Table table1 =
-        createAndCheckEntity(createRequest(test, 1).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test, 1).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
     createUpdateDeleteCustomMetrics(table1, authHeaders(USER1.getName()));
 
     // Creating custom metric is not allowed for other users
@@ -1646,7 +1653,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create a table test1 with 1 table tag and 3 column tags
     CreateTable create =
         createRequest(test, 1)
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withTags(
                 List.of(
                     USER_ADDRESS_TAG_LABEL,
@@ -1676,7 +1683,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable create1 =
         createRequest(test, 2)
             .withDescription("description")
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 USER_BANK_ACCOUNT
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
@@ -1731,7 +1738,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertEquals(USER1_REF, table.getOwner());
+      assertOwners(List.of(USER1_REF), table.getOwners());
       assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
@@ -2151,7 +2158,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     Database db =
-        dbTest.createEntity(dbTest.createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        dbTest.createEntity(
+            dbTest.createRequest(test).withOwners(List.of(USER1_REF)), ADMIN_AUTH_HEADERS);
 
     // Ensure databaseSchema owner is inherited from database
     CreateDatabaseSchema createSchema =
@@ -2165,11 +2173,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Change the ownership of table and ensure further ingestion updates don't overwrite the
     // ownership
-    assertOwnershipInheritanceOverride(table, createTable.withOwner(null), USER2_REF);
+    assertOwnershipInheritanceOverride(table, createTable.withOwners(null), USER2_REF);
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the
     // ownership
-    schemaTest.assertOwnershipInheritanceOverride(schema, createSchema.withOwner(null), USER2_REF);
+    schemaTest.assertOwnershipInheritanceOverride(schema, createSchema.withOwners(null), USER2_REF);
   }
 
   @Test
@@ -2442,7 +2450,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create table with owner and a column tagged with PII.Sensitive
     Table table =
         createAndCheckEntity(
-            createRequest(test).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test).withOwners(List.of(USER_TEAM21.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
     List<String> columns = Arrays.asList(C1, C2, C3);
     // Add 3 rows of sample data for 3 columns
     List<List<Object>> rows =
@@ -2478,10 +2487,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // C3 has the PII.Sensitive tag
     Table table =
         createEntity(
-            createRequest(test).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test).withOwners(List.of(USER_TEAM21.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
     Table table1 =
         createEntity(
-            createRequest(test, 1).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test, 1).withOwners(List.of(USER_TEAM21.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
     putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
 
     Column c3 = table.getColumns().stream().filter(c -> c.getName().equals(C3)).findFirst().get();
@@ -2522,7 +2533,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // DatabaseService has owner dataConsumer
     CreateDatabaseService createDatabaseService =
-        dbServiceTest.createRequest(test).withOwner(DATA_CONSUMER.getEntityReference());
+        dbServiceTest.createRequest(test).withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DatabaseService service = dbServiceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
 
     // dataConsumer as owner of service can create database under it
@@ -2530,7 +2541,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         dbTest
             .createRequest("db")
             .withService(service.getFullyQualifiedName())
-            .withOwner(DATA_STEWARD.getEntityReference());
+            .withOwners(List.of(DATA_STEWARD.getEntityReference()));
     Database db = dbTest.createEntity(createDatabase, authHeaders(DATA_CONSUMER.getName()));
 
     // dataSteward as owner of database can create database schema under it
@@ -2538,7 +2549,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         schemaTest
             .createRequest("schema")
             .withDatabase(db.getFullyQualifiedName())
-            .withOwner(USER1.getEntityReference());
+            .withOwners(List.of(USER1.getEntityReference()));
     DatabaseSchema schema =
         schemaTest.createEntity(createDatabaseSchema, authHeaders(DATA_STEWARD.getName()));
 
@@ -2673,10 +2684,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getUsageSummary());
     }
-    if (fields.contains(FIELD_OWNER)) {
-      assertNotNull(table.getOwner());
+    if (fields.contains(FIELD_OWNERS)) {
+      assertNotNull(table.getOwners());
     } else {
-      assertNull(table.getOwner());
+      assertNull(table.getOwners());
     }
     if (fields.contains("columns")) {
       assertNotNull(table.getColumns());
@@ -2713,7 +2724,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNull(
         table.getTableConstraints(),
         table.getUsageSummary(),
-        table.getOwner(),
+        table.getOwners(),
         table.getTags(),
         table.getFollowers(),
         table.getJoins(),

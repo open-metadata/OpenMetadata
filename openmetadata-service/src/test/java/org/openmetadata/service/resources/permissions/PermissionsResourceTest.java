@@ -292,7 +292,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
     CreateTable createTable =
         tableResourceTest
             .createRequest("permissionTest1")
-            .withOwner(DATA_STEWARD_USER.getEntityReference());
+            .withOwners(List.of(DATA_STEWARD_USER.getEntityReference()));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Data consumer has non-owner permissions
@@ -322,7 +322,7 @@ class PermissionsResourceTest extends OpenMetadataApplicationTest {
             .createRequest("permissionTest")
             .withDescription("description")
             .withDisplayName("display")
-            .withOwner(DATA_CONSUMER_USER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER_USER.getEntityReference()));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // Data consumer must have all operations except create allowed based on Organization policy as

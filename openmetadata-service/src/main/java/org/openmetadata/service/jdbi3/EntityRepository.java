@@ -484,7 +484,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T copy(T entity, CreateEntity request, String updatedBy) {
-    List<EntityReference> owners = validateOwners(request.getOwner());
+    List<EntityReference> owners = validateOwners(request.getOwners());
     EntityReference domain = validateDomain(request.getDomain());
     validateReviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());

@@ -691,7 +691,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getTags());
+    assertListNull(entity.getOwners(), entity.getTags());
 
     fields = "owner,tags";
     entity =

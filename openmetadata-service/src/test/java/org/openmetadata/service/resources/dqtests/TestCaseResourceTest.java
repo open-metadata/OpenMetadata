@@ -131,7 +131,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .createRequest(test)
             .withName("testCase'_ Table")
             .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withColumns(
                 List.of(
                     new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT),
@@ -141,7 +141,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10),
                     new Column().withName(C3).withDisplayName("c3").withDataType(BIGINT)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     tableReq =
         tableResourceTest
@@ -155,7 +155,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     TEST_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     TABLE_LINK = String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName());
     TABLE_LINK_2 = String.format("<#E::table::%s>", TEST_TABLE2.getFullyQualifiedName());
@@ -576,7 +576,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         .createRequest(test)
         .withName(test.getDisplayName() + "_sensitiveTableTest")
         .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withColumns(
             List.of(
                 new Column()
@@ -698,7 +698,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                             .withDisplayName("c1")
                             .withDataType(ColumnDataType.VARCHAR)
                             .withDataLength(10)))
-                .withOwner(USER1_REF);
+                .withOwners(List.of(USER1_REF));
         Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
         tables.add(table);
         CreateTestSuite createTestSuite =
@@ -770,7 +770,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       .withDisplayName("c1")
                       .withDataType(ColumnDataType.VARCHAR)
                       .withDataLength(10)))
-          .withOwner(USER1_REF);
+          .withOwners(List.of(USER1_REF));
       Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
       tables.add(table);
       CreateTestSuite createTestSuite =
@@ -793,10 +793,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
       if (i == 2) {
         // create 1 test cases with USER21_TEAM as owner
-        create.withOwner(TEAM21.getEntityReference());
+        create.withOwners(List.of(TEAM21.getEntityReference()));
       } else if (i % 2 == 0) {
         // create 2 test cases with USER1_REF as owner
-        create.withOwner(USER2_REF);
+        create.withOwners(List.of(USER2_REF));
       }
       TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
       testCases.add(testCase);
@@ -949,7 +949,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     .withDataType(ColumnDataType.VARCHAR)
                     .withDataLength(10)
                     .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withDomain(DOMAIN1.getFullyQualifiedName())
         .withTags(List.of(PERSONAL_DATA_TAG_LABEL, TIER1_TAG_LABEL));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
@@ -979,11 +979,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("entityLink", String.format("<#E::table::%s>", table.getFullyQualifiedName()));
     queryParams.put("includeAllTests", "true");
-    queryParams.put("fields", "domain,owner,tags");
+    queryParams.put("fields", "domain,owners,tags");
     ResultList<TestCase> testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertEquals(2, testCases.getData().size());
     for (TestCase testCase : testCases.getData()) {
-      assertEquals(table.getOwner().getId(), testCase.getOwner().getId());
+      assertOwners(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
@@ -1003,7 +1003,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       assertEquals(expectedTags, actualTags);
     }
 
-    createTable.setOwner(USER2_REF);
+    createTable.setOwners(List.of(USER2_REF));
     createTable.setDomain(DOMAIN.getFullyQualifiedName());
     createTable.setTags(List.of(USER_ADDRESS_TAG_LABEL));
     createTable.withColumns(
@@ -1018,7 +1018,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
 
     for (TestCase testCase : testCases.getData()) {
-      assertEquals(table.getOwner().getId(), testCase.getOwner().getId());
+      assertOwners(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
@@ -2071,7 +2071,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .createRequest(test)
             .withName(test.getDisplayName())
             .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withColumns(
                 List.of(
                     new Column()
@@ -2079,7 +2079,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
@@ -2317,12 +2317,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner(), entity.getTestSuite(), entity.getTestDefinition());
 
-    fields = "owner,testSuite,testDefinition";
+    fields = "owners,testSuite,testDefinition";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getTestSuite(), entity.getTestDefinition());
+    assertListNotNull(entity.getOwners(), entity.getTestSuite(), entity.getTestDefinition());
     return entity;
   }
 

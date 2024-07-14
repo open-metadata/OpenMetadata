@@ -95,7 +95,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     USER2_AUTH_HEADERS = authHeaders(USER2.getName());
 
     CreateTable createTable =
-        TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
+        TABLE_RESOURCE_TEST.createRequest(test).withOwners(List.of(TableResourceTest.USER1_REF));
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
@@ -109,11 +109,11 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     EntityReference TEAM2_REF = TEAM2.getEntityReference();
 
     CreateTable createTable2 = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable2.withName("table2").withOwner(TEAM2_REF);
+    createTable2.withName("table2").withOwners(List.of(TEAM2_REF));
     TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     CreateTable createTable3 = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable3.withName("table_without_owner").withOwner(null);
+    createTable3.withName("table_without_owner").withOwners(null);
     TABLE_WITHOUT_OWNER =
         TABLE_RESOURCE_TEST.createAndCheckEntity(createTable3, ADMIN_AUTH_HEADERS);
 

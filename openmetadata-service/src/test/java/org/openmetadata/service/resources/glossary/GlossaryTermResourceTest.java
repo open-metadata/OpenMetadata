@@ -866,7 +866,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(getFqn(glossary))
             .withStyle(new Style().withColor("#FF5733").withIconURL("https://img"))
             .withParent(getFqn(parent))
-            .withOwner(owner)
+            .withOwners(List.of(owner))
             .withReviewers(reviewers);
     return createAndCheckEntity(createGlossaryTerm, createdBy);
   }
@@ -957,7 +957,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         term.getChildren(),
         term.getRelatedTerms(),
         term.getReviewers(),
-        term.getOwner(),
+        term.getOwners(),
         term.getTags());
 
     fields = "children,relatedTerms,reviewers,owner,tags";
@@ -965,7 +965,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         byName
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(term.getRelatedTerms(), term.getReviewers(), term.getOwner(), term.getTags());
+    assertListNotNull(
+        term.getRelatedTerms(), term.getReviewers(), term.getOwners(), term.getTags());
     assertListNotEmpty(term.getRelatedTerms(), term.getReviewers());
     // Checks for other owner, tags, and followers is done in the base class
     return term;
@@ -1151,7 +1152,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public Glossary createGlossary(
       String name, List<EntityReference> reviewers, EntityReference owner) throws IOException {
     CreateGlossary create =
-        glossaryTest.createRequest(name).withReviewers(reviewers).withOwner(owner);
+        glossaryTest.createRequest(name).withReviewers(reviewers).withOwners(List.of(owner));
     return glossaryTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 

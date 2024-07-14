@@ -41,7 +41,7 @@ public class AppMarketPlaceResourceTest
     try {
       return new CreateAppMarketPlaceDefinitionReq()
           .withName(name)
-          .withOwner(USER1_REF)
+          .withOwners(List.of(USER1_REF))
           .withDeveloper("OM")
           .withDeveloperUrl("https://test.com")
           .withSupportEmail("test@openmetadata.org")

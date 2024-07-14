@@ -197,7 +197,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
             ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(schema.getService(), schema.getServiceType(), schema.getDatabase());
-    assertListNull(schema.getOwner(), schema.getTables());
+    assertListNull(schema.getOwners(), schema.getTables());
 
     fields = "owner,tags,tables";
     schema =

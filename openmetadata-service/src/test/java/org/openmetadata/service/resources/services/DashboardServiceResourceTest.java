@@ -239,7 +239,7 @@ public class DashboardServiceResourceTest
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(service.getOwner());
+    TestUtils.assertListNull(service.getOwners());
 
     fields = "owner,tags";
     service =

@@ -181,7 +181,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   @Test
   void put_MlModelUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a Model with POST
-    CreateMlModel request = createRequest(test).withOwner(USER1_REF);
+    CreateMlModel request = createRequest(test).withOwners(List.of(USER1_REF));
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model, NO_CHANGE);
 
@@ -439,7 +439,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModelService createMlModelService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     MlModelService service = serviceTest.createEntity(createMlModelService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create MlModel under it
@@ -458,7 +458,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(
-        model.getOwner(),
+        model.getOwners(),
         model.getDashboard(),
         model.getFollowers(),
         model.getTags(),
