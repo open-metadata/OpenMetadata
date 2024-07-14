@@ -126,8 +126,8 @@
       "description": "Link to the resource corresponding to this storage service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this storage service.",
+    "owners": {
+      "description": "Owners of this storage service.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {

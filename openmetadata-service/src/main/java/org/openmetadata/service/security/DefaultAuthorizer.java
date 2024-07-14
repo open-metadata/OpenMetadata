@@ -109,9 +109,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   /** In 1.2, evaluate policies here instead of just checking the subject */
   @Override
-  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+  public boolean authorizePII(SecurityContext securityContext, List<EntityReference> owners) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owner);
+    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owners);
   }
 
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {

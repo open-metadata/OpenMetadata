@@ -123,8 +123,8 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "owner": {
-      "description": "Owner of this messaging service.",
+    "owners": {
+      "description": "Owners of this messaging service.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "href": {

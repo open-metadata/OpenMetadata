@@ -69,7 +69,7 @@ public class StorageServiceResource
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
     super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getOwners());
     return service;
   }
 

@@ -117,8 +117,8 @@
       "type": "boolean",
       "default": false
     },
-    "owner": {
-      "description": "Owner of this Stored Procedure.",
+    "owners": {
+      "description": "Owners of this Stored Procedure.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },

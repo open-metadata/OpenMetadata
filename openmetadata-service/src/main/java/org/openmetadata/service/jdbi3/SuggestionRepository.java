@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_ACCEPTED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_DELETED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_REJECTED;
@@ -327,19 +328,21 @@ public class SuggestionRepository {
     User user = Entity.getEntityByName(USER, userName, TEAMS_FIELD, NON_DELETED);
     MessageParser.EntityLink about = MessageParser.EntityLink.parse(suggestion.getEntityLink());
     EntityReference aboutRef = EntityUtil.validateEntityLink(about);
-    EntityReference ownerRef = Entity.getOwner(aboutRef);
+    List<EntityReference> ownerRefs = Entity.getOwners(aboutRef);
     List<String> ownerTeamNames = new ArrayList<>();
-    if (ownerRef != null) {
-      try {
-        User owner =
-            Entity.getEntityByName(
-                USER, ownerRef.getFullyQualifiedName(), TEAMS_FIELD, NON_DELETED);
-        ownerTeamNames =
-            owner.getTeams().stream().map(EntityReference::getFullyQualifiedName).toList();
-      } catch (EntityNotFoundException e) {
-        Team owner =
-            Entity.getEntityByName(TEAM, ownerRef.getFullyQualifiedName(), "", NON_DELETED);
-        ownerTeamNames.add(owner.getFullyQualifiedName());
+    if (!nullOrEmpty(ownerRefs)) {
+      for (EntityReference ownerRef : ownerRefs) {
+        try {
+          User owner =
+              Entity.getEntityByName(
+                  USER, ownerRef.getFullyQualifiedName(), TEAMS_FIELD, NON_DELETED);
+          ownerTeamNames =
+              owner.getTeams().stream().map(EntityReference::getFullyQualifiedName).toList();
+        } catch (EntityNotFoundException e) {
+          Team owner =
+              Entity.getEntityByName(TEAM, ownerRef.getFullyQualifiedName(), "", NON_DELETED);
+          ownerTeamNames.add(owner.getFullyQualifiedName());
+        }
       }
     }
 
@@ -347,7 +350,8 @@ public class SuggestionRepository {
         user.getTeams().stream().map(EntityReference::getFullyQualifiedName).toList();
 
     if (Boolean.FALSE.equals(user.getIsAdmin())
-        && (ownerRef != null && !ownerRef.getName().equals(userName))
+        && (!nullOrEmpty(ownerRefs)
+            && ownerRefs.stream().noneMatch(ownerRef -> ownerRef.getName().equals(userName)))
         && Collections.disjoint(userTeamNames, ownerTeamNames)) {
       throw new AuthorizationException(
           CatalogExceptionMessage.suggestionOperationNotAllowed(userName, status.value()));

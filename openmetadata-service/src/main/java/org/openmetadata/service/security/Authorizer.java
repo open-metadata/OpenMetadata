@@ -48,5 +48,5 @@ public interface Authorizer {
   boolean shouldMaskPasswords(SecurityContext securityContext);
 
   /** Let the user view PII Sensitive data */
-  boolean authorizePII(SecurityContext securityContext, EntityReference owner);
+  boolean authorizePII(SecurityContext securityContext, List<EntityReference> owner);
 }

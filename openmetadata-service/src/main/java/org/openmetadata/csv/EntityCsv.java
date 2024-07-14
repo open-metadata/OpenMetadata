@@ -166,25 +166,30 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   /** Owner field is in entityType;entityName format */
-  public EntityReference getOwner(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
     if (!processRecord) {
       return null;
     }
-
-    String ownerField = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(ownerField)) {
+    String ownersRecord = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(ownersRecord)) {
       return null;
     }
-
-    List<String> list = CsvUtil.fieldToStrings(ownerField);
-    if (list.size() != 2) {
-      importFailure(printer, invalidOwner(fieldNumber), csvRecord);
-      return null;
+    List<String> owners = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String owner : owners) {
+      List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
+      if (ownerTypes.size() != 2) {
+        importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+        return null;
+      }
+      EntityReference ownerRef =
+          getEntityReference(printer, csvRecord, fieldNumber, ownerTypes.get(0), ownerTypes.get(1));
+      if (ownerRef != null) {
+        refs.add(ownerRef);
+      }
     }
-    EntityReference owner =
-        getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
-    return owner == null || Boolean.TRUE.equals(owner.getInherited()) ? null : owner;
+    return refs.isEmpty() ? null : refs;
   }
 
   /** Owner field is in entityName format */

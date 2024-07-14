@@ -43,8 +43,8 @@
       "description": "Link to the resource corresponding to this report.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this Report.",
+    "owners": {
+      "description": "Owners of this Report.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "service": {

@@ -51,7 +51,7 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this schema.",
       "$ref": "../../type/entityReferenceList.json"
     },

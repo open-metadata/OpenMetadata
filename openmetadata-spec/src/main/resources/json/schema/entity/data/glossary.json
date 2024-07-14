@@ -51,8 +51,8 @@
         "$ref": "../../type/entityReference.json"
       }
     },
-    "owner": {
-      "description": "Owner of this glossary.",
+    "owners": {
+      "description": "Owners of this glossary.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {

@@ -447,7 +447,7 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
         new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     SearchIndex searchIndex = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, searchIndex);

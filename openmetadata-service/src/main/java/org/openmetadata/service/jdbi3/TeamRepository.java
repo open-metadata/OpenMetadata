@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
-import static org.openmetadata.csv.CsvUtil.addUserOwner;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
@@ -31,6 +30,7 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.DELETE_ORGANIZATION;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.INVALID_GROUP_TEAM_CHILDREN_UPDATE;
@@ -632,7 +632,7 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDisplayName(csvRecord.get(1))
               .withDescription(csvRecord.get(2))
               .withTeamType(TeamType.fromValue(csvRecord.get(3)))
-              .withOwner(getOwnerAsUser(printer, csvRecord, 5))
+              .withOwners(getEntityReferences(printer, csvRecord, 5, USER))
               .withIsJoinable(getBoolean(printer, csvRecord, 6))
               .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
               .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
@@ -652,7 +652,7 @@ public class TeamRepository extends EntityRepository<Team> {
       addField(recordList, entity.getDescription());
       addField(recordList, entity.getTeamType().value());
       addEntityReferences(recordList, entity.getParents());
-      addUserOwner(recordList, entity.getOwner());
+      addEntityReferences(recordList, entity.getOwners());
       addField(recordList, entity.getIsJoinable());
       addEntityReferences(recordList, entity.getDefaultRoles());
       addEntityReferences(recordList, entity.getPolicies());

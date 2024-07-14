@@ -482,7 +482,7 @@ public class MigrationUtil {
     entity.setDescription(request.getDescription());
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
-    entity.setOwner(null);
+    entity.setOwners(new ArrayList<>());
     entity.setUpdatedAt(System.currentTimeMillis());
     return entity;
   }

@@ -102,8 +102,8 @@
       "description": "User names of the reviewers for this glossary.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "owner": {
-      "description": "Owner of this glossary term.",
+    "owners": {
+      "description": "Owners of this glossary term.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "usageCount": {

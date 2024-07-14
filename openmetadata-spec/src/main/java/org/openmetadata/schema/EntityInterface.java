@@ -54,7 +54,7 @@ public interface EntityInterface {
 
   ChangeDescription getChangeDescription();
 
-  default List<EntityReference> getOwner() {
+  default List<EntityReference> getOwners() {
     return null;
   }
 

@@ -78,7 +78,8 @@ public class PolicyEvaluator {
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext,
       OperationContext operationContext) {
-    Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
+    Iterator<PolicyContext> policyIterator =
+        subjectContext.getPolicies(resourceContext.getOwners());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, true);
   }
 
@@ -86,7 +87,8 @@ public class PolicyEvaluator {
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext,
       OperationContext operationContext) {
-    Iterator<PolicyContext> policyIterator = subjectContext.getPolicies(resourceContext.getOwner());
+    Iterator<PolicyContext> policyIterator =
+        subjectContext.getPolicies(resourceContext.getOwners());
     evaluatePolicies(policyIterator, subjectContext, resourceContext, operationContext, false);
   }
 
@@ -184,7 +186,7 @@ public class PolicyEvaluator {
 
     // Iterate through policies and set the permissions to DENY, ALLOW, CONDITIONAL_DENY, or
     // CONDITIONAL_ALLOW
-    Iterator<PolicyContext> policies = subjectContext.getPolicies(resourceContext.getOwner());
+    Iterator<PolicyContext> policies = subjectContext.getPolicies(resourceContext.getOwners());
     while (policies.hasNext()) {
       PolicyContext policyContext = policies.next();
       for (CompiledRule rule : policyContext.getRules()) {

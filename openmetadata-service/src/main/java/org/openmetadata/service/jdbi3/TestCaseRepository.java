@@ -8,7 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -113,7 +113,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
     Table table = Entity.getEntity(entityLink, "owner,domain,tags,columns", ALL);
-    inheritOwner(testCase, fields, table);
+    inheritOwners(testCase, fields, table);
     inheritDomain(testCase, fields, table);
     inheritTags(testCase, fields, table);
   }
@@ -315,7 +315,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields =
         new ArrayList<>(
-            List.of("testDefinition", FIELD_OWNER, FIELD_TAGS, TEST_SUITE_FIELD, "testSuites"));
+            List.of("testDefinition", FIELD_OWNERS, FIELD_TAGS, TEST_SUITE_FIELD, "testSuites"));
 
     // set the test case resolution status reference if test failed, by either
     // creating a new incident or returning the stateId of an unresolved incident

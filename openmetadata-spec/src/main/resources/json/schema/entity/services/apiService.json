@@ -109,8 +109,8 @@
       "description": "Link to the resource corresponding to this API service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this API service.",
+    "owners": {
+      "description": "Owners of this API service.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {

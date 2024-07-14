@@ -84,8 +84,8 @@
       "description": "Link to this data model entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this data model.",
+    "owners": {
+      "description": "Owners of this data model.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },

@@ -701,7 +701,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     Table table = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, table);
@@ -842,7 +842,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext<?> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
         .entity(JsonUtils.pojoToJson(repository.getLatestTableProfile(fqn, authorizePII)))
@@ -933,7 +933,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             fqn); // get table fqn for the resource context (vs column fqn)
     ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
     return repository.getColumnProfiles(fqn, startTs, endTs, authorizePII);
   }
 

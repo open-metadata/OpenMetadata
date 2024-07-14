@@ -15,7 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
-import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.service.Entity.DATABASE;
@@ -120,7 +120,7 @@ public class DatabaseServiceRepository
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
-          .withOwner(getOwner(printer, csvRecord, 3))
+          .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withDomain(getEntityReference(printer, csvRecord, 7, Entity.DOMAIN));
 
@@ -136,7 +136,7 @@ public class DatabaseServiceRepository
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
-      addOwner(recordList, entity.getOwner());
+      addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());

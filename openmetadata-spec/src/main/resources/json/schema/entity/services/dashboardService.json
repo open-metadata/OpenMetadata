@@ -178,8 +178,8 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this dashboard service.",
+    "owners": {
+      "description": "Owners of this dashboard service.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "version": {

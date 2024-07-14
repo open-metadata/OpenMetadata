@@ -43,8 +43,8 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this metrics.",
+    "owners": {
+      "description": "Owners of this metrics.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "tags": {

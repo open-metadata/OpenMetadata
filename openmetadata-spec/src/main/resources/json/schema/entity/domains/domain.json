@@ -69,8 +69,8 @@
       "description" : "Children domains or sub-domains.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "owner": {
-      "description": "Owner of this Domain.",
+    "owners": {
+      "description": "Owners of this Domain.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "experts": {

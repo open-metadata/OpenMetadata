@@ -137,7 +137,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       Table table =
           Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
-      inheritOwner(testSuite, fields, table);
+      inheritOwners(testSuite, fields, table);
       inheritDomain(testSuite, fields, table);
     }
   }
@@ -373,7 +373,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withExecutable(testSuite.getExecutable())
         .withExecutableEntityReference(testSuite.getExecutableEntityReference())
         .withServiceType(testSuite.getServiceType())
-        .withOwner(testSuite.getOwner())
+        .withOwners(testSuite.getOwners())
         .withUpdatedBy(testSuite.getUpdatedBy())
         .withUpdatedAt(testSuite.getUpdatedAt())
         .withVersion(testSuite.getVersion());

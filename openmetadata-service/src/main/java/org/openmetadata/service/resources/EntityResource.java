@@ -98,7 +98,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected T addHref(UriInfo uriInfo, T entity) {
-    Entity.withHref(uriInfo, entity.getOwner());
+    Entity.withHref(uriInfo, entity.getOwners());
     Entity.withHref(uriInfo, entity.getFollowers());
     Entity.withHref(uriInfo, entity.getExperts());
     Entity.withHref(uriInfo, entity.getReviewers());

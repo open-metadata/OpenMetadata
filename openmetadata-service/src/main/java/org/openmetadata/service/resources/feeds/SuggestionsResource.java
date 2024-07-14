@@ -473,7 +473,8 @@ public class SuggestionsResource {
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext =
         new OperationContext(Entity.SUGGESTION, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new PostResourceContext(entity.getOwner().getName());
+    ResourceContextInterface resourceContext =
+        new PostResourceContext(entity.getOwners().get(0).getName());
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteSuggestionsForAnEntity(entity, securityContext.getUserPrincipal().getName())
         .toResponse();

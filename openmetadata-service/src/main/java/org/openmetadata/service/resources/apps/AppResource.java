@@ -4,7 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -295,7 +295,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       IngestionPipeline ingestionPipeline =
           ingestionPipelineRepository.get(
-              uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+              uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
       return Response.ok(
               ingestionPipelineRepository.listPipelineStatus(
                   ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
@@ -342,7 +342,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         return Response.ok(
                 pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after),
                 MediaType.APPLICATION_JSON_TYPE)
@@ -391,7 +391,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         PipelineStatus latestPipelineStatus =
             ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
         Map<String, String> lastIngestionLogs =
@@ -886,7 +886,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
@@ -900,7 +900,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         ingestionPipeline.setOpenMetadataServerConnection(app.getOpenMetadataServerConnection());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
         ServiceEntityInterface service =
@@ -934,7 +934,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
@@ -948,7 +948,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
 
         ingestionPipeline.setOpenMetadataServerConnection(app.getOpenMetadataServerConnection());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
@@ -995,14 +995,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       AppMarketPlaceDefinition marketPlaceDefinition,
       CreateApp createAppRequest,
       String updatedBy) {
-    EntityReference owner = repository.validateOwner(createAppRequest.getOwner());
+    List<EntityReference> owners = repository.validateOwners(createAppRequest.getOwners());
     App app =
         new App()
             .withId(UUID.randomUUID())
             .withName(marketPlaceDefinition.getName())
             .withDisplayName(createAppRequest.getDisplayName())
             .withDescription(createAppRequest.getDescription())
-            .withOwner(owner)
+            .withOwners(owners)
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis())
             .withDeveloper(marketPlaceDefinition.getDeveloper())
@@ -1053,7 +1053,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         try {
           pipelineServiceClient.deletePipeline(ingestionPipeline);
         } catch (Exception ex) {

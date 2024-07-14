@@ -451,7 +451,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getOwner() {
+    public List<EntityReference> getOwners() {
       return null;
     }
 

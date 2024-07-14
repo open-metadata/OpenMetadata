@@ -114,8 +114,8 @@
           },
           "default": null
         },
-        "owner": {
-          "description": "Owner of this task.",
+        "owners": {
+          "description": "Owners of this task.",
           "$ref": "../../type/entityReferenceList.json"
         }
       },
@@ -229,8 +229,8 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this pipeline.",
+    "owners": {
+      "description": "Owners of this pipeline.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "service": {

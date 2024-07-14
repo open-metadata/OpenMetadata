@@ -15,7 +15,7 @@ public class ReportDataContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getOwner() {
+  public List<EntityReference> getOwners() {
     return null;
   }
 

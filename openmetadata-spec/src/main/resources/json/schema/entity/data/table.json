@@ -874,8 +874,8 @@
             "type": "string"
           }
         },
-        "owner": {
-          "description": "Owner of this Table.",
+        "owners": {
+          "description": "Owners of this Table.",
           "$ref": "../../type/entityReferenceList.json",
           "default": null
         },
@@ -970,8 +970,8 @@
     "tablePartition": {
       "$ref": "#/definitions/tablePartition"
     },
-    "owner": {
-      "description": "Owner of this table.",
+    "owners": {
+      "description": "Owners of this table.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },

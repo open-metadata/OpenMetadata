@@ -1084,7 +1084,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContext<?> resourceContext = getResourceContextById(id);
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
     return repository.getSampleData(testCase, authorizePII);
   }
 

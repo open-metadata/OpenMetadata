@@ -14,9 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
-import static org.openmetadata.csv.CsvUtil.addOwner;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -146,7 +146,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public void setInheritedFields(DatabaseSchema schema, Fields fields) {
     Database database =
         Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
-    inheritOwner(schema, fields, database);
+    inheritOwners(schema, fields, database);
     inheritDomain(schema, fields, database);
     schema.withRetentionPeriod(
         schema.getRetentionPeriod() == null
@@ -295,7 +295,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withName(csvRecord.get(0))
           .withDisplayName(csvRecord.get(1))
           .withDescription(csvRecord.get(2))
-          .withOwner(getOwner(printer, csvRecord, 3))
+          .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withRetentionPeriod(csvRecord.get(7))
           .withSourceUrl(csvRecord.get(8))
@@ -314,7 +314,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
-      addOwner(recordList, entity.getOwner());
+      addEntityReferences(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
