@@ -238,6 +238,8 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
 
+        # To find topic in artifact registry, dafault is "<topic_name>-value"
+        # But suffix can be overridden using schemaRegistryTopicSuffixName
         topic_schema_registry_name = (
             topic_name + self.service_connection.schemaRegistryTopicSuffixName
         )
