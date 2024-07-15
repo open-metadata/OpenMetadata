@@ -1348,7 +1348,7 @@
     "are-you-want-to-restore": "本当に{{entity}}をリストアしてよろしいですか?",
     "assess-data-reliability-with-data-profiler-lineage": "Assess data reliability with data profiler, lineage, sample data, and more.",
     "assigned-you-a-new-task-lowercase": "新しいタスクがアサインされました",
-    "assigning-team-entity-description": "Add a {{entity}} to {{name}}. This {{entity}} will be inherited by all the Users in the Team {{name}} as well as all the Teams under {{name}}",
+    "assigning-team-entity-description": "Add a {{entity}} to {{name}}. This {{entity}} will be inherited by all the users in the team {{name}} as well as all the teams under {{name}}",
     "at-least-one-policy": "Enter at least one policy",
     "auth-configuration-missing": "Auth configuration is missing",
     "authProvider-is-not-basic": "AuthProvider is not Basic",

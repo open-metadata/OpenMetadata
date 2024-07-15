@@ -69,3 +69,7 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+-- Remove date, dateTime, time from type_entity, as they are no more om-field-types, instead we have date-cp, time-cp, dateTime-cp as om-field-types
+DELETE FROM type_entity
+WHERE name IN ('date', 'dateTime', 'time');
