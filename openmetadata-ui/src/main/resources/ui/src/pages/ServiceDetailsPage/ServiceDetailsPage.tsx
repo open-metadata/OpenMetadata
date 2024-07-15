@@ -634,6 +634,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       fetchMlModal,
       fetchContainers,
       fetchSearchIndexes,
+      fetchCollections,
     ]
   );
 
