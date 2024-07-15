@@ -191,4 +191,3 @@ class SQATestSuiteInterface(SQAInterfaceMixin, TestSuiteInterface):
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             )
             raise RuntimeError(err)
-
