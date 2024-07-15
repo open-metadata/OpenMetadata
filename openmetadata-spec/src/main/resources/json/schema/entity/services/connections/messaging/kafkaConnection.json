@@ -84,8 +84,9 @@
     },
     "schemaRegistryTopicSuffixName": {
       "title": "Schema Registry Topic Suffix Name",
-      "description": "Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get the schema in registry.",
-      "type": "string"
+      "description": "Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get topic schema in registry.",
+      "type": "string",
+      "default": "-value"
     },
     "schemaRegistrySSL": {
       "title": "Schema Registry SSL",

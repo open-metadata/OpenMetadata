@@ -238,13 +238,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:
 
-        topic_schema_registry_name = topic_name + "-value"
-
-        # Use schemaRegistryTopicSuffixName if defined
-        if self.service_connection.schemaRegistryTopicSuffixName:
-            topic_schema_registry_name = (
-                topic_name + self.service_connection.schemaRegistryTopicSuffixName
-            )
+        topic_schema_registry_name = (
+            topic_name + self.service_connection.schemaRegistryTopicSuffixName
+        )
 
         try:
             if self.schema_registry_client:
