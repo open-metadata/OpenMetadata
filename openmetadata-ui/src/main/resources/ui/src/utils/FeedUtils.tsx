@@ -12,6 +12,7 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
@@ -640,21 +641,24 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
 };
 
 export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
-  let Icon = UpdatedIcon;
+  let icon;
 
   switch (fieldOperation) {
     case FieldOperation.Added:
-      Icon = AddIcon;
+      icon = AddIcon;
 
       break;
-    case FieldOperation.Updated:
     case FieldOperation.Deleted:
-      Icon = UpdatedIcon;
+      icon = UpdatedIcon;
 
       break;
   }
 
-  return <Icon height={16} width={16} />;
+  return (
+    icon && (
+      <Icon component={icon} height={16} name={fieldOperation} width={16} />
+    )
+  );
 };
 
 export const getTestCaseNameListForResult = (
