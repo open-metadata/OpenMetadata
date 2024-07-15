@@ -405,6 +405,7 @@
     "end-date-time-zone": "End Date: ({{timeZone}})",
     "end-entity": "End {{entity}}",
     "endpoint": "Endpoint",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "Endpoint URL",
     "endpoint-url-for-aws": "EndPoint URL for the AWS",
     "enter": "Enter",

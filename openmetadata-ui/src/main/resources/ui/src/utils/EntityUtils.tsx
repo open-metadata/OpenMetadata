@@ -70,6 +70,8 @@ import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Classification } from '../generated/entity/classification/classification';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -1510,6 +1512,31 @@ export const getBreadcrumbForTable = (
   ];
 };
 
+export const getBreadCrumbForAPICollection = (entity: APICollection) => {
+  const { service } = entity;
+
+  return [
+    {
+      name: startCase(ServiceCategory.API_SERVICES),
+      url: getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      ),
+    },
+    {
+      name: getEntityName(service),
+      url: service?.name
+        ? getServiceDetailsPath(
+            service?.name ?? '',
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+    },
+  ];
+};
+
 export const getBreadcrumbForEntitiesWithServiceOnly = (
   entity: EntityWithServices,
   includeCurrent = false
@@ -1635,7 +1662,9 @@ export const getEntityBreadcrumbs = (
     | Database
     | DatabaseSchema
     | SearchIndexAsset
-    | DataAssetsWithoutServiceField,
+    | DataAssetsWithoutServiceField
+    | APICollection
+    | APIEndpoint,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -1979,6 +2008,9 @@ export const getEntityBreadcrumbs = (
         },
       ];
     }
+
+    case EntityType.API_COLLECTION:
+      return getBreadCrumbForAPICollection(entity as APICollection);
 
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:

@@ -41,6 +41,7 @@ export enum ServiceCategoryPlural {
   metadataService = 'metadataServices',
   storageService = 'storageServices',
   searchService = 'searchServices',
+  apiService = 'apiServices',
 }
 
 export type DatabaseServiceTypeSmallCaseType = {

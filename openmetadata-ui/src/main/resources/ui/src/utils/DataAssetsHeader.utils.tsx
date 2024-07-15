@@ -28,6 +28,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { APICollection } from '../generated/entity/data/apiCollection';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -406,6 +407,17 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getBreadcrumbForTable(dataAsset as Table);
 
       break;
+
+    case EntityType.API_COLLECTION: {
+      const apiCollection = dataAsset as APICollection;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        apiCollection,
+        EntityType.API_COLLECTION
+      );
+
+      break;
+    }
 
     case EntityType.TABLE:
     default:

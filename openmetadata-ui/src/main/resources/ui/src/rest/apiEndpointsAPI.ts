@@ -23,7 +23,7 @@ import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
-type GetApiEndPointsType = {
+export type GetApiEndPointsType = {
   service: string;
   apiCollection: string;
   fields: string;
