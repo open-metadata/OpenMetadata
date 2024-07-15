@@ -83,14 +83,14 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         """
 
         try:
-            TestHandler: Type[BaseTestValidator] = (  # pylint: disable=invalid-name
-                import_test_case_class(
-                    self.ometa_client.get_by_id(
-                        TestDefinition, test_case.testDefinition.id
-                    ).entityType.value,
-                    "pandas",
-                    test_case.testDefinition.fullyQualifiedName,
-                )
+            TestHandler: Type[  # pylint: disable=invalid-name
+                BaseTestValidator
+            ] = import_test_case_class(
+                self.ometa_client.get_by_id(
+                    TestDefinition, test_case.testDefinition.id
+                ).entityType.value,
+                "pandas",
+                test_case.testDefinition.fullyQualifiedName,
             )
 
             test_handler = TestHandler(
