@@ -119,3 +119,14 @@ SET json = JSON_INSERT(
 JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.externalType') OR 
 JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.path')) is NULL;
 
+UPDATE storage_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.credentials.gcpConfig'),
+    '$.connection.config.credentials.gcpConfig',
+    JSON_OBJECT(),
+    '$.connection.config.credentials.gcpConfig.path',
+    JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig')
+) where serviceType in ('GCS') and 
+(JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.type') OR 
+JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.externalType') OR 
+JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.path')) is NULL;
