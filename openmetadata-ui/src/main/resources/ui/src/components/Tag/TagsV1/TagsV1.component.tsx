@@ -83,7 +83,7 @@ const TagsV1 = ({
               .join(FQN_SEPARATOR_CHAR)
           : tag.tagFQN
       ),
-    [showOnlyName, tag.tagFQN]
+    [showOnlyName, tag]
   );
 
   const redirectLink = useMemo(

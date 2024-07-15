@@ -26,8 +26,12 @@ import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.type.APIRequestMethod;
@@ -42,6 +46,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, CreateAPIEndpoint> {
 
   public static final List<Field> api_request_fields =
@@ -88,27 +94,37 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
         "[endpointURL must not be null]");
   }
 
+  @Order(1)
   @Test
   void post_apiEndpointWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentAPICollections = {
-      OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName(),
-      SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()
-    };
+    List<APIEndpoint> omAPIEndpoints = new ArrayList<>();
+    List<APIEndpoint> sampleAPIEndpoints = new ArrayList<>();
 
-    // Create topic for each service and test APIs
-    for (String apiCollection : differentAPICollections) {
-      createAndCheckEntity(
-          createRequest(test).withApiCollection(apiCollection), ADMIN_AUTH_HEADERS);
-
-      // List topics by filtering on service name and ensure right endPoints in the response
-      Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("apiCollection", apiCollection);
-
-      ResultList<APIEndpoint> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-      for (APIEndpoint endpoint : list.getData()) {
-        assertEquals(apiCollection, endpoint.getApiCollection().getFullyQualifiedName());
-      }
+    // Create API Endpoints for each service and test APIs
+    for (int i = 0; i < 5; i++) {
+      omAPIEndpoints.add(
+          createAndCheckEntity(
+              createRequest(String.format("%s%d", test.getDisplayName(), i))
+                  .withApiCollection(OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS));
     }
+
+    for (int i = 0; i < 3; i++) {
+      sampleAPIEndpoints.add(
+          createAndCheckEntity(
+              createRequest(String.format("%s%s%d", test.getDisplayName(), "S", i))
+                  .withApiCollection(SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS));
+    }
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("apiCollection", OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName());
+    ResultList<APIEndpoint> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(omAPIEndpoints.size(), list.getPaging().getTotal());
+
+    queryParams.put("apiCollection", SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName());
+    list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(sampleAPIEndpoints.size(), list.getPaging().getTotal());
   }
 
   @Test
