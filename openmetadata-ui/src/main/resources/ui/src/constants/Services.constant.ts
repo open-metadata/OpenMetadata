@@ -414,6 +414,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
   DatabaseServiceType.Teradata,
+  APIServiceType.REST,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

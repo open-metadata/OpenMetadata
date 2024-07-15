@@ -14,7 +14,6 @@ import { t } from 'i18next';
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
-import { ReactComponent as IconAPI } from '../assets/svg/api.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
@@ -24,6 +23,7 @@ import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.s
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
+import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
@@ -121,6 +121,7 @@ class GlobalSettingsClassBase {
             ),
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
             icon: IconAPI,
+            isBeta: true,
           },
           {
             label: t('label.database-plural'),
