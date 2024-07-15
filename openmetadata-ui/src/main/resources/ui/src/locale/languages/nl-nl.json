@@ -405,6 +405,7 @@
     "end-date-time-zone": "Einddatum: ({{timeZone}})",
     "end-entity": "Einde {{entity}}",
     "endpoint": "Eindpunt",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "Eindpunt-URL",
     "endpoint-url-for-aws": "Eindpunt-URL voor AWS",
     "enter": "Invoeren",

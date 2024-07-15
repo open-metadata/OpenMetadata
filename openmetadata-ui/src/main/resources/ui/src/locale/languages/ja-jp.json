@@ -405,6 +405,7 @@
     "end-date-time-zone": "終了日時: ({{timeZone}})",
     "end-entity": "End {{entity}}",
     "endpoint": "エンドポイント",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "エンドポイントURL",
     "endpoint-url-for-aws": "AWSのエンドポイントURL",
     "enter": "入力",

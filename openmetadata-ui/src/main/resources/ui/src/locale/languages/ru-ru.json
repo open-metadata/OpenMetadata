@@ -405,6 +405,7 @@
     "end-date-time-zone": "Дата окончания: ({{timeZone}})",
     "end-entity": "Конец {{entity}}",
     "endpoint": "Конечная точка",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "URL конечной точки",
     "endpoint-url-for-aws": "URL-адрес конечной точки для AWS",
     "enter": "Введите",

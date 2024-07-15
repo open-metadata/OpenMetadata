@@ -405,6 +405,7 @@
     "end-date-time-zone": "结束日期：（{{timeZone}}）",
     "end-entity": "结束{{entity}}",
     "endpoint": "终点",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "终点 URL",
     "endpoint-url-for-aws": "EndPoint URL for the AWS",
     "enter": "输入",

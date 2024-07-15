@@ -405,6 +405,7 @@
     "end-date-time-zone": "Date de fin : ({{timeZone}})",
     "end-entity": "Fin {{entity}}",
     "endpoint": "Point de terminaison",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "URL du Point de terminaison",
     "endpoint-url-for-aws": "URL du Point de terminaison pour AWS",
     "enter": "Entrer",

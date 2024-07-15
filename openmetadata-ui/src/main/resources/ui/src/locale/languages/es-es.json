@@ -405,6 +405,7 @@
     "end-date-time-zone": "Fecha de fin: ({{timeZone}})",
     "end-entity": "Entidad de fin {{entity}}",
     "endpoint": "Terminal",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "URL del terminal",
     "endpoint-url-for-aws": "URL del terminal para AWS",
     "enter": "Entrar",

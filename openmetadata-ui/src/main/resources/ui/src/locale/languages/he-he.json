@@ -405,6 +405,7 @@
     "end-date-time-zone": "תאריך סיום: ({{timeZone}})",
     "end-entity": "סיים {{entity}}",
     "endpoint": "נקודת סיום",
+    "endpoint-plural": "Endpoints",
     "endpoint-url": "URL נקודת סיום",
     "endpoint-url-for-aws": "כתובת URL עבור AWS",
     "enter": "הזן",
