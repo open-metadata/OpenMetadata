@@ -31,7 +31,6 @@ import {
   entries,
   isEmpty,
   isUndefined,
-  omitBy,
   startCase,
   uniq,
 } from 'lodash';
@@ -67,10 +66,7 @@ import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.
 import { searchQuery } from '../../../rest/searchAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
-import {
-  buildTestCaseParams,
-  getTestCaseFiltersValue,
-} from '../../../utils/DataQuality/DataQualityUtils';
+import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -377,24 +373,16 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         const updatedValue = prevSelected.filter(
           (selected) => selected !== key
         );
-        const updatedFilters = omitBy(
-          buildTestCaseParams(
-            getTestCaseFiltersValue(params, selectedFilter),
-            updatedValue
-          ),
-          isUndefined
-        );
         form.setFieldsValue({ [key]: undefined });
-        handleFilterChange(undefined, updatedFilters);
 
         return updatedValue;
       }
 
       return uniq([...prevSelected, key]);
     });
-
     // Fetch options based on the selected filter
     getInitialOptions(key);
+    handleSearchParam(key as keyof TestCaseSearchParams, undefined);
   };
 
   const filterMenu: ItemType[] = useMemo(() => {
