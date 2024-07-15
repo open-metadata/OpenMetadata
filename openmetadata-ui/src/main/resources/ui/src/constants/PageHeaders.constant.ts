@@ -201,4 +201,16 @@ export const PAGE_HEADERS = {
     // Todo: need to update message once @harshach provides the message
     subHeader: '',
   },
+  API_COLLECTION_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.api-collection-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.api-collection-plural'),
+    }),
+  },
+  API_ENDPOINT_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.api-endpoint-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.api-endpoint-plural'),
+    }),
+  },
 };

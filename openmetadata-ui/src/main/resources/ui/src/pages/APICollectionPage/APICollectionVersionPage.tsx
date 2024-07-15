@@ -264,7 +264,9 @@ const APICollectionVersionPage = () => {
       {
         label: (
           <TabsLabel
+            count={apiEndpoints.paging.total}
             id={EntityTabs.API_ENDPOINT}
+            isActive={tab === EntityTabs.API_ENDPOINT}
             name={t('label.endpoint-plural')}
           />
         ),
@@ -314,17 +316,20 @@ const APICollectionVersionPage = () => {
         label: (
           <TabsLabel
             id={EntityTabs.CUSTOM_PROPERTIES}
+            isActive={tab === EntityTabs.CUSTOM_PROPERTIES}
             name={t('label.custom-property-plural')}
           />
         ),
         children: (
-          <CustomPropertyTable
-            isVersionView
-            entityDetails={currentVersionData}
-            entityType={EntityType.API_COLLECTION}
-            hasEditAccess={false}
-            hasPermission={viewVersionPermission}
-          />
+          <div className="p-md">
+            <CustomPropertyTable
+              isVersionView
+              entityDetails={currentVersionData}
+              entityType={EntityType.API_COLLECTION}
+              hasEditAccess={false}
+              hasPermission={viewVersionPermission}
+            />
+          </div>
         ),
       },
     ],

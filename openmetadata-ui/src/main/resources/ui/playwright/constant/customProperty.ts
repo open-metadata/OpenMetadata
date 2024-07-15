@@ -26,6 +26,8 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.GlossaryTerm,
   EntityTypeEndpoint.SearchIndex,
   EntityTypeEndpoint.DataModel,
+  EntityTypeEndpoint.API_COLLECTION,
+  EntityTypeEndpoint.API_ENDPOINT,
 ];
 
 export const ENTITY_REFERENCE_PROPERTIES = [

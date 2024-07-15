@@ -34,6 +34,8 @@ export enum EntityTypeEndpoint {
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
   User = 'users',
+  API_COLLECTION = 'apiCollections',
+  API_ENDPOINT = 'apiEndpoints',
 }
 
 export type EntityDataType = {
