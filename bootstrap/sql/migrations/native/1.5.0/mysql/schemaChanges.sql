@@ -79,3 +79,43 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
 -- Remove date, dateTime, time from type_entity, as they are no more om-field-types, instead we have date-cp, time-cp, dateTime-cp as om-field-types
 DELETE FROM type_entity
 WHERE name IN ('date', 'dateTime', 'time');
+
+
+-- Update BigQuery,Bigtable & Datalake model for gcpCredentials to move `gcpConfig` value to `gcpConfig.path`
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.credentials.gcpConfig'),
+    '$.connection.config.credentials.gcpConfig',
+    JSON_OBJECT(),
+    '$.connection.config.credentials.gcpConfig.path',
+    JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig')
+) where serviceType in ('BigQuery', 'BigTable') and 
+(JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.type') OR 
+JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.externalType') OR 
+JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.path')) is NULL;
+
+UPDATE dbservice_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.configSource.securityConfig.gcpConfig'),
+    '$.connection.config.configSource.securityConfig.gcpConfig',
+    JSON_OBJECT(),
+    '$.connection.config.configSource.securityConfig.gcpConfig.path',
+    JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig')
+) where serviceType in ('Datalake') and 
+(JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig.type') OR 
+JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig.externalType') OR 
+JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig.path')) is NULL;
+
+-- Update Powerbi model for pbitFilesSource to move `gcpConfig` value to `gcpConfig.path`
+UPDATE dashboard_service_entity 
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig'),
+    '$.connection.config.pbitFilesSource.securityConfig.gcpConfig',
+    JSON_OBJECT(),
+    '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.path',
+    JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig')
+) where serviceType in ('PowerBI') and 
+(JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.type') OR 
+JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.externalType') OR 
+JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.path')) is NULL;
+
