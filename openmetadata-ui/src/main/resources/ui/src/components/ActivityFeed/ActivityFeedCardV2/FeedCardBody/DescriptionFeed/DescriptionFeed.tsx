@@ -14,7 +14,6 @@
 import { Col, Row } from 'antd';
 import React, { useMemo } from 'react';
 import { EntityField } from '../../../../../constants/Feeds.constants';
-import { getTextDiff } from '../../../../../utils/EntityVersionUtils';
 import {
   getFeedChangeFieldLabel,
   getFieldOperationIcon,
@@ -25,13 +24,10 @@ import { DescriptionFeedProps } from './DescriptionFeed.interface';
 
 function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
   const { message, fieldOperation } = useMemo(() => {
-    const diffText = getTextDiff(
-      feed.feedInfo?.entitySpecificInfo?.previousDescription ?? '',
-      feed.feedInfo?.entitySpecificInfo?.newDescription ?? ''
-    );
-
     return {
-      message: diffText,
+      message: (feed.feedInfo?.entitySpecificInfo?.diffMessage ?? '').split(
+        ':'
+      )[1],
       fieldOperation: feed.fieldOperation,
       fieldChanged: getFeedChangeFieldLabel(
         feed.feedInfo?.fieldName as EntityField

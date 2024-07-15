@@ -21,6 +21,7 @@ import {
   getEntityFQN,
   getEntityType,
   getFeedHeaderTextFromCardStyle,
+  getFieldOperationIcon,
   suggestions,
 } from './FeedUtils';
 
@@ -272,5 +273,29 @@ describe('getFeedHeaderTextFromCardStyle', () => {
     expect(stringResult).toContain('message.feed-field-action-entity-header');
     expect(stringResult).toContain('label.description');
     expect(stringResult).toContain('label.updated-lowercase');
+  });
+});
+
+describe('getFieldOperationIcon', () => {
+  it('should not return icon in case of operation updated', () => {
+    const result = getFieldOperationIcon(FieldOperation.Updated);
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should return icon in case of operation added', () => {
+    const result = getFieldOperationIcon(FieldOperation.Added);
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain(FieldOperation.Added);
+  });
+
+  it('should return icon in case of operation deleted', () => {
+    const result = getFieldOperationIcon(FieldOperation.Deleted);
+
+    const stringResult = JSON.stringify(result);
+
+    expect(stringResult).toContain(FieldOperation.Deleted);
   });
 });
