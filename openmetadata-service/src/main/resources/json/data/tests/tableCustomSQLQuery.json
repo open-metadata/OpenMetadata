@@ -30,6 +30,6 @@
       }
     ],
     "provider": "system",
-    "datatQualityDimension": "SQL"
+    "dataQualityDimension": "SQL"
   }
   
