@@ -13,52 +13,13 @@
 Builder defining the structure of builders for validators for SQA sources
 """
 
-from datetime import datetime
-from typing import Type
 
 from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
-from metadata.generated.schema.tests.testCase import TestCase
-from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.importer import import_test_case_class
 
 
 class SQAValidatorBuilder(IValidatorBuilder):
     """Builder for SQA validators"""
 
-    def __init__(
-        self, runner: QueryRunner, test_case: TestCase, entity_type: str
-    ) -> None:
-        """Builder object for SQA validators. This builder is used to create a validator object
-
-        Args:
-            runner (QueryRunner): The runner object
-            test_case (TestCase): The test case object
-            entity_type (str): one of COLUMN or TABLE -- fetched from the test definition
-        """
-        self._test_case = test_case
-        self.runner = runner
-        self.validator_cls: Type[BaseTestValidator] = import_test_case_class(
-            entity_type,
-            "sqlalchemy",
-            self.test_case.testDefinition.fullyQualifiedName,  # type: ignore
-        )
-        self.reset()
-
-    def reset(self):
-        """Reset the builder"""
-        self._validator = self.validator_cls(
-            self.runner,
-            test_case=self.test_case,
-            execution_date=int(datetime.now().timestamp() * 1000),
-        )
-
-    @property
-    def validator(self) -> BaseTestValidator:
-        """Return the validator"""
-        return self._validator
-
-    @property
-    def test_case(self) -> TestCase:
+    def _get_source_type(self) -> str:
         """Return the test case"""
-        return self._test_case
+        return "sqlalchemy"
