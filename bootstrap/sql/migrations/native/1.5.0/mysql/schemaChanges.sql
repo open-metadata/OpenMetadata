@@ -18,6 +18,20 @@ SET
   , '$.connection.config.appName'), '$.connection.config.metastoreConnection')
 WHERE dbse.serviceType = 'DeltaLake';
 
+-- Allow all bots to update the ingestion pipeline status
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    CAST('{
+      "name": "BotRule-IngestionPipeline",
+      "description": "A bot can Edit ingestion pipelines to pass the status",
+      "resources": ["ingestionPipeline"],
+      "operations": ["ViewAll","EditIngestionPipelineStatus"],
+      "effect": "allow"
+    }' AS JSON)
+  )
+WHERE name = 'DefaultBotPolicy';
 
 -- create API service entity
 CREATE TABLE IF NOT EXISTS api_service_entity (
@@ -61,3 +75,7 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     UNIQUE (fqnHash),
     INDEX (name)
 );
+
+-- Remove date, dateTime, time from type_entity, as they are no more om-field-types, instead we have date-cp, time-cp, dateTime-cp as om-field-types
+DELETE FROM type_entity
+WHERE name IN ('date', 'dateTime', 'time');

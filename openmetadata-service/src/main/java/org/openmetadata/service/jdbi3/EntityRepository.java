@@ -77,11 +77,17 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
 import java.net.URI;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -1351,6 +1357,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
         throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+      }
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
+      DateTimeFormatter formatter = null;
+      try {
+        if ("date-cp".equals(customPropertyType)) {
+          DateTimeFormatter inputFormatter =
+              DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig), Locale.ENGLISH);
+
+          // Parse the input string into a TemporalAccessor
+          TemporalAccessor date = inputFormatter.parse(fieldValue.textValue());
+
+          // Create a formatter for the desired output format
+          DateTimeFormatter outputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          ((ObjectNode) jsonNode).put(fieldName, outputFormatter.format(date));
+        } else if ("dateTime-cp".equals(customPropertyType)) {
+          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
+          LocalDateTime dateTime = LocalDateTime.parse(fieldValue.textValue(), formatter);
+          ((ObjectNode) jsonNode).put(fieldName, dateTime.format(formatter));
+        } else if ("time-cp".equals(customPropertyType)) {
+          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
+          LocalTime time = LocalTime.parse(fieldValue.textValue(), formatter);
+          ((ObjectNode) jsonNode).put(fieldName, time.format(formatter));
+        }
+      } catch (DateTimeParseException e) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.dateTimeValidationError(
+                fieldName, TypeRegistry.getCustomPropertyConfig(entityType, fieldName)));
       }
       Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
       if (!validationMessages.isEmpty()) {

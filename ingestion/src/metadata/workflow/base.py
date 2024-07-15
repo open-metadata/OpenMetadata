@@ -107,7 +107,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.post_init()
 
     @property
-    def ingestion_pipeline(self):
+    def ingestion_pipeline(self) -> Optional[IngestionPipeline]:
         """Get or create the Ingestion Pipeline from the configuration"""
         if not self._ingestion_pipeline and self.config.ingestionPipelineFQN:
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()

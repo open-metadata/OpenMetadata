@@ -26,7 +26,8 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         CREATE TABLE IF NOT EXISTS e2e_cli_tests.dbt_jaffle.persons (
             person_id int,
             full_name varchar(255),
-            birthdate date
+            birthdate date,
+            bigint_col bigint
         )
     """
 
@@ -38,13 +39,13 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         """
-    INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate) VALUES
-        (1,'Peter Parker', '2004-08-10'),
-        (2,'Bruce Banner', '1988-12-18'),
-        (3,'Steve Rogers', '1988-07-04'),
-        (4,'Natasha Romanoff', '1997-12-03'),
-        (5,'Wanda Maximoff', '1998-02-10'),
-        (6,'Diana Prince', '1976-03-17');
+    INSERT INTO e2e_cli_tests.dbt_jaffle.persons (person_id, full_name, birthdate, bigint_col) VALUES
+        (1,'Peter Parker', '2004-08-10', 9223372036854775807),
+        (2,'Bruce Banner', '1988-12-18', 9223372036854775807),
+        (3,'Steve Rogers', '1988-07-04', 9223372036854775807),
+        (4,'Natasha Romanoff', '1997-12-03', 9223372036854775807),
+        (5,'Wanda Maximoff', '1998-02-10', 9223372036854775807),
+        (6,'Diana Prince', '1976-03-17', 9000000000000000007);
     """
     ]
 
@@ -193,13 +194,13 @@ class RedshiftCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                         "interQuartileRange": 467.7975,
                         "max": 856.41,
                         "maxLength": None,
-                        "mean": -160.16,
+                        "mean": -159.0,
                         "median": -288.81,
                         "min": -999.63,
                         "minLength": None,
                         "missingCount": None,
                         "missingPercentage": None,
-                        "nonParametricSkew": 0.24351799263849705,
+                        "nonParametricSkew": 0.24571372424720792,
                         "nullCount": 0.0,
                         "nullProportion": 0.0,
                         "stddev": 528.297718809555,

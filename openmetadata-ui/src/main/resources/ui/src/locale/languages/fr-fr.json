@@ -1582,6 +1582,7 @@
     "no-data-assets": "Bienvenue dans OpenMetadata! Il semble qu'auncun actif de données n'ai encore été ajouté. Consultez le guide <0>How to Get Started</0> pour démarrer.",
     "no-data-available": "Aucune donnée disponible",
     "no-data-available-entity": "Aucune donnée disponible dans {{entity}}.",
+    "no-data-available-for-search": "No data found. Try searching a different text.",
     "no-data-available-for-selected-filter": "Aucune donnée trouvée. Essayez de modifier les filtres.",
     "no-data-quality-test-case": "Il semble qu'il n'y a pas de test de qualité de données configuré pour cette table. Pour en savoir plus sur la mise en place de tests de qualité de données, <0>{{explore}}</0>",
     "no-domain-assigned-to-entity": "Aucun domaine n'est affecté à {{entity}}",
