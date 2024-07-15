@@ -432,7 +432,10 @@
           "type": "array",
           "items": {
             "description": "Data for a single row of the table within the same order as columns fields.",
-            "type": "array"
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
