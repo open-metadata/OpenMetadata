@@ -141,6 +141,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String tags = getQueryParam("tags");
     String tier = getQueryParam("tier");
     String serviceName = getQueryParam("serviceName");
+    String dataQualityDimension = getQueryParam("dataQualityDimension");
 
     if (tags != null) {
       String tagsList =
@@ -207,6 +208,11 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getTimestampFilter("testCaseResult.timestamp", "gte", Long.parseLong(startTimestamp)));
       conditions.add(
           getTimestampFilter("testCaseResult.timestamp", "lte", Long.parseLong(endTimestamp)));
+    }
+
+    if (dataQualityDimension != null) {
+      conditions.add(
+              String.format("{\"term\": {\"dataQualityDimension\": \"%s\"}}", dataQualityDimension));
     }
 
     return addCondition(conditions);
