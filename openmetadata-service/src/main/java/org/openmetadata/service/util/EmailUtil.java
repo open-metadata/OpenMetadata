@@ -51,6 +51,7 @@ public class EmailUtil {
   public static final String USERNAME = "userName";
   public static final String ENTITY = "entity";
   public static final String SUPPORT_URL = "supportUrl";
+  public static final String EMAIL_TEMPLATE_BASEPATH = "/emailTemplates";
   // Email Verification
   private static final String EMAIL_VERIFICATION_SUBJECT =
       "%s: Verify your Email Address (Action Required)";
@@ -89,22 +90,13 @@ public class EmailUtil {
   private static final String EMAIL_IGNORE_MSG =
       "Email was not sent to {} as SMTP setting is not enabled";
 
-  private static TemplateProvider templateProvider;
-
   static {
     getSmtpSettings();
-    initializeTemplateProvider();
-  }
-
-  // initialize template provider
-  private static void initializeTemplateProvider() {
-    templateProvider = new DefaultTemplateProvider();
   }
 
   private EmailUtil() {
     try {
       getSmtpSettings();
-      initializeTemplateProvider();
       LOG.info("Email Util cache is initialized");
     } catch (Exception ex) {
       LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
@@ -151,6 +143,7 @@ public class EmailUtil {
           getAccountStatusChangeSubject(),
           templatePopulator,
           user.getEmail(),
+          EMAIL_TEMPLATE_BASEPATH,
           ACCOUNT_STATUS_TEMPLATE_FILE,
           true);
     } else {
@@ -171,6 +164,7 @@ public class EmailUtil {
           getEmailVerificationSubject(),
           templatePopulator,
           user.getEmail(),
+          EMAIL_TEMPLATE_BASEPATH,
           EMAIL_VERIFICATION_TEMPLATE_PATH,
           true);
     } else {
@@ -189,7 +183,13 @@ public class EmailUtil {
       templatePopulator.put(PASSWORD_RESET_LINKKEY, passwordResetLink);
       templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
 
-      sendMail(subject, templatePopulator, user.getEmail(), templateFilePath, true);
+      sendMail(
+          subject,
+          templatePopulator,
+          user.getEmail(),
+          EMAIL_TEMPLATE_BASEPATH,
+          templateFilePath,
+          true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
     }
@@ -214,14 +214,19 @@ public class EmailUtil {
       templatePopulator.put("fieldNewValue", thread.getTask().getSuggestion());
       templatePopulator.put("taskLink", taskLink);
 
-      sendMail(subject, templatePopulator, email, templateFilePath, true);
+      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, email);
     }
   }
 
   public static void sendMail(
-      String subject, Map<String, Object> model, String to, String templatePath, boolean async)
+      String subject,
+      Map<String, Object> model,
+      String to,
+      String baseTemplatePackage,
+      String templatePath,
+      boolean async)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
@@ -229,7 +234,8 @@ public class EmailUtil {
       emailBuilder.to(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      Template template = templateProvider.getTemplate(templatePath);
+      templateConfiguration.setClassForTemplateLoading(EmailUtil.class, baseTemplatePackage);
+      Template template = templateConfiguration.getTemplate(templatePath);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -243,7 +249,11 @@ public class EmailUtil {
   }
 
   public static void sendMailToMultiple(
-      String subject, Map<String, Object> model, Set<String> to, String templatePath)
+      String subject,
+      Map<String, Object> model,
+      Set<String> to,
+      String baseTemplatePackage,
+      String templatePath)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
@@ -251,7 +261,8 @@ public class EmailUtil {
       emailBuilder.toMultiple(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      Template template = templateProvider.getTemplate(templatePath);
+      templateConfiguration.setClassForTemplateLoading(EmailUtil.class, baseTemplatePackage);
+      Template template = templateConfiguration.getTemplate(templatePath);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -283,6 +294,7 @@ public class EmailUtil {
             EmailUtil.getEmailInviteSubject(),
             templatePopulator,
             user.getEmail(),
+            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
             EmailUtil.INVITE_RANDOM_PWD,
             true);
       } catch (Exception ex) {
@@ -311,6 +323,7 @@ public class EmailUtil {
             EmailUtil.getChangeEventTemplate(),
             templatePopulator,
             receiverMail,
+            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
             EmailUtil.CHANGE_EVENT_TEMPLATE,
             true);
       } catch (Exception ex) {
@@ -344,7 +357,8 @@ public class EmailUtil {
       templatePopulator.put(
           "viewReportUrl",
           String.format("%s/data-insights/data-assets", getSmtpSettings().getOpenMetadataUrl()));
-      sendMailToMultiple(subject, templatePopulator, emails, templateFilePath);
+      sendMailToMultiple(
+          subject, templatePopulator, emails, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, emails.toString());
     }
@@ -357,7 +371,13 @@ public class EmailUtil {
       templatePopulator.put("userName", email.split("@")[0]);
       templatePopulator.put("entity", getSmtpSettings().getEmailingEntity());
       templatePopulator.put("supportUrl", getSmtpSettings().getSupportUrl());
-      sendMail(getTestEmailSubject(), templatePopulator, email, TEST_EMAIL_TEMPLATE, async);
+      sendMail(
+          getTestEmailSubject(),
+          templatePopulator,
+          email,
+          EMAIL_TEMPLATE_BASEPATH,
+          TEST_EMAIL_TEMPLATE,
+          async);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, email);
     }
