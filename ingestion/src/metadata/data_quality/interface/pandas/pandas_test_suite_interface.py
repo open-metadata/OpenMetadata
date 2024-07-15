@@ -100,7 +100,7 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
             )
 
             result = test_handler.run_validation()
-            return self.post_validation(result)
+            return test_handler.post_validation(result)
         except Exception as err:
             logger.error(
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"

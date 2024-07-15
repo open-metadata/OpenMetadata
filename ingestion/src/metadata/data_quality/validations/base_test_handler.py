@@ -183,3 +183,7 @@ class BaseTestValidator(ABC):
     def get_predicted_value(self) -> Optional[str]:
         """Get predicted value"""
         return None
+
+    def post_validation(self, result: TestCaseResult) -> TestCaseResult:
+        """Post validation hook for the test case"""
+        return result
