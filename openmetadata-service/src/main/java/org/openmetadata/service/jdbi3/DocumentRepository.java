@@ -15,11 +15,13 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DOCUMENT;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
+import org.openmetadata.service.util.DefaultTemplateProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
@@ -36,6 +38,12 @@ public class DocumentRepository extends EntityRepository<Document> {
         DOCUMENT_UPDATE_FIELDS,
         DOCUMENT_PATCH_FIELDS);
     supportsSearch = false;
+  }
+
+  public List<String> fetchEmailTemplatesFromDocStore() {
+    return Entity.getCollectionDAO()
+        .docStoreDAO()
+        .findEmailTemplatesFromDocStore(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE);
   }
 
   @Override
