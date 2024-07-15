@@ -160,7 +160,7 @@ describe('Test PropertyValue Component', () => {
     const extension = { yNumber: '20-03-2024' };
     const propertyType = {
       ...mockData.property.propertyType,
-      name: 'date',
+      name: 'date-cp',
     };
     render(
       <PropertyValue
@@ -187,7 +187,7 @@ describe('Test PropertyValue Component', () => {
     };
     const propertyType = {
       ...mockData.property.propertyType,
-      name: 'dateTime',
+      name: 'dateTime-cp',
     };
     render(
       <PropertyValue
@@ -216,7 +216,7 @@ describe('Test PropertyValue Component', () => {
     };
     const propertyType = {
       ...mockData.property.propertyType,
-      name: 'time',
+      name: 'time-cp',
     };
     render(
       <PropertyValue
