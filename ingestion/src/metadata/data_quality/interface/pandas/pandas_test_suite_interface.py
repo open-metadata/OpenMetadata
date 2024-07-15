@@ -83,14 +83,14 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         """
 
         try:
-            TestHandler: Type[  # pylint: disable=invalid-name
-                BaseTestValidator
-            ] = import_test_case_class(
-                self.ometa_client.get_by_id(
-                    TestDefinition, test_case.testDefinition.id
-                ).entityType.value,
-                "pandas",
-                test_case.testDefinition.fullyQualifiedName,
+            TestHandler: Type[BaseTestValidator] = (  # pylint: disable=invalid-name
+                import_test_case_class(
+                    self.ometa_client.get_by_id(
+                        TestDefinition, test_case.testDefinition.id
+                    ).entityType.value,
+                    "pandas",
+                    test_case.testDefinition.fullyQualifiedName,
+                )
             )
 
             test_handler = TestHandler(
@@ -99,7 +99,8 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
                 execution_date=int(datetime.now().timestamp() * 1000),
             )
 
-            return test_handler.run_validation()
+            result = test_handler.run_validation()
+            return self.post_validation(result)
         except Exception as err:
             logger.error(
                 f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"

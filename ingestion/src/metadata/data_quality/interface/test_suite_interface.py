@@ -80,3 +80,7 @@ class TestSuiteInterface(ABC):
             partition_config = get_partition_details(self.table_entity)
 
         return sample_query, sample_config, partition_config
+
+    def post_validation(self, result: TestCaseResult) -> TestCaseResult:
+        """Post validation hook for the test case"""
+        return result
