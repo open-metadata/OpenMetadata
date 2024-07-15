@@ -238,8 +238,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public void reindexIndexesOnEntitySpecificUpdate(GlossaryTerm original, GlossaryTerm updated) {
-    super.reindexIndexesOnEntitySpecificUpdate(original, updated);
+  public void entityRelationshipReindex(GlossaryTerm original, GlossaryTerm updated) {
+    super.entityRelationshipReindex(original, updated);
 
     // Update search indexes of assets and entity itself on name , fullyQualifiedName and
     // displayName change

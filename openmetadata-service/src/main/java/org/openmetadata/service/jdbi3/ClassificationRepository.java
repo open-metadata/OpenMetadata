@@ -118,9 +118,8 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   }
 
   @Override
-  public void reindexIndexesOnEntitySpecificUpdate(
-      Classification original, Classification updated) {
-    super.reindexIndexesOnEntitySpecificUpdate(original, updated);
+  public void entityRelationshipReindex(Classification original, Classification updated) {
+    super.entityRelationshipReindex(original, updated);
 
     // Update search on name , fullyQualifiedName and displayName change
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())

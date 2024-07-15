@@ -417,7 +417,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * It is typically invoked when there are changes in the entity that might affect its indexing in Elasticsearch.
    * The function ensures that the indexes are kept up-to-date with the latest state of the entity across all relevant Elasticsearch indexes.
    */
-  protected void reindexIndexesOnEntitySpecificUpdate(T original, T updated) {
+  protected void entityRelationshipReindex(T original, T updated) {
     // Logic override by the child class to update the indexes
   }
 
@@ -885,7 +885,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
 
-    reindexIndexesOnEntitySpecificUpdate(original, updated);
+    entityRelationshipReindex(original, updated);
 
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {

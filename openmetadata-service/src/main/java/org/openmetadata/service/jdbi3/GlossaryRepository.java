@@ -139,8 +139,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void reindexIndexesOnEntitySpecificUpdate(Glossary original, Glossary updated) {
-    super.reindexIndexesOnEntitySpecificUpdate(original, updated);
+  public void entityRelationshipReindex(Glossary original, Glossary updated) {
+    super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
       updateAssetIndexes(original, updated);

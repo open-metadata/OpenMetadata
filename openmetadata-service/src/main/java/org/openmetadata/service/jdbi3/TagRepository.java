@@ -104,8 +104,8 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
-  public void reindexIndexesOnEntitySpecificUpdate(Tag original, Tag updated) {
-    super.reindexIndexesOnEntitySpecificUpdate(original, updated);
+  public void entityRelationshipReindex(Tag original, Tag updated) {
+    super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
       searchRepository
