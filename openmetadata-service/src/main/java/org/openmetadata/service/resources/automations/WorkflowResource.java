@@ -82,7 +82,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
 
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;

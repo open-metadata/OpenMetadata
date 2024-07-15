@@ -189,7 +189,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void setInheritedFields(Table table, Fields fields) {
     DatabaseSchema schema =
-        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner,domain", ALL);
+        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owners,domain", ALL);
     inheritOwners(table, fields, schema);
     inheritDomain(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
@@ -618,7 +618,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     table.withDataModel(dataModel);
 
-    // Carry forward the table owner from the model to table entity, if empty
+    // Carry forward the table owners from the model to table entity, if empty
     if (table.getOwners() == null) {
       storeOwners(table, dataModel.getOwners());
     }
@@ -765,7 +765,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public String exportToCsv(String name, String user) throws IOException {
     // Validate table
-    Table table = getByName(null, name, new Fields(allowedFields, "owner,domain,tags,columns"));
+    Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
@@ -777,7 +777,8 @@ public class TableRepository extends EntityRepository<Table> {
         getByName(
             null,
             name,
-            new Fields(allowedFields, "owner,domain,tags,columns,database,service,databaseSchema"));
+            new Fields(
+                allowedFields, "owners,domain,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun);
   }
 
@@ -1151,7 +1152,8 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers
+      // retentionPeriod,
       // sourceUrl, domain, column.fullyQualifiedName, column.displayName, column.description,
       // column.dataTypeDisplay,
       // column.tags, column.glossaryTerms

@@ -77,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "topics")
 public class TopicResource extends EntityResource<Topic, TopicRepository> {
   public static final String COLLECTION_PATH = "v1/topics/";
-  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
   public Topic addHref(UriInfo uriInfo, Topic topic) {

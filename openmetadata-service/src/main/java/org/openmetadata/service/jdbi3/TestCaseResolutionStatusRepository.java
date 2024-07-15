@@ -364,7 +364,7 @@ public class TestCaseResolutionStatusRepository
         Entity.getEntityByName(
             entityLink.getEntityType(),
             entityLink.getEntityFQN(),
-            "followers,owner,tags,votes",
+            "followers,owners,tags,votes",
             Include.ALL);
     Severity severity = incidentSeverityClassifier.classifyIncidentSeverity(entity);
     incident.setSeverity(severity);

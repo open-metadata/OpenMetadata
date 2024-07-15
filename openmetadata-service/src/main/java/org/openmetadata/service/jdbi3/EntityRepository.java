@@ -364,7 +364,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * document. It is always reconstructed based on relationship edges from the backend database. <br>
    * <br>
    * As an example, when <i>table</i> entity is stored, the attributes such as <i>href</i> and the relationships such as
-   * <i>owner</i>, <i>database</i>, and <i>tags</i> are set to null. These attributes are restored back after the JSON
+   * <i>owners</i>, <i>database</i>, and <i>tags</i> are set to null. These attributes are restored back after the JSON
    * document is stored to be sent as response.
    *
    * @see TableRepository#storeEntity(Table, boolean) for an example implementation
@@ -1843,7 +1843,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(T entity) {
-    return supportsOwners ? findFrom(entity.getId(), entityType, Relationship.OWNS, null) : null;
+    return supportsOwners
+        ? findFrom(entity.getId(), entityType, Relationship.OWNS, null)
+        : Collections.emptyList();
   }
 
   public final List<EntityReference> getOwners(EntityReference ref) {
@@ -1886,10 +1888,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : null;
   }
 
-  public final EntityReference getOwner(EntityReference ref) {
-    return !supportsOwners ? null : getFromEntityRef(ref.getId(), Relationship.OWNS, null, false);
-  }
-
   public final void inheritDomain(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_DOMAIN) && entity.getDomain() == null && parent != null) {
       entity.setDomain(parent.getDomain() != null ? parent.getDomain().withInherited(true) : null);
@@ -1898,7 +1896,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void inheritOwners(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_OWNERS) && nullOrEmpty(entity.getOwners()) && parent != null) {
-      entity.setOwners(!nullOrEmpty(parent.getOwners()) ? parent.getOwners() : null);
+      entity.setOwners(
+          !nullOrEmpty(parent.getOwners()) ? parent.getOwners() : Collections.emptyList());
       listOrEmpty(entity.getOwners()).forEach(owner -> owner.setInherited(true));
     }
   }
@@ -2094,15 +2093,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
         diffLists(
             newOwners,
             originalOwners,
-            EntityReference::getFullyQualifiedName,
-            EntityReference::getFullyQualifiedName,
+            EntityReference::getId,
+            EntityReference::getId,
             Function.identity());
     List<EntityReference> removedOwners =
         diffLists(
             originalOwners,
             newOwners,
-            EntityReference::getFullyQualifiedName,
-            EntityReference::getFullyQualifiedName,
+            EntityReference::getId,
+            EntityReference::getId,
             Function.identity());
     if (nullOrEmpty(addedOwners) && nullOrEmpty(removedOwners)) {
       return;
@@ -2476,20 +2475,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     private void updateOwners() {
       List<EntityReference> origOwners = getEntityReferences(original.getOwners());
       List<EntityReference> updatedOwners = getEntityReferences(updated.getOwners());
-      List<EntityReference> addedOwners =
-          diffLists(
-              updatedOwners,
-              origOwners,
-              EntityReference::getFullyQualifiedName,
-              EntityReference::getFullyQualifiedName,
-              Function.identity());
-      List<EntityReference> removedOwners =
-          diffLists(
-              origOwners,
-              updatedOwners,
-              EntityReference::getFullyQualifiedName,
-              EntityReference::getFullyQualifiedName,
-              Function.identity());
+      List<EntityReference> addedOwners = new ArrayList<>();
+      List<EntityReference> removedOwners = new ArrayList<>();
       if ((operation.isPatch() || !nullOrEmpty(updatedOwners))
           && recordListChange(
               FIELD_OWNERS,

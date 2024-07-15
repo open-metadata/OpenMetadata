@@ -99,7 +99,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
   private PipelineServiceClientInterface pipelineServiceClient;
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
   private SearchRepository searchRepository;
 
   @Override

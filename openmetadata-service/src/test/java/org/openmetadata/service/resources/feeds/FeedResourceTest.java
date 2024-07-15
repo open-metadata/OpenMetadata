@@ -47,6 +47,10 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
@@ -60,7 +64,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -1825,10 +1828,16 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public final Thread patchThread(
       UUID id, String originalJson, Thread updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedThreadJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedThreadJson);
-    return TestUtils.patch(
-        getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+    try {
+      String updatedThreadJson = JsonUtils.pojoToJson(updated);
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedThreadJson));
+      return TestUtils.patch(
+          getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+    } catch (JsonProcessingException e) {
+    }
+    return null;
   }
 
   protected final Post patchPostAndCheck(
@@ -1849,13 +1858,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public final Post patchPost(
       UUID threadId, UUID id, String originalJson, Post updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedPostJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedPostJson);
-    return TestUtils.patch(
-        getResource(String.format("feed/%s/posts/%s", threadId, id)),
-        patch,
-        Post.class,
-        authHeaders);
+    try {
+      String updatedPostJson = JsonUtils.pojoToJson(updated);
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedPostJson));
+      return TestUtils.patch(
+          getResource(String.format("feed/%s/posts/%s", threadId, id)),
+          patch,
+          Post.class,
+          authHeaders);
+    } catch (JsonProcessingException ignored) {
+    }
+    return null;
   }
 
   public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {

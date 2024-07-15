@@ -35,8 +35,8 @@
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"
     },
-    "owner": {
-      "description": "Owner of this report.",
+    "owners": {
+      "description": "Owners of this report.",
       "$ref": "../type/entityReferenceList.json",
       "default": null
     },

@@ -136,7 +136,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       Table table =
-          Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
+          Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owners", ALL);
       inheritOwners(testSuite, fields, table);
       inheritDomain(testSuite, fields, table);
     }

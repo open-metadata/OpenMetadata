@@ -236,7 +236,7 @@ public class MetadataServiceResourceTest
         byName
             ? getEntityByName(service.getFullyQualifiedName(), null, fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return service;
   }
 

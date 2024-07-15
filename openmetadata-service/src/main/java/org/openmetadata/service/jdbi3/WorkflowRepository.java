@@ -52,7 +52,7 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
       entity = secretsManager.encryptWorkflow(entity);
     }
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // Don't store owners, database, href and tags as JSON. Build it on the fly based on
     // relationships
     entity.withOpenMetadataServerConnection(null);
     store(entity, update);

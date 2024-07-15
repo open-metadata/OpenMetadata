@@ -177,13 +177,13 @@ public class DataInsightChartResourceTest
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner());
-    fields = "owner";
+    assertListNull(entity.getOwners());
+    fields = "owners";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner());
+    assertListNotNull(entity.getOwners());
     return entity;
   }
 

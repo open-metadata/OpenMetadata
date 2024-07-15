@@ -65,7 +65,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
   public static final String COLLECTION_PATH = "v1/queries/";
-  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
+  static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
 
   public QueryResource(Authorizer authorizer, Limits limits) {
     super(Entity.QUERY, authorizer, limits);

@@ -53,8 +53,8 @@
       "description": "End Date for the KPIs",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "owner": {
-      "description": "Owner of this KPI definition.",
+    "owners": {
+      "description": "Owners of this KPI definition.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },

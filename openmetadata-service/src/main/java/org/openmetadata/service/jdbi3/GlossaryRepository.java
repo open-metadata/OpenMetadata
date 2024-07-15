@@ -154,7 +154,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", name);
     List<GlossaryTerm> terms =
-        repository.listAll(repository.getFields("owner,reviewers,tags,relatedTerms"), filter);
+        repository.listAll(repository.getFields("owners,reviewers,tags,relatedTerms"), filter);
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms);
   }

@@ -165,8 +165,8 @@
     "dataQualityDimension": {
       "$ref": "#/definitions/dataQualityDimensions"
     },
-    "owner": {
-      "description": "Owner of this TestCase definition.",
+    "owners": {
+      "description": "Owners of this TestCase definition.",
       "$ref": "../type/entityReferenceList.json",
       "default": null
     },

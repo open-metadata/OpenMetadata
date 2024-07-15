@@ -105,7 +105,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getOwnerCondition() {
-    String owner = getQueryParam("owner");
+    String owner = getQueryParam("owners");
     if (!nullOrEmpty(owner)) {
       String ownerList =
           Arrays.stream(owner.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));

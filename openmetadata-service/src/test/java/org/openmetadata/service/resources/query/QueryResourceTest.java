@@ -107,7 +107,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwners(), entity.getUsers(), entity.getQueryUsedIn());
-    fields = "owner,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
+    fields = "owners,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -52,9 +52,11 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.flipkart.zjsonpatch.JsonDiff;
 import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.Request;
@@ -92,7 +94,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.Getter;
@@ -208,6 +209,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
+import org.testcontainers.shaded.com.google.common.collect.Lists;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -531,7 +533,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final K createRequest(
-      String name, String description, String displayName, EntityReference owner) {
+      String name, String description, String displayName, List<EntityReference> owners) {
     if (!supportsEmptyDescription && description == null) {
       throw new IllegalArgumentException(
           "Entity " + entityType + " does not support empty description");
@@ -962,7 +964,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void get_entityWithDifferentFields_200_OK(TestInfo test) throws IOException {
-    K create = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    K create =
+        createRequest(
+            getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
 
     T entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     if (supportsTags) {
@@ -1202,7 +1206,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return;
     }
     EntityReference owner = new EntityReference().withId(TEAM1.getId()); /* No owner type is set */
-    K create = createRequest(getEntityName(test), "", "", owner);
+    K create = createRequest(getEntityName(test), "", "", Lists.newArrayList(owner));
     assertResponseContains(
         () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "type must not be null");
 
@@ -1212,7 +1216,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             .getTeamOfTypes(test, TeamType.BUSINESS_UNIT, TeamType.DIVISION, TeamType.DEPARTMENT);
     teams.add(ORG_TEAM);
     for (Team team : teams) {
-      K create1 = createRequest(getEntityName(test), "", "", team.getEntityReference());
+      K create1 =
+          createRequest(getEntityName(test), "", "", Lists.newArrayList(team.getEntityReference()));
       assertResponseContains(
           () -> createEntity(create1, ADMIN_AUTH_HEADERS),
           BAD_REQUEST,
@@ -1227,7 +1232,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return;
     }
     EntityReference owner = new EntityReference().withId(NON_EXISTENT_ENTITY).withType("user");
-    K create = createRequest(getEntityName(test), "", "", owner);
+    K create = createRequest(getEntityName(test), "", "", Lists.newArrayList(owner));
     assertResponse(
         () -> createEntity(create, ADMIN_AUTH_HEADERS),
         NOT_FOUND,
@@ -1264,14 +1269,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Entity with user as owner is created successfully. Owner should be able to delete the entity
     T entity1 =
         createAndCheckEntity(
-            createRequest(getEntityName(test, 1), "", "", USER1_REF), ADMIN_AUTH_HEADERS);
+            createRequest(getEntityName(test, 1), "", "", Lists.newArrayList(USER1_REF)),
+            ADMIN_AUTH_HEADERS);
     deleteEntity(entity1.getId(), true, true, authHeaders(USER1.getName()));
     assertEntityDeleted(entity1.getId(), true);
 
     // Entity with team as owner is created successfully
     T entity2 =
         createAndCheckEntity(
-            createRequest(getEntityName(test, 2), "", "", team.getEntityReference()),
+            createRequest(
+                getEntityName(test, 2), "", "", Lists.newArrayList(team.getEntityReference())),
             ADMIN_AUTH_HEADERS);
 
     // As ADMIN delete the team and ensure the entity still exists but with owner as deleted
@@ -1353,7 +1360,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @Execution(ExecutionMode.CONCURRENT)
   void put_entityUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a chart with POST
-    K request = createRequest(getEntityName(test), "description", "display", USER1_REF);
+    K request =
+        createRequest(getEntityName(test), "description", "display", Lists.newArrayList(USER1_REF));
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update chart two times successfully with PUT requests
@@ -1369,7 +1377,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return; // Entity doesn't support ownership
     }
     // Create a new entity with PUT as admin user
-    K request = createRequest(getEntityName(test), "", null, USER1_REF);
+    K request = createRequest(getEntityName(test), "", null, Lists.newArrayList(USER1_REF));
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update the entity as USER1
@@ -1390,14 +1398,14 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     T entity = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Set TEAM_OWNER1 as owner using PUT request
-    request.setOwners(List.of(TEAM11_REF));
+    request.setOwners(Lists.newArrayList(TEAM11_REF));
     ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
     fieldAdded(change, FIELD_OWNERS, TEAM11_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-    checkOwnerOwns(TEAM11_REF, entity.getId(), true);
+    checkOwnerOwns(TEAM11.getEntityReference(), entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
-    request.setOwners(List.of(USER1_REF));
+    request.setOwners(Lists.newArrayList(USER1_REF));
     change = getChangeDescription(entity, MINOR_UPDATE);
     fieldUpdated(change, FIELD_OWNERS, TEAM11_REF, USER1_REF);
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -1499,7 +1507,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     String json = JsonUtils.pojoToJson(entity);
     entity.setOwners(List.of(TEAM11_REF));
     ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
-    fieldAdded(change, FIELD_OWNERS, TEAM11_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11_REF, entity.getId(), true);
 
@@ -1507,7 +1515,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     json = JsonUtils.pojoToJson(entity);
     entity.setOwners(List.of(USER1_REF));
     change = getChangeDescription(entity, CHANGE_CONSOLIDATED);
-    fieldAdded(change, FIELD_OWNERS, USER1_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
     entity = patchEntityAndCheck(entity, json, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
@@ -1529,7 +1537,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // set random type as entity. Check if the ownership validate.
     T newEntity = entity;
     String newJson = JsonUtils.pojoToJson(newEntity);
-    newEntity.setOwners(List.of(TEST_DEFINITION1.getEntityReference()));
+    newEntity.getOwners().add(TEST_DEFINITION1.getEntityReference());
     assertResponse(
         () -> patchEntity(newEntity.getId(), newJson, newEntity, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
@@ -1544,7 +1552,9 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     // Create an entity with owner
-    K request = createRequest(getEntityName(test), "description", "displayName", USER1_REF);
+    K request =
+        createRequest(
+            getEntityName(test), "description", "displayName", Lists.newArrayList(USER1_REF));
     T entity = createEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update description and remove owner as non-owner
@@ -1774,7 +1784,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldUpdated(change, "description", "", "description");
     fieldAdded(change, "displayName", "displayName");
     if (supportsOwners) {
-      entity.setOwners(List.of(TEAM11_REF));
+      entity.setOwners(Lists.newArrayList(TEAM11_REF));
       fieldAdded(change, FIELD_OWNERS, TEAM11_REF);
     }
     if (supportsTags) {
@@ -1851,7 +1861,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       return;
     }
     // Create an entity with user as owner
-    K create = createRequest(getEntityName(test), "description", null, USER1_REF);
+    K create =
+        createRequest(getEntityName(test), "description", null, Lists.newArrayList(USER1_REF));
     T entity = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Update description with a new description and the version changes as admin
@@ -2341,13 +2352,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Add lifeCycle using PATCH request
     String json = JsonUtils.pojoToJson(entity);
     AccessDetails accessed =
-        new AccessDetails().withTimestamp(1695059900L).withAccessedBy(USER2_REF);
+        new AccessDetails().withTimestamp(1695059900L).withAccessedBy(USER2.getEntityReference());
     LifeCycle lifeCycle = new LifeCycle().withAccessed(accessed);
     entity = updateLifeCycle(json, entity, lifeCycle, lifeCycle);
 
     // Update lifeCycle using PATCH request
     AccessDetails created =
-        new AccessDetails().withTimestamp(1695059500L).withAccessedBy(USER2_REF);
+        new AccessDetails().withTimestamp(1695059500L).withAccessedBy(USER2.getEntityReference());
     json = JsonUtils.pojoToJson(entity);
     lifeCycle.withCreated(created);
     updateLifeCycle(json, entity, lifeCycle, lifeCycle);
@@ -2571,13 +2582,20 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final T patchEntity(
       UUID id, String originalJson, T updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    updated.setOwners(reduceEntityReferences(updated.getOwners()));
-    String updatedEntityJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
-    return patchEntity(id, patch, authHeaders);
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      updated.setOwners(reduceEntityReferences(updated.getOwners()));
+      String updatedEntityJson = JsonUtils.pojoToJson(updated);
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedEntityJson));
+      return patchEntity(id, patch, authHeaders);
+    } catch (JsonProcessingException ignored) {
+
+    }
+    return null;
   }
 
-  public final T patchEntity(UUID id, JsonPatch patch, Map<String, String> authHeaders)
+  public final T patchEntity(UUID id, JsonNode patch, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.patch(getResource(id), patch, entityClass, authHeaders);
   }
@@ -2585,13 +2603,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public final T patchEntityUsingFqn(
       String fqn, String originalJson, T updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    updated.setOwners(reduceEntityReferences(updated.getOwners()));
-    String updatedEntityJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedEntityJson);
-    return patchEntityUsingFqn(fqn, patch, authHeaders);
+    try {
+      updated.setOwners(reduceEntityReferences(updated.getOwners()));
+      ObjectMapper mapper = new ObjectMapper();
+      String updatedEntityJson = JsonUtils.pojoToJson(updated);
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedEntityJson));
+      return patchEntityUsingFqn(fqn, patch, authHeaders);
+    } catch (JsonProcessingException e) {
+    }
+    return null;
   }
 
-  public final T patchEntityUsingFqn(String fqn, JsonPatch patch, Map<String, String> authHeaders)
+  public final T patchEntityUsingFqn(String fqn, JsonNode patch, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.patch(getResourceByName(fqn), patch, entityClass, authHeaders);
   }
@@ -2897,7 +2921,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   protected T patchEntityAndCheckAuthorization(
       T entity, String userName, boolean shouldThrowException) throws IOException {
     return patchEntityAndCheckAuthorization(
-        entity, userName, MetadataOperation.EDIT_OWNER, shouldThrowException);
+        entity, userName, MetadataOperation.EDIT_OWNERS, shouldThrowException);
   }
 
   protected T patchEntityAndCheckAuthorization(
@@ -3292,10 +3316,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected static void assertOwners(List<EntityReference> expected, List<EntityReference> actual) {
     if (!nullOrEmpty(expected) && !nullOrEmpty(actual)) {
+      List<UUID> expectedOwners = expected.stream().map(EntityReference::getId).toList();
+      List<UUID> actualOwners = actual.stream().map(EntityReference::getId).toList();
       assertTrue(
-          expected.size() == actual.size()
-              && expected.containsAll(actual)
-              && actual.containsAll(expected));
+          expectedOwners.size() == actualOwners.size()
+              && expectedOwners.containsAll(actualOwners)
+              && actualOwners.containsAll(expectedOwners));
     }
   }
 
@@ -3635,7 +3661,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static <T extends EntityInterface> List<EntityReference> reduceEntityReferences(
       List<EntityReference> entities) {
     List<EntityReference> reducedEntities = new ArrayList<>();
-    for (EntityReference entity : entities) {
+    for (EntityReference entity : listOrEmpty(entities)) {
       reducedEntities.add(reduceEntityReference(entity));
     }
     return reducedEntities;
@@ -3728,12 +3754,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     createRequest.setOwners(null);
     T entity = createEntity(createRequest, ADMIN_AUTH_HEADERS);
     assertOwners(List.of(expectedOwner), entity.getOwners()); // Inherited owner
-    entity = getEntity(entity.getId(), "owner", ADMIN_AUTH_HEADERS);
+    entity = getEntity(entity.getId(), "owners", ADMIN_AUTH_HEADERS);
     assertOwners(List.of(expectedOwner), entity.getOwners()); // Inherited owner
     for (EntityReference owner : entity.getOwners()) {
       assertTrue(owner.getInherited());
     }
-    entity = getEntityByName(entity.getFullyQualifiedName(), "owner", ADMIN_AUTH_HEADERS);
+    entity = getEntityByName(entity.getFullyQualifiedName(), "owners", ADMIN_AUTH_HEADERS);
     assertOwners(List.of(expectedOwner), entity.getOwners()); // Inherited owner
     for (EntityReference owner : entity.getOwners()) {
       assertTrue(owner.getInherited());

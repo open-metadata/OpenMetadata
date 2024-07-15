@@ -41,6 +41,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -751,7 +752,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         byName
             ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(policy.getOwner(), policy.getLocation());
+    assertListNull(policy.getOwners(), policy.getLocation());
 
     // .../policies?fields=owner,displayName,policyUrl
     fields = "owners,location";
@@ -760,7 +761,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
             ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
     // Field location is set during creation - tested elsewhere
-    assertListNotNull(policy.getOwner() /*, policy.getLocation()*/);
+    assertListNotNull(policy.getOwners() /*, policy.getLocation()*/);
     // Checks for other owner, tags, and followers is done in the base class
     return policy;
   }
@@ -770,7 +771,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         .withName(name)
         .withDescription("description")
         .withRules(rules)
-        .withOwners(List.of(USER1_REF));
+        .withOwners(Lists.newArrayList(USER1_REF));
   }
 
   private CreatePolicy createAccessControlPolicyWithCreateRule() {

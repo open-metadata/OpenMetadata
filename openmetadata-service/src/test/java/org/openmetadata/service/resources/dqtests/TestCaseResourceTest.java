@@ -47,11 +47,11 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -1109,7 +1109,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     String original = JsonUtils.pojoToJson(testCaseResult);
     testCaseResult.setTestCaseStatus(TestCaseStatus.Failed);
-    JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
+    JsonNode patch = TestUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
 
     patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2021-09-09"), patch);
 
@@ -1361,7 +1361,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Patch the test case result adding the resolved status
     TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
     String original = JsonUtils.pojoToJson(testCaseResult);
-    JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
+    JsonNode patch = TestUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
     patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2023-08-14"), patch);
 
     // add a new test case result for the 16th and check the state is correctly updated
@@ -1633,7 +1633,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withUpdatedAt(System.currentTimeMillis())
                 .withUpdatedBy(USER1_REF)
                 .withSeverity(Severity.Severity1));
-    JsonPatch patch = JsonUtils.getJsonPatch(original, updated);
+    JsonNode patch = TestUtils.getJsonPatch(original, updated);
     TestCaseResolutionStatus patched =
         patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch);
     TestCaseResolutionStatus stored = getTestCaseFailureStatus(testCaseFailureStatus.getId());
@@ -1661,7 +1661,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withUpdatedAt(System.currentTimeMillis())
                 .withUpdatedBy(USER1_REF)
                 .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned));
-    JsonPatch patch = JsonUtils.getJsonPatch(original, updated);
+    JsonNode patch = TestUtils.getJsonPatch(original, updated);
 
     assertResponse(
         () -> patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch),
@@ -2232,7 +2232,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
   }
 
-  private TestCaseResult patchTestCaseResult(String testCaseFqn, Long timestamp, JsonPatch patch)
+  private TestCaseResult patchTestCaseResult(String testCaseFqn, Long timestamp, JsonNode patch)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + testCaseFqn + "/testCaseResult/" + timestamp);
     return TestUtils.patch(target, patch, TestCaseResult.class, ADMIN_AUTH_HEADERS);
@@ -2315,7 +2315,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getTestSuite(), entity.getTestDefinition());
+    assertListNull(entity.getOwners(), entity.getTestSuite(), entity.getTestDefinition());
 
     fields = "owners,testSuite,testDefinition";
     entity =
@@ -2414,7 +2414,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
-      UUID testCaseFailureStatusId, JsonPatch patch) throws HttpResponseException {
+      UUID testCaseFailureStatusId, JsonNode patch) throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
     return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
   }

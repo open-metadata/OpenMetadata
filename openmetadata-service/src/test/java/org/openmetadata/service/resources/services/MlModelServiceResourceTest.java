@@ -55,7 +55,7 @@ public class MlModelServiceResourceTest
         MlModelService.class,
         MlModelServiceList.class,
         "services/mlmodelServices",
-        "owner");
+        "owners");
     this.supportsPatch = false;
     supportsSearchIndex = true;
   }

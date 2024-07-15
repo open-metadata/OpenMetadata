@@ -30,7 +30,7 @@
         "EditDisplayName",
         "EditLineage",
         "EditPolicy",
-        "EditOwner",
+        "EditOwners",
         "EditQueries",
         "EditReviewers",
         "EditRole",

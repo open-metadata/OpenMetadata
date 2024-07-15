@@ -716,7 +716,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     public String exportCsv() throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
-      final Fields fields = repository.getFields("owner,defaultRoles,parents,policies");
+      final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
       return exportCsv(listTeams(repository, team.getName(), new ArrayList<>(), fields));
     }
   }

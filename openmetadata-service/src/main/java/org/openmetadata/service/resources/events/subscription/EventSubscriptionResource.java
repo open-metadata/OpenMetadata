@@ -95,7 +95,7 @@ import org.quartz.SchedulerException;
 public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
-  public static final String FIELDS = "owner,filteringRules";
+  public static final String FIELDS = "owners,filteringRules";
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
     super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);

@@ -41,7 +41,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         APIService.class,
         APIServiceResource.APIServiceList.class,
         "services/apiServices",
-        "owner");
+        "owners");
     this.supportsPatch = false;
   }
 
@@ -192,7 +192,7 @@ public class APIServiceResourceTest extends ServiceResourceTest<APIService, Crea
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return service;
   }
 

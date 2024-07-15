@@ -100,7 +100,7 @@ public class AppMarketPlaceResourceTest
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     TestUtils.assertListNull(entity.getOwner());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

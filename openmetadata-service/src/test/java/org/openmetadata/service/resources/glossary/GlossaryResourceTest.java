@@ -536,7 +536,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String team11 = TEAM11.getName();
 
     // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references"
-    // "tags", "reviewers", "owner", "status"
+    // "tags", "reviewers", "owners", "status"
     // Create two records
     List<String> createRecords =
         listOf(
@@ -693,7 +693,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwners(), entity.getTags());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

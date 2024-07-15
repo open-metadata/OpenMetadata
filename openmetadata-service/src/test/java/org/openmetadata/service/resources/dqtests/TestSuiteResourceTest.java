@@ -402,7 +402,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 8. List test suites with owner
     // 8.1 Team owner
     queryParams.clear();
-    queryParams.put("owner", TEAM11_REF.getFullyQualifiedName());
+    queryParams.put("owners", TEAM11_REF.getFullyQualifiedName());
     queryParams.put("fields", "owners");
     ResultList<TestSuite> teamOwnerTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
@@ -990,7 +990,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwners(), entity.getTests());
-    fields = "owner,tests,tags";
+    fields = "owners,tests,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

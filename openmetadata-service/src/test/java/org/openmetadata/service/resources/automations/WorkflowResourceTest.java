@@ -77,7 +77,7 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwner());
-    fields = "owner";
+    fields = "owners";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

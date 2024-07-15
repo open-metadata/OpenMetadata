@@ -465,13 +465,13 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
         model.getUsageSummary());
 
     // .../models?fields=mlFeatures,mlHyperParameters
-    fields = "owner,followers,tags,usageSummary";
+    fields = "owners,followers,tags,usageSummary";
     model =
         byName
             ? getEntityByName(model.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(model.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(model.getUsageSummary());
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return model;
   }
 

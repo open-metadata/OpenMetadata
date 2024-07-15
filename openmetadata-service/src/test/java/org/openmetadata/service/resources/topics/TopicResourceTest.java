@@ -478,7 +478,7 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
             : getTopic(topic.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(topic.getOwners(), topic.getFollowers(), topic.getFollowers());
 
-    fields = "owner, followers, tags";
+    fields = "owners, followers, tags";
     topic =
         byName
             ? getTopicByName(topic.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

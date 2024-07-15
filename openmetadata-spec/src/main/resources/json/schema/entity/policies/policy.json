@@ -36,8 +36,8 @@
       "description": "A short description of the Policy, comprehensible to regular users.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Policy.",
+    "owners": {
+      "description": "Owners of this Policy.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },

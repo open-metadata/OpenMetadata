@@ -469,7 +469,7 @@ public class SuggestionsResource {
           String entityFQN) {
     // validate and get the thread
     EntityInterface entity =
-        Entity.getEntityByName(entityType, entityFQN, "owner", Include.NON_DELETED);
+        Entity.getEntityByName(entityType, entityFQN, "owners", Include.NON_DELETED);
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext =
         new OperationContext(Entity.SUGGESTION, MetadataOperation.DELETE);

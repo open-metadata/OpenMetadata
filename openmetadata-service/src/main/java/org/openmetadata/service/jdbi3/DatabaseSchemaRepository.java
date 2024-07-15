@@ -145,7 +145,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   @Override
   public void setInheritedFields(DatabaseSchema schema, Fields fields) {
     Database database =
-        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owner,domain", ALL);
+        Entity.getEntity(Entity.DATABASE, schema.getDatabase().getId(), "owners,domain", ALL);
     inheritOwners(schema, fields, database);
     inheritDomain(schema, fields, database);
     schema.withRetentionPeriod(
@@ -185,7 +185,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
     TableRepository repository = (TableRepository) Entity.getEntityRepository(TABLE);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("databaseSchema", name);
-    List<Table> tables = repository.listAll(repository.getFields("owner,tags,domain"), filter);
+    List<Table> tables = repository.listAll(repository.getFields("owners,tags,domain"), filter);
     tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseSchemaCsv(schema, user).exportCsv(tables);
   }
@@ -280,7 +280,8 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
                 .withDatabaseSchema(schema.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers
+      // retentionPeriod,
       // sourceUrl, domain
       // Field 1,2,3,6,7 - database schema name, displayName, description
       List<TagLabel> tagLabels =

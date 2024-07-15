@@ -68,7 +68,7 @@ public class DatabaseServiceRepository
     DatabaseRepository repository = (DatabaseRepository) Entity.getEntityRepository(DATABASE);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("service", name);
     List<Database> databases =
-        repository.listAll(repository.getFields("owner,tags,domain"), filter);
+        repository.listAll(repository.getFields("owners,tags,domain"), filter);
     databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user).exportCsv(databases);
   }
@@ -106,7 +106,7 @@ public class DatabaseServiceRepository
         database = new Database().withService(service.getEntityReference());
       }
 
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
       // Field 1,2,3,6,7 - database service name, displayName, description
       List<TagLabel> tagLabels =
           getTagLabels(
@@ -131,7 +131,7 @@ public class DatabaseServiceRepository
 
     @Override
     protected void addRecord(CsvFile csvFile, Database entity) {
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, domain
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers, domain
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());

@@ -19,7 +19,7 @@
       "name": "OrganizationPolicy-NoOwner-Rule",
       "description" : "Allow any one to set the owner of an entity that has no owner set.",
       "resources" : ["all"],
-      "operations": ["EditOwner"],
+      "operations": ["EditOwners"],
       "effect": "allow",
       "condition": "noOwner()"
     }

@@ -52,7 +52,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestConnectionDefinitionResource
     extends EntityResource<TestConnectionDefinition, TestConnectionDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/services/testConnectionDefinitions";
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
 
   public TestConnectionDefinitionResource(Authorizer authorizer, Limits limits) {
     super(Entity.TEST_CONNECTION_DEFINITION, authorizer, limits);

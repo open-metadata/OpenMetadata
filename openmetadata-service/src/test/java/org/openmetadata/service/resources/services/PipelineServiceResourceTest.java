@@ -71,7 +71,7 @@ public class PipelineServiceResourceTest
         PipelineService.class,
         PipelineServiceList.class,
         "services/pipelineServices",
-        "owner");
+        "owners");
     this.supportsPatch = false;
   }
 

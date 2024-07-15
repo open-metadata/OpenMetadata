@@ -271,13 +271,13 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getDataInsightChart());
-    fields = "owner,dataInsightChart"; // Not testing for kpiResult field
+    assertListNull(entity.getOwners(), entity.getDataInsightChart());
+    fields = "owners,dataInsightChart"; // Not testing for kpiResult field
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getDataInsightChart());
+    assertListNotNull(entity.getOwners(), entity.getDataInsightChart());
     return entity;
   }
 
