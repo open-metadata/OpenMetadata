@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources;
 
 import static java.lang.String.format;
+import static java.util.Collections.emptyList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
@@ -539,7 +540,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
           "Entity " + entityType + " does not support empty description");
     }
     K createRequest = createRequest(name).withDescription(description).withDisplayName(displayName);
-    createRequest.setOwners(null);
+    createRequest.setOwners(reduceEntityReferences(owners));
     return createRequest;
   }
 
@@ -1400,14 +1401,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Set TEAM_OWNER1 as owner using PUT request
     request.setOwners(Lists.newArrayList(TEAM11_REF));
     ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
-    fieldAdded(change, FIELD_OWNERS, TEAM11_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(TEAM11.getEntityReference(), entity.getId(), true);
 
     // Change owner from TEAM_OWNER1 to USER_OWNER1 using PUT request
     request.setOwners(Lists.newArrayList(USER1_REF));
     change = getChangeDescription(entity, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNERS, TEAM11_REF, USER1_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldDeleted(change, FIELD_OWNERS, List.of(TEAM11_REF));
     entity = updateAndCheckEntity(request, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     checkOwnerOwns(USER1_REF, entity.getId(), true);
     checkOwnerOwns(TEAM11_REF, entity.getId(), false);
@@ -1738,7 +1740,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Set the owner for the entity
     String originalJson = JsonUtils.pojoToJson(entity);
     ChangeDescription change = getChangeDescription(entity, MINOR_UPDATE);
-    fieldAdded(change, FIELD_OWNERS, USER1_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
     entity.setOwners(List.of(USER1_REF));
     entity =
         patchEntityAndCheck(
@@ -1768,7 +1770,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     if (!Entity.getEntityTypeFromObject(entity).equals(Entity.USER)
         && entity.getOwners() != null
         && entity.getOwners().stream().noneMatch(EntityReference::getInherited)) {
-      assertListNull(entity.getOwners());
+      assertEquals(emptyList(), entity.getOwners());
     }
     entity = getEntity(entity.getId(), ADMIN_AUTH_HEADERS);
 
@@ -1785,7 +1787,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldAdded(change, "displayName", "displayName");
     if (supportsOwners) {
       entity.setOwners(Lists.newArrayList(TEAM11_REF));
-      fieldAdded(change, FIELD_OWNERS, TEAM11_REF);
+      fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     }
     if (supportsTags) {
       entity.setTags(new ArrayList<>());
@@ -1813,7 +1815,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     fieldAdded(change, "displayName", "displayName1");
     if (supportsOwners) {
       entity.setOwners(List.of(USER1_REF));
-      fieldAdded(change, FIELD_OWNERS, USER1_REF);
+      fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
     }
 
     if (supportsTags) {
