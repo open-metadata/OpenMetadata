@@ -73,3 +73,53 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
 -- Remove date, dateTime, time from type_entity, as they are no more om-field-types, instead we have date-cp, time-cp, dateTime-cp as om-field-types
 DELETE FROM type_entity
 WHERE name IN ('date', 'dateTime', 'time');
+
+-- Update BigQuery,Bigtable & Datalake model for gcpCredentials to move `gcpConfig` value to `gcpConfig.path`
+UPDATE dbservice_entity
+SET json = jsonb_set(
+  json #-'{connection,config,credentials,gcpConfig}',
+  '{connection,config,credentials,gcpConfig}',
+  jsonb_build_object('path', json#>'{connection,config,credentials,gcpConfig}')
+)
+WHERE where serviceType in ('BigQuery', 'BigTable') and 
+( json#>'{connection,config,credentials,gcpConfig,type}' OR 
+json#>'{connection,config,credentials,gcpConfig,externalType') OR 
+json#>'{connection,config,credentials,gcpConfig,path'
+ is NULL; 
+
+UPDATE dbservice_entity
+SET json = jsonb_set(
+  json #-'{connection,config,configSource,securityConfig,gcpConfig}',
+  '{connection,config,configSource,securityConfig,gcpConfig}',
+  jsonb_build_object('path', json#>'{connection,config,configSource,securityConfig,gcpConfig}')
+)
+WHERE where serviceType in ('Datalake') and 
+( json#>'{connection,config,configSource,securityConfig,gcpConfig,type}' OR 
+json#>'{connection,config,configSource,securityConfig,gcpConfig,externalType') OR 
+json#>'{connection,config,configSource,securityConfig,gcpConfig,path'
+ is NULL; 
+
+-- Update Powerbi model for pbitFilesSource to move `gcpConfig` value to `gcpConfig.path`
+UPDATE dashboard_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,pbitFilesSource,securityConfig,gcpConfig}',
+  '{connection,config,pbitFilesSource,securityConfig,gcpConfig}',
+  jsonb_build_object('path', json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig}')
+)
+WHERE where serviceType in ('PowerBI') and 
+( json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,type}' OR 
+json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,externalType') OR 
+json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,path'
+ is NULL; 
+
+UPDATE storage_service_entity
+SET json = jsonb_set(
+  json #-'{connection,config,credentials,gcpConfig}',
+  '{connection,config,credentials,gcpConfig}',
+  jsonb_build_object('path', json#>'{connection,config,credentials,gcpConfig}')
+)
+WHERE where serviceType in ('PowerBI') and 
+( json#>'{connection,config,credentials,gcpConfig,type}' OR 
+json#>'{connection,config,credentials,gcpConfig,externalType') OR 
+json#>'{connection,config,credentials,gcpConfig,path'
+ is NULL;
