@@ -30,7 +30,9 @@ class NoSQLSampler(SamplerInterface):
             for column in self.table.columns
         ]
         rows, cols = self.transpose_records(records, columns)
-        return TableData(rows=rows, columns=[c.name for c in cols])
+        return TableData(
+            rows=[list(map(str, row)) for row in rows], columns=[c.name for c in cols]
+        )
 
     def random_sample(self):
         pass
@@ -47,7 +49,10 @@ class NoSQLSampler(SamplerInterface):
         limit = self._get_limit()
         records = self.client.scan(self.table, self.table.columns, limit)
         rows, cols = self.transpose_records(records, columns)
-        return TableData(rows=rows, columns=[col.name for col in cols])
+        return TableData(
+            rows=[list(map(str, row)) for row in rows],
+            columns=[col.name for col in cols],
+        )
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.table)

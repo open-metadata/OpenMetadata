@@ -42,7 +42,9 @@ class HexByteString(TypeDecorator):
         Make sure the data is of correct type
         """
         if not isinstance(value, (bytes, bytearray)):
-            raise TypeError("HexByteString columns support only bytes values.")
+            raise TypeError(
+                f"HexByteString columns support only bytes values. Received {type(value).__name__}."
+            )
 
     def process_result_value(self, value: str, dialect) -> Optional[str]:
         """This is executed during result retrieval
