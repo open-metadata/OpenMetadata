@@ -4712,14 +4712,6 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
-
-    @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM doc_store WHERE entityType LIKE CONCAT('%', :pattern)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM doc_store WHERE entityType LIKE '%' || :pattern",
-        connectionType = POSTGRES)
-    List<String> findEmailTemplatesFromDocStore(@Bind("pattern") String pattern);
   }
 
   interface SuggestionDAO {
