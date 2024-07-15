@@ -5,7 +5,6 @@ import static freemarker.template.Configuration.VERSION_2_3_28;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,7 +28,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
   private static final Configuration templateConfiguration = new Configuration(VERSION_2_3_28);
   private final DocumentRepository documentRepository;
   public static final String EMAIL_TEMPLATE_VALID = "valid";
-  public static final String ENTITY_TYPE_EMAIL_TEMPLATE = "EmailTemplate";
+  public static final String ENTITY_TYPE_EMAIL_TEMPLATE = "_emailTemplate";
   public static final String EMAIL_TEMPLATE_MISSING_PLACEHOLDERS = "missingPlaceholders";
 
   public DefaultTemplateProvider() {
@@ -65,15 +64,9 @@ public class DefaultTemplateProvider implements TemplateProvider {
   }
 
   @Override
-  public Template fetchTemplateFromDocStore(String templateName) throws IOException {
-    Document document = documentRepository.findByName(templateName, Include.NON_DELETED);
-    String content = (String) document.getData().getAdditionalProperties().get("content");
-    if (content == null || content.isEmpty()) {
-      throw new IOException("Template content not found for template: " + templateName);
-    }
-
-    return new Template(
-        templateName, new StringReader(content), new Configuration(Configuration.VERSION_2_3_31));
+  public String fetchTemplateFromDocStore(String fqn) {
+    Document document = documentRepository.findByName(fqn, Include.NON_DELETED);
+    return (String) document.getData().getAdditionalProperties().get("content");
   }
 
   @Override

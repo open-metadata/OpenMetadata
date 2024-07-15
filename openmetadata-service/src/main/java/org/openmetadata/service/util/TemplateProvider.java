@@ -15,15 +15,16 @@ public interface TemplateProvider {
 
   /**
    * Retrieves a FreeMarker template based on its name.
+   *
    * @return The FreeMarker template object.
    */
   Template getTemplate(String templateName) throws IOException;
 
   /**
    * Fetches a template stored in a document store.
-   * @param templateName The fully qualified name (FQN) or identifier of the template.
+   * @param fqn The fully qualified name (FQN) or identifier of the template.
    */
-  Template fetchTemplateFromDocStore(String templateName) throws IOException;
+  String fetchTemplateFromDocStore(String fqn);
 
   /**
    * Retrieves placeholders defined in email templates.
