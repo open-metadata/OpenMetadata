@@ -107,6 +107,7 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
+import APICollectionVersionPage from '../APICollectionPage/APICollectionVersionPage';
 import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
 import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
 import './EntityVersionPage.less';
@@ -186,7 +187,7 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchEntityPermissions = useCallback(async () => {
     setIsLoading(true);
     try {
-      fetchResourcePermission(
+      await fetchResourcePermission(
         entityUtilClassBase.getResourceEntityFromEntityType(
           entityType
         ) as ResourceEntity
@@ -635,6 +636,10 @@ const EntityVersionPage: FunctionComponent = () => {
 
       case EntityType.DATA_PRODUCT: {
         return <DataProductsPage />;
+      }
+
+      case EntityType.API_COLLECTION: {
+        return <APICollectionVersionPage />;
       }
 
       default:
