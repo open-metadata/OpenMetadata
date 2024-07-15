@@ -1488,7 +1488,7 @@
     "feed-asset-action-header": "{{action}} <0>data asset</0>",
     "feed-custom-property-header": "updated Custom Properties on",
     "feed-entity-action-header": "{{action}} <0>data asset</0>",
-    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> for {{entity}}",
+    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0>",
     "feed-filter-all": "Feeds voor alle data-assets waar je eigenaar van bent en volgt",
     "feed-filter-following": "Feeds voor alle data-assets die je volgt",
     "feed-filter-owner": "Feeds voor alle data-assets waar je eigenaar van bent",
