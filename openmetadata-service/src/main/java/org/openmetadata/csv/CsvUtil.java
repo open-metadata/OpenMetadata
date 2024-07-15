@@ -186,9 +186,7 @@ public final class CsvUtil {
         nullOrEmpty(owners)
             ? null
             : owners.stream()
-                .map(
-                    owner ->
-                        owner.getType() + ENTITY_TYPE_SEPARATOR + owner.getFullyQualifiedName())
+                .map(owner -> (owner.getType() + ENTITY_TYPE_SEPARATOR + owner.getName()))
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
   }
 

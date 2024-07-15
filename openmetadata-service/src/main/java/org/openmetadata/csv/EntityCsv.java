@@ -25,6 +25,7 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -178,10 +179,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> owners = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
     List<EntityReference> refs = new ArrayList<>();
     for (String owner : owners) {
-      List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
+      List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToEntities(owner));
       if (ownerTypes.size() != 2) {
         importFailure(printer, invalidOwner(fieldNumber), csvRecord);
-        return null;
+        return Collections.emptyList();
       }
       EntityReference ownerRef =
           getEntityReference(printer, csvRecord, fieldNumber, ownerTypes.get(0), ownerTypes.get(1));

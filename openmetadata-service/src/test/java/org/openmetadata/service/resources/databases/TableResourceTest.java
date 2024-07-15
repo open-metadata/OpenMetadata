@@ -2669,7 +2669,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user;%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
+                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
                     + "dsp1-new,desc1,type,STRUCT,,,PII.Sensitive,",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
             ",,,,,,,,,,c1.c11,dsp11-new,desc11,type1,INT,,,PII.Sensitive,",

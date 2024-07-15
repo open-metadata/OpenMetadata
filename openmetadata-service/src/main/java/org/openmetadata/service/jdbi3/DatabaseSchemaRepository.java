@@ -14,9 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.ALL;
@@ -315,7 +315,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
-      addEntityReferences(recordList, entity.getOwners());
+      addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());
