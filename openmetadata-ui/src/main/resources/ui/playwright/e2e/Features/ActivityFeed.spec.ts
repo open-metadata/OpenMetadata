@@ -131,10 +131,6 @@ test.describe('Activity feed', () => {
   test('User should be able to reply on feeds in ActivityFeed', async ({
     page,
   }) => {
-    const reply_message_1 = 'Reply message 1';
-    const reply_message_2 = 'Reply message 2';
-    const reply_message_3 = 'Reply message 3';
-
     await visitUserProfilePage(page);
 
     const secondFeedConversation = page
@@ -160,9 +156,11 @@ test.describe('Activity feed', () => {
 
     expect(secondFeedText).toBe(rightPanelFeedText);
 
-    for (const message of [reply_message_1, reply_message_2, reply_message_3]) {
-      await page.fill('[data-testid="editor-wrapper"] .ql-editor', message);
-
+    for (let i = 1; i <= 3; i++) {
+      await page.fill(
+        '[data-testid="editor-wrapper"] .ql-editor',
+        `Reply message ${i}`
+      );
       const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
       await page.getByTestId('send-button').click();
       await sendReply;
@@ -177,10 +175,10 @@ test.describe('Activity feed', () => {
 
     expect(secondFeedText).toBe(rightPanelFeedTextCurrent);
 
-    for (const message of [reply_message_1, reply_message_2, reply_message_3]) {
+    for (let i = 1; i <= 3; i++) {
       await expect(
         page.locator('.right-container [data-testid="feed-replies"]')
-      ).toContainText(message);
+      ).toContainText(`Reply message ${i}`);
     }
   });
 });

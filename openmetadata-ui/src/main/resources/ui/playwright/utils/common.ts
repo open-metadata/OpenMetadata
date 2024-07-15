@@ -154,7 +154,7 @@ export const visitUserProfilePage = async (page: Page) => {
     state: 'visible',
   });
   const userResponse = page.waitForResponse(
-    '/api/v1/users/name/*?fields=profile%2Croles%2Cteams%2Cpersonas%2CdefaultPersona%2Cdomain&include=all'
+    '/api/v1/users/name/*?fields=*&include=all'
   );
   await page.getByTestId('user-name').click({ force: true });
   await userResponse;
