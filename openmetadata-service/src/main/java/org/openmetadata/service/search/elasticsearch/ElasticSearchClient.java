@@ -129,6 +129,7 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
@@ -1945,6 +1946,7 @@ public class ElasticSearchClient implements SearchClient {
       }
 
       String fieldName = prefix + entry.getKey() + postfix;
+      String fieldNameOriginal = WordUtils.capitalize((prefix + entry.getKey()).replace(".", " "));
 
       if (entry.getValue() instanceof Map) {
         Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
@@ -1954,6 +1956,7 @@ public class ElasticSearchClient implements SearchClient {
         } else {
           Map<String, String> map = new HashMap<>();
           map.put("name", fieldName);
+          map.put("displayName", fieldNameOriginal);
           map.put("type", type);
           fieldList.add(map);
         }
