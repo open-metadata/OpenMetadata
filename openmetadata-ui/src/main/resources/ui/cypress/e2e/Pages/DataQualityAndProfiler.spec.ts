@@ -1196,6 +1196,13 @@ describe(
       verifyResponseStatusCode('@testCasePlatformByOpenMetadata', 200);
       cy.clickOutside();
       verifyFilterTestCase();
+      cy.url().then((url) => {
+        cy.reload();
+        verifyResponseStatusCode('@testCasePlatformByOpenMetadata', 200);
+        cy.url().then((updatedUrl) => {
+          expect(url).to.be.equal(updatedUrl);
+        });
+      });
     });
 
     it('Filter with domain', () => {
