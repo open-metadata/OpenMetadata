@@ -218,16 +218,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
     try {
       const res = await postFeedById(id, data);
-      const { id: responseId, posts } = res;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
       setActiveThread(res);
     } catch (error) {
       showErrorToast(
