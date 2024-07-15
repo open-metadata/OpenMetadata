@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const PROPERTY_TYPES_WITH_FORMAT = ['date', 'dateTime'];
-
-export const DISABLED_PROPERTY_TYPES = [
-  'time',
-  'dateTime',
-  'timeInterval',
-  'date',
-];
+export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
 
 export const PROPERTY_TYPES_WITH_ENTITY_REFERENCE = [
   'entityReference',
@@ -101,3 +94,35 @@ export const ENTITY_REFERENCE_OPTIONS = [
     label: 'Team',
   },
 ];
+
+// supported date formats on backend
+export const SUPPORTED_DATE_FORMATS = [
+  'yyyy-MM-dd',
+  'dd MMM yyyy',
+  'MM/dd/yyyy',
+  'dd/MM/yyyy',
+  'dd-MM-yyyy',
+  'yyyyDDD',
+  'd MMMM yyyy',
+];
+
+// supported date time formats on backend
+export const SUPPORTED_DATE_TIME_FORMATS = [
+  'MMM dd HH:mm:ss yyyy',
+  'yyyy-MM-dd HH:mm:ss',
+  'MM/dd/yyyy HH:mm:ss',
+  'dd/MM/yyyy HH:mm:ss',
+  'dd-MM-yyyy HH:mm:ss',
+  'yyyy-MM-dd HH:mm:ss.SSS',
+  'yyyy-MM-dd HH:mm:ss.SSSSSS',
+  'dd MMMM yyyy HH:mm:ss',
+];
+
+// supported time formats on backend
+export const SUPPORTED_TIME_FORMATS = ['HH:mm:ss'];
+
+export const SUPPORTED_FORMAT_MAP = {
+  'date-cp': SUPPORTED_DATE_FORMATS,
+  'dateTime-cp': SUPPORTED_DATE_TIME_FORMATS,
+  'time-cp': SUPPORTED_TIME_FORMATS,
+};

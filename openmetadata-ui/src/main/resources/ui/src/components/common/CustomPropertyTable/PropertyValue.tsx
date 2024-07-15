@@ -225,12 +225,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
-      case 'date':
-      case 'dateTime': {
+      case 'date-cp':
+      case 'dateTime-cp': {
         // Default format is 'yyyy-mm-dd'
-        const format =
-          toUpper(property.customPropertyConfig?.config as string) ??
-          'yyyy-mm-dd';
+        const format = toUpper(
+          (property.customPropertyConfig?.config as string) ?? 'yyyy-mm-dd'
+        );
 
         const initialValues = {
           dateTimeValue: value ? moment(value, format) : undefined,
@@ -263,7 +263,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
-                  showTime={propertyType.name === 'dateTime'}
+                  showTime={propertyType.name === 'dateTime-cp'}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -272,8 +272,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
-      case 'time': {
-        const format = 'HH:mm:ss';
+      case 'time-cp': {
+        const format =
+          (property.customPropertyConfig?.config as string) ?? 'HH:mm:ss';
         const initialValues = {
           time: value ? moment(value, format) : undefined,
         };
@@ -303,6 +304,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                   allowClear
                   data-testid="time-picker"
                   disabled={isLoading}
+                  format={format}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -788,9 +790,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'string':
       case 'integer':
       case 'number':
-      case 'date':
-      case 'dateTime':
-      case 'time':
+      case 'date-cp':
+      case 'dateTime-cp':
+      case 'time-cp':
       case 'email':
       case 'timestamp':
       case 'duration':
