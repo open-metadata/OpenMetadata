@@ -212,7 +212,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
 
     if (dataQualityDimension != null) {
       conditions.add(
-              String.format("{\"term\": {\"dataQualityDimension\": \"%s\"}}", dataQualityDimension));
+          String.format("{\"term\": {\"dataQualityDimension\": \"%s\"}}", dataQualityDimension));
     }
 
     return addCondition(conditions);

@@ -317,10 +317,11 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           @QueryParam("testPlatforms")
           String testPlatforms,
       @Parameter(
-              description = "Filter for test case by data quality dimension (e.g. OpenMetadata, dbt, etc.)",
+              description =
+                  "Filter for test case by data quality dimension (e.g. OpenMetadata, dbt, etc.)",
               schema = @Schema(type = "string"))
-      @QueryParam("dataQualityDimension")
-      String dataQualityDimension,
+          @QueryParam("dataQualityDimension")
+          String dataQualityDimension,
       @Parameter(
               description =
                   "Parameter used to filter (inclusive) the test cases by the last execution timestamp (in milliseconds). Must be used in conjunction with `endTimestamp`",

@@ -1070,8 +1070,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       return new ResultList<>(entityList, offset, limit, total.intValue());
     } else {
       SearchClient.SearchResultListMapper results =
-              searchRepository.listWithOffset(
-                      searchListFilter, limit, offset, entityType, searchSortFilter, q);
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
       total = results.getTotal();
       return new ResultList<>(entityList, null, limit, total.intValue());
     }

@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
-import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -34,7 +32,8 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     // Build Index Doc
     List<SearchSuggest> suggest = new ArrayList<>();
     TestDefinition testDefinition =
-            Entity.getEntity(Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
+        Entity.getEntity(
+            Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
     suggest.add(SearchSuggest.builder().input(testCase.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
     doc.put(
