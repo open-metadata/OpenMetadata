@@ -12,7 +12,7 @@
 """
 Common Class For Profiler Converter.
 """
-
+from collections import defaultdict
 from typing import Dict, Set
 
 import sqlalchemy
@@ -28,7 +28,7 @@ class CommonMapTypes:
     Base Class for mapping types
     """
 
-    _TYPE_MAP = {
+    _TYPE_MAP = defaultdict(lambda: CustomTypes.UNDETERMINED.value) | {
         DataType.NUMBER: sqlalchemy.NUMERIC,
         DataType.TINYINT: sqlalchemy.SMALLINT,
         DataType.SMALLINT: sqlalchemy.SMALLINT,
@@ -52,7 +52,7 @@ class CommonMapTypes:
         DataType.VARCHAR: sqlalchemy.VARCHAR,
         DataType.BOOLEAN: sqlalchemy.BOOLEAN,
         DataType.BINARY: CustomTypes.BYTES.value,
-        DataType.VARBINARY: sqlalchemy.VARBINARY,
+        DataType.VARBINARY: CustomTypes.BYTES.value,
         DataType.ARRAY: CustomTypes.ARRAY.value,
         DataType.BLOB: CustomTypes.BYTES.value,
         DataType.LONGBLOB: sqlalchemy.LargeBinary,
@@ -81,7 +81,7 @@ class CommonMapTypes:
         return self.return_custom_type(col, table_service_type)
 
     def return_custom_type(self, col: Column, _):
-        return self._TYPE_MAP.get(col.dataType)
+        return self._TYPE_MAP[col.dataType]
 
     @staticmethod
     def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:

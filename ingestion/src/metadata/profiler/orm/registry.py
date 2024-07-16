@@ -26,6 +26,7 @@ from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_image import CustomImage
 from metadata.profiler.orm.types.custom_ip import CustomIP
 from metadata.profiler.orm.types.custom_timestamp import CustomTimestamp
+from metadata.profiler.orm.types.undetermined_type import UndeterminedType
 from metadata.profiler.orm.types.uuid import UUIDString
 from metadata.profiler.registry import TypeRegistry
 
@@ -39,6 +40,7 @@ class CustomTypes(TypeRegistry):
     IMAGE = CustomImage
     IP = CustomIP
     SQADATETIMERANGE = CustomDateTimeRange
+    UNDETERMINED = UndeterminedType
 
 
 class Dialects(Enum):
@@ -97,6 +99,8 @@ NOT_COMPUTE = {
     DataType.JSON.value,
     CustomTypes.ARRAY.value.__name__,
     CustomTypes.SQADATETIMERANGE.value.__name__,
+    DataType.XML.value,
+    CustomTypes.UNDETERMINED.value.__name__,
 }
 FLOAT_SET = {sqlalchemy.types.DECIMAL, sqlalchemy.types.FLOAT}
 
@@ -167,3 +171,13 @@ def is_concatenable(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)
+
+
+def not_distinguishable(_type) -> bool:
+    """
+    Check if sqlalchemy _type is derived from Concatenable
+    e.g., strings or text
+    """
+    if isinstance(_type, DataType):
+        return _type.value not in NOT_DISTIGUISHABLE_SET
+    return True
