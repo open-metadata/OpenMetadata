@@ -11,21 +11,30 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
+import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
 public class DataInsightsEntityEnricherProcessor
@@ -134,10 +143,33 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.put("endTimestamp", endTimestamp);
 
     // Enrich with Team
-    //    entityMap.put("", entityOwnerTeam);
-    //
-    //    // Enright with Tier
-    //    entityMap.put("tier", entityTier);
+    Optional<EntityReference> oEntityOwner = Optional.ofNullable(entity.getOwner());
+    if (oEntityOwner.isPresent()) {
+      EntityReference entityOwner = oEntityOwner.get();
+      String ownerType = entityOwner.getType();
+      if (ownerType.equals(Entity.TEAM)) {
+        entityMap.put("team", entityOwner.getName());
+      } else {
+        Optional<User> oOwner = Optional.ofNullable(Entity.getEntityByName(Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
+
+        if (oOwner.isPresent()) {
+          User owner = oOwner.get();
+          List<EntityReference> teams = owner.getTeams();
+
+          if (!teams.isEmpty()) {
+            entityMap.put("team", teams.get(0).getName());
+          }
+        }
+      }
+    }
+
+    // Enrich with Tier
+    Optional<List<TagLabel>> oEntityTags = Optional.ofNullable(entity.getTags());
+
+    if (oEntityTags.isPresent()) {
+      Optional<String> oEntityTier = getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
+      oEntityTier.ifPresent(s -> entityMap.put("tier", s));
+    }
 
     // Enrich with Description Stats
     if (interfaces.contains(ColumnsEntityInterface.class)) {
@@ -151,58 +183,21 @@ public class DataInsightsEntityEnricherProcessor
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
 
-    //    def get_versions(self, entity, entity_type, entity_type_name):
-    //    v_list = metadata.get_list_entity_versions(entity.id, entity_type)
-    //
-    //    if hasattr(entity, "tags"):
-    //    tier = get_entity_tier_from_tags(entity.tags)
-    //        else:
-    //    tier = None
-    //    if hasattr(entity, "owner"):
-    //    team = get_team(entity.owner)
-    //        else:
-    //    team = None
-
-    //    def get_team(owner: EntityReference) -> Optional[str]:
-    //    """Get the team from an entity. We'll use this info as well to
-    //    add info if an entity has an owner
-    //
-    //    Args:
-    //        owner (EntityReference): owner entity reference from the entity
-    //
-    //    Returns:
-    //        Optional[str]
-    //    """
-    //    if not owner:
-    //    return None
-    //
-    //    if isinstance(owner, EntityReferenceList):
-    //    return owner.root[0].name
-    //
-    //    if owner.type == "team":
-    //    return owner.name
-    //
-    //    owner_fqn = owner.fullyQualifiedName
-    //    owner_fqn = cast(str, owner_fqn)  # To satisfy type checker
-    //
-    //    entity_reference: Optional[User] = metadata.get_by_name(
-    //            User, owner_fqn, fields=["teams"]
-    //    )
-    //
-    //    if not entity_reference:
-    //    return None
-    //
-    //    teams = entity_reference.teams
-    //
-    //    if teams:
-    //    return teams.root[0].name  # We'll return the first team listed
-    //
-    //    return None
-
-    // TODO: Add Team
-    // TODO: Maybe missing the tier
-
     return entityMap;
+  }
+
+  private Optional<String> getEntityTier(List<String> entityTags) {
+    Optional<String> entityTier = Optional.empty();
+
+    List<String> tierTags = entityTags.stream().filter(tag -> tag.startsWith("Tier")).toList();
+
+    // We can directly get the first element if the list is not empty since there can only be ONE
+    // Tier tag.
+    if (!tierTags.isEmpty()) {
+      entityTier = Optional.of(tierTags.get(0));
+    }
+
+    return entityTier;
   }
 
   private List<Map<String, Object>> generateDailyEntitySnapshots(
