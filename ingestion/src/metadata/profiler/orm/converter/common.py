@@ -28,7 +28,7 @@ class CommonMapTypes:
     Base Class for mapping types
     """
 
-    _TYPE_MAP = defaultdict(lambda: CustomTypes.UNDETERMINED.value) | {
+    _TYPE_MAP = {
         DataType.NUMBER: sqlalchemy.NUMERIC,
         DataType.TINYINT: sqlalchemy.SMALLINT,
         DataType.SMALLINT: sqlalchemy.SMALLINT,
@@ -81,7 +81,7 @@ class CommonMapTypes:
         return self.return_custom_type(col, table_service_type)
 
     def return_custom_type(self, col: Column, _):
-        return self._TYPE_MAP[col.dataType]
+        return self._TYPE_MAP.get(col.dataType, CustomTypes.UNDETERMINED.value)
 
     @staticmethod
     def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:
