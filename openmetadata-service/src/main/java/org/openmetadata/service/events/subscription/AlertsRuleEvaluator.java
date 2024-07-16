@@ -255,7 +255,13 @@ public class AlertsRuleEvaluator {
 
     EntityInterface entity = getEntity(changeEvent);
     for (String name : tableNameList) {
-      Pattern pattern = Pattern.compile(name);
+      // Escape regex special characters in table name for exact matching
+      String escapedName = Pattern.quote(name);
+
+      // Construct regex to match table name exactly, allowing for end of string or delimiter (.)
+      String regex = "\\b" + escapedName + "(\\b|\\.|$)";
+      Pattern pattern = Pattern.compile(regex);
+
       Matcher matcher = pattern.matcher(entity.getFullyQualifiedName());
       if (matcher.find()) {
         return true;
