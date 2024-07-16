@@ -20,23 +20,21 @@ import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  performAdminLogin,
-  performUserLogin,
-  redirectToHomePage,
-  toastNotification,
-  uuid,
+    performAdminLogin,
+    performUserLogin,
+    redirectToHomePage, toastNotification, uuid
 } from '../../utils/common';
 import {
-  addAssetToGlossaryTerm,
-  approveGlossaryTermTask,
-  createGlossary,
-  createGlossaryTerms,
-  goToAssetsTab,
-  renameGlossaryTerm,
-  selectActiveGlossary,
-  validateGlossaryTerm,
-  verifyGlossaryDetails,
-  verifyGlossaryTermAssets,
+    addAssetToGlossaryTerm,
+    approveGlossaryTermTask,
+    createGlossary,
+    createGlossaryTerms,
+    goToAssetsTab,
+    renameGlossaryTerm,
+    selectActiveGlossary,
+    validateGlossaryTerm,
+    verifyGlossaryDetails,
+    verifyGlossaryTermAssets
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
 import { getRandomLastName } from '../../utils/user';
