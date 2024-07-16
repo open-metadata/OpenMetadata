@@ -7,8 +7,8 @@ slug: /connectors/database/synapse
 name="Synapse"
 stage="PROD"
 platform="Collate"
-availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
-unavailableFeatures=["Stored Procedures", "Owners", "Tags"]
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "Stored Procedures", "dbt"]
+unavailableFeatures=["Owners", "Tags"]
 / %}
 
 In this section, we provide guides and references to use the Synapse connector.
