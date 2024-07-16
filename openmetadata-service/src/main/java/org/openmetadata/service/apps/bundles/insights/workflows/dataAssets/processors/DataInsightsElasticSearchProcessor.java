@@ -1,5 +1,6 @@
-package org.openmetadata.service.apps.bundles.insights.processors;
+package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
 
+import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.DATA_ASSETS_DATA_STREAM;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import es.org.elasticsearch.action.bulk.BulkRequest;
@@ -28,7 +29,7 @@ public class DataInsightsElasticSearchProcessor
   @Override
   public BulkRequest process(List<Map<String, Object>> input, Map<String, Object> contextData)
       throws SearchIndexException {
-    String index = "di-data-assets";
+    String index = DATA_ASSETS_DATA_STREAM;
     LOG.debug(
         "[EsEntitiesProcessor] Processing a Batch of Size: {}, Index: {} ", input.size(), index);
     BulkRequest requests;

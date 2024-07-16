@@ -162,6 +162,7 @@ import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 /**
  * This is the base class used by Entity Resources to perform READ and WRITE operations to the backend database to
@@ -662,8 +663,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     int currentOffset = beforeOffset;
     int total = dao.listCount(filter);
     if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
-      List<String> jsons = dao.listAfterWithOffset(limitParam, currentOffset);
+      List<String> jsons = dao.listAfter(filter, limitParam, currentOffset);
 
       for (String json : jsons) {
         T parsedEntity = JsonUtils.readValue(json, entityClass);

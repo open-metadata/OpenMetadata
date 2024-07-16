@@ -887,8 +887,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
           String name) {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
     App app = repository.getByName(uriInfo, name, fields);
-    // TODO: REMOVE THIS. For Testing Only.
-    app.setAppType(AppType.Internal);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
           .triggerApplicationOnDemand(app, Entity.getCollectionDAO(), searchRepository);

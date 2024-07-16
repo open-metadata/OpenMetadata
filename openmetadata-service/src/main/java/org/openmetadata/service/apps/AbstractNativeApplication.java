@@ -67,8 +67,6 @@ public class AbstractNativeApplication implements NativeApplication {
         && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
       return;
     }
-    // TODO: Remove This. for Testing Only
-    app.setAppType(AppType.Internal);
     if (app.getAppType() == AppType.Internal
         && app.getScheduleType().equals(ScheduleType.Scheduled)) {
       try {

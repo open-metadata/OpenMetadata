@@ -1,6 +1,8 @@
-package org.openmetadata.service.apps.bundles.insights.processors;
+package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
 
 import static org.openmetadata.schema.EntityInterface.ENTITY_TYPE_TO_CLASS_MAP;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
@@ -18,6 +20,7 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.JsonUtils;
@@ -67,41 +70,29 @@ public class DataInsightsEntityEnricherProcessor
     return enrichedMaps;
   }
 
-  private Long getStartOfDayTimestamp(Long timestamp) {
-    return (long) ((int) (timestamp / 1000 / 60 / 60 / 24)) * 1000 * 60 * 60 * 24;
-  }
-
-  private Long timestampSubtractDays(Long timestamp, int days) {
-    return timestamp - 1000L * 60 * 60 * 24 * days;
-  }
-
-  private Long timestampPlusOneDay(Long timestamp) {
-    return timestamp + 1000 * 60 * 60 * 24;
-  }
-
   private List<Map<String, Object>> getEntityVersions(
       EntityInterface entity, Map<String, Object> contextData) {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
-    Long timestamp = (Long) contextData.get(TIMESTAMP_KEY);
-    Long initialTimestamp = (Long) contextData.get("initialTimestamp");
+    Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
+    Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     EntityHistory entityHistory = entityRepository.listVersions(entity.getId());
 
-    Long pointerTimestamp = timestamp;
+    Long pointerTimestamp = endTimestamp;
     List<Map<String, Object>> entityVersions = new java.util.ArrayList<>();
 
     for (Object version : entityHistory.getVersions()) {
       EntityInterface versionEntity =
           JsonUtils.readOrConvertValue(
               version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-      Long versionTimestamp = getStartOfDayTimestamp(versionEntity.getUpdatedAt());
+      Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
       if (versionTimestamp >= pointerTimestamp) {
         continue;
-      } else if (versionTimestamp < initialTimestamp) {
+      } else if (versionTimestamp < startTimestamp) {
         Map<String, Object> versionMap = new HashMap<>();
 
         versionMap.put("endTimestamp", pointerTimestamp);
-        versionMap.put("startTimestamp", initialTimestamp);
+        versionMap.put("startTimestamp", startTimestamp);
         versionMap.put("versionEntity", versionEntity);
 
         entityVersions.add(versionMap);
@@ -110,7 +101,7 @@ public class DataInsightsEntityEnricherProcessor
         Map<String, Object> versionMap = new HashMap<>();
 
         versionMap.put("endTimestamp", pointerTimestamp);
-        versionMap.put("startTimestamp", timestampPlusOneDay(versionTimestamp));
+        versionMap.put("startTimestamp", TimestampUtils.addDays(versionTimestamp, 1));
         versionMap.put("versionEntity", versionEntity);
 
         entityVersions.add(versionMap);
@@ -142,6 +133,12 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.put("startTimestamp", startTimestamp);
     entityMap.put("endTimestamp", endTimestamp);
 
+    // Enrich with Team
+//    entityMap.put("", entityOwnerTeam);
+//
+//    // Enright with Tier
+//    entityMap.put("tier", entityTier);
+
     // Enrich with Description Stats
     if (interfaces.contains(ColumnsEntityInterface.class)) {
       entityMap.put("numberOfColumns", ((ColumnsEntityInterface) entity).getColumns().size());
@@ -153,6 +150,60 @@ public class DataInsightsEntityEnricherProcessor
                   .reduce(0, Integer::sum));
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
+
+
+
+//    def get_versions(self, entity, entity_type, entity_type_name):
+//    v_list = metadata.get_list_entity_versions(entity.id, entity_type)
+//
+//    if hasattr(entity, "tags"):
+//    tier = get_entity_tier_from_tags(entity.tags)
+//        else:
+//    tier = None
+//    if hasattr(entity, "owner"):
+//    team = get_team(entity.owner)
+//        else:
+//    team = None
+
+//    def get_team(owner: EntityReference) -> Optional[str]:
+//    """Get the team from an entity. We'll use this info as well to
+//    add info if an entity has an owner
+//
+//    Args:
+//        owner (EntityReference): owner entity reference from the entity
+//
+//    Returns:
+//        Optional[str]
+//    """
+//    if not owner:
+//    return None
+//
+//    if isinstance(owner, EntityReferenceList):
+//    return owner.root[0].name
+//
+//    if owner.type == "team":
+//    return owner.name
+//
+//    owner_fqn = owner.fullyQualifiedName
+//    owner_fqn = cast(str, owner_fqn)  # To satisfy type checker
+//
+//    entity_reference: Optional[User] = metadata.get_by_name(
+//            User, owner_fqn, fields=["teams"]
+//    )
+//
+//    if not entity_reference:
+//    return None
+//
+//    teams = entity_reference.teams
+//
+//    if teams:
+//    return teams.root[0].name  # We'll return the first team listed
+//
+//    return None
+
+
+    // TODO: Add Team
+    // TODO: Maybe missing the tier
 
     return entityMap;
   }
@@ -169,10 +220,10 @@ public class DataInsightsEntityEnricherProcessor
     while (pointerTimestamp >= startTimestamp) {
       Map<String, Object> dailyEntitySnapshot = new HashMap<>(entityVersionMap);
 
-      dailyEntitySnapshot.put(TIMESTAMP_KEY, pointerTimestamp);
+      dailyEntitySnapshot.put(TIMESTAMP_KEY, TimestampUtils.getStartOfDayTimestamp(pointerTimestamp));
       dailyEntitySnapshots.add(dailyEntitySnapshot);
 
-      pointerTimestamp = timestampSubtractDays(pointerTimestamp, 1);
+      pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
     }
     return dailyEntitySnapshots;
   }
