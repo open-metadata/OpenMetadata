@@ -52,7 +52,7 @@ describe('IngestionListTable tests', () => {
   it('Should display the loader if the isLoading is true', async () => {
     render(<IngestionListTable {...mockIngestionListTableProps} isLoading />);
 
-    const loader = await screen.findByTestId('loader');
+    const loader = await screen.findByText('loader');
 
     expect(loader).toBeInTheDocument();
   });
