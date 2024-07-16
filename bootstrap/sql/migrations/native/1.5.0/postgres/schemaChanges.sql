@@ -81,11 +81,10 @@ SET json = jsonb_set(
   '{connection,config,credentials,gcpConfig}',
   jsonb_build_object('path', json#>'{connection,config,credentials,gcpConfig}')
 )
-WHERE where serviceType in ('BigQuery', 'BigTable') and 
-( json#>'{connection,config,credentials,gcpConfig,type}' OR 
-json#>'{connection,config,credentials,gcpConfig,externalType') OR 
-json#>'{connection,config,credentials,gcpConfig,path'
- is NULL; 
+WHERE serviceType IN ('BigQuery', 'BigTable') and json#>>'{connection,config,credentials,gcpConfig}' is not null 
+and json#>>'{connection,config,credentials,gcpConfig,type}' is null 
+and json#>>'{connection,config,credentials,gcpConfig,externalType}' is null 
+and json#>>'{connection,config,credentials,gcpConfig,path}' is null;
 
 UPDATE dbservice_entity
 SET json = jsonb_set(
@@ -93,33 +92,45 @@ SET json = jsonb_set(
   '{connection,config,configSource,securityConfig,gcpConfig}',
   jsonb_build_object('path', json#>'{connection,config,configSource,securityConfig,gcpConfig}')
 )
-WHERE where serviceType in ('Datalake') and 
-( json#>'{connection,config,configSource,securityConfig,gcpConfig,type}' OR 
-json#>'{connection,config,configSource,securityConfig,gcpConfig,externalType') OR 
-json#>'{connection,config,configSource,securityConfig,gcpConfig,path'
- is NULL; 
+WHERE serviceType IN ('Datalake') and json#>>'{connection,config,configSource,securityConfig,gcpConfig}' is not null 
+and json#>>'{connection,config,configSource,securityConfig,gcpConfig,type}' is null 
+and json#>>'{connection,config,configSource,securityConfig,gcpConfig,externalType}' is null 
+and json#>>'{connection,config,configSource,securityConfig,gcpConfig,path}' is null;
+
 
 -- Update Powerbi model for pbitFilesSource to move `gcpConfig` value to `gcpConfig.path`
+
 UPDATE dashboard_service_entity
 SET json = jsonb_set(
   json #-'{connection,config,pbitFilesSource,securityConfig,gcpConfig}',
   '{connection,config,pbitFilesSource,securityConfig,gcpConfig}',
   jsonb_build_object('path', json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig}')
 )
-WHERE where serviceType in ('PowerBI') and 
-( json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,type}' OR 
-json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,externalType') OR 
-json#>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,path'
- is NULL; 
+WHERE serviceType IN ('PowerBI') and 
+json#>>'{connection,config,pbitFilesSource,securityConfig,gcpConfig}' is not null 
+and json#>>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,type}' is null 
+and json#>>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,externalType}' is null 
+and json#>>'{connection,config,pbitFilesSource,securityConfig,gcpConfig,path}' is null;
 
 UPDATE storage_service_entity
 SET json = jsonb_set(
   json #-'{connection,config,credentials,gcpConfig}',
   '{connection,config,credentials,gcpConfig}',
   jsonb_build_object('path', json#>'{connection,config,credentials,gcpConfig}')
-)
-WHERE where serviceType in ('PowerBI') and 
-( json#>'{connection,config,credentials,gcpConfig,type}' OR 
-json#>'{connection,config,credentials,gcpConfig,externalType') OR 
-json#>'{connection,config,credentials,gcpConfig,path'
- is NULL;
+) where serviceType = 'GCS' and
+json#>>'{connection,config,credentials,gcpConfig}' is not null 
+and json#>>'{connection,config,credentials,gcpConfig,type}' is null 
+and json#>>'{connection,config,credentials,gcpConfig,externalType}' is null 
+and json#>>'{connection,config,credentials,gcpConfig,path}' is null;
+
+UPDATE ingestion_pipeline_entity 
+SET json = jsonb_set(
+  json::jsonb #- '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}'::text[],
+  '{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}',
+  jsonb_build_object('path', json#>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}')
+)  
+ WHERE json#>>'{sourceConfig,config,type}' = 'DBT' 
+  AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig}' IS NOT NULL 
+  AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,type}' IS NULL 
+  AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,externalType}' IS NULL 
+  AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,path}' IS NULL;
