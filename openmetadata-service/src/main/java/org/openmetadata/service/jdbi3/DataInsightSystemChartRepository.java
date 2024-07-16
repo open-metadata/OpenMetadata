@@ -3,8 +3,11 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.util.EntityUtil;
@@ -59,5 +62,24 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public DataInsightCustomChartResultList getPreviewData(
       DataInsightCustomChart chart, long startTimestamp, long endTimestamp) throws IOException {
     return searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
+  }
+
+  public HashMap listChartData(String chartNames, long startTimestamp, long endTimestamp)
+      throws IOException {
+    HashMap<String, DataInsightCustomChartResultList> result = new HashMap<>();
+    if (chartNames == null) {
+      return result;
+    }
+
+    for (String chartName : chartNames.split(",")) {
+      DataInsightCustomChart chart =
+          Entity.getEntityByName(DATA_INSIGHT_CUSTOM_CHART, chartName, "", Include.NON_DELETED);
+      if (chart != null) {
+        DataInsightCustomChartResultList data =
+            searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
+        result.put(chartName, data);
+      }
+    }
+    return result;
   }
 }
