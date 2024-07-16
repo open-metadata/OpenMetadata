@@ -15,16 +15,20 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.search.SearchClient.TAG_SEARCH_INDEX;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.classification.Classification;
+import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -35,6 +39,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class ClassificationRepository extends EntityRepository<Classification> {
@@ -112,6 +117,38 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
   }
 
+  @Override
+  public void entityRelationshipReindex(Classification original, Classification updated) {
+    super.entityRelationshipReindex(original, updated);
+
+    // Update search on name , fullyQualifiedName and displayName change
+    if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
+        || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      List<Tag> tagsWithUpdatedClassification = getAllTagsByClassification(updated);
+      List<EntityReference> tagsWithOriginalClassification =
+          searchRepository.getEntitiesContainingFQNFromES(
+              original.getFullyQualifiedName(),
+              tagsWithUpdatedClassification.size(),
+              TAG_SEARCH_INDEX);
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("classification.name", original.getEntityReference());
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("classification.fullyQualifiedName", original.getEntityReference());
+      for (EntityReference tag : tagsWithOriginalClassification) {
+        searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", tag);
+      }
+    }
+  }
+
+  private List<Tag> getAllTagsByClassification(Classification classification) {
+    // Get all the tags under the specified classification
+    List<String> jsons =
+        daoCollection.tagDAO().getTagsStartingWithPrefix(classification.getFullyQualifiedName());
+    return JsonUtils.readObjects(jsons, Tag.class);
+  }
+
   public class ClassificationUpdater extends EntityUpdater {
     public ClassificationUpdater(
         Classification original, Classification updated, Operation operation) {
@@ -133,16 +170,17 @@ public class ClassificationRepository extends EntityRepository<Classification> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
-        // Classification name changed - update tag names starting from classification and all the
-        // children tags
-        LOG.info(
-            "Classification name changed from {} to {}", original.getName(), updated.getName());
+        // on Classification name change - update tag's name under classification
         setFullyQualifiedName(updated);
-        daoCollection.tagDAO().updateFqn(original.getName(), updated.getName());
+        daoCollection
+            .tagDAO()
+            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         daoCollection
             .tagUsageDAO()
             .updateTagPrefix(
-                TagSource.CLASSIFICATION.ordinal(), original.getName(), updated.getName());
+                TagSource.CLASSIFICATION.ordinal(),
+                original.getFullyQualifiedName(),
+                updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
         invalidateClassification(original.getId());
       }

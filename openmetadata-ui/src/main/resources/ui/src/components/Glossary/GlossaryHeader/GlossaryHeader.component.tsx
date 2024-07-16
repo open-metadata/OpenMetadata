@@ -110,6 +110,16 @@ const GlossaryHeader = ({
     useState(false);
   const { permissions: globalPermissions } = usePermissionProvider();
 
+  const createGlossaryTermPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.GLOSSARY_TERM,
+        globalPermissions
+      ),
+    [globalPermissions]
+  );
+
   const importExportPermissions = useMemo(
     () =>
       checkPermission(
@@ -456,7 +466,7 @@ const GlossaryHeader = ({
   }, [isGlossary, selectedData]);
 
   const createButtons = useMemo(() => {
-    if (permissions.Create) {
+    if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
           className="m-l-xs"
@@ -491,7 +501,13 @@ const GlossaryHeader = ({
     }
 
     return null;
-  }, [isGlossary, permissions, addButtonContent, glossaryTermStatus]);
+  }, [
+    isGlossary,
+    permissions,
+    createGlossaryTermPermission,
+    addButtonContent,
+    glossaryTermStatus,
+  ]);
 
   /**
    * To create breadcrumb from the fqn

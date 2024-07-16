@@ -406,6 +406,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setChangeDescription(original.getChangeDescription());
   }
 
+  /**
+   * This function updates the Elasticsearch indexes wherever the specific entity is present.
+   * It is typically invoked when there are changes in the entity that might affect its indexing in Elasticsearch.
+   * The function ensures that the indexes are kept up-to-date with the latest state of the entity across all relevant Elasticsearch indexes.
+   */
+  protected void entityRelationshipReindex(T original, T updated) {
+    // Logic override by the child class to update the indexes
+  }
+
   /** Set fullyQualifiedName of an entity */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
@@ -887,6 +896,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
     entityUpdater.update();
+
+    entityRelationshipReindex(original, updated);
+
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
       change = EventType.ENTITY_UPDATED;

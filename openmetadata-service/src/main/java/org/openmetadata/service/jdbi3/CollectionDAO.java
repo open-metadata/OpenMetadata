@@ -1403,6 +1403,19 @@ public interface CollectionDAO {
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE thread_entity SET json = JSON_SET(json, '$.about', :newEntityLink)\n"
+                + "WHERE entityId = :entityId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE thread_entity SET json = jsonb_set(json, '{about}', to_jsonb(:newEntityLink::text), false)\n"
+                + "WHERE entityId = :entityId",
+        connectionType = POSTGRES)
+    void updateByEntityId(
+        @Bind("newEntityLink") String newEntityLink, @Bind("entityId") String entityId);
+
     class OwnerCountFieldMapper implements RowMapper<List<String>> {
       @Override
       public List<String> map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -1552,6 +1565,41 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
+
+    default void renameByToFQN(String oldToFQN, String newToFQN) {
+      renameByToFQNInternal(
+          oldToFQN,
+          FullyQualifiedName.buildHash(oldToFQN),
+          newToFQN,
+          FullyQualifiedName.buildHash(newToFQN)); // First rename targetFQN from oldFQN to newFQN
+      renameByToFQNPrefix(oldToFQN, newToFQN);
+      // Rename all the targetFQN prefixes starting with the oldFQN to newFQN
+    }
+
+    @SqlUpdate(
+        "Update field_relationship set toFQN  = :newToFQN , toFQNHash  = :newToFQNHash "
+            + "where fromtype = 'THREAD' AND relation='3' AND toFQN = :oldToFQN and toFQNHash =:oldToFQNHash ;")
+    void renameByToFQNInternal(
+        @Bind("oldToFQN") String oldToFQN,
+        @Bind("oldToFQNHash") String oldToFQNHash,
+        @Bind("newToFQN") String newToFQN,
+        @Bind("newToFQNHash") String newToFQNHash);
+
+    default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
+      String update =
+          String.format(
+              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
+              escapeApostrophe(oldToFQNPrefix),
+              escapeApostrophe(newToFQNPrefix),
+              FullyQualifiedName.buildHash(oldToFQNPrefix),
+              FullyQualifiedName.buildHash(newToFQNPrefix),
+              escapeApostrophe(oldToFQNPrefix),
+              FullyQualifiedName.buildHash(oldToFQNPrefix));
+      renameByToFQNPrefixInternal(update);
+    }
+
+    @SqlUpdate("<update>")
+    void renameByToFQNPrefixInternal(@Define("update") String update);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
@@ -1891,15 +1939,8 @@ public interface CollectionDAO {
           getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
-    @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
-    List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
-
-    default List<String> getAllTerms(String fqnPrefix) {
-      return getAllTermsInternal((FullyQualifiedName.quoteName(fqnPrefix)));
-    }
-
-    @SqlQuery("select json FROM glossary_term_entity where fqnhash  LIKE  CONCAT(:fqnhash, '.%')")
-    List<String> getAllTermsInternal(@BindFQN("fqnhash") String fqnhash);
+    @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getNestedTerms(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -2529,6 +2570,9 @@ public interface CollectionDAO {
           afterName,
           afterId);
     }
+
+    @SqlQuery("select json FROM tag where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getTagsStartingWithPrefix(@BindFQN("fqnhash") String fqnhash);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -2706,10 +2750,6 @@ public interface CollectionDAO {
 
     default void renameByTargetFQNHash(
         int source, String oldTargetFQNHash, String newTargetFQNHash) {
-      renameByTargetFQNHashInternal(
-          source,
-          (oldTargetFQNHash),
-          newTargetFQNHash); // First rename targetFQN from oldFQN to newFQN
       updateTargetFQNHashPrefix(
           source,
           oldTargetFQNHash,
@@ -2724,14 +2764,6 @@ public interface CollectionDAO {
         @BindFQN("oldFQNHash") String oldFQNHash,
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
-
-    /** Rename the targetFQN */
-    @SqlUpdate(
-        "Update tag_usage set targetFQNHash = :newTargetFQNHash WHERE source = :source AND targetFQNHash = :oldTargetFQNHash")
-    void renameByTargetFQNHashInternal(
-        @Bind("source") int source,
-        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
-        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
 
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);
