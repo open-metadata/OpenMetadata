@@ -1155,40 +1155,42 @@ public class TableRepository extends EntityRepository<Table> {
       // sourceUrl, domain, column.fullyQualifiedName, column.displayName, column.description,
       // column.dataTypeDisplay,
       // column.tags, column.glossaryTerms
-      if (processRecord) {
-        // fields tags(4), glossaryTerms(5), tiers(6)
-        List<TagLabel> tagLabels =
-            getTagLabels(
-                printer,
-                csvRecord,
-                List.of(
-                    Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                    Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                    Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-        table
-            .withName(csvRecord.get(0))
-            .withDisplayName(csvRecord.get(1))
-            .withDescription(csvRecord.get(2))
-            .withOwner(getOwner(printer, csvRecord, 3))
-            .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
-            .withRetentionPeriod(csvRecord.get(7))
-            .withSourceUrl(csvRecord.get(8))
-            .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
-        ImportResult importResult = updateColumn(printer, csvRecord);
-        if (importResult.result().equals(IMPORT_FAILED)) {
-          importFailure(printer, importResult.details(), csvRecord);
+      if (csvRecord != null) {
+        if (processRecord) {
+          // fields tags(4), glossaryTerms(5), tiers(6)
+          List<TagLabel> tagLabels =
+              getTagLabels(
+                  printer,
+                  csvRecord,
+                  List.of(
+                      Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                      Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                      Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+          table
+              .withName(csvRecord.get(0))
+              .withDisplayName(csvRecord.get(1))
+              .withDescription(csvRecord.get(2))
+              .withOwner(getOwner(printer, csvRecord, 3))
+              .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
+              .withRetentionPeriod(csvRecord.get(7))
+              .withSourceUrl(csvRecord.get(8))
+              .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+          ImportResult importResult = updateColumn(printer, csvRecord);
+          if (importResult.result().equals(IMPORT_FAILED)) {
+            importFailure(printer, importResult.details(), csvRecord);
+          }
         }
-      }
-      List<ImportResult> importResults = new ArrayList<>();
-      updateColumns(printer, csvRecords, importResults);
-      if (processRecord) {
-        createEntity(printer, csvRecord, table);
-      }
-      for (ImportResult importResult : importResults) {
-        if (importResult.result().equals(IMPORT_SUCCESS)) {
-          importSuccess(printer, importResult.record(), importResult.details());
-        } else {
-          importFailure(printer, importResult.details(), importResult.record());
+        List<ImportResult> importResults = new ArrayList<>();
+        updateColumns(printer, csvRecords, importResults);
+        if (processRecord) {
+          createEntity(printer, csvRecord, table);
+        }
+        for (ImportResult importResult : importResults) {
+          if (importResult.result().equals(IMPORT_SUCCESS)) {
+            importSuccess(printer, importResult.record(), importResult.details());
+          } else {
+            importFailure(printer, importResult.details(), importResult.record());
+          }
         }
       }
     }
@@ -1198,14 +1200,18 @@ public class TableRepository extends EntityRepository<Table> {
         throws IOException {
       while (recordIndex < csvRecords.size() && csvRecords.get(0) != null) { // Column records
         CSVRecord csvRecord = getNextRecord(printer, COLUMN_HEADERS, csvRecords);
-        results.add(updateColumn(printer, csvRecord));
+        if (csvRecord == null) {
+          // Since the processing failed for a particular csvRecord get the previous one
+          CSVRecord failedRecord = csvRecords.get(recordIndex - 1);
+          results.add(
+              new ImportResult(IMPORT_SKIPPED, failedRecord, super.importResult.getAbortReason()));
+        } else {
+          results.add(updateColumn(printer, csvRecord));
+        }
       }
     }
 
     public ImportResult updateColumn(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
-      if (!processRecord) {
-        return new ImportResult(IMPORT_SKIPPED, csvRecord, "");
-      }
       String columnFqn = csvRecord.get(10);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
