@@ -34,13 +34,11 @@ class IValidatorBuilder(ABC):
     """Interface for validator builders"""
 
     @property
-    @abstractmethod
     def test_case(self):
         """Return the test case object"""
         return self._test_case
 
     @property
-    @abstractmethod
     def validator(self):
         """Return the validator object"""
         return self._validator
