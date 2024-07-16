@@ -365,6 +365,7 @@ test = {
     VERSIONS["giturlparse"],
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
+    VERSIONS["neo4j"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers==4.4.0;python_version>='3.9'",
     "minio==7.2.5",
@@ -376,6 +377,12 @@ test = {
     "requests==2.31.0",
     f"{DATA_DIFF['mysql']}==0.11.2",
     *plugins["deltalake"],
+    *plugins["datalake-gcs"],
+    *plugins["pgspider"],
+    *plugins["clickhouse"],
+    *plugins["mssql"],
+    *plugins["dagster"],
+    *plugins["oracle"],
     *plugins["mssql"],
 }
 
