@@ -8,11 +8,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
-import javax.validation.Valid;
+import java.util.Map;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
-import javax.ws.rs.POST;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -23,7 +23,6 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.dataInsight.custom.CreateDataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -59,46 +58,6 @@ public class DataInsightSystemChartResource
     for (DataInsightCustomChart diChart : diCharts) {
       repository.initializeEntity(diChart);
     }
-  }
-
-  // TODO: NEED TO DELETE THIS AFTER DEMO
-  @POST
-  @Path("/preview")
-  @Operation(
-      operationId = "createDataInsightChart",
-      summary = "Create a data insight chart",
-      description = "Create a data insight chart.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The data insight chart",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = DataInsightChart.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response preview(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Events starting from this unix timestamp in milliseconds",
-              required = true,
-              schema = @Schema(type = "long", example = "1426349294842"))
-          @QueryParam("start")
-          long start,
-      @Parameter(
-              description = "Events ending from this unix timestamp in milliseconds",
-              required = true,
-              schema = @Schema(type = "long", example = "1426349294842"))
-          @QueryParam("end")
-          long end,
-      @Valid CreateDataInsightCustomChart create)
-      throws IOException {
-    DataInsightCustomChart diChart =
-        getDataInsightCustomChart(create, securityContext.getUserPrincipal().getName());
-    DataInsightCustomChartResultList resultList = repository.getPreviewData(diChart, start, end);
-    return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
   @GET
@@ -144,15 +103,45 @@ public class DataInsightSystemChartResource
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
-  // TODO: NEED TO DELETE THIS AFTER DEMO
-  public DataInsightCustomChart getDataInsightCustomChart(
-      CreateDataInsightCustomChart create, String user) {
-    return repository
-        .copy(new DataInsightCustomChart(), create, user)
-        .withName(create.getName())
-        .withDisplayName(create.getDisplayName())
-        .withDescription(create.getDescription())
-        .withChartDetails(create.getChartDetails())
-        .withOwner(create.getOwner());
+  @GET
+  @Path("/listChartData")
+  @Operation(
+      operationId = "getDataInsightChartData",
+      summary = "Get data insight chart data",
+      description = "Get data insight chart data",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The data insight chart",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataInsightChart.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response listChartData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "List of chart names separated by `,`",
+              required = true,
+              schema = @Schema(type = "String", example = "chart1,chart2"))
+          @QueryParam("chartNames")
+          String chartNames,
+      @Parameter(
+              description = "Events starting from this unix timestamp in milliseconds",
+              required = true,
+              schema = @Schema(type = "long", example = "1426349294842"))
+          @QueryParam("start")
+          long start,
+      @Parameter(
+              description = "Events ending from this unix timestamp in milliseconds",
+              required = true,
+              schema = @Schema(type = "long", example = "1426349294842"))
+          @QueryParam("end")
+          long end)
+      throws IOException {
+    HashMap<String, DataInsightCustomChartResultList> resultList = repository.listChartData(chartNames, start, end);
+    return Response.status(Response.Status.OK).entity(resultList).build();
   }
 }
