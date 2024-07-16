@@ -55,6 +55,7 @@ export interface Option {
 export interface TaskAction {
   label: string;
   key: string;
+  icon?: SvgComponent;
 }
 
 export enum TaskActionMode {

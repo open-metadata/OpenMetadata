@@ -50,10 +50,6 @@ import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg'
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
 
-import { ReactComponent as CancelColored } from '../../../../assets/svg/cancel-colored.svg';
-import { ReactComponent as EditColored } from '../../../../assets/svg/edit-colored.svg';
-import { ReactComponent as SuccessColored } from '../../../../assets/svg/success-colored.svg';
-
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
@@ -90,13 +86,13 @@ import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
 import {
-  //   TASK_ACTION_LIST,
   fetchOptions,
   generateOptions,
   getTaskDetailPath,
   INCIDENT_TASK_ACTION_LIST,
   isDescriptionTask,
   isTagsTask,
+  TASK_ACTION_LIST,
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
@@ -148,30 +144,6 @@ export const TaskTab = ({
     testCaseResolutionStatus,
     initialAssignees: usersList,
   } = useActivityFeedProvider();
-
-  const TASK_ACTION_LIST: MenuProps['items'] = [
-    {
-      label: t('label.accept-suggestion'),
-      key: TaskActionMode.VIEW,
-      icon: <Icon component={SuccessColored} style={{ fontSize: '16px' }} />,
-    },
-    {
-      type: 'divider',
-    },
-    {
-      label: t('label.edit-amp-accept-suggestion'),
-      key: TaskActionMode.EDIT,
-      icon: <Icon component={EditColored} style={{ fontSize: '16px' }} />,
-    },
-    {
-      type: 'divider',
-    },
-    {
-      label: t('label.close'),
-      key: TaskActionMode.CLOSE,
-      icon: <Icon component={CancelColored} style={{ fontSize: '16px' }} />,
-    },
-  ];
 
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
@@ -643,7 +615,15 @@ export const TaskTab = ({
                 data-testid="edit-accept-task-dropdown"
                 icon={<DownOutlined />}
                 menu={{
-                  items: TASK_ACTION_LIST,
+                  items: TASK_ACTION_LIST.map((item) => ({
+                    ...item,
+                    icon: (
+                      <Icon
+                        component={item.icon}
+                        style={{ fontSize: '16px' }}
+                      />
+                    ),
+                  })),
                   selectable: true,
                   selectedKeys: [taskAction.key],
                   onClick: handleMenuItemClick,

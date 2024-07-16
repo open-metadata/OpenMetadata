@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { MenuProps } from 'antd';
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
 import React from 'react';
-import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
+import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
+import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
+import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getEntityDetailsPath,
@@ -597,27 +598,21 @@ export const fetchEntityDetail = (
   }
 };
 
-export const TASK_ACTION_LIST: MenuProps['items'] = [
+export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
-    icon: EditIcon,
-  },
-  {
-    type: 'divider',
+    icon: SuccessColored,
   },
   {
     label: i18Next.t('label.edit-amp-accept-suggestion'),
     key: TaskActionMode.EDIT,
-    icon: EditIcon,
-  },
-  {
-    type: 'divider',
+    icon: EditColored,
   },
   {
     label: i18Next.t('label.close'),
     key: TaskActionMode.CLOSE,
-    icon: EditIcon,
+    icon: CancelColored,
   },
 ];
 
