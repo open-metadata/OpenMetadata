@@ -104,6 +104,17 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public void entityRelationshipReindex(Tag original, Tag updated) {
+    super.entityRelationshipReindex(original, updated);
+    if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
+        || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      searchRepository
+          .getSearchClient()
+          .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
+    }
+  }
+
+  @Override
   protected void postDelete(Tag entity) {
     // Cleanup all the tag labels using this tag
     daoCollection

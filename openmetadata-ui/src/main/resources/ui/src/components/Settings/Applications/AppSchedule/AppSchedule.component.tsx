@@ -203,13 +203,15 @@ const AppSchedule = ({
                 </Button>
               )}
 
-              <Button
-                data-testid="edit-button"
-                disabled={appData.deleted}
-                type="primary"
-                onClick={() => setShowModal(true)}>
-                {t('label.edit')}
-              </Button>
+              {!appData.system && (
+                <Button
+                  data-testid="edit-button"
+                  disabled={appData.deleted}
+                  type="primary"
+                  onClick={() => setShowModal(true)}>
+                  {t('label.edit')}
+                </Button>
+              )}
 
               <Button
                 data-testid="run-now-button"
