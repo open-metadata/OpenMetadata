@@ -12,6 +12,4 @@ def test_profiler(
 ):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
-    # trino connectors do not support all profiler funcitonalities so we can expect some failures
-    workflow = run_workflow(ProfilerWorkflow, profiler_config, raise_from_status=False)
-    assert len(workflow.steps[0].status.updated_records) > 0
+    run_workflow(ProfilerWorkflow, profiler_config)

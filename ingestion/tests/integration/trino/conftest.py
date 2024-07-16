@@ -209,7 +209,14 @@ def ingestion_config(db_service, sink_config, workflow_config):
             "serviceName": db_service.fullyQualifiedName.root,
             "serviceConnection": db_service.connection.dict(),
             "sourceConfig": {
-                "config": {},
+                "config": {
+                    "type": "DatabaseMetadata",
+                    "schemaFilterPattern": {
+                        "excludes": [
+                            "^information_schema$",
+                        ],
+                    },
+                },
             },
         },
         "sink": sink_config,
