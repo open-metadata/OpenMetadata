@@ -5,7 +5,6 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getU
 
 import java.util.List;
 import java.util.Map;
-
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.system.IndexingError;
@@ -32,28 +31,28 @@ public class DataInsightsOpenSearchProcessor
       throws SearchIndexException {
     String index = DATA_ASSETS_DATA_STREAM;
     LOG.debug(
-            "[OsEntitiesProcessor] Processing a Batch of Size: {}, Index: {} ", input.size(), index);
+        "[OsEntitiesProcessor] Processing a Batch of Size: {}, Index: {} ", input.size(), index);
     BulkRequest requests;
     try {
       requests = buildBulkRequests(index, input);
       LOG.debug(
-              "[OsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-              input.size(),
-              input.size(),
-              0);
+          "[OsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
+          input.size(),
+          input.size(),
+          0);
       updateStats(input.size(), 0);
     } catch (Exception e) {
       IndexingError error =
-              new IndexingError()
-                      .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
-                      .withSubmittedCount(input.size())
-                      .withFailedCount(input.size())
-                      .withSuccessCount(0)
-                      .withMessage(
-                              "Data Insights OpenSearch Processor Encountered Failure. Converting requests to ES Request.")
-                      .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
+              .withSubmittedCount(input.size())
+              .withFailedCount(input.size())
+              .withSuccessCount(0)
+              .withMessage(
+                  "Data Insights OpenSearch Processor Encountered Failure. Converting requests to ES Request.")
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
-              "[DataInsightsOpenSearchProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
+          "[DataInsightsOpenSearchProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
       updateStats(0, input.size());
       throw new SearchIndexException(error);
     }

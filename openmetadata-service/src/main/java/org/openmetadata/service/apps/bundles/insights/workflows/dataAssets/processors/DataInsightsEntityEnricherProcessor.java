@@ -134,10 +134,10 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.put("endTimestamp", endTimestamp);
 
     // Enrich with Team
-//    entityMap.put("", entityOwnerTeam);
-//
-//    // Enright with Tier
-//    entityMap.put("tier", entityTier);
+    //    entityMap.put("", entityOwnerTeam);
+    //
+    //    // Enright with Tier
+    //    entityMap.put("tier", entityTier);
 
     // Enrich with Description Stats
     if (interfaces.contains(ColumnsEntityInterface.class)) {
@@ -151,56 +151,53 @@ public class DataInsightsEntityEnricherProcessor
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
 
+    //    def get_versions(self, entity, entity_type, entity_type_name):
+    //    v_list = metadata.get_list_entity_versions(entity.id, entity_type)
+    //
+    //    if hasattr(entity, "tags"):
+    //    tier = get_entity_tier_from_tags(entity.tags)
+    //        else:
+    //    tier = None
+    //    if hasattr(entity, "owner"):
+    //    team = get_team(entity.owner)
+    //        else:
+    //    team = None
 
-
-//    def get_versions(self, entity, entity_type, entity_type_name):
-//    v_list = metadata.get_list_entity_versions(entity.id, entity_type)
-//
-//    if hasattr(entity, "tags"):
-//    tier = get_entity_tier_from_tags(entity.tags)
-//        else:
-//    tier = None
-//    if hasattr(entity, "owner"):
-//    team = get_team(entity.owner)
-//        else:
-//    team = None
-
-//    def get_team(owner: EntityReference) -> Optional[str]:
-//    """Get the team from an entity. We'll use this info as well to
-//    add info if an entity has an owner
-//
-//    Args:
-//        owner (EntityReference): owner entity reference from the entity
-//
-//    Returns:
-//        Optional[str]
-//    """
-//    if not owner:
-//    return None
-//
-//    if isinstance(owner, EntityReferenceList):
-//    return owner.root[0].name
-//
-//    if owner.type == "team":
-//    return owner.name
-//
-//    owner_fqn = owner.fullyQualifiedName
-//    owner_fqn = cast(str, owner_fqn)  # To satisfy type checker
-//
-//    entity_reference: Optional[User] = metadata.get_by_name(
-//            User, owner_fqn, fields=["teams"]
-//    )
-//
-//    if not entity_reference:
-//    return None
-//
-//    teams = entity_reference.teams
-//
-//    if teams:
-//    return teams.root[0].name  # We'll return the first team listed
-//
-//    return None
-
+    //    def get_team(owner: EntityReference) -> Optional[str]:
+    //    """Get the team from an entity. We'll use this info as well to
+    //    add info if an entity has an owner
+    //
+    //    Args:
+    //        owner (EntityReference): owner entity reference from the entity
+    //
+    //    Returns:
+    //        Optional[str]
+    //    """
+    //    if not owner:
+    //    return None
+    //
+    //    if isinstance(owner, EntityReferenceList):
+    //    return owner.root[0].name
+    //
+    //    if owner.type == "team":
+    //    return owner.name
+    //
+    //    owner_fqn = owner.fullyQualifiedName
+    //    owner_fqn = cast(str, owner_fqn)  # To satisfy type checker
+    //
+    //    entity_reference: Optional[User] = metadata.get_by_name(
+    //            User, owner_fqn, fields=["teams"]
+    //    )
+    //
+    //    if not entity_reference:
+    //    return None
+    //
+    //    teams = entity_reference.teams
+    //
+    //    if teams:
+    //    return teams.root[0].name  # We'll return the first team listed
+    //
+    //    return None
 
     // TODO: Add Team
     // TODO: Maybe missing the tier
@@ -220,7 +217,8 @@ public class DataInsightsEntityEnricherProcessor
     while (pointerTimestamp >= startTimestamp) {
       Map<String, Object> dailyEntitySnapshot = new HashMap<>(entityVersionMap);
 
-      dailyEntitySnapshot.put(TIMESTAMP_KEY, TimestampUtils.getStartOfDayTimestamp(pointerTimestamp));
+      dailyEntitySnapshot.put(
+          TIMESTAMP_KEY, TimestampUtils.getStartOfDayTimestamp(pointerTimestamp));
       dailyEntitySnapshots.add(dailyEntitySnapshot);
 
       pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);

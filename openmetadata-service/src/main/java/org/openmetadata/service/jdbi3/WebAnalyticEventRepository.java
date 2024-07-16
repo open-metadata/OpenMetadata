@@ -89,23 +89,25 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
         webAnalyticEventData.size());
   }
 
-  public int listWebAnalyticEventDataCount(String eventType, Long startTs, Long endTs, boolean latest) {
-    CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao = daoCollection.entityExtensionTimeSeriesDao();
+  public int listWebAnalyticEventDataCount(
+      String eventType, Long startTs, Long endTs, boolean latest) {
+    CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao =
+        daoCollection.entityExtensionTimeSeriesDao();
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(eventType));
     return timeSeriesDao.listCount(filter, startTs, endTs, latest);
   }
 
   public ResultList<WebAnalyticEventData> listWebAnalyticEventDataWithOffset(
-          String offset,
-          String eventType,
-          int limitParam,
-          Long startTs,
-          Long endTs,
-          boolean latest,
-          boolean skipErrors
-  ) {
-    CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao = daoCollection.entityExtensionTimeSeriesDao();
+      String offset,
+      String eventType,
+      int limitParam,
+      Long startTs,
+      Long endTs,
+      boolean latest,
+      boolean skipErrors) {
+    CollectionDAO.EntityExtensionTimeSeriesDAO timeSeriesDao =
+        daoCollection.entityExtensionTimeSeriesDao();
     ListFilter filter = new ListFilter(null);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(eventType));
 
@@ -118,24 +120,25 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
 
     if (limitParam > 0) {
       List<String> jsons =
-              timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
+          timeSeriesDao.listWithOffset(filter, limitParam, offsetInt, startTs, endTs, latest);
       Map<String, List<?>> entityListMap = getEntityList(jsons, skipErrors);
       webAnalyticEventData = (List<WebAnalyticEventData>) entityListMap.get("entityList");
       if (skipErrors) {
         errors = (List<EntityError>) entityListMap.get("errors");
       }
-      return getWebAnalyticEventDataResultList(webAnalyticEventData, beforeOffset, afterOffset, total, errors);
+      return getWebAnalyticEventDataResultList(
+          webAnalyticEventData, beforeOffset, afterOffset, total, errors);
     } else {
       return getWebAnalyticEventDataResultList(webAnalyticEventData, null, null, total);
     }
   }
 
   private ResultList<WebAnalyticEventData> getWebAnalyticEventDataResultList(
-          List<WebAnalyticEventData> entities,
-          String beforeCursor,
-          String afterCursor,
-          int total,
-          List<EntityError> errors) {
+      List<WebAnalyticEventData> entities,
+      String beforeCursor,
+      String afterCursor,
+      int total,
+      List<EntityError> errors) {
     if (errors == null) {
       return new ResultList<>(entities, beforeCursor, afterCursor, total);
     }
@@ -143,7 +146,7 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
   }
 
   private ResultList<WebAnalyticEventData> getWebAnalyticEventDataResultList(
-          List<WebAnalyticEventData> entities, String beforeCursor, String afterCursor, int total) {
+      List<WebAnalyticEventData> entities, String beforeCursor, String afterCursor, int total) {
     return getWebAnalyticEventDataResultList(entities, beforeCursor, afterCursor, total, null);
   }
 
@@ -188,5 +191,4 @@ public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEven
     resultList.put("errors", errors);
     return resultList;
   }
-
 }

@@ -59,15 +59,16 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
         .withFailedRecords(0);
   }
 
-  public PaginatedEntitiesSource(String entityType, int batchSize, List<String> fields, ListFilter filter) {
+  public PaginatedEntitiesSource(
+      String entityType, int batchSize, List<String> fields, ListFilter filter) {
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
     this.filter = filter;
     this.stats
-            .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listCount(filter))
-            .withSuccessRecords(0)
-            .withFailedRecords(0);
+        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listCount(filter))
+        .withSuccessRecords(0)
+        .withFailedRecords(0);
   }
 
   public PaginatedEntitiesSource withName(String name) {
@@ -96,11 +97,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
-              null,
-              Entity.getFields(entityType, fields),
-              filter,
-              batchSize,
-              cursor);
+              null, Entity.getFields(entityType, fields), filter, batchSize, cursor);
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
         if (result.getPaging().getAfter() == null) {

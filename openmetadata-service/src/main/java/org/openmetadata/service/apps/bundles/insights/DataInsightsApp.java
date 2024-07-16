@@ -37,7 +37,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
   public static final String REPORT_DATA_TYPE_KEY = "ReportDataType";
   @Getter private Long timestamp;
   @Getter private int batchSize;
+
   public record Backfill(String startDate, String endDate) {}
+
   @Getter private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
@@ -52,7 +54,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Override
   public void init(App app) {
     super.init(app);
-    DataInsightsAppConfig config = JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
+    DataInsightsAppConfig config =
+        JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
 
     // Configure batchSize
     batchSize = config.getBatchSize();
@@ -63,11 +66,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
     backfill = Optional.empty();
 
     if (backfillConfig.getEnabled()) {
-      backfill = Optional.of(new Backfill(backfillConfig.getStartDate(), backfillConfig.getEndDate()));
+      backfill =
+          Optional.of(new Backfill(backfillConfig.getStartDate(), backfillConfig.getEndDate()));
     }
 
-    jobData = new EventPublisherJob()
-            .withStats(new Stats());
+    jobData = new EventPublisherJob().withStats(new Stats());
   }
 
   @Override
@@ -78,7 +81,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
       LOG.info("Executing DataInsights Job with JobData: {}", jobData);
       jobData.setStatus(EventPublisherJob.Status.RUNNING);
 
-      String runType = (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
+      String runType =
+          (String) jobExecutionContext.getJobDetail().getJobDataMap().get("triggerType");
 
       if (!runType.equals(ON_DEMAND_JOB)) {
         backfill = Optional.empty();
@@ -104,6 +108,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
       sendUpdates(jobExecutionContext);
     }
   }
+
   private void initializeJob() {
     timestamp = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
   }
@@ -146,7 +151,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
   }
 
   private void processDataAssets(JobExecutionContext jobExecutionContext) {
-    DataAssetsWorkflow workflow = new DataAssetsWorkflow(timestamp, batchSize, backfill, collectionDAO, searchRepository);
+    DataAssetsWorkflow workflow =
+        new DataAssetsWorkflow(timestamp, batchSize, backfill, collectionDAO, searchRepository);
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
@@ -196,10 +202,10 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
 
     stats.setTotalRecords(
-            entityLevelStats.getAdditionalProperties().values().stream()
-                    .map(s -> (StepStats) s)
-                    .mapToInt(StepStats::getTotalRecords)
-                    .sum());
+        entityLevelStats.getAdditionalProperties().values().stream()
+            .map(s -> (StepStats) s)
+            .mapToInt(StepStats::getTotalRecords)
+            .sum());
 
     stats.setSuccessRecords(
         entityLevelStats.getAdditionalProperties().values().stream()
