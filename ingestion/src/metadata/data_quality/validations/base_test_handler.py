@@ -18,7 +18,7 @@ from __future__ import annotations
 import reprlib
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, List, Optional, Type, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
 
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
@@ -30,6 +30,9 @@ from metadata.generated.schema.tests.basic import (
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.profiler.processor.runner import QueryRunner
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
@@ -45,7 +48,7 @@ class BaseTestValidator(ABC):
 
     def __init__(
         self,
-        runner: QueryRunner,
+        runner: Union[QueryRunner, List["DataFrame"]],
         test_case: TestCase,
         execution_date: Union[datetime, float],
     ) -> None:

@@ -26,9 +26,6 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
 from metadata.data_quality.validations.models import TableDiffRuntimeParameters
-from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
-    TableDiffParamsSetter,
-)
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaScheme,
@@ -67,13 +64,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     Compare two tables and fail if the number of differences exceeds a threshold
     """
 
-    runtime_parameter_setter = TableDiffParamsSetter
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.runtime_params: TableDiffRuntimeParameters = self.get_runtime_params()
+    runtime_params: TableDiffRuntimeParameters
 
     def run_validation(self) -> TestCaseResult:
+        self.runtime_params = self.get_runtime_params()
         try:
             self._validate_dialects()
             return self._run()
