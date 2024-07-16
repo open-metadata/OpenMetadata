@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -23,18 +22,15 @@ import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
-import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
 public class DataInsightsEntityEnricherProcessor
@@ -150,7 +146,10 @@ public class DataInsightsEntityEnricherProcessor
       if (ownerType.equals(Entity.TEAM)) {
         entityMap.put("team", entityOwner.getName());
       } else {
-        Optional<User> oOwner = Optional.ofNullable(Entity.getEntityByName(Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
+        Optional<User> oOwner =
+            Optional.ofNullable(
+                Entity.getEntityByName(
+                    Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
 
         if (oOwner.isPresent()) {
           User owner = oOwner.get();
@@ -167,7 +166,8 @@ public class DataInsightsEntityEnricherProcessor
     Optional<List<TagLabel>> oEntityTags = Optional.ofNullable(entity.getTags());
 
     if (oEntityTags.isPresent()) {
-      Optional<String> oEntityTier = getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
+      Optional<String> oEntityTier =
+          getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
       oEntityTier.ifPresent(s -> entityMap.put("tier", s));
     }
 
