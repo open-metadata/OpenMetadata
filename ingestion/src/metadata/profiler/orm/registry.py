@@ -171,13 +171,3 @@ def is_concatenable(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)
-
-
-def not_distinguishable(_type) -> bool:
-    """
-    Check if sqlalchemy _type is derived from Concatenable
-    e.g., strings or text
-    """
-    if isinstance(_type, DataType):
-        return _type.value not in NOT_DISTIGUISHABLE_SET
-    return True
