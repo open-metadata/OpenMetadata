@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.schema.entities.template.EmailTemplatePlaceholder;
 
 public interface TemplateProvider {
 
@@ -15,7 +16,6 @@ public interface TemplateProvider {
 
   /**
    * Retrieves a FreeMarker template based on its name.
-   * @return The FreeMarker template object.
    */
   Template getTemplate(String templateName) throws IOException;
 
@@ -38,4 +38,16 @@ public interface TemplateProvider {
    *         - "missingParameters" (List<String>): If validation fails, lists the placeholders that are missing.
    */
   Map<String, Object> validateEmailTemplate(Document document);
+
+  /**
+   * Retrieves placeholders defined in email templates.
+   * Maps each template's name to a list of
+   * {@link EmailTemplatePlaceholder}s extracted from the template data.
+   */
+  public Map<String, List<EmailTemplatePlaceholder>> getPlaceholders();
+
+  /**
+   * Retrieves placeholders for a specific email template document by its name.
+   */
+  public List<EmailTemplatePlaceholder> getPlaceholdersByDocument(String documentName);
 }

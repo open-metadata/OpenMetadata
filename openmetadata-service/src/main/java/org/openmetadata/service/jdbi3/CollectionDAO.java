@@ -4714,12 +4714,15 @@ public interface CollectionDAO {
         @Bind("after") String after);
 
     @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM doc_store WHERE entityType = :pattern",
+        value =
+            "SELECT json FROM doc_store WHERE (:name IS NULL OR name = :name) AND entityType = :pattern",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value = "SELECT json FROM doc_store WHERE entityType = :pattern",
+        value =
+            "SELECT json FROM doc_store WHERE (:name IS NULL OR name = :name) AND entityType = :pattern",
         connectionType = POSTGRES)
-    List<String> findEmailTemplatesFromDocStore(@Bind("pattern") String pattern);
+    List<String> findEmailTemplatesByPatternAndOptionalNameFromDocStore(
+        @Bind("pattern") String pattern, @Bind("name") String name);
   }
 
   interface SuggestionDAO {

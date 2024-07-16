@@ -40,10 +40,19 @@ public class DocumentRepository extends EntityRepository<Document> {
     supportsSearch = false;
   }
 
-  public List<String> fetchEmailTemplatesFromDocStore() {
+  public List<String> fetchAllEmailTemplatesFromDocStore() {
     return Entity.getCollectionDAO()
         .docStoreDAO()
-        .findEmailTemplatesFromDocStore(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE);
+        .findEmailTemplatesByPatternAndOptionalNameFromDocStore(
+            DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE, null);
+  }
+
+  public String fetchEmailTemplateFromDocStoreByName(String name) {
+    return Entity.getCollectionDAO()
+        .docStoreDAO()
+        .findEmailTemplatesByPatternAndOptionalNameFromDocStore(
+            DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE, name)
+        .get(0);
   }
 
   @Override

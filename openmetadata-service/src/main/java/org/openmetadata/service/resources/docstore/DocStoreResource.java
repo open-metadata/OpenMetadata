@@ -327,20 +327,20 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
     Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
+    Response validationResponse = validateTemplate(doc);
 
-    Response emailTemplateValidationResponse = null;
-    if (doc.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
-      emailTemplateValidationResponse = validateTemplate(doc);
-    }
-
-    if (emailTemplateValidationResponse != null) {
-      return emailTemplateValidationResponse;
+    if (validationResponse != null) {
+      return validationResponse;
     }
 
     return createOrUpdate(uriInfo, securityContext, doc);
   }
 
   private Response validateTemplate(Document document) {
+    if (!document.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      return null;
+    }
+
     Map<String, Object> validationResponse = templateProvider.validateEmailTemplate(document);
     boolean isValid =
         (boolean) validationResponse.get(DefaultTemplateProvider.EMAIL_TEMPLATE_VALID);

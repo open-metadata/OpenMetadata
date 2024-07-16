@@ -2,6 +2,7 @@ package org.openmetadata.service.util;
 
 import static freemarker.template.Configuration.VERSION_2_3_28;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import java.io.IOException;
@@ -11,12 +12,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.schema.entities.template.EmailTemplatePlaceholder;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -49,14 +52,8 @@ public class DefaultTemplateProvider implements TemplateProvider {
   }
 
   public List<Document> loadEmailTemplatesFromDocStore() {
-    List<String> documents = documentRepository.fetchEmailTemplatesFromDocStore();
-
-    return documents.stream()
-        .map(
-            json -> {
-              return JsonUtils.readValue(json, Document.class);
-            })
-        .toList();
+    List<String> documents = documentRepository.fetchAllEmailTemplatesFromDocStore();
+    return documents.stream().map(json -> JsonUtils.readValue(json, Document.class)).toList();
   }
 
   @Override
@@ -87,6 +84,36 @@ public class DefaultTemplateProvider implements TemplateProvider {
                 document ->
                     extractPlaceholders(
                         (String) document.getData().getAdditionalProperties().get("content"))));
+  }
+
+  public Map<String, List<EmailTemplatePlaceholder>> getPlaceholders() {
+    List<Document> documents = loadEmailTemplatesFromDocStore();
+
+    return documents.stream()
+        .collect(
+            Collectors.toMap(
+                Document::getName,
+                document -> {
+                  Object placeholder =
+                      document.getData().getAdditionalProperties().get("placeholders");
+                  return placeholder != null
+                      ? JsonUtils.convertValue(
+                          placeholder, new TypeReference<List<EmailTemplatePlaceholder>>() {})
+                      : Collections.emptyList();
+                }));
+  }
+
+  public List<EmailTemplatePlaceholder> getPlaceholdersByDocument(String documentName) {
+    return Optional.ofNullable(
+            documentRepository.fetchEmailTemplateFromDocStoreByName(documentName))
+        .map(json -> JsonUtils.readValue(json, Document.class))
+        .map(document -> document.getData().getAdditionalProperties().get("placeholders"))
+        .map(
+            placeholder ->
+                JsonUtils.convertValue(
+                    placeholder, new TypeReference<List<EmailTemplatePlaceholder>>() {}))
+        .orElseThrow(
+            () -> new IllegalArgumentException("Invalid document or placeholders not found"));
   }
 
   @Override
