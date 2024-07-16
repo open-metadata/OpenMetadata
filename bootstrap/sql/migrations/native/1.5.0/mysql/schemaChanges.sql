@@ -104,7 +104,8 @@ SET json = JSON_INSERT(
 ) where serviceType in ('Datalake') and 
 (JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig.type') OR 
 JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig.externalType') OR 
-JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig.path')) is NULL;
+JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig.path')) is NULL and 
+JSON_EXTRACT(json, '$.connection.config.configSource.securityConfig.gcpConfig') is NOT NULL;
 
 -- Update Powerbi model for pbitFilesSource to move `gcpConfig` value to `gcpConfig.path`
 UPDATE dashboard_service_entity 
@@ -117,7 +118,8 @@ SET json = JSON_INSERT(
 ) where serviceType in ('PowerBI') and 
 (JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.type') OR 
 JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.externalType') OR 
-JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.path')) is NULL;
+JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig.path')) is NULL AND 
+JSON_EXTRACT(json, '$.connection.config.pbitFilesSource.securityConfig.gcpConfig') is not null;
 
 UPDATE storage_service_entity
 SET json = JSON_INSERT(
@@ -130,3 +132,15 @@ SET json = JSON_INSERT(
 (JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.type') OR 
 JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.externalType') OR 
 JSON_EXTRACT(json, '$.connection.config.credentials.gcpConfig.path')) is NULL;
+
+UPDATE ingestion_pipeline_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig'),
+    '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig',
+    JSON_OBJECT(),
+    '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path',
+    JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig')
+) where JSON_EXTRACT(json, '$.sourceConfig.config.type') = 'DBT' and (
+JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.type') OR 
+JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path')
+) is NULL AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig') is not null;
