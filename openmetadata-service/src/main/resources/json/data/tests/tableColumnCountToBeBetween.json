@@ -28,5 +28,5 @@
     }
   ],
   "provider": "system",
-  "datatQualityDimension": "Integrity"
+  "dataQualityDimension": "Integrity"
 }
