@@ -12,7 +12,6 @@
 """
 Common Class For Profiler Converter.
 """
-from collections import defaultdict
 from typing import Dict, Set
 
 import sqlalchemy
