@@ -72,7 +72,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 
-    await page.getByRole('button', { name: 'close-circle' }).click();
   });
 
   test('Table filter with sorting should works', async ({ page }) => {
@@ -83,13 +82,6 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await page.getByTestId('status-select-filter').locator('div').click();
     await page.getByTitle('Queued').locator('div').click();
-    await page
-      .getByTestId('search-error-placeholder')
-      .locator('div')
-      .first()
-      .click();
-
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
   });
