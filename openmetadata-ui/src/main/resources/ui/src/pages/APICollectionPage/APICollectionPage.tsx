@@ -624,7 +624,7 @@ const APICollectionPage: FunctionComponent = () => {
           count={feedCount.totalCount}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
-          name={t('label.activity-feed-plural')}
+          name={t('label.activity-feed-and-task-plural')}
         />
       ),
       key: EntityTabs.ACTIVITY_FEED,

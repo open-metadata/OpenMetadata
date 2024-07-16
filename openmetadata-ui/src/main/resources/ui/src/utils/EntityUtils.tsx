@@ -1537,6 +1537,38 @@ export const getBreadCrumbForAPICollection = (entity: APICollection) => {
   ];
 };
 
+export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
+  const { service, apiCollection } = entity;
+
+  return [
+    {
+      name: startCase(ServiceCategory.API_SERVICES),
+      url: getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      ),
+    },
+    {
+      name: getEntityName(service),
+      url: service?.name
+        ? getServiceDetailsPath(
+            service?.name ?? '',
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+    },
+    {
+      name: getEntityName(apiCollection),
+      url: getEntityDetailsPath(
+        EntityType.API_COLLECTION,
+        apiCollection?.fullyQualifiedName ?? ''
+      ),
+    },
+  ];
+};
+
 export const getBreadcrumbForEntitiesWithServiceOnly = (
   entity: EntityWithServices,
   includeCurrent = false
@@ -2011,6 +2043,9 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.API_COLLECTION:
       return getBreadCrumbForAPICollection(entity as APICollection);
+
+    case EntityType.API_ENDPOINT:
+      return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
 
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:

@@ -31,6 +31,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import APICollectionPage from '../pages/APICollectionPage/APICollectionPage';
+import APIEndpointPage from '../pages/APIEndpointPage/APIEndpointPage';
 import ContainerPage from '../pages/ContainerPage/ContainerPage';
 import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
@@ -289,7 +290,7 @@ class EntityUtilClassBase {
       case EntityType.API_COLLECTION:
         return APICollectionPage;
       case EntityType.API_ENDPOINT:
-        return null;
+        return APIEndpointPage;
 
       default:
         return null;

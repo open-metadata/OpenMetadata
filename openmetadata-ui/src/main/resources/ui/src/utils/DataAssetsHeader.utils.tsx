@@ -29,6 +29,7 @@ import {
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -414,6 +415,16 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getEntityBreadcrumbs(
         apiCollection,
         EntityType.API_COLLECTION
+      );
+
+      break;
+    }
+    case EntityType.API_ENDPOINT: {
+      const apiEndpoint = dataAsset as APIEndpoint;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        apiEndpoint,
+        EntityType.API_ENDPOINT
       );
 
       break;
