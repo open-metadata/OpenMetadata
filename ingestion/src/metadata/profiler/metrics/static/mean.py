@@ -52,6 +52,15 @@ def _(element, compiler, **kw):
     return f"if(isNaN(avg({proc})), null, avg({proc}))"
 
 
+@compiles(avg, Dialects.Redshift)
+def _(element, compiler, **kw):
+    """
+    Cast to decimal to get around potential integer overflow error
+    """
+    proc = compiler.process(element.clauses, **kw)
+    return f"avg(CAST({proc} AS DECIMAL(38,0)))"
+
+
 @compiles(avg, Dialects.MSSQL)
 def _(element, compiler, **kw):
     """

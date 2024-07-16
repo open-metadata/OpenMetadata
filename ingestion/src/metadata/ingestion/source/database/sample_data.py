@@ -568,6 +568,31 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.ometa_api_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/ometa_api_service/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.ometa_api_service = self.metadata.get_service_or_create(
+            entity=ApiService,
+            config=WorkflowSource(**self.ometa_api_service_json),
+        )
+        self.ometa_api_collection = json.load(
+            open(
+                sample_data_folder + "/ometa_api_service/ometa_api_collection.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.ometa_api_endpoint = json.load(
+            open(
+                sample_data_folder + "/ometa_api_service/ometa_api_endpoint.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
 
     @classmethod
     def create(
@@ -611,6 +636,7 @@ class SampleDataSource(
         yield from self.ingest_data_insights()
         yield from self.ingest_life_cycle()
         yield from self.ingest_api_service()
+        yield from self.ingest_ometa_api_service()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -1696,5 +1722,16 @@ class SampleDataSource(
         yield Either(right=collection_request)
 
         for endpoint in self.api_endpoint.get("endpoints"):
+            endpoint_request = CreateAPIEndpointRequest(**endpoint)
+            yield Either(right=endpoint_request)
+
+    def ingest_ometa_api_service(self) -> Iterable[Either[Entity]]:
+        """Ingest users & tables ometa API services"""
+
+        for collection in self.ometa_api_collection.get("collections"):
+            collection_request = CreateAPICollectionRequest(**collection)
+            yield Either(right=collection_request)
+
+        for endpoint in self.ometa_api_endpoint.get("endpoints"):
             endpoint_request = CreateAPIEndpointRequest(**endpoint)
             yield Either(right=endpoint_request)

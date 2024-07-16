@@ -29,6 +29,7 @@ const AppRouter = () => {
 
   // web analytics instance
   const analytics = useAnalytics();
+  const { currentUser } = useApplicationStore();
 
   const { isAuthenticated, isApplicationLoading } = useApplicationStore();
 

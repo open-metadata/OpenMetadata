@@ -15,14 +15,12 @@ import { Layout } from 'antd';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Switch } from 'react-router-dom';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
-
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
@@ -70,10 +68,8 @@ const AppContainer = () => {
             <Appbar />
           </Header>
           <Content>
-            <Switch>
-              <AuthenticatedRouter />
-              {ApplicationExtras && <ApplicationExtras />}
-            </Switch>
+            <AuthenticatedRouter />
+            {ApplicationExtras && <ApplicationExtras />}
           </Content>
         </Layout>
       </Layout>

@@ -25,6 +25,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
+import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
@@ -52,6 +53,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -1545,7 +1547,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       switch (authType) {
         case JWT -> {
           User original = retrieveBotUser(user, uriInfo);
-          if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
+          if (original == null
+              || !hasAJWTAuthMechanism(user, original.getAuthenticationMechanism())) {
             JWTAuthMechanism jwtAuthMechanism =
                 JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
             authMechanism.setConfig(
@@ -1596,12 +1599,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withAuthType(BASIC).withConfig(newAuthForUser));
   }
 
-  private boolean hasAJWTAuthMechanism(AuthenticationMechanism authMechanism) {
+  private boolean hasAJWTAuthMechanism(User user, AuthenticationMechanism authMechanism) {
     if (authMechanism != null && JWT.equals(authMechanism.getAuthType())) {
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+      secretsManager.decryptAuthenticationMechanism(user.getName(), authMechanism);
       JWTAuthMechanism jwtAuthMechanism =
           JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
       return jwtAuthMechanism != null
           && jwtAuthMechanism.getJWTToken() != null
+          && !Objects.equals(jwtAuthMechanism.getJWTToken(), NULL_SECRET_STRING)
           && !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken());
     }
     return false;

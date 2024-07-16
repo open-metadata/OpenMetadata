@@ -19,6 +19,7 @@ export type CardWithListItems = {
   description: string;
   data: string;
   title: string;
+  style: Tag['style'];
 };
 
 export interface TierCardProps {
