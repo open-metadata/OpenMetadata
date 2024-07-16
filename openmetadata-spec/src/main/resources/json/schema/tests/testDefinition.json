@@ -162,7 +162,7 @@
         "$ref": "#/definitions/testCaseParameterDefinition"
       }
     },
-    "datatQualityDimension": {
+    "dataQualityDimension": {
       "$ref": "#/definitions/dataQualityDimensions"
     },
     "owner": {

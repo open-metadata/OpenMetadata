@@ -64,7 +64,7 @@ public class MigrationUtil {
                         testCaseDefinition.getFullyQualifiedName());
                     return;
                   }
-                  testCaseDefinition.setDatatQualityDimension(dimension);
+                  testCaseDefinition.setDataQualityDimension(dimension);
                   collectionDAO.testDefinitionDAO().update(testCaseDefinition);
                 } catch (Exception e) {
                   LOG.warn("Error migrating test case dimension", e);

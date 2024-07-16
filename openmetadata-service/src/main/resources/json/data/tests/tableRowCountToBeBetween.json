@@ -29,5 +29,5 @@
   ],
   "supportsDynamicAssertion": true,
   "provider": "system",
-  "datatQualityDimension": "Integrity"
+  "dataQualityDimension": "Integrity"
 }

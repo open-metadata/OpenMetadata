@@ -1068,8 +1068,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
+    } else {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      return new ResultList<>(entityList, null, limit, total.intValue());
     }
-    throw new IllegalArgumentException("Limit should be greater than 0");
   }
 
   @Transaction

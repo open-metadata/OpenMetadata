@@ -924,6 +924,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotNull(testCase.getEntityLink());
     assertNotNull(testCase.getName());
     assertNotNull(testCase.getId());
+
+    // Test return only the specified dimension
+    queryParams.clear();
+    queryParams.put("dataQualityDimension", "Completeness");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertNotEquals(0, allEntities.getData().size());
   }
 
   @Test

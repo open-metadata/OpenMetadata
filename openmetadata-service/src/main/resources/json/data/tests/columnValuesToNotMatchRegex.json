@@ -17,5 +17,5 @@
   ],
   "supportsRowLevelPassedFailed": true,
   "provider": "system",
-  "datatQualityDimension": "Validity"
+  "dataQualityDimension": "Validity"
 }

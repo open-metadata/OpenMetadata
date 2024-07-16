@@ -215,6 +215,9 @@
       "entityType": {
         "type": "keyword"
       },
+      "dataQualityDimension": {
+        "type": "keyword"
+      },
       "suggest": {
         "type": "completion",
         "contexts": [
