@@ -142,5 +142,6 @@ SET json = JSON_INSERT(
     JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig')
 ) where JSON_EXTRACT(json, '$.sourceConfig.config.type') = 'DBT' and (
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.type') OR 
+JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.externalType') OR 
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path')
 ) is NULL AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig') is not null;
