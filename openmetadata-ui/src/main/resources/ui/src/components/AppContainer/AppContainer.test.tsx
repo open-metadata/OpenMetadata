@@ -15,6 +15,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getLimitConfig } from '../../rest/limitsAPI';
+import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppContainer from './AppContainer';
 
 jest.mock('../../hooks/useApplicationStore', () => {
@@ -47,15 +48,24 @@ jest.mock('../../hooks/useDomainStore', () => ({
 
 describe('AppContainer', () => {
   it('renders the Appbar, LeftSidebar, and AuthenticatedAppRouter components', () => {
+    const ApplicationExtras = () => (
+      <div data-testid="test-app">ApplicationExtras</div>
+    );
+    const spy = jest
+      .spyOn(applicationsClassBase, 'getApplicationExtension')
+      .mockImplementation(() => ApplicationExtras);
+
     render(
       <MemoryRouter>
         <AppContainer />
       </MemoryRouter>
     );
 
+    expect(spy).toHaveBeenCalled();
     expect(screen.getByText('Appbar')).toBeInTheDocument();
     expect(screen.getByText('Sidebar')).toBeInTheDocument();
     expect(screen.getByText('AuthenticatedAppRouter')).toBeInTheDocument();
+    expect(screen.getByTestId('test-app')).toBeInTheDocument();
   });
 
   it('should call limit api', () => {

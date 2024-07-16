@@ -30,6 +30,6 @@
   ],
   "supportsDynamicAssertion": true,
   "provider": "system",
-  "datatQualityDimension": "Accuracy"
+  "dataQualityDimension": "Accuracy"
 }
   
