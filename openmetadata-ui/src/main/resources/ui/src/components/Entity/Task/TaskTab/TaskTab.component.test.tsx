@@ -15,7 +15,12 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
-import { TASK_COLUMNS, TASK_FEED } from '../../../../mocks/Task.mock';
+import { useAuth } from '../../../../hooks/authHooks';
+import {
+  MOCK_TASK,
+  TASK_COLUMNS,
+  TASK_FEED,
+} from '../../../../mocks/Task.mock';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import { TaskTab } from './TaskTab.component';
 import { TaskTabProps } from './TaskTab.interface';
@@ -39,7 +44,12 @@ jest.mock('../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2', () => {
 });
 
 jest.mock('../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor', () => {
-  return jest.fn().mockImplementation(() => <p>ActivityFeedEditor</p>);
+  return jest.fn().mockImplementation(({ editAction }) => (
+    <div>
+      <p>ActivityFeedEditor</p>
+      {editAction}
+    </div>
+  ));
 });
 
 jest.mock('../../../common/AssigneeList/AssigneeList', () => {
@@ -133,11 +143,7 @@ jest.mock(
 );
 
 jest.mock('../../../../hooks/authHooks', () => ({
-  useAuth: () => {
-    return {
-      isAdminUser: false,
-    };
-  },
+  useAuth: jest.fn().mockReturnValue({ isAdminUser: false }),
 }));
 
 const mockOnAfterClose = jest.fn();
@@ -168,6 +174,65 @@ describe('Test TaskFeedCard component', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.getByTestId('task-cta-buttons')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('task-cta-buttons')).toContainHTML(
+      '<div class="ant-space-item"><button type="button" class="ant-btn ant-btn-primary" disabled=""><span>label.comment</span></button></div>'
+    );
+  });
+
+  it('should render close button if the user is creator task', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{
+          ...TASK_FEED,
+          createdBy: 'xyz',
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByText('label.close')).toBeInTheDocument();
+  });
+
+  it('should not render close button if the user is not a creator of task', async () => {
+    render(<TaskTab {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.queryByText('label.close')).not.toBeInTheDocument();
+  });
+
+  it('should not render close button if the user is a creator and even have hasEditAccess of task', async () => {
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      isAdminUser: true,
+    }));
+
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, createdBy: 'xyz' }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.queryByText('label.close')).not.toBeInTheDocument();
+  });
+
+  it('should not render close button if the user is a creator and assignee of task', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, createdBy: 'xyz', task: MOCK_TASK }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.queryByText('label.close')).not.toBeInTheDocument();
   });
 });

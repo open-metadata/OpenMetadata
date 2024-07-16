@@ -18,3 +18,18 @@
     width: 100%;
   }
 }
+
+.task-action-button {
+  button {
+    border: 1px solid @primary-color;
+    color: @primary-color;
+
+    &:first-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    &:last-child {
+      border-left: none;
+    }
+  }
+}

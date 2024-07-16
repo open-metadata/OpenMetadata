@@ -49,6 +49,11 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
+
+import { ReactComponent as CancelColored } from '../../../../assets/svg/cancel-colored.svg';
+import { ReactComponent as EditColored } from '../../../../assets/svg/edit-colored.svg';
+import { ReactComponent as SuccessColored } from '../../../../assets/svg/success-colored.svg';
+
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
 import { TASK_TYPES } from '../../../../constants/Task.constant';
@@ -85,13 +90,13 @@ import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringsUtils';
 import {
+  //   TASK_ACTION_LIST,
   fetchOptions,
   generateOptions,
   getTaskDetailPath,
   INCIDENT_TASK_ACTION_LIST,
   isDescriptionTask,
   isTagsTask,
-  TASK_ACTION_LIST,
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
@@ -143,6 +148,31 @@ export const TaskTab = ({
     testCaseResolutionStatus,
     initialAssignees: usersList,
   } = useActivityFeedProvider();
+
+  const TASK_ACTION_LIST: MenuProps['items'] = [
+    {
+      label: t('label.accept-suggestion'),
+      key: TaskActionMode.VIEW,
+      icon: <Icon component={SuccessColored} style={{ fontSize: '16px' }} />,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      label: t('label.edit-amp-accept-suggestion'),
+      key: TaskActionMode.EDIT,
+      icon: <Icon component={EditColored} style={{ fontSize: '16px' }} />,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      label: t('label.close'),
+      key: TaskActionMode.CLOSE,
+      icon: <Icon component={CancelColored} style={{ fontSize: '16px' }} />,
+    },
+  ];
+
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
 
@@ -341,8 +371,8 @@ export const TaskTab = ({
     (!hasGlossaryReviewer && isOwner) ||
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
-  const onSave = (message: string) => {
-    postFeed(message, taskThread?.id ?? '').catch(() => {
+  const onSave = () => {
+    postFeed(comment, taskThread?.id ?? '').catch(() => {
       // ignore since error is displayed in toast in the parent promise.
       // Added block for sonar code smell
     });
@@ -351,6 +381,8 @@ export const TaskTab = ({
   const handleMenuItemClick: MenuProps['onClick'] = (info) => {
     if (info.key === TaskActionMode.EDIT) {
       setShowEditTaskModel(true);
+    } else if (info.key === TaskActionMode.CLOSE) {
+      onTaskReject();
     } else {
       onTaskResolve();
     }
@@ -466,13 +498,21 @@ export const TaskTab = ({
     }
   };
 
+  const renderCommentButton = useMemo(() => {
+    return (
+      <Button disabled={isEmpty(comment)} type="primary" onClick={onSave}>
+        {t('label.comment')}
+      </Button>
+    );
+  }, [comment]);
+
   const approvalWorkflowActions = useMemo(() => {
     const hasApprovalAccess =
       isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
     return (
       <Space
-        className="m-t-sm items-end w-full"
+        className="m-t-sm items-end w-full justify-end"
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
@@ -503,9 +543,17 @@ export const TaskTab = ({
             {t('label.approve')}
           </Button>
         </Tooltip>
+
+        {renderCommentButton}
       </Space>
     );
-  }, [taskDetails, onTaskResolve, isAssignee, isPartOfAssigneeTeam]);
+  }, [
+    taskDetails,
+    onTaskResolve,
+    isAssignee,
+    isPartOfAssigneeTeam,
+    renderCommentButton,
+  ]);
 
   const testCaseResultFlow = useMemo(() => {
     const editPermission = checkPermission(
@@ -516,30 +564,35 @@ export const TaskTab = ({
     const hasApprovalAccess = isAssignee || isCreator || editPermission;
 
     return (
-      <Dropdown.Button
-        className="m-t-sm"
-        data-testid="task-cta-buttons"
-        icon={<DownOutlined />}
-        loading={isActionLoading}
-        menu={{
-          items: INCIDENT_TASK_ACTION_LIST,
-          selectable: true,
-          selectedKeys: [taskAction.key],
-          onClick: handleTaskMenuClick,
-          disabled: !hasApprovalAccess,
-        }}
-        type="primary"
-        onClick={onTaskDropdownClick}>
-        {taskAction.label}
-      </Dropdown.Button>
+      <div className="m-t-sm d-flex justify-end items-center gap-4">
+        <Dropdown.Button
+          className="w-auto"
+          data-testid="task-cta-buttons"
+          icon={<DownOutlined />}
+          loading={isActionLoading}
+          menu={{
+            items: INCIDENT_TASK_ACTION_LIST,
+            selectable: true,
+            selectedKeys: [taskAction.key],
+            onClick: handleTaskMenuClick,
+            disabled: !hasApprovalAccess,
+          }}
+          type="primary"
+          onClick={onTaskDropdownClick}>
+          {taskAction.label}
+        </Dropdown.Button>
+        {renderCommentButton}
+      </div>
     );
-  }, [taskDetails, isAssignee, isPartOfAssigneeTeam, taskAction]);
+  }, [
+    taskDetails,
+    isAssignee,
+    isPartOfAssigneeTeam,
+    taskAction,
+    renderCommentButton,
+  ]);
 
   const actionButtons = useMemo(() => {
-    if (isTaskClosed) {
-      return null;
-    }
-
     const taskType = taskDetails?.type ?? '';
 
     if (isTaskGlossaryApproval) {
@@ -559,20 +612,22 @@ export const TaskTab = ({
 
     return (
       <Space
-        className="m-t-sm items-end w-full"
+        className="m-t-sm items-end w-full justify-end"
         data-testid="task-cta-buttons"
         size="small">
-        {(isCreator || hasEditAccess) && (
+        {isCreator && !hasEditAccess && (
           <Button onClick={onTaskReject}>{t('label.close')}</Button>
         )}
-        {hasEditAccess ? (
+        {hasEditAccess && (
           <>
             {['RequestDescription', 'RequestTag'].includes(taskType) &&
             isEmpty(parsedSuggestion) ? (
               <Button
                 type="primary"
                 onClick={() =>
-                  handleMenuItemClick({ key: TaskActionMode.EDIT } as MenuInfo)
+                  handleMenuItemClick({
+                    key: TaskActionMode.EDIT,
+                  } as MenuInfo)
                 }>
                 {taskThread.task?.newValue
                   ? t('label.add-suggestion')
@@ -584,6 +639,7 @@ export const TaskTab = ({
               </Button>
             ) : (
               <Dropdown.Button
+                className="task-action-button"
                 data-testid="edit-accept-task-dropdown"
                 icon={<DownOutlined />}
                 menu={{
@@ -592,7 +648,6 @@ export const TaskTab = ({
                   selectedKeys: [taskAction.key],
                   onClick: handleMenuItemClick,
                 }}
-                type="primary"
                 onClick={() =>
                   taskAction.key === TaskActionMode.EDIT
                     ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
@@ -602,9 +657,8 @@ export const TaskTab = ({
               </Dropdown.Button>
             )}
           </>
-        ) : (
-          <></>
         )}
+        {renderCommentButton}
       </Space>
     );
   }, [
@@ -618,6 +672,7 @@ export const TaskTab = ({
     approvalWorkflowActions,
     testCaseResultFlow,
     isTaskTestCaseResult,
+    renderCommentButton,
   ]);
 
   const initialFormValue = useMemo(() => {
@@ -806,10 +861,12 @@ export const TaskTab = ({
 
       <Col span={24}>
         {taskDetails?.status === ThreadTaskStatus.Open && (
-          <ActivityFeedEditor onSave={onSave} onTextChange={setComment} />
+          <ActivityFeedEditor
+            editAction={actionButtons}
+            onSave={onSave}
+            onTextChange={setComment}
+          />
         )}
-
-        {actionButtons}
       </Col>
       {isTaskTestCaseResult ? (
         <Modal
