@@ -64,7 +64,7 @@ class MetabaseCliTest(CliCommonDashboard.TestSuite):
         return 6
 
     def expected_lineage(self) -> int:
-        return 8
+        return 7
 
     def expected_tags(self) -> int:
         return 0
