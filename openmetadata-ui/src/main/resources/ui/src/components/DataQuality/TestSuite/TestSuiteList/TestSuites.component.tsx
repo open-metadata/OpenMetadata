@@ -58,7 +58,7 @@ import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
-import { DataQualitySearchParams } from '../../DataQuality.interface';
+import { TestSuiteSearchParams } from '../../DataQuality.interface';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
@@ -74,7 +74,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       search.startsWith('?') ? search.substring(1) : search
     );
 
-    return params as DataQualitySearchParams;
+    return params as TestSuiteSearchParams;
   }, [location]);
   const { searchValue, owner } = params;
   const selectedOwner = useMemo(
@@ -228,7 +228,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const handleSearchParam = (
     value: string,
-    key: keyof DataQualitySearchParams
+    key: keyof TestSuiteSearchParams
   ) => {
     history.push({
       search: QueryString.stringify({
