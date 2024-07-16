@@ -16,6 +16,7 @@ import { DefaultOptionType } from 'antd/lib/select';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Tag } from '../../generated/entity/classification/tag';
+import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -139,7 +140,8 @@ export type EntityUnion =
   | PipelineService
   | MlmodelService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIEndpoint;
 
 export type EntityWithServices =
   | Topic
