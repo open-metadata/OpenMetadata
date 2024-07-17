@@ -96,14 +96,16 @@ import {
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ActivityFeedCardV2 from '../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2';
-import ActivityFeedEditor from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
+import ActivityFeedEditor, {
+  EditorContentRef,
+} from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import AssigneeList from '../../../common/AssigneeList/AssigneeList';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
-import { EditorContentRef } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
+import { EditorContentRef as MarkdownEditorContentRef } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import TaskTabIncidentManagerHeader from '../TaskTabIncidentManagerHeader/TaskTabIncidentManagerHeader.component';
 import './task-tab.less';
 import { TaskTabProps } from './TaskTab.interface';
@@ -115,10 +117,11 @@ export const TaskTab = ({
   hasGlossaryReviewer,
   ...rest
 }: TaskTabProps) => {
+  const editorRef = useRef<EditorContentRef>();
   const history = useHistory();
   const [assigneesForm] = useForm();
   const { currentUser } = useApplicationStore();
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<MarkdownEditorContentRef>();
   const updatedAssignees = Form.useWatch('assignees', assigneesForm);
   const { permissions } = usePermissionProvider();
   const { task: taskDetails } = taskThread;
@@ -344,10 +347,14 @@ export const TaskTab = ({
     (Boolean(isPartOfAssigneeTeam) && !isCreator);
 
   const onSave = () => {
-    postFeed(comment, taskThread?.id ?? '').catch(() => {
-      // ignore since error is displayed in toast in the parent promise.
-      // Added block for sonar code smell
-    });
+    postFeed(comment, taskThread?.id ?? '')
+      .catch(() => {
+        // ignore since error is displayed in toast in the parent promise.
+        // Added block for sonar code smell
+      })
+      .finally(() => {
+        editorRef.current?.clearEditorValue();
+      });
   };
 
   const handleMenuItemClick: MenuProps['onClick'] = (info) => {
@@ -847,6 +854,7 @@ export const TaskTab = ({
         {taskDetails?.status === ThreadTaskStatus.Open && (
           <ActivityFeedEditor
             editAction={actionButtons}
+            ref={editorRef}
             onSave={onSave}
             onTextChange={setComment}
           />
