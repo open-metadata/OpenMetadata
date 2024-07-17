@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets.masker;
 
 import java.util.Set;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -24,7 +25,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 public abstract class EntityMasker {
 
   protected static final Set<Class<?>> DO_NOT_MASK_CLASSES =
-      Set.of(OpenMetadataJWTClientConfig.class, BasicAuthMechanism.class);
+      Set.of(OpenMetadataJWTClientConfig.class, JWTAuthMechanism.class, BasicAuthMechanism.class);
 
   public abstract Object maskServiceConnectionConfig(
       Object connectionConfig, String connectionType, ServiceType serviceType);

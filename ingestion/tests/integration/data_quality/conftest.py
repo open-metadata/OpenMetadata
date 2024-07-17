@@ -8,12 +8,7 @@ from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..postgres.conftest import db_service as postgres_service
-from ..postgres.conftest import ingest_metadata as ingest_postgres
-
 __all__ = [
-    "ingest_postgres",
-    "postgres_service",
     "postgres_container",
 ]
 
@@ -53,7 +48,7 @@ def ingest_mysql_service(
         "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "loggerLevel": LogLevels.DEBUG.value,
-            "openMetadataServerConfig": metadata.config.dict(),
+            "openMetadataServerConfig": metadata.config.model_dump(),
         },
     }
     metadata_ingestion = MetadataWorkflow.create(workflow_config)

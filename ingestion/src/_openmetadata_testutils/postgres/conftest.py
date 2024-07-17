@@ -30,7 +30,7 @@ def try_bind(container, container_port, host_port):
             yield container
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def postgres_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     data_dir = tmp_path_factory.mktemp("data")
@@ -49,11 +49,13 @@ def postgres_container(tmp_path_factory):
         "pg_stat_statements.max=10000",
         "-c",
         "pg_stat_statements.track=all",
+        "-c",
+        "track_commit_timestamp=on",
     ]
 
-    with try_bind(container, 5432, 5432) if not os.getenv(
-        "CI"
-    ) else container as container:
+    with (
+        try_bind(container, 5432, 5432) if not os.getenv("CI") else container
+    ) as container:
         docker_container = container.get_wrapped_container()
         docker_container.exec_run(["mkdir", "/data"])
         docker_container.put_archive(

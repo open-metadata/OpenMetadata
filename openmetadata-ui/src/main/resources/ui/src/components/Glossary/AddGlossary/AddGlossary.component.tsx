@@ -24,17 +24,16 @@ import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
+  HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { UserTag } from '../../common/UserTag/UserTag.component';
-import { UserTagSize } from '../../common/UserTag/UserTag.interface';
+import './add-glossary.less';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
 const AddGlossary = ({
@@ -59,6 +58,11 @@ const AddGlossary = ({
   const reviewersList = Array.isArray(reviewersData)
     ? reviewersData
     : [reviewersData];
+
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
 
   const handleSave: FormProps['onFinish'] = (formData) => {
     const { name, displayName, description, tags, mutuallyExclusive, owner } =
@@ -130,6 +134,15 @@ const AddGlossary = ({
         height: 'auto',
         readonly: !allowAccess,
       },
+      rules: [
+        {
+          required: true,
+          whitespace: true,
+          message: t('label.field-required', {
+            field: t('label.description'),
+          }),
+        },
+      ],
     },
     {
       name: 'tags',
@@ -146,6 +159,12 @@ const AddGlossary = ({
       label: t('label.mutually-exclusive'),
       type: FieldTypes.SWITCH,
       required: false,
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary'),
+        'child-entity': t('label.glossary-term'),
+      }),
+      helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
       props: {
         'data-testid': 'mutually-exclusive-button',
       },
@@ -209,7 +228,9 @@ const AddGlossary = ({
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -222,36 +243,20 @@ const AddGlossary = ({
             <div className="add-glossary" data-testid="add-glossary">
               <Form form={form} layout="vertical" onFinish={handleSave}>
                 {generateFormFields(formFields)}
-                <div className="m-t-xss">
+                <div className="m-y-xs">
                   {getField(ownerField)}
                   {selectedOwner && (
                     <div className="m-y-xs" data-testid="owner-container">
-                      <UserTag
-                        id={selectedOwner.name ?? selectedOwner.id}
-                        isTeam={selectedOwner.type === EntityType.TEAM}
-                        name={getEntityName(selectedOwner)}
-                        size={UserTagSize.small}
-                      />
+                      <OwnerLabel pills owner={selectedOwner} />
                     </div>
                   )}
                 </div>
-                <div className="m-t-xss">
+                <div className="m-y-xs">
                   {getField(reviewersField)}
                   {Boolean(reviewersList.length) && (
-                    <Space
-                      wrap
-                      className="m-y-xs"
-                      data-testid="reviewers-container"
-                      size={[8, 8]}>
-                      {reviewersList.map((d, index) => (
-                        <UserTag
-                          avatarType="outlined"
-                          id={d.name ?? d.id}
-                          isTeam={d.type === EntityType.TEAM}
-                          key={index}
-                          name={getEntityName(d)}
-                          size={UserTagSize.small}
-                        />
+                    <Space wrap data-testid="reviewers-container" size={[8, 8]}>
+                      {reviewersList.map((d) => (
+                        <OwnerLabel pills key={d.id} owner={d} />
                       ))}
                     </Space>
                   )}
@@ -288,7 +293,7 @@ const AddGlossary = ({
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

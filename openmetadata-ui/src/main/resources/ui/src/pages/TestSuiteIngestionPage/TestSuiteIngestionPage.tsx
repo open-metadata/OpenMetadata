@@ -120,7 +120,7 @@ const TestSuiteIngestionPage = () => {
 
   const handleAddTestSubmit = (testCases: TestCase[]) => {
     const testCaseNames = testCases.map((testCase) => testCase.name);
-    setTestCases((pre) => uniq([...pre, ...testCaseNames]));
+    setTestCases(uniq(testCaseNames));
     setActiveServiceStep(2);
   };
 
@@ -146,7 +146,9 @@ const TestSuiteIngestionPage = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
@@ -206,7 +208,7 @@ const TestSuiteIngestionPage = () => {
             data={TEST_SUITE_INGESTION_PAGE_DATA[activeServiceStep - 1]}
           />
         ),
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

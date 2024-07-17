@@ -23,16 +23,14 @@ import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
+  HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
-import { UserTag } from '../../common/UserTag/UserTag.component';
-import { UserTagSize } from '../../common/UserTag/UserTag.interface';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 
 const AddGlossaryTermForm = ({
@@ -49,6 +47,11 @@ const AddGlossaryTermForm = ({
   const reviewersList = Array.isArray(reviewersData)
     ? reviewersData
     : [reviewersData];
+
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
 
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
@@ -189,6 +192,15 @@ const AddGlossaryTermForm = ({
         initialValue: '',
         height: 'auto',
       },
+      rules: [
+        {
+          required: true,
+          whitespace: true,
+          message: t('label.field-required', {
+            field: t('label.description'),
+          }),
+        },
+      ],
     },
     {
       name: 'tags',
@@ -277,6 +289,12 @@ const AddGlossaryTermForm = ({
       },
       id: 'root/mutuallyExclusive',
       formItemLayout: FormItemLayout.HORIZONTAL,
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary-term'),
+        'child-entity': t('label.glossary-term'),
+      }),
+      helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
     },
   ];
 
@@ -420,14 +438,8 @@ const AddGlossaryTermForm = ({
         <div className="m-t-xss">
           {getField(ownerField)}
           {owner && (
-            <div className="m-y-sm" data-testid="owner-container">
-              <UserTag
-                avatarType="outlined"
-                id={owner.name ?? owner.id}
-                isTeam={owner.type === UserTeam.Team}
-                name={getEntityName(owner)}
-                size={UserTagSize.small}
-              />
+            <div className="m-b-sm" data-testid="owner-container">
+              <OwnerLabel pills owner={owner} />
             </div>
           )}
         </div>
@@ -436,14 +448,7 @@ const AddGlossaryTermForm = ({
           {Boolean(reviewersList.length) && (
             <Space wrap data-testid="reviewers-container" size={[8, 8]}>
               {reviewersList.map((d) => (
-                <UserTag
-                  avatarType="outlined"
-                  id={d.name ?? d.id}
-                  isTeam={d.type === UserTeam.Team}
-                  key={d.id}
-                  name={getEntityName(d)}
-                  size={UserTagSize.small}
-                />
+                <OwnerLabel pills key={d.id} owner={d} />
               ))}
             </Space>
           )}
