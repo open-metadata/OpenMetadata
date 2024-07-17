@@ -12,6 +12,7 @@
  */
 
 import { Table } from '../generated/entity/data/table';
+import { LabelType, State, TagSource } from '../generated/tests/testCase';
 
 export const MOCK_TABLE = {
   id: 'cb726d24-774b-4603-8ec8-1975760ac2f8',
@@ -340,3 +341,18 @@ export const MOCK_TABLE_QUERY = [
     checksum: 'cd59a9d0d0b8a245f7382264afac8bdc',
   },
 ];
+
+export const MOCK_TIER_DATA = {
+  description:
+    '**Team level datasets that are typically non-business and general internal system.',
+  labelType: LabelType.Manual,
+  name: 'Tier4',
+  source: TagSource.Classification,
+  state: State.Confirmed,
+  style: {
+    color: '#f83f3f',
+    iconURL:
+      'https://ashishgupta.me/_next/image?url=%2Fimage%2Fa1.png&w=3840&q=75',
+  },
+  tagFQN: 'Tier.Tier4',
+};
