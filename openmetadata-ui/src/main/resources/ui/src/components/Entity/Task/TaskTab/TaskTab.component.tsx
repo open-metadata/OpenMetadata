@@ -472,7 +472,11 @@ export const TaskTab = ({
 
   const renderCommentButton = useMemo(() => {
     return (
-      <Button disabled={isEmpty(comment)} type="primary" onClick={onSave}>
+      <Button
+        data-testid="comment-button"
+        disabled={isEmpty(comment)}
+        type="primary"
+        onClick={onSave}>
         {t('label.comment')}
       </Button>
     );

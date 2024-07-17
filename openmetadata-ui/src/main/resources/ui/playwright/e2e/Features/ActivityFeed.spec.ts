@@ -181,4 +181,64 @@ test.describe('Activity feed', () => {
       ).toContainText(`Reply message ${i}`);
     }
   });
+
+  test('Comment and Close should work in Task Flow', async ({ page }) => {
+    const value: TaskDetails = {
+      term: entity.entity.name,
+      assignee: `${user.data.firstName}.${user.data.lastName}`,
+    };
+    await entity.visitEntityPage(page);
+
+    await page.getByTestId('request-description').click();
+
+    await createDescriptionTask(page, value);
+
+    // Task 1 - Update Description right panel check
+    const descriptionTask = await page.getByTestId('task-title').innerText();
+
+    expect(descriptionTask).toContain('Request to update description');
+
+    // Check the editor send button is not visible and comment button is disabled when no text is added
+    expect(page.locator('[data-testid="send-button"]')).not.toBeVisible();
+    expect(
+      await page.locator('[data-testid="comment-button"]').isDisabled()
+    ).toBeTruthy();
+
+    await page.fill(
+      '[data-testid="editor-wrapper"] .ql-editor',
+      'Test comment added'
+    );
+    const addComment = page.waitForResponse('/api/v1/feed/*/posts');
+    await page.getByTestId('comment-button').click();
+    await addComment;
+
+    // Close the task from the Button.Group, should throw error when no comment is added.
+    await page.getByRole('button', { name: 'down' }).click();
+    await page.waitForSelector('.ant-dropdown', {
+      state: 'visible',
+    });
+
+    await page.getByRole('menuitem', { name: 'close' }).click();
+
+    await toastNotification(page, 'Task cannot be closed without a comment.');
+
+    // Close the task from the Button.Group, with comment is added.
+    await page.fill(
+      '[data-testid="editor-wrapper"] .ql-editor',
+      'Closing the task with comment'
+    );
+    const commentWithCloseTask = page.waitForResponse('/api/v1/feed/*/posts');
+    await page.getByRole('button', { name: 'down' }).click();
+    await page.waitForSelector('.ant-dropdown', {
+      state: 'visible',
+    });
+    await page.getByRole('menuitem', { name: 'close' }).click();
+    await commentWithCloseTask;
+
+    await toastNotification(page, 'Task closed successfully.');
+
+    const closedTask = await page.getByTestId('closed-task').textContent();
+
+    expect(closedTask).toContain('1 Closed');
+  });
 });
