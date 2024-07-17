@@ -166,13 +166,13 @@ the GCP credentials empty. This is why they are not marked as required.
 
 {% codeInfo srNumber=2 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -182,7 +182,7 @@ the GCP credentials empty. This is why they are not marked as required.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: bigquery
   serviceName: "<service name>"
@@ -193,19 +193,19 @@ source:
 ```yaml {% srNumber=1 %}
       credentials:
         gcpConfig:
-          type: My Type
-          projectId: project ID # ["project-id-1", "project-id-2"]
-          privateKeyId: us-east-2
+          type: service_account
+          projectId: project-id # ["project-id-1", "project-id-2"]
+          privateKeyId: abc123
           privateKey: |
             -----BEGIN PRIVATE KEY-----
             Super secret key
             -----END PRIVATE KEY-----
-          clientEmail: client@mail.com
+          clientEmail: role@project.iam.gserviceaccount.com
           clientId: 1234
           # authUri: https://accounts.google.com/o/oauth2/auth (default)
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-          clientX509CertUrl: https://cert.url
+          clientX509CertUrl: https://www.googleapis.com/robot/v1/metadata/x509/role%40project.iam.gserviceaccount.com
       # taxonomyLocation: us
       # taxonomyProjectID: ["project-id-1", "project-id-2"]
       # usageLocation: us

@@ -60,7 +60,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -97,7 +98,7 @@ import org.quartz.SchedulerException;
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
 
@@ -162,8 +163,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
   }
 
-  public AppResource(Authorizer authorizer) {
-    super(Entity.APPLICATION, authorizer);
+  public AppResource(Authorizer authorizer, Limits limits) {
+    super(Entity.APPLICATION, authorizer, limits);
   }
 
   public static class AppList extends ResultList<App> {
@@ -545,6 +546,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
+
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
@@ -553,6 +555,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(Entity.APPLICATION, MetadataOperation.CREATE));
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
@@ -597,6 +603,50 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    App updatedApp = (App) response.getEntity();
+    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      ApplicationHandler.getInstance()
+          .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
+    }
+    // We don't want to store this information
+    unsetAppRuntimeProperties(updatedApp);
+    return response;
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchApplication",
+      summary = "Updates a App by name.",
+      description = "Update an existing App using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchApplication(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch)
+      throws SchedulerException {
+    App app = repository.getByName(null, fqn, repository.getFields("bot,pipelines"));
+    if (app.getSystem()) {
+      throw new IllegalArgumentException(
+          CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
+    }
+    AppScheduler.getInstance().deleteScheduledApplication(app);
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
     if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
       ApplicationHandler.getInstance()
@@ -670,6 +720,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+    limits.invalidateCache(entityType);
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);

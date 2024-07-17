@@ -57,6 +57,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -83,8 +84,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return listOf(MetadataOperation.EDIT_ALL);
   }
 
-  public DocStoreResource(Authorizer authorizer) {
-    super(Entity.DOCUMENT, authorizer);
+  public DocStoreResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DOCUMENT, authorizer, limits);
   }
 
   public static class DocumentList extends ResultList<Document> {
@@ -349,6 +350,35 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchDocument",
+      summary = "Update a Document by name.",
+      description = "Update an existing Document with JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Document", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @DELETE

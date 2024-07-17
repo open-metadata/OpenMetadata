@@ -51,11 +51,12 @@ def get_connection_url(connection: AthenaConnection) -> str:
     url.with_password(aws_secret_access_key or "")
     url.with_hostport(f"athena.{connection.awsConfig.awsRegion}.amazonaws.com:443")
 
-    query_params = {
-        "s3_staging_dir": connection.s3StagingDir,
-        "work_group": connection.workgroup,
-        "aws_session_token": aws_session_token
-    }
+
+    url += f"?s3_staging_dir={quote_plus(str(connection.s3StagingDir))}"
+    if connection.workgroup:
+        url += f"&work_group={connection.workgroup}"
+    if aws_session_token:
+        url += f"&aws_session_token={quote_plus(aws_session_token)}"
 
     query_params = {key: value for key, value in query_params.items() if value}
 

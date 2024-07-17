@@ -5,6 +5,14 @@ inputs:
   python-version:
     description: Python Version to install
     required: true
+  args:
+    description: Arguments to pass to run_local_docker.sh
+    required: false
+    default: "-m no-ui"
+  ingestion_dependency:
+    description: Ingestion dependency to pass to run_local_docker.sh
+    required: false
+    default: "mysql,elasticsearch,sample-data"
 
 runs:
   using: composite
@@ -13,7 +21,7 @@ runs:
     - name: Install Ubuntu dependencies
       run: |
         sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        unixodbc-dev libevent-dev python3-dev libkrb5-dev
+        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
       shell: bash
     # ------------------------------------------------------------------------------
 
@@ -50,9 +58,9 @@ runs:
     - name: Start Server and Ingest Sample Data
       uses: nick-fields/retry@v2.8.3
       env:
-        INGESTION_DEPENDENCY: "mysql,elasticsearch,sample-data"
+        INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
       with:
         timeout_minutes: 60
         max_attempts: 2
         retry_on: error
-        command: ./docker/run_local_docker.sh -m no-ui
+        command: ./docker/run_local_docker.sh ${{ inputs.args }}

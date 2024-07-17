@@ -145,6 +145,11 @@ export const getPartialNameFromTableFQN = (
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
+  if (fqnParts.includes(FqnPart.TestCase)) {
+    // Get the last Part of the Fqn
+    return splitFqn.splice(-1).join(FQN_SEPARATOR_CHAR);
+  }
+
   const arrPartialName = [];
   if (splitFqn.length > 0) {
     if (fqnParts.includes(FqnPart.Service)) {
@@ -421,17 +426,18 @@ export const getNameFromFQN = (fqn: string): string => {
 
 export const getRandomColor = (name: string) => {
   const firstAlphabet = name.charAt(0).toLowerCase();
-  const asciiCode = firstAlphabet.charCodeAt(0);
-  const colorNum =
-    asciiCode.toString() + asciiCode.toString() + asciiCode.toString();
+  // Convert the user's name to a numeric value
+  let nameValue = 0;
+  for (let i = 0; i < name.length; i++) {
+    nameValue += name.charCodeAt(i) * 8;
+  }
 
-  const num = Math.round(0xffffff * parseInt(colorNum));
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
+  // Generate a random hue based on the name value
+  const hue = nameValue % 360;
 
   return {
-    color: 'rgb(' + r + ', ' + g + ', ' + b + ', 0.6)',
+    color: `hsl(${hue}, 70%, 40%)`,
+    backgroundColor: `hsl(${hue}, 100%, 92%)`,
     character: firstAlphabet.toUpperCase(),
   };
 };
@@ -588,7 +594,7 @@ export const digitFormatter = (value: number) => {
   // convert 1000 to 1k
   return Intl.NumberFormat('en', {
     notation: 'compact',
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   }).format(value);
 };
 
@@ -682,13 +688,13 @@ export const getEntityIdArray = (entities: EntityReference[]): string[] =>
 
 export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
   if (isString(tag)) {
-    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
       ? tag.split(FQN_SEPARATOR_CHAR)[1]
       : tag;
   } else {
     return {
       ...tag,
-      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
         ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
         : tag.tagFQN,
     };
@@ -830,3 +836,30 @@ export const handleSearchFilterOption = (
   }
 ) => toLower(option?.label).includes(toLower(searchValue));
 // Check label while searching anything and filter that options out if found matching
+
+/**
+ * @param serviceType key for quick filter
+ * @returns json filter query string
+ */
+
+export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};

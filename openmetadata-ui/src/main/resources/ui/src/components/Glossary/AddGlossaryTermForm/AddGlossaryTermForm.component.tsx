@@ -17,24 +17,20 @@ import { t } from 'i18next';
 import { isEmpty, isString } from 'lodash';
 import React, { useEffect } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import {
-  ENTITY_NAME_REGEX,
-  HEX_COLOR_CODE_REGEX,
-} from '../../../constants/regex.constants';
+import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
+  HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { fetchGlossaryList } from '../../../utils/TagsUtils';
 
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
-import { UserTag } from '../../common/UserTag/UserTag.component';
-import { UserTagSize } from '../../common/UserTag/UserTag.interface';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { AddGlossaryTermFormProps } from './AddGlossaryTermForm.interface';
 
 const AddGlossaryTermForm = ({
@@ -45,8 +41,17 @@ const AddGlossaryTermForm = ({
 }: AddGlossaryTermFormProps) => {
   const { currentUser } = useApplicationStore();
   const owner = Form.useWatch<EntityReference | undefined>('owner', form);
-  const reviewersList =
-    Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
+  const reviewersData =
+    Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
+
+  const reviewersList = Array.isArray(reviewersData)
+    ? reviewersData
+    : [reviewersData];
+
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
 
   const getRelatedTermFqnList = (relatedTerms: DefaultOptionType[]): string[] =>
     relatedTerms.map((tag: DefaultOptionType) => tag.value as string);
@@ -69,7 +74,6 @@ const AddGlossaryTermForm = ({
       id: currentUser?.id ?? '',
       type: 'user',
     };
-
     const style = {
       color,
       iconURL,
@@ -164,20 +168,7 @@ const AddGlossaryTermForm = ({
       props: {
         'data-testid': 'name',
       },
-      rules: [
-        {
-          pattern: ENTITY_NAME_REGEX,
-          message: t('message.entity-name-validation'),
-        },
-        {
-          min: 1,
-          max: 128,
-          message: `${t('message.entity-maximum-size', {
-            entity: `${t('label.name')}`,
-            max: '128',
-          })}`,
-        },
-      ],
+      rules: NAME_FIELD_RULES,
     },
     {
       name: 'displayName',
@@ -201,6 +192,15 @@ const AddGlossaryTermForm = ({
         initialValue: '',
         height: 'auto',
       },
+      rules: [
+        {
+          required: true,
+          whitespace: true,
+          message: t('label.field-required', {
+            field: t('label.description'),
+          }),
+        },
+      ],
     },
     {
       name: 'tags',
@@ -289,6 +289,12 @@ const AddGlossaryTermForm = ({
       },
       id: 'root/mutuallyExclusive',
       formItemLayout: FormItemLayout.HORIZONTAL,
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary-term'),
+        'child-entity': t('label.glossary-term'),
+      }),
+      helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
     },
   ];
 
@@ -321,11 +327,14 @@ const AddGlossaryTermForm = ({
     id: 'root/reviewers',
     required: false,
     label: t('label.reviewer-plural'),
-    type: FieldTypes.USER_MULTI_SELECT,
+    type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
       filterCurrentUser: true,
       popoverProps: { placement: 'topLeft' },
+      multiple: { user: true, team: false },
+      previewSelected: true,
+      label: t('label.reviewer-plural'),
       children: (
         <Button
           data-testid="add-reviewers"
@@ -429,13 +438,8 @@ const AddGlossaryTermForm = ({
         <div className="m-t-xss">
           {getField(ownerField)}
           {owner && (
-            <div className="m-y-sm" data-testid="owner-container">
-              <UserTag
-                id={owner.name ?? owner.id}
-                isTeam={owner.type === UserTeam.Team}
-                name={getEntityName(owner)}
-                size={UserTagSize.small}
-              />
+            <div className="m-b-sm" data-testid="owner-container">
+              <OwnerLabel pills owner={owner} />
             </div>
           )}
         </div>
@@ -444,12 +448,7 @@ const AddGlossaryTermForm = ({
           {Boolean(reviewersList.length) && (
             <Space wrap data-testid="reviewers-container" size={[8, 8]}>
               {reviewersList.map((d) => (
-                <UserTag
-                  id={d.name ?? d.id}
-                  key={d.id}
-                  name={getEntityName(d)}
-                  size={UserTagSize.small}
-                />
+                <OwnerLabel pills key={d.id} owner={d} />
               ))}
             </Space>
           )}

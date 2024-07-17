@@ -26,9 +26,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
@@ -88,14 +90,17 @@ public class SearchResource {
                       + "Pass without wildcards for exact match. <br/> "
                       + "1. For listing all tables or topics pass q=* <br/>"
                       + "2. For search tables or topics pass q=*search_term* <br/>"
-                      + "3. For searching field names such as search by column_name "
-                      + "pass q=column_names:address <br/>"
-                      + "4. For searching by tag names pass q=tags:user.email <br/>"
-                      + "5. When user selects a filter pass q=query_text AND tags:user.email "
+                      + "3. For searching field names such as search by columnNames "
+                      + "pass q=columnNames:address , for searching deleted entities, use q=deleted:true <br/> "
+                      + "4. For searching by tag names pass q=tags.tagFQN:user.email <br/>"
+                      + "5. When user selects a filter pass q=query_text AND q=tags.tagFQN:user.email "
                       + "AND platform:MYSQL <br/>"
-                      + "6. Search with multiple values of same filter q=tags:user.email "
-                      + "AND tags:user.address <br/>"
-                      + " logic operators such as AND and OR must be in uppercase ",
+                      + "6. Search with multiple values of same filter q=tags.tagFQN:user.email "
+                      + "AND tags.tagFQN:user.address <br/> "
+                      + "7. Search by service version and type q=service.type:databaseService AND version:0.1 <br/> "
+                      + "8. Search Tables with Specific Constraints q=tableConstraints.constraintType.keyword:PRIMARY_KEY AND NOT tier.tagFQN:Tier.Tier1 <br/> "
+                      + "9. Search with owners q=owner.displayName.keyword:owner_name <br/> "
+                      + "NOTE: logic operators such as AND, OR and NOT must be in uppercase ",
               required = true)
           @DefaultValue("*")
           @QueryParam("q")
@@ -153,7 +158,7 @@ public class SearchResource {
           List<String> includeSourceFields,
       @Parameter(
               description =
-                  "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched.")
+                  "Fetch search results in hierarchical order of children elements. By default hierarchy is not fetched. Currently only supported for glossary_term_search_index.")
           @DefaultValue("false")
           @QueryParam("getHierarchy")
           boolean getHierarchy)
@@ -178,6 +183,31 @@ public class SearchResource {
             .getHierarchy(getHierarchy)
             .build();
     return searchRepository.search(request);
+  }
+
+  @GET
+  @Path("/get/{index}/doc/{id}")
+  @Operation(
+      operationId = "searchEntityInEsIndexWithId",
+      summary = "Search entities in ES index with Id",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchEntityInEsIndexWithId(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "document Id", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Index Name", schema = @Schema(type = "string")) @PathParam("index")
+          String indexName)
+      throws IOException {
+    return searchRepository.getDocument(indexName, id);
   }
 
   @GET
@@ -327,14 +357,14 @@ public class SearchResource {
                       + "Pass without wildcards for exact match. <br/> "
                       + "1. For listing all tables or topics pass q=* <br/>"
                       + "2. For search tables or topics pass q=*search_term* <br/>"
-                      + "3. For searching field names such as search by column_name "
-                      + "pass q=column_names:address <br/>"
-                      + "4. For searching by tag names pass q=tags:user.email <br/>"
-                      + "5. When user selects a filter pass q=query_text AND tags:user.email "
+                      + "3. For searching field names such as search by columnNames "
+                      + "pass q=columnNames:address, for searching deleted entities, use q=deleted:true <br/>"
+                      + "4. For searching by tag names pass q=tags.tagFQN:user.email <br/>"
+                      + "5. When user selects a filter pass q=query_text AND tags.tagFQN:user.email "
                       + "AND platform:MYSQL <br/>"
-                      + "6. Search with multiple values of same filter q=tags:user.email "
-                      + "AND tags:user.address <br/>"
-                      + " logic operators such as AND and OR must be in uppercase ",
+                      + "6. Search with multiple values of same filter q=tags.tagFQN:user.email "
+                      + "AND tags.tagFQN:user.address <br/>"
+                      + "NOTE: logic operators such as AND, OR and NOT must be in uppercase ",
               required = true)
           @DefaultValue("*")
           @QueryParam("q")

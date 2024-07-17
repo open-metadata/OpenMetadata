@@ -30,7 +30,6 @@ from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityHistory import EntityVersionHistory
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.encoders import show_secrets_encoder
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
@@ -224,6 +223,8 @@ class OpenMetadata(
             class_name.lower()
             .replace("glossaryterm", "glossaryTerm")
             .replace("dashboarddatamodel", "dashboardDataModel")
+            .replace("apiendpoint", "apiEndpoint")
+            .replace("apicollection", "apiCollection")
             .replace("testsuite", "testSuite")
             .replace("testdefinition", "testDefinition")
             .replace("testcase", "testCase")
@@ -264,10 +265,10 @@ class OpenMetadata(
             )
 
         fn = getattr(self.client, method)
-        resp = fn(self.get_suffix(entity), data=data.json(encoder=show_secrets_encoder))
+        resp = fn(self.get_suffix(entity), data=data.model_dump_json())
         if not resp:
             raise EmptyPayloadException(
-                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.json()}"
+                f"Got an empty response when trying to PUT to {self.get_suffix(entity)}, {data.model_dump_json()}"
             )
         return entity_class(**resp)
 
@@ -445,8 +446,7 @@ class OpenMetadata(
             params=params,
             skip_on_failure=skip_on_failure,
         )
-        for elem in entity_list.entities:
-            yield elem
+        yield from entity_list.entities
 
         after = entity_list.after
         while after:
@@ -458,8 +458,7 @@ class OpenMetadata(
                 after=after,
                 skip_on_failure=skip_on_failure,
             )
-            for elem in entity_list.entities:
-                yield elem
+            yield from entity_list.entities
             after = entity_list.after
 
     def list_versions(

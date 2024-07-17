@@ -24,6 +24,7 @@ import {
   ROUTES,
   VALIDATION_MESSAGES,
 } from '../../constants/constants';
+import { ClientType } from '../../generated/configuration/authenticationConfiguration';
 import { EntityReference } from '../../generated/entity/type';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createUser } from '../../rest/userAPI';
@@ -41,11 +42,13 @@ const SignUp = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const {
-    setIsSigningIn,
+    setIsSigningUp,
     jwtPrincipalClaims = [],
+    jwtPrincipalClaimsMapping = [],
     authorizerConfig,
     updateCurrentUser,
     newUser,
+    authConfig,
   } = useApplicationStore();
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -67,7 +70,7 @@ const SignUp = () => {
       if (urlPathname) {
         setUrlPathnameExpiryAfterRoute(urlPathname);
       }
-      setIsSigningIn(false);
+      setIsSigningUp(false);
       history.push(ROUTES.HOME);
     } catch (error) {
       showErrorToast(
@@ -80,6 +83,32 @@ const SignUp = () => {
       setLoading(false);
     }
   };
+
+  const clientType = authConfig?.clientType ?? ClientType.Public;
+
+  const initialValues = useMemo(
+    () => ({
+      displayName: newUser?.name ?? '',
+      ...(clientType === ClientType.Public
+        ? getNameFromUserData(
+            newUser as UserProfile,
+            jwtPrincipalClaims,
+            authorizerConfig?.principalDomain,
+            jwtPrincipalClaimsMapping
+          )
+        : {
+            name: newUser?.name ?? '',
+            email: newUser?.email ?? '',
+          }),
+    }),
+    [
+      clientType,
+      authorizerConfig?.principalDomain,
+      jwtPrincipalClaims,
+      jwtPrincipalClaimsMapping,
+      newUser,
+    ]
+  );
 
   return (
     <div className="flex-center w-full h-full">
@@ -111,14 +140,7 @@ const SignUp = () => {
 
         <Form
           data-testid="create-user-form"
-          initialValues={{
-            displayName: newUser?.name || '',
-            ...getNameFromUserData(
-              newUser as UserProfile,
-              jwtPrincipalClaims,
-              authorizerConfig?.principalDomain
-            ),
-          }}
+          initialValues={initialValues}
           layout="vertical"
           validateMessages={VALIDATION_MESSAGES}
           onFinish={handleCreateNewUser}>

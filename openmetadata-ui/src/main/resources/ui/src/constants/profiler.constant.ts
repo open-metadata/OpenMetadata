@@ -12,8 +12,9 @@
  */
 
 import { t } from 'i18next';
-import { capitalize, map, values } from 'lodash';
+import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
+import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -23,6 +24,7 @@ import {
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';
+import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestPlatform } from '../generated/tests/testDefinition';
 import { TestCaseType } from '../rest/testAPI';
@@ -416,6 +418,17 @@ export const TEST_CASE_STATUS_OPTION = [
   })),
 ];
 
+export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
+  table: 'tableFqn',
+  platform: 'testPlatforms',
+  type: 'testCaseType',
+  status: 'testCaseStatus',
+  lastRun: 'lastRunRange',
+  tier: 'tier',
+  tags: 'tags',
+  service: 'serviceName',
+};
+
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
   label: value,
   value: value,
@@ -427,4 +440,27 @@ export const INITIAL_COLUMN_METRICS_VALUE = {
   mathMetrics: INITIAL_MATH_METRIC_VALUE,
   sumMetrics: INITIAL_SUM_METRIC_VALUE,
   quartileMetrics: INITIAL_QUARTILE_METRIC_VALUE,
+};
+
+export const PROFILER_METRICS_TYPE_OPTIONS = [
+  {
+    label: 'All',
+    key: 'all',
+    value: 'all',
+    children: values(MetricType).map((value) => ({
+      label: startCase(value),
+      key: value,
+      value,
+    })),
+  },
+];
+
+export const DEFAULT_PROFILER_CONFIG_VALUE = {
+  metricConfiguration: [
+    {
+      dataType: undefined,
+      metrics: undefined,
+      disabled: false,
+    },
+  ],
 };

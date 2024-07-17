@@ -24,6 +24,7 @@ import {
   cloneDeep,
   isEmpty,
   isEqual,
+  isObject,
   isUndefined,
   toString,
   uniqBy,
@@ -35,6 +36,7 @@ import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -59,7 +61,7 @@ import {
   TagLabelWithStatus,
   VersionEntityTypes,
 } from './EntityVersionUtils.interface';
-import { isValidJSONString } from './StringsUtils';
+import { getJSONFromString, isValidJSONString } from './StringsUtils';
 import { getTagsWithoutTier, getTierTags } from './TableUtils';
 
 export const getChangedEntityName = (diffObject?: EntityDiffProps) =>
@@ -182,6 +184,42 @@ export const getTextDiff = (
   });
 
   return result.join('');
+};
+
+const getCustomPropertyValue = (value: unknown) => {
+  if (isObject(value)) {
+    return JSON.stringify(value);
+  }
+
+  return toString(value);
+};
+
+export const getTextDiffCustomProperty = (
+  fieldName: string,
+  oldText: string,
+  newText: string
+) => {
+  if (oldText && newText) {
+    return `* ${t('message.custom-property-is-set-to-message', {
+      fieldName,
+    })} **${getTextDiff(oldText, newText)}**`;
+  }
+
+  const resultArray: unknown = getJSONFromString(oldText || newText);
+
+  if (Array.isArray(resultArray)) {
+    const result = resultArray.map((diff: Record<string, string>) => {
+      const objKeys = Object.keys(diff);
+
+      return `* ${t('message.custom-property-is-set-to-message', {
+        fieldName: objKeys[0],
+      })} **${getCustomPropertyValue(diff[objKeys[0]])}** \n`;
+    });
+
+    return result.join('');
+  }
+
+  return '';
 };
 
 export const getEntityVersionByField = (
@@ -886,3 +924,33 @@ export const getCommonDiffsFromVersionData = (
     currentVersionData.description
   ),
 });
+
+export const renderVersionButton = (
+  version: string,
+  current: string,
+  versionHandler: (version: string) => void,
+  className?: string
+) => {
+  const currV = JSON.parse(version);
+
+  const majorVersionChecks = () => {
+    return isMajorVersion(
+      parseFloat(currV?.changeDescription?.previousVersion)
+        .toFixed(1)
+        .toString(),
+      parseFloat(currV?.version).toFixed(1).toString()
+    );
+  };
+
+  return (
+    <Fragment key={currV.version}>
+      <VersionButton
+        className={className}
+        isMajorVersion={majorVersionChecks()}
+        selected={toString(currV.version) === current}
+        version={currV}
+        onVersionSelect={versionHandler}
+      />
+    </Fragment>
+  );
+};

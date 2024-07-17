@@ -26,6 +26,7 @@
       "enum": [
         "Regular",
         "External",
+        "Dynamic",
         "View",
         "SecureView",
         "MaterializedView",
@@ -41,6 +42,9 @@
         },
         {
           "name": "External"
+        },
+        {
+          "name": "Dynamic"
         },
         {
           "name": "View"
@@ -150,7 +154,8 @@
         "QUANTILE_STATE",
         "AGG_STATE",
         "BITMAP",
-        "UINT"
+        "UINT",
+        "BIT"
       ]
     },
     "constraint": {
@@ -528,6 +533,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -548,6 +556,9 @@
             },
             {
               "$ref": "../../type/basic.json#/definitions/date"
+            },
+            {
+              "type": "string"
             }
           ]
         },
@@ -814,18 +825,22 @@
       "additionalProperties": false
     },
     "modelType": {
-      "$comment": "Currently only DBT model type is supported",
+      "$comment": "Currently only DBT and DDL model type is supported",
       "enum": [
-        "DBT"
+        "DBT",
+        "DDL"
       ],
       "javaEnums": [
         {
           "name": "DBT"
+        },
+        {
+          "name": "DDL"
         }
       ]
     },
     "dataModel": {
-      "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
+      "description": "This captures information about how the table is modeled. Currently only DBT and DDL model is supported.",
       "type": "object",
       "javaType": "org.openmetadata.schema.type.DataModel",
       "properties": {
@@ -885,15 +900,14 @@
         }
       },
       "required": [
-        "modelType",
-        "sql"
+        "modelType"
       ],
       "additionalProperties": false
     },
     "fileFormat": {
       "description": "File format in case of file/datalake tables.",
       "type": "string",
-      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip"]
+      "enum": ["csv", "tsv", "avro", "parquet", "json", "json.gz", "json.zip", "jsonl", "jsonl.gz", "jsonl.zip"]
     }
   },
   "properties": {
@@ -981,8 +995,8 @@
       "description": "Reference to the Location that contains this table.",
       "$ref": "../../type/entityReference.json"
     },
-    "viewDefinition": {
-      "description": "View Definition in SQL. Applies to TableType.View only.",
+    "schemaDefinition": {
+      "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery"
     },
     "tags": {
@@ -1031,7 +1045,7 @@
     },
     "testSuite": {
       "description": "Executable test suite associated with this table",
-      "$ref": "../../tests/testSuite.json"
+      "$ref": "../../type/entityReference.json"
     },
     "dataModel": {
       "description": "This captures information about how the table is modeled. Currently only DBT model is supported.",
@@ -1071,6 +1085,7 @@
       "$ref" : "#/definitions/fileFormat"
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {

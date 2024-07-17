@@ -30,6 +30,7 @@ import {
   SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
+import { useExploreStore } from '../../components/Explore/useExplore.store';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
@@ -50,14 +51,17 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { Aggregations, SearchResponse } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { getCountBadge } from '../../utils/CommonUtils';
-import { findActiveSearchIndex } from '../../utils/Explore.utils';
 import { getCombinedQueryFilterObject } from '../../utils/ExplorePage/ExplorePageUtils';
+import {
+  extractTermKeys,
+  findActiveSearchIndex,
+} from '../../utils/ExploreUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
+  ExploreSidebarTab,
   QueryFieldInterface,
-  QueryFieldValueInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
@@ -76,6 +80,8 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
+
+  const { sidebarActiveTab, setSidebarActiveTab } = useExploreStore();
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
     useState<boolean>(false);
@@ -157,17 +163,19 @@ const ExplorePageV1: FunctionComponent = () => {
 
     // Getting the filters that can be common for all the Entities
     const must = mustField.filter((filterCategory: QueryFieldInterface) => {
-      const shouldField: QueryFieldValueInterface[] = get(
+      const shouldField: QueryFieldInterface[] = get(
         filterCategory,
         'bool.should',
         []
       );
 
+      const terms = extractTermKeys(shouldField);
+
       // check if the filter category is present in the common filters array
       const isCommonFieldPresent =
         !isEmpty(shouldField) &&
-        COMMON_FILTERS_FOR_DIFFERENT_TABS.find(
-          (value) => value === Object.keys(shouldField[0].term)[0]
+        COMMON_FILTERS_FOR_DIFFERENT_TABS.find((value) =>
+          terms.includes(value)
         );
 
       return isCommonFieldPresent;
@@ -229,6 +237,10 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
+    if (sidebarActiveTab === ExploreSidebarTab.TREE) {
+      return SearchIndex.DATA_ASSET;
+    }
+
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
@@ -241,7 +253,7 @@ const ExplorePageV1: FunctionComponent = () => {
     return !isNil(tabInfo)
       ? (tabInfo[0] as ExploreSearchIndex)
       : SearchIndex.TABLE;
-  }, [tab, searchHitCounts]);
+  }, [tab, searchHitCounts, sidebarActiveTab]);
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
@@ -348,51 +360,57 @@ const ExplorePageV1: FunctionComponent = () => {
     );
 
     setIsLoading(true);
-    Promise.all([
-      searchQuery({
-        query: !isEmpty(searchQueryParam)
-          ? escapeESReservedCharacters(searchQueryParam)
-          : '',
-        searchIndex,
-        queryFilter: combinedQueryFilter,
-        sortField: sortValue,
-        sortOrder: sortOrder,
-        pageNumber: page,
-        pageSize: size,
-        includeDeleted: showDeleted,
-      })
-        .then((res) => res)
-        .then((res) => {
-          setSearchResults(res);
-          setUpdatedAggregations(res.aggregations);
-        }),
-      searchQuery({
-        query: escapeESReservedCharacters(searchQueryParam),
-        pageNumber: 0,
-        pageSize: 0,
-        queryFilter: combinedQueryFilter,
-        searchIndex: SearchIndex.ALL,
-        includeDeleted: showDeleted,
-        trackTotalHits: true,
-        fetchSource: false,
-        filters: '',
-      }).then((res) => {
-        const buckets = res.aggregations['entityType'].buckets;
-        const counts: Record<string, number> = {};
 
-        buckets.forEach((item) => {
-          const searchIndexKey =
-            item && EntityTypeSearchIndexMapping[item.key as EntityType];
+    const searchAPICall = searchQuery({
+      query: !isEmpty(searchQueryParam)
+        ? escapeESReservedCharacters(searchQueryParam)
+        : '',
+      searchIndex,
+      queryFilter: combinedQueryFilter,
+      sortField: sortValue,
+      sortOrder: sortOrder,
+      pageNumber: page,
+      pageSize: size,
+      includeDeleted: showDeleted,
+    }).then((res) => {
+      setSearchResults(res as SearchResponse<ExploreSearchIndex>);
+      setUpdatedAggregations(res.aggregations);
+    });
 
-          if (
-            TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)
-          ) {
-            counts[searchIndexKey ?? ''] = item.doc_count;
-          }
-        });
-        setSearchHitCounts(counts as SearchHitCounts);
-      }),
-    ])
+    const countAPICall = searchQuery({
+      query: escapeESReservedCharacters(searchQueryParam),
+      pageNumber: 0,
+      pageSize: 0,
+      queryFilter: combinedQueryFilter,
+      searchIndex: SearchIndex.ALL,
+      includeDeleted: showDeleted,
+      trackTotalHits: true,
+      fetchSource: false,
+      filters: '',
+    }).then((res) => {
+      const buckets = res.aggregations['entityType'].buckets;
+      const counts: Record<string, number> = {};
+
+      buckets.forEach((item) => {
+        const searchIndexKey =
+          item && EntityTypeSearchIndexMapping[item.key as EntityType];
+
+        if (
+          TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)
+        ) {
+          counts[searchIndexKey ?? ''] = item.doc_count;
+        }
+      });
+      setSearchHitCounts(counts as SearchHitCounts);
+    });
+
+    const apiCalls = [searchAPICall];
+
+    if (sidebarActiveTab !== ExploreSidebarTab.TREE) {
+      apiCalls.push(countAPICall);
+    }
+
+    Promise.all(apiCalls)
       .catch((error) => {
         if (
           error.response?.data.message.includes(FAILED_TO_FIND_INDEX_ERROR) ||
@@ -403,9 +421,12 @@ const ExplorePageV1: FunctionComponent = () => {
           showErrorToast(error);
         }
       })
-
       .finally(() => setIsLoading(false));
   };
+
+  useEffect(() => {
+    setSidebarActiveTab(ExploreSidebarTab.ASSETS);
+  }, []);
 
   useEffect(() => {
     if (isTourOpen) {

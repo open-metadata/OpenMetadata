@@ -20,7 +20,7 @@ import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
 from sqlalchemy.engine.reflection import Inspector
-from sqlparse.sql import Function, Identifier
+from sqlparse.sql import Function, Identifier, Token
 
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
@@ -44,7 +44,11 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -90,7 +94,9 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_foreign_keys,
     get_pk_constraint,
     get_schema_columns,
+    get_schema_foreign_keys,
     get_table_comment,
+    get_table_ddl,
     get_table_names,
     get_table_names_reflection,
     get_unique_constraints,
@@ -107,7 +113,7 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import get_all_table_comments
+from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 ischema_names["VARIANT"] = VARIANT
@@ -136,6 +142,9 @@ SnowflakeDialect._current_database_schema = (  # pylint: disable=protected-acces
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
 SnowflakeDialect.get_columns = get_columns
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
+SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
@@ -181,8 +190,8 @@ class SnowflakeSource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SnowflakeConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(
                 f"Expected SnowflakeConnection, but got {connection}"
@@ -280,7 +289,7 @@ class SnowflakeSource(
             yield row[1]
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.__root__.config.database
+        configured_db = self.config.serviceConnection.root.config.database
         if configured_db:
             self.set_inspector(configured_db)
             self.set_session_query_tag()
@@ -321,6 +330,21 @@ class SnowflakeSource(
                         f"Error trying to connect to database {new_database}: {exc}"
                     )
 
+    def __clean_append(self, token: Token, result_list: List) -> None:
+        """
+        Appends the real name of the given token to the result list if it exists.
+
+        Args:
+            token (Token): The token whose real name is to be appended.
+            result_list (List): The list to which the real name will be appended.
+
+        Returns:
+            None
+        """
+        name = token.get_real_name()
+        if name is not None:
+            result_list.append(name)
+
     def __get_identifier_from_function(self, function_token: Function) -> List:
         identifiers = []
         for token in function_token.get_parameters():
@@ -328,7 +352,7 @@ class SnowflakeSource(
                 # get column names from nested functions
                 identifiers.extend(self.__get_identifier_from_function(token))
             elif isinstance(token, Identifier):
-                identifiers.append(token.get_real_name())
+                self.__clean_append(token, identifiers)
         return identifiers
 
     def parse_column_name_from_expr(self, cluster_key_expr: str) -> Optional[List[str]]:
@@ -342,7 +366,7 @@ class SnowflakeSource(
                 if isinstance(token, Function):
                     result.extend(self.__get_identifier_from_function(token))
                 elif isinstance(token, Identifier):
-                    result.append(token.get_real_name())
+                    self.__clean_append(token, result)
             return result
         except Exception as err:
             logger.debug(traceback.format_exc())
@@ -428,8 +452,10 @@ class SnowflakeSource(
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.get().database_service, *fqn_elements
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, *fqn_elements
+                        )
                     ),
                     tags=[row[1]],
                     classification_name=row[0],
@@ -444,6 +470,7 @@ class SnowflakeSource(
             TableType.Regular: {},
             TableType.External: {"external_tables": True},
             TableType.Transient: {"include_transient_tables": True},
+            TableType.Dynamic: {"dynamic_tables": True},
         }
 
         snowflake_tables = self.inspector.get_table_names(
@@ -486,6 +513,10 @@ class SnowflakeSource(
 
         table_list.extend(
             self._get_table_names_and_types(schema_name, table_type=TableType.External)
+        )
+
+        table_list.extend(
+            self._get_table_names_and_types(schema_name, table_type=TableType.Dynamic)
         )
 
         if self.service_connection.includeTransientTables:
@@ -613,7 +644,7 @@ class SnowflakeSource(
                 )
             ).all()
             for row in results:
-                stored_procedure = SnowflakeStoredProcedure.parse_obj(dict(row))
+                stored_procedure = SnowflakeStoredProcedure.model_validate(dict(row))
                 if stored_procedure.definition is None:
                     logger.debug(
                         f"Missing ownership permissions on procedure {stored_procedure.name}."
@@ -651,7 +682,7 @@ class SnowflakeSource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 description=stored_procedure.comment,
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language),
@@ -665,7 +696,7 @@ class SnowflakeSource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    __root__=self._get_source_url_root(
+                    self._get_source_url_root(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                     )

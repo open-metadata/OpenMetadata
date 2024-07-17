@@ -55,6 +55,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -63,6 +64,7 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -336,7 +338,7 @@ export const DataAssetsHeader = ({
 
   return (
     <>
-      <Row gutter={[8, 12]}>
+      <Row data-testid="data-assets-header" gutter={[8, 12]}>
         {/* Heading Left side */}
         <Col className="self-center" span={17}>
           <Row gutter={[16, 12]}>
@@ -379,9 +381,13 @@ export const DataAssetsHeader = ({
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space data-testid="header-tier-container">
                     {tier ? (
-                      <span className="font-medium text-xs" data-testid="Tier">
-                        {getEntityName(tier)}
-                      </span>
+                      <TagsV1
+                        startWith={TAG_START_WITH.SOURCE_ICON}
+                        tag={tier}
+                        tagProps={{
+                          'data-testid': 'Tier',
+                        }}
+                      />
                     ) : (
                       <span className="font-medium text-xs" data-testid="Tier">
                         {t('label.no-entity', {

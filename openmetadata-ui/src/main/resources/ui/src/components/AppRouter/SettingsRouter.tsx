@@ -44,6 +44,7 @@ import AddRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage
 import EditRulePage from '../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage';
 import PoliciesDetailPage from '../../pages/PoliciesPage/PoliciesDetailPage/PoliciesDetailPage';
 import PoliciesListPage from '../../pages/PoliciesPage/PoliciesListPage/PoliciesListPage';
+import ProfilerConfigurationPage from '../../pages/ProfilerConfigurationPage/ProfilerConfigurationPage';
 import AddRolePage from '../../pages/RolesPage/AddRolePage/AddRolePage';
 import RolesDetailPage from '../../pages/RolesPage/RolesDetailPage/RolesDetailPage';
 import RolesListPage from '../../pages/RolesPage/RolesListPage/RolesListPage';
@@ -286,6 +287,15 @@ const SettingsRouter = () => {
         path={getSettingPath(
           GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.APPEARANCE
+        )}
+      />
+      <AdminProtectedRoute
+        exact
+        component={ProfilerConfigurationPage}
+        hasPermission={false}
+        path={getSettingPath(
+          GlobalSettingsMenuCategory.PREFERENCES,
+          GlobalSettingOptions.PROFILER_CONFIGURATION
         )}
       />
       <AdminProtectedRoute

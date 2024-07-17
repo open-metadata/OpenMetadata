@@ -39,7 +39,11 @@ def ignore_ssl_init(_: Optional[SslConfig]) -> bool:
 
 @ssl_verification_registry.add(VerifySSL.validate.value)
 def validate_ssl_init(ssl_config: Optional[SslConfig]) -> str:
-    return ssl_config.__root__.certificatePath
+    if ssl_config is None:
+        raise InvalidSSLVerificationException(
+            "You have Verify SSL but the SSL Config is missing. Make sure to inform the CA Certificate path."
+        )
+    return ssl_config.root.caCertificate.get_secret_value()
 
 
 def get_verify_ssl_fn(verify_ssl: VerifySSL) -> Callable:

@@ -14,6 +14,9 @@ Base class for ingesting mlmodel services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createMlModel import CreateMlModelRequest
 from metadata.generated.schema.entity.data.mlmodel import (
     MlFeature,
@@ -59,7 +62,9 @@ class MlModelServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -74,7 +79,9 @@ class MlModelServiceTopology(ServiceTopology):
         children=["mlmodel"],
         post_process=["mark_mlmodels_as_deleted"],
     )
-    mlmodel = TopologyNode(
+    mlmodel: Annotated[
+        TopologyNode, Field(description="ML Model Processing Node")
+    ] = TopologyNode(
         producer="get_mlmodels",
         stages=[
             NodeStage(
@@ -97,7 +104,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: MlModelServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: MlModelConnection.__fields__["config"].type_
+    service_connection: MlModelConnection.model_fields["config"].annotation
 
     topology = MlModelServiceTopology()
     context = TopologyContextManager(topology)
@@ -111,7 +118,7 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: MlModelServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -190,8 +197,8 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
         mlmodel_fqn = fqn.build(
             self.metadata,
             entity_type=MlModel,
-            service_name=mlmodel_request.service.__root__,
-            mlmodel_name=mlmodel_request.name.__root__,
+            service_name=mlmodel_request.service.root,
+            mlmodel_name=mlmodel_request.name.root,
         )
 
         self.mlmodel_source_state.add(mlmodel_fqn)

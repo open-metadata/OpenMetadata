@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 from functools import lru_cache
 from typing import Optional, Type
 
-from metadata.generated.schema.entity.teams.team import Team
+from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import T
@@ -127,7 +127,10 @@ class OMetaUserMixin:
         )
         if maybe_user:
             return EntityReference(
-                id=maybe_user.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[User.__name__]
+                id=maybe_user.id.root,
+                type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                name=maybe_user.name.root,
+                displayName=maybe_user.displayName,
             )
 
         maybe_team = self._search_by_email(
@@ -135,7 +138,10 @@ class OMetaUserMixin:
         )
         if maybe_team:
             return EntityReference(
-                id=maybe_team.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__]
+                id=maybe_team.id.root,
+                type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                name=maybe_team.name.root,
+                displayName=maybe_team.displayName,
             )
 
         return None
@@ -147,6 +153,7 @@ class OMetaUserMixin:
         from_count: int = 0,
         size: int = 1,
         fields: Optional[list] = None,
+        is_owner: bool = False,
     ) -> Optional[EntityReference]:
         """
         Get a User or Team Entity Reference by searching by its name
@@ -156,15 +163,24 @@ class OMetaUserMixin:
         )
         if maybe_user:
             return EntityReference(
-                id=maybe_user.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[User.__name__]
+                id=maybe_user.id.root,
+                type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
+                name=maybe_user.name.root,
+                displayName=maybe_user.displayName,
             )
 
         maybe_team = self._search_by_name(
             entity=Team, name=name, from_count=from_count, size=size, fields=fields
         )
         if maybe_team:
+            # if is_owner is True, we only want to return the team if it is a group
+            if is_owner and maybe_team.teamType != TeamType.Group:
+                return None
             return EntityReference(
-                id=maybe_team.id.__root__, type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__]
+                id=maybe_team.id.root,
+                type=ENTITY_REFERENCE_TYPE_MAP[Team.__name__],
+                name=maybe_team.name.root,
+                displayName=maybe_team.displayName,
             )
 
         return None

@@ -11,28 +11,27 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Route, Switch, useLocation } from 'react-router-dom';
+import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
-import AppContainer from '../../components/AppContainer/AppContainer';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import PageNotFound from '../../pages/PageNotFound/PageNotFound';
+import SignUpPage from '../../pages/SignUp/SignUpPage';
+import AppContainer from '../AppContainer/AppContainer';
+import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
-import withSuspenseFallback from './withSuspenseFallback';
-
-const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('../../pages/PageNotFound/PageNotFound'))
-);
 
 const AppRouter = () => {
   const location = useLocation();
 
   // web analytics instance
   const analytics = useAnalytics();
+  const { currentUser } = useApplicationStore();
 
-  const { isAuthenticated } = useApplicationStore();
+  const { isAuthenticated, isApplicationLoading } = useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -70,10 +69,24 @@ const AppRouter = () => {
     return () => targetNode.removeEventListener('click', handleClickEvent);
   }, [handleClickEvent]);
 
+  /**
+   * isApplicationLoading is true when the application is loading in AuthProvider
+   * and is false when the application is loaded.
+   * If the application is loading, show the loader.
+   * If the user is authenticated, show the AppContainer.
+   * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+   * */
+  if (isApplicationLoading) {
+    return <Loader fullScreen />;
+  }
+
   return (
     <Switch>
-      {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
+        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
+      </Route>
+      {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
     </Switch>
   );
 };

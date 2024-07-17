@@ -27,6 +27,7 @@ import {
   ENTITY_REFERENCE_OPTIONS,
   PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
   PROPERTY_TYPES_WITH_FORMAT,
+  SUPPORTED_FORMAT_MAP,
 } from '../../../../constants/CustomProperty.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import { CUSTOM_PROPERTY_NAME_REGEX } from '../../../../constants/regex.constants';
@@ -48,7 +49,6 @@ import {
   getTypeByFQN,
   getTypeListByCategory,
 } from '../../../../rest/metadataTypeAPI';
-import { isValidDateFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { getSettingOptionByEntityType } from '../../../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
@@ -96,32 +96,38 @@ const AddCustomProperty = () => {
   const propertyTypeOptions = useMemo(() => {
     return map(propertyTypes, (type) => ({
       key: type.name,
-      label: startCase(type.displayName ?? type.name),
+      // Remove -cp from the name and convert to start case
+      label: startCase((type.displayName ?? type.name).replace(/-cp/g, '')),
       value: type.id,
     }));
   }, [propertyTypes]);
 
-  const { hasEnumConfig, hasFormatConfig, hasEntityReferenceConfig } =
-    useMemo(() => {
-      const watchedOption = propertyTypeOptions.find(
-        (option) => option.value === watchedPropertyType
-      );
-      const watchedOptionKey = watchedOption?.key ?? '';
+  const {
+    hasEnumConfig,
+    hasFormatConfig,
+    hasEntityReferenceConfig,
+    watchedOption,
+  } = useMemo(() => {
+    const watchedOption = propertyTypeOptions.find(
+      (option) => option.value === watchedPropertyType
+    );
+    const watchedOptionKey = watchedOption?.key ?? '';
 
-      const hasEnumConfig = watchedOptionKey === 'enum';
+    const hasEnumConfig = watchedOptionKey === 'enum';
 
-      const hasFormatConfig =
-        PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
+    const hasFormatConfig =
+      PROPERTY_TYPES_WITH_FORMAT.includes(watchedOptionKey);
 
-      const hasEntityReferenceConfig =
-        PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedOptionKey);
+    const hasEntityReferenceConfig =
+      PROPERTY_TYPES_WITH_ENTITY_REFERENCE.includes(watchedOptionKey);
 
-      return {
-        hasEnumConfig,
-        hasFormatConfig,
-        hasEntityReferenceConfig,
-      };
-    }, [watchedPropertyType, propertyTypeOptions]);
+    return {
+      hasEnumConfig,
+      hasFormatConfig,
+      hasEntityReferenceConfig,
+      watchedOption,
+    };
+  }, [watchedPropertyType, propertyTypeOptions]);
 
   const fetchPropertyType = async () => {
     try {
@@ -325,7 +331,13 @@ const AddCustomProperty = () => {
     rules: [
       {
         validator: (_, value) => {
-          if (!isValidDateFormat(value)) {
+          const propertyName = watchedOption?.key ?? '';
+          const supportedFormats =
+            SUPPORTED_FORMAT_MAP[
+              propertyName as keyof typeof SUPPORTED_FORMAT_MAP
+            ];
+
+          if (!supportedFormats.includes(value)) {
             return Promise.reject(
               t('label.field-invalid', {
                 field: t('label.format'),
@@ -415,7 +427,9 @@ const AddCustomProperty = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: firstPanelChildren,
         minWidth: 700,
         flex: 0.7,
@@ -425,13 +439,9 @@ const AddCustomProperty = () => {
       })}
       secondPanel={{
         children: secondPanelChildren,
-        className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

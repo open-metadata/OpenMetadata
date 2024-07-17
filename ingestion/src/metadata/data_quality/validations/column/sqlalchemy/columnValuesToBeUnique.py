@@ -40,7 +40,7 @@ class ColumnValuesToBeUniqueValidator(
             Column: column
         """
         return self.get_column_name(
-            self.test_case.entityLink.__root__,
+            self.test_case.entityLink.root,
             inspect(self.runner.table).c,
         )
 
@@ -63,7 +63,7 @@ class ColumnValuesToBeUniqueValidator(
         )  # type: ignore
 
         try:
-            self.value = dict(self.runner.dispatch_query_select_first(count, unique_count.subquery("uniqueCount")))  # type: ignore
+            self.value = dict(self.runner.dispatch_query_select_first(count, unique_count.scalar_subquery().label("uniqueCount")))  # type: ignore
             res = self.value.get(Metrics.COUNT.name)
         except Exception as exc:
             raise SQLAlchemyError(exc)

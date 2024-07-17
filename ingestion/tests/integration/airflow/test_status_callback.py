@@ -16,6 +16,7 @@ from unittest import TestCase
 
 from pydantic import BaseModel
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from airflow_provider_openmetadata.lineage.status import add_status, get_dag_status
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -29,7 +30,6 @@ from ..integration_base import (
     get_create_entity,
     get_create_service,
     get_test_dag,
-    int_admin_ometa,
 )
 
 
@@ -65,7 +65,7 @@ class TestStatusCallback(TestCase):
         cls.metadata.create_or_update(create_service)
 
         create_pipeline = get_create_entity(
-            entity=Pipeline, name=cls.pipeline_name, reference=cls.service_name.__root__
+            entity=Pipeline, name=cls.pipeline_name, reference=cls.service_name.root
         )
         cls.pipeline: Pipeline = cls.metadata.create_or_update(create_pipeline)
 
@@ -77,8 +77,8 @@ class TestStatusCallback(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=PipelineService, fqn=cls.service_name.__root__
-            ).id.__root__
+                entity=PipelineService, fqn=cls.service_name.root
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -117,7 +117,7 @@ class TestStatusCallback(TestCase):
 
         now = datetime.now(timezone.utc)
 
-        dag = get_test_dag(self.pipeline_name.__root__)
+        dag = get_test_dag(self.pipeline_name.root)
 
         # Use the first tasks as operator we are processing in the callback
         operator = dag.tasks[0]

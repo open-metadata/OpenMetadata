@@ -47,6 +47,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
@@ -96,8 +102,8 @@ class TableauSource(DashboardServiceSource):
         metadata: OpenMetadata,
         pipeline_name: Optional[str] = None,
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: TableauConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: TableauConnection = config.serviceConnection.root.config
         if not isinstance(connection, TableauConnection):
             raise InvalidSourceException(
                 f"Expected TableauConnection, but got {connection}"
@@ -189,13 +195,16 @@ class TableauSource(DashboardServiceSource):
                     continue
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=data_model.id,
+                        name=EntityName(data_model.id),
                         displayName=data_model_name,
-                        service=self.context.get().dashboard_service,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                         dataModelType=DataModelType.TableauDataModel.value,
                         serviceType=DashboardServiceType.Tableau.value,
                         columns=self.get_column_info(data_model),
                         sql=self._get_datamodel_sql_query(data_model=data_model),
+                        owner=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
@@ -223,29 +232,35 @@ class TableauSource(DashboardServiceSource):
         """
         try:
             dashboard_url = (
-                f"{clean_uri(str(self.config.serviceConnection.__root__.config.hostPort))}"
+                f"{clean_uri(str(self.config.serviceConnection.root.config.hostPort))}"
                 f"/#{urlparse(dashboard_details.webpageUrl).fragment}/views"
             )
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.id,
+                name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.name,
-                description=dashboard_details.description,
+                description=Markdown(dashboard_details.description)
+                if dashboard_details.description
+                else None,
                 project=self.get_project_name(dashboard_details=dashboard_details),
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.get().dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
                     for chart in self.context.get().charts or []
                 ],
                 dataModels=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=DashboardDataModel,
-                        service_name=self.context.get().dashboard_service,
-                        data_model_name=data_model,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=DashboardDataModel,
+                            service_name=self.context.get().dashboard_service,
+                            data_model_name=data_model,
+                        )
                     )
                     for data_model in self.context.get().dataModels or []
                 ],
@@ -255,7 +270,7 @@ class TableauSource(DashboardServiceSource):
                     classification_name=TABLEAU_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                sourceUrl=dashboard_url,
+                sourceUrl=SourceUrl(dashboard_url),
                 service=self.context.get().dashboard_service,
                 owner=self.get_owner_ref(dashboard_details=dashboard_details),
             )
@@ -281,8 +296,8 @@ class TableauSource(DashboardServiceSource):
             return None
         for tbl_column in data_model_entity.columns:
             for child_column in tbl_column.children or []:
-                if column.lower() == child_column.name.__root__.lower():
-                    return child_column.fullyQualifiedName.__root__
+                if column.lower() == child_column.name.root.lower():
+                    return child_column.fullyQualifiedName.root
         return None
 
     def _get_column_lineage(
@@ -391,17 +406,19 @@ class TableauSource(DashboardServiceSource):
                 )
 
                 chart = CreateChartRequest(
-                    name=chart.id,
+                    name=EntityName(chart.id),
                     displayName=chart.name,
                     chartType=get_standard_chart_type(chart.sheetType),
-                    sourceUrl=chart_url,
+                    sourceUrl=SourceUrl(chart_url),
                     tags=get_tag_labels(
                         metadata=self.metadata,
                         tags=[tag.label for tag in chart.tags],
                         classification_name=TABLEAU_TAG_CATEGORY,
                         include_tags=self.source_config.includeTags,
                     ),
-                    service=self.context.get().dashboard_service,
+                    service=FullyQualifiedEntityName(
+                        self.context.get().dashboard_service
+                    ),
                 )
                 yield Either(right=chart)
             except Exception as exc:
@@ -450,7 +467,7 @@ class TableauSource(DashboardServiceSource):
             table_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,
-                service_name=db_service_entity.name.__root__,
+                service_name=db_service_entity.name.root,
                 schema_name=schema_name,
                 table_name=table_name,
                 database_name=database_name,

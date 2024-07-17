@@ -12,6 +12,8 @@
  */
 import { CloseOutlined } from '@ant-design/icons';
 import {
+  Button,
+  Form,
   Select,
   SelectProps,
   Space,
@@ -22,7 +24,14 @@ import {
 import { AxiosError } from 'axios';
 import { debounce, isEmpty, isUndefined, pick } from 'lodash';
 import { CustomTagProps } from 'rc-select/lib/BaseSelect';
-import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -34,6 +43,7 @@ import { getTagDisplay, tagRender } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import Loader from '../Loader/Loader';
+import './async-select-list.less';
 import {
   AsyncSelectListProps,
   SelectOption,
@@ -48,6 +58,8 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   filterOptions = [],
   optionClassName,
   tagType,
+  onCancel,
+  isSubmitLoading,
   ...props
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +71,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
   const selectedTagsRef = useRef<SelectOption[]>(initialOptions ?? []);
   const { t } = useTranslation();
   const [optionFilteredCount, setOptionFilteredCount] = useState(0);
+  const form = Form.useFormInstance();
 
   const getFilteredOptions = (data: SelectOption[]) => {
     if (isEmpty(filterOptions)) {
@@ -109,7 +122,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
 
   const tagOptions = useMemo(() => {
     const newTags = options
-      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}Tier`)) // To filter out Tier tags
+      .filter((tag) => !tag.label?.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)) // To filter out Tier tags
       .map((tag) => {
         const displayName = tag.data?.displayName;
         const parts = Fqn.split(tag.label);
@@ -169,6 +182,25 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
+      {onCancel && (
+        <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+          <Button
+            className="update-btn"
+            data-testid="saveAssociatedTag"
+            htmlType="submit"
+            loading={isSubmitLoading}
+            size="small"
+            onClick={() => form.submit()}>
+            {t('label.update')}
+          </Button>
+          <Button
+            data-testid="cancelAssociatedTag"
+            size="small"
+            onClick={onCancel}>
+            {t('label.cancel')}
+          </Button>
+        </Space>
+      )}
     </>
   );
 
@@ -258,10 +290,14 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
     onChange?.(selectedValues);
   };
 
+  useEffect(() => {
+    loadOptions('');
+  }, []);
+
   return (
     <Select
-      autoFocus
       showSearch
+      className="async-select-list"
       data-testid="tag-selector"
       dropdownRender={dropdownRender}
       filterOption={false}
@@ -270,13 +306,7 @@ const AsyncSelectList: FC<AsyncSelectListProps & SelectProps> = ({
       optionLabelProp="label"
       style={{ width: '100%' }}
       tagRender={customTagRender}
-      onBlur={() => {
-        setCurrentPage(1);
-        setSearchValue('');
-        setOptions([]);
-      }}
       onChange={handleChange}
-      onFocus={() => loadOptions('')}
       onInputKeyDown={(event) => {
         if (event.key === 'Backspace') {
           return event.stopPropagation();

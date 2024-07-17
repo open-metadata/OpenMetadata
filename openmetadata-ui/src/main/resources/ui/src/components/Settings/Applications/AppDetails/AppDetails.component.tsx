@@ -43,6 +43,7 @@ import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
@@ -93,6 +94,7 @@ const AppDetails = () => {
     isRunLoading: false,
     isSaveLoading: false,
   });
+  const { getResourceLimit } = useLimitStore();
   const UiSchema = applicationsClassBase.getJSONUISchema();
 
   const fetchAppDetails = useCallback(async () => {
@@ -152,6 +154,9 @@ const AppDetails = () => {
             ? t('message.app-disabled-successfully')
             : t('message.app-uninstalled-successfully')
         );
+
+        // Update current count when Create / Delete operation performed
+        await getResourceLimit('app', true, true);
 
         onBrowseAppsClick();
       }
@@ -332,7 +337,7 @@ const AppDetails = () => {
               ),
               key: ApplicationTabs.CONFIGURATION,
               children: (
-                <div className="p-lg">
+                <div className="m-auto max-width-md w-9/10 p-lg p-y-0">
                   <FormBuilder
                     hideCancelButton
                     useSelectWidget
@@ -382,11 +387,11 @@ const AppDetails = () => {
             {
               label: (
                 <TabsLabel
-                  id={ApplicationTabs.HISTORY}
-                  name={t('label.history')}
+                  id={ApplicationTabs.RECENT_RUNS}
+                  name={t('label.recent-run-plural')}
                 />
               ),
-              key: ApplicationTabs.HISTORY,
+              key: ApplicationTabs.RECENT_RUNS,
               children: (
                 <div className="p-lg">
                   <AppRunsHistory appData={appData} />

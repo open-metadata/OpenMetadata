@@ -36,9 +36,8 @@ import {
   SORT_ORDER,
 } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
-import { TestSummary } from '../../../../generated/entity/data/table';
 import { EntityReference } from '../../../../generated/entity/type';
-import { TestSuite } from '../../../../generated/tests/testCase';
+import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
@@ -59,7 +58,7 @@ import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
-import { DataQualitySearchParams } from '../../DataQuality.interface';
+import { TestSuiteSearchParams } from '../../DataQuality.interface';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
@@ -75,7 +74,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       search.startsWith('?') ? search.substring(1) : search
     );
 
-    return params as DataQualitySearchParams;
+    return params as TestSuiteSearchParams;
   }, [location]);
   const { searchValue, owner } = params;
   const selectedOwner = useMemo(
@@ -165,9 +164,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
         title: `${t('label.success')} %`,
         dataIndex: 'summary',
         key: 'success',
-        render: (value: TestSummary) => {
+        render: (value: TestSuite['summary']) => {
           const percent =
-            value.total && value.success ? value.success / value.total : 0;
+            value?.total && value?.success ? value.success / value.total : 0;
 
           return (
             <ProfilerProgressWidget
@@ -229,7 +228,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const handleSearchParam = (
     value: string,
-    key: keyof DataQualitySearchParams
+    key: keyof TestSuiteSearchParams
   ) => {
     history.push({
       search: QueryString.stringify({
@@ -280,13 +279,15 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   />
                 </Form.Item>
                 <Form.Item
-                  className="m-0 w-52"
+                  className="m-0"
                   label={t('label.owner')}
                   name="owner">
                   <UserTeamSelectableList
                     hasPermission
                     owner={selectedOwner}
-                    onUpdate={handleOwnerSelect}>
+                    onUpdate={(updatedUser) =>
+                      handleOwnerSelect(updatedUser as EntityReference)
+                    }>
                     <Select
                       data-testid="owner-select-filter"
                       open={false}

@@ -171,12 +171,13 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       try {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
-        const userId =
-          entityType === EntityType.USER
-            ? user
-            : feedFilterType === FeedFilter.ALL
-            ? undefined
-            : currentUser?.id;
+        let userId = undefined;
+
+        if (entityType === EntityType.USER) {
+          userId = user;
+        } else if (feedFilterType !== FeedFilter.ALL) {
+          userId = currentUser?.id;
+        }
 
         const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER && fqn
@@ -217,16 +218,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
     try {
       const res = await postFeedById(id, data);
-      const { id: responseId, posts } = res;
-      setEntityThread((pre) => {
-        return pre.map((thread) => {
-          if (thread.id === responseId) {
-            return { ...res, posts: posts?.slice(-3) };
-          } else {
-            return thread;
-          }
-        });
-      });
       setActiveThread(res);
     } catch (error) {
       showErrorToast(
@@ -340,11 +331,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       data: Operation[]
     ) => {
       if (isThread) {
-        updateThreadHandler(threadId, data).catch(() => {
+        await updateThreadHandler(threadId, data).catch(() => {
           // ignore since error is displayed in toast in the parent promise.
         });
       } else {
-        updatePostHandler(threadId, postId, data).catch(() => {
+        await updatePostHandler(threadId, postId, data).catch(() => {
           // ignore since error is displayed in toast in the parent promise.
         });
       }
@@ -352,7 +343,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     []
   );
 
-  const updateReactions = (
+  const updateReactions = async (
     post: Post,
     feedId: string,
     isThread: boolean,
@@ -387,7 +378,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       }
     );
 
-    updateFeed(feedId, post.id, isThread, patch).catch(() => {
+    await updateFeed(feedId, post.id, isThread, patch).catch(() => {
       // ignore since error is displayed in toast in the parent promise.
     });
   };
@@ -490,11 +481,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   return (
     <ActivityFeedContext.Provider value={activityFeedContextValues}>
       {children}
-      {isDrawerOpen && (
-        <>
-          <ActivityFeedDrawer open={isDrawerOpen} />
-        </>
-      )}
+      {isDrawerOpen && <ActivityFeedDrawer open={isDrawerOpen} />}
     </ActivityFeedContext.Provider>
   );
 };

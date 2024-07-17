@@ -168,7 +168,9 @@ class MetricFilter:
         if not isinstance(column, SQALikeColumn):
             mapper = converter_registry[service_type]
             sqa_to_om_types = mapper.map_sqa_to_om_types()
-            om_data_types: Optional[Set] = sqa_to_om_types.get(column.type, None)
+            om_data_types: Optional[Set] = sqa_to_om_types.get(
+                column.type.__class__, None
+            )
         else:
             om_data_types = {column.type}
 
@@ -227,7 +229,7 @@ class MetricFilter:
         metric_names = next(
             (
                 include_columns.metrics
-                for include_columns in columns_config
+                for include_columns in columns_config or []
                 if include_columns.columnName == column.name
             ),
             None,

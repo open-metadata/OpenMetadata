@@ -58,7 +58,8 @@ export const TableProfilerContext =
 export const TableProfilerProvider = ({
   children,
   permissions,
-  isTableDeleted,
+  table,
+  testCaseSummary,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
@@ -75,6 +76,8 @@ export const TableProfilerProvider = ({
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+
+  const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
   const {
     activeTab = isTourOpen
@@ -269,6 +272,8 @@ export const TableProfilerProvider = ({
       onDateRangeChange: handleDateRangeChange,
       dateRangeObject,
       testCasePaging,
+      table,
+      testCaseSummary,
     };
   }, [
     isTestsLoading,
@@ -282,6 +287,8 @@ export const TableProfilerProvider = ({
     customMetric,
     dateRangeObject,
     testCasePaging,
+    table,
+    testCaseSummary,
   ]);
 
   return (

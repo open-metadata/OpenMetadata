@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
+from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.time_utils import (
@@ -158,9 +159,7 @@ class TestGreatExpectationIntegration(TestCase):
         """
 
         service_id = str(
-            cls.metadata.get_by_name(
-                entity=DatabaseService, fqn="test_sqlite"
-            ).id.__root__
+            cls.metadata.get_by_name(entity=DatabaseService, fqn="test_sqlite").id.root
         )
 
         cls.metadata.delete(
@@ -217,7 +216,10 @@ class TestGreatExpectationIntegration(TestCase):
         )
 
         assert table_entity.testSuite
-        assert len(table_entity.testSuite.tests) == 1
+        test_suite: TestSuite = self.metadata.get_by_id(
+            entity=TestSuite, entity_id=table_entity.testSuite.id, fields=["tests"]
+        )
+        assert len(test_suite.tests) == 1
 
         test_case_results = self.metadata.get_test_case_results(
             test_case_fqn=TEST_CASE_FQN,

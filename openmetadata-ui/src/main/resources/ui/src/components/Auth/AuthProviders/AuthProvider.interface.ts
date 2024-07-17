@@ -52,8 +52,8 @@ export interface IAuthContext {
   setIsAuthenticated: (authenticated: boolean) => void;
   authConfig?: AuthenticationConfiguration;
   authorizerConfig?: AuthorizerConfiguration;
-  isSigningIn: boolean;
-  setIsSigningIn: (authenticated: boolean) => void;
+  isSigningUp: boolean;
+  setIsSigningUp: (isSigningUp: boolean) => void;
   onLoginHandler: () => void;
   onLogoutHandler: () => void;
   currentUser?: User;
@@ -64,6 +64,7 @@ export interface IAuthContext {
   updateAxiosInterceptors: () => void;
   updateCurrentUser: (user: User) => void;
   jwtPrincipalClaims: string[];
+  jwtPrincipalClaimsMapping: string[];
 }
 
 export type AuthenticationConfigurationWithScope =

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, render } from '@testing-library/react';
+import {
+  findByTestId,
+  findByText,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { ScheduleIntervalProps } from '../IngestionWorkflow.interface';
 import ScheduleInterval from './ScheduleInterval';
@@ -47,5 +52,43 @@ describe('Test ScheduleInterval component', () => {
     expect(cronEditor).toBeInTheDocument();
     expect(backButton).toBeInTheDocument();
     expect(deployButton).toBeInTheDocument();
+  });
+
+  it('should not render debug log switch when allowEnableDebugLog is false', () => {
+    render(<ScheduleInterval {...mockScheduleIntervalProps} />);
+
+    expect(screen.queryByTestId('enable-debug-log')).toBeNull();
+  });
+
+  it('should render enable debug log switch when allowEnableDebugLog is true', () => {
+    render(
+      <ScheduleInterval {...mockScheduleIntervalProps} allowEnableDebugLog />
+    );
+
+    expect(screen.getByTestId('enable-debug-log')).toBeInTheDocument();
+  });
+
+  it('debug log switch should be initially checked when debugLogInitialValue is true', () => {
+    render(
+      <ScheduleInterval
+        {...mockScheduleIntervalProps}
+        allowEnableDebugLog
+        debugLogInitialValue
+      />
+    );
+
+    expect(screen.getByTestId('enable-debug-log')).toHaveClass(
+      'ant-switch-checked'
+    );
+  });
+
+  it('debug log switch should not be initially checked when debugLogInitialValue is false', () => {
+    render(
+      <ScheduleInterval {...mockScheduleIntervalProps} allowEnableDebugLog />
+    );
+
+    expect(screen.getByTestId('enable-debug-log')).not.toHaveClass(
+      'ant-switch-checked'
+    );
   });
 });

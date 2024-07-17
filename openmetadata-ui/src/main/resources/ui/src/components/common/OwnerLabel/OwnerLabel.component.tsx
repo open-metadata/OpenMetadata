@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isNil } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
@@ -28,6 +28,9 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
+import './owner-label.less';
+
+import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 
 export const OwnerLabel = ({
   owner,
@@ -36,6 +39,7 @@ export const OwnerLabel = ({
   hasPermission,
   ownerDisplayName,
   placeHolder,
+  pills = false,
 }: {
   owner?: EntityReference;
   className?: string;
@@ -43,6 +47,7 @@ export const OwnerLabel = ({
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode;
   placeHolder?: string;
+  pills?: boolean;
 }) => {
   const displayName = getEntityName(owner);
   const { t } = useTranslation();
@@ -75,40 +80,98 @@ export const OwnerLabel = ({
         />
       </div>
     );
-  }, [owner, displayName]);
+  }, [owner, displayName, pills]);
 
-  return (
-    <div className="d-flex gap-2 items-center" data-testid="owner-label">
-      {profilePicture}
+  const ownerLink = useMemo(() => {
+    if (displayName) {
+      if (pills) {
+        return (
+          <div data-testid="owner-link">{ownerDisplayName ?? displayName}</div>
+        );
+      }
 
-      {displayName ? (
+      return (
         <Link
           className={classNames(
-            'text-primary font-medium text-xs no-underline',
+            'no-underline',
+            { 'font-medium text-xs text-primary ': !pills },
             className
           )}
           data-testid="owner-link"
           to={
-            owner?.type === 'team'
+            owner?.type === OwnerType.TEAM
               ? getTeamAndUserDetailsPath(owner?.name ?? '')
               : getUserPath(owner?.name ?? '')
           }>
           {ownerDisplayName ?? displayName}
         </Link>
-      ) : (
+      );
+    } else {
+      return (
         <Typography.Text
           className={classNames('font-medium text-xs', className)}
           data-testid="owner-link">
           {placeHolder ?? t('label.no-entity', { entity: t('label.owner') })}
         </Typography.Text>
-      )}
-      {onUpdate && (
-        <UserTeamSelectableList
-          hasPermission={Boolean(hasPermission)}
-          owner={owner}
-          onUpdate={onUpdate}
-        />
-      )}
-    </div>
-  );
+      );
+    }
+  }, [displayName, owner, ownerDisplayName, placeHolder, pills, className]);
+
+  const ownerContent = useMemo(() => {
+    return (
+      <div
+        className={classNames(
+          'd-inline-flex items-center',
+          { 'gap-2': !pills, 'owner-pills-content': pills },
+          { inherited: Boolean(owner?.inherited) },
+          className
+        )}
+        data-testid="owner-label">
+        <div className="owner-avatar-icon d-flex">{profilePicture}</div>
+        {ownerLink}
+
+        {pills && Boolean(owner?.inherited) && (
+          <Tooltip
+            title={t('label.inherited-entity', {
+              entity: t('label.user'),
+            })}>
+            <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+          </Tooltip>
+        )}
+
+        {onUpdate && (
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasPermission)}
+            owner={owner}
+            onUpdate={(updatedUser) => onUpdate(updatedUser as EntityReference)}
+          />
+        )}
+      </div>
+    );
+  }, [
+    onUpdate,
+    ownerLink,
+    hasPermission,
+    owner,
+    ownerDisplayName,
+    placeHolder,
+    pills,
+    className,
+  ]);
+
+  if (pills && displayName) {
+    return (
+      <Link
+        className="no-underline font-medium text-xs text-primary owner-link-pills"
+        to={
+          owner?.type === OwnerType.TEAM
+            ? getTeamAndUserDetailsPath(owner?.name ?? '')
+            : getUserPath(owner?.name ?? '')
+        }>
+        {ownerContent}
+      </Link>
+    );
+  }
+
+  return ownerContent;
 };

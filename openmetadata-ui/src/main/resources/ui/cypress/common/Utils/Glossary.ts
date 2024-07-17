@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import exp = require('constants');
 import { EntityType } from '../../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
@@ -20,6 +21,11 @@ export const assignGlossaryTerm = (
   endPoint: EntityType
 ) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addGlossaryTerm');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=glossary_term_search_index*`,
+    'searchGlossaryTerm'
+  );
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'
   ).click();
@@ -27,29 +33,34 @@ export const assignGlossaryTerm = (
   cy.get('[data-testid="tag-selector"] input')
     .should('be.visible')
     .type(glossaryTermName);
-
-  cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
-
-  // to close popup
-  cy.clickOutside();
+  verifyResponseStatusCode('@searchGlossaryTerm', 200);
 
   cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
-  ).should('be.visible');
+    `[data-testid="tag-${glossaryTermFQN}"] .ant-select-tree-checkbox`
+  ).click();
 
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get(`[data-testid="selected-tag-${glossaryTermFQN}"]`).should(
+    'be.visible'
+  );
+
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTermFQN}"]`
   ).should('be.visible');
 };
 
-export const udpateGlossaryTerm = (
+export const updateGlossaryTerm = (
   glossaryTermFQN: string,
   glossaryTermName: string,
   endPoint: EntityType
 ) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addGlossaryTerm');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=glossary_term_search_index*`,
+    'searchGlossaryTerm'
+  );
   cy.get(
     '[data-testid="entity-right-panel"]  [data-testid="glossary-container"] [data-testid="edit-button"]'
   ).click();
@@ -57,16 +68,14 @@ export const udpateGlossaryTerm = (
   cy.get('[data-testid="tag-selector"] input')
     .should('be.visible')
     .type(glossaryTermName);
+  verifyResponseStatusCode('@searchGlossaryTerm', 200);
 
   cy.get(`[data-testid="tag-${glossaryTermFQN}"]`).click();
 
-  // to close popup
-  cy.clickOutside();
-
-  cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${glossaryTermFQN}"]`
-  ).should('be.visible');
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get(`[data-testid="selected-tag-${glossaryTermFQN}"]`).should(
+    'be.visible'
+  );
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addGlossaryTerm', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="tag-${glossaryTermFQN}"]`
@@ -81,18 +90,28 @@ export const removeGlossaryTerm = (
     ? inputGlossaryTerm
     : [inputGlossaryTerm];
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'removeTags');
+  interceptURL('GET', `/api/v1/glossaries?*`, 'fetchGlossaries');
   glossaryTerms.forEach((glossaryTerm) => {
     cy.get(
       '[data-testid="entity-right-panel"]  [data-testid="glossary-container"] [data-testid="edit-button"]'
     ).click();
+    cy.wait('@fetchGlossaries').then(({ response }) => {
+      expect(response.statusCode).to.eq(200);
 
-    // Remove all added tags
-    cy.get(
-      `[data-testid="selected-tag-${glossaryTerm}"] [data-testid="remove-tags"]`
-    ).click();
+      // Remove all added tags
+      cy.get(
+        `[data-testid="selected-tag-${glossaryTerm}"] [data-testid="remove-tags"]`
+      ).click();
 
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    verifyResponseStatusCode('@removeTags', 200);
+      cy.get('[data-testid="saveAssociatedTag"]')
+        .scrollIntoView()
+        .should('be.enabled');
+      // Adding manual wait to eliminate flakiness 
+      // Remove manual wait and wait for elements instead
+      cy.wait(100);
+      cy.get('[data-testid="saveAssociatedTag"]').click();
+      verifyResponseStatusCode('@removeTags', 200);
+    });
   });
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="add-tag"]'

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import {
@@ -88,8 +88,11 @@ const mockProps = {
 
 describe('Test Glossary-term component', () => {
   it('Should render Glossary-term component', async () => {
-    render(<GlossaryTerms {...mockProps} childGlossaryTerms={[]} />);
+    render(<GlossaryTerms {...mockProps} />);
 
+    act(() => {
+      jest.runAllTimers();
+    });
     const glossaryTerm = screen.getByTestId('glossary-term');
     const tabs = await screen.findAllByRole('tab');
 

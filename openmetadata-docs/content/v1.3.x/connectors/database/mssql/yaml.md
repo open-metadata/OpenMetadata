@@ -8,7 +8,7 @@ name="MSSQL"
 stage="PROD"
 platform="OpenMetadata"
 availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
-unavailableFeatures=["Owners", "Tags"]
+unavailableFeatures=["Owners", "Tags", "SSIS packages"]
 / %}
 
 In this section, we provide guides and references to use the MSSQL connector.
@@ -136,13 +136,13 @@ This is a sample config for MSSQL:
 
 {% codeInfo srNumber=8 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=9 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -152,36 +152,7 @@ This is a sample config for MSSQL:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
-source:
-  type: mssql
-  serviceName: "<service name>"
-  serviceConnection:
-    config:
-      type: Mssql
-```
-```yaml {% srNumber=1 %}
-      scheme: mssql+pytds
-```
-```yaml {% srNumber=2 %}
-      username: <username>
-```
-```yaml {% srNumber=3 %}
-      password: <password>
-```
-```yaml {% srNumber=4 %}
-      hostPort: <hostPort>
-```
-```yaml {% srNumber=5 %}
-      database: <database>
-```
-```yaml {% srNumber=6 %}
-      ingestAllDatabases: false # true
-```
-```yaml {% srNumber=7 %}
-      uriString: uriString
-```
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mssql
   serviceName: "<service name>"

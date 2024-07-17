@@ -16,5 +16,6 @@
     }
   ],
   "supportsRowLevelPassedFailed": true,
-  "provider": "system"
+  "provider": "system",
+  "dataQualityDimension": "Validity"
 }

@@ -13,7 +13,7 @@
 
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import {
-  addReviewer,
+  addOwnerInGlossary,
   removeReviewer,
   visitGlossaryPage,
 } from '../../common/GlossaryUtils';
@@ -32,7 +32,8 @@ import {
   REVIEWER_DETAILS,
 } from '../../constants/Version.constants';
 
-describe(
+// migrated to playwright
+describe.skip(
   'Glossary and glossary term version pages should work properly',
   { tags: 'Glossary' },
   () => {
@@ -148,7 +149,7 @@ describe(
       interceptURL('GET', `/api/v1/glossaries?fields=*`, 'getGlossaryDetails');
       interceptURL(
         'GET',
-        '/api/v1/glossaryTerms?glossary=*',
+        '/api/v1/glossaryTerms?directChildrenOf=*',
         'getGlossaryTerms'
       );
       visitGlossaryPage();
@@ -190,7 +191,7 @@ describe(
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       cy.get(`[data-testid="diff-added"]`)
         .scrollIntoView()
@@ -216,7 +217,10 @@ describe(
       cy.get('[data-testid="version-button"]').contains('0.2');
 
       addOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
-
+      // Adding manual wait as the backend is now performing batch operations,
+      // which causes a delay in reflecting changes
+      cy.wait(1000);
+      cy.reload();
       interceptURL('GET', `/api/v1/glossaries/*/versions`, 'getVersionsList');
       interceptURL(
         'GET',
@@ -224,7 +228,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -235,14 +239,24 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addReviewer(data.reviewer.displayName, 'glossaries');
+      addOwnerInGlossary(
+        [data.reviewer.displayName],
+        'Add',
+        'glossary-reviewer-name',
+        false
+      );
+
+      // Adding manual wait as the backend is now performing batch operations,
+      // which causes a delay in reflecting changes
+      cy.wait(1000);
+      cy.reload();
 
       interceptURL(
         'GET',
@@ -250,7 +264,7 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
@@ -259,7 +273,7 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryDetails', 200);
       verifyResponseStatusCode('@getGlossaryTerms', 200);
@@ -279,12 +293,12 @@ describe(
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&fields=*&limit=*`,
         'getGlossaryTermParents'
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&limit=*`,
         'getChildGlossaryTerms'
       );
 
@@ -294,7 +308,7 @@ describe(
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       cy.get(`[data-testid="diff-added"]`)
         .scrollIntoView()
@@ -335,12 +349,12 @@ describe(
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*&fields=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&fields=*&limit=*`,
         'getGlossaryTermParents'
       );
       interceptURL(
         'GET',
-        `/api/v1/glossaryTerms?parent=*&limit=*`,
+        `/api/v1/glossaryTerms?directChildrenOf=*&limit=*`,
         'getChildGlossaryTerms'
       );
 
@@ -367,14 +381,14 @@ describe(
       interceptURL(
         'GET',
         `/api/v1/glossaryTerms/${data.glossaryTerm2.id}`,
-        'getGlossaryTermDetails'
+        'getGlossaryTermDetailsById'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-      verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+      verifyResponseStatusCode('@getGlossaryTermDetailsById', 200);
 
       cy.get(
         '[data-testid="glossary-right-panel-owner-link"] [data-testid="diff-added"]'
@@ -382,14 +396,19 @@ describe(
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);
 
       removeOwner(data.user.displayName, GLOSSARY_OWNER_LINK_TEST_ID);
 
-      addReviewer(data.reviewer.displayName, 'glossaryTerms');
+      addOwnerInGlossary(
+        [data.reviewer.displayName],
+        'Add',
+        'glossary-reviewer-name',
+        false
+      );
 
       interceptURL(
         'GET',
@@ -397,17 +416,17 @@ describe(
         'getSelectedVersionDetails'
       );
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getVersionsList', 200);
       verifyResponseStatusCode('@getSelectedVersionDetails', 200);
-      verifyResponseStatusCode('@getGlossaryTermDetails', 200);
+      verifyResponseStatusCode('@getGlossaryTermDetailsById', 200);
 
       cy.get('[data-testid="glossary-reviewer"] [data-testid="diff-added"]')
         .scrollIntoView()
         .should('be.visible');
 
-      cy.get('[data-testid="version-button"]').contains('0.2').click();
+      cy.get('[data-testid="version-button"]').scrollIntoView().click();
 
       verifyResponseStatusCode('@getGlossaryTermParents', 200);
       verifyResponseStatusCode('@getChildGlossaryTerms', 200);

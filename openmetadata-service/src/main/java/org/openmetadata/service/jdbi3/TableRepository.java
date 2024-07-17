@@ -28,7 +28,7 @@ import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.Entity.getEntity;
+import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
 import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
@@ -64,7 +64,6 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.tests.CustomMetric;
-import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
@@ -180,7 +179,8 @@ public class TableRepository extends EntityRepository<Table> {
         fields.contains("tableConstraints") ? table.getTableConstraints() : null);
     table.setUsageSummary(fields.contains("usageSummary") ? table.getUsageSummary() : null);
     table.setJoins(fields.contains("joins") ? table.getJoins() : null);
-    table.setViewDefinition(fields.contains("viewDefinition") ? table.getViewDefinition() : null);
+    table.setSchemaDefinition(
+        fields.contains("schemaDefinition") ? table.getSchemaDefinition() : null);
     table.setTableProfilerConfig(
         fields.contains(TABLE_PROFILER_CONFIG) ? table.getTableProfilerConfig() : null);
     table.setTestSuite(fields.contains("testSuite") ? table.getTestSuite() : null);
@@ -323,22 +323,8 @@ public class TableRepository extends EntityRepository<Table> {
         TableProfilerConfig.class);
   }
 
-  public TestSuite getTestSuite(Table table) {
-    List<CollectionDAO.EntityRelationshipRecord> entityRelationshipRecords =
-        daoCollection
-            .relationshipDAO()
-            .findTo(table.getId(), TABLE, Relationship.CONTAINS.ordinal());
-    Optional<CollectionDAO.EntityRelationshipRecord> testSuiteRelationshipRecord =
-        entityRelationshipRecords.stream()
-            .filter(
-                entityRelationshipRecord ->
-                    entityRelationshipRecord.getType().equals(Entity.TEST_SUITE))
-            .findFirst();
-    return testSuiteRelationshipRecord
-        .<TestSuite>map(
-            entityRelationshipRecord ->
-                getEntity(Entity.TEST_SUITE, entityRelationshipRecord.getId(), "*", Include.ALL))
-        .orElse(null);
+  public EntityReference getTestSuite(Table table) {
+    return getToEntityRef(table.getId(), Relationship.CONTAINS, TEST_SUITE, false);
   }
 
   @Transaction
@@ -491,7 +477,8 @@ public class TableRepository extends EntityRepository<Table> {
         tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
 
-  public ResultList<ColumnProfile> getColumnProfiles(String fqn, Long startTs, Long endTs) {
+  public ResultList<ColumnProfile> getColumnProfiles(
+      String fqn, Long startTs, Long endTs, boolean authorizePII) {
     List<ColumnProfile> columnProfiles;
     columnProfiles =
         JsonUtils.readObjects(
@@ -504,8 +491,15 @@ public class TableRepository extends EntityRepository<Table> {
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
             ColumnProfile.class);
-    return new ResultList<>(
-        columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
+    ResultList<ColumnProfile> columnProfileResultList =
+        new ResultList<>(
+            columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
+    if (!authorizePII) {
+      // Mask the PII data
+      columnProfileResultList.setData(
+          PIIMasker.getColumnProfile(fqn, columnProfileResultList.getData()));
+    }
+    return columnProfileResultList;
   }
 
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {
@@ -618,7 +612,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     if (dataModel.getSql() == null || dataModel.getSql().isBlank()) {
       if (table.getDataModel() != null
-          && (table.getDataModel().getSql() != null || !table.getDataModel().getSql().isBlank())) {
+          && (table.getDataModel().getSql() != null && !table.getDataModel().getSql().isBlank())) {
         dataModel.setSql(table.getDataModel().getSql());
       }
     }
@@ -1161,40 +1155,42 @@ public class TableRepository extends EntityRepository<Table> {
       // sourceUrl, domain, column.fullyQualifiedName, column.displayName, column.description,
       // column.dataTypeDisplay,
       // column.tags, column.glossaryTerms
-      if (processRecord) {
-        // fields tags(4), glossaryTerms(5), tiers(6)
-        List<TagLabel> tagLabels =
-            getTagLabels(
-                printer,
-                csvRecord,
-                List.of(
-                    Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                    Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                    Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-        table
-            .withName(csvRecord.get(0))
-            .withDisplayName(csvRecord.get(1))
-            .withDescription(csvRecord.get(2))
-            .withOwner(getOwner(printer, csvRecord, 3))
-            .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
-            .withRetentionPeriod(csvRecord.get(7))
-            .withSourceUrl(csvRecord.get(8))
-            .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
-        ImportResult importResult = updateColumn(printer, csvRecord);
-        if (importResult.result().equals(IMPORT_FAILED)) {
-          importFailure(printer, importResult.details(), csvRecord);
+      if (csvRecord != null) {
+        if (processRecord) {
+          // fields tags(4), glossaryTerms(5), tiers(6)
+          List<TagLabel> tagLabels =
+              getTagLabels(
+                  printer,
+                  csvRecord,
+                  List.of(
+                      Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                      Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                      Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+          table
+              .withName(csvRecord.get(0))
+              .withDisplayName(csvRecord.get(1))
+              .withDescription(csvRecord.get(2))
+              .withOwner(getOwner(printer, csvRecord, 3))
+              .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
+              .withRetentionPeriod(csvRecord.get(7))
+              .withSourceUrl(csvRecord.get(8))
+              .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+          ImportResult importResult = updateColumn(printer, csvRecord);
+          if (importResult.result().equals(IMPORT_FAILED)) {
+            importFailure(printer, importResult.details(), csvRecord);
+          }
         }
-      }
-      List<ImportResult> importResults = new ArrayList<>();
-      updateColumns(printer, csvRecords, importResults);
-      if (processRecord) {
-        createEntity(printer, csvRecord, table);
-      }
-      for (ImportResult importResult : importResults) {
-        if (importResult.result().equals(IMPORT_SUCCESS)) {
-          importSuccess(printer, importResult.record(), importResult.details());
-        } else {
-          importFailure(printer, importResult.details(), importResult.record());
+        List<ImportResult> importResults = new ArrayList<>();
+        updateColumns(printer, csvRecords, importResults);
+        if (processRecord) {
+          createEntity(printer, csvRecord, table);
+        }
+        for (ImportResult importResult : importResults) {
+          if (importResult.result().equals(IMPORT_SUCCESS)) {
+            importSuccess(printer, importResult.record(), importResult.details());
+          } else {
+            importFailure(printer, importResult.details(), importResult.record());
+          }
         }
       }
     }
@@ -1204,14 +1200,18 @@ public class TableRepository extends EntityRepository<Table> {
         throws IOException {
       while (recordIndex < csvRecords.size() && csvRecords.get(0) != null) { // Column records
         CSVRecord csvRecord = getNextRecord(printer, COLUMN_HEADERS, csvRecords);
-        results.add(updateColumn(printer, csvRecord));
+        if (csvRecord == null) {
+          // Since the processing failed for a particular csvRecord get the previous one
+          CSVRecord failedRecord = csvRecords.get(recordIndex - 1);
+          results.add(
+              new ImportResult(IMPORT_SKIPPED, failedRecord, super.importResult.getAbortReason()));
+        } else {
+          results.add(updateColumn(printer, csvRecord));
+        }
       }
     }
 
     public ImportResult updateColumn(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
-      if (!processRecord) {
-        return new ImportResult(IMPORT_SKIPPED, csvRecord, "");
-      }
       String columnFqn = csvRecord.get(10);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;

@@ -52,11 +52,24 @@ class OMetaLineageMixin(Generic[T]):
         self, original: List[Dict[str, Any]], updated: List[Dict[str, Any]]
     ):
         temp_result = []
-        for column in original or []:
-            temp_result.append((*column.get("fromColumns", []), column.get("toColumn")))
-        for column in updated or []:
-            data = column.dict()
-            temp_result.append((*data.get("fromColumns", []), data.get("toColumn")))
+        try:
+            for column in original or []:
+                if column.get("toColumn") and column.get("fromColumns"):
+                    temp_result.append(
+                        (*column.get("fromColumns", []), column.get("toColumn"))
+                    )
+            for column in updated or []:
+                if not isinstance(column, dict):
+                    data = column.dict()
+                else:
+                    data = column
+                if data.get("toColumn") and data.get("fromColumns"):
+                    temp_result.append(
+                        (*data.get("fromColumns", []), data.get("toColumn"))
+                    )
+        except Exception as exc:
+            logger.debug(f"Error while merging column lineage: {exc}")
+            logger.debug(traceback.format_exc())
         return [
             {"fromColumns": list(col_data[:-1]), "toColumn": col_data[-1]}
             for col_data in set(temp_result)
@@ -65,11 +78,11 @@ class OMetaLineageMixin(Generic[T]):
     def _update_cache(self, request: AddLineageRequest, response: Dict[str, Any]):
         try:
             for res in response.get("downstreamEdges", []):
-                if str(request.edge.toEntity.id.__root__) == res.get("toEntity"):
+                if str(request.edge.toEntity.id.root) == res.get("toEntity"):
                     search_cache.put(
                         (
-                            request.edge.fromEntity.id.__root__,
-                            request.edge.toEntity.id.__root__,
+                            request.edge.fromEntity.id.root,
+                            request.edge.toEntity.id.root,
                         ),
                         {"edge": res.get("lineageDetails")},
                     )
@@ -80,8 +93,8 @@ class OMetaLineageMixin(Generic[T]):
         # discard the cache if failed to update
         search_cache.put(
             (
-                request.edge.fromEntity.id.__root__,
-                request.edge.toEntity.id.__root__,
+                request.edge.fromEntity.id.root,
+                request.edge.toEntity.id.root,
             ),
             None,
         )
@@ -96,8 +109,8 @@ class OMetaLineageMixin(Generic[T]):
         try:
             patch_op_success = False
             if check_patch and data.edge.lineageDetails:
-                from_id = data.edge.fromEntity.id.__root__
-                to_id = data.edge.toEntity.id.__root__
+                from_id = data.edge.fromEntity.id.root
+                to_id = data.edge.toEntity.id.root
                 edge = self.get_lineage_edge(from_id, to_id)
                 if edge:
                     original: AddLineageRequest = deepcopy(data)
@@ -131,20 +144,22 @@ class OMetaLineageMixin(Generic[T]):
                         patch_op_success = True
 
             if patch_op_success is False:
-                self.client.put(self.get_suffix(AddLineageRequest), data=data.json())
+                self.client.put(
+                    self.get_suffix(AddLineageRequest), data=data.model_dump_json()
+                )
 
         except APIError as err:
             logger.debug(traceback.format_exc())
             logger.error(
                 "Error %s trying to PUT lineage for %s: %s",
                 err.status_code,
-                data.json(),
+                data.model_dump_json(),
                 str(err),
             )
             raise err
 
         from_entity_lineage = self.get_lineage_by_id(
-            data.edge.fromEntity.type, str(data.edge.fromEntity.id.__root__)
+            data.edge.fromEntity.type, str(data.edge.fromEntity.id.root)
         )
 
         self._update_cache(data, from_entity_lineage)
@@ -175,11 +190,12 @@ class OMetaLineageMixin(Generic[T]):
             search_cache.put((from_id, to_id), res)
             return res
         except APIError as err:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error {err.status_code} trying to GET linage edge between "
-                f"{from_id} and {to_id}: {err}"
-            )
+            if err.status_code != 404:
+                logger.debug(traceback.format_exc())
+                logger.debug(
+                    f"Error {err.status_code} trying to GET linage edge between "
+                    f"{from_id} and {to_id}: {err}"
+                )
             return None
 
     def patch_lineage_edge(
@@ -208,8 +224,8 @@ class OMetaLineageMixin(Generic[T]):
             if patch:
                 self.client.patch(
                     f"{self.get_suffix(AddLineageRequest)}/{original.edge.fromEntity.type}/"
-                    f"{original.edge.fromEntity.id.__root__}/{original.edge.toEntity.type}"
-                    f"/{original.edge.toEntity.id.__root__}",
+                    f"{original.edge.fromEntity.id.root}/{original.edge.toEntity.type}"
+                    f"/{original.edge.toEntity.id.root}",
                     data=str(patch),
                 )
                 return str(patch)
@@ -298,8 +314,8 @@ class OMetaLineageMixin(Generic[T]):
         """
         try:
             self.client.delete(
-                f"{self.get_suffix(AddLineageRequest)}/{edge.fromEntity.type}/{edge.fromEntity.id.__root__}/"
-                f"{edge.toEntity.type}/{edge.toEntity.id.__root__}"
+                f"{self.get_suffix(AddLineageRequest)}/{edge.fromEntity.type}/{edge.fromEntity.id.root}/"
+                f"{edge.toEntity.type}/{edge.toEntity.id.root}"
             )
         except APIError as err:
             logger.debug(traceback.format_exc())
@@ -327,7 +343,7 @@ class OMetaLineageMixin(Generic[T]):
             connection_type = database_service.serviceType.value
             add_lineage_request = get_lineage_by_query(
                 metadata=self,
-                service_name=database_service.name.__root__,
+                service_name=database_service.name.root,
                 dialect=ConnectionTypeDialectMapper.dialect_of(connection_type),
                 query=sql,
                 database_name=database_name,

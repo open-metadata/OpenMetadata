@@ -103,7 +103,7 @@ class CliCommonDB:
                 self.get_profiler_time_partition_results()
             )
             if expected_profiler_time_partition_results:
-                table_profile = profile.profile.dict()
+                table_profile = profile.profile.model_dump()
                 for key in expected_profiler_time_partition_results["table_profile"]:
                     self.assertEqual(
                         table_profile[key],
@@ -113,16 +113,16 @@ class CliCommonDB:
                 for column in profile.columns:
                     expected_column_profile = next(
                         (
-                            profile.get(column.name.__root__)
+                            profile.get(column.name.root)
                             for profile in expected_profiler_time_partition_results[
                                 "column_profile"
                             ]
-                            if profile.get(column.name.__root__)
+                            if profile.get(column.name.root)
                         ),
                         None,
                     )
                     if expected_column_profile:
-                        column_profile = column.profile.dict()
+                        column_profile = column.profile.model_dump()
                         for key in expected_column_profile:  # type: ignore
                             if key == "nonParametricSkew":
                                 self.assertEqual(

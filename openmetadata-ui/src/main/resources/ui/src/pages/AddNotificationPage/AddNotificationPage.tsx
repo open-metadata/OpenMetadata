@@ -13,17 +13,19 @@
  */
 import { Button, Col, Form, Input, Row, Skeleton, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../constants/constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -32,6 +34,7 @@ import {
   SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createNotificationAlert,
@@ -55,6 +58,8 @@ const AddNotificationPage = () => {
   const [form] = useForm<EventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
+  const { getResourceLimit } = useLimitStore();
 
   const [loadingCount, setLoadingCount] = useState(0);
   const [entityFunctions, setEntityFunctions] = useState<
@@ -150,9 +155,11 @@ const AddNotificationPage = () => {
           fqn,
           createAlertAPI: createNotificationAlert,
           updateAlertAPI: updateNotificationAlertWithPut,
-          afterSaveAction: () => {
+          afterSaveAction: async () => {
+            !fqn && (await getResourceLimit('eventsubscription', true, true));
             history.push(getNotificationAlertDetailsPath(data.name));
           },
+          setInlineAlertDetails,
         });
       } catch {
         // Error handling done in "handleAlertSave"
@@ -186,7 +193,9 @@ const AddNotificationPage = () => {
   return (
     <ResizablePanels
       hideSecondPanel
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="steps-form-container">
             <Row className="page-container" gutter={[16, 16]}>
@@ -212,6 +221,7 @@ const AddNotificationPage = () => {
                     ...alert,
                     resources: alert?.filteringRules?.resources,
                   }}
+                  validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   {loadingCount > 0 ? (
                     <Skeleton title paragraph={{ rows: 8 }} />
@@ -222,13 +232,7 @@ const AddNotificationPage = () => {
                           label={t('label.name')}
                           labelCol={{ span: 24 }}
                           name="name"
-                          rules={[
-                            { required: true },
-                            {
-                              pattern: ENTITY_NAME_REGEX,
-                              message: t('message.entity-name-validation'),
-                            },
-                          ]}>
+                          rules={NAME_FIELD_RULES}>
                           <Input
                             disabled={isEditMode}
                             placeholder={t('label.name')}
@@ -274,6 +278,13 @@ const AddNotificationPage = () => {
                       <Col span={24}>
                         <DestinationFormItem />
                       </Col>
+
+                      {!isUndefined(inlineAlertDetails) && (
+                        <Col span={24}>
+                          <InlineAlert {...inlineAlertDetails} />
+                        </Col>
+                      )}
+
                       <Col flex="auto" />
                       <Col flex="300px" pull="right">
                         <Button
@@ -302,7 +313,11 @@ const AddNotificationPage = () => {
         flex: 0.7,
       }}
       pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{ children: <></>, minWidth: 0 }}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
     />
   );
 };

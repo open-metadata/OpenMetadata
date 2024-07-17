@@ -43,6 +43,7 @@ const FeedCardFooter: FC<FeedFooterProp> = ({
           onClick={() => onThreadSelect?.(threadId as string)}>
           {repliedUsers?.map((u, i) => (
             <ProfilePicture
+              avatarType="outlined"
               className="m-r-xss"
               data-testid="replied-user"
               key={i}

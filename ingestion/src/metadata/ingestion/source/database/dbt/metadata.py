@@ -13,7 +13,7 @@ DBT source methods.
 """
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional, Union
+from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -28,7 +28,6 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -46,7 +45,12 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    SqlQuery,
+    Timestamp,
+    Uuid,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -120,7 +124,7 @@ class DbtSource(DbtServiceSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
     def test_connection(self) -> None:
@@ -132,16 +136,9 @@ class DbtSource(DbtServiceSource):
         """
         By default for DBT nothing is required to be prepared
         """
-        database_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=self.config.serviceName
-        )
-        if not database_service:
-            raise InvalidServiceException(
-                f"Service with name {self.config.serviceName} not found"
-            )
 
     def get_dbt_owner(
-        self, manifest_node: dict, catalog_node: Optional[dict]
+        self, manifest_node: Any, catalog_node: Optional[Any]
     ) -> Optional[EntityReference]:
         """
         Returns dbt owner
@@ -154,7 +151,9 @@ class DbtSource(DbtServiceSource):
             if manifest_node:
                 dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
             if dbt_owner:
-                owner = self.metadata.get_reference_by_name(name=dbt_owner)
+                owner = self.metadata.get_reference_by_name(
+                    name=dbt_owner, is_owner=True
+                )
                 if not owner:
                     logger.warning(
                         "Unable to ingest owner from DBT since no user or"
@@ -191,6 +190,7 @@ class DbtSource(DbtServiceSource):
                 **dbt_files.dbt_manifest[DbtCommonEnum.NODES.value],
                 **dbt_files.dbt_manifest[DbtCommonEnum.SOURCES.value],
             }
+            catalog_entities = None
             if dbt_files.dbt_catalog:
                 catalog_entities = {
                     **dbt_files.dbt_catalog[DbtCommonEnum.NODES.value],
@@ -215,7 +215,7 @@ class DbtSource(DbtServiceSource):
                     )
 
                 # Validate the catalog file if it is passed
-                if dbt_files.dbt_catalog:
+                if catalog_entities:
                     catalog_node = catalog_entities.get(key)
                     if catalog_node and "columns" in catalog_node:
                         self.check_columns(catalog_node=catalog_node)
@@ -329,6 +329,7 @@ class DbtSource(DbtServiceSource):
                 **dbt_objects.dbt_manifest.sources,
                 **dbt_objects.dbt_manifest.nodes,
             }
+            catalog_entities = None
             if dbt_objects.dbt_catalog:
                 catalog_entities = {
                     **dbt_objects.dbt_catalog.sources,
@@ -346,11 +347,15 @@ class DbtSource(DbtServiceSource):
                 )
             for key, manifest_node in manifest_entities.items():
                 try:
+                    resource_type = getattr(
+                        manifest_node.resource_type,
+                        "value",
+                        manifest_node.resource_type,
+                    )
                     # If the run_results file is passed then only DBT tests will be processed
                     if (
                         dbt_objects.dbt_run_results
-                        and manifest_node.resource_type.value
-                        == SkipResourceTypeEnum.TEST.value
+                        and resource_type == SkipResourceTypeEnum.TEST.value
                     ):
                         # Test nodes will be processed further in the topology
                         self.add_dbt_tests(
@@ -367,9 +372,7 @@ class DbtSource(DbtServiceSource):
                         continue
 
                     # Skip the analysis and test nodes
-                    if manifest_node.resource_type.value in [
-                        item.value for item in SkipResourceTypeEnum
-                    ]:
+                    if resource_type in [item.value for item in SkipResourceTypeEnum]:
                         logger.debug(f"Skipping DBT node: {key}.")
                         continue
 
@@ -388,16 +391,19 @@ class DbtSource(DbtServiceSource):
                     logger.debug(f"Processing DBT node: {model_name}")
 
                     catalog_node = None
-                    if dbt_objects.dbt_catalog:
+                    if catalog_entities:
                         catalog_node = catalog_entities.get(key)
 
                     dbt_table_tags_list = []
                     if manifest_node.tags:
-                        dbt_table_tags_list = get_tag_labels(
-                            metadata=self.metadata,
-                            tags=manifest_node.tags,
-                            classification_name=self.tag_classification_name,
-                            include_tags=self.source_config.includeTags,
+                        dbt_table_tags_list = (
+                            get_tag_labels(
+                                metadata=self.metadata,
+                                tags=manifest_node.tags,
+                                classification_name=self.tag_classification_name,
+                                include_tags=self.source_config.includeTags,
+                            )
+                            or []
                         )
 
                     if manifest_node.meta:
@@ -409,11 +415,10 @@ class DbtSource(DbtServiceSource):
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
                     # Get the table entity from ES
-                    # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.config.serviceName,
+                        service_name="*",
                         database_name=get_corrected_name(manifest_node.database),
                         schema_name=get_corrected_name(manifest_node.schema_),
                         table_name=model_name,
@@ -435,13 +440,17 @@ class DbtSource(DbtServiceSource):
                             table_entity=table_entity,
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
-                                resourceType=manifest_node.resource_type.value,
+                                resourceType=resource_type,
                                 description=manifest_node.description
                                 if manifest_node.description
                                 else None,
                                 path=get_data_model_path(manifest_node=manifest_node),
-                                rawSql=dbt_raw_query if dbt_raw_query else "",
-                                sql=dbt_compiled_query if dbt_compiled_query else "",
+                                rawSql=SqlQuery(dbt_raw_query)
+                                if dbt_raw_query
+                                else None,
+                                sql=SqlQuery(dbt_compiled_query)
+                                if dbt_compiled_query
+                                else None,
                                 columns=self.parse_data_model_columns(
                                     manifest_node, catalog_node
                                 ),
@@ -507,14 +516,13 @@ class DbtSource(DbtServiceSource):
                         parent_fqn = fqn.build(
                             self.metadata,
                             entity_type=Table,
-                            service_name=self.config.serviceName,
+                            service_name="*",
                             database_name=get_corrected_name(parent_node.database),
                             schema_name=get_corrected_name(parent_node.schema_),
                             table_name=table_name,
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        # TODO: Change to get_by_name once the postgres case sensitive calls is fixed
                         parent_table_entity: Optional[
                             Union[Table, List[Table]]
                         ] = get_entity_from_es_result(
@@ -534,7 +542,7 @@ class DbtSource(DbtServiceSource):
         return upstream_nodes
 
     def parse_data_model_columns(
-        self, manifest_node: dict, catalog_node: dict
+        self, manifest_node: Any, catalog_node: Any
     ) -> List[Column]:
         """
         Method to parse the DBT columns
@@ -544,7 +552,7 @@ class DbtSource(DbtServiceSource):
         for key, manifest_column in manifest_columns.items():
             try:
                 logger.debug(f"Processing DBT column: {key}")
-                # If catalog file is passed pass the column information from catalog file
+                # If catalog file is passed, pass the column information from catalog file
                 catalog_column = None
                 if catalog_node and catalog_node.columns:
                     catalog_column = catalog_node.columns.get(key)
@@ -586,9 +594,10 @@ class DbtSource(DbtServiceSource):
                 columns.append(
                     Column(
                         name=column_name,
-                        description=manifest_column.description
-                        if manifest_column.description
-                        else column_description,
+                        # If the catalog description is present, use it, else use the manifest description
+                        description=column_description
+                        if column_description
+                        else manifest_column.description,
                         dataType=ColumnTypeParser.get_column_type(
                             catalog_column.type
                             if catalog_column
@@ -615,9 +624,7 @@ class DbtSource(DbtServiceSource):
         Method to process DBT lineage from upstream nodes
         """
         to_entity: Table = data_model_link.table_entity
-        logger.debug(
-            f"Processing DBT lineage for: {to_entity.fullyQualifiedName.__root__}"
-        )
+        logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
         for upstream_node in data_model_link.datamodel.upstream:
             try:
@@ -635,11 +642,11 @@ class DbtSource(DbtServiceSource):
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=from_entity.id.__root__,
+                                    id=Uuid(from_entity.id.root),
                                     type="table",
                                 ),
                                 toEntity=EntityReference(
-                                    id=to_entity.id.__root__,
+                                    id=Uuid(to_entity.id.root),
                                     type="table",
                                 ),
                                 lineageDetails=LineageDetails(
@@ -661,48 +668,48 @@ class DbtSource(DbtServiceSource):
         """
         Method to process DBT lineage from queries
         """
-        to_entity: Table = data_model_link.table_entity
-        logger.debug(
-            f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.__root__}"
-        )
+        if data_model_link.datamodel.sql:
+            to_entity: Table = data_model_link.table_entity
+            logger.debug(
+                f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}"
+            )
 
-        try:
-            source_elements = fqn.split(to_entity.fullyQualifiedName.__root__)
-            # remove service name from fqn to make it parseable in format db.schema.table
-            query_fqn = fqn._build(  # pylint: disable=protected-access
-                *source_elements[-3:]
-            )
-            query = (
-                f"create table {query_fqn} as {data_model_link.datamodel.sql.__root__}"
-            )
-            connection_type = str(
-                self.config.serviceConnection.__root__.config.type.value
-            )
-            dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
-            lineages = get_lineage_by_query(
-                self.metadata,
-                query=query,
-                service_name=source_elements[0],
-                database_name=source_elements[1],
-                schema_name=source_elements[2],
-                dialect=dialect,
-                timeout_seconds=self.source_config.parsingTimeoutLimit,
-                lineage_source=LineageSource.DbtLineage,
-            )
-            for lineage_request in lineages or []:
-                yield lineage_request
-
-        except Exception as exc:  # pylint: disable=broad-except
-            yield Either(
-                left=StackTraceError(
-                    name=data_model_link.datamodel.sql.__root__,
-                    error=(
-                        f"Failed to parse the query {data_model_link.datamodel.sql.__root__}"
-                        f" to capture lineage: {exc}"
-                    ),
-                    stackTrace=traceback.format_exc(),
+            try:
+                source_elements = fqn.split(to_entity.fullyQualifiedName.root)
+                # remove service name from fqn to make it parseable in format db.schema.table
+                query_fqn = fqn._build(  # pylint: disable=protected-access
+                    *source_elements[-3:]
                 )
-            )
+                query = (
+                    f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
+                )
+                connection_type = str(
+                    self.config.serviceConnection.root.config.type.value
+                )
+                dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+                lineages = get_lineage_by_query(
+                    self.metadata,
+                    query=query,
+                    service_name=source_elements[0],
+                    database_name=source_elements[1],
+                    schema_name=source_elements[2],
+                    dialect=dialect,
+                    timeout_seconds=self.source_config.parsingTimeoutLimit,
+                    lineage_source=LineageSource.DbtLineage,
+                )
+                yield from lineages or []
+
+            except Exception as exc:  # pylint: disable=broad-except
+                yield Either(
+                    left=StackTraceError(
+                        name=data_model_link.datamodel.sql.root,
+                        error=(
+                            f"Failed to parse the query {data_model_link.datamodel.sql.root}"
+                            f" to capture lineage: {exc}"
+                        ),
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
     def process_dbt_meta(self, manifest_meta):
         """
@@ -716,7 +723,7 @@ class DbtSource(DbtServiceSource):
                     get_tag_labels(
                         metadata=self.metadata,
                         tags=dbt_meta_info.openmetadata.glossary,
-                        include_tags=self.source_config.includeTags,
+                        include_tags=True,
                         tag_type=GlossaryTerm,
                     )
                     or []
@@ -729,7 +736,7 @@ class DbtSource(DbtServiceSource):
                         metadata=self.metadata,
                         tags=[tier_fqn.split(fqn.FQN_SEPARATOR)[-1]],
                         classification_name=tier_fqn.split(fqn.FQN_SEPARATOR)[0],
-                        include_tags=self.source_config.includeTags,
+                        include_tags=True,
                     )
                     or []
                 )
@@ -746,12 +753,12 @@ class DbtSource(DbtServiceSource):
         """
         table_entity: Table = data_model_link.table_entity
         logger.debug(
-            f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.__root__}"
+            f"Processing DBT Descriptions for: {table_entity.fullyQualifiedName.root}"
         )
         if table_entity:
             try:
                 service_name, database_name, schema_name, table_name = fqn.split(
-                    table_entity.fullyQualifiedName.__root__
+                    table_entity.fullyQualifiedName.root
                 )
                 data_model = data_model_link.datamodel
                 force_override = False
@@ -766,7 +773,7 @@ class DbtSource(DbtServiceSource):
                     self.metadata.patch_description(
                         entity=Table,
                         source=table_entity,
-                        description=data_model.description.__root__,
+                        description=data_model.description.root,
                         force=force_override,
                     )
 
@@ -783,7 +790,7 @@ class DbtSource(DbtServiceSource):
                                     database_name=database_name,
                                     schema_name=schema_name,
                                     table_name=table_name,
-                                    column_name=column.name.__root__,
+                                    column_name=column.name.root,
                                 ),
                                 description=column.description,
                             )
@@ -796,7 +803,7 @@ class DbtSource(DbtServiceSource):
             except Exception as exc:  # pylint: disable=broad-except
                 logger.debug(traceback.format_exc())
                 logger.warning(
-                    f"Failed to parse the node {table_entity.fullyQualifiedName.__root__} "
+                    f"Failed to parse the node {table_entity.fullyQualifiedName.root} "
                     f"to update dbt description: {exc}"
                 )
 
@@ -864,9 +871,7 @@ class DbtSource(DbtServiceSource):
                         right=CreateTestCaseRequest(
                             name=manifest_node.name,
                             description=manifest_node.description,
-                            testDefinition=FullyQualifiedEntityName(
-                                __root__=manifest_node.name
-                            ),
+                            testDefinition=FullyQualifiedEntityName(manifest_node.name),
                             entityLink=entity_link_str,
                             testSuite=test_suite.fullyQualifiedName,
                             parameterValues=create_test_case_parameter_values(dbt_test),
@@ -895,6 +900,12 @@ class DbtSource(DbtServiceSource):
                     f"Adding DBT Test Case Results for node: {manifest_node.name}"
                 )
                 dbt_test_result = dbt_test.get(DbtCommonEnum.RESULTS.value)
+                if not dbt_test_result:
+                    logger.warning(
+                        f"DBT Test Case Results not found for node: {manifest_node.name}"
+                    )
+                    return
+
                 test_case_status = TestCaseStatus.Aborted
                 test_result_value = 0
                 if dbt_test_result.status.value in [
@@ -928,8 +939,8 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case result object
                 test_case_result = TestCaseResult(
-                    timestamp=convert_timestamp_to_milliseconds(
-                        dbt_timestamp.timestamp()
+                    timestamp=Timestamp(
+                        convert_timestamp_to_milliseconds(dbt_timestamp.timestamp())
                     ),
                     testCaseStatus=test_case_status,
                     testResultValue=[
@@ -948,7 +959,7 @@ class DbtSource(DbtServiceSource):
                     test_case_fqn = fqn.build(
                         self.metadata,
                         entity_type=TestCase,
-                        service_name=self.config.serviceName,
+                        service_name=source_elements[0],
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],

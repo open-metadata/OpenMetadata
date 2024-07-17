@@ -59,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -88,8 +89,8 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     return type;
   }
 
-  public TypeResource(Authorizer authorizer) {
-    super(Entity.TYPE, authorizer);
+  public TypeResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TYPE, authorizer, limits);
   }
 
   @Override
@@ -100,7 +101,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     types.forEach(
         type -> {
           type.withId(UUID.randomUUID()).withUpdatedBy(ADMIN_USER_NAME).withUpdatedAt(now);
-          LOG.info("Loading type {}", type.getName());
+          LOG.debug("Loading type {}", type.getName());
           try {
             Fields fields = getFields(PROPERTIES_FIELD);
             try {
@@ -348,6 +349,35 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchType",
+      summary = "Update a type using name.",
+      description = "Update an existing type using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the type", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT

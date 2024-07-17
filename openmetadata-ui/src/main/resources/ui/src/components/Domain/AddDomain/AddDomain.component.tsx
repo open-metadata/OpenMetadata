@@ -99,7 +99,9 @@ const AddDomain = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 domain-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -128,13 +130,9 @@ const AddDomain = () => {
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

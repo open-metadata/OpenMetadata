@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from 'antd/lib/config-provider/context';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import {
   AuthenticationConfigurationWithScope,
   IAuthContext,
   OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import {
   EntityUnion,
   ExploreSearchIndex,
@@ -25,6 +25,7 @@ import { AuthenticationConfiguration } from '../generated/configuration/authenti
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
 import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Domain } from '../generated/entity/domains/domain';
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
@@ -42,24 +43,29 @@ export interface ApplicationStore
   extends IAuthContext,
     LogoConfiguration,
     LoginConfiguration {
+  isApplicationLoading: boolean;
+  setApplicationLoading: (loading: boolean) => void;
   userProfilePics: Record<string, User>;
   cachedEntityData: Record<string, EntityUnion>;
   selectedPersona: EntityReference;
   oidcIdToken: string;
   refreshTokenKey: string;
   authConfig?: AuthenticationConfigurationWithScope;
-  applicationConfig?: LogoConfiguration;
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
-  resetTheme: () => void;
+  applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
+  theme: UIThemePreference['customTheme'];
+  inlineAlertDetails?: InlineAlertProps;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
-  setApplicationConfig: (config: LogoConfiguration) => void;
+  setApplicationConfig: (config: UIThemePreference) => void;
   setCurrentUser: (user: User) => void;
   setAuthConfig: (authConfig: AuthenticationConfigurationWithScope) => void;
   setAuthorizerConfig: (authorizerConfig: AuthorizerConfiguration) => void;
   setJwtPrincipalClaims: (
     claims: AuthenticationConfiguration['jwtPrincipalClaims']
+  ) => void;
+  setJwtPrincipalClaimsMapping: (
+    claimsMapping: AuthenticationConfiguration['jwtPrincipalClaimsMapping']
   ) => void;
   setHelperFunctionsRef: (helperFunctions: HelperFunctions) => void;
   updateUserProfilePics: (data: { id: string; user: User }) => void;

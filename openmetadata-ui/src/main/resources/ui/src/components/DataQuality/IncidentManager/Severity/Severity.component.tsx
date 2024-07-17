@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Button, Space, Tooltip } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Space, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
@@ -70,10 +71,11 @@ const Severity = ({ severity, onSubmit }: SeverityProps) => {
             title={t('label.edit-entity', {
               entity: t('label.severity'),
             })}>
-            <Button
+            <Icon
+              {...ICON_DIMENSION}
+              component={EditIcon}
               data-testid="edit-severity-icon"
-              icon={<EditIcon {...ICON_DIMENSION} color={DE_ACTIVE_COLOR} />}
-              type="text"
+              style={{ color: DE_ACTIVE_COLOR }}
               onClick={onEditSeverity}
             />
           </Tooltip>

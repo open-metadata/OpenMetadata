@@ -12,7 +12,7 @@
  */
 import { Select, SelectProps, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { debounce } from 'lodash';
+import { debounce, isArray, isString } from 'lodash';
 import React, { FC, useCallback, useMemo, useRef, useState } from 'react';
 import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -40,6 +40,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
   debounceTimeout = 800,
   initialOptions,
   searchIndex = SearchIndex.ALL,
+  value: selectedValue,
   ...props
 }) => {
   const {
@@ -66,8 +67,11 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
         query: searchQueryParam ? `*${searchQueryParam}*` : '*',
         pageNumber: page,
         pageSize: pageSize,
-        queryFilter: {},
         searchIndex: searchIndex,
+        // Filter out bots from user search
+        queryFilter: {
+          query: { bool: { must_not: [{ match: { isBot: true } }] } },
+        },
       });
 
       const hits = dataAssetsResponse.hits.hits;
@@ -127,8 +131,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       let label;
       if (
         searchIndex === SearchIndex.USER ||
-        searchIndex.includes('user') ||
-        searchIndex.includes('team')
+        searchIndex === SearchIndex.TEAM ||
+        reference.type === EntityType.USER ||
+        reference.type === EntityType.TEAM
       ) {
         label = (
           <Space>
@@ -139,7 +144,9 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
               type="circle"
               width="24"
             />
-            <span className="m-l-xs">{getEntityName(option)}</span>
+            <span className="m-l-xs" data-testid={getEntityName(option)}>
+              {getEntityName(option)}
+            </span>
           </Space>
         );
       } else {
@@ -216,8 +223,18 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
     }
   };
 
+  const internalValue = useMemo(() => {
+    if (isString(selectedValue) || isArray(selectedValue)) {
+      return selectedValue as string | string[];
+    }
+    const selectedOption = selectedValue as DataAssetOption;
+
+    return selectedOption?.value as string;
+  }, [mode, selectedValue]);
+
   return (
     <Select
+      allowClear
       autoFocus
       showSearch
       data-testid="asset-select-list"
@@ -228,6 +245,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
       optionLabelProp="displayName"
       options={optionList}
       style={{ width: '100%' }}
+      value={internalValue}
       onBlur={() => {
         handlePageChange(1);
         setSearchValue('');

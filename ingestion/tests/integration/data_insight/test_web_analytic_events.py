@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import unittest
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from random import randint
 
 from metadata.generated.schema.analytics.basic import WebAnalyticEventType
@@ -68,14 +68,16 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
         """Set up om client for the test class"""
 
         cls.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 data_insight_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
 
         cls.start_ts = get_beginning_of_day_timestamp_mill(days=1)
         cls.end_ts = get_end_of_day_timestamp_mill(days=1)
-        cls.yesterday = int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000)
+        cls.yesterday = int(
+            (datetime.now(timezone.utc) - timedelta(days=1)).timestamp() * 1000
+        )
 
     def test_web_analytic_events(self):
         """Test web analytic get function"""
@@ -110,7 +112,7 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
             (
                 web_event
                 for web_event in web_events
-                if web_event.eventData.userId.__root__ == user_id
+                if web_event.eventData.userId.root == user_id
             ),
             None,
         )
@@ -122,7 +124,7 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
 
         for delta in range(7):
             delta = timedelta(days=delta, milliseconds=randint(100, 999))
-            tmsp = datetime_to_ts(datetime.utcnow() - delta)
+            tmsp = datetime_to_ts(datetime.now(timezone.utc) - delta)
 
             user_id = uuid.uuid4()
             session_id = uuid.uuid4()
@@ -149,21 +151,21 @@ class WebAnalyticsEndpointsTests(unittest.TestCase):
 
         self.metadata.delete_web_analytic_event_before_ts_exclusive(
             WebAnalyticEventType.PageView,
-            int((datetime.utcnow() - timedelta(days=3)).timestamp() * 1000),
+            int((datetime.now(timezone.utc) - timedelta(days=3)).timestamp() * 1000),
         )
 
         event = self.metadata.get_web_analytic_events(
             WebAnalyticEventType.PageView,
-            int((datetime.utcnow() - timedelta(days=2)).timestamp() * 1000),
-            int((datetime.utcnow() - timedelta(days=1)).timestamp() * 1000),
+            int((datetime.now(timezone.utc) - timedelta(days=2)).timestamp() * 1000),
+            int((datetime.now(timezone.utc) - timedelta(days=1)).timestamp() * 1000),
         )
 
         assert event
 
         empty_event = self.metadata.get_web_analytic_events(
             WebAnalyticEventType.PageView,
-            int((datetime.utcnow() - timedelta(days=7)).timestamp() * 1000),
-            int((datetime.utcnow() - timedelta(days=6)).timestamp() * 1000),
+            int((datetime.now(timezone.utc) - timedelta(days=7)).timestamp() * 1000),
+            int((datetime.now(timezone.utc) - timedelta(days=6)).timestamp() * 1000),
         )
 
         assert not empty_event

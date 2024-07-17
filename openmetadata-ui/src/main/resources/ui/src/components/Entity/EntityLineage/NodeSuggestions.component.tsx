@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Select } from 'antd';
+import { Button, Select } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, debounce } from 'lodash';
 import React, {
@@ -88,18 +88,11 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     }
   };
 
-  const debouncedOnSearch = useCallback((searchText: string): void => {
-    getSearchResults(searchText);
-  }, []);
-
-  const debounceOnSearch = useCallback(debounce(debouncedOnSearch, 300), [
-    debouncedOnSearch,
-  ]);
+  const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
 
   const handleChange = (value: string): void => {
-    const searchText = value;
-    setSearchValue(searchText);
-    debounceOnSearch(searchText);
+    setSearchValue(value);
+    debounceOnSearch(value);
   };
 
   useEffect(() => {
@@ -120,14 +113,17 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         options={(data || []).map((entity) => ({
           value: entity.fullyQualifiedName,
           label: (
-            <>
-              <div
-                className="d-flex items-center"
-                data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
-                key={entity.fullyQualifiedName}
-                onClick={() => {
-                  onSelectHandler?.(entity as EntityReference);
-                }}>
+            <Button
+              block
+              className="d-flex items-center node-suggestion-option-btn"
+              data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
+              key={entity.fullyQualifiedName}
+              type="text"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent select from closing
+                onSelectHandler?.(entity as EntityReference);
+              }}>
+              <div className="d-flex items-center w-full overflow-hidden">
                 <img
                   alt={entity.serviceType}
                   className="m-r-xs"
@@ -135,9 +131,9 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   src={serviceUtilClassBase.getServiceTypeLogo(entity)}
                   width="16px"
                 />
-                <div className="flex-1 text-left">
+                <div className="d-flex align-start flex-column flex-1">
                   {entity.entityType === EntityType.TABLE && (
-                    <p className="d-block text-xs text-grey-muted w-max-400 truncate p-b-xss">
+                    <p className="d-block text-xs text-grey-muted p-b-xss break-all whitespace-normal text-left">
                       {getSuggestionLabelHeading(
                         entity.fullyQualifiedName ?? '',
                         entity.entityType as string
@@ -152,15 +148,16 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
                   </p>
                 </div>
               </div>
-            </>
+            </Button>
           ),
         }))}
         placeholder={`${t('label.search-for-type', {
           type: capitalize(entityType),
         })}s...`}
+        popupClassName="lineage-suggestion-select-menu"
         onChange={handleChange}
         onClick={(e) => e.stopPropagation()}
-        onSearch={debouncedOnSearch}
+        onSearch={handleChange}
       />
     </div>
   );

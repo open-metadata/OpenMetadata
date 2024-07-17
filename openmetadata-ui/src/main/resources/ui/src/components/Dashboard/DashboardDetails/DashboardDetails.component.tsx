@@ -37,6 +37,7 @@ import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -58,6 +59,7 @@ import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -265,7 +267,7 @@ const DashboardDetails = ({
     async (newOwner?: Dashboard['owner']) => {
       const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner ? { ...owner, ...newOwner } : undefined,
+        owner: newOwner,
       };
       await onDashboardUpdate(updatedDashboard, 'owner');
     },
@@ -504,7 +506,9 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="tag-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => {
@@ -536,7 +540,9 @@ const DashboardDetails = ({
         filterIcon: (filtered) => (
           <FilterOutlined
             data-testid="glossary-filter"
-            style={{ color: filtered ? theme.primaryColor : undefined }}
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
           />
         ),
         render: (tags: TagLabel[], record: ChartType, index: number) => (
@@ -607,58 +613,75 @@ const DashboardDetails = ({
         key: EntityTabs.DETAILS,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={dashboardDetails.description}
-                  entityFqn={decodedDashboardFQN}
-                  entityName={entityName}
-                  entityType={EntityType.DASHBOARD}
-                  hasEditAccess={editDescriptionPermission}
-                  isDescriptionExpanded={isEmpty(charts)}
-                  isEdit={isEdit}
-                  owner={dashboardDetails.owner}
-                  showActions={!deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-x-lg">
+                      <DescriptionV1
+                        description={dashboardDetails.description}
+                        entityFqn={decodedDashboardFQN}
+                        entityName={entityName}
+                        entityType={EntityType.DASHBOARD}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(charts)}
+                        isEdit={isEdit}
+                        owner={dashboardDetails.owner}
+                        showActions={!deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
 
-                {isEmpty(charts) ? (
-                  <ErrorPlaceHolder />
-                ) : (
-                  <Table
-                    bordered
-                    columns={tableColumn}
-                    data-testid="charts-table"
-                    dataSource={charts}
-                    pagination={false}
-                    rowKey="id"
-                    scroll={{ x: 1200 }}
-                    size="small"
-                  />
-                )}
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel<EntityType.DASHBOARD>
-                customProperties={dashboardDetails}
-                dataProducts={dashboardDetails?.dataProducts ?? []}
-                domain={dashboardDetails?.domain}
-                editCustomAttributePermission={editCustomAttributePermission}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedDashboardFQN}
-                entityId={dashboardDetails.id}
-                entityType={EntityType.DASHBOARD}
-                selectedTags={dashboardTags}
-                viewAllPermission={viewAllPermission}
-                onExtensionUpdate={onExtensionUpdate}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+                      {isEmpty(charts) ? (
+                        <ErrorPlaceHolder />
+                      ) : (
+                        <Table
+                          bordered
+                          className="align-table-filter-left"
+                          columns={tableColumn}
+                          data-testid="charts-table"
+                          dataSource={charts}
+                          pagination={false}
+                          rowKey="id"
+                          scroll={{ x: 1200 }}
+                          size="small"
+                        />
+                      )}
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.DASHBOARD>
+                        customProperties={dashboardDetails}
+                        dataProducts={dashboardDetails?.dataProducts ?? []}
+                        domain={dashboardDetails?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedDashboardFQN}
+                        entityId={dashboardDetails.id}
+                        entityType={EntityType.DASHBOARD}
+                        selectedTags={dashboardTags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -797,6 +820,9 @@ const DashboardDetails = ({
           onSave={onChartUpdate}
         />
       )}
+      <LimitWrapper resource="dashboard">
+        <></>
+      </LimitWrapper>
       {threadLink ? (
         <ActivityThreadPanel
           createThread={createThread}

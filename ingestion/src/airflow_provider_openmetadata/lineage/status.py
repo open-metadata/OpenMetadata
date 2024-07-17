@@ -91,7 +91,7 @@ def add_status(
 
     task_status = []
     # We will append based on the current registered status
-    if pipeline_status and pipeline_status.timestamp.__root__ == execution_date:
+    if pipeline_status and pipeline_status.timestamp.root == execution_date:
         # If we are clearing a task, use the status of the new execution
         task_status = [
             task
@@ -123,5 +123,5 @@ def add_status(
 
     operator.log.info(f"Added status to DAG {updated_status}")
     metadata.add_pipeline_status(
-        fqn=pipeline.fullyQualifiedName.__root__, status=updated_status
+        fqn=pipeline.fullyQualifiedName.root, status=updated_status
     )

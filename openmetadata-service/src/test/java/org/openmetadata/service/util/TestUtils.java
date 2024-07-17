@@ -41,7 +41,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import javax.json.JsonObject;
 import javax.json.JsonPatch;
 import javax.validation.constraints.Size;
@@ -63,6 +62,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.services.connections.api.RESTConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -78,6 +78,7 @@ import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnect
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.search.OpenSearchConnection;
 import org.openmetadata.schema.services.connections.storage.S3Connection;
+import org.openmetadata.schema.type.APIServiceConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.type.MlModelConnection;
@@ -105,6 +106,9 @@ public final class TestUtils {
   public static final String TEST_USER_NAME = "test";
   public static final Map<String, String> TEST_AUTH_HEADERS =
       authHeaders(TEST_USER_NAME + "@open-metadata.org");
+  public static final String USER_WITH_CREATE_PERMISSION_NAME = "testWithCreateUserPermission";
+  public static final Map<String, String> USER_WITH_CREATE_HEADERS =
+      authHeaders(USER_WITH_CREATE_PERMISSION_NAME + "@open-metadata.org");
 
   public static final UUID NON_EXISTENT_ENTITY = UUID.randomUUID();
 
@@ -173,6 +177,12 @@ public final class TestUtils {
   public static final SearchConnection OPEN_SEARCH_CONNECTION =
       new SearchConnection()
           .withConfig(new OpenSearchConnection().withHostPort("http://localhost:9200"));
+
+  public static final APIServiceConnection API_SERVICE_CONNECTION =
+      new APIServiceConnection()
+          .withConfig(
+              new RESTConnection()
+                  .withOpenAPISchemaURL(getUri("http://localhost:8585/swagger.json")));
 
   public static final MetadataConnection AMUNDSEN_CONNECTION =
       new MetadataConnection()
@@ -656,17 +666,6 @@ public final class TestUtils {
     if (expected == null) return;
     assertEquals(expected.getIconURL(), actual.getIconURL());
     assertEquals(expected.getColor(), actual.getColor());
-  }
-
-  public static void waitForEsAsyncOp() throws InterruptedException {
-    waitForEsAsyncOp(1000);
-  }
-
-  public static void waitForEsAsyncOp(Integer milliseconds) throws InterruptedException {
-    // Wait for the async operation to complete. We cannot use
-    // Awaitility here as the test method thread is not
-    // the owner of the async operation
-    TimeUnit.MILLISECONDS.sleep(milliseconds);
   }
 
   public static void assertEventually(String name, CheckedRunnable runnable) {

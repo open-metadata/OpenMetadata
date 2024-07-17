@@ -90,7 +90,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getIncludeCondition() {
     String domain = getQueryParam("domain");
     if (!nullOrEmpty(domain)) {
-      return String.format("{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", domain);
+      return String.format(
+          "{\"term\": {\"domain.fullyQualifiedName\": \"%s\"}}", escapeDoubleQuotes(domain));
     }
     return "";
   }
@@ -106,7 +107,9 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private String getOwnerCondition() {
     String owner = getQueryParam("owner");
     if (!nullOrEmpty(owner)) {
-      return String.format("{\"term\": {\"owner.id\": \"%s\"}}", owner);
+      String ownerList =
+          Arrays.stream(owner.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
+      return String.format("{\"terms\": {\"owner.id\": [%s]}}", ownerList);
     }
     return "";
   }
@@ -135,12 +138,42 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String testPlatform = getQueryParam("testPlatforms");
     String startTimestamp = getQueryParam("startTimestamp");
     String endTimestamp = getQueryParam("endTimestamp");
+    String tags = getQueryParam("tags");
+    String tier = getQueryParam("tier");
+    String serviceName = getQueryParam("serviceName");
+    String dataQualityDimension = getQueryParam("dataQualityDimension");
+
+    if (tags != null) {
+      String tagsList =
+          Arrays.stream(tags.split(","))
+              .map(this::escapeDoubleQuotes)
+              .collect(Collectors.joining("\", \"", "\"", "\""));
+      conditions.add(
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[%s]}}}}",
+              tagsList));
+    }
+
+    if (tier != null) {
+      conditions.add(
+          String.format(
+              "{\"nested\":{\"path\":\"tags\",\"query\":{\"terms\":{\"tags.tagFQN\":[\"%s\"]}}}}",
+              escapeDoubleQuotes(tier)));
+    }
+
+    if (serviceName != null) {
+      conditions.add(
+          String.format("{\"term\": {\"service.name\": \"%s\"}}", escapeDoubleQuotes(serviceName)));
+    }
 
     if (entityFQN != null) {
       conditions.add(
           includeAllTests
               ? String.format(
-                  "{\"prefix\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN))
+                  "{\"bool\":{\"should\": ["
+                      + "{\"prefix\": {\"entityFQN\": \"%s%s\"}},"
+                      + "{\"term\": {\"entityFQN\": \"%s\"}}]}}",
+                  escapeDoubleQuotes(entityFQN), Entity.SEPARATOR, escapeDoubleQuotes(entityFQN))
               : String.format(
                   "{\"term\": {\"entityFQN\": \"%s\"}}", escapeDoubleQuotes(entityFQN)));
     }
@@ -175,6 +208,11 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getTimestampFilter("testCaseResult.timestamp", "gte", Long.parseLong(startTimestamp)));
       conditions.add(
           getTimestampFilter("testCaseResult.timestamp", "lte", Long.parseLong(endTimestamp)));
+    }
+
+    if (dataQualityDimension != null) {
+      conditions.add(
+          String.format("{\"term\": {\"dataQualityDimension\": \"%s\"}}", dataQualityDimension));
     }
 
     return addCondition(conditions);

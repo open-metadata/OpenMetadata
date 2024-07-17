@@ -44,8 +44,7 @@ public class AssetsFieldFormatter extends DefaultFieldFormatter {
             .withHeaderMessage(threadMessage)
             .withFieldName(FIELD_ASSETS)
             .withEntitySpecificInfo(assetsFeedInfo);
-    populateThreadFeedInfo(
-        thread, threadMessage, Thread.CardStyle.DESCRIPTION, operation, feedInfo);
+    populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.ASSETS, operation, feedInfo);
   }
 
   private String getHeaderForAssetsUpdate(String opMessage) {

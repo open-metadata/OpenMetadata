@@ -14,9 +14,8 @@ OpenMetadata high-level API App test
 """
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.applications.app import App
-
-from ..integration_base import int_admin_ometa
 
 
 class OMetaTableTest(TestCase):
@@ -33,4 +32,4 @@ class OMetaTableTest(TestCase):
         """We can GET an app via the client"""
         app = self.metadata.get_by_name(entity=App, fqn="SearchIndexingApplication")
         self.assertIsNotNone(app)
-        self.assertEqual(app.name.__root__, "SearchIndexingApplication")
+        self.assertEqual(app.name.root, "SearchIndexingApplication")

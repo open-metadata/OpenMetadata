@@ -58,18 +58,17 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 
 @Slf4j
@@ -96,8 +95,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     /* Required for serde */
   }
 
-  public TagResource(Authorizer authorizer) {
-    super(Entity.TAG, authorizer);
+  public TagResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TAG, authorizer, limits);
   }
 
   @Override
@@ -106,75 +105,9 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     return null;
   }
 
-  private void migrateTags() {
-    // Just want to run it when upgrading to version above 0.13.1 where tag relationship are not
-    // there , once we have any entries we don't need to run it
-    if (repository.getDaoCollection().relationshipDAO().findIfAnyRelationExist(CLASSIFICATION, TAG)
-        <= 0) {
-      // We are missing relationship for classification -> tag, & also tag -> tag (parent
-      // relationship). Find tag definitions and load classifications from the file, if necessary
-      ClassificationRepository classificationRepository =
-          (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
-      try {
-        List<Classification> classificationList =
-            classificationRepository.listAll(
-                classificationRepository.getFields("*"), new ListFilter(Include.ALL));
-        List<String> jsons =
-            repository.getDao().listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "");
-        List<Tag> storedTags = JsonUtils.readObjects(jsons, Tag.class);
-        for (Tag tag : storedTags) {
-          if (tag.getFullyQualifiedName().contains(".")) {
-            // Either it has classification or a tag which is its parent
-            // Check Classification
-            String[] tokens = tag.getFullyQualifiedName().split("\\.", 2);
-            String classificationName = tokens[0];
-            String remainingPart = tokens[1];
-            for (Classification classification : classificationList) {
-              if (classification.getName().equals(classificationName)) {
-                // This means need to add a relationship
-                try {
-                  repository.addRelationship(
-                      classification.getId(),
-                      tag.getId(),
-                      CLASSIFICATION,
-                      TAG,
-                      Relationship.CONTAINS);
-                  break;
-                } catch (Exception ex) {
-                  LOG.info("Classification Relation already exists");
-                }
-              }
-            }
-            if (remainingPart.contains(".")) {
-              // Handle tag -> tag relationship
-              String parentTagName =
-                  tag.getFullyQualifiedName()
-                      .substring(0, tag.getFullyQualifiedName().lastIndexOf("."));
-              for (Tag parentTag : storedTags) {
-                if (parentTag.getFullyQualifiedName().equals(parentTagName)) {
-                  try {
-                    repository.addRelationship(
-                        parentTag.getId(), tag.getId(), TAG, TAG, Relationship.CONTAINS);
-                    break;
-                  } catch (Exception ex) {
-                    LOG.info("Parent Tag Ownership already exists");
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (Exception ex) {
-        LOG.error("Failed in Listing all the Stored Tags.");
-      }
-    }
-  }
-
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    // TODO: Once we have migrated to the version above 0.13.1, then this can be removed
-    migrateTags();
     // Find tag definitions and load classifications from the json file, if necessary
     ClassificationRepository classificationRepository =
         (ClassificationRepository) Entity.getEntityRepository(CLASSIFICATION);
@@ -446,6 +379,35 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchTag",
+      summary = "Update a tag using name.",
+      description = "Update an existing tag using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the tag", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT

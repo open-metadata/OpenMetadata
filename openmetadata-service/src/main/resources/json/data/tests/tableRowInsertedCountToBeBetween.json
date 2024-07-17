@@ -50,6 +50,7 @@
         "required": true
       }
     ],
-    "provider": "system"
+    "provider": "system",
+    "dataQualityDimension": "Integrity"
   }
   

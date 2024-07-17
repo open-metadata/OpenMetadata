@@ -28,6 +28,7 @@ from metadata.generated.schema.analytics.reportDataType.entityReportData import 
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 
@@ -39,8 +40,8 @@ USER = User(
     name="aaron_johnson0",
     fullyQualifiedName="aaron_johnson0",
     teams=EntityReferenceList(
-        __root__=[
-            EntityReference(id=TEAM.id.__root__, type="team", name="sales")  # type: ignore
+        root=[
+            EntityReference(id=TEAM.id.root, type="team", name="sales")  # type: ignore
         ]
     ),
 )  # type: ignore
@@ -54,7 +55,7 @@ class EntityReportProcessorTest(unittest.TestCase):
             name="my_chart",
             service=EntityReference(id=uuid.uuid4(), type="dashboad"),  # type: ignore
             owner=EntityReference(
-                id=TEAM.id.__root__, type="team", name="marketing"
+                id=TEAM.id.root, type="team", name="marketing"
             ),  # type: ignore
         )  # type: ignore
 
@@ -68,9 +69,7 @@ class EntityReportProcessorTest(unittest.TestCase):
         mocked_ometa.get_by_name.return_value = USER
         owner = processor._get_team(self.chart.owner)
         assert owner == "marketing"
-        self.chart.owner = EntityReference(
-            id=USER.id.__root__, type="user"
-        )  # type: ignore
+        self.chart.owner = EntityReference(id=USER.id.root, type="user")  # type: ignore
         owner = processor._get_team(self.chart.owner)
         assert owner == "sales"
         self.chart.owner = None
@@ -127,7 +126,7 @@ class EntityReportProcessorTest(unittest.TestCase):
 
         expected = [
             ReportData(
-                timestamp=1695324826495,
+                timestamp=Timestamp(1695324826495),
                 reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
@@ -141,7 +140,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 ),  # type: ignore
             ),
             ReportData(
-                timestamp=1695324826495,
+                timestamp=Timestamp(1695324826495),
                 reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
@@ -155,7 +154,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 ),  # type: ignore
             ),
             ReportData(
-                timestamp=1695324826495,
+                timestamp=Timestamp(1695324826495),
                 reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Chart",
@@ -169,7 +168,7 @@ class EntityReportProcessorTest(unittest.TestCase):
                 ),  # type: ignore
             ),
             ReportData(
-                timestamp=1695324826495,
+                timestamp=Timestamp(1695324826495),
                 reportDataType=ReportDataType.entityReportData.value,
                 data=EntityReportData(
                     entityType="Table",
@@ -192,10 +191,10 @@ class EntityReportProcessorTest(unittest.TestCase):
         processor._post_hook_fn()  # we'll call the post hook function to flatten the data
 
         for flat_result in processor.yield_refined_data():
-            flat_result.timestamp = 1695324826495
+            flat_result.timestamp = Timestamp(1695324826495)
             processed.append(flat_result)
             assert all(
-                k in flat_result.data.dict()
+                k in flat_result.data.model_dump()
                 for k in [
                     "entityType",
                     "entityTier",

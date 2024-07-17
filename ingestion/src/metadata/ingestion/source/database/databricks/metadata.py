@@ -43,6 +43,7 @@ from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.databricks.queries import (
+    DATABRICKS_DDL,
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
@@ -67,8 +68,8 @@ from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
 logger = ingestion_logger()
 
-DATABRICKS_TAG = "DATABRICK TAG"
-DATABRICKS_TAG_CLASSIFICATION = "DATABRICK TAG CLASSIFICATION"
+DATABRICKS_TAG = "DATABRICKS TAG"
+DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
 DEFAULT_TAG_VALUE = "NONE"
 
 
@@ -129,13 +130,16 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     value should match what is provided in the 'source.config.database' field in the
     Databricks ingest config file.
     """
-    db_name = kw["db_name"] if "db_name" in kw else None
 
     rows = _get_column_rows(self, connection, table_name, schema)
     result = []
     for col_name, col_type, _comment in rows:
         # Handle both oss hive and Databricks' hive partition header, respectively
-        if col_name in ("# Partition Information", "# Partitioning"):
+        if col_name in (
+            "# Partition Information",
+            "# Partitioning",
+            "# Clustering Information",
+        ):
             break
         # Take out the more detailed type information
         # e.g. 'map<ixnt,int>' -> 'map'
@@ -157,20 +161,14 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
-            if db_name and schema:
-                rows = dict(
-                    connection.execute(
-                        f"DESCRIBE {db_name}.{schema}.{table_name} {col_name}"
-                    ).fetchall()
-                )
-            else:
-                rows = dict(
-                    connection.execute(
-                        f"DESCRIBE {schema}.{table_name} {col_name}"
-                        if schema
-                        else f"DESCRIBE {table_name} {col_name}"
-                    ).fetchall()
-                )
+            col_name = f"`{col_name}`" if "." in col_name else col_name
+            rows = dict(
+                connection.execute(
+                    f"DESCRIBE {schema}.{table_name} {col_name}"
+                    if schema
+                    else f"DESCRIBE {table_name} {col_name}"
+                ).fetchall()
+            )
 
             col_info["system_data_type"] = rows["data_type"]
             col_info["is_complex"] = True
@@ -252,6 +250,25 @@ def get_view_definition(
     return None
 
 
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    Gets the Table DDL
+    """
+    schema = schema or self.default_schema_name
+    table_name = f"{schema}.{table_name}" if schema else table_name
+    cursor = connection.execute(DATABRICKS_DDL.format(table_name=table_name))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None
+
+
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
@@ -259,6 +276,7 @@ DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
+reflection.Inspector.get_table_ddl = get_table_ddl
 
 
 class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDBSource):
@@ -290,8 +308,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: DatabricksConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
             raise InvalidSourceException(
                 f"Expected DatabricksConnection, but got {connection}"
@@ -596,9 +614,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             cursor = self.connection.execute(
                 DATABRICKS_GET_TABLE_COMMENTS.format(
-                    schema_name=schema_name,
-                    table_name=table_name,
-                    catalog_name=self.context.get().database,
+                    schema_name=schema_name, table_name=table_name
                 )
             )
             for result in list(cursor):

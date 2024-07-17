@@ -11,26 +11,20 @@
  *  limitations under the License.
  */
 
-import { Button, Popover, Skeleton, Space, Tag } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
-import { ColumnType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { Popover, Skeleton, Space, Tag } from 'antd';
 import classNamesFunc from 'classnames';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA } from '../../../../../constants/constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../../../../../constants/pipeline.constants';
 import {
   IngestionPipeline,
   PipelineStatus,
-  StepSummary,
 } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import {
@@ -38,8 +32,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../../utils/date-time/DateTimeUtils';
-import Table from '../../../../common/Table/Table';
-import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
+import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModal/IngestionRunDetailsModal';
 import './ingestion-recent-run.style.less';
 
 interface Props {
@@ -47,6 +40,8 @@ interface Props {
   classNames?: string;
   appRuns?: PipelineStatus[];
   isApplicationType?: boolean;
+  pipelineIdToFetchStatus?: string;
+  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
 }
 const queryParams = {
   startTs: getEpochMillisForPastDays(1),
@@ -58,84 +53,13 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   classNames,
   appRuns,
   isApplicationType,
+  pipelineIdToFetchStatus = '',
+  handlePipelineIdToFetchStatus,
 }: Props) => {
   const { t } = useTranslation();
   const [recentRunStatus, setRecentRunStatus] = useState<PipelineStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<PipelineStatus>();
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
-  const columns: ColumnType<StepSummary>[] = useMemo(
-    () => [
-      {
-        title: t('label.step'),
-        dataIndex: 'name',
-      },
-      {
-        title: t('label.record-plural'),
-        dataIndex: 'records',
-      },
-      {
-        title: t('label.filtered'),
-        dataIndex: 'filtered',
-      },
-      {
-        title: t('label.warning-plural'),
-        dataIndex: 'warnings',
-      },
-      {
-        title: t('label.error-plural'),
-        dataIndex: 'errors',
-      },
-
-      {
-        title: t('label.failure-plural'),
-        dataIndex: 'failures',
-        render: (failures: StepSummary['failures'], record: StepSummary) =>
-          (failures?.length ?? 0) > 0 ? (
-            <Button
-              size="small"
-              type="link"
-              onClick={() => setExpandedKeys([record.name])}>
-              {t('label.log-plural')}
-            </Button>
-          ) : (
-            NO_DATA
-          ),
-      },
-    ],
-    [setExpandedKeys]
-  );
-  const expandable: ExpandableConfig<StepSummary> = useMemo(
-    () => ({
-      expandedRowRender: (record) => {
-        return (
-          record.failures?.map((failure) => (
-            <ConnectionStepCard
-              isTestingConnection={false}
-              key={failure.name}
-              testConnectionStep={{
-                name: failure.name,
-                mandatory: false,
-                description: failure.error,
-              }}
-              testConnectionStepResult={{
-                name: failure.name,
-                passed: false,
-                mandatory: false,
-                message: failure.error,
-                errorLog: failure.stackTrace,
-              }}
-            />
-          )) ?? []
-        );
-      },
-      indentSize: 0,
-      expandIcon: () => null,
-      expandedRowKeys: expandedKeys,
-      rowExpandable: (record) => (record.failures?.length ?? 0) > 0,
-    }),
-    [expandedKeys]
-  );
 
   const fetchPipelineStatus = useCallback(async () => {
     setLoading(true);
@@ -166,10 +90,20 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
     }
   }, [ingestion, ingestion?.fullyQualifiedName]);
 
+  useEffect(() => {
+    // To fetch pipeline status on demand
+    // If pipelineIdToFetchStatus is present and equal to current pipeline id
+    if (pipelineIdToFetchStatus === ingestion?.id) {
+      fetchPipelineStatus();
+      handlePipelineIdToFetchStatus?.(); // Clear the id after fetching status
+    }
+  }, [pipelineIdToFetchStatus]);
+
   const handleRunStatusClick = (status: PipelineStatus) => {
-    setExpandedKeys([]);
     setSelectedStatus(status);
   };
+
+  const handleModalCancel = () => setSelectedStatus(undefined);
 
   if (loading) {
     return <Skeleton.Input size="small" />;
@@ -229,32 +163,15 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
           ) : (
             status
           );
-        }) ?? '--'
+        })
       )}
 
-      <Modal
-        centered
-        destroyOnClose
-        closeIcon={<></>}
-        maskClosable={false}
-        okButtonProps={{ style: { display: 'none' } }}
-        open={Boolean(selectedStatus)}
-        title={`Run status: ${startCase(
-          selectedStatus?.pipelineState
-        )} at ${formatDateTime(selectedStatus?.timestamp)}`}
-        width="80%"
-        onCancel={() => setSelectedStatus(undefined)}>
-        <Table
-          bordered
-          columns={columns}
-          dataSource={selectedStatus?.status ?? []}
-          expandable={expandable}
-          indentSize={0}
-          pagination={false}
-          rowKey="name"
-          size="small"
+      {!isUndefined(selectedStatus) && (
+        <IngestionRunDetailsModal
+          handleCancel={handleModalCancel}
+          pipelineStatus={selectedStatus}
         />
-      </Modal>
+      )}
     </Space>
   );
 };

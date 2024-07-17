@@ -9,7 +9,6 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -76,29 +75,40 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
-      {
-        "query": {
+  {
+      "query": {
           "bool": {
-              "should": [
+              "must": [
                   {
-                      "nested":{
-                          "path": "testSuites",
-                          "query": {
-                              "term": {
-                                  "testSuites.id": "%1$s"
+                      "bool": {
+                          "should": [
+                              {
+                                  "nested": {
+                                      "path": "testSuites",
+                                      "query": {
+                                          "term": {
+                                              "testSuites.id": "%1$s"
+                                          }
+                                      }
+                                  }
+                              },
+                              {
+                                  "term": {
+                                      "testSuite.id": "%1$s"
+                                  }
                               }
-                          }
+                          ]
                       }
                   },
                   {
                       "term": {
-                          "testSuite.id": "%1$s"
+                          "deleted": false
                       }
                   }
               ]
-            }
-        }
+          }
       }
+  }
   """;
 
   public TestSuiteRepository() {
@@ -128,6 +138,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       Table table =
           Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
       inheritOwner(testSuite, fields, table);
+      inheritDomain(testSuite, fields, table);
     }
   }
 
@@ -232,7 +243,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         testSummary = getEntityTestCasesExecutionSummary(testCaseResultSummary);
       }
       return testSummary;
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Error reading aggregation query", e);
     }
     return null;

@@ -91,6 +91,11 @@ export interface DataProductSource extends CommonSource {
   data_product_name: string;
 }
 
+export interface ChartSource extends CommonSource {
+  chart_id: string;
+  chart_name: string;
+}
+
 export interface Option {
   _index: string;
   _id: string;
@@ -105,7 +110,8 @@ export interface Option {
     GlossarySource &
     TagSource &
     SearchIndexSource &
-    DataProductSource;
+    DataProductSource &
+    ChartSource;
 }
 
 export type SearchSuggestions =
@@ -120,4 +126,5 @@ export type SearchSuggestions =
   | SearchIndexSource[]
   | StoredProcedureSearchSource[]
   | DashboardDataModelSearchSource[]
-  | DataProductSource[];
+  | DataProductSource[]
+  | ChartSource[];

@@ -26,11 +26,13 @@ class NoSQLSampler(SamplerInterface):
         """
         records = self._rdn_sample_from_user_query()
         columns = [
-            SQALikeColumn(name=column.name.__root__, type=column.dataType)
+            SQALikeColumn(name=column.name.root, type=column.dataType)
             for column in self.table.columns
         ]
         rows, cols = self.transpose_records(records, columns)
-        return TableData(rows=rows, columns=[c.name for c in cols])
+        return TableData(
+            rows=[list(map(str, row)) for row in rows], columns=[c.name for c in cols]
+        )
 
     def random_sample(self):
         pass
@@ -40,14 +42,17 @@ class NoSQLSampler(SamplerInterface):
             return self._fetch_sample_data_from_user_query()
         return self._fetch_sample_data(columns)
 
-    def _fetch_sample_data(self, columns: List[SQALikeColumn]):
+    def _fetch_sample_data(self, columns: List[SQALikeColumn]) -> TableData:
         """
         returns sampled ometa dataframes
         """
         limit = self._get_limit()
         records = self.client.scan(self.table, self.table.columns, limit)
         rows, cols = self.transpose_records(records, columns)
-        return TableData(rows=rows, columns=[col.name for col in cols])
+        return TableData(
+            rows=[list(map(str, row)) for row in rows],
+            columns=[col.name for col in cols],
+        )
 
     def _get_limit(self) -> Optional[int]:
         num_rows = self.client.item_count(self.table)

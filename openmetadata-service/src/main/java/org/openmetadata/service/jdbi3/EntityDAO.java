@@ -20,9 +20,11 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -37,6 +39,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.jdbi.BindFQN;
 import org.openmetadata.service.util.jdbi.BindUUID;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 public interface EntityDAO<T extends EntityInterface> {
   org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(EntityDAO.class);
@@ -109,8 +112,8 @@ public interface EntityDAO<T extends EntityInterface> {
                 + ", fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
                 + "WHERE fqnHash LIKE '%s.%%'",
             getTableName(),
-            escapeApostrophe(oldPrefix),
-            escapeApostrophe(newPrefix),
+            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(oldPrefix)),
+            ReindexingUtil.escapeDoubleQuotes(escapeApostrophe(newPrefix)),
             FullyQualifiedName.buildHash(oldPrefix),
             FullyQualifiedName.buildHash(newPrefix),
             FullyQualifiedName.buildHash(oldPrefix));
@@ -137,6 +140,7 @@ public interface EntityDAO<T extends EntityInterface> {
   int listCount(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond);
 
   @ConnectionAwareSqlQuery(
@@ -148,6 +152,7 @@ public interface EntityDAO<T extends EntityInterface> {
   int listCount(
       @Define("table") String table,
       @Define("nameHashColumn") String nameHashColumn,
+      @BindMap Map<String, ?> params,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond);
 
@@ -177,6 +182,7 @@ public interface EntityDAO<T extends EntityInterface> {
       connectionType = POSTGRES)
   List<String> listBefore(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
@@ -198,6 +204,7 @@ public interface EntityDAO<T extends EntityInterface> {
       connectionType = POSTGRES)
   List<String> listAfter(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
@@ -292,6 +299,7 @@ public interface EntityDAO<T extends EntityInterface> {
           + ") last_rows_subquery ORDER BY name")
   List<String> listBefore(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("before") String before);
@@ -299,6 +307,7 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT json FROM <table> <cond> AND name > :after ORDER BY name LIMIT :limit")
   List<String> listAfter(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("after") String after);
@@ -317,6 +326,7 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery("SELECT json FROM <table> <cond> AND ORDER BY name LIMIT :limit OFFSET :offset")
   List<String> listAfter(
       @Define("table") String table,
+      @BindMap Map<String, ?> params,
       @Define("cond") String cond,
       @Bind("limit") int limit,
       @Bind("offset") int offset);
@@ -419,7 +429,8 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default int listCount(ListFilter filter) {
-    return listCount(getTableName(), getNameHashColumn(), filter.getCondition());
+    return listCount(
+        getTableName(), getNameHashColumn(), filter.getQueryParams(), filter.getCondition());
   }
 
   default int listTotalCount() {
@@ -429,13 +440,14 @@ public interface EntityDAO<T extends EntityInterface> {
   default List<String> listBefore(ListFilter filter, int limit, String before) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     before = FullyQualifiedName.unquoteName(before);
-    return listBefore(getTableName(), filter.getCondition(), limit, before);
+    return listBefore(
+        getTableName(), filter.getQueryParams(), filter.getCondition(), limit, before);
   }
 
   default List<String> listAfter(ListFilter filter, int limit, String after) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
     after = FullyQualifiedName.unquoteName(after);
-    return listAfter(getTableName(), filter.getCondition(), limit, after);
+    return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, after);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {
@@ -449,7 +461,7 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   default List<String> listAfter(ListFilter filter, int limit, int offset) {
-    return listAfter(getTableName(), filter.getCondition(), limit, offset);
+    return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, offset);
   }
 
   default void exists(UUID id) {

@@ -148,7 +148,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     queryParams.put(
         "fqnPrefix", FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
     ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(panelDocs.size() + 6, panelList.getPaging().getTotal());
+    assertEquals(panelDocs.size() + 7, panelList.getPaging().getTotal());
 
     // docs
     List<Document> pageDocs = new ArrayList<>();
@@ -256,6 +256,31 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     assertEquals(expectedUpdatedBy, doc.getUpdatedBy());
     assertEquals(expectedDisplayName, doc.getDisplayName());
     assertEquals(data, doc.getData());
+  }
+
+  @Test
+  void patch_usingFqn_DocUpdatePersona_permission(TestInfo test) throws IOException {
+    Document kp = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+    String originalJson = JsonUtils.pojoToJson(kp);
+    Object data = kp.getData();
+    kp.setData(new Data().withAdditionalProperty("hello", "hi"));
+
+    // Ensure user without UpdateTeam permission cannot add users to a team.
+    String randomUserName = USER1_REF.getName();
+    assertResponse(
+        () ->
+            patchEntity(
+                kp.getId(),
+                originalJson,
+                kp,
+                SecurityUtil.authHeaders(randomUserName + "@open-metadata.org")),
+        FORBIDDEN,
+        permissionNotAllowed(randomUserName, List.of(MetadataOperation.EDIT_ALL)));
+
+    // Ensure user with UpdateTeam permission can add users to a team.
+    ChangeDescription change = getChangeDescription(kp, MINOR_UPDATE);
+    fieldUpdated(change, "data", data, kp.getData());
+    patchEntityUsingFqnAndCheck(kp, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Override

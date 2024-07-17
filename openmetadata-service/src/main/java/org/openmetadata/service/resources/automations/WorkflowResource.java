@@ -50,13 +50,14 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -83,11 +84,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
   static final String FIELDS = "owner";
 
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
-  public WorkflowResource(Authorizer authorizer) {
-    super(Entity.WORKFLOW, authorizer);
+  public WorkflowResource(Authorizer authorizer, Limits limits) {
+    super(Entity.WORKFLOW, authorizer, limits);
   }
 
   @Override
@@ -396,6 +397,38 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                       }))
           JsonPatch patch) {
     Response response = patchInternal(uriInfo, securityContext, id, patch);
+    return Response.fromResponse(response)
+        .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
+        .build();
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchWorkflow",
+      summary = "Update a Workflow by name.",
+      description = "Update an existing Workflow using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();

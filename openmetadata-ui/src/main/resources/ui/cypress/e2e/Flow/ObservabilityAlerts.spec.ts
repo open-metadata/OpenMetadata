@@ -29,6 +29,7 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
+import { validateFormNameFieldInput } from '../../common/Utils/Form';
 import { getToken } from '../../common/Utils/LocalStorage';
 import {
   ALERT_DESCRIPTION,
@@ -67,7 +68,6 @@ describe(
       user: {
         id: '',
         displayName: '',
-        id: '',
       },
       domain: {
         name: '',
@@ -372,7 +372,11 @@ describe(
           cy.get('[data-testid="create-observability"]').click();
 
           // Enter alert name
-          cy.get('#name').type(ALERT_NAME);
+          validateFormNameFieldInput({
+            value: ALERT_NAME,
+            fieldName: 'Name',
+            errorDivSelector: '#name_help',
+          });
 
           // Enter description
           cy.get(descriptionBox).clear().type(ALERT_DESCRIPTION);
@@ -404,14 +408,19 @@ describe(
               .click();
 
             // Search and select filter input value
-            interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+            interceptURL(
+              'GET',
+              `/api/v1/search/query?q=*`,
+              `search${filter.name}`
+            );
             cy.get(`[data-testid="${filter.inputSelector}"]`)
               .click()
               .type(filter.inputValue);
 
-            // Adding manual wait here as as safe since debounced API is not being detected in the cypress
-            cy.wait(500);
-            verifyResponseStatusCode('@getSearchResult', 200);
+            cy.wait(`@search${filter.name}`, {
+              requestTimeout: 10000,
+            });
+
             cy.get(`[title="${filter.inputValue}"]`)
               .filter(':visible')
               .scrollIntoView()
@@ -419,7 +428,7 @@ describe(
 
             // Check if option is selected
             cy.get(
-              `[title="${filter.inputValue}"] .ant-select-item-option-state`
+              `[data-testid="${filter.inputSelector}"] [title="${filter.inputValue}"]`
             ).should('exist');
 
             if (filter.exclude) {

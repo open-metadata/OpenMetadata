@@ -26,8 +26,11 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.type.Relationship.ADDRESSED_TO;
 import static org.openmetadata.schema.type.Relationship.CREATED;
 import static org.openmetadata.schema.type.Relationship.IS_ABOUT;
+import static org.openmetadata.schema.type.Relationship.MENTIONED_IN;
 import static org.openmetadata.schema.type.Relationship.REPLIED_TO;
 import static org.openmetadata.schema.type.TaskStatus.Open;
+import static org.openmetadata.service.Entity.GLOSSARY;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_INVALID_START_TIME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.ANNOUNCEMENT_OVERLAP;
@@ -36,6 +39,8 @@ import static org.openmetadata.service.jdbi3.UserRepository.TEAMS_FIELD;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReference;
 
 import io.jsonwebtoken.lang.Collections;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -112,6 +117,8 @@ public class FeedRepository {
   public static final String DELETED_USER_DISPLAY = "User was deleted";
   public static final String DELETED_TEAM_NAME = "DeletedTeam";
   public static final String DELETED_TEAM_DISPLAY = "Team was deleted";
+  private static final long MAX_SECONDS_TIMESTAMP = 2147483647L;
+
   private final CollectionDAO dao;
   private static final MessageDecorator<FeedMessage> FEED_MESSAGE_FORMATTER =
       new FeedMessageDecorator();
@@ -414,6 +421,20 @@ public class FeedRepository {
     sortPosts(thread);
   }
 
+  @Transaction
+  public void closeTaskWithoutWorkflow(Thread thread, String user, CloseTask closeTask) {
+    TaskDetails task = thread.getTask();
+    if (task.getStatus() != Open) {
+      return;
+    }
+    task.withStatus(TaskStatus.Closed).withClosedBy(user).withClosedAt(System.currentTimeMillis());
+    thread.withTask(task).withUpdatedBy(user).withUpdatedAt(System.currentTimeMillis());
+
+    dao.feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+    addClosingPost(thread, user, closeTask.getComment());
+    sortPosts(thread);
+  }
+
   private void storeMentions(Thread thread, String message) {
     // Create relationship for users, teams, and other entities that are mentioned in the post
     // Multiple mentions of the same entity is handled by taking distinct mentions
@@ -569,6 +590,30 @@ public class FeedRepository {
           });
       computeTotalTaskCount(threadCount);
       threadCounts.add(threadCount);
+    } else if (reference.getType().equals(GLOSSARY)) {
+      mentions = 0;
+      result = dao.feedDAO().listCountThreadsByGlossaryAndTerms(entityLink, reference);
+      result.forEach(
+          l -> {
+            ThreadCount threadCount = new ThreadCount().withMentionCount(mentions);
+            String eLink = l.get(0);
+            String type = l.get(1);
+            String taskStatus = l.get(2);
+            threadCount.setEntityLink(eLink);
+            int count = Integer.parseInt(l.get(3));
+            if (type.equalsIgnoreCase("Conversation")) {
+              threadCount.setConversationCount(count);
+            } else if (type.equalsIgnoreCase("Task")) {
+              if (taskStatus.equals("Open")) {
+                threadCount.setOpenTaskCount(count);
+              } else if (taskStatus.equals("Closed")) {
+                threadCount.setClosedTaskCount(count);
+              }
+            }
+            computeTotalTaskCount(threadCount);
+            threadCounts.add(threadCount);
+          });
+
     } else {
       mentions = 0;
       result =
@@ -632,6 +677,13 @@ public class FeedRepository {
         // For a user entityLink get created or replied relationships to the thread
         if (reference.getType().equals(USER)) {
           FilteredThreads filteredThreads = getThreadsByOwner(filter, reference.getId(), limit + 1);
+          threads = filteredThreads.threads();
+          total = filteredThreads.totalCount();
+        } else if (reference.getType().equals(GLOSSARY)
+            && ThreadType.Task.equals(filter.getThreadType())) {
+          // Get tasks associated with the glossary term and glossary at glossary level
+          FilteredThreads filteredThreads =
+              getThreadsForGlossary(filter, userId, limit + 1, entityLink);
           threads = filteredThreads.threads();
           total = filteredThreads.totalCount();
         } else {
@@ -850,6 +902,12 @@ public class FeedRepository {
     if (startTime >= endTime) {
       throw new IllegalArgumentException(ANNOUNCEMENT_INVALID_START_TIME);
     }
+
+    // Converts start and end times to milliseconds if they are in seconds.
+    if (startTime <= MAX_SECONDS_TIMESTAMP && endTime <= MAX_SECONDS_TIMESTAMP) {
+      convertStartAndEndTimeToMilliseconds(thread);
+    }
+
     // TODO fix this - overlapping announcements should be allowed
     List<String> announcements =
         dao.feedDAO()
@@ -858,6 +916,26 @@ public class FeedRepository {
       // There is already an announcement that overlaps the new one
       throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);
     }
+  }
+
+  private static void convertStartAndEndTimeToMilliseconds(Thread thread) {
+    Optional.ofNullable(thread.getAnnouncement())
+        .ifPresent(
+            announcement -> {
+              Optional.ofNullable(announcement.getStartTime())
+                  .ifPresent(
+                      startTime ->
+                          announcement.setStartTime(convertSecondsToMilliseconds(startTime)));
+              Optional.ofNullable(announcement.getEndTime())
+                  .ifPresent(
+                      endTime -> announcement.setEndTime(convertSecondsToMilliseconds(endTime)));
+            });
+  }
+
+  private static long convertSecondsToMilliseconds(long seconds) {
+    return LocalDateTime.ofEpochSecond(seconds, 0, ZoneOffset.UTC)
+        .toInstant(ZoneOffset.UTC)
+        .toEpochMilli();
   }
 
   private void validateAssignee(Thread thread) {
@@ -1111,6 +1189,37 @@ public class FeedRepository {
     int totalCount =
         dao.feedDAO().listCountThreadsByOwner(userId, teamIds, filter.getCondition(false));
     return new FilteredThreads(threads, totalCount);
+  }
+
+  private FilteredThreads getThreadsForGlossary(
+      FeedFilter filter, UUID userId, int limit, EntityLink entityLink) {
+
+    User user = userId != null ? Entity.getEntity(USER, userId, TEAMS_FIELD, NON_DELETED) : null;
+    List<String> teamNameHash = getTeamNames(user);
+    String userName = user == null ? null : user.getFullyQualifiedName();
+    int filterRelation = -1;
+    if (userName != null && filter.getFilterType() == FilterType.MENTIONS) {
+      filterRelation = MENTIONED_IN.ordinal();
+    }
+    EntityLink glossaryTermLink =
+        new EntityLink(GLOSSARY_TERM, entityLink.getFullyQualifiedFieldValue());
+
+    List<String> jsons =
+        dao.feedDAO()
+            .listThreadsByGlossaryAndTerms(
+                entityLink.getFullyQualifiedFieldValue(),
+                entityLink.getFullyQualifiedFieldType(),
+                glossaryTermLink.getFullyQualifiedFieldType(),
+                limit + 1,
+                IS_ABOUT.ordinal(),
+                userName,
+                teamNameHash,
+                filterRelation,
+                filter.getCondition());
+
+    List<Thread> threads = JsonUtils.readObjects(jsons, Thread.class);
+
+    return new FilteredThreads(threads, jsons.size());
   }
 
   /**

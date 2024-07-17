@@ -30,6 +30,7 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -39,12 +40,12 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
-  getEntityName,
 } from '../../../utils/EntityUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getTaskAssignee,
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -144,17 +145,9 @@ const RequestTag = () => {
   }, [entityFQN, entityType]);
 
   useEffect(() => {
-    const owner = entityData.owner;
-    let defaultAssignee: Option[] = [];
-    if (owner) {
-      defaultAssignee = [
-        {
-          label: getEntityName(owner),
-          value: owner.id || '',
-          type: owner.type,
-          name: owner.name,
-        },
-      ];
+    const defaultAssignee = getTaskAssignee(entityData as Glossary);
+
+    if (defaultAssignee) {
       setAssignees(defaultAssignee);
       setOptions((prev) => [...defaultAssignee, ...prev]);
     }
@@ -170,7 +163,9 @@ const RequestTag = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -268,6 +263,7 @@ const RequestTag = () => {
       }}
       pageTitle={t('label.task')}
       secondPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,
         children: (

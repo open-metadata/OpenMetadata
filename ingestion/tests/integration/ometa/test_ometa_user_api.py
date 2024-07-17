@@ -15,12 +15,11 @@ import logging
 import time
 from unittest import TestCase
 
+from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.teams.team import Team, TeamType
 from metadata.generated.schema.entity.teams.user import User
-
-from ..integration_base import int_admin_ometa
 
 
 class OMetaUserTest(TestCase):
@@ -184,4 +183,9 @@ class OMetaUserTest(TestCase):
         self.assertEqual(
             self.team.id,
             self.metadata.get_reference_by_name(name="OPS Team").id,
+        )
+
+        # if team is not group, return none
+        self.assertIsNone(
+            self.metadata.get_reference_by_name(name="Organization", is_owner=True)
         )

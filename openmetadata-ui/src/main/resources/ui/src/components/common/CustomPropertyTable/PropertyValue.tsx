@@ -24,7 +24,16 @@ import {
 } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isArray, isUndefined, noop, toNumber, toUpper } from 'lodash';
+import {
+  isArray,
+  isEmpty,
+  isNil,
+  isUndefined,
+  noop,
+  omitBy,
+  toNumber,
+  toUpper,
+} from 'lodash';
 import moment, { Moment } from 'moment';
 import React, { CSSProperties, FC, Fragment, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -86,19 +95,39 @@ export const PropertyValue: FC<PropertyValueProps> = ({
 
     const enumValue = isArrayType ? updatedValue : [updatedValue];
 
-    const propertyValue = isEnum ? enumValue : updatedValue;
+    const propertyValue = isEnum
+      ? (enumValue as string[]).filter(Boolean)
+      : updatedValue;
 
     try {
-      const updatedExtension = {
-        ...(extension || {}),
-        [propertyName]: ['integer', 'number'].includes(propertyType.name ?? '')
-          ? toNumber(updatedValue || 0)
-          : propertyValue,
-      };
+      // Omit undefined and empty values
+      const updatedExtension = omitBy(
+        omitBy(
+          {
+            ...(extension ?? {}),
+            [propertyName]: ['integer', 'number'].includes(
+              propertyType.name ?? ''
+            )
+              ? updatedValue
+                ? toNumber(updatedValue)
+                : updatedValue // If number is cleared and set undefined
+              : propertyValue,
+          },
+          isUndefined
+        ),
+        (value) =>
+          // Check if value is empty array, empty string, null or empty object
+          value === '' ||
+          isNil(value) ||
+          (typeof value === 'object' && isEmpty(value))
+      );
 
       setIsLoading(true);
 
-      await onExtensionUpdate(updatedExtension);
+      await onExtensionUpdate(
+        // If updatedExtension is empty, set it to undefined
+        isEmpty(updatedExtension) ? undefined : updatedExtension
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -181,18 +210,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { enumValues: string | string[] }) =>
                 onInputSave(values.enumValues)
               }>
-              <Form.Item
-                name="enumValues"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.enum-value-plural'),
-                    }),
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="enumValues" style={commonStyle}>
                 <Select
+                  allowClear
                   data-testid="enum-select"
                   disabled={isLoading}
                   mode={isMultiSelect ? 'multiple' : undefined}
@@ -205,9 +225,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
-      case 'date':
-      case 'dateTime': {
-        const format = toUpper(property.customPropertyConfig?.config as string);
+      case 'date-cp':
+      case 'dateTime-cp': {
+        // Default format is 'yyyy-mm-dd'
+        const format = toUpper(
+          (property.customPropertyConfig?.config as string) ?? 'yyyy-mm-dd'
+        );
 
         const initialValues = {
           dateTimeValue: value ? moment(value, format) : undefined,
@@ -228,24 +251,19 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { dateTimeValue: Moment }) => {
-                onInputSave(values.dateTimeValue.format(format));
+                onInputSave(
+                  values.dateTimeValue
+                    ? values.dateTimeValue.format(format)
+                    : values.dateTimeValue // If date is cleared and set undefined
+                );
               }}>
-              <Form.Item
-                name="dateTimeValue"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: propertyType.name,
-                    }),
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="dateTimeValue" style={commonStyle}>
                 <DatePicker
+                  allowClear
                   data-testid="date-time-picker"
                   disabled={isLoading}
                   format={format}
-                  showTime={propertyType.name === 'dateTime'}
+                  showTime={propertyType.name === 'dateTime-cp'}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -254,8 +272,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
         );
       }
 
-      case 'time': {
-        const format = 'HH:mm:ss';
+      case 'time-cp': {
+        const format =
+          (property.customPropertyConfig?.config as string) ?? 'HH:mm:ss';
         const initialValues = {
           time: value ? moment(value, format) : undefined,
         };
@@ -276,19 +295,16 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               layout="vertical"
               validateMessages={VALIDATION_MESSAGES}
               onFinish={(values: { time: Moment }) => {
-                onInputSave(values.time.format(format));
+                onInputSave(
+                  values.time ? values.time.format(format) : values.time // If time is cleared and set undefined
+                );
               }}>
-              <Form.Item
-                name="time"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="time" style={commonStyle}>
                 <TimePicker
+                  allowClear
                   data-testid="time-picker"
                   disabled={isLoading}
+                  format={format}
                   style={{ width: '250px' }}
                 />
               </Form.Item>
@@ -324,7 +340,6 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 name="email"
                 rules={[
                   {
-                    required: true,
                     min: 6,
                     max: 127,
                     type: 'email',
@@ -332,6 +347,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="email-input"
                   disabled={isLoading}
                   placeholder="john@doe.com"
@@ -362,18 +378,22 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { timestamp: string }) => {
-                onInputSave(toNumber(values.timestamp));
+                onInputSave(
+                  values.timestamp
+                    ? toNumber(values.timestamp)
+                    : values.timestamp // If timestamp is cleared and set undefined
+                );
               }}>
               <Form.Item
                 name="timestamp"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="timestamp-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
@@ -407,21 +427,28 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               initialValues={initialValues}
               layout="vertical"
               onFinish={(values: { start: string; end: string }) => {
-                onInputSave({
-                  start: toNumber(values.start),
-                  end: toNumber(values.end),
-                });
+                onInputSave(
+                  omitBy(
+                    {
+                      start: values.start
+                        ? toNumber(values.start)
+                        : values.start,
+                      end: values.end ? toNumber(values.end) : values.end,
+                    },
+                    isUndefined
+                  ) as TimeIntervalType
+                );
               }}>
               <Form.Item
                 name="start"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
                 style={{ ...commonStyle, marginBottom: '16px' }}>
                 <Input
+                  allowClear
                   data-testid="start-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
@@ -433,12 +460,12 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                 name="end"
                 rules={[
                   {
-                    required: true,
                     pattern: TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
                   },
                 ]}
                 style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="end-input"
                   disabled={isLoading}
                   placeholder={t('message.unix-epoch-time-in-ms', {
@@ -474,15 +501,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { duration: string }) => {
                 onInputSave(values.duration);
               }}>
-              <Form.Item
-                name="duration"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="duration" style={commonStyle}>
                 <Input
+                  allowClear
                   data-testid="duration-input"
                   disabled={isLoading}
                   placeholder={t('message.duration-in-iso-format')}
@@ -516,18 +537,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               onFinish={(values: { sqlQuery: string }) => {
                 onInputSave(values.sqlQuery);
               }}>
-              <Form.Item
-                name="sqlQuery"
-                rules={[
-                  {
-                    required: true,
-                    message: t('label.field-required', {
-                      field: t('label.sql-uppercase-query'),
-                    }),
-                  },
-                ]}
-                style={commonStyle}
-                trigger="onChange">
+              <Form.Item name="sqlQuery" style={commonStyle} trigger="onChange">
                 <SchemaEditor
                   className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
                   mode={{ name: CSMode.SQL }}
@@ -604,17 +614,10 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                     values.entityReference.map((item) => item.reference)
                   );
                 } else {
-                  onInputSave(values.entityReference.reference);
+                  onInputSave(values?.entityReference?.reference);
                 }
               }}>
-              <Form.Item
-                name="entityReference"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-                style={commonStyle}>
+              <Form.Item name="entityReference" style={commonStyle}>
                 <DataAssetAsyncSelectList
                   initialOptions={initialOptions}
                   mode={mode}
@@ -738,7 +741,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
               <Button
                 className="entity-button flex-center p-0 m--ml-1"
                 icon={
-                  <div className="entity-button-icon m-r-xs">
+                  <div
+                    className="entity-button-icon m-r-xs"
+                    style={{ width: '18px', display: 'flex' }}>
                     {['user', 'team'].includes(item.type) ? (
                       <ProfilePicture
                         className="d-flex"
@@ -785,9 +790,9 @@ export const PropertyValue: FC<PropertyValueProps> = ({
       case 'string':
       case 'integer':
       case 'number':
-      case 'date':
-      case 'dateTime':
-      case 'time':
+      case 'date-cp':
+      case 'dateTime-cp':
+      case 'time-cp':
       case 'email':
       case 'timestamp':
       case 'duration':

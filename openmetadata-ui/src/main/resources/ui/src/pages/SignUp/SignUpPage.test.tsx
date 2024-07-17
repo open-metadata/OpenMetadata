@@ -33,7 +33,7 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
-    setIsSigningIn: jest.fn(),
+    setIsSigningUp: jest.fn(),
     newUser: {
       name: '',
       email: '',
@@ -106,6 +106,10 @@ describe('SignUp page', () => {
   });
 
   it('Handlers in forms for change and submit should work properly', async () => {
+    (createUser as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(undefined)
+    );
+
     render(<SignUp />);
     const form = screen.getByTestId('create-user-form');
     const fullNameInput = screen.getByTestId(
@@ -135,12 +139,8 @@ describe('SignUp page', () => {
     expect(userNameInput).toHaveValue(mockChangedFormData.userName);
     expect(emailInput).toHaveValue(mockChangedFormData.email);
 
-    fireEvent.click(submitButton);
-
     await act(async () => {
-      (createUser as jest.Mock).mockImplementationOnce(() =>
-        Promise.resolve(undefined)
-      );
+      fireEvent.click(submitButton);
     });
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(1);

@@ -65,12 +65,11 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-} from '../../../utils/Explore.utils';
-import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
+} from '../../../utils/ExploreUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -190,11 +189,7 @@ export const AssetSelectionModal = ({
     setFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(
-          item,
-          dropdownItems,
-          undefined // pass in state variable
-        ),
+        value: [],
       }))
     );
   }, [type]);
@@ -560,7 +555,10 @@ export const AssetSelectionModal = ({
             message={
               <div className="d-flex items-center gap-3">
                 <ExclamationCircleOutlined
-                  style={{ color: theme.errorColor, fontSize: '24px' }}
+                  style={{
+                    color: theme.errorColor,
+                    fontSize: '24px',
+                  }}
                 />
                 <Typography.Text className="font-semibold text-sm">
                   {t('label.validation-error-plural')}

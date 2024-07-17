@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
+  ChartSource,
   DashboardSource,
   DataProductSource,
   GlossarySource,
@@ -98,6 +99,8 @@ const Suggestions = ({
     DataProductSource[]
   >([]);
 
+  const [chartSuggestions, setChartSuggestions] = useState<ChartSource[]>([]);
+
   const isMounting = useRef(true);
 
   const updateSuggestions = (options: Array<Option>) => {
@@ -127,6 +130,8 @@ const Suggestions = ({
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
     );
+
+    setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
   };
 
   const getSuggestionsForIndex = (
@@ -188,6 +193,10 @@ const Suggestions = ({
           {
             suggestions: dataProductSuggestions,
             searchIndex: SearchIndex.DATA_PRODUCT,
+          },
+          {
+            suggestions: chartSuggestions,
+            searchIndex: SearchIndex.CHART,
           },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>

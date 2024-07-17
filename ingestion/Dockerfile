@@ -1,6 +1,6 @@
 FROM mysql:8.3 as mysql
 
-FROM apache/airflow:2.7.3-python3.10
+FROM apache/airflow:2.9.1-python3.10
 USER root
 RUN curl -sS https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
 RUN curl -sS https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list
@@ -27,13 +27,13 @@ RUN apt-get -qq update \
     libssl-dev \
     libxml2 \
     libkrb5-dev \
-    openjdk-11-jre \
+    default-jdk \
     openssl \
     postgresql \
     postgresql-contrib \
     tdsodbc \
-    unixodbc \
-    unixodbc-dev \
+    unixodbc=2.3.11-2+deb12u1 \
+    unixodbc-dev=2.3.11-2+deb12u1 \
     unzip \
     git \
     wget --no-install-recommends \
@@ -53,22 +53,6 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 
 ENV LD_LIBRARY_PATH=/instantclient
 
-# Security patches for base image
-# monitor no fixed version for
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-LIBTASN16-3061097
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-MARIADB105-2940589
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-BIND9-3027852
-#    https://security.snyk.io/vuln/SNYK-DEBIAN11-EXPAT-3023031 we are already installed the latest
-RUN echo "deb http://deb.debian.org/debian bullseye-backports main" > /etc/apt/sources.list.d/backports.list
-RUN apt-get -qq update \
-    && apt-get -qq install -t bullseye-backports -y \
-    curl \
-    libpcre2-8-0 \
-    postgresql-common \
-    expat \
-    bind9 \
-    && rm -rf /var/lib/apt/lists/*
-
 # Required for Starting Ingestion Container in Docker Compose
 COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflow
 # Required for Ingesting Sample Data
@@ -84,7 +68,7 @@ ARG INGESTION_DEPENDENCY="all"
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
-ARG RI_VERSION="1.3.0.0.dev0"
+ARG RI_VERSION="1.5.0.0.dev0"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-2.7.3/constraints-3.10.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
@@ -99,7 +83,7 @@ RUN if [[ $(uname -m) != "aarch64" ]]; \
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
 # remove all airflow providers except for docker and cncf kubernetes
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf" | xargs pip uninstall -y
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab" | xargs pip uninstall -y
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
@@ -108,4 +92,4 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs
 # This is required as it's responsible to create airflow.cfg file
-RUN airflow db init && rm -f /opt/airflow/airflow.db
+RUN airflow db migrate && rm -f /opt/airflow/airflow.db

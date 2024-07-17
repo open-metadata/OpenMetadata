@@ -44,11 +44,13 @@ import postgresConnection from '../jsons/connectionSchemas/connections/database/
 import prestoConnection from '../jsons/connectionSchemas/connections/database/prestoConnection.json';
 import redshiftConnection from '../jsons/connectionSchemas/connections/database/redshiftConnection.json';
 import salesforceConnection from '../jsons/connectionSchemas/connections/database/salesforceConnection.json';
+import sapErpConnection from '../jsons/connectionSchemas/connections/database/sapErpConnection.json';
 import sapHanaConnection from '../jsons/connectionSchemas/connections/database/sapHanaConnection.json';
 import sasConnection from '../jsons/connectionSchemas/connections/database/sasConnection.json';
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
+import teradataConnection from '../jsons/connectionSchemas/connections/database/teradataConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
 import verticaConnection from '../jsons/connectionSchemas/connections/database/verticaConnection.json';
@@ -213,6 +215,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 
       break;
     }
+    case DatabaseServiceType.SapERP: {
+      schema = sapErpConnection;
+
+      break;
+    }
     case DatabaseServiceType.MongoDB: {
       schema = mongoDBConnection;
 
@@ -245,6 +252,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Iceberg: {
       schema = icebergConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Teradata: {
+      schema = teradataConnection;
 
       break;
     }

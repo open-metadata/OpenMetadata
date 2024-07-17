@@ -65,8 +65,8 @@ class ProfilerSource(ProfilerSourceInterface):
         self.source_config = cast(
             DatabaseServiceProfilerPipeline, self.source_config
         )  # satisfy type checker
-        self.profiler_config = ProfilerProcessorConfig.parse_obj(
-            config.processor.dict().get("config")
+        self.profiler_config = ProfilerProcessorConfig.model_validate(
+            config.processor.model_dump().get("config")
         )
         self.ometa_client = ometa_client
         self.profiler_interface_type: str = self._get_profiler_interface_type(config)
@@ -102,7 +102,7 @@ class ProfilerSource(ProfilerSourceInterface):
         """
         if isinstance(self.service_conn_config, NON_SQA_DATABASE_CONNECTIONS):
             return self.service_conn_config.__class__.__name__
-        return config.source.serviceConnection.__root__.config.__class__.__name__
+        return config.source.serviceConnection.root.config.__class__.__name__
 
     @staticmethod
     def get_config_for_table(entity: Table, profiler_config) -> Optional[TableConfig]:
@@ -112,27 +112,24 @@ class ProfilerSource(ProfilerSourceInterface):
             entity: table entity
         """
         for table_config in profiler_config.tableConfig or []:
-            if (
-                table_config.fullyQualifiedName.__root__
-                == entity.fullyQualifiedName.__root__
-            ):
+            if table_config.fullyQualifiedName.root == entity.fullyQualifiedName.root:
                 return table_config
 
         for schema_config in profiler_config.schemaConfig or []:
             if (
-                schema_config.fullyQualifiedName.__root__
+                schema_config.fullyQualifiedName.root
                 == entity.databaseSchema.fullyQualifiedName
             ):
                 return TableConfig.from_database_and_schema_config(
-                    schema_config, entity.fullyQualifiedName.__root__
+                    schema_config, entity.fullyQualifiedName.root
                 )
         for database_config in profiler_config.databaseConfig or []:
             if (
-                database_config.fullyQualifiedName.__root__
+                database_config.fullyQualifiedName.root
                 == entity.database.fullyQualifiedName
             ):
                 return TableConfig.from_database_and_schema_config(
-                    database_config, entity.fullyQualifiedName.__root__
+                    database_config, entity.fullyQualifiedName.root
                 )
 
         return None
@@ -173,16 +170,16 @@ class ProfilerSource(ProfilerSourceInterface):
             DatabaseService.__config__
         """
         config_copy = deepcopy(
-            config.source.serviceConnection.__root__.config  # type: ignore
+            config.source.serviceConnection.root.config  # type: ignore
         )
         if hasattr(
             config_copy,  # type: ignore
             "supportsDatabase",
         ):
             if hasattr(config_copy, "database"):
-                config_copy.database = database.name.__root__  # type: ignore
+                config_copy.database = database.name.root  # type: ignore
             if hasattr(config_copy, "catalog"):
-                config_copy.catalog = database.name.__root__  # type: ignore
+                config_copy.catalog = database.name.root  # type: ignore
 
         # we know we'll only be working with DatabaseConnection, we cast the type to satisfy type checker
         config_copy = cast(DatabaseConnection, config_copy)
@@ -199,7 +196,7 @@ class ProfilerSource(ProfilerSourceInterface):
         db_service: Optional[DatabaseService],
     ) -> ProfilerInterface:
         """Create sqlalchemy profiler interface"""
-        from metadata.profiler.interface.profiler_interface_factory import (
+        from metadata.profiler.interface.profiler_interface_factory import (  # pylint: disable=import-outside-toplevel
             profiler_interface_factory,
         )
 

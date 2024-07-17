@@ -102,11 +102,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # We create the ometa client at the workflow level and pass it to the steps
         self.metadata_config = metadata_config
         self.metadata = create_ometa_client(metadata_config)
+        self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
 
     @property
-    def ingestion_pipeline(self):
+    def ingestion_pipeline(self) -> Optional[IngestionPipeline]:
         """Get or create the Ingestion Pipeline from the configuration"""
         if not self._ingestion_pipeline and self.config.ingestionPipelineFQN:
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
@@ -180,7 +181,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         pipeline_state = PipelineState.success
         self.timer.trigger()
         try:
-            self.set_ingestion_pipeline_status(state=PipelineState.running)
             self.execute_internal()
 
             if SUCCESS_THRESHOLD_VALUE <= self.calculate_success() < 100:
@@ -205,7 +205,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         if not self._run_id:
             if self.config.pipelineRunId:
-                self._run_id = str(self.config.pipelineRunId.__root__)
+                self._run_id = str(self.config.pipelineRunId.root)
             else:
                 self._run_id = str(uuid.uuid4())
 

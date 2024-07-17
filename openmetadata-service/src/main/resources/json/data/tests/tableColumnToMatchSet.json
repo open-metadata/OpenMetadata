@@ -20,6 +20,7 @@
         "dataType": "BOOLEAN"
       }
     ],
-    "provider": "system"
+    "provider": "system",
+    "dataQualityDimension": "Integrity"
   }
   

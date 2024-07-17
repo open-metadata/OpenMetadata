@@ -19,7 +19,6 @@ from unittest.mock import patch
 
 import pytest
 
-from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
@@ -66,8 +65,8 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "COLUMN",
             (
                 TestCaseResult,
+                "0",
                 "8",
-                "14",
                 TestCaseStatus.Failed,
                 20.0,
                 10.0,
@@ -216,9 +215,9 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "COLUMN",
             (
                 TestCaseResult,
-                "10",
+                "20",
                 None,
-                TestCaseStatus.Success,
+                TestCaseStatus.Failed,
                 None,
                 None,
                 None,
@@ -229,7 +228,7 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
             "test_case_column_values_missing_count_to_be_equal_missing_values",
             "columnValuesMissingCount",
             "COLUMN",
-            (TestCaseResult, "20", None, TestCaseStatus.Failed, None, None, None, None),
+            (TestCaseResult, "30", None, TestCaseStatus.Failed, None, None, None, None),
         ),
         (
             "test_case_column_values_not_in_set",
@@ -448,8 +447,7 @@ def test_suite_validation_database(
                 execution_date=EXECUTION_DATE.timestamp(),
             )
 
-            validator = Validator(test_handler)
-            res = validator.validate()
+            res = test_handler.run_validation()
     elif test_case_name == "test_case_column_values_to_be_between_datetime":
         with patch(
             "metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeBetween.ColumnValuesToBeBetweenValidator._run_results",
@@ -467,8 +465,7 @@ def test_suite_validation_database(
                 execution_date=EXECUTION_DATE.timestamp(),
             )
 
-            validator = Validator(test_handler)
-            res = validator.validate()
+            res = test_handler.run_validation()
     else:
         test_handler_obj = import_test_case_class(
             test_type,
@@ -482,8 +479,7 @@ def test_suite_validation_database(
             execution_date=EXECUTION_DATE.timestamp(),
         )
 
-        validator = Validator(test_handler)
-        res = validator.validate()
+        res = test_handler.run_validation()
 
     assert isinstance(res, type_)
     if val_1:

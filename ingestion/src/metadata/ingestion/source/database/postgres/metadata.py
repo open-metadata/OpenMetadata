@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -56,6 +57,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
     get_columns,
     get_etable_owner,
+    get_foreign_keys,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -65,8 +67,10 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_table_owners,
     get_all_view_definitions,
+    get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
@@ -123,7 +127,11 @@ PGDialect.get_all_table_owners = get_all_table_owners
 PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
+
+PGDialect.get_foreign_keys = get_foreign_keys
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
@@ -136,8 +144,8 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PostgresConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(
                 f"Expected PostgresConnection, but got {connection}"
@@ -172,8 +180,8 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(POSTGRES_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.__root__.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
             yield configured_db
         else:
@@ -246,8 +254,10 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.get().database_service, *fqn_elements
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, *fqn_elements
+                        )
                     ),
                     tags=[row[1]],
                     classification_name=self.service_connection.classificationName,

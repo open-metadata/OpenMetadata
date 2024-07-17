@@ -51,7 +51,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    SourceUrl,
+)
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
@@ -99,7 +103,11 @@ from metadata.utils.credentials import GOOGLE_CREDENTIALS
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import get_start_and_end
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.sqlalchemy_utils import is_complex_type
+from metadata.utils.sqlalchemy_utils import (
+    get_all_table_ddls,
+    get_table_ddl,
+    is_complex_type,
+)
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_label
 from metadata.utils.tag_utils import get_tag_labels as fetch_tag_labels_om
 
@@ -210,6 +218,9 @@ BigQueryDialect._build_formatted_table_id = (  # pylint: disable=protected-acces
 BigQueryDialect.get_pk_constraint = get_pk_constraint
 BigQueryDialect.get_foreign_keys = get_foreign_keys
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
+
 
 class BigquerySource(
     LifeCycleQueryMixin, StoredProcedureMixin, CommonDbSourceService, MultiDBSource
@@ -252,8 +263,8 @@ class BigquerySource(
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
     ):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: BigQueryConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: BigQueryConnection = config.serviceConnection.root.config
         if not isinstance(connection, BigQueryConnection):
             raise InvalidSourceException(
                 f"Expected BigQueryConnection, but got {connection}"
@@ -348,11 +359,7 @@ class BigquerySource(
     def yield_tag(
         self, schema_name: str
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        Build tag context
-        :param _:
-        :return:
-        """
+        """Build tag context"""
         try:
             # Fetching labels on the databaseSchema ( dataset ) level
             dataset_obj = self.client.get_dataset(schema_name)
@@ -362,7 +369,7 @@ class BigquerySource(
                         tags=[value],
                         classification_name=key,
                         tag_description="Bigquery Dataset Label",
-                        classification_description="",
+                        classification_description="BigQuery Dataset Classification",
                         include_tags=self.source_config.includeTags,
                     )
             # Fetching policy tags on the column level
@@ -382,7 +389,7 @@ class BigquerySource(
                         tags=[tag.display_name for tag in policy_tags],
                         classification_name=taxonomy.display_name,
                         tag_description="Bigquery Policy Tag",
-                        classification_description="",
+                        classification_description="BigQuery Policy Classification",
                         include_tags=self.source_config.includeTags,
                     )
         except Exception as exc:
@@ -477,12 +484,14 @@ class BigquerySource(
         """
 
         database_schema_request_obj = CreateDatabaseSchemaRequest(
-            name=schema_name,
-            database=fqn.build(
-                metadata=self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
+            name=EntityName(schema_name),
+            database=FullyQualifiedEntityName(
+                fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                )
             ),
             description=self.get_schema_description(schema_name),
             sourceUrl=self.get_source_url(
@@ -519,7 +528,7 @@ class BigquerySource(
                     tags=[value],
                     classification_name=key,
                     tag_description="Bigquery Table Label",
-                    classification_description="",
+                    classification_description="BigQuery Table Classification",
                     include_tags=self.source_config.includeTags,
                 )
 
@@ -601,21 +610,35 @@ class BigquerySource(
                         f"Error trying to connect to database {project_id}: {exc}"
                     )
 
-    def get_view_definition(
+    def get_schema_definition(
         self, table_type: str, table_name: str, schema_name: str, inspector: Inspector
     ) -> Optional[str]:
-        if table_type == TableType.View:
-            try:
+        """
+        Get the DDL statement or View Definition for a table
+        """
+        try:
+            if table_type == TableType.View:
                 view_definition = inspector.get_view_definition(
                     fqn._build(self.context.get().database, schema_name, table_name)
                 )
                 view_definition = (
-                    "" if view_definition is None else str(view_definition)
+                    f"CREATE VIEW {schema_name}.{table_name} AS {str(view_definition)}"
+                    if view_definition is not None
+                    else None
                 )
-            except NotImplementedError:
-                logger.warning("View definition not implemented")
-                view_definition = ""
-            return f"CREATE VIEW {schema_name}.{table_name} AS {view_definition}"
+                return view_definition
+
+            schema_definition = inspector.get_table_ddl(
+                self.connection, table_name, schema_name
+            )
+            schema_definition = (
+                str(schema_definition).strip()
+                if schema_definition is not None
+                else None
+            )
+            return schema_definition
+        except NotImplementedError:
+            logger.warning("Schema definition not implemented")
         return None
 
     def get_table_partition_details(
@@ -746,7 +769,7 @@ class BigquerySource(
                 )
             ).all()
             for row in results:
-                stored_procedure = BigQueryStoredProcedure.parse_obj(dict(row))
+                stored_procedure = BigQueryStoredProcedure.model_validate(dict(row))
                 yield stored_procedure
 
     def yield_stored_procedure(
@@ -756,7 +779,7 @@ class BigquerySource(
 
         try:
             stored_procedure_request = CreateStoredProcedureRequest(
-                name=EntityName(__root__=stored_procedure.name),
+                name=EntityName(stored_procedure.name),
                 storedProcedureCode=StoredProcedureCode(
                     language=STORED_PROC_LANGUAGE_MAP.get(
                         stored_procedure.language or "SQL",
@@ -771,7 +794,7 @@ class BigquerySource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    __root__=self.get_stored_procedure_url(
+                    self.get_stored_procedure_url(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
                         # Follow the same building strategy as tables

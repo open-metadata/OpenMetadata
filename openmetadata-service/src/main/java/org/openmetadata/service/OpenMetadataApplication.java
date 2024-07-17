@@ -61,10 +61,12 @@ import org.eclipse.jetty.websocket.server.WebSocketUpgradeFilter;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ServerProperties;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -84,6 +86,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.limits.DefaultLimits;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.migration.Migration;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -131,6 +135,7 @@ import org.quartz.SchedulerException;
 public class OpenMetadataApplication extends Application<OpenMetadataApplicationConfig> {
   private Authorizer authorizer;
   private AuthenticatorHandler authenticatorHandler;
+  private Limits limits;
 
   protected Jdbi jdbi;
 
@@ -149,7 +154,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     validateConfiguration(catalogConfig);
 
     // Instantiate incident severity classifier
-    IncidentSeverityClassifierInterface.createInstance(catalogConfig.getDataQualityConfiguration());
+    IncidentSeverityClassifierInterface.createInstance();
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
@@ -168,11 +173,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // as first step register all the repositories
     Entity.initializeRepositories(catalogConfig, jdbi);
 
-    // Init Settings Cache after repositories
-    SettingsCache.initialize(catalogConfig);
-
     // Configure the Fernet instance
     Fernet.getInstance().setFernetKey(catalogConfig);
+
+    // Init Settings Cache after repositories
+    SettingsCache.initialize(catalogConfig);
 
     initializeWebsockets(catalogConfig, environment);
 
@@ -200,6 +205,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authenticator
     registerAuthenticator(catalogConfig);
+
+    // Register Limits
+    registerLimits(catalogConfig);
 
     // Unregister dropwizard default exception mappers
     ((DefaultServerFactory) catalogConfig.getServerFactory())
@@ -394,6 +402,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
     return jdbiInstance;
   }
@@ -439,12 +448,12 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     String maxMigration = Migration.lastMigrationFile(conf.getMigrationConfiguration());
     if (lastMigrated.isEmpty()) {
       throw new IllegalStateException(
-          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/bootstrap_storage.sh migrate-all` at least once.");
+          "Could not validate Flyway migrations in the database. Make sure you have run `./bootstrap/openmetadata-ops.sh migrate` at least once.");
     }
     if (lastMigrated.get().compareTo(maxMigration) < 0) {
       throw new IllegalStateException(
           "There are pending migrations to be run on the database."
-              + " Please backup your data and run `./bootstrap/bootstrap_storage.sh migrate-all`."
+              + " Please backup your data and run `./bootstrap/openmetadata-ops.sh migrate`."
               + " You can find more information on upgrading OpenMetadata at"
               + " https://docs.open-metadata.org/deployment/upgrade ");
     }
@@ -524,6 +533,26 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  private void registerLimits(OpenMetadataApplicationConfig serverConfig)
+      throws NoSuchMethodException,
+          ClassNotFoundException,
+          IllegalAccessException,
+          InvocationTargetException,
+          InstantiationException {
+    LimitsConfiguration limitsConfiguration = serverConfig.getLimitsConfiguration();
+    if (limitsConfiguration != null && limitsConfiguration.getEnable()) {
+      limits =
+          Class.forName(limitsConfiguration.getClassName())
+              .asSubclass(Limits.class)
+              .getConstructor()
+              .newInstance();
+    } else {
+      LOG.info("Limits config not set, setting DefaultLimits");
+      limits = new DefaultLimits();
+    }
+    limits.init(serverConfig, jdbi);
+  }
+
   private void registerEventFilter(
       OpenMetadataApplicationConfig catalogConfig, Environment environment) {
     if (catalogConfig.getEventHandlerConfiguration() != null) {
@@ -550,7 +579,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
     CollectionRegistry.getInstance()
-        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler);
+        .registerResources(jdbi, environment, config, authorizer, authenticatorHandler, limits);
     environment.jersey().register(new JsonPatchProvider());
     OMErrorPageHandler eph = new OMErrorPageHandler(config.getWebConfiguration());
     eph.addErrorPage(Response.Status.NOT_FOUND.getStatusCode(), "/");

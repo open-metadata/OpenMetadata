@@ -44,6 +44,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
+import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityFields;
@@ -76,11 +77,17 @@ import com.networknt.schema.JsonSchema;
 import com.networknt.schema.ValidationMessage;
 import java.io.IOException;
 import java.net.URI;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -405,6 +412,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     updated.setChangeDescription(original.getChangeDescription());
   }
 
+  /**
+   * This function updates the Elasticsearch indexes wherever the specific entity is present.
+   * It is typically invoked when there are changes in the entity that might affect its indexing in Elasticsearch.
+   * The function ensures that the indexes are kept up-to-date with the latest state of the entity across all relevant Elasticsearch indexes.
+   */
+  protected void entityRelationshipReindex(T original, T updated) {
+    // Logic override by the child class to update the indexes
+  }
+
   /** Set fullyQualifiedName of an entity */
   public void setFullyQualifiedName(T entity) {
     entity.setFullyQualifiedName(quoteName(entity.getName()));
@@ -456,21 +472,22 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public final void initializeEntity(T entity) {
     T existingEntity = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
     if (existingEntity != null) {
-      LOG.info("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
+      LOG.debug("{} {} is already initialized", entityType, entity.getFullyQualifiedName());
       return;
     }
 
-    LOG.info("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
+    LOG.debug("{} {} is not initialized", entityType, entity.getFullyQualifiedName());
     entity.setUpdatedBy(ADMIN_USER_NAME);
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setId(UUID.randomUUID());
     create(null, entity);
-    LOG.info("Created a new {} {}", entityType, entity.getFullyQualifiedName());
+    LOG.debug("Created a new {} {}", entityType, entity.getFullyQualifiedName());
   }
 
   public final T copy(T entity, CreateEntity request, String updatedBy) {
     EntityReference owner = validateOwner(request.getOwner());
     EntityReference domain = validateDomain(request.getDomain());
+    validateReviewers(request.getReviewers());
     entity.setId(UUID.randomUUID());
     entity.setName(request.getName());
     entity.setDisplayName(request.getDisplayName());
@@ -483,6 +500,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setExtension(request.getExtension());
     entity.setUpdatedBy(updatedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
+    entity.setReviewers(request.getReviewers());
     return entity;
   }
 
@@ -524,7 +542,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
   public final T find(UUID id, Include include) throws EntityNotFoundException {
+    return find(id, include, true);
+  }
+
+  public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
     try {
+      if (!fromCache) {
+        CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      }
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_ID.get(new ImmutablePair<>(entityType, id));
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
@@ -579,8 +604,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Find method is used for getting an entity only with core fields stored as JSON without any relational fields set
    */
   public final T findByName(String fqn, Include include) {
+    return findByName(fqn, include, true);
+  }
+
+  public final T findByName(String fqn, Include include, boolean fromCache) {
     fqn = quoteFqn ? EntityInterfaceUtil.quoteName(fqn) : fqn;
     try {
+      if (!fromCache) {
+        CACHE_WITH_NAME.invalidate(new ImmutablePair<>(entityType, fqn));
+      }
       @SuppressWarnings("unchecked")
       T entity = (T) CACHE_WITH_NAME.get(new ImmutablePair<>(entityType, fqn));
       if (include == NON_DELETED && Boolean.TRUE.equals(entity.getDeleted())
@@ -754,6 +786,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     applyTags(entity);
     storeDomain(entity, entity.getDomain());
     storeDataProducts(entity, entity.getDataProducts());
+    storeReviewers(entity, entity.getReviewers());
     storeRelationships(entity);
   }
 
@@ -836,7 +869,39 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
     // Get all the fields in the original entity that can be updated during PATCH operation
-    T original = setFieldsInternal(find(id, NON_DELETED), patchFields);
+    T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
+    setInheritedFields(original, patchFields);
+
+    // Apply JSON patch to the original entity to get the updated entity
+    T updated = JsonUtils.applyPatch(original, patch, entityClass);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    prepareInternal(updated, true);
+    populateOwner(updated.getOwner());
+    restorePatchAttributes(original, updated);
+
+    // Update the attributes and relationships of an entity
+    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PATCH);
+    entityUpdater.update();
+
+    entityRelationshipReindex(original, updated);
+
+    EventType change = ENTITY_NO_CHANGE;
+    if (entityUpdater.fieldsChanged()) {
+      change = EventType.ENTITY_UPDATED;
+      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
+    }
+    return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
+  }
+
+  /**
+   * PATCH using fully qualified name
+   */
+  @Transaction
+  public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
+    // Get all the fields in the original entity that can be updated during PATCH operation
+    T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
 
     // Apply JSON patch to the original entity to get the updated entity
@@ -854,7 +919,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EventType change = ENTITY_NO_CHANGE;
     if (entityUpdater.fieldsChanged()) {
       change = EventType.ENTITY_UPDATED;
-      setInheritedFields(original, patchFields); // Restore inherited fields after a change
+      setInheritedFields(updated, patchFields); // Restore inherited fields after a change
     }
     return new PatchResponse<>(Status.OK, withHref(uriInfo, updated), change);
   }
@@ -1015,8 +1080,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityList.add(withHref(uriInfo, entity));
       }
       return new ResultList<>(entityList, offset, limit, total.intValue());
+    } else {
+      SearchClient.SearchResultListMapper results =
+          searchRepository.listWithOffset(
+              searchListFilter, limit, offset, entityType, searchSortFilter, q);
+      total = results.getTotal();
+      return new ResultList<>(entityList, null, limit, total.intValue());
     }
-    throw new IllegalArgumentException("Limit should be greater than 0");
   }
 
   @Transaction
@@ -1081,7 +1151,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
       throw new IllegalArgumentException(CatalogExceptionMessage.entityIsNotEmpty(entityType));
     }
     // Delete all the contained entities
-    for (EntityRelationshipRecord entityRelationshipRecord : childrenRecords) {
+    deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Transaction
+  protected void deleteChildren(
+      List<EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
+    for (EntityRelationshipRecord entityRelationshipRecord : children) {
       LOG.info(
           "Recursively {} deleting {} {}",
           hardDelete ? "hard" : "soft",
@@ -1286,6 +1362,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonSchema jsonSchema = TypeRegistry.instance().getSchema(entityType, fieldName);
       if (jsonSchema == null) {
         throw new IllegalArgumentException(CatalogExceptionMessage.unknownCustomField(fieldName));
+      }
+      String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
+      String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
+      DateTimeFormatter formatter = null;
+      try {
+        if ("date-cp".equals(customPropertyType)) {
+          DateTimeFormatter inputFormatter =
+              DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig), Locale.ENGLISH);
+
+          // Parse the input string into a TemporalAccessor
+          TemporalAccessor date = inputFormatter.parse(fieldValue.textValue());
+
+          // Create a formatter for the desired output format
+          DateTimeFormatter outputFormatter =
+              DateTimeFormatter.ofPattern(propertyConfig, Locale.ENGLISH);
+          ((ObjectNode) jsonNode).put(fieldName, outputFormatter.format(date));
+        } else if ("dateTime-cp".equals(customPropertyType)) {
+          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
+          LocalDateTime dateTime = LocalDateTime.parse(fieldValue.textValue(), formatter);
+          ((ObjectNode) jsonNode).put(fieldName, dateTime.format(formatter));
+        } else if ("time-cp".equals(customPropertyType)) {
+          formatter = DateTimeFormatter.ofPattern(Objects.requireNonNull(propertyConfig));
+          LocalTime time = LocalTime.parse(fieldValue.textValue(), formatter);
+          ((ObjectNode) jsonNode).put(fieldName, time.format(formatter));
+        }
+      } catch (DateTimeParseException e) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.dateTimeValidationError(
+                fieldName, TypeRegistry.getCustomPropertyConfig(entityType, fieldName)));
       }
       Set<ValidationMessage> validationMessages = jsonSchema.validate(fieldValue);
       if (!validationMessages.isEmpty()) {
@@ -1581,7 +1686,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         : null;
   }
 
-  public final void ensureSingleRelationship(
+  public static void ensureSingleRelationship(
       String entityType,
       UUID id,
       List<EntityRelationshipRecord> relations,
@@ -1637,9 +1742,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void deleteTo(
       UUID toId, String toEntityType, Relationship relationship, String fromEntityType) {
-    daoCollection
-        .relationshipDAO()
-        .deleteTo(toId, toEntityType, relationship.ordinal(), fromEntityType);
+    if (fromEntityType == null) {
+      daoCollection.relationshipDAO().deleteTo(toId, toEntityType, relationship.ordinal());
+    } else {
+      daoCollection
+          .relationshipDAO()
+          .deleteTo(toId, toEntityType, relationship.ordinal(), fromEntityType);
+    }
   }
 
   public final void deleteFrom(
@@ -1659,6 +1768,43 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 : Entity.getEntityReferenceByName(
                     USER, entityReference.getFullyQualifiedName(), ALL);
         EntityUtil.copy(ref, entityReference);
+      }
+      entityReferences.sort(EntityUtil.compareEntityReference);
+    }
+  }
+
+  private boolean validateIfAllRefsAreEntityType(List<EntityReference> list, String entityType) {
+    return list.stream().allMatch(obj -> obj.getType().equals(entityType));
+  }
+
+  public final void validateReviewers(List<EntityReference> entityReferences) {
+    if (!nullOrEmpty(entityReferences)) {
+      boolean areAllTeam = validateIfAllRefsAreEntityType(entityReferences, TEAM);
+      boolean areAllUsers = validateIfAllRefsAreEntityType(entityReferences, USER);
+      if (areAllTeam) {
+        // If all are team then only one team is allowed
+        if (entityReferences.size() > 1) {
+          throw new IllegalArgumentException("Only one team can be assigned as reviewer.");
+        } else {
+          EntityReference ref =
+              entityReferences.get(0).getId() != null
+                  ? Entity.getEntityReferenceById(TEAM, entityReferences.get(0).getId(), ALL)
+                  : Entity.getEntityReferenceByName(
+                      TEAM, entityReferences.get(0).getFullyQualifiedName(), ALL);
+          EntityUtil.copy(ref, entityReferences.get(0));
+        }
+      } else if (areAllUsers) {
+        for (EntityReference entityReference : entityReferences) {
+          EntityReference ref =
+              entityReference.getId() != null
+                  ? Entity.getEntityReferenceById(USER, entityReference.getId(), ALL)
+                  : Entity.getEntityReferenceByName(
+                      USER, entityReference.getFullyQualifiedName(), ALL);
+          EntityUtil.copy(ref, entityReference);
+        }
+      } else {
+        throw new IllegalArgumentException(
+            "Invalid Reviewer Type. Only one team or multiple users can be assigned as reviewer.");
       }
       entityReferences.sort(EntityUtil.compareEntityReference);
     }
@@ -1716,7 +1862,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   protected List<EntityReference> getReviewers(T entity) {
     return supportsReviewers
-        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, Entity.USER)
+        ? findFrom(entity.getId(), entityType, Relationship.REVIEWS, null)
         : null;
   }
 
@@ -1750,9 +1896,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
-    if (fields.contains(FIELD_REVIEWERS) && nullOrEmpty(entity.getReviewers()) && parent != null) {
-      entity.setReviewers(parent.getReviewers());
-      listOrEmpty(entity.getReviewers()).forEach(reviewer -> reviewer.withInherited(true));
+    if (fields.contains(FIELD_REVIEWERS) && parent != null) {
+      List<EntityReference> combinedReviewers = new ArrayList<>(listOrEmpty(entity.getReviewers()));
+      // Fetch Unique Reviewers from parent as inherited
+      List<EntityReference> uniqueEntityReviewers =
+          listOrEmpty(parent.getReviewers()).stream()
+              .filter(
+                  parentReviewer ->
+                      combinedReviewers.stream()
+                          .noneMatch(
+                              entityReviewer ->
+                                  parentReviewer.getId().equals(entityReviewer.getId())
+                                      && parentReviewer.getType().equals(entityReviewer.getType())))
+              .toList();
+      uniqueEntityReviewers.forEach(reviewer -> reviewer.withInherited(true));
+
+      combinedReviewers.addAll(uniqueEntityReviewers);
+      combinedReviewers.sort(EntityUtil.compareEntityReference);
+      entity.setReviewers(combinedReviewers);
     }
   }
 
@@ -1789,6 +1950,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           entity.getId());
       addRelationship(domain.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
+  }
+
+  @Transaction
+  protected void storeReviewers(T entity, List<EntityReference> reviewers) {
+    if (supportsReviewers) {
+      // Add relationship user/team --- reviews ---> entity
+      for (EntityReference reviewer : listOrEmpty(reviewers)) {
+        addRelationship(
+            reviewer.getId(), entity.getId(), reviewer.getType(), entityType, Relationship.REVIEWS);
+      }
     }
   }
 
@@ -2426,16 +2598,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       updated.setExperts(updatedExperts);
     }
 
-    private void updateReviewers() {
+    protected void updateReviewers() {
       if (!supportsReviewers) {
         return;
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
       List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
-      validateUsers(updatedReviewers);
+      validateReviewers(updatedReviewers);
+      // Either all users or team which is one team at a time, assuming all ref to have same type,
+      // validateReviewer checks it
       updateFromRelationships(
           "reviewers",
-          Entity.USER,
+          null,
           origReviewers,
           updatedReviewers,
           Relationship.REVIEWS,
@@ -2508,7 +2682,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       } else if (fieldsChanged()) {
         newVersion = nextVersion(oldVersion);
       }
-      LOG.info(
+      LOG.debug(
           "{} {}->{} - Fields added {}, updated {}, deleted {}",
           original.getId(),
           oldVersion,
@@ -2711,7 +2885,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Add relationships from updated
       for (EntityReference ref : updatedFromRefs) {
-        addRelationship(ref.getId(), toId, fromEntityType, toEntityType, relationshipType);
+        addRelationship(ref.getId(), toId, ref.getType(), toEntityType, relationshipType);
       }
       updatedFromRefs.sort(EntityUtil.compareEntityReference);
       originFromRefs.sort(EntityUtil.compareEntityReference);

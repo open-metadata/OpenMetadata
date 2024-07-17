@@ -1,53 +1,49 @@
-import os
-import zipfile
-from subprocess import CalledProcessError
-
 import pytest
-from testcontainers.postgres import PostgresContainer
+
+from _openmetadata_testutils.postgres.conftest import postgres_container
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseServiceType,
+)
 
 
-@pytest.fixture(scope="session")
-def postgres_container(tmp_path_factory):
-    data_dir = tmp_path_factory.mktemp("data")
-    dvd_rental_zip = os.path.join(os.path.dirname(__file__), "data", "dvdrental.zip")
-    zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
-
-    container = PostgresContainer("postgres:15", dbname="dvdrental")
-    container.volumes = {str(data_dir): {"bind": "/data"}}
-    container._command = [
-        "-c",
-        "shared_preload_libraries=pg_stat_statements",
-        "-c",
-        "pg_stat_statements.max=10000",
-        "-c",
-        "pg_stat_statements.track=all",
-    ]
-
-    with container as container:
-        docker_container = container.get_wrapped_container()
-        for query in (
-            "CREATE USER postgres SUPERUSER;",
-            "CREATE EXTENSION pg_stat_statements;",
-        ):
-            res = docker_container.exec_run(
-                ["psql", "-U", container.username, "-d", container.dbname, "-c", query]
+@pytest.fixture(scope="module")
+def create_service_request(postgres_container, tmp_path_factory):
+    return CreateDatabaseServiceRequest(
+        name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
+        serviceType=DatabaseServiceType.Postgres,
+        connection=DatabaseConnection(
+            config=PostgresConnection(
+                username=postgres_container.username,
+                authType=BasicAuth(password=postgres_container.password),
+                hostPort="localhost:"
+                + postgres_container.get_exposed_port(postgres_container.port),
+                database="dvdrental",
             )
-            if res[0] != 0:
-                raise CalledProcessError(
-                    returncode=res[0], cmd=res, output=res[1].decode("utf-8")
-                )
-        res = docker_container.exec_run(
-            [
-                "pg_restore",
-                "-U",
-                container.username,
-                "-d",
-                container.dbname,
-                "/data/dvdrental.tar",
-            ]
-        )
-        if res[0] != 0:
-            raise CalledProcessError(
-                returncode=res[0], cmd=res, output=res[1].decode("utf-8")
-            )
-        yield container
+        ),
+    )
+
+
+@pytest.fixture(scope="module")
+def ingestion_config(
+    db_service, metadata, workflow_config, sink_config, postgres_container
+):
+    return {
+        "source": {
+            "type": db_service.connection.config.type.value.lower(),
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+            "serviceConnection": db_service.connection.dict(),
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }

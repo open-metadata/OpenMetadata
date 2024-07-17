@@ -13,6 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { ModelType } from '../../../generated/entity/data/table';
 import CustomNodeV1Component from './CustomNodeV1.component';
 
@@ -85,7 +86,8 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
       upstreamEdges: [],
       downstreamEdges: [],
     },
-    expandedNodes: [],
+    columnsHavingLineage: [],
+    activeLayer: [LineageLayerView.COLUMN],
     fetchPipelineStatus: jest.fn(),
     onColumnClick: onMockColumnClick,
   })),

@@ -29,12 +29,14 @@ import couchbase from '../assets/img/service-icon-couchbase.svg';
 import dagster from '../assets/img/service-icon-dagster.png';
 import databrick from '../assets/img/service-icon-databrick.png';
 import datalake from '../assets/img/service-icon-datalake.png';
+import dbt from '../assets/img/service-icon-dbt.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
 import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
+import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
 import glue from '../assets/img/service-icon-glue.png';
 import greenplum from '../assets/img/service-icon-greenplum.png';
@@ -70,6 +72,7 @@ import redpanda from '../assets/img/service-icon-redpanda.png';
 import redshift from '../assets/img/service-icon-redshift.png';
 import sagemaker from '../assets/img/service-icon-sagemaker.png';
 import salesforce from '../assets/img/service-icon-salesforce.png';
+import sapErp from '../assets/img/service-icon-sap-erp.png';
 import sapHana from '../assets/img/service-icon-sap-hana.png';
 import sas from '../assets/img/service-icon-sas.svg';
 import scikit from '../assets/img/service-icon-scikit.png';
@@ -94,6 +97,7 @@ import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import plus from '../assets/svg/plus.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
+import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -157,6 +161,7 @@ export const SINGLESTORE = singlestore;
 export const SALESFORCE = salesforce;
 export const MLFLOW = mlflow;
 export const SAP_HANA = sapHana;
+export const SAP_ERP = sapErp;
 export const SCIKIT = scikit;
 export const DELTALAKE = deltalake;
 export const DEFAULT_SERVICE = iconDefaultService;
@@ -165,6 +170,7 @@ export const PINOT = pinot;
 export const DATALAKE = datalake;
 export const MODE = mode;
 export const DAGSTER = dagster;
+export const DBT = dbt;
 export const FIVETRAN = fivetran;
 export const AMUNDSEN = amundsen;
 export const ATLAS = atlas;
@@ -201,6 +207,8 @@ export const OPEN_SEARCH = openSearch;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
+export const TERADATA = teradata;
+export const FLINK = flink;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -391,11 +399,13 @@ export const BETA_SERVICES = [
   PipelineServiceType.Spline,
   PipelineServiceType.Spark,
   PipelineServiceType.OpenLineage,
+  PipelineServiceType.Flink,
   DashboardServiceType.QlikSense,
   DashboardServiceType.QlikCloud,
   DatabaseServiceType.Couchbase,
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
+  DatabaseServiceType.Teradata,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -431,6 +441,10 @@ export const ADVANCED_PROPERTIES = [
   'sampleDataCount',
   'threadCount',
   'timeoutSeconds',
+  'sslConfig',
+  'sslMode',
+  'schemaRegistrySSL',
+  'verify',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';

@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.jdbi3.LineageRepository.buildRelationshipDetailsMap;
 import static org.openmetadata.service.search.EntityBuilderConstant.DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_NAME_NGRAM;
@@ -11,6 +12,7 @@ import static org.openmetadata.service.search.EntityBuilderConstant.FULLY_QUALIF
 import static org.openmetadata.service.search.EntityBuilderConstant.NAME_KEYWORD;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,7 +20,6 @@ import java.util.Map;
 import java.util.Set;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -31,7 +32,34 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 
 public interface SearchIndex {
-  Map<String, Object> buildESDoc();
+  Set<String> DEFAULT_EXCLUDED_FIELDS =
+      Set.of("changeDescription", "lineage.pipeline.changeDescription", "connection");
+
+  default Map<String, Object> buildSearchIndexDoc() {
+    // Build Index Doc
+    Map<String, Object> esDoc = this.buildSearchIndexDocInternal(JsonUtils.getMap(getEntity()));
+
+    // Non Indexable Fields
+    removeNonIndexableFields(esDoc);
+
+    return esDoc;
+  }
+
+  default void removeNonIndexableFields(Map<String, Object> esDoc) {
+    // Remove non indexable fields
+    SearchIndexUtils.removeNonIndexableFields(esDoc, DEFAULT_EXCLUDED_FIELDS);
+
+    // Remove Entity Specific Field
+    SearchIndexUtils.removeNonIndexableFields(esDoc, getExcludedFields());
+  }
+
+  Object getEntity();
+
+  default Set<String> getExcludedFields() {
+    return Collections.emptySet();
+  }
+
+  Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> esDoc);
 
   default List<SearchSuggest> getSuggest() {
     return null;
@@ -87,8 +115,8 @@ public interface SearchIndex {
     return CommonUtil.nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 
-  static List<HashMap<String, Object>> getLineageData(EntityReference entity) {
-    List<HashMap<String, Object>> data = new ArrayList<>();
+  static List<Map<String, Object>> getLineageData(EntityReference entity) {
+    List<Map<String, Object>> data = new ArrayList<>();
     CollectionDAO dao = Entity.getCollectionDAO();
     List<CollectionDAO.EntityRelationshipRecord> toRelationshipsRecords =
         dao.relationshipDAO()
@@ -99,7 +127,7 @@ public interface SearchIndex {
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails =
           JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      SearchIndex.getLineageDataDirection(entity, ref, lineageDetails, data);
+      data.add(buildRelationshipDetailsMap(entity, ref, lineageDetails));
     }
     List<CollectionDAO.EntityRelationshipRecord> fromRelationshipsRecords =
         dao.relationshipDAO()
@@ -111,58 +139,9 @@ public interface SearchIndex {
               entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
       LineageDetails lineageDetails =
           JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      SearchIndex.getLineageDataDirection(ref, entity, lineageDetails, data);
+      data.add(buildRelationshipDetailsMap(ref, entity, lineageDetails));
     }
     return data;
-  }
-
-  static void getLineageDataDirection(
-      EntityReference fromEntity,
-      EntityReference toEntity,
-      LineageDetails lineageDetails,
-      List<HashMap<String, Object>> data) {
-    HashMap<String, Object> fromDetails = new HashMap<>();
-    HashMap<String, Object> toDetails = new HashMap<>();
-    HashMap<String, Object> relationshipDetails = new HashMap<>();
-    fromDetails.put("id", fromEntity.getId().toString());
-    fromDetails.put("type", fromEntity.getType());
-    fromDetails.put("fqn", fromEntity.getFullyQualifiedName());
-    toDetails.put("id", toEntity.getId().toString());
-    toDetails.put("type", toEntity.getType());
-    toDetails.put("fqn", toEntity.getFullyQualifiedName());
-    relationshipDetails.put(
-        "doc_id", fromEntity.getId().toString() + "-" + toEntity.getId().toString());
-    relationshipDetails.put("fromEntity", fromDetails);
-    relationshipDetails.put("toEntity", toDetails);
-    if (lineageDetails != null) {
-      relationshipDetails.put(
-          "pipeline",
-          JsonUtils.getMap(
-              CommonUtil.nullOrEmpty(lineageDetails.getPipeline())
-                  ? null
-                  : lineageDetails.getPipeline()));
-      relationshipDetails.put(
-          "description",
-          CommonUtil.nullOrEmpty(lineageDetails.getDescription())
-              ? null
-              : lineageDetails.getDescription());
-      if (!CommonUtil.nullOrEmpty(lineageDetails.getColumnsLineage())) {
-        List<Map<String, Object>> colummnLineageList = new ArrayList<>();
-        for (ColumnLineage columnLineage : lineageDetails.getColumnsLineage()) {
-          colummnLineageList.add(JsonUtils.getMap(columnLineage));
-        }
-        relationshipDetails.put("columns", colummnLineageList);
-      }
-      relationshipDetails.put(
-          "sqlQuery",
-          CommonUtil.nullOrEmpty(lineageDetails.getSqlQuery())
-              ? null
-              : lineageDetails.getSqlQuery());
-      relationshipDetails.put(
-          "source",
-          CommonUtil.nullOrEmpty(lineageDetails.getSource()) ? null : lineageDetails.getSource());
-    }
-    data.add(relationshipDetails);
   }
 
   static Map<String, Float> getDefaultFields() {

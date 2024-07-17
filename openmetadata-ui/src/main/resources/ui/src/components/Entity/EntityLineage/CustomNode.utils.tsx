@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
 import React, { Fragment } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
 import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-outlined.svg';
+import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
-import { Column, TestSuite } from '../../../generated/entity/data/table';
-import { formTwoDigitNumber } from '../../../utils/CommonUtils';
+import { Column } from '../../../generated/entity/data/table';
+import { encodeLineageHandles } from '../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getConstraintIcon } from '../../../utils/TableUtils';
 import { EdgeTypeEnum } from './EntityLineage.interface';
@@ -117,32 +117,6 @@ export const getCollapseHandle = (
   );
 };
 
-export const getTestSuiteSummary = (testSuite?: TestSuite) => {
-  if (isEmpty(testSuite)) {
-    return null;
-  }
-
-  return (
-    <div className="d-flex justify-between">
-      <div className="profiler-item green" data-testid="test-passed">
-        <div className="font-medium" data-testid="test-passed-value">
-          {formTwoDigitNumber(testSuite?.summary?.success ?? 0)}
-        </div>
-      </div>
-      <div className="profiler-item amber" data-testid="test-aborted">
-        <div className="font-medium" data-testid="test-aborted-value">
-          {formTwoDigitNumber(testSuite?.summary?.aborted ?? 0)}
-        </div>
-      </div>
-      <div className="profiler-item red" data-testid="test-failed">
-        <div className="font-medium" data-testid="test-failed-value">
-          {formTwoDigitNumber(testSuite?.summary?.failed ?? 0)}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export const getColumnContent = (
   column: Column,
   isColumnTraced: boolean,
@@ -169,12 +143,18 @@ export const getColumnContent = (
         EntityLineageNodeType.DEFAULT,
         isConnectable,
         'lineage-column-node-handle',
-        fullyQualifiedName
+        encodeLineageHandles(fullyQualifiedName ?? '')
       )}
-      {getConstraintIcon({
-        constraint: column.constraint,
-      })}
-      <p className="p-xss">{getEntityName(column)}</p>
+
+      <Typography.Text
+        className="p-xss p-x-lg"
+        ellipsis={{ tooltip: true }}
+        style={{ maxWidth: NODE_WIDTH }}>
+        {getConstraintIcon({
+          constraint: column.constraint,
+        })}
+        {getEntityName(column)}
+      </Typography.Text>
     </div>
   );
 };

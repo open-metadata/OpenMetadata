@@ -12,11 +12,13 @@
  */
 
 import { Typography } from 'antd';
+import { ExpandableConfig } from 'antd/lib/table/interface';
 import { t } from 'i18next';
 import { isUndefined, startCase } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ConnectionStepCard from '../components/common/TestConnection/ConnectionStepCard/ConnectionStepCard';
 import { getServiceDetailsPath } from '../constants/constants';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
@@ -36,8 +38,12 @@ import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../enums/ElasticSearch.enum';
 import { FormSubmitType } from '../enums/form.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { HiveMetastoreConnection as Connection } from '../generated/entity/services/databaseService';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
+import { HiveMetastoreConnectionDetails as Connection } from '../generated/entity/services/databaseService';
+import {
+  IngestionPipeline,
+  StepSummary,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Connection as MetadataConnection } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataObj, ServicesType } from '../interface/service.interface';
@@ -196,6 +202,7 @@ export const getIngestionTypes = (
 
 const getPipelineExtraInfo = (
   isPlatFormDisabled: boolean,
+  theme: UIThemePreference['customTheme'],
   pipelineType?: PipelineType
 ) => {
   switch (pipelineType) {
@@ -209,7 +216,7 @@ const getPipelineExtraInfo = (
                 <a
                   href={DATA_INSIGHTS_PIPELINE_DOCS}
                   rel="noreferrer"
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   target="_blank"
                 />
               }
@@ -230,7 +237,7 @@ const getPipelineExtraInfo = (
                 <a
                   href={ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS}
                   rel="noreferrer"
-                  style={{ color: '#1890ff' }}
+                  style={{ color: theme.primaryColor }}
                   target="_blank"
                 />
               }
@@ -258,7 +265,7 @@ const getPipelineExtraInfo = (
                     : WORKFLOWS_METADATA_DOCS
                 }
                 rel="noreferrer"
-                style={{ color: '#1890ff' }}
+                style={{ color: theme.primaryColor }}
                 target="_blank"
               />
             }
@@ -281,12 +288,13 @@ export const getErrorPlaceHolder = (
   isRequiredDetailsAvailable: boolean,
   ingestionDataLength: number,
   isPlatFormDisabled: boolean,
+  theme: UIThemePreference['customTheme'],
   pipelineType?: PipelineType
 ) => {
   if (isRequiredDetailsAvailable && ingestionDataLength === 0) {
     return (
       <ErrorPlaceHolder className="p-y-lg" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        {getPipelineExtraInfo(isPlatFormDisabled, pipelineType)}
+        {getPipelineExtraInfo(isPlatFormDisabled, theme, pipelineType)}
       </ErrorPlaceHolder>
     );
   }
@@ -357,3 +365,34 @@ export const getSuccessMessage = (
     </Typography.Text>
   );
 };
+
+export const getExpandableStatusRow = (
+  expandedKeys: Array<string>
+): ExpandableConfig<StepSummary> => ({
+  expandedRowRender: (record) => {
+    return (
+      record.failures?.map((failure) => (
+        <ConnectionStepCard
+          isTestingConnection={false}
+          key={failure.name}
+          testConnectionStep={{
+            name: failure.name,
+            mandatory: false,
+            description: failure.error,
+          }}
+          testConnectionStepResult={{
+            name: failure.name,
+            passed: false,
+            mandatory: false,
+            message: failure.error,
+            errorLog: failure.stackTrace,
+          }}
+        />
+      )) ?? []
+    );
+  },
+  indentSize: 0,
+  expandIcon: () => null,
+  expandedRowKeys: expandedKeys,
+  rowExpandable: (record) => (record.failures?.length ?? 0) > 0,
+});

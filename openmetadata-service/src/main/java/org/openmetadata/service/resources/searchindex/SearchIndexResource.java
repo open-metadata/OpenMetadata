@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SearchIndexRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -84,8 +85,8 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
     return searchIndex;
   }
 
-  public SearchIndexResource(Authorizer authorizer) {
-    super(Entity.SEARCH_INDEX, authorizer);
+  public SearchIndexResource(Authorizer authorizer, Limits limits) {
+    super(Entity.SEARCH_INDEX, authorizer, limits);
   }
 
   @Override
@@ -339,6 +340,35 @@ public class SearchIndexResource extends EntityResource<SearchIndex, SearchIndex
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchSearchIndex",
+      summary = "Update a SearchIndex using name.",
+      description = "Update an existing SearchIndex using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the SearchIndex", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
