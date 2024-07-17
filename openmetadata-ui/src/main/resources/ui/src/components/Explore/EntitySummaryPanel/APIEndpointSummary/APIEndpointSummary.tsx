@@ -12,30 +12,30 @@
  */
 
 import { Col, Divider, Radio, RadioChangeEvent, Row, Typography } from 'antd';
-import classNames from 'classnames';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
-import { CSMode } from '../../../../enums/codemirror.enum';
-import {
-  APIEndpoint,
-  TagLabel,
-} from '../../../../generated/entity/data/apiEndpoint';
+import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
+import { APIEndpoint } from '../../../../generated/entity/data/apiEndpoint';
 import { getApiEndPointByFQN } from '../../../../rest/apiEndpointsAPI';
-import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
+import {
+  getFormattedEntityData,
+  getSortedTagsWithHighlight,
+} from '../../../../utils/EntitySummaryPanelUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { SchemaViewType } from '../../../APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
+import SummaryList from '../SummaryList/SummaryList.component';
+import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
 interface APIEndpointSummaryProps {
   entityDetails: APIEndpoint;
   componentType?: string;
-  tags?: TagLabel[];
   isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
 }
@@ -43,7 +43,6 @@ interface APIEndpointSummaryProps {
 const APIEndpointSummary = ({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
-  tags,
   isLoading,
   highlights,
 }: APIEndpointSummaryProps) => {
@@ -51,7 +50,9 @@ const APIEndpointSummary = ({
 
   const [apiEndpointDetails, setApiEndpointDetails] =
     useState<APIEndpoint>(entityDetails);
-  const [viewType, setViewType] = useState<string>('request-schema');
+  const [viewType, setViewType] = useState<SchemaViewType>(
+    SchemaViewType.REQUEST_SCHEMA
+  );
 
   const isExplore = useMemo(
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
@@ -67,6 +68,24 @@ const APIEndpointSummary = ({
       isLink: !isEmpty(owner?.name),
     };
   }, [entityDetails, apiEndpointDetails]);
+
+  const { formattedSchemaFieldsData, activeSchema } = useMemo(() => {
+    const activeSchema =
+      viewType === SchemaViewType.REQUEST_SCHEMA
+        ? apiEndpointDetails.requestSchema
+        : apiEndpointDetails.responseSchema;
+
+    const formattedSchemaFieldsData: BasicEntityInfo[] = getFormattedEntityData(
+      SummaryEntityType.SCHEMAFIELD,
+      activeSchema?.schemaFields,
+      highlights
+    );
+
+    return {
+      formattedSchemaFieldsData,
+      activeSchema,
+    };
+  }, [apiEndpointDetails, highlights, viewType]);
 
   const fetchApiEndpointDetails = useCallback(async () => {
     try {
@@ -115,41 +134,34 @@ const APIEndpointSummary = ({
         </Row>
         <SummaryTagsDescription
           entityDetail={entityDetails}
-          tags={
-            tags ??
-            getSortedTagsWithHighlight(
-              entityDetails.tags,
-              get(highlights, 'tag.name')
-            )
-          }
+          tags={getSortedTagsWithHighlight(
+            entityDetails.tags,
+            get(highlights, 'tag.name')
+          )}
         />
         <Divider className="m-y-xs" />
 
-        <Row gutter={[16, 16]}>
+        <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <Radio.Group value={viewType} onChange={handleViewChange}>
-              <Radio.Button value="request-schema">
+              <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
                 {t('label.request-schema')}
               </Radio.Button>
-              <Radio.Button value="response-schema">
+              <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
                 {t('label.response-schema')}
               </Radio.Button>
             </Radio.Group>
           </Col>
           <Col span={24}>
-            <SchemaEditor
-              className="custom-code-mirror-theme custom-query-editor"
-              editorClass={classNames('table-query-editor')}
-              mode={{ name: CSMode.JAVASCRIPT }}
-              options={{
-                styleActiveLine: false,
-              }}
-              value={
-                viewType === 'request-schema'
-                  ? JSON.stringify(apiEndpointDetails.requestSchema)
-                  : JSON.stringify(apiEndpointDetails.responseSchema)
-              }
-            />
+            {isEmpty(activeSchema?.schemaFields) ? (
+              <Typography.Text data-testid="no-data-message">
+                <Typography.Text className="text-grey-body">
+                  {t('message.no-data-available')}
+                </Typography.Text>
+              </Typography.Text>
+            ) : (
+              <SummaryList formattedEntityData={formattedSchemaFieldsData} />
+            )}
           </Col>
         </Row>
       </>

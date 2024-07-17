@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Radio, RadioChangeEvent, Row, Tabs } from 'antd';
+import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +20,6 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getEntityDetailsPath } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import LineageProvider from '../../../context/LineageProvider/LineageProvider';
-import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
@@ -50,12 +48,12 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import EntityRightPanel from '../../Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import APIEndpointSchema from '../APIEndpointSchema/APIEndpointSchema';
 import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
 
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
@@ -87,8 +85,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   const [threadType, setThreadType] = useState<ThreadType>(
     ThreadType.Conversation
   );
-
-  const [viewType, setViewType] = useState<string>('request-schema');
 
   const {
     owner,
@@ -290,10 +286,6 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     [apiEndpointPermissions, deleted]
   );
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
-
   useEffect(() => {
     getEntityFeedCount();
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
@@ -325,39 +317,12 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
-                      <Row gutter={[16, 16]}>
-                        <Col span={24}>
-                          <Radio.Group
-                            value={viewType}
-                            onChange={handleViewChange}>
-                            <Radio.Button value="request-schema">
-                              {t('label.request-schema')}
-                            </Radio.Button>
-                            <Radio.Button value="response-schema">
-                              {t('label.response-schema')}
-                            </Radio.Button>
-                          </Radio.Group>
-                        </Col>
-                        <Col span={24}>
-                          <SchemaEditor
-                            className="custom-code-mirror-theme custom-query-editor"
-                            editorClass={classNames('table-query-editor')}
-                            mode={{ name: CSMode.JAVASCRIPT }}
-                            options={{
-                              styleActiveLine: false,
-                            }}
-                            value={
-                              viewType === 'request-schema'
-                                ? JSON.stringify(
-                                    apiEndpointDetails.requestSchema
-                                  )
-                                : JSON.stringify(
-                                    apiEndpointDetails.responseSchema
-                                  )
-                            }
-                          />
-                        </Col>
-                      </Row>
+                      <APIEndpointSchema
+                        apiEndpointDetails={apiEndpointDetails}
+                        permissions={apiEndpointPermissions}
+                        onApiEndpointUpdate={onApiEndpointUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
                     </div>
                   ),
                   minWidth: 800,

@@ -176,7 +176,6 @@ const EntityInfoDrawer = ({
           <APIEndpointSummary
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as APIEndpoint}
-            tags={tags}
           />
         );
 
