@@ -11,16 +11,7 @@
  *  limitations under the License.
  */
 import { FilterOutlined } from '@ant-design/icons';
-import {
-  Col,
-  Radio,
-  RadioChangeEvent,
-  Row,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Col, Radio, RadioChangeEvent, Row, Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -123,7 +114,6 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     activeSchemaFields,
     activeSchema,
     activeSchemaKey,
-    activeSchemaType,
     schemaAllRowKeys,
   } = useMemo(() => {
     let schemaFields, schema, schemaKey, schemaType, allRowKeys;
@@ -407,36 +397,24 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         </Row>
       </Col>
       <Col span={24}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Space align="center" direction="horizontal">
-              <Typography.Text type="secondary">
-                {t('label.schema')}
-              </Typography.Text>
-              <Tag>{activeSchemaType}</Tag>
-            </Space>
-          </Col>
-          <Col span={24}>
-            <Table
-              bordered
-              className={classNames('align-table-filter-left')}
-              columns={columns}
-              data-testid="schema-fields-table"
-              dataSource={activeSchemaFields}
-              expandable={{
-                ...getTableExpandableConfig<Field>(),
-                rowExpandable: (record) => !isEmpty(record.children),
-                onExpandedRowsChange: handleExpandedRowsChange,
-                expandedRowKeys,
-              }}
-              key={viewType}
-              pagination={false}
-              rowKey="name"
-              scroll={TABLE_SCROLL_VALUE}
-              size="small"
-            />
-          </Col>
-        </Row>
+        <Table
+          bordered
+          className={classNames('align-table-filter-left')}
+          columns={columns}
+          data-testid="schema-fields-table"
+          dataSource={activeSchemaFields}
+          expandable={{
+            ...getTableExpandableConfig<Field>(),
+            rowExpandable: (record) => !isEmpty(record.children),
+            onExpandedRowsChange: handleExpandedRowsChange,
+            expandedRowKeys,
+          }}
+          key={viewType}
+          pagination={false}
+          rowKey="name"
+          scroll={TABLE_SCROLL_VALUE}
+          size="small"
+        />
       </Col>
       {editFieldDescription && (
         <ModalWithMarkdownEditor
