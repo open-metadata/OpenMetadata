@@ -1,11 +1,12 @@
 name: Phylum Analyze
 on:
-    pull_request_target:
-        types: [labeled, opened, synchronize, reopened]
-        paths:
-            - "ingestion/**"
-            - "openmetadata-service/**"
-            - "openmetadata-ui/**"
+    pull_request:
+    # pull_request_target:
+    #     types: [labeled, opened, synchronize, reopened]
+    #     paths:
+    #         - "ingestion/**"
+    #         - "openmetadata-service/**"
+    #         - "openmetadata-ui/**"
 
 jobs:
   analyze_deps:
@@ -33,19 +34,23 @@ jobs:
           valid-labels: 'safe to test'
           pull-request-number: '${{ github.event.pull_request.number }}'
           disable-reviews: true  # To not auto approve changes
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Install Python Dependencies
+        run: |
+          python3 -m venv env &&
+          source env/bin/activate &&
+          pip install phylum=~0.47.0
       - name: Checkout the repo
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
       - name: Analyze dependencies
-        uses: phylum-dev/phylum-analyze-pr-action@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          phylum_token: ${{ secrets.PHYLUM_TOKEN }}
-          cmd: |
-            phylum-ci -vv \
-            --depfile ingestion/setup.py \
-            --depfile ingestion/pyproject.toml \
-            --depfile openmetadata-service/pom.xml \
-            --depfile openmetadata-ui/src/main/resources/ui/yarn.lock
+        env:
+          PHYLUM_API_KEY: ${{ secrets.PHYLUM_TOKEN }}
+        run: |
+          phylum auth login && \
+          phylum analyze -vv --skip-sandbox -p OpenMetadata

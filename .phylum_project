@@ -1,0 +1,12 @@
+id: d81b14e9-2520-4c68-839c-4d50d0896d07
+name: OpenMetadata
+group_name: null
+depfiles:
+- path: ingestion/setup.py
+  type: pip
+- path: ingestion/pyproject.toml
+  type: pip
+- path: openmetadata-service/pom.xml
+  type: mvn
+- path: openmetadata-ui/src/main/resources/ui/yarn.lock
+  type: yarn
