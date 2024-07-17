@@ -115,6 +115,27 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
+jest.mock(
+  '../../../components/Settings/Users/UsersTab/UsersTabs.component',
+  () => ({
+    UsersTab: jest
+      .fn()
+      .mockImplementation(() => <div>UsersTabs.component</div>),
+  })
+);
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('Persona'),
+}));
+
+jest.mock('../../../utils/PermissionsUtils', () => ({
+  DEFAULT_ENTITY_PERMISSION: jest.fn(),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 describe('PersonaDetailsPage', () => {
   it('Component should render', async () => {
     render(<PersonaDetailsPage />);

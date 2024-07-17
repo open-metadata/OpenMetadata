@@ -134,7 +134,7 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     :param gcp_credentials: GCPCredentials
     """
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsPath):
-        os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.root)
+        os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.path)
         return
 
     if (

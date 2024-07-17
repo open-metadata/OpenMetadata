@@ -12,6 +12,7 @@
 Usage Source Module
 """
 import csv
+import os
 import traceback
 from abc import ABC
 from datetime import datetime, timedelta, timezone
@@ -38,35 +39,45 @@ class UsageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            query_list = []
-            with open(
-                self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
-            ) as fin:
-                for record in csv.DictReader(fin):
-                    query_dict = dict(record)
+            query_log_path = self.config.sourceConfig.config.queryLogFilePath
+            if os.path.isfile(query_log_path):
+                file_paths = [query_log_path]
+            elif os.path.isdir(query_log_path):
+                file_paths = [
+                    os.path.join(query_log_path, f)
+                    for f in os.listdir(query_log_path)
+                    if f.endswith(".csv")
+                ]
+            else:
+                raise ValueError(f"{query_log_path} is neither a file nor a directory.")
+            for file_path in file_paths:
+                query_list = []
+                with open(file_path, "r", encoding="utf-8") as fin:
+                    for record in csv.DictReader(fin):
+                        query_dict = dict(record)
 
-                    analysis_date = (
-                        datetime.now(timezone.utc)
-                        if not query_dict.get("start_time")
-                        else datetime.strptime(
-                            query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
+                        analysis_date = (
+                            datetime.now(timezone.utc)
+                            if not query_dict.get("start_time")
+                            else datetime.strptime(
+                                query_dict.get("start_time"), "%Y-%m-%d %H:%M:%S.%f"
+                            )
                         )
-                    )
-                    query_list.append(
-                        TableQuery(
-                            query=query_dict["query_text"],
-                            userName=query_dict.get("user_name", ""),
-                            startTime=query_dict.get("start_time", ""),
-                            endTime=query_dict.get("end_time", ""),
-                            duration=query_dict.get("duration"),
-                            analysisDate=DateTime(analysis_date),
-                            aborted=self.get_aborted_status(query_dict),
-                            databaseName=self.get_database_name(query_dict),
-                            serviceName=self.config.serviceName,
-                            databaseSchema=self.get_schema_name(query_dict),
+                        query_list.append(
+                            TableQuery(
+                                query=query_dict["query_text"],
+                                userName=query_dict.get("user_name", ""),
+                                startTime=query_dict.get("start_time", ""),
+                                endTime=query_dict.get("end_time", ""),
+                                duration=query_dict.get("duration"),
+                                analysisDate=DateTime(analysis_date),
+                                aborted=self.get_aborted_status(query_dict),
+                                databaseName=self.get_database_name(query_dict),
+                                serviceName=self.config.serviceName,
+                                databaseSchema=self.get_schema_name(query_dict),
+                            )
                         )
-                    )
-            yield TableQueries(queries=query_list)
+                yield TableQueries(queries=query_list)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to read queries form log file due to: {err}")
