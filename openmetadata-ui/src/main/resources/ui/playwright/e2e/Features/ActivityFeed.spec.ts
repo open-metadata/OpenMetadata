@@ -182,7 +182,7 @@ test.describe('Activity feed', () => {
     }
   });
 
-  test('Comment and Close should work in Task Flow', async ({ page }) => {
+  test('Comment and Close Task should work in Task Flow', async ({ page }) => {
     const value: TaskDetails = {
       term: entity.entity.name,
       assignee: `${user.data.firstName}.${user.data.lastName}`,
@@ -227,7 +227,9 @@ test.describe('Activity feed', () => {
       '[data-testid="editor-wrapper"] .ql-editor',
       'Closing the task with comment'
     );
-    const commentWithCloseTask = page.waitForResponse('/api/v1/feed/*/posts');
+    const commentWithCloseTask = page.waitForResponse(
+      '/api/v1/feed/tasks/*/close'
+    );
     await page.getByRole('button', { name: 'down' }).click();
     await page.waitForSelector('.ant-dropdown', {
       state: 'visible',
@@ -236,6 +238,10 @@ test.describe('Activity feed', () => {
     await commentWithCloseTask;
 
     await toastNotification(page, 'Task closed successfully.');
+
+    const openTask = await page.getByTestId('open-task').textContent();
+
+    expect(openTask).toContain('0 Open');
 
     const closedTask = await page.getByTestId('closed-task').textContent();
 
