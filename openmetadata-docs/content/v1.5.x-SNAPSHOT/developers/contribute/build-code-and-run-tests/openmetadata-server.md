@@ -16,7 +16,7 @@ docker compose -f docker/development/docker-compose.yml up mysql elasticsearch -
 - For an easy installation of PostgreSQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
 ```shell
-docker compose -f docker/development/docker-compose-postgres.yml up postgresql elasticsearch --build -d
+docker compose -f docker/development/docker-compose-postgres.yml up postgresql opensearch --build -d
 ```
 
 ## Building
