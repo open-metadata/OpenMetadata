@@ -695,8 +695,7 @@ class BigqueryLineageSourceTest(TestCase):
         mock_credentials_path_bq_config = deepcopy(mock_bq_config)
         mock_credentials_path_bq_config["source"]["serviceConnection"]["config"][
             "credentials"
-        ]["gcpConfig"] = "credentials.json"
-
+        ]["gcpConfig"] = {"path": "credentials.json", "projectId": "my-gcp-project"}
         self.config = OpenMetadataWorkflowConfig.model_validate(
             mock_credentials_path_bq_config
         )
