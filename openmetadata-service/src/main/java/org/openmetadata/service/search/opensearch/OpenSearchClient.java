@@ -2254,4 +2254,8 @@ public class OpenSearchClient implements SearchClient {
       throw e;
     }
   }
+
+  public Object getLowLevelClient() {
+    return client.getLowLevelClient();
+  }
 }

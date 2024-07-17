@@ -4,7 +4,6 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Map;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.type.Include;

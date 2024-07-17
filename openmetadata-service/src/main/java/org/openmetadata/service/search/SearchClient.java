@@ -246,4 +246,6 @@ public interface SearchClient {
   default List<Map<String, String>> fetchDIChartFields() throws IOException {
     return null;
   }
+
+  Object getLowLevelClient();
 }

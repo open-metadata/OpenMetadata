@@ -4,6 +4,8 @@ import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.A
 import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getTotalRequestToProcess;
 
+import es.org.elasticsearch.client.RestClient;
+import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
@@ -15,11 +17,15 @@ import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
+import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.CostAnalysisWorkflow;
@@ -48,12 +54,35 @@ public class DataInsightsApp extends AbstractNativeApplication {
     super(collectionDAO, searchRepository);
   }
 
-  // Create Data Stream (Index Template <- Components)
+  private void createDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface;
 
-  // TODO: When does init run?
+    if (searchRepository
+        .getSearchType()
+        .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
+      searchInterface =
+          new ElasticSearchDataInsightsClient(
+              (RestClient) searchRepository.getSearchClient().getLowLevelClient());
+    } else {
+      searchInterface =
+          new OpenSearchDataInsightsClient(
+              (os.org.opensearch.client.RestClient)
+                  searchRepository.getSearchClient().getLowLevelClient());
+    }
+
+    try {
+      if (!searchInterface.dataAssetDataStreamExists("di-data-assets")) {
+        searchInterface.createDataAssetsDataStream();
+      }
+    } catch (IOException ex) {
+      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.");
+    }
+  }
+
   @Override
   public void init(App app) {
     super.init(app);
+    createDataAssetsDataStream();
     DataInsightsAppConfig config =
         JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsAppConfig.class);
 
@@ -61,13 +90,15 @@ public class DataInsightsApp extends AbstractNativeApplication {
     batchSize = config.getBatchSize();
 
     // Configure Backfill
-    BackfillConfiguration backfillConfig = config.getBackfillConfiguration();
+    Optional<BackfillConfiguration> backfillConfig =
+        Optional.ofNullable(config.getBackfillConfiguration());
 
     backfill = Optional.empty();
 
-    if (backfillConfig.getEnabled()) {
+    if (backfillConfig.isPresent() && backfillConfig.get().getEnabled()) {
       backfill =
-          Optional.of(new Backfill(backfillConfig.getStartDate(), backfillConfig.getEndDate()));
+          Optional.of(
+              new Backfill(backfillConfig.get().getStartDate(), backfillConfig.get().getEndDate()));
     }
 
     jobData = new EventPublisherJob().withStats(new Stats());

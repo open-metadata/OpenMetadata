@@ -9,6 +9,6 @@
   },
   "appSchedule": {
     "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 1/1 * *"
+    "cronExpression": "0 3 * * *"
   }
 }
