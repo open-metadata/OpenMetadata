@@ -165,7 +165,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNERS, USER1_REF, TEAM11_REF);
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     fieldUpdated(change, "maximumMessageSize", 1, 2);
     fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
     fieldUpdated(change, "partitions", 1, 2);
@@ -240,7 +241,6 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNERS, USER1_REF, TEAM11_REF);
     fieldUpdated(change, "maximumMessageSize", 1, 2);
     fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
     fieldUpdated(change, "partitions", 1, 2);
@@ -249,6 +249,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
     fieldUpdated(change, "retentionSize", 1.0, 2.0);
     fieldDeleted(change, "cleanupPolicies", List.of(CleanupPolicy.COMPACT));
     fieldAdded(change, "cleanupPolicies", List.of(CleanupPolicy.DELETE));
+    fieldDeleted(change, "owners", List.of(USER1_REF));
+    fieldAdded(change, "owners", List.of(TEAM11_REF));
     patchEntityAndCheck(topic, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
@@ -351,7 +353,8 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
         .withCleanupPolicies(List.of(CleanupPolicy.DELETE));
 
     ChangeDescription change = getChangeDescription(topic, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNERS, USER1_REF, TEAM11_REF);
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     fieldUpdated(change, "maximumMessageSize", 1, 2);
     fieldUpdated(change, "minimumInSyncReplicas", 1, 2);
     fieldUpdated(change, "partitions", 1, 2);
@@ -552,6 +555,15 @@ public class TopicResourceTest extends EntityResourceTest<Topic, CreateTopic> {
       SchemaType expectedSchemaType = (SchemaType) expected;
       SchemaType actualSchemaType = SchemaType.fromValue(actual.toString());
       assertEquals(expectedSchemaType, actualSchemaType);
+    } else if (fieldName.endsWith("owners") && (expected != null && actual != null)) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedOwners =
+          expected instanceof List
+              ? (List<EntityReference>) expected
+              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
+      List<EntityReference> actualOwners =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertOwners(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

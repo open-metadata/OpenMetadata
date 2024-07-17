@@ -113,7 +113,7 @@ public class APICollectionResourceTest
             : getEntity(apiCollection.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(apiCollection.getService(), apiCollection.getServiceType());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     apiCollection =
         byName
             ? getEntityByName(apiCollection.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -54,7 +54,6 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository.DatabaseSchemaCsv
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource.DatabaseSchemaList;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -253,17 +252,6 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    if (fieldName.endsWith("owners") && (expected != null && actual != null)) {
-      @SuppressWarnings("unchecked")
-      List<EntityReference> expectedOwners =
-          expected instanceof List
-              ? (List<EntityReference>) expected
-              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
-      List<EntityReference> actualOwners =
-          JsonUtils.readObjects(actual.toString(), EntityReference.class);
-      assertOwners(expectedOwners, actualOwners);
-    } else {
-      assertCommonFieldChange(fieldName, expected, actual);
-    }
+    assertCommonFieldChange(fieldName, expected, actual);
   }
 }

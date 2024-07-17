@@ -3242,9 +3242,16 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
     if (fieldName.equals(FIELD_EXPERTS) || fieldName.equals(FIELD_REVIEWERS)) {
       assertEntityReferencesFieldChange(expected, actual);
-    } else if (fieldName.endsWith(FIELD_OWNERS)
-        || fieldName.equals(FIELD_DOMAIN)
-        || fieldName.equals(FIELD_PARENT)) {
+    } else if (fieldName.endsWith(FIELD_OWNERS) && (expected != null && actual != null)) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedOwners =
+          expected instanceof List
+              ? (List<EntityReference>) expected
+              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
+      List<EntityReference> actualOwners =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertOwners(expectedOwners, actualOwners);
+    } else if (fieldName.equals(FIELD_DOMAIN) || fieldName.equals(FIELD_PARENT)) {
       assertEntityReferenceFieldChange(expected, actual);
     } else if (fieldName.endsWith(FIELD_TAGS)) {
       @SuppressWarnings("unchecked")

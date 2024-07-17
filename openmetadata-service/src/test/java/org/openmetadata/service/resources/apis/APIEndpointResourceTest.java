@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.resources.topics.TopicResourceTest.getField;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -145,7 +147,8 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
         .withRequestMethod(APIRequestMethod.POST);
 
     ChangeDescription change = getChangeDescription(apiEndpoint, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNERS, USER1_REF, TEAM11_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
     fieldUpdated(change, "requestMethod", "GET", "POST");
 
     updateAndCheckEntity(
@@ -212,7 +215,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
             : getAPIEndpoint(endpoint.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(endpoint.getOwners(), endpoint.getFollowers());
 
-    fields = "owner, followers, tags";
+    fields = "owners, followers, tags";
     endpoint =
         byName
             ? getAPIEndpointByName(endpoint.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
