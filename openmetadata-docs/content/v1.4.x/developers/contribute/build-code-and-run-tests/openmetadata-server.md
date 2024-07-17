@@ -10,7 +10,7 @@ Learn how to run the OpenMetadata server in development mode by using Docker and
 - For an easy installation of MySQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
 
 ```shell
-docker compose -f docker/development/docker-compose.yml up mysql opensearch --build -d
+docker compose -f docker/development/docker-compose.yml up mysql elasticsearch --build -d
 ```
 
 - For an easy installation of PostgreSQL and ES, just install Docker on your local machine and run the following commands from the top-level directory
@@ -116,7 +116,7 @@ python3 -m venv venv
 source venv/bin/activate
 make install_dev generate
 cd ingestion
-pip install -e '.[sample-data, opensearch]'
+pip install -e '.[sample-data, elasticsearch]'
 metadata ingest -c ./pipelines/sample_data.json
 metadata usage -c ./pipelines/sample_usage.json
 ```
@@ -126,8 +126,8 @@ metadata usage -c ./pipelines/sample_usage.json
 ## Troubleshooting
 - If you see blank page at [http://localhost:8585](http://localhost:8585), please check the logs at logs/openmetadata.log. You might be encountering one of the following errors:
   - `connection refused` or `unreachable` - please confirm that MySQL and ES are reachable outside of docker by running `docker ps` and checking that ports 3306 and 9200 are listening on 0.0.0.0
-    - If OpenSearch in Docker on Mac is crashing, try changing Preferences -> Resources -> Memory to 4GB
-    - If OpenSearch logs show `high disk watermark [90%] exceeded`, try changing Preferences -> Resources -> Disk Image Size to at least 16GB
+    - If ElasticSearch in Docker on Mac is crashing, try changing Preferences -> Resources -> Memory to 4GB
+    - If ElasticSearch logs show `high disk watermark [90%] exceeded`, try changing Preferences -> Resources -> Disk Image Size to at least 16GB
   - `Public Key Retrieval is not allowed` - verify that the JDBC connect URL in `conf/openmetadata.yaml` is configured with the parameter `allowPublicKeyRetrieval=true `
   - Browser console shows javascript errors, try doing a [clean build](/developers/contribute/build-code-and-run-tests/openmetadata-server#create-a-distribution-packaging). Some npm packages may not have been built properly.
 
