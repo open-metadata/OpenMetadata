@@ -50,8 +50,8 @@ class UsageSource(QueryParserSource, ABC):
                 ]
             else:
                 raise ValueError(f"{query_log_path} is neither a file nor a directory.")
-            query_list = []
             for file_path in file_paths:
+                query_list = []
                 with open(file_path, "r", encoding="utf-8") as fin:
                     for record in csv.DictReader(fin):
                         query_dict = dict(record)
