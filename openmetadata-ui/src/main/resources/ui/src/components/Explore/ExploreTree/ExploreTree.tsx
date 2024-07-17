@@ -15,6 +15,8 @@ import classNames from 'classnames';
 import { isString, uniqueId } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useMemo, useState } from 'react';
+import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
+import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAggregateFieldOptions } from '../../../rest/miscAPI';
@@ -38,7 +40,7 @@ import {
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
   <Typography.Text
     className={classNames({
-      'm-l-xs': node.data?.isRoot,
+      'm-l-xss': node.data?.isRoot,
     })}
     data-testid={`explore-tree-title-${node.title}`}>
     {node.title}
@@ -111,15 +113,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       );
 
       const children = sortedBuckets.map((bucket) => {
-        let logo = <></>;
-        const title = (
-          <div className="d-flex justify-between">
-            <Typography.Text className="m-l-xs">
-              {isEntityType ? getEntityNameLabel(bucket.key) : bucket.key}
-            </Typography.Text>
-            {isEntityType && <span>{getCountBadge(bucket.doc_count)}</span>}
-          </div>
-        );
+        let logo = undefined;
         if (isEntityType) {
           logo = getEntityIcon(bucket.key, 'service-icon w-4 h-4');
         } else if (isServiceType) {
@@ -132,6 +126,18 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             />
           );
         }
+
+        const title = (
+          <div className="d-flex justify-between">
+            <Typography.Text
+              className={classNames({
+                'm-l-xss': !logo,
+              })}>
+              {isEntityType ? getEntityNameLabel(bucket.key) : bucket.key}
+            </Typography.Text>
+            {isEntityType && <span>{getCountBadge(bucket.doc_count)}</span>}
+          </div>
+        );
 
         return {
           title: title,
@@ -157,6 +163,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     [updateTreeData, searchQueryParam]
   );
 
+  const switcherIcon = useCallback(({ expanded }: { expanded: boolean }) => {
+    return expanded ? <IconDown /> : <IconRight />;
+  }, []);
+
   const onNodeSelect = useCallback(
     (_, { node }) => {
       const filterField = node.data?.filterField;
@@ -176,12 +186,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     <Tree
       blockNode
       showIcon
-      // switcherIcon={<IconDown />}
-      className="explore-tree p-sm"
+      className="explore-tree p-sm p-t-0"
       data-testid="explore-tree"
       defaultExpandAll={searchQueryParam !== ''}
       defaultExpandedKeys={[SearchIndex.DATABASE]}
       loadData={onLoadData}
+      switcherIcon={switcherIcon}
       titleRender={(node) => <ExploreTreeTitle node={node} />}
       treeData={treeData}
       onSelect={onNodeSelect}

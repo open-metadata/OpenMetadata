@@ -353,13 +353,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
           <Sider
             className="bg-white border-right"
             width={sidebarActiveTab === ExploreSidebarTab.TREE ? 340 : 300}>
-            {/* <Tabs
-              activeKey={sidebarActiveTab}
-              className="explore-page-tabs"
-              items={SIDEBAR_TAB_ITEMS}
-              tabBarGutter={24}
-              onChange={onTabChange}
-            /> */}
+            <Typography.Paragraph className="explore-data-header">
+              {t('label.data-asset-plural')}
+            </Typography.Paragraph>
             <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />
           </Sider>
           <Content>
