@@ -32,14 +32,6 @@ permissions:
   contents: read
 
 jobs:
-  # Needed since env is not available on the job context: https://github.com/actions/runner/issues/2372
-  check-debug:
-    runs-on: ubuntu-latest
-    outputs:
-      DEBUG: ${{ env.DEBUG }}
-    steps:
-      - run: echo "null"
-
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
     strategy:
@@ -210,35 +202,39 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - py-cli-e2e-tests
-      - check-debug
-    if: needs.check-debug.outputs.DEBUG == 'false'
     steps:
 
       - name: Checkout
+        if: env.DEBUG == 'false'
         uses: actions/checkout@v3
 
       - name: Set up Python 3.9
+        if: env.DEBUG == 'false'
         uses: actions/setup-python@v4
         with:
           python-version: 3.9
 
       - name: Install Ubuntu dependencies
+        if: env.DEBUG == 'false'
         run: |
           sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
           unixodbc-dev libevent-dev python3-dev libkrb5-dev
 
       - name: Install coverage dependencies
+        if: env.DEBUG == 'false'
         run: |
           python3 -m venv env
           source env/bin/activate
           make install_all install_test
 
       - name: Download all artifacts
+        if: env.DEBUG == 'false'
         uses: actions/download-artifact@v3
         with:
           path: artifacts
 
       - name: Generate report
+        if: env.DEBUG == 'false'
         run: |
           for folder in artifacts/coverage-*; do
             cp -rT $folder/ . ;
@@ -255,6 +251,7 @@ jobs:
         shell: bash
 
       - name: Push Results to Sonar
+        if: env.DEBUG == 'false'
         uses: sonarsource/sonarcloud-github-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
