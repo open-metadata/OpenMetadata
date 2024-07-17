@@ -174,8 +174,17 @@ describe('Test TaskFeedCard component', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.getByTestId('task-cta-buttons')).toContainHTML(
-      '<div class="ant-space-item"><button type="button" class="ant-btn ant-btn-primary" disabled=""><span>label.comment</span></button></div>'
+    expect(screen.getByTestId('task-cta-buttons')).toHaveTextContent(
+      'label.comment'
+    );
+    expect(screen.getByTestId('task-cta-buttons')).not.toHaveTextContent(
+      'label.accept-suggestion'
+    );
+    expect(screen.getByTestId('task-cta-buttons')).not.toHaveTextContent(
+      'label.add-entity'
+    );
+    expect(screen.getByTestId('task-cta-buttons')).not.toHaveTextContent(
+      'label.add-suggestion'
     );
   });
 

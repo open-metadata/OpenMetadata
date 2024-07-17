@@ -599,7 +599,9 @@ export const TaskTab = ({
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
-          <Button onClick={onTaskReject}>{t('label.close')}</Button>
+          <Button data-testid="close-button" onClick={onTaskReject}>
+            {t('label.close')}
+          </Button>
         )}
         {hasEditAccess && (
           <>

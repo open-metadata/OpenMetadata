@@ -15,6 +15,8 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
+  performAdminLogin,
+  performUserLogin,
   redirectToHomePage,
   toastNotification,
   visitUserProfilePage,
@@ -26,18 +28,19 @@ import {
   TaskDetails,
 } from '../../utils/task';
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
-
 const entity = new TableClass();
-const user = new UserClass();
+const user1 = new UserClass();
+const user2 = new UserClass();
 
 test.describe('Activity feed', () => {
+  // use the admin user to login
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await entity.create(apiContext);
-    await user.create(apiContext);
+    await user1.create(apiContext);
 
     await afterAction();
   });
@@ -49,7 +52,7 @@ test.describe('Activity feed', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await entity.delete(apiContext);
-    await user.delete(apiContext);
+    await user1.delete(apiContext);
 
     await afterAction();
   });
@@ -57,7 +60,7 @@ test.describe('Activity feed', () => {
   test('Assigned task should appear to task tab', async ({ page }) => {
     const value: TaskDetails = {
       term: entity.entity.name,
-      assignee: `${user.data.firstName}.${user.data.lastName}`,
+      assignee: `${user1.data.firstName}.${user1.data.lastName}`,
     };
     await entity.visitEntityPage(page);
 
@@ -185,7 +188,7 @@ test.describe('Activity feed', () => {
   test('Comment and Close Task should work in Task Flow', async ({ page }) => {
     const value: TaskDetails = {
       term: entity.entity.name,
-      assignee: `${user.data.firstName}.${user.data.lastName}`,
+      assignee: `${user1.data.firstName}.${user1.data.lastName}`,
     };
     await entity.visitEntityPage(page);
 
@@ -246,5 +249,155 @@ test.describe('Activity feed', () => {
     const closedTask = await page.getByTestId('closed-task').textContent();
 
     expect(closedTask).toContain('1 Closed');
+  });
+});
+
+test.describe('Activity feed with Data Steward User', () => {
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    await entity.create(apiContext);
+    await user1.create(apiContext);
+    await user2.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    await entity.delete(apiContext);
+    await user1.delete(apiContext);
+    await user2.delete(apiContext);
+
+    await afterAction();
+  });
+
+  test('Create and Assign Task', async ({ browser }) => {
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user1);
+    const { page: page2, afterAction: afterActionUser2 } =
+      await performUserLogin(browser, user2);
+
+    const value: TaskDetails = {
+      term: entity.entity.name,
+      assignee: `${user2.data.firstName}.${user2.data.lastName}`,
+    };
+
+    await test.step('Create, Close and Assign Task to User 2', async () => {
+      await redirectToHomePage(page1);
+      await entity.visitEntityPage(page1);
+
+      // Create 2 task for the same entity, one to close and 2nd for the user2 action
+      await page1.getByTestId('request-description').click();
+      await createDescriptionTask(page1, value);
+
+      await page1.getByTestId('schema').click();
+
+      await page1.getByTestId('request-entity-tags').click();
+
+      // create tag task
+      await createTagTask(page1, { ...value, tag: 'PII.None' });
+
+      // Should only see the close and comment button
+      expect(
+        await page1.locator('[data-testid="comment-button"]').isDisabled()
+      ).toBeTruthy();
+      expect(page1.locator('[data-testid="close-button"]')).toBeVisible();
+      expect(
+        page1.locator('[data-testid="edit-accept-task-dropdown"]')
+      ).not.toBeVisible();
+
+      // Close 1st task
+      await page1.fill(
+        '[data-testid="editor-wrapper"] .ql-editor',
+        'Closing the task with comment'
+      );
+      const commentWithCloseTask = page1.waitForResponse(
+        '/api/v1/feed/tasks/*/close'
+      );
+      page1.locator('[data-testid="close-button"]').click();
+      await commentWithCloseTask;
+
+      await toastNotification(page1, 'Task closed successfully.');
+
+      const openTask = await page1.getByTestId('open-task').textContent();
+
+      expect(openTask).toContain('1 Open');
+
+      const closedTask = await page1.getByTestId('closed-task').textContent();
+
+      expect(closedTask).toContain('1 Closed');
+
+      await afterActionUser1();
+    });
+
+    await test.step('Accept Task By User 2', async () => {
+      await redirectToHomePage(page1);
+      //   await clickOnLogo(page2);
+
+      const taskResponse = page2.waitForResponse(
+        '/api/v1/feed?type=Task&filterType=OWNER&taskStatus=Open&userId=*'
+      );
+
+      await page2
+        .getByTestId('activity-feed-widget')
+        .getByText('Tasks')
+        .click();
+
+      await taskResponse;
+
+      await expect(
+        page2.locator(
+          '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
+        )
+      ).not.toBeVisible();
+
+      const entityPageTaskTab = page2.waitForResponse(
+        '/api/v1/feed?*&type=Task'
+      );
+
+      const tagsTask = page2.getByTestId('redirect-task-button-link').first();
+      const tagsTaskContent = await tagsTask.innerText();
+
+      expect(tagsTaskContent).toContain('Request tags for');
+
+      await tagsTask.click();
+      await entityPageTaskTab;
+
+      // Count for task should be 1 both open and closed
+      const openTaskBefore = await page2.getByTestId('open-task').textContent();
+
+      expect(openTaskBefore).toContain('1 Open');
+
+      const closedTaskBefore = await page2
+        .getByTestId('closed-task')
+        .textContent();
+
+      expect(closedTaskBefore).toContain('1 Closed');
+
+      // Should not see the close button
+      expect(page2.locator('[data-testid="close-button"]')).not.toBeVisible();
+
+      expect(
+        await page2.locator('[data-testid="comment-button"]').isDisabled()
+      ).toBeTruthy();
+
+      expect(
+        page2.locator('[data-testid="edit-accept-task-dropdown"]')
+      ).toBeVisible();
+
+      await page2.getByText('Accept Suggestion').click();
+
+      await toastNotification(page2, /Task resolved successfully/);
+
+      const openTask = await page2.getByTestId('open-task').textContent();
+
+      expect(openTask).toContain('0 Open');
+
+      const closedTask = await page1.getByTestId('closed-task').textContent();
+
+      expect(closedTask).toContain('2 Closed');
+
+      await afterActionUser2();
+    });
   });
 });
