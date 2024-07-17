@@ -153,12 +153,10 @@ def metadata(args=None):
         path = Path(config_file).expanduser()
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
-    elif contains_args.get("log_level"):
-        set_loggers_level(contains_args.get("log_level"))
     else:
-        set_loggers_level(logging.INFO)
+        set_loggers_level(contains_args.get("log_level", logging.INFO))
 
-    if metadata_workflow in RUN_PATH_METHODS:
+    if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
         RUN_PATH_METHODS[metadata_workflow](path)
 
     if metadata_workflow == MetadataCommands.WEBHOOK.value:
@@ -171,17 +169,19 @@ def metadata(args=None):
                 self.wfile.write(bytes("Hello, World! Here is a GET response", "utf8"))
 
             def do_POST(self):  # pylint: disable=invalid-name
-                content_len = int(self.headers.get("Content-Length"))
-                post_body = self.rfile.read(content_len)
+                if self.headers.get("Content-Length"):
+                    content_len = int(self.headers["Content-Length"])
+                    post_body = self.rfile.read(content_len)
+                    logger.info(post_body)
+
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
-                logger.info(post_body)
 
         logger.info(
             f"Starting server at {contains_args.get('host')}:{contains_args.get('port')}"
         )
         with HTTPServer(
-            (contains_args.get("host"), contains_args.get("port")), WebhookHandler
+            (contains_args["host"], contains_args["port"]), WebhookHandler
         ) as server:
             server.serve_forever()
