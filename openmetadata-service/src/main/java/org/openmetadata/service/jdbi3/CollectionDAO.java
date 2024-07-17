@@ -4755,6 +4755,18 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> findEmailTemplatesByPatternAndOptionalNameFromDocStore(
         @Bind("pattern") String pattern, @Bind("name") String name);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = :entityType",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = :entityType",
+        connectionType = POSTGRES)
+    void deleteByEntityType(@Bind("entityType") String entityType);
+
+    @ConnectionAwareSqlUpdate(value = "DELETE FROM doc_store", connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(value = "DELETE FROM doc_store", connectionType = POSTGRES)
+    void deleteAll();
   }
 
   interface SuggestionDAO {

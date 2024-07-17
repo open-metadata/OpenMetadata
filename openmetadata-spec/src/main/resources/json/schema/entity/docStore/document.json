@@ -10,7 +10,12 @@
     "data": {
       "javaType": "org.openmetadata.schema.entities.docStore.Data",
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "properties": {
+        "emailTemplate": {
+          "$ref": "../../email/emailTemplate.json"
+        }
+      }
     }
   },
   "properties": {

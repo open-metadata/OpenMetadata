@@ -17,9 +17,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.email.EmailTemplatePlaceholder;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
-import org.openmetadata.schema.entities.template.EmailTemplatePlaceholder;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -64,13 +64,13 @@ public class DefaultTemplateProvider implements TemplateProvider {
   @Override
   public Template fetchTemplateFromDocStore(String templateName) throws IOException {
     Document document = documentRepository.findByName(templateName, Include.NON_DELETED);
-    String content = (String) document.getData().getAdditionalProperties().get("content");
-    if (content == null || content.isEmpty()) {
+    String template = (String) document.getData().getEmailTemplate().getTemplate();
+    if (template == null || template.isEmpty()) {
       throw new IOException("Template content not found for template: " + templateName);
     }
 
     return new Template(
-        templateName, new StringReader(content), new Configuration(Configuration.VERSION_2_3_31));
+        templateName, new StringReader(template), new Configuration(Configuration.VERSION_2_3_31));
   }
 
   @Override
@@ -83,7 +83,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
                 Document::getName,
                 document ->
                     extractPlaceholders(
-                        (String) document.getData().getAdditionalProperties().get("content"))));
+                        (String) document.getData().getEmailTemplate().getTemplate())));
   }
 
   public Map<String, List<EmailTemplatePlaceholder>> getPlaceholders() {
@@ -94,8 +94,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
             Collectors.toMap(
                 Document::getName,
                 document -> {
-                  Object placeholder =
-                      document.getData().getAdditionalProperties().get("placeholders");
+                  Object placeholder = document.getData().getEmailTemplate().getPlaceHolders();
                   return placeholder != null
                       ? JsonUtils.convertValue(
                           placeholder, new TypeReference<List<EmailTemplatePlaceholder>>() {})
@@ -107,7 +106,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
     return Optional.ofNullable(
             documentRepository.fetchEmailTemplateFromDocStoreByName(documentName))
         .map(json -> JsonUtils.readValue(json, Document.class))
-        .map(document -> document.getData().getAdditionalProperties().get("placeholders"))
+        .map(document -> document.getData().getEmailTemplate().getPlaceHolders())
         .map(
             placeholder ->
                 JsonUtils.convertValue(
@@ -125,7 +124,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
           getPlaceholdersForEmailTemplates()
               .getOrDefault(document.getName(), Collections.emptyList());
 
-      String content = (String) document.getData().getAdditionalProperties().get("content");
+      String content = (String) document.getData().getEmailTemplate().getTemplate();
       List<String> presentPlaceholders = extractPlaceholders(content);
 
       List<String> missingPlaceholders =

@@ -15,6 +15,7 @@ package org.openmetadata.service.resources.docstore;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -59,6 +60,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -327,21 +329,17 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
     Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
-    Response validationResponse = validateTemplate(doc);
 
-    if (validationResponse != null) {
-      return validationResponse;
+    if (doc.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      return validateTemplateAndUpdate(doc);
     }
 
     return createOrUpdate(uriInfo, securityContext, doc);
   }
 
-  private Response validateTemplate(Document document) {
-    if (!document.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
-      return null;
-    }
-
-    Map<String, Object> validationResponse = templateProvider.validateEmailTemplate(document);
+  private Response validateTemplateAndUpdate(Document updatedDocument) {
+    Map<String, Object> validationResponse =
+        templateProvider.validateEmailTemplate(updatedDocument);
     boolean isValid =
         (boolean) validationResponse.get(DefaultTemplateProvider.EMAIL_TEMPLATE_VALID);
 
@@ -353,11 +351,21 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
                 Collections.emptyList());
 
     if (isValid) {
-      return null; // Validation passed
+      Document originalDocument =
+          repository.findByName(updatedDocument.getName(), Include.NON_DELETED);
+
+      DocumentRepository.DocumentUpdater documentUpdater =
+          repository.getUpdater(originalDocument, updatedDocument, EntityRepository.Operation.PUT);
+
+      documentUpdater.entitySpecificUpdate();
+
+      return Response.status(Response.Status.OK.getStatusCode())
+          .entity(new EmailTemplateValidationResponse())
+          .build();
     }
 
     return Response.status(Response.Status.BAD_REQUEST.getStatusCode())
-        .entity(new EmailTemplateValidationErrorResponse(missingPlaceholders))
+        .entity(new EmailTemplateValidationResponse(missingPlaceholders))
         .build();
   }
 
@@ -459,6 +467,82 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
+  @POST
+  @Path("/resetSeedData")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Reset all seed data",
+      description =
+          "Deletes all seed data from the document store and reinitializes it from resources.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Seed Data init successfully",
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = "string"))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Seed Data init failed",
+            content =
+                @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(type = "string")))
+      })
+  public Response resetSeedData(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    try {
+      repository.deleteFromDocStore();
+      repository.initSeedDataFromResources();
+      return Response.ok("Seed Data init successfully").build();
+    } catch (Exception e) {
+      LOG.error(e.getMessage());
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("Seed Data init failed: " + e.getMessage())
+          .build();
+    }
+  }
+
+  @POST
+  @Path("/resetSeedData/{entityType}")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      summary = "Reset seed data by entity type",
+      description =
+          "Deletes seed data of the specified entity type from the document store and reinitializes it from resources.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Seed Data init successfully",
+            content =
+                @Content(
+                    mediaType = MediaType.APPLICATION_JSON,
+                    schema = @Schema(type = "string"))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Seed Data init failed",
+            content =
+                @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(type = "string")))
+      })
+  public Response resetSeedDataByEntityType(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of the Document to be reset",
+              schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType) {
+    try {
+      repository.deleteFromDocStoreByEntityType(entityType);
+      repository.initSeedDataFromResources();
+      return Response.ok("Seed Data init successfully").build();
+    } catch (Exception e) {
+      LOG.error(e.getMessage());
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity("Seed Data init failed: " + e.getMessage())
+          .build();
+    }
+  }
+
   private Document getDocument(CreateDocument cd, String user) {
     return repository
         .copy(new Document(), cd, user)
@@ -469,15 +553,25 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
 }
 
 @Getter
-class EmailTemplateValidationErrorResponse {
+class EmailTemplateValidationResponse {
   private final int status;
   private final String message;
-  private final List<String> missingParameters;
-  public static final String EMAIL_VALIDATION_MESSAGE = "Email template validation failed.";
 
-  public EmailTemplateValidationErrorResponse(List<String> missingParameters) {
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  private final List<String> missingParameters;
+
+  public static final String EMAIL_VALIDATION_FAILED_MESSAGE = "Email template validation failed.";
+  public static final String EMAIL_TEMPLATE_PUT_MESSAGE = "Email template updated.";
+
+  public EmailTemplateValidationResponse(List<String> missingParameters) {
     this.status = Response.Status.BAD_REQUEST.getStatusCode();
-    this.message = EMAIL_VALIDATION_MESSAGE;
+    this.message = EMAIL_VALIDATION_FAILED_MESSAGE;
     this.missingParameters = missingParameters;
+  }
+
+  public EmailTemplateValidationResponse() {
+    this.status = Response.Status.OK.getStatusCode();
+    this.message = EMAIL_TEMPLATE_PUT_MESSAGE;
+    this.missingParameters = null;
   }
 }

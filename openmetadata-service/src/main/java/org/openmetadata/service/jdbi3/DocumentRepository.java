@@ -15,19 +15,23 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DOCUMENT;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.email.EmailTemplatePlaceholder;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
 import org.openmetadata.service.util.DefaultTemplateProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class DocumentRepository extends EntityRepository<Document> {
   static final String DOCUMENT_UPDATE_FIELDS = "data";
   static final String DOCUMENT_PATCH_FIELDS = "data";
+  private final CollectionDAO.DocStoreDAO dao;
 
   public DocumentRepository() {
     super(
@@ -38,21 +42,28 @@ public class DocumentRepository extends EntityRepository<Document> {
         DOCUMENT_UPDATE_FIELDS,
         DOCUMENT_PATCH_FIELDS);
     supportsSearch = false;
+    this.dao = Entity.getCollectionDAO().docStoreDAO();
   }
 
   public List<String> fetchAllEmailTemplatesFromDocStore() {
-    return Entity.getCollectionDAO()
-        .docStoreDAO()
-        .findEmailTemplatesByPatternAndOptionalNameFromDocStore(
-            DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE, null);
+    return dao.findEmailTemplatesByPatternAndOptionalNameFromDocStore(
+        DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE, null);
   }
 
   public String fetchEmailTemplateFromDocStoreByName(String name) {
-    return Entity.getCollectionDAO()
-        .docStoreDAO()
-        .findEmailTemplatesByPatternAndOptionalNameFromDocStore(
+    return dao.findEmailTemplatesByPatternAndOptionalNameFromDocStore(
             DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE, name)
         .get(0);
+  }
+
+  @Transaction
+  public void deleteFromDocStoreByEntityType(String entityType) {
+    dao.deleteByEntityType(entityType);
+  }
+
+  @Transaction
+  public void deleteFromDocStore() {
+    dao.deleteAll();
   }
 
   @Override
@@ -99,7 +110,16 @@ public class DocumentRepository extends EntityRepository<Document> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      recordChange("data", original.getData(), updated.getData(), true);
+      if (updated.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+        Object originalPlaceHolders = original.getData().getEmailTemplate().getPlaceHolders();
+
+        List<EmailTemplatePlaceholder> emailTemplatePlaceholders =
+            JsonUtils.convertValue(
+                originalPlaceHolders, new TypeReference<List<EmailTemplatePlaceholder>>() {});
+
+        updated.getData().getEmailTemplate().setPlaceHolders(emailTemplatePlaceholders);
+        recordChange("data", original, updated, true);
+      }
     }
   }
 }

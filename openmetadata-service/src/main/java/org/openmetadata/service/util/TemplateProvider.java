@@ -4,8 +4,8 @@ import freemarker.template.Template;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.email.EmailTemplatePlaceholder;
 import org.openmetadata.schema.entities.docStore.Document;
-import org.openmetadata.schema.entities.template.EmailTemplatePlaceholder;
 
 public interface TemplateProvider {
 
@@ -44,10 +44,10 @@ public interface TemplateProvider {
    * Maps each template's name to a list of
    * {@link EmailTemplatePlaceholder}s extracted from the template data.
    */
-  public Map<String, List<EmailTemplatePlaceholder>> getPlaceholders();
+  Map<String, List<EmailTemplatePlaceholder>> getPlaceholders();
 
   /**
    * Retrieves placeholders for a specific email template document by its name.
    */
-  public List<EmailTemplatePlaceholder> getPlaceholdersByDocument(String documentName);
+  List<EmailTemplatePlaceholder> getPlaceholdersByDocument(String documentName);
 }
