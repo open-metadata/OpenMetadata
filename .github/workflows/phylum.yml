@@ -45,7 +45,9 @@ jobs:
           python-version: 3.11
       - name: Install Python Dependencies
         run: |
-          python3 -m pip install phylum~=0.47.0
+          wget https://github.com/phylum-dev/cli/releases/download/v6.6.6/phylum-x86_64-unknown-linux-gnu.zip &&
+          unzip phylum-x86_64-unknown-linux-gnu.zip &&
+          sh phylum-x86_64-unknown-linux-gnu/install.sh
       - name: Analyze dependencies
         env:
           PHYLUM_API_KEY: ${{ secrets.PHYLUM_TOKEN }}
