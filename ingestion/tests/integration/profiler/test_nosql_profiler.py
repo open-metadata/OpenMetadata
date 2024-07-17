@@ -328,5 +328,5 @@ class NoSQLProfiler(TestCase):
             "age"
         )
         assert all(
-            [r[age_column_index] == query_age for r in sample_data.sampleData.rows]
+            [r[age_column_index] == str(query_age) for r in sample_data.sampleData.rows]
         )
