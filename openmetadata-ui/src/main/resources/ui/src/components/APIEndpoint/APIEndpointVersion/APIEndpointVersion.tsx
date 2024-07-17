@@ -11,27 +11,22 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs, TabsProps, Tag } from 'antd';
+import { Col, Row, Space, Tabs, TabsProps } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, noop } from 'lodash';
+import { noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import {
-  ChangeDescription,
-  MessageSchemaObject,
-} from '../../../generated/entity/data/topic';
+import { ChangeDescription } from '../../../generated/entity/data/apiEndpoint';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
-import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -40,24 +35,22 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-import TopicSchemaFields from '../TopicSchema/TopicSchema';
-import { TopicVersionProp } from './TopicVersion.interface';
+import APIEndpointSchema from '../APIEndpointSchema/APIEndpointSchema';
+import { APIEndpointVersionProp } from './APIEndpointVersion.interface';
 
-const TopicVersion: FC<TopicVersionProp> = ({
+const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
   owner,
   tier,
-  slashedTopicName,
+  slashedApiEndpointName,
   versionList,
-  deleted = false,
   backHandler,
   versionHandler,
   entityPermissions,
   domain,
-  dataProducts,
-}: TopicVersionProp) => {
+}: APIEndpointVersionProp) => {
   const { t } = useTranslation();
   const history = useHistory();
   const { tab } = useParams<{ tab: EntityTabs }>();
@@ -77,15 +70,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
       [changeDescription, owner, tier, domain]
     );
 
-  const messageSchemaDiff = useMemo(
-    () =>
-      getVersionedSchema(
-        currentVersionData['messageSchema'] as MessageSchemaObject,
-        changeDescription
-      ),
-    [currentVersionData, changeDescription]
-  );
-
   useEffect(() => {
     setChangeDescription(
       currentVersionData.changeDescription as ChangeDescription
@@ -95,7 +79,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   const handleTabChange = (activeKey: string) => {
     history.push(
       getVersionPath(
-        EntityType.TOPIC,
+        EntityType.API_ENDPOINT,
         currentVersionData.fullyQualifiedName ?? '',
         String(version),
         activeKey
@@ -123,20 +107,6 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
   }, [currentVersionData, changeDescription]);
 
-  const schemaType = useMemo(() => {
-    const schemaTypeDiffText = getEntityVersionByField(
-      changeDescription,
-      'messageSchema.schemaType',
-      currentVersionData.displayName
-    );
-
-    return isEmpty(schemaTypeDiffText) ? undefined : (
-      <Tag data-testid="schema-type-diff">
-        {stringToHTML(schemaTypeDiffText)}
-      </Tag>
-    );
-  }, [changeDescription, currentVersionData]);
-
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
@@ -149,19 +119,15 @@ const TopicVersion: FC<TopicVersionProp> = ({
                 <Col span={24}>
                   <DescriptionV1
                     description={description}
-                    entityType={EntityType.TOPIC}
+                    entityType={EntityType.API_ENDPOINT}
                     showActions={false}
                   />
                 </Col>
                 <Col span={24}>
-                  <TopicSchemaFields
-                    isReadOnly
+                  <APIEndpointSchema
                     isVersionView
-                    entityFqn={currentVersionData?.fullyQualifiedName ?? ''}
-                    hasDescriptionEditAccess={false}
-                    hasTagEditAccess={false}
-                    messageSchema={messageSchemaDiff}
-                    schemaTypePlaceholder={schemaType}
+                    apiEndpointDetails={currentVersionData}
+                    permissions={entityPermissions}
                     onThreadLinkSelect={noop}
                   />
                 </Col>
@@ -174,12 +140,12 @@ const TopicVersion: FC<TopicVersionProp> = ({
               <Space className="w-full" direction="vertical" size="large">
                 <DataProductsContainer
                   activeDomain={domain}
-                  dataProducts={dataProducts ?? []}
+                  dataProducts={currentVersionData?.dataProducts ?? []}
                   hasPermission={false}
                 />
                 {Object.keys(TagSource).map((tagType) => (
                   <TagsContainerV2
-                    entityType={EntityType.TOPIC}
+                    entityType={EntityType.API_ENDPOINT}
                     key={tagType}
                     permission={false}
                     selectedTags={tags}
@@ -200,24 +166,19 @@ const TopicVersion: FC<TopicVersionProp> = ({
           />
         ),
         children: (
-          <CustomPropertyTable
-            isVersionView
-            entityDetails={currentVersionData}
-            entityType={EntityType.TOPIC}
-            hasEditAccess={false}
-            hasPermission={entityPermissions.ViewAll}
-          />
+          <div className="p-md">
+            <CustomPropertyTable
+              isVersionView
+              entityDetails={currentVersionData}
+              entityType={EntityType.API_ENDPOINT}
+              hasEditAccess={false}
+              hasPermission={entityPermissions.ViewAll}
+            />
+          </div>
         ),
       },
     ],
-    [
-      description,
-      messageSchemaDiff,
-      currentVersionData,
-      entityPermissions,
-      schemaType,
-      tags,
-    ]
+    [description, currentVersionData, entityPermissions, tags]
   );
 
   return (
@@ -229,12 +190,12 @@ const TopicVersion: FC<TopicVersionProp> = ({
           <Row gutter={[0, 12]}>
             <Col span={24}>
               <DataAssetsVersionHeader
-                breadcrumbLinks={slashedTopicName}
+                breadcrumbLinks={slashedApiEndpointName}
                 currentVersionData={currentVersionData}
-                deleted={deleted}
+                deleted={Boolean(currentVersionData?.deleted)}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
-                entityType={EntityType.TOPIC}
+                entityType={EntityType.API_ENDPOINT}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
                 serviceName={currentVersionData.service?.name}
@@ -256,7 +217,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={version}
-        entityType={EntityType.TOPIC}
+        entityType={EntityType.API_ENDPOINT}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}
@@ -265,4 +226,4 @@ const TopicVersion: FC<TopicVersionProp> = ({
   );
 };
 
-export default TopicVersion;
+export default APIEndpointVersion;

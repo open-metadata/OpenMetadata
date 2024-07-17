@@ -23,14 +23,17 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { EntityType } from '../../../enums/entity.enum';
 import {
   APIEndpoint,
+  ChangeDescription,
   DataTypeTopic as DataType,
   Field,
   TagSource,
 } from '../../../generated/entity/data/apiEndpoint';
 import { ThreadType } from '../../../generated/entity/feed/thread';
+import { APISchema } from '../../../generated/type/apiSchema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import {
   getAllTags,
   searchTagInData,
@@ -52,8 +55,8 @@ import { APIEndpointDetailsProps } from '../APIEndpointDetails/APIEndpointDetail
 interface APIEndpointSchemaProps {
   apiEndpointDetails: APIEndpoint;
   permissions: OperationPermission;
-  onApiEndpointUpdate: APIEndpointDetailsProps['onApiEndpointUpdate'];
   onThreadLinkSelect: (link: string, threadType?: ThreadType) => void;
+  onApiEndpointUpdate?: APIEndpointDetailsProps['onApiEndpointUpdate'];
   isVersionView?: boolean;
 }
 
@@ -149,6 +152,26 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     responseSchemaAllRowKeys,
   ]);
 
+  const tagFilter = useMemo(() => {
+    const tags = getAllTags(activeSchemaFields);
+
+    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
+      TagSource,
+      TagFilterOptions[]
+    >;
+  }, [activeSchemaFields]);
+
+  const activeSchemaFieldsDiff = useMemo(() => {
+    const changeDescription =
+      apiEndpointDetails.changeDescription as ChangeDescription;
+    const activeSchemaDiff = getVersionedSchema(
+      activeSchema as APISchema,
+      changeDescription
+    );
+
+    return activeSchemaDiff?.schemaFields ?? [];
+  }, [activeSchema, apiEndpointDetails]);
+
   const handleViewChange = (e: RadioChangeEvent) => {
     setViewType(e.target.value);
   };
@@ -197,20 +220,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
     [isVersionView]
   );
 
-  const tagFilter = useMemo(() => {
-    const tags = getAllTags(activeSchemaFields);
-
-    return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
-      TagSource,
-      TagFilterOptions[]
-    >;
-  }, [activeSchemaFields]);
-
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
     editColumnTag: Field
   ) => {
-    if (selectedTags && editColumnTag) {
+    if (selectedTags && editColumnTag && !isUndefined(onApiEndpointUpdate)) {
       const schema = cloneDeep(activeSchema);
       updateFieldTags<Field>(
         editColumnTag.fullyQualifiedName ?? '',
@@ -229,7 +243,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
-    if (!isUndefined(editFieldDescription)) {
+    if (
+      !isUndefined(editFieldDescription) &&
+      !isUndefined(onApiEndpointUpdate)
+    ) {
       const schema = cloneDeep(activeSchema);
       updateFieldDescription<Field>(
         editFieldDescription.fullyQualifiedName ?? '',
@@ -287,7 +304,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
               permissions.EditDescription || permissions.EditAll
             }
             index={index}
-            isReadOnly={Boolean(apiEndpointDetails.deleted)}
+            isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
             onThreadLinkSelect={onThreadLinkSelect}
           />
@@ -314,7 +331,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={permissions.EditTags || permissions.EditAll}
             index={index}
-            isReadOnly={Boolean(apiEndpointDetails.deleted)}
+            isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
             tags={tags}
             type={TagSource.Classification}
@@ -346,7 +363,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             handleTagSelection={handleFieldTagsChange}
             hasTagEditAccess={permissions.EditTags || permissions.EditAll}
             index={index}
-            isReadOnly={Boolean(apiEndpointDetails.deleted)}
+            isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
             tags={tags}
             type={TagSource.Glossary}
@@ -402,7 +419,9 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           className={classNames('align-table-filter-left')}
           columns={columns}
           data-testid="schema-fields-table"
-          dataSource={activeSchemaFields}
+          dataSource={
+            isVersionView ? activeSchemaFieldsDiff : activeSchemaFields
+          }
           expandable={{
             ...getTableExpandableConfig<Field>(),
             rowExpandable: (record) => !isEmpty(record.children),
