@@ -43,12 +43,10 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
-      - name: Install Python Dependencies
-        run: |
-          pip install phylum~=0.47.0
       - name: Analyze dependencies
         env:
           PHYLUM_API_KEY: ${{ secrets.PHYLUM_TOKEN }}
         run: |
+          pip install phylum~=0.47.0 &&
           phylum auth login &&
           phylum analyze -vv --skip-sandbox -p OpenMetadata
