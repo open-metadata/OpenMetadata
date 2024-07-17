@@ -162,7 +162,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // set the test case result state in the test case entity if the state has changed
     if (!Objects.equals(original, updated)) {
       TestCase testCase =
-          Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
+          Entity.getEntityByName(TEST_CASE, fqn, "testDefinition,testSuites", Include.NON_DELETED);
       setTestCaseResult(testCase, updated, false);
     }
 
@@ -314,7 +314,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields =
-        new ArrayList<>(List.of("testDefinition", FIELD_OWNER, FIELD_TAGS, TEST_SUITE_FIELD));
+        new ArrayList<>(
+            List.of("testDefinition", FIELD_OWNER, FIELD_TAGS, TEST_SUITE_FIELD, "testSuites"));
 
     // set the test case resolution status reference if test failed, by either
     // creating a new incident or returning the stateId of an unresolved incident
@@ -426,7 +427,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
     TestCase testCase =
-        Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
+        Entity.getEntityByName(TEST_CASE, fqn, "testDefinition,testSuites", Include.NON_DELETED);
     TestCaseResult storedTestCaseResult =
         JsonUtils.readValue(
             daoCollection
