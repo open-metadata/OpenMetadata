@@ -11,6 +11,8 @@
 """
 This module defines the CLI commands for OpenMetadata
 """
+# pyright: reportUnusedCallResult=false
+from typing import Optional
 import argparse
 import logging
 from enum import Enum
@@ -88,7 +90,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     )
 
 
-def get_parser(args=None):
+def get_parser(args: Optional[list[str]] = None):
     """
     Parser method that returns parsed_args
     """
@@ -141,20 +143,21 @@ def get_parser(args=None):
     return parser.parse_args(args)
 
 
-def metadata(args=None):
+def metadata(args: Optional[list[str]] = None):
     """
     This method implements parsing of the arguments passed from CLI
     """
     contains_args = vars(get_parser(args))
     metadata_workflow = contains_args.get("command")
-    config_file = contains_args.get("config")
+    config_file: Optional[Path] = contains_args.get("config")
     path = None
     if config_file:
-        path = Path(config_file).expanduser()
+        path = config_file.expanduser()
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
-        set_loggers_level(contains_args.get("log_level", logging.INFO))
+        log_level: str = contains_args.get("log_level", logging.INFO)
+        set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
         RUN_PATH_METHODS[metadata_workflow](path)

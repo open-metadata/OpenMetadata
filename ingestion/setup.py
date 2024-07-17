@@ -341,7 +341,7 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto~=5.0",
-    "pyright~=1.1",
+    "basedpyright~=1.14",
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",

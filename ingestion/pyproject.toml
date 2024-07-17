@@ -142,13 +142,15 @@ profile = "black"
 indent = "    "
 multi_line_output = 3
 
-[tool.pyright]
+[tool.basedpyright]
 include = ["src"]
 exclude = [
   "**/__pycache__",
   "src/metadata/generated/*",
   "src/metadata/__version__.py",
 ]
+
+# TODO: Remove the ignored paths little by little.
 ignore = [
   "src/_openmetadata_testutils/*",
   "src/airflow_provider_openmetadata/*",

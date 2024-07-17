@@ -35,7 +35,7 @@ lint:  ## Run pylint on the Python sources to analyze the codebase
 
 .PHONY: static-checks
 static-checks:
-	pyright -p $(INGESTION_DIR)/pyproject.toml
+	basedpyright -p $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
