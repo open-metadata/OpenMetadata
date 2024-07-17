@@ -161,6 +161,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             "system_data_type": raw_col_type,
         }
         if col_type in {"array", "struct", "map"}:
+            col_name = f"`{col_name}`" if "." in col_name else col_name
             rows = dict(
                 connection.execute(
                     f"DESCRIBE {schema}.{table_name} {col_name}"
