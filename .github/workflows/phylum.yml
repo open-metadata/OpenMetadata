@@ -52,5 +52,6 @@ jobs:
         env:
           PHYLUM_API_KEY: ${{ secrets.PHYLUM_TOKEN }}
         run: |
-          phylum auth login && \
+          source env/bin/activate &&
+          phylum auth login &&
           phylum analyze -vv --skip-sandbox -p OpenMetadata
