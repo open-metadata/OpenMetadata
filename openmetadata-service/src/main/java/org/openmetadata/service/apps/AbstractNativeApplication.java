@@ -2,7 +2,7 @@ package org.openmetadata.service.apps;
 
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.LIVE_APP_SCHEDULE_ERR;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
 
 import java.util.List;
 import lombok.Getter;
@@ -89,13 +89,13 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand() {
     // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application
       AppScheduler.getInstance().triggerOnDemandApplication(app);
     } else {
-      throw new IllegalArgumentException(LIVE_APP_SCHEDULE_ERR);
+      throw new IllegalArgumentException(NO_MANUAL_TRIGGER_ERR);
     }
   }
 
