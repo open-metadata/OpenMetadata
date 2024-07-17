@@ -163,16 +163,4 @@ class MongoDB(NoSQLAdaptor):
         return AggregationFunction.MIN
 
     def execute(self, query: Executable) -> List[Dict[str, any]]:
-        records = list(query.to_executable(self.client))
-        result = []
-        for r in records:
-            result.append({c: self._json_safe(r.get(c)) for c in r})
-        return result
-
-    @staticmethod
-    def _json_safe(data: any):
-        try:
-            json.dumps(data)
-            return data
-        except Exception:  # noqa
-            return str(data)
+        return list(query.to_executable(self.client))
