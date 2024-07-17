@@ -34,24 +34,27 @@ jobs:
           valid-labels: 'safe to test'
           pull-request-number: '${{ github.event.pull_request.number }}'
           disable-reviews: true  # To not auto approve changes
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          path: OpenMetadata
       - name: Setup Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: 3.11
       - name: Install Python Dependencies
         run: |
+          cd OpenMetadata &&
           python3 -m venv env &&
           source env/bin/activate &&
           pip install phylum~=0.47.0
-      - name: Checkout the repo
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
       - name: Analyze dependencies
         env:
           PHYLUM_API_KEY: ${{ secrets.PHYLUM_TOKEN }}
         run: |
+          cd OpenMetadata &&
           source env/bin/activate &&
           phylum auth login &&
           phylum analyze -vv --skip-sandbox -p OpenMetadata
