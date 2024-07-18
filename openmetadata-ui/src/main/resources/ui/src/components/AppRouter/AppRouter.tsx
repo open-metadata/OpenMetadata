@@ -29,9 +29,8 @@ const AppRouter = () => {
 
   // web analytics instance
   const analytics = useAnalytics();
-  const { currentUser } = useApplicationStore();
-
-  const { isAuthenticated, isApplicationLoading } = useApplicationStore();
+  const { currentUser, isAuthenticated, isApplicationLoading } =
+    useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -68,7 +67,6 @@ const AppRouter = () => {
 
     return () => targetNode.removeEventListener('click', handleClickEvent);
   }, [handleClickEvent]);
-  const { currentUser } = useApplicationStore();
 
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
