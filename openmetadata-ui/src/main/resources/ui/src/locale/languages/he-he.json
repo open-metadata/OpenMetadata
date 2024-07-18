@@ -1480,7 +1480,7 @@
     "feed-asset-action-header": "{{action}} <0>data asset</0>",
     "feed-custom-property-header": "updated Custom Properties on",
     "feed-entity-action-header": "{{action}} <0>data asset</0>",
-    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> for {{entity}}",
+    "feed-field-action-entity-header": "{{action}} <0>{{field}}</0> for",
     "feed-filter-all": "פידים עבור כל הנכסים שאתה בעל ועוקב אחריהם",
     "feed-filter-following": "פידים עבור כל הנכסים שאתה עוקב אחריהם",
     "feed-filter-owner": "פידים עבור כל הנכסים שאתה בעל שלהם",
