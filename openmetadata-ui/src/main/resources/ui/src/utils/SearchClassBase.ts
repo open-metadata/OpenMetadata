@@ -265,6 +265,20 @@ class SearchClassBase {
     ];
   }
 
+  public getExploreTreeKey(tab: ExplorePageTabs) {
+    const tabMapping: Record<string, SearchIndex[]> = {
+      [ExplorePageTabs.TABLES]: [SearchIndex.DATABASE],
+      [ExplorePageTabs.DASHBOARDS]: [SearchIndex.DASHBOARD],
+      [ExplorePageTabs.TOPICS]: [SearchIndex.TOPIC],
+      [ExplorePageTabs.CONTAINERS]: [SearchIndex.CONTAINER],
+      [ExplorePageTabs.PIPELINES]: [SearchIndex.PIPELINE],
+      [ExplorePageTabs.MLMODELS]: [SearchIndex.MLMODEL],
+      [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
+    };
+
+    return tabMapping[tab] || [SearchIndex.DATABASE];
+  }
+
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
     return {
       [SearchIndex.TABLE]: {

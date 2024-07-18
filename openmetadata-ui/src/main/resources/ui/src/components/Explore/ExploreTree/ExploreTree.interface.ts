@@ -37,6 +37,7 @@ export type TreeNodeData = {
   parentSearchIndex?: string;
   rootIndex?: string;
   entityType?: EntityType;
+  dataId?: string;
 };
 
 export type DatabaseFields =
