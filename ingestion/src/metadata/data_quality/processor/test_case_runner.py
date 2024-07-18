@@ -102,9 +102,11 @@ class TestCaseRunner(Processor):
             record.table,
         ).get_data_quality_runner()
 
-        logger.info(
+        logger.debug(
             f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"
         )
+        if len(openmetadata_test_cases) == 0:
+            logger.warning("No test cases found for the table")
 
         test_results = [
             test_case_result
