@@ -139,6 +139,7 @@ export enum FqnPart {
   Topic,
   SearchIndexField,
   TestCase,
+  ApiEndpoint,
 }
 
 export enum EntityTabs {

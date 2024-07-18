@@ -114,7 +114,7 @@ function APIEndpointsTab({
           <DescriptionV1
             description={description}
             entityFqn={apiCollectionDetails.fullyQualifiedName}
-            entityType={EntityType.API_ENDPOINT}
+            entityType={EntityType.API_COLLECTION}
             isDescriptionExpanded={isEmpty(apiEndpoints.data)}
             showActions={false}
           />
@@ -123,7 +123,7 @@ function APIEndpointsTab({
             description={description}
             entityFqn={apiCollectionDetails.fullyQualifiedName}
             entityName={getEntityName(apiCollectionDetails)}
-            entityType={EntityType.API_ENDPOINT}
+            entityType={EntityType.API_COLLECTION}
             hasEditAccess={editDescriptionPermission}
             isDescriptionExpanded={isEmpty(apiEndpoints.data)}
             isEdit={isEdit}
