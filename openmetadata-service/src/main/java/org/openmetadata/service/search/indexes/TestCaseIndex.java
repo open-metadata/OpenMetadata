@@ -25,8 +25,8 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     SearchIndex.super.removeNonIndexableFields(esDoc);
-    ArrayList<Map<String, Object>> testSuites =
-        (ArrayList<Map<String, Object>>) esDoc.get("testSuites");
+    List<Map<String, Object>> testSuites =
+        (List<Map<String, Object>>) esDoc.get("testSuites");
     for (Map<String, Object> testSuite : testSuites) {
       SearchIndexUtils.removeNonIndexableFields(testSuite, excludeFields);
     }
