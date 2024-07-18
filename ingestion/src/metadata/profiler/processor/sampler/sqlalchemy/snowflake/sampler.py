@@ -13,11 +13,20 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from sqlalchemy.orm import Query
+from typing import cast
+
+from sqlalchemy import Table
+from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType
+from metadata.profiler.orm.functions.modulo import ModuloFn
+from metadata.profiler.orm.functions.random_num import RandomNumFn
+from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import (
+    RANDOM_LABEL,
+    SQASampler,
+)
 
 
 class SnowflakeSampler(SQASampler):
@@ -30,16 +39,32 @@ class SnowflakeSampler(SQASampler):
         super().__init__(*args, **kwargs)
 
     @partition_filter_handler(build_sample=True)
-    def get_sample_query(self, *, column=None) -> Query:
+    def get_sample_query(self, *, column=None) -> CTE:
         """get query for sample data"""
         # TABLESAMPLE SYSTEM is not supported for views
-        if self.profile_sample_type == ProfileSampleType.ROWS:
-            return (
-                self._base_sample_query(column)
-                .suffix_with(
-                    f"TABLESAMPLE ({self.profile_sample or 100} ROWS)",
+        self.table = cast(Table, self.table)
+
+        if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
+            rnd = (
+                self._base_sample_query(
+                    column,
+                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
-                .cte(f"{self.table.__tablename__}_sample")
+                .suffix_with(
+                    f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
+                    dialect=Dialects.Snowflake,
+                )
+                .cte(f"{self.table.__tablename__}_rnd")
+            )
+            session_query = self.client.query(rnd)
+            return session_query.where(rnd.c.random <= self.profile_sample).cte(
+                f"{self.table.__tablename__}_sample"
             )
 
-        return super().get_sample_query(column=column)
+        return (
+            self._base_sample_query(column)
+            .suffix_with(
+                f"TABLESAMPLE ({self.profile_sample or 100} ROWS)",
+            )
+            .cte(f"{self.table.__tablename__}_sample")
+        )
