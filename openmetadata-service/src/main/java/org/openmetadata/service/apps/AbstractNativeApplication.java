@@ -63,8 +63,9 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void install() {
     // If the app does not have any Schedule Return without scheduling
-    if (app.getAppSchedule() != null
-        && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE)) {
+    if (Boolean.FALSE.equals(app.getDeleted())
+        || (app.getAppSchedule() != null
+            && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE))) {
       return;
     }
     if (app.getAppType() == AppType.Internal
