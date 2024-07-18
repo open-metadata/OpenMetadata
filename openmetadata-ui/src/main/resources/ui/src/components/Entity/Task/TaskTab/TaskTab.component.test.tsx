@@ -18,6 +18,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { useAuth } from '../../../../hooks/authHooks';
 import {
   MOCK_TASK,
+  MOCK_TASK_2,
   TASK_COLUMNS,
   TASK_FEED,
 } from '../../../../mocks/Task.mock';
@@ -243,5 +244,21 @@ describe('Test TaskFeedCard component', () => {
     );
 
     expect(screen.queryByText('label.close')).not.toBeInTheDocument();
+  });
+
+  it('should render close button with add tag if task created with no tags', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, createdBy: 'xyz', task: MOCK_TASK_2 }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByText('label.close')).toBeInTheDocument();
+    expect(screen.getByText('label.add-entity')).toBeInTheDocument();
+    expect(screen.getByText('label.comment')).toBeInTheDocument();
   });
 });

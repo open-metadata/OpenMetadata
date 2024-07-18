@@ -489,6 +489,14 @@ export const TaskTab = ({
     );
   }, [comment]);
 
+  const renderCloseButton = useMemo(() => {
+    return (
+      <Button data-testid="close-button" onClick={onTaskReject}>
+        {t('label.close')}
+      </Button>
+    );
+  }, []);
+
   const approvalWorkflowActions = useMemo(() => {
     const hasApprovalAccess =
       isAssignee || (Boolean(isPartOfAssigneeTeam) && !isCreator);
@@ -598,30 +606,29 @@ export const TaskTab = ({
         className="m-t-sm items-end w-full justify-end"
         data-testid="task-cta-buttons"
         size="small">
-        {isCreator && !hasEditAccess && (
-          <Button data-testid="close-button" onClick={onTaskReject}>
-            {t('label.close')}
-          </Button>
-        )}
+        {isCreator && !hasEditAccess && { renderCloseButton }}
         {hasEditAccess && (
           <>
             {['RequestDescription', 'RequestTag'].includes(taskType) &&
             isEmpty(parsedSuggestion) ? (
-              <Button
-                type="primary"
-                onClick={() =>
-                  handleMenuItemClick({
-                    key: TaskActionMode.EDIT,
-                  } as MenuInfo)
-                }>
-                {taskThread.task?.newValue
-                  ? t('label.add-suggestion')
-                  : t('label.add-entity', {
-                      entity: isTaskTags
-                        ? t('label.tag-plural')
-                        : t('label.description'),
-                    })}
-              </Button>
+              <div className="d-flex justify-end gap-2">
+                {renderCloseButton}
+                <Button
+                  type="primary"
+                  onClick={() =>
+                    handleMenuItemClick({
+                      key: TaskActionMode.EDIT,
+                    } as MenuInfo)
+                  }>
+                  {taskThread.task?.newValue
+                    ? t('label.add-suggestion')
+                    : t('label.add-entity', {
+                        entity: isTaskTags
+                          ? t('label.tag-plural')
+                          : t('label.description'),
+                      })}
+                </Button>
+              </div>
             ) : (
               <Dropdown.Button
                 className="task-action-button"
