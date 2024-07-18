@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FeedUtils;
@@ -209,13 +210,22 @@ public interface MessageDecorator<T> {
       String headerTxt;
       String headerText;
       if (eventType.equals(Entity.QUERY)) {
-        headerTxt = "%s posted on " + eventType;
-        headerText = String.format(headerTxt, event.getUserName());
+        headerTxt = "%s posted on " + eventType + ".\ntriggered by %s";
+        headerText =
+            String.format(
+                headerTxt,
+                event.getUserName(),
+                event.getAdditionalProperties().get(AbstractEventConsumer.EVENT_SUBSCRIPTION_NAME));
       } else {
         String entityUrl = this.buildEntityUrl(event.getEntityType(), entityInterface);
         message.setEntityUrl(entityUrl);
-        headerTxt = "%s posted on " + eventType + " %s";
-        headerText = String.format(headerTxt, event.getUserName(), entityUrl);
+        headerTxt = "%s posted on " + eventType + " %s.\ntriggered by %s";
+        headerText =
+            String.format(
+                headerTxt,
+                event.getUserName(),
+                entityUrl,
+                event.getAdditionalProperties().get(AbstractEventConsumer.EVENT_SUBSCRIPTION_NAME));
       }
       message.setHeader(headerText);
     }

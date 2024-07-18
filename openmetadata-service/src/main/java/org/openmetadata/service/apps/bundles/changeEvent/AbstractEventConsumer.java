@@ -54,6 +54,7 @@ public abstract class AbstractEventConsumer
   public static final String OFFSET_EXTENSION = "eventSubscription.Offset";
   public static final String METRICS_EXTENSION = "eventSubscription.metrics";
   public static final String FAILED_EVENT_EXTENSION = "eventSubscription.failedEvent";
+  public static final String EVENT_SUBSCRIPTION_NAME = "eventSubscriptionName";
   private long offset = -1;
   private AlertMetrics alertMetrics;
 
@@ -254,6 +255,7 @@ public abstract class AbstractEventConsumer
     Map<ChangeEvent, Set<UUID>> eventsWithReceivers =
         new TreeMap<>(Comparator.comparing(ChangeEvent::getId));
     for (ChangeEvent changeEvent : events) {
+      changeEvent.setAdditionalProperty(EVENT_SUBSCRIPTION_NAME, eventSubscription.getName());
       Set<UUID> receivers = Set.of(destinationMap.keySet().toArray(UUID[]::new));
       eventsWithReceivers.put(changeEvent, receivers);
     }
