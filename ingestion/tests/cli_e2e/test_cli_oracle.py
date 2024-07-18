@@ -136,7 +136,7 @@ SELECT * from names
     def expected_filtered_mix() -> int:
         return 43
 
-    @pytest.mark.xfail
+    @pytest.mark.xfail(reason="Issue Raised: https://github.com/open-metadata/OpenMetadata/issues/17085")
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
         self.delete_table_and_view()
