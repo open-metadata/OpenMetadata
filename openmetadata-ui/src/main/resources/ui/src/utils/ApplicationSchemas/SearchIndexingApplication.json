@@ -52,7 +52,10 @@
           "domain",
           "storedProcedure",
           "dataProduct",
-          "testCaseResolutionStatus"
+          "testCaseResolutionStatus",
+          "apiService",
+          "apiEndpoint",
+          "apiCollection"
         ]
       },
       "default": ["all"],
