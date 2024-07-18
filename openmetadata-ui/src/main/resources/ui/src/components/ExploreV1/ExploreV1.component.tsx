@@ -316,20 +316,22 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       ),
       children: (
-        <Menu
-          className="custom-menu"
-          data-testid="explore-left-panel"
-          items={tabItems}
-          mode="inline"
-          rootClassName="left-container"
-          selectedKeys={[activeTabKey]}
-          onClick={(info) => {
-            if (info && info.key !== activeTabKey) {
-              onChangeSearchIndex(info.key as ExploreSearchIndex);
-              setShowSummaryPanel(false);
-            }
-          }}
-        />
+        <div className="explore-left-custom-menu">
+          <Menu
+            className="custom-menu"
+            data-testid="explore-left-panel"
+            items={tabItems}
+            mode="inline"
+            rootClassName="left-container"
+            selectedKeys={[activeTabKey]}
+            onClick={(info) => {
+              if (info && info.key !== activeTabKey) {
+                onChangeSearchIndex(info.key as ExploreSearchIndex);
+                setShowSummaryPanel(false);
+              }
+            }}
+          />
+        </div>
       ),
     },
     {

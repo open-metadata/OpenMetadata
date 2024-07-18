@@ -16,6 +16,8 @@ import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collection.svg';
+import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -32,6 +34,7 @@ import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface'
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
+  API_ENDPOINT_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DATA_MODEL_TYPE,
@@ -107,6 +110,9 @@ class SearchClassBase {
       [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
       [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
       [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
+      [EntityType.API_SERVICE]: SearchIndex.API_SERVICE_INDEX,
+      [EntityType.API_COLLECTION]: SearchIndex.API_COLLECTION_INDEX,
+      [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT_INDEX,
     };
   }
 
@@ -144,6 +150,9 @@ class SearchClassBase {
       [SearchIndex.TEST_SUITE]: EntityType.TEST_SUITE,
       [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
       [SearchIndex.INGESTION_PIPELINE]: EntityType.INGESTION_PIPELINE,
+      [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
+      [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
+      [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
     };
   }
 
@@ -168,6 +177,14 @@ class SearchClassBase {
       { value: SearchIndex.TAG, label: i18n.t('label.tag') },
       { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
       { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
+      {
+        value: SearchIndex.API_ENDPOINT_INDEX,
+        label: i18n.t('label.api-endpoint'),
+      },
+      {
+        value: SearchIndex.API_COLLECTION_INDEX,
+        label: i18n.t('label.api-collection'),
+      },
     ];
   }
 
@@ -214,6 +231,12 @@ class SearchClassBase {
         key: SearchIndex.SEARCH_INDEX,
         data: { isRoot: true },
         icon: SearchIcon,
+      },
+      {
+        title: i18n.t('label.api-collection-plural'),
+        key: SearchIndex.API_COLLECTION_INDEX,
+        data: { isRoot: true },
+        icon: IconAPICollection,
       },
       {
         title: i18n.t('label.governance'),
@@ -346,6 +369,22 @@ class SearchClassBase {
         path: ExplorePageTabs.DATA_PRODUCT,
         icon: DataProductIcon,
       },
+      [SearchIndex.API_COLLECTION_INDEX]: {
+        label: i18n.t('label.api-collection-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        path: ExplorePageTabs.API_COLLECTION,
+        icon: IconAPICollection,
+      },
+      [SearchIndex.API_ENDPOINT_INDEX]: {
+        label: i18n.t('label.api-endpoint-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        path: ExplorePageTabs.API_ENDPOINT,
+        icon: IconAPIEndpoint,
+      },
     };
   }
   public getDropDownItems(index: string) {
@@ -355,6 +394,9 @@ class SearchClassBase {
 
       case SearchIndex.TOPIC:
         return [...COMMON_DROPDOWN_ITEMS, ...TOPIC_DROPDOWN_ITEMS];
+
+      case SearchIndex.API_ENDPOINT_INDEX:
+        return [...COMMON_DROPDOWN_ITEMS, ...API_ENDPOINT_DROPDOWN_ITEMS];
 
       case SearchIndex.DASHBOARD:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
@@ -380,6 +422,7 @@ class SearchClassBase {
       case SearchIndex.STORED_PROCEDURE:
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
+      case SearchIndex.API_COLLECTION_INDEX:
         return COMMON_DROPDOWN_ITEMS;
       case SearchIndex.DATA_ASSET:
         return DATA_ASSET_DROPDOWN_ITEMS;

@@ -11,58 +11,44 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Radio, RadioChangeEvent, Row, Typography } from 'antd';
+import { Col, Divider, Row, Typography } from 'antd';
 import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
-import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
-import { APIEndpoint } from '../../../../generated/entity/data/apiEndpoint';
-import { getApiEndPointByFQN } from '../../../../rest/apiEndpointsAPI';
-import {
-  getFormattedEntityData,
-  getSortedTagsWithHighlight,
-} from '../../../../utils/EntitySummaryPanelUtils';
+import { APICollection } from '../../../../generated/entity/data/apiCollection';
+import { getApiCollectionByFQN } from '../../../../rest/apiCollectionsAPI';
+import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
-import { SchemaViewType } from '../../../APIEndpoint/APIEndpointSchema/APIEndpointSchema';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
-import SummaryList from '../SummaryList/SummaryList.component';
-import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
-interface APIEndpointSummaryProps {
-  entityDetails: APIEndpoint;
+interface APICollectionSummaryProps {
+  entityDetails: APICollection;
   componentType?: DRAWER_NAVIGATION_OPTIONS;
   isLoading?: boolean;
   highlights?: SearchedDataProps['data'][number]['highlight'];
 }
 
-const APIEndpointSummary = ({
+const APICollectionSummary = ({
   entityDetails,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   isLoading,
   highlights,
-}: APIEndpointSummaryProps) => {
-  const { t } = useTranslation();
-
+}: APICollectionSummaryProps) => {
   const entityInfo = useMemo(
-    () => getEntityOverview(ExplorePageTabs.API_ENDPOINT, entityDetails),
+    () => getEntityOverview(ExplorePageTabs.API_COLLECTION, entityDetails),
     [entityDetails]
   );
-
-  const [apiEndpointDetails, setApiEndpointDetails] =
-    useState<APIEndpoint>(entityDetails);
-  const [viewType, setViewType] = useState<SchemaViewType>(
-    SchemaViewType.REQUEST_SCHEMA
-  );
+  const [apiCollectionDetails, setApiCollectionDetails] =
+    useState<APICollection>(entityDetails);
 
   const isExplore = useMemo(
     () => componentType === DRAWER_NAVIGATION_OPTIONS.explore,
@@ -77,48 +63,26 @@ const APIEndpointSummary = ({
       url: getTeamAndUserDetailsPath(owner?.name ?? ''),
       isLink: !isEmpty(owner?.name),
     };
-  }, [entityDetails, apiEndpointDetails]);
+  }, [entityDetails, apiCollectionDetails]);
 
-  const { formattedSchemaFieldsData, activeSchema } = useMemo(() => {
-    const activeSchema =
-      viewType === SchemaViewType.REQUEST_SCHEMA
-        ? apiEndpointDetails.requestSchema
-        : apiEndpointDetails.responseSchema;
-
-    const formattedSchemaFieldsData: BasicEntityInfo[] = getFormattedEntityData(
-      SummaryEntityType.SCHEMAFIELD,
-      activeSchema?.schemaFields,
-      highlights
-    );
-
-    return {
-      formattedSchemaFieldsData,
-      activeSchema,
-    };
-  }, [apiEndpointDetails, highlights, viewType]);
-
-  const fetchApiEndpointDetails = useCallback(async () => {
+  const fetchApiCollectionDetails = useCallback(async () => {
     try {
-      const res = await getApiEndPointByFQN(
+      const res = await getApiCollectionByFQN(
         entityDetails.fullyQualifiedName ?? '',
         {
           fields: 'tags,owner',
         }
       );
 
-      setApiEndpointDetails({ ...res });
+      setApiCollectionDetails({ ...res });
     } catch (error) {
       // Error
     }
   }, [entityDetails]);
 
-  const handleViewChange = (e: RadioChangeEvent) => {
-    setViewType(e.target.value);
-  };
-
   useEffect(() => {
     if (entityDetails.service?.type === 'apiService') {
-      fetchApiEndpointDetails();
+      fetchApiCollectionDetails();
     }
   }, [entityDetails, componentType]);
 
@@ -156,34 +120,9 @@ const APIEndpointSummary = ({
             get(highlights, 'tag.name')
           )}
         />
-        <Divider className="m-y-xs" />
-
-        <Row className="m-md" gutter={[0, 8]}>
-          <Col span={24}>
-            <Radio.Group value={viewType} onChange={handleViewChange}>
-              <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
-                {t('label.request')}
-              </Radio.Button>
-              <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
-                {t('label.response')}
-              </Radio.Button>
-            </Radio.Group>
-          </Col>
-          <Col span={24}>
-            {isEmpty(activeSchema?.schemaFields) ? (
-              <Typography.Text data-testid="no-data-message">
-                <Typography.Text className="text-grey-body">
-                  {t('message.no-data-available')}
-                </Typography.Text>
-              </Typography.Text>
-            ) : (
-              <SummaryList formattedEntityData={formattedSchemaFieldsData} />
-            )}
-          </Col>
-        </Row>
       </>
     </SummaryPanelSkeleton>
   );
 };
 
-export default APIEndpointSummary;
+export default APICollectionSummary;

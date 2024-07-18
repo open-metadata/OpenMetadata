@@ -942,6 +942,69 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   return overview;
 };
 
+const getApiCollectionOverview = (apiCollection: APICollection) => {
+  const { service } = apiCollection;
+
+  const overview = [
+    {
+      name: i18next.t('label.endpoint-url'),
+      value: apiCollection.endpointURL || NO_DATA,
+      url: apiCollection.endpointURL,
+      isLink: true,
+      isExternal: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service.fullyQualifiedName ?? NO_DATA,
+      url: getServiceDetailsPath(
+        service.fullyQualifiedName ?? '',
+        ServiceCategory.API_SERVICES
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+  ];
+
+  return overview;
+};
+const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
+  const { service, apiCollection } = apiEndpoint;
+
+  const overview = [
+    {
+      name: i18next.t('label.endpoint-url'),
+      value: apiEndpoint.endpointURL || NO_DATA,
+      url: apiEndpoint.endpointURL,
+      isLink: true,
+      isExternal: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.api-collection'),
+      value: apiEndpoint.apiCollection?.fullyQualifiedName ?? '',
+      url: getEntityDetailsPath(
+        EntityType.API_COLLECTION,
+        apiCollection?.fullyQualifiedName ?? ''
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service.fullyQualifiedName ?? '',
+      url: getServiceDetailsPath(
+        service.fullyQualifiedName ?? '',
+        ServiceCategory.API_SERVICES
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+  ];
+
+  return overview;
+};
+
 export const getEntityOverview = (
   type: string,
   entityDetail: EntityUnion
@@ -989,12 +1052,21 @@ export const getEntityOverview = (
       return getDatabaseSchemaOverview(entityDetail as DatabaseSchema);
     }
 
+    case ExplorePageTabs.API_COLLECTION: {
+      return getApiCollectionOverview(entityDetail as APICollection);
+    }
+
+    case ExplorePageTabs.API_ENDPOINT: {
+      return getApiEndpointOverview(entityDetail as APIEndpoint);
+    }
+
     case ExplorePageTabs.DATABASE_SERVICE:
     case ExplorePageTabs.MESSAGING_SERVICE:
     case ExplorePageTabs.DASHBOARD_SERVICE:
     case ExplorePageTabs.ML_MODEL_SERVICE:
     case ExplorePageTabs.PIPELINE_SERVICE:
-    case ExplorePageTabs.SEARCH_INDEX_SERVICE: {
+    case ExplorePageTabs.SEARCH_INDEX_SERVICE:
+    case ExplorePageTabs.API_SERVICE: {
       return getEntityServiceOverview(entityDetail as EntityServiceUnion);
     }
 
@@ -1388,6 +1460,8 @@ export const getEntityLinkFromType = (
     case EntityType.DASHBOARD_DATA_MODEL:
     case EntityType.STORED_PROCEDURE:
     case EntityType.SEARCH_INDEX:
+    case EntityType.API_COLLECTION:
+    case EntityType.API_ENDPOINT:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
@@ -1435,6 +1509,11 @@ export const getEntityLinkFromType = (
       return getServiceDetailsPath(
         fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
+      );
+    case EntityType.API_SERVICE:
+      return getServiceDetailsPath(
+        fullyQualifiedName,
+        ServiceCategory.API_SERVICES
       );
     case EntityType.BOT:
       return getBotsPath(fullyQualifiedName);

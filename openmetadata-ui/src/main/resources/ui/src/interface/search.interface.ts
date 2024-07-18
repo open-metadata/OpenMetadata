@@ -34,6 +34,7 @@ import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
+import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -172,9 +173,7 @@ export interface StorageServiceSearchSource
   extends SearchSourceBase,
     SearchService {}
 
-export interface APIServiceSearchSource
-  extends SearchSourceBase,
-    SearchService {}
+export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
 
 export interface APICollectionSearchSource
   extends SearchSourceBase,

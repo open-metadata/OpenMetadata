@@ -43,6 +43,7 @@ import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/forei
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
+import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
@@ -269,6 +270,7 @@ export const getEntityIcon = (
     ['notification']: NotificationIcon,
     [EntityType.API_ENDPOINT]: APIEndpointIcon,
     [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
+    [EntityType.API_SERVICE]: APIServiceIcon,
   };
 
   switch (indexType) {
