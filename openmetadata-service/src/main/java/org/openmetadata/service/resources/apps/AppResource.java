@@ -709,7 +709,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
+    App app =
+        repository.getByName(uriInfo, name, repository.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
@@ -741,7 +742,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    App app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
@@ -1047,19 +1048,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             ingestionPipelineRepository.get(
                 null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
         try {
-          if (hardDelete) {
-            // Remove the Pipeline in case of Delete
-            if (!nullOrEmpty(installedApp.getPipelines())) {
-              pipelineServiceClient.deletePipeline(ingestionPipeline);
-            }
-          } else {
-            // Just Kill Running ingestion
-            if (Boolean.TRUE.equals(ingestionPipeline.getDeployed())) {
-              decryptOrNullify(
-                  securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
-              pipelineServiceClient.killIngestion(ingestionPipeline);
-            }
-          }
+          pipelineServiceClient.deletePipeline(ingestionPipeline);
         } catch (Exception ex) {
           LOG.error("Failed in Pipeline Service Client : ", ex);
         }
