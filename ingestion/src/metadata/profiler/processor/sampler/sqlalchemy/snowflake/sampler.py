@@ -19,13 +19,8 @@ from sqlalchemy import Table
 from sqlalchemy.sql.selectable import CTE
 
 from metadata.generated.schema.entity.data.table import ProfileSampleType
-from metadata.profiler.orm.functions.modulo import ModuloFn
-from metadata.profiler.orm.functions.random_num import RandomNumFn
 from metadata.profiler.processor.handle_partition import partition_filter_handler
-from metadata.profiler.processor.sampler.sqlalchemy.sampler import (
-    RANDOM_LABEL,
-    SQASampler,
-)
+from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 
 
 class SnowflakeSampler(SQASampler):
@@ -54,9 +49,7 @@ class SnowflakeSampler(SQASampler):
                 .cte(f"{self.table.__tablename__}_rnd")
             )
             session_query = self.client.query(rnd)
-            return session_query.cte(
-                f"{self.table.__tablename__}_sample"
-            )
+            return session_query.cte(f"{self.table.__tablename__}_sample")
 
         return (
             self._base_sample_query(column)
