@@ -13,6 +13,7 @@ Mixin class containing Lineage specific methods
 
 To be used by OpenMetadata class
 """
+import functools
 import traceback
 from copy import deepcopy
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
@@ -321,6 +322,7 @@ class OMetaLineageMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
 
+    @functools.lru_cache(maxsize=LRU_CACHE_SIZE)
     def delete_lineage_by_source(
         self, entity_type: str, entity_id: str, source: str
     ) -> None:

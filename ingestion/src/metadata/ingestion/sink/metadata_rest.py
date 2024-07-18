@@ -51,6 +51,7 @@ from metadata.generated.schema.tests.testCaseResolutionStatus import (
     TestCaseResolutionStatus,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.schema import Topic
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Sink
@@ -260,11 +261,24 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             and add_lineage.lineage_request.edge.lineageDetails
             and add_lineage.lineage_request.edge.lineageDetails.source
         ):
-            self.metadata.delete_lineage_by_source(
-                entity_type=add_lineage.lineage_request.edge.toEntity.type,
-                entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
-                source=add_lineage.lineage_request.edge.lineageDetails.source.value,
-            )
+            if (
+                add_lineage.lineage_request.edge.lineageDetails.pipeline
+                and add_lineage.lineage_request.edge.lineageDetails.source
+                == LineageSource.PipelineLineage
+            ):
+                self.metadata.delete_lineage_by_source(
+                    entity_type="pipeline",
+                    entity_id=str(
+                        add_lineage.lineage_request.edge.lineageDetails.pipeline.id.root
+                    ),
+                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                )
+            else:
+                self.metadata.delete_lineage_by_source(
+                    entity_type=add_lineage.lineage_request.edge.toEntity.type,
+                    entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
+                    source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+                )
         return self._run_dispatch(add_lineage.lineage_request)
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:

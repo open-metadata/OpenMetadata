@@ -57,8 +57,8 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
-from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -346,13 +346,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Yields lineage if config is enabled.
 
         We will look for the data in all the services
         we have informed.
-        """        
+        """
         for lineage in self.yield_datamodel_dashboard_lineage() or []:
             if lineage.right is not None:
                 yield Either(

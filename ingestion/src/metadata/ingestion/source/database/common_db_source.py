@@ -579,7 +579,7 @@ class CommonDbSourceService(
             )
 
     @calculate_execution_time_generator()
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
             v for v in self.context.get().table_views if v.view_definition is not None
