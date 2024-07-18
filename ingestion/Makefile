@@ -33,6 +33,10 @@ install_apis:  ## Install the REST APIs module to the current environment
 lint:  ## Run pylint on the Python sources to analyze the codebase
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" find $(PY_SOURCE) -path $(PY_SOURCE)/metadata/generated -prune -false -o -type f -name "*.py" | xargs pylint --rcfile=$(INGESTION_DIR)/pyproject.toml
 
+.PHONY: static-checks
+static-checks:
+	basedpyright -p $(INGESTION_DIR)/pyproject.toml
+
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
 	@echo "Installing pre-commit hooks"
@@ -64,6 +68,7 @@ run_ometa_integration_tests:  ## Run Python integration tests
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
+	$(MAKE) static-checks
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
 	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
