@@ -1172,7 +1172,7 @@ public class TableRepository extends EntityRepository<Table> {
               .withName(csvRecord.get(0))
               .withDisplayName(csvRecord.get(1))
               .withDescription(csvRecord.get(2))
-              .withOwner(getOwners(printer, csvRecord, 3))
+              .withOwners(getOwners(printer, csvRecord, 3))
               .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
               .withRetentionPeriod(csvRecord.get(7))
               .withSourceUrl(csvRecord.get(8))
