@@ -59,6 +59,7 @@ from metadata.ingestion.models.data_insight import OMetaDataInsightSample
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
@@ -249,6 +250,22 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[Dict[str, Any]]:
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
         return Either(right=created_lineage["entity"]["fullyQualifiedName"])
+
+    @_run_dispatch.register
+    def write_override_lineage(
+        self, add_lineage: OMetaLineageRequest
+    ) -> Either[Dict[str, Any]]:
+        if (
+            add_lineage.override_lineage is True
+            and add_lineage.lineage_request.edge.lineageDetails
+            and add_lineage.lineage_request.edge.lineageDetails.source
+        ):
+            self.metadata.delete_lineage_by_source(
+                entity_type=add_lineage.lineage_request.edge.toEntity.type,
+                entity_id=str(add_lineage.lineage_request.edge.toEntity.id.root),
+                source=add_lineage.lineage_request.edge.lineageDetails.source.value,
+            )
+        return self._run_dispatch(add_lineage.lineage_request)
 
     def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:
         """

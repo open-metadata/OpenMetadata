@@ -321,6 +321,23 @@ class OMetaLineageMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.error(f"Error {err.status_code} trying to DELETE linage for {edge}")
 
+    def delete_lineage_by_source(
+        self, entity_type: str, entity_id: str, source: str
+    ) -> None:
+        """
+        Remove the given Edge
+        """
+        try:
+            self.client.delete(
+                f"{self.get_suffix(AddLineageRequest)}/{entity_type}/{entity_id}/"
+                f"type/{source}"
+            )
+        except APIError as err:
+            logger.debug(traceback.format_exc())
+            logger.error(
+                f"Error {err.status_code} trying to DELETE linage for {entity_id} of type {source}"
+            )
+
     def add_lineage_by_query(
         self,
         database_service: DatabaseService,

@@ -377,6 +377,18 @@ public class LineageRepository {
   }
 
   @Transaction
+  public void deleteLineageBySource(UUID toId, String toEntity, String source) {
+    List<CollectionDAO.EntityRelationshipObject> relations =
+        dao.relationshipDAO()
+            .findLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+    // Finally, delete lineage relationship
+    dao.relationshipDAO()
+        .deleteLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+
+    deleteLineageFromSearch(relations);
+  }
+
+  @Transaction
   public boolean deleteLineage(String fromEntity, String fromId, String toEntity, String toId) {
     // Validate from entity
     EntityReference from =
@@ -398,6 +410,14 @@ public class LineageRepository {
             > 0;
     deleteLineageFromSearch(from, to);
     return result;
+  }
+
+  private void deleteLineageFromSearch(List<CollectionDAO.EntityRelationshipObject> relations) {
+    for (CollectionDAO.EntityRelationshipObject obj : relations) {
+      deleteLineageFromSearch(
+          new EntityReference().withId(UUID.fromString(obj.getFromId())),
+          new EntityReference().withId(UUID.fromString(obj.getToId())));
+    }
   }
 
   private void deleteLineageFromSearch(EntityReference fromEntity, EntityReference toEntity) {
