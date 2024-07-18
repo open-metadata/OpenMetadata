@@ -21,7 +21,6 @@ from sqlalchemy.sql.selectable import CTE
 from metadata.generated.schema.entity.data.table import ProfileSampleType
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
-from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import (
     RANDOM_LABEL,
@@ -52,7 +51,6 @@ class SnowflakeSampler(SQASampler):
                 )
                 .suffix_with(
                     f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
-                    dialect=Dialects.Snowflake,
                 )
                 .cte(f"{self.table.__tablename__}_rnd")
             )
