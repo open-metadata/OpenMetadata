@@ -58,7 +58,11 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
     TestCaseRepository testCaseRepository =
         (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
     TestCase testCaseEntity =
-        Entity.getEntity(thread.getEntityType(), thread.getEntityId(), "id,testSuite", Include.ALL);
+        Entity.getEntity(
+            thread.getEntityRef().getType(),
+            thread.getEntityRef().getId(),
+            "id,testSuite",
+            Include.ALL);
     TestSuite testSuiteEntity = Entity.getEntity(testCaseEntity.getTestSuite(), "id", Include.ALL);
     ResultList<TestCaseResult> testCaseResultResultList =
         testCaseRepository.getTestCaseResults(
@@ -84,7 +88,8 @@ public class TestCaseResultFormatter extends DefaultFieldFormatter {
   private String transformTestCaseResult(
       MessageDecorator<?> messageFormatter, Thread thread, FieldChange fieldChange) {
     TestCase testCaseEntity =
-        Entity.getEntity(thread.getEntityType(), thread.getEntityId(), "id", Include.ALL);
+        Entity.getEntity(
+            thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String testCaseName = testCaseEntity.getName();
     TestCaseResult result = JsonUtils.convertValue(fieldChange.getNewValue(), TestCaseResult.class);
     if (result != null) {
