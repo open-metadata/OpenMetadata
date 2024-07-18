@@ -58,7 +58,7 @@ class ProfilerInterfaceFactory(Factory):
     def create(self, interface_type: str, *args, **kwargs):
         """Create interface object based on interface type"""
         interface_class_path = profiler_class_mapping.get(
-            interface_type, DatabaseConnection.__name__
+            interface_type, profiler_class_mapping[DatabaseConnection.__name__]
         )
         try:
             module_path, class_name = interface_class_path.rsplit(".", 1)
