@@ -145,10 +145,10 @@ const APIEndpointSummary = ({
           <Col span={24}>
             <Radio.Group value={viewType} onChange={handleViewChange}>
               <Radio.Button value={SchemaViewType.REQUEST_SCHEMA}>
-                {t('label.request-schema')}
+                {t('label.request')}
               </Radio.Button>
               <Radio.Button value={SchemaViewType.RESPONSE_SCHEMA}>
-                {t('label.response-schema')}
+                {t('label.response')}
               </Radio.Button>
             </Radio.Group>
           </Col>
