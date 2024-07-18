@@ -174,5 +174,5 @@ ignore = [
   "src/metadata/workflow/*",
 ]
 
-reportMissingImports = true
+reportDeprecated = false
 reportMissingTypeStubs = false

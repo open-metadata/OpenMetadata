@@ -11,13 +11,14 @@
 """
 This module defines the CLI commands for OpenMetadata
 """
-# pyright: reportUnusedCallResult=false
-from typing import Optional
 import argparse
 import logging
 from enum import Enum
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+
+# pyright: reportUnusedCallResult=false
+from typing import List, Optional
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
@@ -90,7 +91,7 @@ def add_metadata_args(parser: argparse.ArgumentParser):
     )
 
 
-def get_parser(args: Optional[list[str]] = None):
+def get_parser(args: Optional[List[str]] = None):
     """
     Parser method that returns parsed_args
     """
@@ -143,7 +144,7 @@ def get_parser(args: Optional[list[str]] = None):
     return parser.parse_args(args)
 
 
-def metadata(args: Optional[list[str]] = None):
+def metadata(args: Optional[List[str]] = None):
     """
     This method implements parsing of the arguments passed from CLI
     """
