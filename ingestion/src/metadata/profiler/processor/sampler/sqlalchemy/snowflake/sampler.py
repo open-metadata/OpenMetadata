@@ -47,7 +47,6 @@ class SnowflakeSampler(SQASampler):
             rnd = (
                 self._base_sample_query(
                     column,
-                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
                 )
                 .suffix_with(
                     f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
@@ -55,7 +54,7 @@ class SnowflakeSampler(SQASampler):
                 .cte(f"{self.table.__tablename__}_rnd")
             )
             session_query = self.client.query(rnd)
-            return session_query.where(rnd.c.random <= self.profile_sample).cte(
+            return session_query.cte(
                 f"{self.table.__tablename__}_sample"
             )
 
