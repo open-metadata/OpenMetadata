@@ -652,8 +652,7 @@ public class AuthenticationCodeFlowHandler {
     response.sendRedirect(url);
   }
 
-  private void renewOidcCredentials(HttpServletRequest request, OidcCredentials credentials)
-      throws URISyntaxException {
+  private void renewOidcCredentials(HttpServletRequest request, OidcCredentials credentials) {
     LOG.debug("Renewing Credentials for User Session {}", request.getSession().getId());
     if (client.getConfiguration() instanceof AzureAd2OidcConfiguration azureAd2OidcConfiguration) {
       refreshAccessTokenAzureAd2Token(azureAd2OidcConfiguration, credentials);
@@ -725,6 +724,7 @@ public class AuthenticationCodeFlowHandler {
             // Set the access token to the new JWT token
             credentials.setIdToken(SignedJWT.parse(jwtAuthMechanism.getJWTToken()));
           }
+          return;
         } else {
           throw new TechnicalException(
               String.format(
