@@ -93,8 +93,6 @@ class TestSuiteSource(Source):
                 test_cases = [
                     t for t in test_cases if t.name in self.source_config.testCases
                 ]
-                if len(test_cases) == 0:
-                    return []
             return test_cases
         return []
 
