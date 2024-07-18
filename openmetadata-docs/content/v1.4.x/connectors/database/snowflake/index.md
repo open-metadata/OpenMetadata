@@ -61,14 +61,22 @@ GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL DYNAMIC TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 ```
 
-While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
+{% note %}
+If running any of:
+  - Incremental Extraction
+  - Ingesting Tags
+  - Usage Workflow
 
-```sql
--- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
-GRANT IMPORTED PRIVILEGES ON ALL SCHEMAS IN DATABASE SNOWFLAKE TO ROLE NEW_ROLE;
-```
+The following Grant is needed
+{% /note %}
 
-If ingesting tags, the user should also have permissions to query `snowflake.account_usage.tag_references`.For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database
+- **Incremental Extraction**: Openmetadata fetches the information by querying `snowflake.account_usage.tables`.
+
+- **Ingesting Tags**: Openmetadata fetches the information by querying `snowflake.account_usage.tag_references`.
+
+- **Usage Workflow**: Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
+
+In order to be able to query those tables, the user should be either granted the `ACCOUNTADMIN` role or a role with the `IMPORTED PRIVILEGES` grant on the `SNOWFLAKE` database:
 
 ```sql
 -- Grant IMPORTED PRIVILEGES on all Schemas of SNOWFLAKE DB to New Role
