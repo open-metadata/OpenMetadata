@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Tree, Typography } from 'antd';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, uniqueId } from 'lodash';
 import Qs from 'qs';
@@ -191,7 +192,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
         setTreeData((origin) => updateTreeData(origin, treeNode.key, children));
       } catch (error) {
-        showErrorToast(error);
+        showErrorToast(error as AxiosError);
       } finally {
         setLoading(false);
       }
