@@ -1,6 +1,5 @@
 import os
 import shutil
-from typing import cast
 
 import pytest
 from sqlalchemy import create_engine, text
@@ -113,9 +112,7 @@ def create_service_request(mssql_container, scheme, tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def ingestion_config(
-    db_service, tmp_path_factory, workflow_config, sink_config, patch_password
-):
+def ingestion_config(db_service, tmp_path_factory, workflow_config, sink_config):
     return {
         "source": {
             "type": "mssql",
@@ -134,11 +131,10 @@ def ingestion_config(
 
 
 @pytest.fixture(scope="module")
-def patch_password(mssql_container):
+def unmask_password(create_service_request):
     def inner(service: DatabaseService):
-        service.connection.config = cast(MssqlConnection, service.connection.config)
-        service.connection.config.password = type(service.connection.config.password)(
-            mssql_container.password
+        service.connection.config.password = (
+            create_service_request.connection.config.password
         )
         return service
 

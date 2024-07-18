@@ -1,5 +1,4 @@
 import sys
-from unittest import TestSuite
 
 import pytest
 
@@ -51,7 +50,3 @@ def test_empty_test_suite(
         "workflowConfig": workflow_config,
     }
     run_workflow(TestSuiteWorkflow, workflow_config)
-    cleanup_fqns(
-        TestSuite,
-        f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer.test_suite",
-    )

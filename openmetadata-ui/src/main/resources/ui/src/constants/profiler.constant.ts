@@ -14,6 +14,7 @@
 import { t } from 'i18next';
 import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
+import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -417,7 +418,7 @@ export const TEST_CASE_STATUS_OPTION = [
   })),
 ];
 
-export const TEST_CASE_FILTERS = {
+export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   table: 'tableFqn',
   platform: 'testPlatforms',
   type: 'testCaseType',

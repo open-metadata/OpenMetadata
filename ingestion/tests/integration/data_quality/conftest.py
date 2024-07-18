@@ -79,8 +79,8 @@ def ingest_mysql_service(
 
 
 @pytest.fixture(scope="module")
-def postgres_service(metadata, postgres_container, tmp_path_factory):
-    service = CreateDatabaseServiceRequest(
+def create_service_request(tmp_path_factory, postgres_container):
+    return CreateDatabaseServiceRequest(
         name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
         serviceType=DatabaseServiceType.Postgres,
         connection=DatabaseConnection(
@@ -93,17 +93,11 @@ def postgres_service(metadata, postgres_container, tmp_path_factory):
             )
         ),
     )
-    service_entity = metadata.create_or_update(data=service)
-    service_entity.connection.config.authType.password = CustomSecretStr(
-        postgres_container.password
-    )
-    yield service_entity
-    metadata.delete(
-        DatabaseService, service_entity.id, recursive=True, hard_delete=True
-    )
 
 
-db_service = postgres_service
+@pytest.fixture(scope="module")
+def postgres_service(db_service):
+    return db_service
 
 
 @pytest.fixture()

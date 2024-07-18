@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { descriptionBox } from './common';
+import { clickOutside, descriptionBox, toastNotification } from './common';
 
 export type TaskDetails = {
   term: string;
@@ -65,11 +65,7 @@ export const createDescriptionTask = async (
   await page.locator(descriptionBox).fill('Updated description');
   await page.click('button[type="submit"]');
 
-  await expect(page.getByRole('alert').first()).toHaveText(
-    /Task created successfully./
-  );
-
-  await page.getByLabel('close').first().click();
+  await toastNotification(page, /Task created successfully./);
 };
 
 export const createTagTask = async (
@@ -109,7 +105,7 @@ export const createTagTask = async (
     const dropdownValue = page.getByTestId(value.assignee);
     await dropdownValue.hover();
     await dropdownValue.click();
-    await page.mouse.click(0, 0);
+    await clickOutside(page);
   }
 
   // select tags
@@ -129,13 +125,9 @@ export const createTagTask = async (
   const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`);
   await dropdownValue.hover();
   await dropdownValue.click();
-  await page.mouse.click(0, 0);
+  await clickOutside(page);
 
   await page.click('button[type="submit"]');
 
-  await expect(page.getByRole('alert').first()).toHaveText(
-    /Task created successfully./
-  );
-
-  await page.getByLabel('close').first().click();
+  await toastNotification(page, /Task created successfully./);
 };

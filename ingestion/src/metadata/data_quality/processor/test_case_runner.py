@@ -102,14 +102,16 @@ class TestCaseRunner(Processor):
             record.table,
         ).get_data_quality_runner()
 
+        logger.info(
+            f"Found {len(openmetadata_test_cases)} test cases for table {record.table.fullyQualifiedName.root}"
+        )
+
         test_results = [
             test_case_result
             for test_case in openmetadata_test_cases
             if (test_case_result := self._run_test_case(test_case, test_suite_runner))
         ]
-        logger.debug(
-            f"Found {len(test_results)} test results for table {record.table.fullyQualifiedName.root}"
-        )
+
         return Either(right=TestCaseResults(test_results=test_results))
 
     def get_test_cases(

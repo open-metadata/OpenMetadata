@@ -1140,16 +1140,11 @@ public interface CollectionDAO {
         @BindList("teamIds") List<String> teamIds,
         @Define("condition") String condition);
 
-    @ConnectionAwareSqlQuery(
+    @SqlQuery(
         value =
-            "SELECT json FROM thread_entity "
-                + "WHERE (json -> '$.task.testCaseResolutionStatusId') = :testCaseResolutionStatusId; ",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM thread_entity "
-                + "WHERE (json#>'{task}'->>'testCaseResolutionStatusId') = :testCaseResolutionStatusId; ",
-        connectionType = POSTGRES)
+            "SELECT json "
+                + " FROM thread_entity "
+                + " WHERE testCaseResolutionStatusId = :testCaseResolutionStatusId")
     String fetchThreadByTestCaseResolutionStatusId(
         @BindUUID("testCaseResolutionStatusId") UUID testCaseResolutionStatusId);
 
@@ -1177,7 +1172,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> "
-            + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
+            + "AND hash_id in (SELECT fromFQNHash FROM field_relationship WHERE "
             + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "AND (:userName IS NULL OR MD5(id) in (SELECT toFQNHash FROM field_relationship WHERE "
@@ -1217,7 +1212,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> "
-            + "AND MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
+            + "AND hash_id in (SELECT fromFQNHash FROM field_relationship WHERE "
             + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
             + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= :relation) "
             + "AND (:userName IS NULL OR id in (SELECT toFQNHash FROM field_relationship WHERE "
@@ -1241,42 +1236,58 @@ public interface CollectionDAO {
     void update(@BindUUID("id") UUID id, @Bind("json") String json);
 
     @SqlQuery(
-        "SELECT te.entityLink, te.type, te.taskStatus, COUNT(id) count FROM thread_entity te "
-            + " where entityId = :entityId  OR "
-            + " MD5(id) in (SELECT fromFQNHash FROM field_relationship WHERE "
-            + "(:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash=:fqnPrefixHash) AND fromType='THREAD' AND "
-            + "(:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType=:toType) AND relation= 3) "
-            + "GROUP BY te.type, te.taskStatus, entityLink")
+        "SELECT entityLink, type, taskStatus, COUNT(id) as count FROM ( "
+            + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
+            + "    FROM thread_entity te "
+            + "    WHERE hash_id IN ( "
+            + "        SELECT fromFQNHash FROM field_relationship "
+            + "        WHERE "
+            + "            (:fqnPrefixHash IS NULL OR toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR toFQNHash = :fqnPrefixHash) "
+            + "            AND fromType = 'THREAD' "
+            + "            AND (:toType IS NULL OR toType LIKE CONCAT(:toType, '.%') OR toType = :toType) "
+            + "            AND relation = 3 "
+            + "    )  "
+            + "    UNION  "
+            + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
+            + "    FROM thread_entity te "
+            + "    WHERE te.entityId = :entityId "
+            + ") AS combined "
+            + "GROUP BY type, taskStatus, entityLink")
     @RegisterRowMapper(ThreadCountFieldMapper.class)
     List<List<String>> listCountByEntityLink(
         @BindUUID("entityId") UUID entityId,
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType);
 
-    @ConnectionAwareSqlQuery(
+    @SqlQuery(
         value =
-            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
-                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-                + "((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
-                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
-                + " OR (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username)"
-                + "GROUP BY te.type, te.taskStatus",
-        connectionType = POSTGRES)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT te.type, te.taskStatus, COUNT(id) count FROM thread_entity te where "
-                + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-                + "((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-                + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
-                + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
-                + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) OR "
-                + "(JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) OR createdBy = :username)"
-                + " GROUP BY te.type, te.taskStatus",
-        connectionType = MYSQL)
+            "SELECT combined.type, combined.taskStatus, COUNT(combined.id) AS count "
+                + "FROM ( "
+                + "    SELECT te.type, te.taskStatus, te.id  "
+                + "    FROM thread_entity te "
+                + "    JOIN entity_relationship er ON te.entityId = er.toId "
+                + "    WHERE "
+                + "        (er.fromEntity = 'user' AND er.fromId = :userId AND er.relation = 8) "
+                + "        OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>) AND er.relation = 8) "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    JOIN entity_relationship er ON te.id = er.toId "
+                + "    WHERE "
+                + "        er.fromEntity = 'user' AND er.fromId = :userId AND er.toEntity = 'THREAD' AND er.relation IN (1, 2) "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    JOIN entity_relationship er ON te.id = er.toId "
+                + "    WHERE "
+                + "        (er.fromEntity = 'user' AND er.fromId = :userId AND er.relation = 11) "
+                + "        OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>) AND er.relation = 11) "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    WHERE te.createdBy = :username "
+                + ") AS combined "
+                + "GROUP BY combined.type, combined.taskStatus;")
     @RegisterRowMapper(OwnerCountFieldMapper.class)
     List<List<String>> listCountByOwner(
         @BindUUID("userId") UUID userId,
@@ -1313,15 +1324,37 @@ public interface CollectionDAO {
         @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT json FROM thread_entity <condition> AND "
-            // Entity for which the thread is about is owned by the user or his teams
-            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
-            + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11)) "
-            + "ORDER BY createdAt DESC "
+        "SELECT json FROM ( "
+            + "    SELECT json, createdAt FROM thread_entity te "
+            + "     <condition> AND entityId IN ( "
+            + "        SELECT toId FROM entity_relationship er "
+            + "        WHERE er.relation = 8 "
+            + "        AND ( "
+            + "            (er.fromEntity = 'user' AND er.fromId = :userId) "
+            + "            OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>)) "
+            + "        ) "
+            + "    )  "
+            + "    UNION   "
+            + "    SELECT json, createdAt FROM thread_entity te  "
+            + "     <condition> AND id IN ( "
+            + "        SELECT toId FROM entity_relationship er  "
+            + "        WHERE er.toEntity = 'THREAD'  "
+            + "        AND er.relation IN (1, 2)  "
+            + "        AND er.fromEntity = 'user'  "
+            + "        AND er.fromId = :userId  "
+            + "    )  "
+            + "    UNION   "
+            + "    SELECT json, createdAt FROM thread_entity te  "
+            + "     <condition> AND id IN ( "
+            + "        SELECT toId FROM entity_relationship er  "
+            + "        WHERE er.relation = 11  "
+            + "        AND ( "
+            + "            (er.fromEntity = 'user' AND er.fromId = :userId)  "
+            + "            OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>)) "
+            + "        ) "
+            + "    )  "
+            + ") AS combined  "
+            + "ORDER BY createdAt DESC  "
             + "LIMIT :limit")
     List<String> listThreadsByOwnerOrFollows(
         @BindUUID("userId") UUID userId,
@@ -1330,13 +1363,36 @@ public interface CollectionDAO {
         @Define("condition") String condition);
 
     @SqlQuery(
-        "SELECT count(id) FROM thread_entity <condition> AND "
-            + "(entityId in (SELECT toId FROM entity_relationship WHERE "
-            + "((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=8) OR "
-            + "id in (SELECT toId FROM entity_relationship WHERE (fromEntity='user' AND fromId= :userId AND toEntity='THREAD' AND relation IN (1,2))) "
-            + " OR id in (SELECT toId FROM entity_relationship WHERE ((fromEntity='user' AND fromId= :userId) OR "
-            + "(fromEntity='team' AND fromId IN (<teamIds>))) AND relation=11))")
+        "SELECT COUNT(id) FROM ( "
+            + "    SELECT te.id FROM thread_entity te  "
+            + "     <condition> AND entityId IN ( "
+            + "        SELECT toId FROM entity_relationship er  "
+            + "        WHERE er.relation = 8  "
+            + "        AND ( "
+            + "            (er.fromEntity = 'user' AND er.fromId = :userId) "
+            + "            OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>)) "
+            + "        ) "
+            + "    )  "
+            + "    UNION   "
+            + "    SELECT te.id FROM thread_entity te  "
+            + "     <condition> AND id IN ( "
+            + "        SELECT toId FROM entity_relationship er  "
+            + "        WHERE er.toEntity = 'THREAD'  "
+            + "        AND er.relation IN (1, 2)  "
+            + "        AND er.fromEntity = 'user'  "
+            + "        AND er.fromId = :userId  "
+            + "    )  "
+            + "    UNION   "
+            + "    SELECT te.id FROM thread_entity te  "
+            + "     <condition> AND id IN ( "
+            + "        SELECT toId FROM entity_relationship er  "
+            + "        WHERE er.relation = 11  "
+            + "        AND ( "
+            + "            (er.fromEntity = 'user' AND er.fromId = :userId)  "
+            + "            OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>)) "
+            + "        ) "
+            + "    ) "
+            + ") AS combined")
     int listCountThreadsByOwnerOrFollows(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
@@ -1344,7 +1400,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
-            + "MD5(id) in ("
+            + "hash_id in ("
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) "
@@ -1359,7 +1415,7 @@ public interface CollectionDAO {
 
     @SqlQuery(
         "SELECT count(id) FROM thread_entity <condition> AND "
-            + "MD5(id) in ("
+            + "hash_id in ("
             + "SELECT toFQNHash FROM field_relationship WHERE "
             + "((fromType='user' AND fromFQNHash= :userName) OR "
             + "(fromType='team' AND fromFQNHash IN (<teamNames>)))  AND toType='THREAD' AND relation= :relation) ")
@@ -1444,6 +1500,19 @@ public interface CollectionDAO {
 
     @SqlQuery("select id from thread_entity where entityId = :entityId")
     List<String> findByEntityId(@Bind("entityId") String entityId);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE thread_entity SET json = JSON_SET(json, '$.about', :newEntityLink)\n"
+                + "WHERE entityId = :entityId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE thread_entity SET json = jsonb_set(json, '{about}', to_jsonb(:newEntityLink::text), false)\n"
+                + "WHERE entityId = :entityId",
+        connectionType = POSTGRES)
+    void updateByEntityId(
+        @Bind("newEntityLink") String newEntityLink, @Bind("entityId") String entityId);
 
     class OwnerCountFieldMapper implements RowMapper<List<String>> {
       @Override
@@ -1594,6 +1663,41 @@ public interface CollectionDAO {
         @Bind("fromType") String fromType,
         @Bind("toType") String toType,
         @Bind("relation") int relation);
+
+    default void renameByToFQN(String oldToFQN, String newToFQN) {
+      renameByToFQNInternal(
+          oldToFQN,
+          FullyQualifiedName.buildHash(oldToFQN),
+          newToFQN,
+          FullyQualifiedName.buildHash(newToFQN)); // First rename targetFQN from oldFQN to newFQN
+      renameByToFQNPrefix(oldToFQN, newToFQN);
+      // Rename all the targetFQN prefixes starting with the oldFQN to newFQN
+    }
+
+    @SqlUpdate(
+        "Update field_relationship set toFQN  = :newToFQN , toFQNHash  = :newToFQNHash "
+            + "where fromtype = 'THREAD' AND relation='3' AND toFQN = :oldToFQN and toFQNHash =:oldToFQNHash ;")
+    void renameByToFQNInternal(
+        @Bind("oldToFQN") String oldToFQN,
+        @Bind("oldToFQNHash") String oldToFQNHash,
+        @Bind("newToFQN") String newToFQN,
+        @Bind("newToFQNHash") String newToFQNHash);
+
+    default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
+      String update =
+          String.format(
+              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
+              escapeApostrophe(oldToFQNPrefix),
+              escapeApostrophe(newToFQNPrefix),
+              FullyQualifiedName.buildHash(oldToFQNPrefix),
+              FullyQualifiedName.buildHash(newToFQNPrefix),
+              escapeApostrophe(oldToFQNPrefix),
+              FullyQualifiedName.buildHash(oldToFQNPrefix));
+      renameByToFQNPrefixInternal(update);
+    }
+
+    @SqlUpdate("<update>")
+    void renameByToFQNPrefixInternal(@Define("update") String update);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
@@ -1931,15 +2035,8 @@ public interface CollectionDAO {
       return listAfter(getTableName(), filter.getQueryParams(), condition, limit, after);
     }
 
-    @SqlQuery("select fqnhash FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
-    List<String> getNestedChildrenByFQN(@BindFQN("fqnhash") String fqnhash);
-
-    default List<String> getAllTerms(String fqnPrefix) {
-      return getAllTermsInternal((FullyQualifiedName.quoteName(fqnPrefix)));
-    }
-
-    @SqlQuery("select json FROM glossary_term_entity where fqnhash  LIKE  CONCAT(:fqnhash, '.%')")
-    List<String> getAllTermsInternal(@BindFQN("fqnhash") String fqnhash);
+    @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getNestedTerms(@BindFQN("fqnhash") String fqnhash);
   }
 
   interface IngestionPipelineDAO extends EntityDAO<IngestionPipeline> {
@@ -2545,6 +2642,9 @@ public interface CollectionDAO {
       return listAfter(
           getTableName(), filter.getQueryParams(), mySqlCondition, postgresCondition, limit, after);
     }
+
+    @SqlQuery("select json FROM tag where fqnhash LIKE CONCAT(:fqnhash, '.%')")
+    List<String> getTagsStartingWithPrefix(@BindFQN("fqnhash") String fqnhash);
   }
 
   @RegisterRowMapper(TagLabelMapper.class)
@@ -2722,10 +2822,6 @@ public interface CollectionDAO {
 
     default void renameByTargetFQNHash(
         int source, String oldTargetFQNHash, String newTargetFQNHash) {
-      renameByTargetFQNHashInternal(
-          source,
-          (oldTargetFQNHash),
-          newTargetFQNHash); // First rename targetFQN from oldFQN to newFQN
       updateTargetFQNHashPrefix(
           source,
           oldTargetFQNHash,
@@ -2740,14 +2836,6 @@ public interface CollectionDAO {
         @BindFQN("oldFQNHash") String oldFQNHash,
         @Bind("newFQN") String newFQN,
         @BindFQN("newFQNHash") String newFQNHash);
-
-    /** Rename the targetFQN */
-    @SqlUpdate(
-        "Update tag_usage set targetFQNHash = :newTargetFQNHash WHERE source = :source AND targetFQNHash = :oldTargetFQNHash")
-    void renameByTargetFQNHashInternal(
-        @Bind("source") int source,
-        @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
-        @BindFQN("newTargetFQNHash") String newTargetFQNHash);
 
     @SqlUpdate("<update>")
     void updateTagPrefixInternal(@Define("update") String update);

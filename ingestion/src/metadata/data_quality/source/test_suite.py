@@ -80,7 +80,7 @@ class TestSuiteSource(Source):
 
     def _get_test_cases_from_test_suite(
         self, test_suite: Optional[TestSuite]
-    ) -> Optional[List[TestCase]]:
+    ) -> List[TestCase]:
         """Return test cases if the test suite exists and has them"""
         if test_suite:
             test_cases = self.metadata.list_all_entities(
@@ -94,10 +94,9 @@ class TestSuiteSource(Source):
                     t for t in test_cases if t.name in self.source_config.testCases
                 ]
                 if len(test_cases) == 0:
-                    return None
+                    return []
             return test_cases
-
-        return None
+        return []
 
     def prepare(self):
         """Nothing to prepare"""

@@ -176,6 +176,18 @@ class S3Source(StorageServiceSource):
         yield Either(right=container_request)
         self.register_record(container_request=container_request)
 
+    def get_size(self, bucket_name: str, file_path: str) -> Optional[float]:
+        """
+        Method to get the size of the file
+        """
+        try:
+            file_obj = self.s3_client.head_object(Bucket=bucket_name, Key=file_path)
+            return file_obj["ContentLength"]
+        except Exception as exc:
+            logger.debug(f"Failed to get size of file due to {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _generate_container_details(
         self,
         bucket_response: S3BucketResponse,
@@ -183,6 +195,31 @@ class S3Source(StorageServiceSource):
         parent: Optional[EntityReference] = None,
     ) -> Optional[S3ContainerDetails]:
         bucket_name = bucket_response.name
+        object_size = self.get_size(
+            bucket_name=bucket_name,
+            file_path=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+        )
+        if not metadata_entry.structureFormat and object_size:
+            prefix = f"{KEY_SEPARATOR}{metadata_entry.dataPath.strip(KEY_SEPARATOR)}"
+            return S3ContainerDetails(
+                name=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+                prefix=prefix,
+                creation_date=bucket_response.creation_date.isoformat()
+                if bucket_response.creation_date
+                else None,
+                file_formats=[],
+                data_model=None,
+                parent=parent,
+                size=self.get_size(
+                    bucket_name=bucket_name,
+                    file_path=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+                ),
+                fullPath=self._get_full_path(bucket_name, prefix),
+                sourceUrl=self._get_object_source_url(
+                    bucket_name=bucket_name,
+                    prefix=metadata_entry.dataPath.strip(KEY_SEPARATOR),
+                ),
+            )
         sample_key = self._get_sample_file_path(
             bucket_name=bucket_name, metadata_entry=metadata_entry
         )

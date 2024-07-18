@@ -10,23 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from './Entity.interface';
-
-export const CustomPropertySupportedEntityList = [
-  EntityType.Database,
-  EntityType.DatabaseSchema,
-  EntityType.Table,
-  EntityType.StoreProcedure,
-  EntityType.Topic,
-  EntityType.Dashboard,
-  EntityType.Pipeline,
-  EntityType.Container,
-  EntityType.MlModel,
-  EntityType.GlossaryTerm,
-  EntityType.SearchIndex,
-];
-
-export const ENTITY_REFERENCE_PROPERTIES = [
-  'Entity Reference',
-  'Entity Reference List',
-];
+export const ES_RESERVED_CHARACTERS: Record<string, string> = {
+  '+': '\\+',
+  '-': '\\-',
+  '=': '\\=',
+  '&': '\\&',
+  '&&': '\\&&',
+  '||': '\\||',
+  '>': '\\>',
+  '<': '\\<',
+  '!': '\\!',
+  '(': '\\(',
+  ')': '\\)',
+  '{': '\\{',
+  '}': '\\}',
+  '[': '\\[',
+  ']': '\\]',
+  '^': '\\^',
+  '"': '\\"',
+  '~': '\\~',
+  '*': '\\*',
+  '?': '\\?',
+  ':': '\\:',
+  '\\': '\\\\',
+  '/': '\\/',
+};

@@ -229,11 +229,6 @@ public final class Entity {
   public static final String ORGANIZATION_NAME = "Organization";
   public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
   public static final String INGESTION_BOT_NAME = "ingestion-bot";
-  public static final String INGESTION_BOT_ROLE = "IngestionBotRole";
-  public static final String PROFILER_BOT_NAME = "profiler-bot";
-  public static final String PROFILER_BOT_ROLE = "ProfilerBotRole";
-  public static final String QUALITY_BOT_NAME = "quality-bot";
-  public static final String QUALITY_BOT_ROLE = "QualityBotRole";
   public static final String ALL_RESOURCES = "All";
 
   public static final String DOCUMENT = "document";
