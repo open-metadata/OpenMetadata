@@ -110,6 +110,30 @@ EXPECTED_QUERIES = [
         duration=None,
     ),
 ]
+EXPECTED_QUERIES_FILE_2 = [
+    TableQuery(
+        query="select * from product_data",
+        userName="",
+        startTime="",
+        endTime="",
+        aborted=False,
+        serviceName="local_glue",
+        databaseName="default",
+        databaseSchema="information_schema",
+        duration=None,
+    ),
+    TableQuery(
+        query="select * from students where marks>=80",
+        userName="",
+        startTime="",
+        endTime="",
+        aborted=False,
+        serviceName="local_glue",
+        databaseName="default",
+        databaseSchema="information_schema",
+        duration=None,
+    ),
+]
 
 
 class QueryLogSourceTest(TestCase):
@@ -131,3 +155,20 @@ class QueryLogSourceTest(TestCase):
         TableQuery.__eq__ = custom_query_compare
         for index in range(len(queries[0].queries)):
             assert queries[0].queries[index] == EXPECTED_QUERIES[index]
+
+    def test_multiple_file_queries(self):
+        dir_path = Path(__file__).parent / "resources/log_files"
+        self.source.config.sourceConfig.config.queryLogFilePath = dir_path
+        queries = list(self.source.get_table_query())
+        TableQuery.__eq__ = custom_query_compare
+
+        for single_file_queries in queries:
+            expected_queries_list = EXPECTED_QUERIES
+            if len(single_file_queries.queries) == 2:
+                # if no. of queries in any file = 2 then it should compare with 2nd file which has 2 queries.
+                # we don't know in which order the files are processed
+                expected_queries_list = EXPECTED_QUERIES_FILE_2
+            for index in range(len(single_file_queries.queries)):
+                assert (
+                    single_file_queries.queries[index] == expected_queries_list[index]
+                )

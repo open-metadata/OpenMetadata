@@ -26,6 +26,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpCredentialsPath,
+)
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
     MultipleProjectId,
@@ -75,6 +78,15 @@ def get_connection_url(connection: BigQueryConnection) -> str:
                     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
                 return f"{connection.scheme.value}://{project_id}"
             return f"{connection.scheme.value}://"
+
+    # If gcpConfig is the JSON key path and projectId is defined, we use it by default
+    elif (
+        isinstance(connection.credentials.gcpConfig, GcpCredentialsPath)
+        and connection.credentials.gcpConfig.projectId
+    ):
+        return (
+            f"{connection.scheme.value}://{connection.credentials.gcpConfig.projectId}"
+        )
 
     return f"{connection.scheme.value}://"
 
