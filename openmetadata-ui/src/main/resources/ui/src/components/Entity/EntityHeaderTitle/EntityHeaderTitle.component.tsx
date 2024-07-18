@@ -52,7 +52,7 @@ const EntityHeaderTitle = ({
       data-testid={`${serviceName}-${name}`}
       gutter={12}
       wrap={false}>
-      <Col flex="48px">{icon}</Col>
+      <Col>{icon}</Col>
       <Col
         className={
           deleted || badge ? 'w-max-full-140' : 'entity-header-content'
