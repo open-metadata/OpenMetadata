@@ -487,7 +487,7 @@ export const TaskTab = ({
         {t('label.comment')}
       </Button>
     );
-  }, [comment]);
+  }, [comment, onSave]);
 
   const renderCloseButton = useMemo(() => {
     return (
@@ -495,7 +495,7 @@ export const TaskTab = ({
         {t('label.close')}
       </Button>
     );
-  }, []);
+  }, [onTaskReject]);
 
   const approvalWorkflowActions = useMemo(() => {
     const hasApprovalAccess =
@@ -606,7 +606,7 @@ export const TaskTab = ({
         className="m-t-sm items-end w-full justify-end"
         data-testid="task-cta-buttons"
         size="small">
-        {isCreator && !hasEditAccess && { renderCloseButton }}
+        {isCreator && !hasEditAccess && renderCloseButton}
         {hasEditAccess && (
           <>
             {['RequestDescription', 'RequestTag'].includes(taskType) &&
@@ -648,6 +648,7 @@ export const TaskTab = ({
                   selectedKeys: [taskAction.key],
                   onClick: handleMenuItemClick,
                 }}
+                overlayClassName="task-action-dropdown"
                 onClick={() =>
                   taskAction.key === TaskActionMode.EDIT
                     ? handleMenuItemClick({ key: taskAction.key } as MenuInfo)
@@ -673,6 +674,7 @@ export const TaskTab = ({
     testCaseResultFlow,
     isTaskTestCaseResult,
     renderCommentButton,
+    renderCloseButton,
   ]);
 
   const initialFormValue = useMemo(() => {
