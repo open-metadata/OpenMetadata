@@ -157,7 +157,7 @@ def metadata(args: Optional[List[str]] = None):
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
-        log_level: str = contains_args.get("log_level", logging.INFO)
+        log_level: str = contains_args.get("log_level") or logging.INFO
         set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
