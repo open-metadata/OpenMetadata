@@ -2,20 +2,40 @@ package org.openmetadata.service.migration.utils.v150;
 
 import java.util.Map;
 import java.util.UUID;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.DataQualityDimensions;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
+  public static void deleteLegacyDataInsightPipelines() {
+    // Delete Data Insights Pipeline
+    String dataInsightsPipelineName = "OpenMetadata.OpenMetadata_dataInsight";
+
+    IngestionPipeline dataInsightsPipeline = Entity.getEntityByName(Entity.INGESTION_PIPELINE, dataInsightsPipelineName, "*", Include.NON_DELETED);
+    EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+
+    entityRepository.delete("admin", dataInsightsPipeline.getId(), true, true);
+
+    // TODO: Delete Deployed Pipelines
+  }
   public static void migrateTestCaseDimension(Handle handle, CollectionDAO collectionDAO) {
     String MYSQL_TEST_CASE_DIMENSION_QUERY =
         "SELECT json FROM test_definition WHERE JSON_CONTAINS(json -> '$.testPlatforms', '\"OpenMetadata\"')";
