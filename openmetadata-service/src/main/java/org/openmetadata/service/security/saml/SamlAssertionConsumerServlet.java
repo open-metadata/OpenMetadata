@@ -92,7 +92,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     username,
                     getRoleListFromUser(user),
                     !nullOrEmpty(user.getIsAdmin()) && user.getIsAdmin(),
-                    email,
+                    user.getEmail(),
                     SamlSettingsHolder.getInstance().getTokenValidity(),
                     false,
                     ServiceTokenType.OM_USER);

@@ -192,6 +192,7 @@ authenticationConfiguration:
     clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
     tenant: ${OIDC_TENANT:-""}
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
+    tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
     customParams: ${OIDC_CUSTOM_PARAMS:-}
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
