@@ -88,7 +88,7 @@ class ColumnTypeParser:
         "BIGNUMERIC": "NUMERIC",
         "BIGSERIAL": "BIGINT",
         "BINARY": "BINARY",
-        "BIT": "INT",
+        "BIT": "BIT",
         "BLOB": "BLOB",
         "BOOL": "BOOLEAN",
         "BOOLEAN": "BOOLEAN",
@@ -297,15 +297,6 @@ class ColumnTypeParser:
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
 
     _FIXED_DECIMAL = re.compile(r"(decimal|numeric)(\(\s*(\d+)\s*,\s*(\d+)\s*\))?")
-
-    try:
-        # pylint: disable=import-outside-toplevel
-        from sqlalchemy.dialects.mssql import BIT
-
-        _COLUMN_TYPE_MAPPING[BIT] = "BINARY"
-        _SOURCE_TYPE_TO_OM_TYPE["BIT"] = "BINARY"
-    except ImportError:
-        pass
 
     try:
         # pylint: disable=import-outside-toplevel
