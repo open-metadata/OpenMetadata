@@ -71,6 +71,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await page.getByTestId('searchbar').fill('temp-test-case');
 
     await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+
   });
 
   test('Table filter with sorting should works', async ({ page }) => {

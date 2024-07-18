@@ -23,8 +23,8 @@ import {
   performAdminLogin,
   performUserLogin,
   redirectToHomePage,
-  toastNotification,
   uuid,
+  toastNotification,
 } from '../../utils/common';
 import {
   addAssetToGlossaryTerm,
