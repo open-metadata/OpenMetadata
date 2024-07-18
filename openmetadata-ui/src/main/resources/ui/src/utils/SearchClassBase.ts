@@ -229,6 +229,7 @@ class SearchClassBase {
             icon: GlossaryIcon,
             data: {
               entityType: EntityType.GLOSSARY_TERM,
+              isStatic: true,
             },
           },
           {
@@ -238,6 +239,7 @@ class SearchClassBase {
             icon: ClassificationIcon,
             data: {
               entityType: EntityType.TAG,
+              isStatic: true,
             },
           },
         ],
@@ -255,6 +257,7 @@ class SearchClassBase {
             icon: DataProductIcon,
             data: {
               entityType: EntityType.DATA_PRODUCT,
+              isStatic: true,
             },
           },
         ],

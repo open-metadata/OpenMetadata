@@ -19,7 +19,7 @@ import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.sv
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { getAggregateFieldOptions } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/CommonUtils';
 import { getEntityNameLabel } from '../../../utils/EntityUtils';
 import {
@@ -40,7 +40,7 @@ import {
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
   <Typography.Text
     className={classNames({
-      'm-l-xss': node.data?.isRoot,
+      'm-l-xss': node.data?.isRoot || node.data?.isStatic,
     })}
     data-testid={`explore-tree-title-${node.title}`}>
     {node.title}
@@ -97,13 +97,18 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               currentBucketValue
             );
 
-      const res = await getAggregateFieldOptions(
-        searchIndex as SearchIndex,
-        bucketToFind,
-        searchQueryParam,
-        JSON.stringify(queryFilter)
-      );
-      const aggregations = getAggregations(res.data.aggregations);
+      const res = await searchQuery({
+        query: searchQueryParam ?? '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: queryFilter,
+        searchIndex: searchIndex as SearchIndex,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+
+      const aggregations = getAggregations(res.aggregations);
       const buckets = aggregations[bucketToFind].buckets;
       const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
       const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
@@ -153,7 +158,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               getQuickFilterObject(bucketToFind, bucket.key),
             ],
             isRoot: false,
-            rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
+            rootIndex: treeNode.data?.rootIndex,
           },
         };
       });
@@ -188,7 +193,6 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       showIcon
       className="explore-tree p-sm p-t-0"
       data-testid="explore-tree"
-      defaultExpandAll={searchQueryParam !== ''}
       defaultExpandedKeys={[SearchIndex.DATABASE]}
       loadData={onLoadData}
       switcherIcon={switcherIcon}

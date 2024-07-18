@@ -21,6 +21,7 @@ import {
   Button,
   Col,
   Layout,
+  Menu,
   Row,
   Space,
   Switch,
@@ -124,6 +125,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   sortValue,
   onChangeSortValue,
   onChangeShowDeleted,
+  onChangeSearchIndex,
   showDeleted,
   onChangePage = noop,
   loading,
@@ -299,49 +301,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
     }
   }, [searchResults]);
 
-  // const SIDEBAR_TAB_ITEMS = [
-  //   {
-  //     key: ExploreSidebarTab.ASSETS,
-  //     label: (
-  //       <div className="p-x-sm" data-testid="explore-asset">
-  //         <span>{t('label.asset-plural')}</span>
-  //       </div>
-  //     ),
-  //     children: (
-  //       <Menu
-  //         className="custom-menu"
-  //         data-testid="explore-left-panel"
-  //         items={tabItems}
-  //         mode="inline"
-  //         rootClassName="left-container"
-  //         selectedKeys={[activeTabKey]}
-  //         onClick={(info) => {
-  //           if (info && info.key !== activeTabKey) {
-  //             onChangeSearchIndex(info.key as ExploreSearchIndex);
-  //             setShowSummaryPanel(false);
-  //           }
-  //         }}
-  //       />
-  //     ),
-  //   },
-  //   {
-  //     key: ExploreSidebarTab.TREE,
-  //     label: (
-  //       <div className="p-x-sm" data-testid="explore-tree-tab">
-  //         <span>{t('label.tree')}</span>
-  //         <Badge
-  //           className="service-beta-tag"
-  //           count={t('label.beta')}
-  //           data-testid="beta-tag"
-  //           offset={[10, 0]}
-  //           size="small"
-  //         />
-  //       </div>
-  //     ),
-  //     children: <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />,
-  //   },
-  // ];
-
   if (tabItems.length === 0 && !searchQueryParam) {
     return <Loader />;
   }
@@ -356,7 +315,24 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Typography.Paragraph className="explore-data-header">
               {t('label.data-asset-plural')}
             </Typography.Paragraph>
-            <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />
+            {searchQueryParam ? (
+              <Menu
+                className="custom-menu"
+                data-testid="explore-left-panel"
+                items={tabItems}
+                mode="inline"
+                rootClassName="left-container"
+                selectedKeys={[activeTabKey]}
+                onClick={(info) => {
+                  if (info && info.key !== activeTabKey) {
+                    onChangeSearchIndex(info.key as ExploreSearchIndex);
+                    setShowSummaryPanel(false);
+                  }
+                }}
+              />
+            ) : (
+              <ExploreTree onFieldValueSelect={handleQuickFiltersChange} />
+            )}
           </Sider>
           <Content>
             <Row className="filters-row">

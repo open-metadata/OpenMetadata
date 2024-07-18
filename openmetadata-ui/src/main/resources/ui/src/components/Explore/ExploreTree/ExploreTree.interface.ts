@@ -30,6 +30,7 @@ export type ExploreTreeProps = {
 
 export type TreeNodeData = {
   isRoot?: boolean;
+  isStatic?: boolean;
   currentBucketKey?: string;
   currentBucketValue?: string;
   filterField?: ExploreQuickFilterField[];
