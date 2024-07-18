@@ -339,7 +339,10 @@ public class UserRepository extends EntityRepository<User> {
 
   public void validateLoggedInUserNameAndEmailMatches(
       String username, String email, User storedUser) {
-    if (!(username.equals(storedUser.getName()) && email.equals(storedUser.getEmail()))) {
+    String lowerCasedName = username.toLowerCase();
+    String lowerCasedEmail = email.toLowerCase();
+    if (!(lowerCasedName.equals(storedUser.getName().toLowerCase())
+        && lowerCasedEmail.equals(storedUser.getEmail().toLowerCase()))) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
   }
