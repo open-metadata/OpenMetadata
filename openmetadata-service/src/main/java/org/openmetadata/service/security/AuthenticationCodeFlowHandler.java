@@ -673,7 +673,7 @@ public class AuthenticationCodeFlowHandler {
         if (httpResponse.getStatusCode() == 200) {
           JSONObject jsonObjectResponse = httpResponse.getContentAsJSONObject();
           String idTokenKey = "id_token";
-          if (false && jsonObjectResponse.containsKey(idTokenKey)) {
+          if (jsonObjectResponse.containsKey(idTokenKey)) {
             Object value = jsonObjectResponse.get(idTokenKey);
             if (value == null) {
               throw new com.nimbusds.oauth2.sdk.ParseException(
