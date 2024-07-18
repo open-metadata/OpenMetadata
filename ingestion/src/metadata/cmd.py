@@ -18,7 +18,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 # pyright: reportUnusedCallResult=false
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
@@ -157,7 +157,7 @@ def metadata(args: Optional[List[str]] = None):
     if contains_args.get("debug"):
         set_loggers_level(logging.DEBUG)
     else:
-        log_level: str = contains_args.get("log_level") or logging.INFO
+        log_level: Union[str,int] = contains_args.get("log_level") or logging.INFO
         set_loggers_level(log_level)
 
     if path and metadata_workflow and metadata_workflow in RUN_PATH_METHODS:
