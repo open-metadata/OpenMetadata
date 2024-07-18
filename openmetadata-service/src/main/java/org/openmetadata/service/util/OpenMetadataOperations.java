@@ -45,6 +45,8 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClient;
@@ -61,6 +63,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -157,6 +160,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Repair of CHANGE_LOG failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "syncEmailFromEnv",
+      description = "Sync the email configuration from environment variables")
+  public Integer syncEmailFromEnv() {
+    try {
+      parseConfig();
+      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+      SystemRepository systemRepository = new SystemRepository();
+      Settings updatedSettings =
+          new Settings()
+              .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+              .withConfigValue(config.getSmtpSettings());
+      systemRepository.createOrUpdate(updatedSettings);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Email Sync failed due to ", e);
       return 1;
     }
   }
