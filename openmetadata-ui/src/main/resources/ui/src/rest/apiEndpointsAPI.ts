@@ -109,10 +109,11 @@ export const addApiEndpointFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`/apiEndpoints/${id}/followers`, {
+  >(
+    `/apiEndpoints/${id}/followers`,
     userId,
-    APPLICATION_JSON_CONTENT_TYPE_HEADER,
-  });
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
