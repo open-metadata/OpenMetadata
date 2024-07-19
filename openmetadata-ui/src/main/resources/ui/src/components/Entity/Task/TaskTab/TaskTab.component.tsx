@@ -634,7 +634,7 @@ export const TaskTab = ({
     return (
       <div className="m-t-sm d-flex justify-end items-center gap-4">
         <Dropdown.Button
-          className="w-auto"
+          className="w-auto task-action-button"
           data-testid="task-cta-buttons"
           icon={<DownOutlined />}
           loading={isActionLoading}
@@ -645,7 +645,6 @@ export const TaskTab = ({
             onClick: handleTaskMenuClick,
             disabled: !hasApprovalAccess,
           }}
-          type="primary"
           onClick={onTestCaseTaskDropdownClick}>
           {taskAction.label}
         </Dropdown.Button>

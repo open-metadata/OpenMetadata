@@ -30,6 +30,7 @@ import {
 } from '../../utils/task';
 
 const entity = new TableClass();
+const entity2 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
 
@@ -41,6 +42,7 @@ test.describe('Activity feed', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await entity.create(apiContext);
+    await entity2.create(apiContext);
     await user1.create(apiContext);
 
     await afterAction();
@@ -53,6 +55,7 @@ test.describe('Activity feed', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await entity.delete(apiContext);
+    await entity2.delete(apiContext);
     await user1.delete(apiContext);
 
     await afterAction();
@@ -252,10 +255,10 @@ test.describe('Activity feed', () => {
 
   test('Comment and Close Task should work in Task Flow', async ({ page }) => {
     const value: TaskDetails = {
-      term: entity.entity.name,
-      assignee: `${user1.data.firstName}.${user1.data.lastName}`,
+      term: entity2.entity.name,
+      assignee: user1.responseData.name,
     };
-    await entity.visitEntityPage(page);
+    await entity2.visitEntityPage(page);
 
     await page.getByTestId('request-description').click();
 
