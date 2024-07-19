@@ -94,7 +94,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
         continue;
       }
       boolean evaluate = true;
-      String day = null;
+      Double day = null;
       for (int i = 0; i < holder.size(); i++) {
         if (result.get(i).getCount() == null) {
           evaluate = false;
@@ -182,7 +182,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       for (Histogram.Bucket bucket : parsedDateHistogram.getBuckets()) {
         List<DataInsightCustomChartResult> subResults = new ArrayList<>();
         for (Aggregation subAggr : bucket.getAggregations().asList()) {
-          addByAggregationType(subAggr, subResults, bucket.getKeyAsString(), group);
+          addByAggregationType(subAggr, subResults, (Double) bucket.getKey(), group);
         }
         results.add(subResults);
       }
@@ -193,7 +193,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   private void addByAggregationType(
       Aggregation subAggr,
       List<DataInsightCustomChartResult> diChartResults,
-      String day,
+      Double day,
       String group) {
     if (subAggr instanceof ParsedValueCount)
       addProcessedSubResult((ParsedValueCount) subAggr, diChartResults, day, group);
@@ -207,7 +207,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   private void addProcessedSubResult(
       ParsedValueCount aggregation,
       List<DataInsightCustomChartResult> diChartResults,
-      String day,
+      Double day,
       String group) {
     ParsedValueCount parsedValueCount = aggregation;
     DataInsightCustomChartResult diChartResult =
@@ -221,7 +221,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   private void addProcessedSubResult(
       ParsedSingleValueNumericMetricsAggregation aggregation,
       List<DataInsightCustomChartResult> diChartResults,
-      String day,
+      Double day,
       String group) {
     ParsedSingleValueNumericMetricsAggregation parsedValueCount = aggregation;
     Double value = parsedValueCount.value();
@@ -236,7 +236,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   private void addProcessedSubResult(
       ParsedFilter aggregation,
       List<DataInsightCustomChartResult> diChartResults,
-      String day,
+      Double   day,
       String group) {
     ParsedFilter parsedValueCount = aggregation;
     for (Aggregation agg : parsedValueCount.getAggregations().asList()) {
