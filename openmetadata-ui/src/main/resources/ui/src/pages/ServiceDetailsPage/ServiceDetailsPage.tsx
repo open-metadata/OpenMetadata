@@ -653,6 +653,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
       );
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
+      // show deleted child entities if service is deleted
+      setShowDeleted(response.deleted ?? false);
     } catch (error) {
       // Error
     } finally {
@@ -963,6 +965,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         ...(version ? { version } : {}),
       };
     });
+
+    // toggle showDeleted to show the deleted child entities
+    setShowDeleted((prev) => !prev);
   };
 
   const afterDeleteAction = useCallback(
