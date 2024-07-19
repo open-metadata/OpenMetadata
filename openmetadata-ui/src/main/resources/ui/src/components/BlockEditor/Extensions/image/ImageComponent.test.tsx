@@ -26,10 +26,15 @@ const mockNode = {
 const mockDeleteNode = jest.fn();
 const mockUpdateAttributes = jest.fn();
 
+const mockEditor = {
+  isEditable: true,
+};
+
 const mockNodeViewProps = {
   node: mockNode,
   updateAttributes: mockUpdateAttributes,
   deleteNode: mockDeleteNode,
+  editor: mockEditor,
 } as unknown as NodeViewProps;
 
 describe('ImageComponent', () => {
@@ -66,6 +71,33 @@ describe('ImageComponent', () => {
 
     expect(screen.getByText('label.upload')).toBeInTheDocument();
     expect(screen.getByText('label.embed-link')).toBeInTheDocument();
+  });
+
+  it("should not render the popover when image node is clicked and the editor isn't editable", async () => {
+    const nonEditableEditor = {
+      isEditable: false,
+    };
+
+    const nonEditableNodeViewProps = {
+      node: mockNode,
+      updateAttributes: mockUpdateAttributes,
+      deleteNode: mockDeleteNode,
+      editor: nonEditableEditor,
+    } as unknown as NodeViewProps;
+
+    await act(async () => {
+      render(<ImageComponent {...nonEditableNodeViewProps} />);
+    });
+
+    const imageNode = screen.getByTestId('uploaded-image-node');
+
+    await act(async () => {
+      userEvent.click(imageNode);
+    });
+
+    const popover = screen.queryByRole('tooltip');
+
+    expect(popover).not.toBeInTheDocument();
   });
 
   it('should render the upload tab by default', async () => {

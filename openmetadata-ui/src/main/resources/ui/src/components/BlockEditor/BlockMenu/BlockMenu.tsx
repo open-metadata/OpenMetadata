@@ -33,7 +33,7 @@ interface BlockMenuProps {
 export const BlockMenu = (props: BlockMenuProps) => {
   const { t } = useTranslation();
   const { editor } = props;
-  const { view } = editor;
+  const { view, isEditable } = editor;
   const menuRef = useRef<HTMLDivElement>(null);
   const popup = useRef<Instance | null>(null);
 
@@ -127,7 +127,10 @@ export const BlockMenu = (props: BlockMenuProps) => {
   }, [editor]);
 
   useEffect(() => {
-    if (menuRef.current) {
+    /**
+     * Create a new tippy instance for the block menu if the editor is editable
+     */
+    if (menuRef.current && isEditable) {
       menuRef.current.remove();
       menuRef.current.style.visibility = 'visible';
 
@@ -150,7 +153,7 @@ export const BlockMenu = (props: BlockMenuProps) => {
       popup.current?.destroy();
       popup.current = null;
     };
-  }, []);
+  }, [isEditable]);
 
   useEffect(() => {
     document.addEventListener('click', handleClickDragHandle);
