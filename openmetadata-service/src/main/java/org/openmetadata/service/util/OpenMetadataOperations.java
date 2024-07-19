@@ -44,7 +44,8 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -61,6 +62,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -109,7 +111,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'migrate', 'reindex', 'deploy-pipelines'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines'");
     return 0;
   }
 
@@ -157,6 +159,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Repair of CHANGE_LOG failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "syncEmailFromEnv",
+      description = "Sync the email configuration from environment variables")
+  public Integer syncEmailFromEnv() {
+    try {
+      parseConfig();
+      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+      SystemRepository systemRepository = new SystemRepository();
+      Settings updatedSettings =
+          new Settings()
+              .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+              .withConfigValue(config.getSmtpSettings());
+      systemRepository.createOrUpdate(updatedSettings);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Email Sync failed due to ", e);
       return 1;
     }
   }
@@ -452,13 +474,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
       PipelineServiceClientInterface pipelineServiceClient,
       List<List<String>> pipelineStatuses) {
     try {
+      // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
-      pipeline.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(config).build());
-      secretsManager.decryptIngestionPipeline(pipeline);
-      OpenMetadataConnection openMetadataServerConnection =
-          new OpenMetadataConnectionBuilder(config).build();
       pipeline.setOpenMetadataServerConnection(
-          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+          new OpenMetadataConnectionBuilder(config, pipeline).build());
+      secretsManager.decryptIngestionPipeline(pipeline);
       ServiceEntityInterface service =
           Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
       pipelineServiceClient.deployPipeline(pipeline, service);

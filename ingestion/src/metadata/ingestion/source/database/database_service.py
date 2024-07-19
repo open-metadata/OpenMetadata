@@ -540,7 +540,9 @@ class DatabaseServiceSource(
                     table_name=table_name,
                     schema=self.context.get().database_schema,
                 )
-                owner_ref = self.metadata.get_reference_by_name(name=owner_name)
+                owner_ref = self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
                 return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())

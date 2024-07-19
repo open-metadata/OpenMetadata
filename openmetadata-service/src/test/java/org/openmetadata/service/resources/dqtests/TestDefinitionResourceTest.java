@@ -21,6 +21,7 @@ import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -49,6 +50,16 @@ public class TestDefinitionResourceTest
     TEST_DEFINITION3 =
         testDefinitionResourceTest.getEntityByName(
             "columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void list_testDefinitionsForBoolType(TestInfo test) throws HttpResponseException {
+    Map<String, String> params = Map.of("supportedDataType", "BOOLEAN");
+    ResultList<TestDefinition> testDefinitions = listEntities(params, ADMIN_AUTH_HEADERS);
+    boolean b =
+        testDefinitions.getData().stream()
+            .allMatch(t -> t.getSupportedDataTypes().contains(ColumnDataType.BOOLEAN));
+    Assertions.assertTrue(b);
   }
 
   @Test

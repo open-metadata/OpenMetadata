@@ -4,11 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import lombok.SneakyThrows;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestDefinition;
-import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -17,7 +15,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseIndex(TestCase testCase) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("testSuites.changeDescription");
+  private static final Set<String> excludeFields = Set.of("changeDescription");
 
   @Override
   public Object getEntity() {
@@ -25,14 +23,21 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   }
 
   @Override
-  public Set<String> getExcludedFields() {
-    return excludeFields;
+  public void removeNonIndexableFields(Map<String, Object> esDoc) {
+    SearchIndex.super.removeNonIndexableFields(esDoc);
+    List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");
+    for (Map<String, Object> testSuite : testSuites) {
+      SearchIndexUtils.removeNonIndexableFields(testSuite, excludeFields);
+    }
   }
 
   @SneakyThrows
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     // Build Index Doc
     List<SearchSuggest> suggest = new ArrayList<>();
+    TestDefinition testDefinition =
+        Entity.getEntity(
+            Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
     suggest.add(SearchSuggest.builder().input(testCase.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testCase.getName()).weight(10).build());
     doc.put(
@@ -44,16 +49,11 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
     doc.put("entityType", Entity.TEST_CASE);
     doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
     doc.put("tags", testCase.getTags());
-    doc.put("testPlatforms", getTestDefinitionPlatforms(testCase.getTestDefinition().getId()));
+    doc.put("testPlatforms", testDefinition.getTestPlatforms());
+    doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
     doc.put("followers", SearchIndexUtils.parseFollowers(testCase.getFollowers()));
     setParentRelationships(doc, testCase);
     return doc;
-  }
-
-  private List<TestPlatform> getTestDefinitionPlatforms(UUID testDefinitionId) {
-    TestDefinition testDefinition =
-        Entity.getEntity(Entity.TEST_DEFINITION, testDefinitionId, "", Include.ALL);
-    return testDefinition.getTestPlatforms();
   }
 
   private void setParentRelationships(Map<String, Object> doc, TestCase testCase) {

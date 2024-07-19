@@ -91,7 +91,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
   static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -318,6 +318,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
           String testPlatforms,
       @Parameter(
               description =
+                  "Filter for test case by data quality dimension (e.g. OpenMetadata, dbt, etc.)",
+              schema = @Schema(type = "string"))
+          @QueryParam("dataQualityDimension")
+          String dataQualityDimension,
+      @Parameter(
+              description =
                   "Parameter used to filter (inclusive) the test cases by the last execution timestamp (in milliseconds). Must be used in conjunction with `endTimestamp`",
               schema = @Schema(type = "long"))
           @QueryParam("startTimestamp")
@@ -392,6 +398,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("testCaseStatus", status);
     searchListFilter.addQueryParam("testCaseType", type);
     searchListFilter.addQueryParam("testPlatforms", testPlatforms);
+    searchListFilter.addQueryParam("dataQualityDimension", dataQualityDimension);
     searchListFilter.addQueryParam("q", q);
     searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
     searchListFilter.addQueryParam("includeFields", includeFields);
