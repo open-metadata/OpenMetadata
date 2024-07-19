@@ -12,7 +12,7 @@
         },
         "day": {
             "description": "Date of Result",
-            "type": "string"
+            "type": "number"
         },
         "group": {
             "description": "Group of Result",
