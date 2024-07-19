@@ -15,7 +15,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
 
 public record TestCaseIndex(TestCase testCase) implements SearchIndex {
-  private static final Set<String> excludeFields = Set.of("testSuites.changeDescription");
+  private static final Set<String> excludeFields = Set.of("changeDescription");
 
   @Override
   public Object getEntity() {
@@ -23,8 +23,12 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
   }
 
   @Override
-  public Set<String> getExcludedFields() {
-    return excludeFields;
+  public void removeNonIndexableFields(Map<String, Object> esDoc) {
+    SearchIndex.super.removeNonIndexableFields(esDoc);
+    List<Map<String, Object>> testSuites = (List<Map<String, Object>>) esDoc.get("testSuites");
+    for (Map<String, Object> testSuite : testSuites) {
+      SearchIndexUtils.removeNonIndexableFields(testSuite, excludeFields);
+    }
   }
 
   @SneakyThrows

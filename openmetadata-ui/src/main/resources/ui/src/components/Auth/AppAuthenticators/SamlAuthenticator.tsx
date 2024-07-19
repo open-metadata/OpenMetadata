@@ -84,7 +84,9 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
         logout();
       },
       async renewIdToken() {
-        return Promise.resolve('');
+        return Promise.reject(
+          'SAML authenticator does not support token renewal'
+        );
       },
     }));
 
