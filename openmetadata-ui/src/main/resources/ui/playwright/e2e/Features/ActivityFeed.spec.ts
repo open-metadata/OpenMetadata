@@ -57,7 +57,7 @@ test.describe('Activity feed', () => {
   test('Assigned task should appear to task tab', async ({ page }) => {
     const value: TaskDetails = {
       term: entity.entity.name,
-      assignee: `${user.data.firstName}.${user.data.lastName}`,
+      assignee: user.responseData.name,
     };
     await entity.visitEntityPage(page);
 
