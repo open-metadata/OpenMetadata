@@ -23,7 +23,7 @@ import {
 import { DELETE_TERM } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
-const botName = `Bot-ct-test-${uuid()}`;
+const botName = `bot-ct-test-${uuid()}`;
 const botEmail = `${botName}@mail.com`;
 const description = 'This is bot description';
 const updatedDescription = 'This is updated bot description';
