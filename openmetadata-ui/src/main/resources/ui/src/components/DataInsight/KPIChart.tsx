@@ -30,17 +30,17 @@ import {
   YAxis,
 } from 'recharts';
 import {
-  DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
-  HOVER_CHART_OPACITY,
-  ROUTES,
-} from '../../constants/constants';
-import {
   BAR_CHART_MARGIN,
   DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+  ROUTES,
+} from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import {
   Kpi,
@@ -55,13 +55,13 @@ import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
-import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { formatDate } from '../../utils/date-time/DateTimeUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
-import './data-insight-detail.less';
+import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import KPILatestResultsV1 from './KPILatestResultsV1';
+import './data-insight-detail.less';
 
 interface Props {
   chartFilter: ChartFilter;
@@ -239,7 +239,7 @@ const KPIChart: FC<Props> = ({
                     <XAxis
                       allowDuplicatedCategory={false}
                       dataKey="day"
-                      tickFormatter={formatDateTime}
+                      tickFormatter={formatDate}
                       type="category"
                     />
                     <YAxis dataKey="count" />
