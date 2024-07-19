@@ -43,7 +43,6 @@ import {
   getListKPIs,
 } from '../../../../rest/KpiAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import { getKpiGraphData } from '../../../../utils/DataInsightUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -112,7 +111,7 @@ const KPIWidget = ({
 
       responses.forEach((response) => {
         if (response.status === 'fulfilled') {
-          kpiResultsList.push(...response.value.data);
+          kpiResultsList.push(...response.value.results);
         }
       });
       setKpiResults(kpiResultsList);
@@ -168,7 +167,8 @@ const KPIWidget = ({
   };
 
   const { kpis, graphData } = useMemo(() => {
-    return { ...getKpiGraphData(kpiResults, kpiList) };
+    return { kpis: [], graphData: [] };
+    // return { ...getKpiGraphData(kpiResults, kpiList) };
   }, [kpiResults, kpiList]);
 
   const fetchKpiList = async () => {

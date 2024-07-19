@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,137 +10,134 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Button, Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { includes, isEmpty, round, toLower } from 'lodash';
-import React, { FC, useEffect, useMemo, useState } from 'react';
+import { first, groupBy, includes, map, round, toLower } from 'lodash';
+import {
+  default as React,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { ResponsiveContainer } from 'recharts';
 import { ReactComponent as RightArrowIcon } from '../../assets/svg/right-arrow.svg';
+import { getExplorePath } from '../../constants/constants';
 import {
-  DEFAULT_CHART_OPACITY,
-  getExplorePath,
-  GRAPH_BACKGROUND_COLOR,
-  HOVER_CHART_OPACITY,
-} from '../../constants/constants';
-import {
-  BAR_CHART_MARGIN,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
 import { INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER } from '../../constants/explore.constants';
+
 import { SearchIndex } from '../../enums/search.enum';
-import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
+import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
-  DataInsightChartResult,
-  DataInsightChartType,
-} from '../../generated/dataInsight/dataInsightChartResult';
-import { Kpi } from '../../generated/dataInsight/kpi/kpi';
-import { ChartFilter } from '../../interface/data-insight.interface';
-import { getAggregateChartData } from '../../rest/DataInsightAPI';
+  DataInsightCustomChartResult,
+  getChartPreviewByName,
+  SystemChartType,
+} from '../../rest/DataInsightAPI';
+import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import {
-  axisTickFormatter,
-  updateActiveChartFilter,
-} from '../../utils/ChartUtils';
-import {
-  CustomTooltip,
-  getGraphDataByEntityType,
-  getRandomHexColor,
-  sortEntityByValue,
+  isPercentageSystemGraph,
+  renderDataInsightLineChart,
 } from '../../utils/DataInsightUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import PageHeader from '../PageHeader/PageHeader.component';
-import './data-insight-detail.less';
 import DataInsightProgressBar from './DataInsightProgressBar';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import EntitySummaryProgressBar from './EntitySummaryProgressBar.component';
 
-interface Props {
-  chartFilter: ChartFilter;
-  kpi: Kpi | undefined;
-  selectedDays: number;
-  dataInsightChartName: DataInsightChartType;
-  header?: string;
-  isExploreBtnVisible?: boolean;
+interface DataInsightChartCardProps {
+  type: SystemChartType;
+  header: ReactNode;
+  subHeader: ReactNode;
+  listAssets?: boolean;
 }
 
-const DescriptionInsight: FC<Props> = ({
-  chartFilter,
-  kpi,
-  selectedDays,
-  dataInsightChartName,
+export const DataInsightChartCard = ({
+  type,
   header,
-  isExploreBtnVisible = false,
-}) => {
+  subHeader,
+  listAssets,
+}: DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
-  const [totalEntitiesDescriptionByType, setTotalEntitiesDescriptionByType] =
-    useState<DataInsightChartResult>();
-
+  const [chartData, setChartData] = useState<DataInsightCustomChartResult>({
+    results: [],
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
   const [searchEntityKeyWord, setSearchEntityKeyWord] = useState('');
-
   const {
-    data,
-    entities,
-    total,
-    relativePercentage,
-    latestData,
-    isPercentageGraph,
-  } = useMemo(() => {
-    return getGraphDataByEntityType(
-      totalEntitiesDescriptionByType?.data ?? [],
-      dataInsightChartName
-    );
-  }, [totalEntitiesDescriptionByType]);
+    chartFilter,
+    selectedDaysFilter: selectedDays,
+    kpi,
+  } = useDataInsightProvider();
+  const isPercentageGraph = isPercentageSystemGraph(type);
 
-  const sortedEntitiesByValue = useMemo(() => {
-    return sortEntityByValue(entities, latestData);
-  }, [entities, latestData]);
+  const { rightSideEntityList, latestData, graphData } = useMemo(() => {
+    const results = chartData.results ?? [];
 
-  const rightSideEntityList = useMemo(
-    () =>
-      sortedEntitiesByValue.filter((entity) =>
+    const groupedResults = groupBy(results, 'group');
+    const latestData: Record<string, number> = {};
+    Object.entries(groupedResults).forEach(([key, value]) => {
+      value.sort((a, b) => a.day - b.day);
+
+      latestData[key] = first(value)?.count ?? 0;
+    });
+
+    const graphData = map(groupedResults, (value, key) => ({
+      name: key,
+      data: value,
+    }));
+
+    const labels = Object.keys(groupedResults);
+
+    return {
+      rightSideEntityList: labels.filter((entity) =>
         includes(toLower(entity), toLower(searchEntityKeyWord))
       ),
-    [sortedEntitiesByValue, searchEntityKeyWord]
-  );
-
-  const { t } = useTranslation();
+      latestData,
+      graphData,
+    };
+  }, [chartData.results, searchEntityKeyWord]);
 
   const targetValue = useMemo(() => {
-    if (kpi?.targetValue) {
-      return Number(kpi.targetValue) * 100;
+    if (type === SystemChartType.PercentageOfDataAssetWithDescription) {
+      kpi.data.find(
+        (value) =>
+          value.dataInsightChart.name ===
+          DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
+      )?.targetValue;
     }
 
     return undefined;
   }, [kpi]);
 
-  const fetchTotalEntitiesDescriptionByType = async () => {
+  const { t } = useTranslation();
+
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      const params = {
-        ...chartFilter,
-        dataInsightChartName,
-        dataReportIndex: DataReportIndex.EntityReportDataIndex,
-      };
-      const response = await getAggregateChartData(params);
+      const response = await getChartPreviewByName(type, {
+        start: chartFilter.startTs,
+        end: chartFilter.endTs,
+      });
 
-      setTotalEntitiesDescriptionByType(response);
+      const newData = {
+        results: response.results.map((result) => ({
+          ...result,
+          day: new Date(result.day).valueOf(),
+        })),
+      };
+
+      setChartData(newData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -162,10 +159,10 @@ const DescriptionInsight: FC<Props> = ({
   };
 
   useEffect(() => {
-    fetchTotalEntitiesDescriptionByType();
+    fetchData();
   }, [chartFilter]);
 
-  if (isLoading || data.length === 0) {
+  if (isLoading || kpi.isLoading || chartData.results.length === 0) {
     return (
       <Card
         className="data-insight-card"
@@ -189,64 +186,38 @@ const DescriptionInsight: FC<Props> = ({
     <Card
       className="data-insight-card"
       data-testid="entity-description-percentage-card"
-      id={dataInsightChartName}>
+      id={type}>
       <Row gutter={DI_STRUCTURE.rowContainerGutter}>
         <Col span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
             data={{
               header,
-              subHeader: t('message.field-insight', {
-                field: t('label.description-lowercase'),
-              }),
+              subHeader,
             }}
           />
           <ResponsiveContainer
             className="m-t-lg"
             debounce={1}
             height={GRAPH_HEIGHT}
-            id={`${dataInsightChartName}-graph`}>
-            <LineChart data={data} margin={BAR_CHART_MARGIN}>
-              <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
-              <XAxis dataKey="timestamp" />
-              <YAxis
-                tickFormatter={(value: number) => axisTickFormatter(value, '%')}
-              />
-              <Tooltip
-                content={<CustomTooltip isPercentage />}
-                wrapperStyle={{ pointerEvents: 'auto' }}
-              />
-              {entities.map((entity, i) => (
-                <Line
-                  dataKey={entity}
-                  hide={
-                    activeKeys.length && entity !== activeMouseHoverKey
-                      ? !activeKeys.includes(entity)
-                      : false
-                  }
-                  key={entity}
-                  stroke={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
-                  strokeOpacity={
-                    isEmpty(activeMouseHoverKey) ||
-                    entity === activeMouseHoverKey
-                      ? DEFAULT_CHART_OPACITY
-                      : HOVER_CHART_OPACITY
-                  }
-                  type="monotone"
-                />
-              ))}
-            </LineChart>
+            id={`${type}-graph`}>
+            {renderDataInsightLineChart(
+              graphData,
+              activeKeys,
+              activeMouseHoverKey,
+              rightSideEntityList
+            )}
           </ResponsiveContainer>
         </Col>
         <Col span={DI_STRUCTURE.rightContainerSpan}>
           <Row gutter={[8, 16]}>
             <Col span={24}>
               <DataInsightProgressBar
-                changeInValue={relativePercentage}
+                changeInValue={0.2}
                 duration={selectedDays}
                 label={`${t('label.completed-entity', {
                   entity: t('label.description'),
                 })}${isPercentageGraph ? ' %' : ''}`}
-                progress={Number(total)}
+                progress={Number(100)}
                 suffix={isPercentageGraph ? '%' : ''}
                 target={targetValue}
               />
@@ -277,7 +248,6 @@ const DescriptionInsight: FC<Props> = ({
                         label={`${round(latestData[entity] ?? 0, 2)}${
                           isPercentageGraph ? '%' : ''
                         }`}
-                        latestData={latestData}
                         progress={latestData[entity]}
                         strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                       />
@@ -295,7 +265,7 @@ const DescriptionInsight: FC<Props> = ({
             )}
           </Row>
         </Col>
-        {isExploreBtnVisible && (
+        {listAssets && (
           <Col className="d-flex justify-end" span={24}>
             <Link
               data-testid="explore-asset-with-no-description"
@@ -324,5 +294,3 @@ const DescriptionInsight: FC<Props> = ({
     </Card>
   );
 };
-
-export default DescriptionInsight;

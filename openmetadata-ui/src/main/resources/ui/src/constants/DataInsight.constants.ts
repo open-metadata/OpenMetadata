@@ -17,6 +17,7 @@ import { Margin } from 'recharts/types/util/types';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
+import { SystemChartType } from '../rest/DataInsightAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -98,28 +99,28 @@ export const ENTITIES_SUMMARY_LIST = [
       entity: i18n.t('label.data-asset-plural'),
     }),
     latest: 0,
-    id: DataInsightChartType.TotalEntitiesByType,
+    id: SystemChartType.TotalDataAssetsSummaryCard,
   },
   {
     label: i18n.t('label.data-asset-plural-with-field', {
       field: i18n.t('label.description'),
     }),
     latest: 0,
-    id: DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+    id: SystemChartType.DataAssetsWithDescriptionSummaryCard,
   },
   {
     label: i18n.t('label.data-asset-plural-with-field', {
       field: i18n.t('label.owner-plural'),
     }),
     latest: 0,
-    id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+    id: SystemChartType.DataAssetsWithOwnerSummaryCard,
   },
   {
     label: i18n.t('label.total-entity', {
       entity: i18n.t('label.data-assets-with-tier-plural'),
     }),
     latest: 0,
-    id: DataInsightChartType.TotalEntitiesByTier,
+    id: SystemChartType.TotalDataAssetsWithTierSummaryCard,
   },
 ];
 

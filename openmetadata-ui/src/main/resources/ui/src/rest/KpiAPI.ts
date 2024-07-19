@@ -19,6 +19,7 @@ import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
+import { DataInsightCustomChartResult } from './DataInsightAPI';
 import APIClient from './index';
 
 export type KpiResultParam = {
@@ -64,7 +65,7 @@ export const getListKpiResult = async (
   params: KpiResultParam,
   orderBy = 'ASC'
 ) => {
-  const response = await APIClient.get<PagingResponse<KpiResult[]>>(
+  const response = await APIClient.get<DataInsightCustomChartResult>(
     `/kpi/${getEncodedFqn(fqn)}/kpiResult`,
     { params: { ...params, orderBy } }
   );

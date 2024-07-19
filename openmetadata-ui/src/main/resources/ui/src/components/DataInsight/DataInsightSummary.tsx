@@ -16,10 +16,7 @@ import { AxiosError } from 'axios';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import {
-  ENTITIES_CHARTS,
-  WEB_CHARTS,
-} from '../../constants/DataInsight.constants';
+import { WEB_CHARTS } from '../../constants/DataInsight.constants';
 import { DataReportIndex } from '../../generated/dataInsight/dataInsightChart';
 import {
   DataInsightChartResult,
@@ -31,7 +28,12 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
-import { getAggregateChartData } from '../../rest/DataInsightAPI';
+import {
+  DataInsightCustomChartResult,
+  getAggregateChartData,
+  getMultiChartsPreviewByName,
+  SystemChartType,
+} from '../../rest/DataInsightAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
 import {
   getEntitiesChartSummary,
@@ -53,9 +55,11 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
     useParams<{ tab: DataInsightTabs }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [entitiesCharts, setEntitiesChart] = useState<
-    (DataInsightChartResult | undefined)[]
-  >([]);
+  //   const [entitiesCharts, setEntitiesChart] = useState<
+  //     (DataInsightChartResult | undefined)[]
+  //   >([]);
+  const [entitiesChartsSummary, setEntitiesChartSummary] =
+    useState<Record<SystemChartType, DataInsightCustomChartResult>>();
   const [webCharts, setWebCharts] = useState<
     (DataInsightChartResult | undefined)[]
   >([]);
@@ -65,8 +69,8 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const [OrganizationDetails, setOrganizationDetails] = useState<Team>();
 
   const entitiesSummaryList = useMemo(
-    () => getEntitiesChartSummary(entitiesCharts),
-    [entitiesCharts, chartFilter]
+    () => getEntitiesChartSummary(entitiesChartsSummary),
+    [entitiesChartsSummary, chartFilter]
   );
 
   const webSummaryList = useMemo(
@@ -88,29 +92,17 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const fetchEntitiesChartData = async () => {
     setIsLoading(true);
     try {
-      const promises = ENTITIES_CHARTS.map((chartName) => {
-        const params = {
-          ...chartFilter,
-          dataInsightChartName: chartName,
-          dataReportIndex: DataReportIndex.EntityReportDataIndex,
-        };
+      const chartsData = await getMultiChartsPreviewByName(
+        [
+          SystemChartType.TotalDataAssetsSummaryCard,
+          SystemChartType.DataAssetsWithDescriptionSummaryCard,
+          SystemChartType.DataAssetsWithOwnerSummaryCard,
+          SystemChartType.TotalDataAssetsWithTierSummaryCard,
+        ],
+        { start: chartFilter.startTs, end: chartFilter.endTs }
+      );
 
-        return getAggregateChartData(params);
-      });
-
-      const responses = await Promise.allSettled(promises);
-
-      const chartDataList = responses
-        .map((response) => {
-          if (response.status === 'fulfilled') {
-            return response.value;
-          }
-
-          return;
-        })
-        .filter(Boolean);
-
-      setEntitiesChart(chartDataList);
+      setEntitiesChartSummary(chartsData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

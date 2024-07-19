@@ -66,8 +66,7 @@ const KPIList = () => {
     try {
       setIsLoading(true);
       const response = await getListKPIs({
-        fields:
-          'startDate,endDate,targetDefinition,dataInsightChart,metricType',
+        fields: 'startDate,endDate,targetValue,dataInsightChart,metricType',
         limit: PAGE_SIZE_MEDIUM,
         before: param && param.before,
         after: param && param.after,
@@ -126,8 +125,8 @@ const KPIList = () => {
       },
       {
         title: t('label.target'),
-        dataIndex: 'targetDefinition',
-        key: 'targetDefinition',
+        dataIndex: 'targetValue',
+        key: 'targetValue',
         render: (value: Kpi['targetValue'], record: Kpi) => {
           const isPercentageMetric =
             record.metricType === KpiTargetType.Percentage;

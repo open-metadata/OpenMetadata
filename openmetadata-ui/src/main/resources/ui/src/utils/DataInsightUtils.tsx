@@ -16,6 +16,7 @@ import { RangePickerProps } from 'antd/lib/date-picker';
 import { t } from 'i18next';
 import {
   first,
+  get,
   groupBy,
   isEmpty,
   isInteger,
@@ -32,15 +33,29 @@ import {
 import moment from 'moment';
 import React from 'react';
 import { ListItem } from 'react-awesome-query-builder';
-import { LegendProps, Surface } from 'recharts';
+import {
+  CartesianGrid,
+  LegendProps,
+  Line,
+  LineChart,
+  Surface,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
   GRAYED_OUT_COLOR,
+  HOVER_CHART_OPACITY,
   PLACEHOLDER_ROUTE_TAB,
   ROUTES,
 } from '../constants/constants';
 import {
+  BAR_CHART_MARGIN,
   ENTITIES_SUMMARY_LIST,
+  TOTAL_ENTITY_CHART_COLOR,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
 import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
@@ -56,8 +71,17 @@ import {
   DataInsightChartTooltipProps,
   DataInsightTabs,
 } from '../interface/data-insight.interface';
+import {
+  DataInsightCustomChartResult,
+  SystemChartType,
+} from '../rest/DataInsightAPI';
+import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
-import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
+import {
+  customFormatDateTime,
+  formatDate,
+  formatDateTime,
+} from './date-time/DateTimeUtils';
 
 const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
   [
@@ -547,31 +571,22 @@ export const getFormattedActiveUsersData = (
 };
 
 export const getEntitiesChartSummary = (
-  chartResults: (DataInsightChartResult | undefined)[]
+  chartResults?: Record<SystemChartType, DataInsightCustomChartResult>
 ) => {
   const updatedSummaryList = ENTITIES_SUMMARY_LIST.map((summary) => {
-    // grab the current chart type
-    const chartData = chartResults.find(
-      (chart) => chart?.chartType === summary.id
-    );
+    const chartData = get(chartResults, summary.id);
 
-    // return default summary if chart data is undefined else calculate the latest count for chartType
-    if (isUndefined(chartData)) {
-      return summary;
-    } else {
-      if (chartData.chartType === DataInsightChartType.TotalEntitiesByTier) {
-        const { total } = getGraphDataByTierType(chartData.data ?? []);
+    const count = round(first(chartData?.results)?.count ?? 0, 2);
 
-        return { ...summary, latest: total };
-      } else {
-        const { total } = getGraphDataByEntityType(
-          chartData.data ?? [],
-          chartData.chartType
-        );
-
-        return { ...summary, latest: total };
-      }
-    }
+    return chartData
+      ? {
+          ...summary,
+          latest:
+            summary.id === SystemChartType.TotalDataAssetsSummaryCard
+              ? count
+              : `${count}%`,
+        }
+      : summary;
   });
 
   return updatedSummaryList;
@@ -704,4 +719,64 @@ export const getRandomHexColor = () => {
   const randomColor = Math.floor(Math.random() * 16777215).toString(16);
 
   return `#${randomColor}`;
+};
+
+export const isPercentageSystemGraph = (graph: SystemChartType) => {
+  return [
+    SystemChartType.PercentageOfDataAssetWithDescription,
+    SystemChartType.PercentageOfDataAssetWithOwner,
+    SystemChartType.PercentageOfServiceWithDescription,
+    SystemChartType.PercentageOfServiceWithOwner,
+  ].includes(graph);
+};
+
+export const renderDataInsightLineChart = (
+  graphData: {
+    name: string;
+    data: { day: number; count: number }[];
+  }[],
+  activeKeys: string[],
+  activeMouseHoverKey: string,
+  rightSideEntityList: string[]
+) => {
+  return (
+    <LineChart margin={BAR_CHART_MARGIN}>
+      <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
+      <Tooltip
+        content={<CustomTooltip isPercentage />}
+        wrapperStyle={{ pointerEvents: 'auto' }}
+      />
+      <XAxis
+        allowDuplicatedCategory={false}
+        dataKey="day"
+        tickFormatter={formatDateTime}
+        type="category"
+      />
+      <YAxis
+        dataKey="count"
+        tickFormatter={(value: number) => axisTickFormatter(value, '%')}
+      />
+
+      {graphData.map((s, i) => (
+        <Line
+          data={s.data}
+          dataKey="count"
+          hide={
+            activeKeys.length && s.name !== activeMouseHoverKey
+              ? !rightSideEntityList.includes(s.name)
+              : false
+          }
+          key={s.name}
+          name={s.name}
+          stroke={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
+          strokeOpacity={
+            isEmpty(activeMouseHoverKey) || s.name === activeMouseHoverKey
+              ? DEFAULT_CHART_OPACITY
+              : HOVER_CHART_OPACITY
+          }
+          type="monotone"
+        />
+      ))}
+    </LineChart>
+  );
 };
