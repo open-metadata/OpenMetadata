@@ -23,6 +23,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -42,9 +43,8 @@ public class MigrationUtil {
     if (oDataInsightsPipeline.isPresent()) {
       IngestionPipeline dataInsightsPipeline = oDataInsightsPipeline.get();
 
-      pipelineServiceClient.deletePipeline(dataInsightsPipeline);
-
-      EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      IngestionPipelineRepository entityRepository = (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      entityRepository.setPipelineServiceClient(pipelineServiceClient);
       entityRepository.delete("admin", dataInsightsPipeline.getId(), true, true);
     }
 
