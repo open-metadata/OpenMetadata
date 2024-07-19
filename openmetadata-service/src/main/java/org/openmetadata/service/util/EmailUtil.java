@@ -71,7 +71,7 @@ public class EmailUtil {
   public static final String ACTION_STATUS_KEY = "actionStatus";
   public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change.ftl";
   private static final String INVITE_SUBJECT = "Welcome to %s";
-  private static final String CHANGE_EVENT_UPDATE = "Change Event Update from %s";
+  private static final String CHANGE_EVENT_UPDATE = "[%s] - Change Event Update from %s";
 
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
@@ -313,6 +313,11 @@ public class EmailUtil {
       templatePopulator.put("updatedBy", emailMessaged.getUpdatedBy());
       templatePopulator.put("entityUrl", emailMessaged.getEntityUrl());
       StringBuilder buff = new StringBuilder();
+
+      // Fetch and remove the last element from the changeMessage list of emailMessaged.
+      String eventSubscriptionName =
+          emailMessaged.getChangeMessage().remove(emailMessaged.getChangeMessage().size() - 1);
+
       for (String cmessage : emailMessaged.getChangeMessage()) {
         buff.append(cmessage);
         buff.append("\n");
@@ -320,7 +325,7 @@ public class EmailUtil {
       templatePopulator.put("changeMessage", buff.toString());
       try {
         EmailUtil.sendMail(
-            EmailUtil.getChangeEventTemplate(),
+            EmailUtil.getChangeEventTemplate(eventSubscriptionName),
             templatePopulator,
             receiverMail,
             EmailUtil.EMAIL_TEMPLATE_BASEPATH,
@@ -407,8 +412,9 @@ public class EmailUtil {
     return String.format(INVITE_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
-  public static String getChangeEventTemplate() {
-    return String.format(CHANGE_EVENT_UPDATE, getSmtpSettings().getEmailingEntity());
+  public static String getChangeEventTemplate(String eventSubscriptionName) {
+    return String.format(
+        CHANGE_EVENT_UPDATE, eventSubscriptionName, getSmtpSettings().getEmailingEntity());
   }
 
   public static String getTaskAssignmentSubject() {

@@ -17,7 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
+import java.util.List;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
 
@@ -65,21 +67,28 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
 
   @Override
   public EmailMessage buildEntityMessage(ChangeEvent event) {
-    return getEmailMessage(createEntityMessage(event));
+    return getEmailMessage(createEntityMessage(event),event);
   }
 
   @Override
   public EmailMessage buildThreadMessage(ChangeEvent event) {
-    return getEmailMessage(createThreadMessage(event));
+    return getEmailMessage(createThreadMessage(event), event);
   }
 
-  public EmailMessage getEmailMessage(OutgoingMessage outgoingMessage) {
+  public EmailMessage getEmailMessage(OutgoingMessage outgoingMessage, ChangeEvent event) {
     if (!outgoingMessage.getMessages().isEmpty()) {
       EmailMessage emailMessage = new EmailMessage();
       emailMessage.setUserName(outgoingMessage.getUserName());
       emailMessage.setEntityUrl(outgoingMessage.getEntityUrl());
       emailMessage.setUpdatedBy(outgoingMessage.getUserName());
-      emailMessage.setChangeMessage(new ArrayList<>(outgoingMessage.getMessages()));
+
+      List<String> changeMessages = new ArrayList<>(outgoingMessage.getMessages());
+      String eventSubscriptionName =
+          (String)
+              event.getAdditionalProperties().get(AbstractEventConsumer.EVENT_SUBSCRIPTION_NAME);
+      changeMessages.add(eventSubscriptionName);
+      emailMessage.setChangeMessage(changeMessages);
+
       return emailMessage;
     }
     throw new UnhandledServerException("No messages found for the event");

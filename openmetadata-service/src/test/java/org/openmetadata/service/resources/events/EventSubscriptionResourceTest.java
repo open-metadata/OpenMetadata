@@ -1633,18 +1633,18 @@ public class EventSubscriptionResourceTest
     assertFalse(slackMessage.getText().isEmpty(), "Text should not be empty");
 
     // Validate the formatting of the text
-    String expectedTextFormat = buildExpectedTextFormatSlack(alert); // Get the expected format
-
+    String expectedTextFormat = "[%s] " + buildExpectedTextFormatSlack(alert); // Get the expected format
+    expectedTextFormat = String.format(expectedTextFormat, alert.getName());
     // Check if the actual text matches the expected format
     String actualText = slackMessage.getText();
     assertEquals(
-        actualText, expectedTextFormat, "Slack message text does not match expected format");
+        actualText.trim(), expectedTextFormat.trim(), "Slack message text does not match expected format");
   }
 
   private String buildExpectedTextFormatSlack(EventSubscription alert) {
     String updatedBy = alert.getUpdatedBy();
     return String.format(
-        "%s posted on " + Entity.EVENT_SUBSCRIPTION + " %s", updatedBy, getEntityUrlSlack(alert));
+        "%s posted on " + Entity.EVENT_SUBSCRIPTION + " %s.", updatedBy, getEntityUrlSlack(alert));
   }
 
   private String getEntityUrlSlack(EventSubscription alert) {
@@ -1671,7 +1671,9 @@ public class EventSubscriptionResourceTest
 
     TeamsMessage.Section firstSection = message.getSections().get(0);
     // Validate Activity
-    String expectedTitle = buildExpectedActivityTitleTextFormatMSTeams(alert);
+    String expectedTitle =  "[%s] " + buildExpectedActivityTitleTextFormatMSTeams(alert);
+    expectedTitle = String.format(expectedTitle, alert.getName());
+
     String actualTitle = firstSection.getActivityTitle();
     assertEquals(
         expectedTitle, actualTitle, "Teams message activity title does not match expected format");
@@ -1692,7 +1694,7 @@ public class EventSubscriptionResourceTest
   private String buildExpectedActivityTitleTextFormatMSTeams(EventSubscription alert) {
     String updatedBy = alert.getUpdatedBy();
     return String.format(
-        "%s posted on %s [\"%s\"](/%s)",
+        "%s posted on %s [\"%s\"](/%s).",
         updatedBy, Entity.EVENT_SUBSCRIPTION, alert.getName(), getEntityUrlMSTeams());
   }
 

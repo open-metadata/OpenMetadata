@@ -210,22 +210,22 @@ public interface MessageDecorator<T> {
       String headerTxt;
       String headerText;
       if (eventType.equals(Entity.QUERY)) {
-        headerTxt = "%s posted on " + eventType + ".\ntriggered by %s";
+        headerTxt = "[%s] %s posted on " + eventType + ".";
         headerText =
             String.format(
                 headerTxt,
-                event.getUserName(),
-                event.getAdditionalProperties().get(AbstractEventConsumer.EVENT_SUBSCRIPTION_NAME));
+                event.getAdditionalProperties().get(AbstractEventConsumer.EVENT_SUBSCRIPTION_NAME),
+                event.getUserName());
       } else {
         String entityUrl = this.buildEntityUrl(event.getEntityType(), entityInterface);
         message.setEntityUrl(entityUrl);
-        headerTxt = "%s posted on " + eventType + " %s.\ntriggered by %s";
+        headerTxt = "[%s] %s posted on " + eventType + " %s.";
         headerText =
             String.format(
                 headerTxt,
+                event.getAdditionalProperties().get(AbstractEventConsumer.EVENT_SUBSCRIPTION_NAME),
                 event.getUserName(),
-                entityUrl,
-                event.getAdditionalProperties().get(AbstractEventConsumer.EVENT_SUBSCRIPTION_NAME));
+                entityUrl);
       }
       message.setHeader(headerText);
     }
