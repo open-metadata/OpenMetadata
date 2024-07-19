@@ -943,6 +943,10 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
 };
 
 const getApiCollectionOverview = (apiCollection: APICollection) => {
+  if (isNil(apiCollection) || isEmpty(apiCollection)) {
+    return [];
+  }
+
   const { service } = apiCollection;
 
   const overview = [
@@ -969,6 +973,9 @@ const getApiCollectionOverview = (apiCollection: APICollection) => {
   return overview;
 };
 const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
+  if (isNil(apiEndpoint) || isEmpty(apiEndpoint)) {
+    return [];
+  }
   const { service, apiCollection } = apiEndpoint;
 
   const overview = [
