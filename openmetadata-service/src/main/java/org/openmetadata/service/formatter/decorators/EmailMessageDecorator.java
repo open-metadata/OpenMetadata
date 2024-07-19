@@ -67,7 +67,7 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
 
   @Override
   public EmailMessage buildEntityMessage(ChangeEvent event) {
-    return getEmailMessage(createEntityMessage(event),event);
+    return getEmailMessage(createEntityMessage(event), event);
   }
 
   @Override

@@ -1633,12 +1633,15 @@ public class EventSubscriptionResourceTest
     assertFalse(slackMessage.getText().isEmpty(), "Text should not be empty");
 
     // Validate the formatting of the text
-    String expectedTextFormat = "[%s] " + buildExpectedTextFormatSlack(alert); // Get the expected format
+    String expectedTextFormat =
+        "[%s] " + buildExpectedTextFormatSlack(alert); // Get the expected format
     expectedTextFormat = String.format(expectedTextFormat, alert.getName());
     // Check if the actual text matches the expected format
     String actualText = slackMessage.getText();
     assertEquals(
-        actualText.trim(), expectedTextFormat.trim(), "Slack message text does not match expected format");
+        actualText.trim(),
+        expectedTextFormat.trim(),
+        "Slack message text does not match expected format");
   }
 
   private String buildExpectedTextFormatSlack(EventSubscription alert) {
@@ -1671,7 +1674,7 @@ public class EventSubscriptionResourceTest
 
     TeamsMessage.Section firstSection = message.getSections().get(0);
     // Validate Activity
-    String expectedTitle =  "[%s] " + buildExpectedActivityTitleTextFormatMSTeams(alert);
+    String expectedTitle = "[%s] " + buildExpectedActivityTitleTextFormatMSTeams(alert);
     expectedTitle = String.format(expectedTitle, alert.getName());
 
     String actualTitle = firstSection.getActivityTitle();
