@@ -55,6 +55,56 @@ public final class SearchIndexUtils {
     currentMap.remove(lastKey);
   }
 
+  /*
+    * Build the aggregation string for the given aggregation
+    *
+    * @param aggregation the aggregation to build the string for.
+    *   The aggregation string is in the form
+    * `bucketName:aggType:key=value&key=value,bucketName:aggType:key=value&key=value;bucketName:aggType:key=value&key=value`
+    * where `,` represents a nested aggregation and `;` represents a sibling aggregation
+    * @return the aggregation string
+  */
+  public static String buildAggregationString(String aggregation) {
+    StringBuilder aggregationString = new StringBuilder();
+    List<String> siblings = Arrays.stream(aggregation.split(";")).toList();
+    int outterOpened = 0;
+    for (String sibling : siblings) {
+      List<String> nested = Arrays.stream(sibling.split(",")).toList();
+      for (String nest : nested) {
+        List<String> parts = Arrays.stream(nest.split(":")).toList();
+        StringBuilder partString = new StringBuilder();
+        int innerOpened = 0;
+        for (String part : parts) {
+            if (!part.contains("&") && !part.contains("=")) {
+                partString.append("\"" + part + "\"").append(":{");
+                innerOpened++;
+            } else {
+                List<String> kvs = Arrays.stream(part.split("&")).toList();
+                for (String kv : kvs) {
+                    List<String> keyValue = Arrays.stream(kv.split("=")).toList();
+                    if (kvs.indexOf(kv) != 0) {
+                      partString.append(",");
+                    }
+                    partString.append("\"").append(keyValue.get(0)).append("\"").append(":").append("\"").append(keyValue.get(1)).append("\"");
+                }
+                partString.append("}".repeat(Math.max(0, innerOpened)));
+                innerOpened = 0;
+            }
+        }
+        if (nested.indexOf(nest) == 0) {
+            aggregationString.append(partString);
+        } else {
+            aggregationString.append(",")
+                    .append("\"aggs\":{")
+                    .append(partString);
+            outterOpened++;
+        }
+      }
+      aggregationString.append("}".repeat(Math.max(0, outterOpened)));
+    }
+    return aggregationString.toString();
+  }
+
   public static List<TagLabel> parseTags(List<TagLabel> tags) {
     if (tags == null) {
       return Collections.emptyList();

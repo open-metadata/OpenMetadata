@@ -59,6 +59,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.SearchServiceResourceTest;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -406,6 +407,15 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBuildAggregationString(TestInfo testInfo) {
+    String aggregationString =
+        "my-agg-name:terms:field=my-field";
+    String expectedAggregationString = "\"my-agg-name\":{\"terms\":{\"field\":\"my-field\"}}";
+    String actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring);
   }
 
   @Override
