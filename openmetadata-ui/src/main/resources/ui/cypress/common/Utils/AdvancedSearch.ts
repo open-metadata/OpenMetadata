@@ -387,7 +387,7 @@ export const checkAddGroupWithOperator = ({
   // Click on field dropdown
   cy.get('.rule--field').eq(index_2).scrollIntoView().click();
 
-  cy.get(fieldId).eq(2).scrollIntoView().click();
+  cy.get(`.ant-select-dropdown:visible ${fieldId}`).scrollIntoView().click();
 
   // Select the condition
   cy.get('.rule--operator').eq(index_2).scrollIntoView().click();
