@@ -39,7 +39,15 @@ const AppLogo = ({
     fetchLogo();
   }, [appName]);
 
-  return <Avatar className="flex-center bg-grey-1" icon={appLogo} size={100} />;
+  const props: any = {};
+
+  if (appLogo) {
+    props['icon'] = appLogo;
+  } else {
+    props['src'] = `/img/svg/${appName}.svg`;
+  }
+
+  return <Avatar className="flex-center bg-grey-1" size={100} {...props} />;
 };
 
 export default AppLogo;

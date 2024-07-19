@@ -480,7 +480,8 @@ public class AppMarketPlaceResource
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
             .withAllowConfiguration(create.getAllowConfiguration())
-            .withSystem(create.getSystem());
+            .withSystem(create.getSystem())
+            .withConfigSchema(create.getConfigSchema());
 
     // Validate App
     validateApplication(app);

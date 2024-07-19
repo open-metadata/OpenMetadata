@@ -102,6 +102,10 @@
       "description": "A system app cannot be uninstalled or modified.",
       "type": "boolean",
       "default": false
+    },
+    "configSchema": {
+      "description": "Configuration Schema for the application.",
+      "$ref": "../type.json#/definitions/appConfigSchema"
     }
   },
   "additionalProperties": false,

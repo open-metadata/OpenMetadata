@@ -106,14 +106,17 @@ const AppInstall = () => {
   const fetchAppDetails = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: 'owner',
-      });
+      const data: AppMarketPlaceDefinition =
+        await getMarketPlaceApplicationByFqn(fqn, {
+          fields: 'owner',
+        });
       setAppData(data);
-
-      const schema = await applicationSchemaClassBase.importSchema(fqn);
-
-      setJsonSchema(schema);
+      if (data.configSchema) {
+        setJsonSchema(data.configSchema);
+      } else {
+        const schema = await applicationSchemaClassBase.importSchema(fqn);
+        setJsonSchema(schema);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

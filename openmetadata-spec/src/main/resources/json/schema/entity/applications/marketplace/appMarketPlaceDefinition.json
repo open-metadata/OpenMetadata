@@ -126,7 +126,7 @@
     "appScreenshots": {
       "description": "Application Screenshots.",
       "type": "array",
-      "items":{
+      "items": {
         "type": "string"
       },
       "uniqueItems": true
@@ -140,6 +140,10 @@
       "type": "boolean",
       "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
       "default": false
+    },
+    "configSchema": {
+      "description": "Configuration Schema for the application.",
+      "$ref": "../type.json#/definitions/appConfigSchema"
     }
   },
   "additionalProperties": false,

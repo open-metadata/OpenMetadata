@@ -1,0 +1,14 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/type.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AppConfigSchema",
+  "description": "This schema defines basic common types that are used by other schemas.",
+  "definitions": {
+    "appConfigSchema": {
+      "description": "key/value pairs to pass to workflow component.",
+      "javaType": "org.openmetadata.schema.type.AppConfigSchema",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

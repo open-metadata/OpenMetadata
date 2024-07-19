@@ -18,6 +18,9 @@
         },
         {
           "$ref": "internal/searchIndexingAppConfig.json"
+        },
+        {
+          "$ref": "external/communityAppConfig.json"
         }
       ]
     },
