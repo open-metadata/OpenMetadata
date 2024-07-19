@@ -196,8 +196,8 @@ Find more information about the [Role Session Name](https://docs.aws.amazon.com/
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
 
-- **S3 Staging Directory (optional)**: The S3 staging directory is an optional parameter. Enter a staging directory to override the default staging directory for AWS Athena.
-- **Athena Workgroup (optional)**: The Athena workgroup is an optional parameter. If you wish to have your Athena connection related to an existing AWS workgroup add your workgroup name here.
+- **S3 Staging Directory**: The S3 staging directory is an optional parameter. Enter a staging directory to override the default staging directory for AWS Athena.
+- **Athena Workgroup**: The Athena workgroup is an optional parameter. If you wish to have your Athena connection related to an existing AWS workgroup add your workgroup name here.
 
 {% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
 
