@@ -1,9 +1,11 @@
 import logging
 import sys
+from typing import List, Tuple, Type
 
 import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
+from ingestion.src.metadata.ingestion.api.common import Entity
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -171,3 +173,17 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeypatch):
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id",
         override_password(OpenMetadata.get_by_id),
     )
+
+
+@pytest.fixture
+def cleanup_fqns(metadata):
+    fqns: List[Tuple[Type[Entity], str]] = []
+
+    def inner(entity_type: Type[Entity], fqn: str):
+        fqns.append((entity_type, fqn))
+
+    yield inner
+    for etype, fqn in fqns:
+        entity = metadata.get_by_name(etype, fqn, fields=["*"])
+        if entity:
+            metadata.delete(etype, entity.id, recursive=True, hard_delete=True)
