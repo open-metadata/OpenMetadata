@@ -256,6 +256,15 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     def write_override_lineage(
         self, add_lineage: OMetaLineageRequest
     ) -> Either[Dict[str, Any]]:
+        """
+        Writes the override lineage for the given lineage request.
+
+        Args:
+            add_lineage (OMetaLineageRequest): The lineage request containing the override lineage information.
+
+        Returns:
+            Either[Dict[str, Any]]: The result of the dispatch operation.
+        """
         if (
             add_lineage.override_lineage is True
             and add_lineage.lineage_request.edge.lineageDetails
