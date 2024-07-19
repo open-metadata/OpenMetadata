@@ -18,6 +18,9 @@ export type TaskDetails = {
   term: string;
   assignee?: string;
   tag?: string;
+  description?: string;
+  oldDescription?: string;
+  columnName?: string;
 };
 
 const tag = 'PII.None';
@@ -28,7 +31,11 @@ export const createDescriptionTask = async (
   assigneeDisabled?: boolean
 ) => {
   expect(await page.locator('#title').inputValue()).toBe(
-    `Update description for table ${value.term}`
+    `Update description for table ${
+      value.columnName
+        ? `${value.term} columns/${value.columnName}`
+        : value.term
+    }`
   );
 
   if (isUndefined(value.assignee) || assigneeDisabled) {
@@ -62,7 +69,9 @@ export const createDescriptionTask = async (
     await page.click('body');
   }
 
-  await page.locator(descriptionBox).fill('Updated description');
+  await page
+    .locator(descriptionBox)
+    .fill(value.description ?? 'Updated description');
   await page.click('button[type="submit"]');
 
   await toastNotification(page, /Task created successfully./);

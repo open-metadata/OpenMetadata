@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { checkDescriptionInEditModal } from '../../utils/activityFeed';
 import {
   createNewPage,
   redirectToHomePage,
@@ -180,5 +181,69 @@ test.describe('Activity feed', () => {
         page.locator('.right-container [data-testid="feed-replies"]')
       ).toContainText(`Reply message ${i}`);
     }
+  });
+
+  test('Update Description Task on Columns', async ({ page }) => {
+    const firstTaskValue: TaskDetails = {
+      term: entity.entity.name,
+      assignee: `${user.data.firstName}.${user.data.lastName}`,
+      description: 'Column Description 1',
+      columnName: entity.entity.columns[0].name,
+      oldDescription: entity.entity.columns[0].description,
+    };
+    const secondTaskValue: TaskDetails = {
+      ...firstTaskValue,
+      description: 'Column Description 2',
+      columnName: entity.entity.columns[1].name,
+      oldDescription: entity.entity.columns[1].description,
+    };
+    await entity.visitEntityPage(page);
+
+    await page
+      .getByRole('cell', { name: 'The ID of the store. This' })
+      .getByTestId('task-element')
+      .click();
+
+    // create description task
+    await createDescriptionTask(page, secondTaskValue);
+
+    await page.getByTestId('schema').click();
+
+    // create 2nd task for column description
+    await page
+      .getByRole('cell', { name: 'Unique identifier for the' })
+      .getByTestId('task-element')
+      .click();
+
+    await createDescriptionTask(page, firstTaskValue);
+
+    // Task 1 - check the description in edit and accept suggestion
+    await checkDescriptionInEditModal(page, firstTaskValue);
+
+    await page.getByText('Cancel').click();
+
+    await page.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'detached',
+    });
+
+    // Task 2 - check the description in edit and accept suggestion
+
+    await page.getByTestId('message-container').last().click();
+
+    await checkDescriptionInEditModal(page, secondTaskValue);
+
+    await page.getByText('OK').click();
+
+    await toastNotification(page, /Task resolved successfully/);
+
+    // Task 1 - Resolved the task
+
+    await page.getByText('Accept Suggestion').click();
+
+    await toastNotification(page, /Task resolved successfully/);
+
+    const closedTask = await page.getByTestId('closed-task').textContent();
+
+    expect(closedTask).toContain('2 Closed');
   });
 });
