@@ -2008,6 +2008,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNull(doc.get("changeDescription"));
     List<Map<String, Object>> testSuites = (List<Map<String, Object>>) doc.get("testSuites");
     assertNull(testSuites.get(0).get("changeDescription"));
+
+    // Remove changeDescription logic handles null testSuites
+    testCase.setTestSuites(null);
+    doc = JsonUtils.convertValue(testCase, Map.class);
+    testCaseIndex = new TestCaseIndex(testCase);
+    testCaseIndex.removeNonIndexableFields(doc);
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
