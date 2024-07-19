@@ -92,6 +92,7 @@ import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
+import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
@@ -210,6 +211,7 @@ export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
+export const REST_SERVICE = restService;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,

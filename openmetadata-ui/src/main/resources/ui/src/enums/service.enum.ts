@@ -15,6 +15,7 @@ import { DashboardServiceType } from '../generated/entity/data/dashboard';
 import { DatabaseServiceType } from '../generated/entity/data/database';
 import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { MessagingServiceType } from '../generated/entity/data/topic';
+import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../generated/entity/services/searchService';
@@ -88,4 +89,8 @@ export type MetadataServiceTypeSmallCaseType = {
 
 export type SearchServiceTypeSmallCaseType = {
   [K in keyof typeof SearchServiceType]: Lowercase<typeof SearchServiceType[K]>;
+};
+
+export type ApiServiceTypeSmallCaseType = {
+  [K in keyof typeof APIServiceType]: Lowercase<typeof APIServiceType[K]>;
 };

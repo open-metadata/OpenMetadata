@@ -74,6 +74,7 @@ import {
   REDASH,
   REDPANDA,
   REDSHIFT,
+  REST_SERVICE,
   SAGEMAKER,
   SALESFORCE,
   SAP_ERP,
@@ -96,6 +97,7 @@ import {
 import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
+  ApiServiceTypeSmallCaseType,
   DashboardServiceTypeSmallCaseType,
   DatabaseServiceTypeSmallCaseType,
   MessagingServiceTypeSmallCaseType,
@@ -174,6 +176,11 @@ class ServiceUtilClassBase {
     { [k: string]: string },
     SearchServiceTypeSmallCaseType
   >(SearchServiceType);
+
+  ApiServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    ApiServiceTypeSmallCaseType
+  >(APIServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -451,6 +458,9 @@ class ServiceUtilClassBase {
       case this.SearchServiceTypeSmallCase.OpenSearch:
         return OPEN_SEARCH;
 
+      case this.ApiServiceTypeSmallCase.REST:
+        return REST_SERVICE;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -489,6 +499,7 @@ class ServiceUtilClassBase {
     const mlmodel = this.MlModelServiceTypeSmallCase;
     const storage = this.StorageServiceTypeSmallCase;
     const search = this.SearchServiceTypeSmallCase;
+    const api = this.ApiServiceTypeSmallCase;
 
     switch (true) {
       case Object.values(database).includes(
@@ -519,6 +530,11 @@ class ServiceUtilClassBase {
         serviceType as typeof search[keyof typeof search]
       ):
         return ExplorePageTabs.SEARCH_INDEX;
+
+      case Object.values(api).includes(
+        serviceType as typeof api[keyof typeof api]
+      ):
+        return ExplorePageTabs.API_ENDPOINT;
 
       default:
         return ExplorePageTabs.TABLES;
