@@ -77,11 +77,7 @@ import {
 } from '../rest/DataInsightAPI';
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
-import {
-  customFormatDateTime,
-  formatDate,
-  formatDateTime,
-} from './date-time/DateTimeUtils';
+import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
 
 const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
   [
@@ -749,7 +745,7 @@ export const renderDataInsightLineChart = (
       <XAxis
         allowDuplicatedCategory={false}
         dataKey="day"
-        tickFormatter={formatDateTime}
+        tickFormatter={formatDate}
         type="category"
       />
       <YAxis
