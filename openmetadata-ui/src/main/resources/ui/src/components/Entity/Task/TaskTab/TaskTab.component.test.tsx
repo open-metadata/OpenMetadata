@@ -19,6 +19,7 @@ import { useAuth } from '../../../../hooks/authHooks';
 import {
   MOCK_TASK,
   MOCK_TASK_2,
+  MOCK_TASK_3,
   TASK_COLUMNS,
   TASK_FEED,
 } from '../../../../mocks/Task.mock';
@@ -246,7 +247,7 @@ describe('Test TaskFeedCard component', () => {
     expect(screen.queryByText('label.close')).not.toBeInTheDocument();
   });
 
-  it('should render close button with add tag if task created with no tags', async () => {
+  it('should render dropdown button with add and close tag if task created with no tags', async () => {
     render(
       <TaskTab
         {...mockProps}
@@ -257,8 +258,26 @@ describe('Test TaskFeedCard component', () => {
       }
     );
 
-    expect(screen.getByText('label.close')).toBeInTheDocument();
+    expect(screen.getByTestId('add-close-task-dropdown')).toBeInTheDocument();
     expect(screen.getByText('label.add-entity')).toBeInTheDocument();
+    expect(screen.getByText('label.comment')).toBeInTheDocument();
+  });
+
+  it('should render dropdown button with resolve and reject tag if task is Glossary approval', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, task: MOCK_TASK_3 }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(
+      screen.getByTestId('glossary-accept-reject-task-dropdown')
+    ).toBeInTheDocument();
+    expect(screen.getByText('label.approve')).toBeInTheDocument();
     expect(screen.getByText('label.comment')).toBeInTheDocument();
   });
 });

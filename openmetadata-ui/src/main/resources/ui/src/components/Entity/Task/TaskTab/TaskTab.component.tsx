@@ -46,6 +46,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as EditColored } from '../../../../assets/svg/edit-colored.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
@@ -89,9 +90,11 @@ import {
   fetchOptions,
   generateOptions,
   getTaskDetailPath,
+  GLOSSARY_TASK_ACTION_LIST,
   INCIDENT_TASK_ACTION_LIST,
   isDescriptionTask,
   isTagsTask,
+  TASK_ACTION_COMMON_ITEM,
   TASK_ACTION_LIST,
 } from '../../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -148,8 +151,54 @@ export const TaskTab = ({
     initialAssignees: usersList,
   } = useActivityFeedProvider();
 
+  const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
+
+  const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
+
+  const showAddSuggestionButton = useMemo(() => {
+    const taskType = taskDetails?.type ?? ('' as TaskType);
+    const parsedSuggestion = [
+      TaskType.UpdateDescription,
+      TaskType.RequestDescription,
+    ].includes(taskType)
+      ? taskDetails?.suggestion
+      : JSON.parse(taskDetails?.suggestion || '[]');
+
+    return (
+      [TaskType.RequestTag, TaskType.RequestDescription].includes(taskType) &&
+      isEmpty(parsedSuggestion)
+    );
+  }, [taskDetails]);
+
+  const noSuggestionTaskMenuOptions = useMemo(() => {
+    let label;
+
+    if (taskThread.task?.newValue) {
+      label = t('label.add-suggestion');
+    } else if (isTaskTags) {
+      label = t('label.add-entity', {
+        entity: t('label.tag-plural'),
+      });
+    } else {
+      label = t('label.add-entity', {
+        entity: t('label.description'),
+      });
+    }
+
+    return [
+      {
+        label,
+        key: TaskActionMode.EDIT,
+        icon: EditColored,
+      },
+      ...TASK_ACTION_COMMON_ITEM,
+    ];
+  }, [isTaskTags, taskThread.task?.newValue]);
+
   const isTaskTestCaseResult =
     taskDetails?.type === TaskType.RequestTestCaseFailureResolution;
+
+  const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
 
   const latestAction = useMemo(() => {
     const resolutionStatus = last(testCaseResolutionStatus);
@@ -162,10 +211,20 @@ export const TaskTab = ({
         default:
           return INCIDENT_TASK_ACTION_LIST[0];
       }
+    } else if (isTaskGlossaryApproval) {
+      return GLOSSARY_TASK_ACTION_LIST[0];
+    } else if (showAddSuggestionButton) {
+      return noSuggestionTaskMenuOptions[0];
     } else {
       return TASK_ACTION_LIST[0];
     }
-  }, [testCaseResolutionStatus, isTaskTestCaseResult]);
+  }, [
+    showAddSuggestionButton,
+    testCaseResolutionStatus,
+    isTaskGlossaryApproval,
+    isTaskTestCaseResult,
+    noSuggestionTaskMenuOptions,
+  ]);
 
   const [taskAction, setTaskAction] = useState<TaskAction>(latestAction);
   const [isActionLoading, setIsActionLoading] = useState(false);
@@ -217,11 +276,12 @@ export const TaskTab = ({
     assignee.type === 'team' ? checkIfUserPartOfTeam(assignee.id) : false
   );
 
-  const isTaskDescription = isDescriptionTask(taskDetails?.type as TaskType);
-
-  const isTaskTags = isTagsTask(taskDetails?.type as TaskType);
-
-  const isTaskGlossaryApproval = taskDetails?.type === TaskType.RequestApproval;
+  const getFormattedMenuOptions = (options: TaskAction[]) => {
+    return options.map((item) => ({
+      ...item,
+      icon: <Icon component={item.icon} style={{ fontSize: '16px' }} />,
+    }));
+  };
 
   const handleTaskLinkClick = () => {
     history.push({
@@ -469,11 +529,40 @@ export const TaskTab = ({
     }
   };
 
-  const onTaskDropdownClick = () => {
+  const onTestCaseTaskDropdownClick = () => {
     if (taskAction.key === TaskActionMode.RESOLVE) {
       setShowEditTaskModel(true);
     } else {
       handleTaskMenuClick({ key: taskAction.key } as MenuInfo);
+    }
+  };
+
+  const handleGlossaryTaskMenuClick = (info: MenuInfo) => {
+    setTaskAction(
+      GLOSSARY_TASK_ACTION_LIST.find((action) => action.key === info.key) ??
+        GLOSSARY_TASK_ACTION_LIST[0]
+    );
+    switch (info.key) {
+      case TaskActionMode.RESOLVE:
+        onTaskResolve();
+
+        break;
+
+      case TaskActionMode.CLOSE:
+        onTaskReject();
+
+        break;
+    }
+  };
+
+  const onTaskDropdownClick = () => {
+    if (
+      taskAction.key === TaskActionMode.RESOLVE ||
+      taskAction.key === TaskActionMode.EDIT
+    ) {
+      handleMenuItemClick({ key: taskAction.key } as MenuInfo);
+    } else {
+      onTaskReject();
     }
   };
 
@@ -488,14 +577,6 @@ export const TaskTab = ({
       </Button>
     );
   }, [comment, onSave]);
-
-  const renderCloseButton = useMemo(() => {
-    return (
-      <Button data-testid="close-button" onClick={onTaskReject}>
-        {t('label.close')}
-      </Button>
-    );
-  }, [onTaskReject]);
 
   const approvalWorkflowActions = useMemo(() => {
     const hasApprovalAccess =
@@ -512,38 +593,34 @@ export const TaskTab = ({
               ? t('message.only-reviewers-can-approve-or-reject')
               : ''
           }>
-          <Button
-            data-testid="reject-task"
+          <Dropdown.Button
+            className="task-action-button"
+            data-testid="glossary-accept-reject-task-dropdown"
             disabled={!hasApprovalAccess}
-            onClick={onTaskReject}>
-            {t('label.reject')}
-          </Button>
-        </Tooltip>
-
-        <Tooltip
-          title={
-            !hasApprovalAccess
-              ? t('message.only-reviewers-can-approve-or-reject')
-              : ''
-          }>
-          <Button
-            data-testid="approve-task"
-            disabled={!hasApprovalAccess}
-            type="primary"
-            onClick={onTaskResolve}>
-            {t('label.approve')}
-          </Button>
+            icon={<DownOutlined />}
+            menu={{
+              items: getFormattedMenuOptions(GLOSSARY_TASK_ACTION_LIST),
+              selectable: true,
+              selectedKeys: [taskAction.key],
+              onClick: handleGlossaryTaskMenuClick,
+            }}
+            overlayClassName="task-action-dropdown"
+            onClick={onTaskDropdownClick}>
+            {taskAction.label}
+          </Dropdown.Button>
         </Tooltip>
 
         {renderCommentButton}
       </Space>
     );
   }, [
-    taskDetails,
-    onTaskResolve,
+    taskAction,
     isAssignee,
+    isCreator,
     isPartOfAssigneeTeam,
     renderCommentButton,
+    handleGlossaryTaskMenuClick,
+    onTaskDropdownClick,
   ]);
 
   const testCaseResultFlow = useMemo(() => {
@@ -569,7 +646,7 @@ export const TaskTab = ({
             disabled: !hasApprovalAccess,
           }}
           type="primary"
-          onClick={onTaskDropdownClick}>
+          onClick={onTestCaseTaskDropdownClick}>
           {taskAction.label}
         </Dropdown.Button>
         {renderCommentButton}
@@ -584,8 +661,6 @@ export const TaskTab = ({
   ]);
 
   const actionButtons = useMemo(() => {
-    const taskType = taskDetails?.type ?? '';
-
     if (isTaskGlossaryApproval) {
       return approvalWorkflowActions;
     }
@@ -594,40 +669,34 @@ export const TaskTab = ({
       return testCaseResultFlow;
     }
 
-    const parsedSuggestion = [
-      'RequestDescription',
-      'UpdateDescription',
-    ].includes(taskType)
-      ? taskDetails?.suggestion
-      : JSON.parse(taskDetails?.suggestion || '[]');
-
     return (
       <Space
         className="m-t-sm items-end w-full justify-end"
         data-testid="task-cta-buttons"
         size="small">
-        {isCreator && !hasEditAccess && renderCloseButton}
+        {isCreator && !hasEditAccess && (
+          <Button data-testid="close-button" onClick={onTaskReject}>
+            {t('label.close')}
+          </Button>
+        )}
         {hasEditAccess && (
           <>
-            {['RequestDescription', 'RequestTag'].includes(taskType) &&
-            isEmpty(parsedSuggestion) ? (
+            {showAddSuggestionButton ? (
               <div className="d-flex justify-end gap-2">
-                {renderCloseButton}
-                <Button
-                  type="primary"
-                  onClick={() =>
-                    handleMenuItemClick({
-                      key: TaskActionMode.EDIT,
-                    } as MenuInfo)
-                  }>
-                  {taskThread.task?.newValue
-                    ? t('label.add-suggestion')
-                    : t('label.add-entity', {
-                        entity: isTaskTags
-                          ? t('label.tag-plural')
-                          : t('label.description'),
-                      })}
-                </Button>
+                <Dropdown.Button
+                  className="task-action-button"
+                  data-testid="add-close-task-dropdown"
+                  icon={<DownOutlined />}
+                  menu={{
+                    items: getFormattedMenuOptions(noSuggestionTaskMenuOptions),
+                    selectable: true,
+                    selectedKeys: [taskAction.key],
+                    onClick: handleMenuItemClick,
+                  }}
+                  overlayClassName="task-action-dropdown"
+                  onClick={onTaskDropdownClick}>
+                  {taskAction.label}
+                </Dropdown.Button>
               </div>
             ) : (
               <Dropdown.Button
@@ -635,15 +704,7 @@ export const TaskTab = ({
                 data-testid="edit-accept-task-dropdown"
                 icon={<DownOutlined />}
                 menu={{
-                  items: TASK_ACTION_LIST.map((item) => ({
-                    ...item,
-                    icon: (
-                      <Icon
-                        component={item.icon}
-                        style={{ fontSize: '16px' }}
-                      />
-                    ),
-                  })),
+                  items: getFormattedMenuOptions(TASK_ACTION_LIST),
                   selectable: true,
                   selectedKeys: [taskAction.key],
                   onClick: handleMenuItemClick,
@@ -663,18 +724,19 @@ export const TaskTab = ({
       </Space>
     );
   }, [
+    onTaskReject,
     taskDetails,
     onTaskResolve,
     handleMenuItemClick,
     taskAction,
     isTaskClosed,
     isTaskGlossaryApproval,
+    showAddSuggestionButton,
     isCreator,
     approvalWorkflowActions,
     testCaseResultFlow,
     isTaskTestCaseResult,
     renderCommentButton,
-    renderCloseButton,
   ]);
 
   const initialFormValue = useMemo(() => {

@@ -598,6 +598,14 @@ export const fetchEntityDetail = (
   }
 };
 
+export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
+  {
+    label: i18Next.t('label.close'),
+    key: TaskActionMode.CLOSE,
+    icon: CancelColored,
+  },
+];
+
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
@@ -609,8 +617,17 @@ export const TASK_ACTION_LIST: TaskAction[] = [
     key: TaskActionMode.EDIT,
     icon: EditColored,
   },
+  ...TASK_ACTION_COMMON_ITEM,
+];
+
+export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
   {
-    label: i18Next.t('label.close'),
+    label: i18Next.t('label.approve'),
+    key: TaskActionMode.RESOLVE,
+    icon: SuccessColored,
+  },
+  {
+    label: i18Next.t('label.reject'),
     key: TaskActionMode.CLOSE,
     icon: CancelColored,
   },

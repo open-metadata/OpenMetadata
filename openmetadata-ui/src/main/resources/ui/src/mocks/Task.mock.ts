@@ -319,3 +319,19 @@ export const MOCK_TASK_2 = {
   status: ThreadTaskStatus.Open,
   oldValue: '[]',
 };
+
+export const MOCK_TASK_3 = {
+  id: 1,
+  type: TaskType.RequestApproval,
+  assignees: [
+    {
+      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      type: 'User',
+      name: 'xyz',
+      fullyQualifiedName: 'xyz',
+      deleted: false,
+    },
+  ],
+  status: ThreadTaskStatus.Open,
+  oldValue: '[]',
+};
