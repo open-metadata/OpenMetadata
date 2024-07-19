@@ -186,3 +186,39 @@ $$section
 
 Additional connection arguments such as security or protocol configs that can be sent to service during connection.
 $$
+
+$$section
+### Target Service Account Email $(id="impersonateServiceAccount")
+
+The impersonated service account email.
+$$
+
+$$section
+### Lifetime $(id="lifetime")
+
+Number of seconds the delegated credential should be valid.
+$$
+
+$$section
+### Audience $(id="audience")
+
+Google Security Token Service audience which contains the resource name for the workload identity pool and the provider identifier in that pool.
+$$
+
+$$section
+### Subject Token Type $(id="subjectTokenType")
+
+Google Security Token Service subject token type based on the OAuth 2.0 token exchange spec.
+$$
+
+$$section
+### Token URL $(id="tokenURL")
+
+Google Security Token Service token exchange endpoint.
+$$
+
+$$section
+### Credential Source $(id="credentialSource")
+
+This object defines the mechanism used to retrieve the external credential from the local environment so that it can be exchanged for a GCP access token via the STS endpoint.
+$$
