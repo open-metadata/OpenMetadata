@@ -8,10 +8,8 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.quartz.DateBuilder.MILLISECONDS_IN_DAY;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -26,7 +24,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.kpi.KpiResource;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.JsonUtils;
 
 public class KpiRepository extends EntityRepository<Kpi> {
   private static final String KPI_RESULT_FIELD = "kpiResult";
@@ -100,25 +97,28 @@ public class KpiRepository extends EntityRepository<Kpi> {
     long end = System.currentTimeMillis();
     long start = end - MILLISECONDS_IN_DAY;
 
-
     Kpi kpi = getEntityByName(KPI, fqn, UPDATE_FIELDS, null);
     DataInsightCustomChart dataInsightCustomChart =
-            getEntity(kpi.getDataInsightChart(), null, Include.NON_DELETED);
-    DataInsightCustomChartResultList resultList =
-            null;
+        getEntity(kpi.getDataInsightChart(), null, Include.NON_DELETED);
+    DataInsightCustomChartResultList resultList = null;
     try {
-      resultList = searchRepository
-              .getSearchClient()
-              .buildDIChart(dataInsightCustomChart, start, end);
+      resultList =
+          searchRepository.getSearchClient().buildDIChart(dataInsightCustomChart, start, end);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    if (resultList != null && !resultList.getResults().isEmpty()){
+    if (resultList != null && !resultList.getResults().isEmpty()) {
       DataInsightCustomChartResult result = resultList.getResults().get(0);
-      KpiTarget target = new KpiTarget().withValue(result.getCount().toString()).withTargetMet(result.getCount() >= kpi.getTargetValue());
+      KpiTarget target =
+          new KpiTarget()
+              .withValue(result.getCount().toString())
+              .withTargetMet(result.getCount() >= kpi.getTargetValue());
       List<KpiTarget> targetList = new ArrayList<>();
       targetList.add(target);
-      return new KpiResult().withKpiFqn(kpi.getFullyQualifiedName()).withTimestamp(end).withTargetResult(targetList);
+      return new KpiResult()
+          .withKpiFqn(kpi.getFullyQualifiedName())
+          .withTimestamp(end)
+          .withTargetResult(targetList);
     }
     return null;
   }

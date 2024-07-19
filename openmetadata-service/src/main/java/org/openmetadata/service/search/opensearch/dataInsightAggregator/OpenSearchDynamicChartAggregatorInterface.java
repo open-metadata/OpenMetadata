@@ -236,7 +236,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
   private void addProcessedSubResult(
       ParsedFilter aggregation,
       List<DataInsightCustomChartResult> diChartResults,
-      Double   day,
+      Double day,
       String group) {
     ParsedFilter parsedValueCount = aggregation;
     for (Aggregation agg : parsedValueCount.getAggregations().asList()) {

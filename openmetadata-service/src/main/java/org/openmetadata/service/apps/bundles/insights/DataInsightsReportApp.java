@@ -511,7 +511,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
-      Map<String, Integer> dateMap) throws IOException {
+      Map<String, Integer> dateMap)
+      throws IOException {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;
