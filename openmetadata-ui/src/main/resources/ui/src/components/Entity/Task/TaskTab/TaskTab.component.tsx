@@ -873,6 +873,7 @@ export const TaskTab = ({
       </Col>
       {isTaskTestCaseResult ? (
         <Modal
+          destroyOnClose
           maskClosable
           closable={false}
           closeIcon={null}
@@ -935,6 +936,7 @@ export const TaskTab = ({
         </Modal>
       ) : (
         <Modal
+          destroyOnClose
           maskClosable
           closable={false}
           closeIcon={null}
