@@ -913,25 +913,24 @@ public interface CollectionDAO {
         @Bind("source") String source,
         @Bind("relation") int relation);
 
-
     @ConnectionAwareSqlQuery(
-            value =
-                    "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
-                            + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
-                            + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
-            connectionType = MYSQL)
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+        connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-            value =
-                    "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
-                            + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
-                            + "AND json->>'source' = :source ORDER BY toId",
-            connectionType = POSTGRES)
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "AND json->>'source' = :source ORDER BY toId",
+        connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipObjectMapper.class)
     List<EntityRelationshipObject> findLineageBySourcePipeline(
-            @BindUUID("toId") UUID toId,
-            @Bind("toEntity") String toEntity,
-            @Bind("source") String source,
-            @Bind("relation") int relation);
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("source") String source,
+        @Bind("relation") int relation);
 
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
@@ -1015,22 +1014,22 @@ public interface CollectionDAO {
         @Bind("relation") int relation);
 
     @ConnectionAwareSqlUpdate(
-            value =
-                    "DELETE FROM entity_relationship "
-                            + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
-                            + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
-            connectionType = MYSQL)
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+        connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-            value =
-                    "DELETE FROM entity_relationship "
-                            + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
-                            + "AND json->>'source' = :source ORDER BY toId",
-            connectionType = POSTGRES)
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "AND json->>'source' = :source ORDER BY toId",
+        connectionType = POSTGRES)
     void deleteLineageBySourcePipeline(
-            @BindUUID("toId") UUID toId,
-            @Bind("toEntity") String toEntity,
-            @Bind("source") String source,
-            @Bind("relation") int relation);
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("source") String source,
+        @Bind("relation") int relation);
 
     class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
       @Override

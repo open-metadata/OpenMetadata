@@ -379,21 +379,20 @@ public class LineageRepository {
   @Transaction
   public void deleteLineageBySource(UUID toId, String toEntity, String source) {
     List<CollectionDAO.EntityRelationshipObject> relations;
-    if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())){
+    if (source.equals(LineageDetails.Source.PIPELINE_LINEAGE.value())) {
       relations =
-              dao.relationshipDAO()
-                      .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+          dao.relationshipDAO()
+              .findLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
       // Finally, delete lineage relationship
       dao.relationshipDAO()
-              .deleteLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
-    }
-    else{
+          .deleteLineageBySourcePipeline(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+    } else {
       relations =
-              dao.relationshipDAO()
-                      .findLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+          dao.relationshipDAO()
+              .findLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
       // Finally, delete lineage relationship
       dao.relationshipDAO()
-              .deleteLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
+          .deleteLineageBySource(toId, toEntity, source, Relationship.UPSTREAM.ordinal());
     }
     deleteLineageFromSearch(relations);
   }
