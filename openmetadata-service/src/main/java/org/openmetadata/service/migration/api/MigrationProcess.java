@@ -3,6 +3,7 @@ package org.openmetadata.service.migration.api;
 import java.util.List;
 import java.util.Map;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.context.MigrationOps;
 

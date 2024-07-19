@@ -585,7 +585,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
+            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config.getPipelineServiceClientConfiguration(), force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();

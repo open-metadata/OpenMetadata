@@ -1,6 +1,7 @@
 package org.openmetadata.service.migration.utils.v150;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -14,9 +15,11 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -25,16 +28,27 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
-  public static void deleteLegacyDataInsightPipelines() {
+  public static void deleteLegacyDataInsightPipelines(PipelineServiceClientInterface pipelineServiceClient) {
     // Delete Data Insights Pipeline
-    String dataInsightsPipelineName = "OpenMetadata.OpenMetadata_dataInsight";
+    String dataInsightsPipelineNameFqn = "OpenMetadata.OpenMetadata_dataInsight";
 
-    IngestionPipeline dataInsightsPipeline = Entity.getEntityByName(Entity.INGESTION_PIPELINE, dataInsightsPipelineName, "*", Include.NON_DELETED);
-    EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    Optional<IngestionPipeline> oDataInsightsPipeline = Optional.empty();
+    try {
+      oDataInsightsPipeline = Optional.ofNullable(Entity.getEntityByName(Entity.INGESTION_PIPELINE, dataInsightsPipelineNameFqn, "*", Include.NON_DELETED));
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Pipeline not found.");
+    }
 
-    entityRepository.delete("admin", dataInsightsPipeline.getId(), true, true);
+    if (oDataInsightsPipeline.isPresent()) {
+      IngestionPipeline dataInsightsPipeline = oDataInsightsPipeline.get();
 
-    // TODO: Delete Deployed Pipelines
+      pipelineServiceClient.deletePipeline(dataInsightsPipeline);
+
+      EntityRepository<? extends EntityInterface> entityRepository = Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+      entityRepository.delete("admin", dataInsightsPipeline.getId(), true, true);
+    }
+
+
   }
   public static void migrateTestCaseDimension(Handle handle, CollectionDAO collectionDAO) {
     String MYSQL_TEST_CASE_DIMENSION_QUERY =

@@ -19,6 +19,6 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     migrateTestCaseDimension(handle, collectionDAO);
     createSystemDICharts();
-    deleteLegacyDataInsightPipelines();
+    deleteLegacyDataInsightPipelines(pipelineServiceClient);
   }
 }
