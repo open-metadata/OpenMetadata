@@ -46,10 +46,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ReactComponent as EditColored } from '../../../../assets/svg/edit-colored.svg';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../../assets/svg/ic-open-task.svg';
+import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
 
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { TaskOperation } from '../../../../constants/Feeds.constants';
@@ -189,7 +189,7 @@ export const TaskTab = ({
       {
         label,
         key: TaskActionMode.EDIT,
-        icon: EditColored,
+        icon: AddColored,
       },
       ...TASK_ACTION_COMMON_ITEM,
     ];
