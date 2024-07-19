@@ -50,5 +50,5 @@
     }
   },
   "required": ["id", "eventType", "entityType", "entityId", "timestamp"],
-  "additionalProperties": false
+  "additionalProperties": true
 }
