@@ -166,7 +166,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     csvFile.withRecords(list);
   }
 
-  /** Owner field is in entityType;entityName format */
+  /** Owner field is in entityType:entityName format */
   public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
     if (!processRecord) {
@@ -524,7 +524,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public static String invalidOwner(int field) {
-    String error = "Owner should be of format user;userName or team;teamName";
+    String error = "Owner should be of format user:userName or team:teamName";
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 

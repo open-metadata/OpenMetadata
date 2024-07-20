@@ -21,6 +21,7 @@ import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -260,7 +261,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addField(recordList, termReferencesToRecord(entity.getReferences()));
       addTagLabels(recordList, entity.getTags());
       addField(recordList, reviewerReferencesToRecord(entity.getReviewers()));
-      addField(recordList, reviewerOwnerReferencesToRecord(entity.getOwners()));
+      addOwners(recordList, entity.getOwners());
       addField(recordList, entity.getStatus().value());
       addRecord(csvFile, recordList);
     }

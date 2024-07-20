@@ -523,7 +523,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   // Create request such as CreateTable, CreateChart returned by concrete implementation
   public final K createRequest(TestInfo test) {
     K createRequest = createRequest(getEntityName(test)).withDescription("").withDisplayName(null);
-    createRequest.setOwners(null);
+    createRequest.setOwners(emptyList());
     return createRequest;
   }
 
@@ -3671,7 +3671,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       List<EntityReference> entities) {
     List<EntityReference> reducedEntities = new ArrayList<>();
     for (EntityReference entity : listOrEmpty(entities)) {
-      reducedEntities.add(reduceEntityReference(entity));
+      EntityReference reducedRef = reduceEntityReference(entity);
+      if (reducedRef != null) {
+        reducedEntities.add(reducedRef);
+      }
     }
     return reducedEntities;
   }

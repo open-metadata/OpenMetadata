@@ -71,7 +71,7 @@
     "openMetadataServerConnection": {
       "$ref": "../services/connections/metadata/openMetadataConnection.json"
     },
-    "owner": {
+    "owners": {
       "description": "Owners of this workflow.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null

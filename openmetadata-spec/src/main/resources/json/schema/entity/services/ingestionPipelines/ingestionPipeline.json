@@ -142,8 +142,8 @@
     "pipelineType": {
       "$ref": "#/definitions/pipelineType"
     },
-    "owner": {
-      "description": "Owner of this Pipeline.",
+    "owners": {
+      "description": "Owners of this Pipeline.",
       "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },

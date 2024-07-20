@@ -24,6 +24,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -156,7 +157,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     SearchIndexField addedField = fields.get(2);
     addedField.setFullyQualifiedName(
         searchIndex.getFields().get(0).getFullyQualifiedName() + "." + addedField.getName());
-    fieldUpdated(change, FIELD_OWNERS, USER1_REF, TEAM11_REF);
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     fieldUpdated(change, "description", "", "searchIndex");
     fieldAdded(change, "fields.tableSearchIndex", JsonUtils.pojoToJson(List.of(addedField)));
     updateAndCheckEntity(createSearchIndex, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -221,7 +223,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         searchIndex.getFullyQualifiedName() + "." + addedField.getName());
 
     ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNERS, USER1_REF, TEAM11_REF);
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     fieldAdded(change, "fields", JsonUtils.pojoToJson(List.of(addedField)));
     patchEntityAndCheck(searchIndex, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -344,7 +347,8 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         searchIndex.getFullyQualifiedName() + "." + addedField.getName());
 
     ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNERS, USER1_REF, TEAM11_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
     fieldAdded(change, "fields", JsonUtils.pojoToJson(List.of(addedField)));
     patchEntityUsingFqnAndCheck(searchIndex, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -419,7 +423,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             : getSearchIndex(searchIndex.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(searchIndex.getOwners(), searchIndex.getFollowers(), searchIndex.getFollowers());
 
-    fields = "owner, followers, tags";
+    fields = "owners, followers, tags";
     searchIndex =
         byName
             ? getSearchIndexByName(searchIndex.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

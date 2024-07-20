@@ -803,7 +803,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
 
     // .../models?fields=dataModel - parent,children are not set in createEntity - these are tested
     // separately
-    String fields = "dataModel,owner,tags,followers,extension";
+    String fields = "dataModel,owners,tags,followers,extension";
     container =
         byName
             ? getEntityByName(container.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

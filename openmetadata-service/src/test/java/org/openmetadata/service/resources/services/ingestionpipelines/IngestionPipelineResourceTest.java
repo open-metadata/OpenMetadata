@@ -672,7 +672,7 @@ public class IngestionPipelineResourceTest
     // Add description and tasks
     ChangeDescription change = getChangeDescription(ingestion, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
-    fieldAdded(change, FIELD_OWNERS, USER1_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
     updateAndCheckEntity(
         request.withDescription("newDescription").withOwners(List.of(USER1_REF)),
         OK,
@@ -880,7 +880,7 @@ public class IngestionPipelineResourceTest
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(ingestion.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(ingestion.getService());
-    assertListNull(ingestion.getOwner());
+    assertListNull(ingestion.getOwners());
 
     fields = FIELD_OWNERS;
     ingestion =

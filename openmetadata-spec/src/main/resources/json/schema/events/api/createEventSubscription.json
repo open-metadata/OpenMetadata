@@ -19,8 +19,8 @@
       "description": "A short description of the Alert, comprehensible to regular users.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Alert.",
+    "owners": {
+      "description": "Owners of this Alert.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
