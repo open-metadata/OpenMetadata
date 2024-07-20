@@ -45,25 +45,20 @@ public class DocumentRepository extends EntityRepository<Document> {
     this.dao = Entity.getCollectionDAO().docStoreDAO();
   }
 
-  public List<String> fetchAllEmailTemplatesFromDocStore() {
-    return dao.findEmailTemplatesByPatternAndOptionalNameFromDocStore(
-        DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE, null);
+  public List<Document> fetchAllEmailTemplates() {
+    List<String> jsons = dao.fetchAllEmailTemplates();
+    return jsons.stream().map(json -> JsonUtils.readValue(json, Document.class)).toList();
   }
 
-  public String fetchEmailTemplateFromDocStoreByName(String name) {
-    return dao.findEmailTemplatesByPatternAndOptionalNameFromDocStore(
-            DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE, name)
-        .get(0);
-  }
-
-  @Transaction
-  public void deleteFromDocStoreByEntityType(String entityType) {
-    dao.deleteByEntityType(entityType);
+  public EmailTemplate fetchEmailTemplateByName(String name) {
+    String json = dao.fetchEmailTemplateByName(name);
+    Document document = JsonUtils.readValue(json, Document.class);
+    return JsonUtils.convertValue(document.getData(), EmailTemplate.class);
   }
 
   @Transaction
-  public void deleteFromDocStore() {
-    dao.deleteAll();
+  public void deleteEmailTemplates() {
+    dao.deleteEmailTemplates();
   }
 
   @Override

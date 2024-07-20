@@ -4749,27 +4749,28 @@ public interface CollectionDAO {
         @Bind("after") String after);
 
     @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM doc_store WHERE (:name IS NULL OR name = :name) AND entityType = :pattern",
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM doc_store WHERE (:name IS NULL OR name = :name) AND entityType = :pattern",
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
         connectionType = POSTGRES)
-    List<String> findEmailTemplatesByPatternAndOptionalNameFromDocStore(
-        @Bind("pattern") String pattern, @Bind("name") String name);
+    String fetchEmailTemplateByName(@Bind("name") String name);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    List<String> fetchAllEmailTemplates();
 
     @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM doc_store WHERE entityType = :entityType",
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM doc_store WHERE entityType = :entityType",
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
         connectionType = POSTGRES)
-    void deleteByEntityType(@Bind("entityType") String entityType);
-
-    @ConnectionAwareSqlUpdate(value = "DELETE FROM doc_store", connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(value = "DELETE FROM doc_store", connectionType = POSTGRES)
-    void deleteAll();
+    void deleteEmailTemplates();
   }
 
   interface SuggestionDAO {

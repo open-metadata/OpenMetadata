@@ -468,12 +468,12 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   @POST
-  @Path("/resetSeedData/{entityType}")
+  @Path("/resetEmailTemplate")
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
-      summary = "Reset seed data by entity type",
+      summary = "Reset seed data of EmailTemplate type",
       description =
-          "Deletes seed data of the specified entity type from the document store and reinitializes it from resources.",
+          "Deletes seed data of the EmailTemplate type from the document store and reinitializes it from resources.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -488,16 +488,10 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
             content =
                 @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(type = "string")))
       })
-  public Response resetSeedDataByEntityType(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Entity type of the Document to be reset",
-              schema = @Schema(type = "string"))
-          @PathParam("entityType")
-          String entityType) {
+  public Response resetEmailTemplate(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     try {
-      repository.deleteFromDocStoreByEntityType(entityType);
+      repository.deleteEmailTemplates();
       repository.initSeedDataFromResources();
       return Response.ok("Seed Data init successfully").build();
     } catch (Exception e) {

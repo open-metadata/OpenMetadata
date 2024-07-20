@@ -1,8 +1,5 @@
 package org.openmetadata.service.util;
 
-import static freemarker.template.Configuration.VERSION_2_3_28;
-
-import com.fasterxml.jackson.core.type.TypeReference;
 import freemarker.template.Configuration;
 import freemarker.template.Template;
 import java.io.IOException;
@@ -12,25 +9,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.EmailTemplatePlaceholder;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
-import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DocumentRepository;
-import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public class DefaultTemplateProvider implements TemplateProvider {
-  public static String EMAIL_TEMPLATE_BASEPATH = "/emailTemplates";
-  private static final Configuration templateConfiguration = new Configuration(VERSION_2_3_28);
   private final DocumentRepository documentRepository;
   public static final String EMAIL_TEMPLATE_VALID = "valid";
   public static final String ENTITY_TYPE_EMAIL_TEMPLATE = "EmailTemplate";
@@ -38,34 +28,11 @@ public class DefaultTemplateProvider implements TemplateProvider {
 
   public DefaultTemplateProvider() {
     this.documentRepository = (DocumentRepository) Entity.getEntityRepository(Entity.DOCUMENT);
-    initializeTemplateConfiguration();
-  }
-
-  @Override
-  public void initializeTemplateConfiguration() {
-    String templatePath = getTemplatePath();
-    if (templatePath != null && !templatePath.isBlank()) {
-      EMAIL_TEMPLATE_BASEPATH += "/" + templatePath;
-    }
-
-    templateConfiguration.setClassForTemplateLoading(
-        DefaultTemplateProvider.class, EMAIL_TEMPLATE_BASEPATH);
-  }
-
-  public List<Document> loadEmailTemplatesFromDocStore() {
-    List<String> documents = documentRepository.fetchAllEmailTemplatesFromDocStore();
-    return documents.stream().map(json -> JsonUtils.readValue(json, Document.class)).toList();
   }
 
   @Override
   public Template getTemplate(String templateName) throws IOException {
-    return templateConfiguration.getTemplate(templateName);
-  }
-
-  @Override
-  public Template fetchTemplateFromDocStore(String templateName) throws IOException {
-    Document document = documentRepository.findByName(templateName, Include.NON_DELETED);
-    EmailTemplate emailTemplate = JsonUtils.convertValue(document.getData(), EmailTemplate.class);
+    EmailTemplate emailTemplate = documentRepository.fetchEmailTemplateByName(templateName);
     String template = emailTemplate.getTemplate();
     if (template == null || template.isEmpty()) {
       throw new IOException("Template content not found for template: " + templateName);
@@ -75,22 +42,8 @@ public class DefaultTemplateProvider implements TemplateProvider {
         templateName, new StringReader(template), new Configuration(Configuration.VERSION_2_3_31));
   }
 
-  @Override
-  public Map<String, List<String>> getPlaceholdersForEmailTemplates() {
-    List<Document> listOfDocuments = loadEmailTemplatesFromDocStore();
-
-    return listOfDocuments.stream()
-        .collect(
-            Collectors.toMap(
-                Document::getName,
-                document ->
-                    extractPlaceholders(
-                        JsonUtils.convertValue(document.getData(), EmailTemplate.class)
-                            .getTemplate())));
-  }
-
   public Map<String, List<EmailTemplatePlaceholder>> getPlaceholders() {
-    List<Document> documents = loadEmailTemplatesFromDocStore();
+    List<Document> documents = documentRepository.fetchAllEmailTemplates();
 
     return documents.stream()
         .collect(
@@ -103,19 +56,17 @@ public class DefaultTemplateProvider implements TemplateProvider {
                 }));
   }
 
-  public List<EmailTemplatePlaceholder> getPlaceholdersByDocument(String documentName) {
-    return Optional.ofNullable(
-            documentRepository.fetchEmailTemplateFromDocStoreByName(documentName))
-        .map(json -> JsonUtils.readValue(json, Document.class))
-        .map(
-            document ->
-                JsonUtils.convertValue(document.getData(), EmailTemplate.class).getPlaceHolders())
-        .map(
-            placeholder ->
-                JsonUtils.convertValue(
-                    placeholder, new TypeReference<List<EmailTemplatePlaceholder>>() {}))
-        .orElseThrow(
-            () -> new IllegalArgumentException("Invalid document or placeholders not found"));
+  public Map<String, List<String>> getPlaceholdersFromTemplate() {
+    List<Document> listOfDocuments = documentRepository.fetchAllEmailTemplates();
+
+    return listOfDocuments.stream()
+        .collect(
+            Collectors.toMap(
+                Document::getName,
+                document ->
+                    extractPlaceholders(
+                        JsonUtils.convertValue(document.getData(), EmailTemplate.class)
+                            .getTemplate())));
   }
 
   @Override
@@ -124,8 +75,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
 
     try {
       List<String> expectedPlaceholders =
-          getPlaceholdersForEmailTemplates()
-              .getOrDefault(document.getName(), Collections.emptyList());
+          getPlaceholdersFromTemplate().getOrDefault(document.getName(), Collections.emptyList());
 
       String content =
           JsonUtils.convertValue(document.getData(), EmailTemplate.class).getTemplate();
@@ -159,12 +109,5 @@ public class DefaultTemplateProvider implements TemplateProvider {
       placeholders.add(matcher.group(1));
     }
     return placeholders;
-  }
-
-  public static String getTemplatePath() {
-    SmtpSettings emailConfig =
-        SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
-
-    return emailConfig.getTemplatePath();
   }
 }
