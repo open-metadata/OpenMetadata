@@ -3688,8 +3688,9 @@ public interface CollectionDAO {
 
       if (supportedDataType != null) {
         filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
-        mysqlCondition.append("AND supported_data_types LIKE :supportedDataTypeLike");
-        psqlCondition.append("AND supported_data_types @> :supportedDataTypeLike ");
+        mysqlCondition.append(
+            "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
+        psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
       return listBefore(
@@ -3731,8 +3732,9 @@ public interface CollectionDAO {
 
       if (supportedDataType != null) {
         filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
-        mysqlCondition.append("AND supported_data_types LIKE :supportedDataTypeLike");
-        psqlCondition.append("AND supported_data_types @> :supportedDataTypeLike ");
+        mysqlCondition.append(
+            "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
+        psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
 
       return listAfter(
@@ -3774,8 +3776,9 @@ public interface CollectionDAO {
 
       if (supportedDataType != null) {
         filter.queryParams.put("supportedDataTypeLike", String.format("%%%s%%", supportedDataType));
-        mysqlCondition.append("AND supported_data_types LIKE :supportedDataTypeLike");
-        psqlCondition.append("AND supported_data_types @> :supportedDataTypeLike ");
+        mysqlCondition.append(
+            "AND json_extract(json, '$.supportedDataTypes') LIKE :supportedDataTypeLike ");
+        psqlCondition.append("AND json->>'supportedDataTypes' LIKE :supportedDataTypeLike ");
       }
       return listCount(
           getTableName(),

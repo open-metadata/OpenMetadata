@@ -34,6 +34,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.RefreshToken;
@@ -254,31 +255,18 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   private User getUserForLdap(String email) {
     String userName = email.split("@")[0];
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(userName)
-        .withFullyQualifiedName(userName)
-        .withEmail(email)
-        .withIsBot(false)
-        .withUpdatedBy(userName)
-        .withUpdatedAt(System.currentTimeMillis())
+    return UserUtil.getUser(
+            userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
         .withIsEmailVerified(false)
         .withAuthenticationMechanism(null);
   }
 
   private User getUserForLdap(String email, String userName, String userDn) {
     User user =
-        new User()
-            .withId(UUID.randomUUID())
-            .withName(userName)
-            .withFullyQualifiedName(userName)
-            .withEmail(email)
-            .withIsBot(false)
-            .withUpdatedBy(userName)
-            .withUpdatedAt(System.currentTimeMillis())
+        UserUtil.getUser(
+                userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
             .withIsEmailVerified(false)
             .withAuthenticationMechanism(null);
-
     try {
       getRoleForLdap(user, userDn, false);
     } catch (LDAPException | JsonProcessingException e) {
