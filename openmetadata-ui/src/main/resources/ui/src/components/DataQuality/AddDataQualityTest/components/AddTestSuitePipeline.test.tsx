@@ -18,9 +18,7 @@ const mockUseHistory = {
   goBack: jest.fn(),
 };
 jest.mock('../../../../hooks/useFqn', () => ({
-  useFqn: jest
-    .fn()
-    .mockReturnValue({ fqn: 'test-suite-fqn', ingestionFQN: 'ingestionFQN' }),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'test-suite-fqn' }),
 }));
 jest.mock('../../AddTestCaseList/AddTestCaseList.component', () => ({
   AddTestCaseList: jest
@@ -34,6 +32,7 @@ jest.mock('react-router-dom', () => ({
 const mockProps: AddTestSuitePipelineProps = {
   isLoading: false,
   onSubmit: jest.fn(),
+  showAddTestCase: true,
 };
 
 describe('AddTestSuitePipeline', () => {
@@ -158,15 +157,8 @@ describe('AddTestSuitePipeline', () => {
     });
   });
 
-  it('does not render add test case container if useFqn does not have value for ingestionFQN', () => {
-    jest.mock('../../../../hooks/useFqn', () => ({
-      useFqn: jest.fn().mockReturnValueOnce({
-        fqn: 'test-suite-fqn',
-        ingestionFQN: undefined,
-      }),
-    }));
-
-    render(<AddTestSuitePipeline {...mockProps} />);
+  it('does not render add test case container if showAddTestCase is false', () => {
+    render(<AddTestSuitePipeline {...mockProps} showAddTestCase={false} />);
 
     // Assert that add-test-case-container is not rendered
     expect(screen.queryByTestId('add-test-case-container')).toBeNull();

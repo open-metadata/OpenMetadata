@@ -39,6 +39,7 @@ export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
   ingestionPipeline?: IngestionPipeline;
   onCancel?: () => void;
+  showAddTestCase?: boolean;
 }
 
 export type TestSuiteIngestionDataType = {
@@ -68,6 +69,7 @@ export interface AddTestSuitePipelineProps {
   onSubmit: (data: TestSuiteIngestionDataType) => void;
   includePeriodOptions?: string[];
   onCancel?: () => void;
+  showAddTestCase?: boolean;
 }
 
 export interface RightPanelProps {

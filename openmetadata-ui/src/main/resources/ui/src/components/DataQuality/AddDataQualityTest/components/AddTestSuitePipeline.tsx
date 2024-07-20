@@ -33,10 +33,11 @@ const AddTestSuitePipeline = ({
   onSubmit,
   onCancel,
   includePeriodOptions,
+  showAddTestCase = false,
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn: testSuiteFQN, ingestionFQN } = useFqn();
+  const { fqn: testSuiteFQN } = useFqn();
   const [form] = Form.useForm();
   const selectTestCase = Form.useWatch('selectTestCase', form);
 
@@ -124,7 +125,7 @@ const AddTestSuitePipeline = ({
       onFinish={onFinish}
       onValuesChange={onValuesChange}>
       {generateFormFields(formFields)}
-      {ingestionFQN && (
+      {showAddTestCase && (
         <Row className="add-test-case-container" gutter={[0, 16]}>
           <Col span={24}>{generateFormFields(testCaseFormFields)}</Col>
           {selectTestCase && (

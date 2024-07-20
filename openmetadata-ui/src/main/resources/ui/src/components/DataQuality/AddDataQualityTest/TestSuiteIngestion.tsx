@@ -64,6 +64,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   ingestionPipeline,
   testSuite,
   onCancel,
+  showAddTestCase = false,
 }) => {
   const { ingestionFQN } = useFqn();
   const history = useHistory();
@@ -297,6 +298,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             includePeriodOptions={schedulerOptions}
             initialData={initialFormData}
             isLoading={isLoading}
+            showAddTestCase={showAddTestCase}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />
