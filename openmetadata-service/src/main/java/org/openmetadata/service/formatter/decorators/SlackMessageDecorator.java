@@ -66,13 +66,13 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
-  public SlackMessage buildEntityMessage(ChangeEvent event) {
-    return getSlackMessage(createEntityMessage(event));
+  public SlackMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getSlackMessage(createEntityMessage(publisherName, event));
   }
 
   @Override
-  public SlackMessage buildThreadMessage(ChangeEvent event) {
-    return getSlackMessage(createThreadMessage(event));
+  public SlackMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getSlackMessage(createThreadMessage(publisherName, event));
   }
 
   private SlackMessage getSlackMessage(OutgoingMessage outgoingMessage) {

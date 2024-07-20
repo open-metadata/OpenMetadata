@@ -64,13 +64,13 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public EmailMessage buildEntityMessage(ChangeEvent event) {
-    return getEmailMessage(createEntityMessage(event));
+  public EmailMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getEmailMessage(createEntityMessage(publisherName, event));
   }
 
   @Override
-  public EmailMessage buildThreadMessage(ChangeEvent event) {
-    return getEmailMessage(createThreadMessage(event));
+  public EmailMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getEmailMessage(createThreadMessage(publisherName, event));
   }
 
   public EmailMessage getEmailMessage(OutgoingMessage outgoingMessage) {
