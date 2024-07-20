@@ -1644,7 +1644,11 @@ public class EventSubscriptionResourceTest
   private String buildExpectedTextFormatSlack(EventSubscription alert) {
     String updatedBy = alert.getUpdatedBy();
     return String.format(
-        "%s posted on " + Entity.EVENT_SUBSCRIPTION + " %s", updatedBy, getEntityUrlSlack(alert));
+        "[%s] %s posted on %s %s",
+        alert.getFullyQualifiedName(),
+        updatedBy,
+        Entity.EVENT_SUBSCRIPTION,
+        getEntityUrlSlack(alert));
   }
 
   private String getEntityUrlSlack(EventSubscription alert) {
@@ -1692,8 +1696,12 @@ public class EventSubscriptionResourceTest
   private String buildExpectedActivityTitleTextFormatMSTeams(EventSubscription alert) {
     String updatedBy = alert.getUpdatedBy();
     return String.format(
-        "%s posted on %s [\"%s\"](/%s)",
-        updatedBy, Entity.EVENT_SUBSCRIPTION, alert.getName(), getEntityUrlMSTeams());
+        "[%s] %s posted on %s [\"%s\"](/%s)",
+        alert.getFullyQualifiedName(),
+        updatedBy,
+        Entity.EVENT_SUBSCRIPTION,
+        alert.getName(),
+        getEntityUrlMSTeams());
   }
 
   private String getEntityUrlMSTeams() {
