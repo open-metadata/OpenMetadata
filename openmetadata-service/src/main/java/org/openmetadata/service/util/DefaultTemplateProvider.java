@@ -17,6 +17,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.EmailTemplatePlaceholder;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -64,7 +65,8 @@ public class DefaultTemplateProvider implements TemplateProvider {
   @Override
   public Template fetchTemplateFromDocStore(String templateName) throws IOException {
     Document document = documentRepository.findByName(templateName, Include.NON_DELETED);
-    String template = (String) document.getData().getEmailTemplate().getTemplate();
+    EmailTemplate emailTemplate = JsonUtils.convertValue(document.getData(), EmailTemplate.class);
+    String template = emailTemplate.getTemplate();
     if (template == null || template.isEmpty()) {
       throw new IOException("Template content not found for template: " + templateName);
     }
@@ -83,7 +85,8 @@ public class DefaultTemplateProvider implements TemplateProvider {
                 Document::getName,
                 document ->
                     extractPlaceholders(
-                        (String) document.getData().getEmailTemplate().getTemplate())));
+                        JsonUtils.convertValue(document.getData(), EmailTemplate.class)
+                            .getTemplate())));
   }
 
   public Map<String, List<EmailTemplatePlaceholder>> getPlaceholders() {
@@ -94,11 +97,9 @@ public class DefaultTemplateProvider implements TemplateProvider {
             Collectors.toMap(
                 Document::getName,
                 document -> {
-                  Object placeholder = document.getData().getEmailTemplate().getPlaceHolders();
-                  return placeholder != null
-                      ? JsonUtils.convertValue(
-                          placeholder, new TypeReference<List<EmailTemplatePlaceholder>>() {})
-                      : Collections.emptyList();
+                  EmailTemplate emailTemplate =
+                      JsonUtils.convertValue(document.getData(), EmailTemplate.class);
+                  return emailTemplate.getPlaceHolders();
                 }));
   }
 
@@ -106,7 +107,9 @@ public class DefaultTemplateProvider implements TemplateProvider {
     return Optional.ofNullable(
             documentRepository.fetchEmailTemplateFromDocStoreByName(documentName))
         .map(json -> JsonUtils.readValue(json, Document.class))
-        .map(document -> document.getData().getEmailTemplate().getPlaceHolders())
+        .map(
+            document ->
+                JsonUtils.convertValue(document.getData(), EmailTemplate.class).getPlaceHolders())
         .map(
             placeholder ->
                 JsonUtils.convertValue(
@@ -124,7 +127,8 @@ public class DefaultTemplateProvider implements TemplateProvider {
           getPlaceholdersForEmailTemplates()
               .getOrDefault(document.getName(), Collections.emptyList());
 
-      String content = (String) document.getData().getEmailTemplate().getTemplate();
+      String content =
+          JsonUtils.convertValue(document.getData(), EmailTemplate.class).getTemplate();
       List<String> presentPlaceholders = extractPlaceholders(content);
 
       List<String> missingPlaceholders =

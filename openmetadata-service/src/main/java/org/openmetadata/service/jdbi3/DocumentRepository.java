@@ -15,11 +15,11 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DOCUMENT;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.email.EmailTemplatePlaceholder;
+import org.openmetadata.schema.email.EmailTemplate;
+import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
@@ -110,16 +110,19 @@ public class DocumentRepository extends EntityRepository<Document> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
-      if (updated.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
-        Object originalPlaceHolders = original.getData().getEmailTemplate().getPlaceHolders();
+      updateEmailTemplatePlaceholders(original, updated);
+      recordChange("data", original, updated, true);
+    }
+  }
 
-        List<EmailTemplatePlaceholder> emailTemplatePlaceholders =
-            JsonUtils.convertValue(
-                originalPlaceHolders, new TypeReference<List<EmailTemplatePlaceholder>>() {});
-
-        updated.getData().getEmailTemplate().setPlaceHolders(emailTemplatePlaceholders);
-        recordChange("data", original, updated, true);
-      }
+  public void updateEmailTemplatePlaceholders(Document original, Document updated) {
+    if (updated.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      EmailTemplate originalTemplate =
+          JsonUtils.convertValue(original.getData(), EmailTemplate.class);
+      EmailTemplate updatedTemplate =
+          JsonUtils.convertValue(updated.getData(), EmailTemplate.class);
+      updatedTemplate.setPlaceHolders(originalTemplate.getPlaceHolders());
+      updated.setData(JsonUtils.convertValue(updatedTemplate, Data.class));
     }
   }
 }

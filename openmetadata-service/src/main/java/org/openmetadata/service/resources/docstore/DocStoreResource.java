@@ -468,41 +468,6 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   }
 
   @POST
-  @Path("/resetSeedData")
-  @Produces(MediaType.APPLICATION_JSON)
-  @Operation(
-      summary = "Reset all seed data",
-      description =
-          "Deletes all seed data from the document store and reinitializes it from resources.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Seed Data init successfully",
-            content =
-                @Content(
-                    mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(type = "string"))),
-        @ApiResponse(
-            responseCode = "400",
-            description = "Seed Data init failed",
-            content =
-                @Content(mediaType = MediaType.APPLICATION_JSON, schema = @Schema(type = "string")))
-      })
-  public Response resetSeedData(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    try {
-      repository.deleteFromDocStore();
-      repository.initSeedDataFromResources();
-      return Response.ok("Seed Data init successfully").build();
-    } catch (Exception e) {
-      LOG.error(e.getMessage());
-      return Response.status(Response.Status.BAD_REQUEST)
-          .entity("Seed Data init failed: " + e.getMessage())
-          .build();
-    }
-  }
-
-  @POST
   @Path("/resetSeedData/{entityType}")
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
