@@ -68,7 +68,7 @@ public class EmailUtil {
   public static final String ACTION_STATUS_KEY = "actionStatus";
   public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change";
   private static final String INVITE_SUBJECT = "Welcome to %s";
-  private static final String CHANGE_EVENT_UPDATE = "Change Event Update from %s";
+  private static final String CHANGE_EVENT_UPDATE = "[%s] - Change Event Update from %s";
 
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
   public static final String INVITE_RANDOM_PWD = "invite-randompwd";
@@ -291,7 +291,8 @@ public class EmailUtil {
     }
   }
 
-  public static void sendChangeEventMail(String receiverMail, EmailMessage emailMessaged) {
+  public static void sendChangeEventMail(
+      String publisherName, String receiverMail, EmailMessage emailMessaged) {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       Map<String, Object> templatePopulator = new HashMap<>();
       templatePopulator.put(EmailUtil.USERNAME, receiverMail.split("@")[0]);
@@ -305,7 +306,7 @@ public class EmailUtil {
       templatePopulator.put("changeMessage", buff.toString());
       try {
         EmailUtil.sendMail(
-            EmailUtil.getChangeEventTemplate(),
+            EmailUtil.getChangeEventTemplate(publisherName),
             templatePopulator,
             receiverMail,
             EmailUtil.CHANGE_EVENT_TEMPLATE,
@@ -384,8 +385,8 @@ public class EmailUtil {
     return String.format(INVITE_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
-  public static String getChangeEventTemplate() {
-    return String.format(CHANGE_EVENT_UPDATE, getSmtpSettings().getEmailingEntity());
+  public static String getChangeEventTemplate(String publisherName) {
+    return String.format(CHANGE_EVENT_UPDATE, publisherName, getSmtpSettings().getEmailingEntity());
   }
 
   public static String getTaskAssignmentSubject() {
