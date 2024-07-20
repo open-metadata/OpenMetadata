@@ -11,6 +11,21 @@
         }
       },
       "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
+        }
       },
       "filter": {
         "om_stemmer": {
@@ -42,10 +57,13 @@
         "type": "keyword"
       },
       "displayName": {
-        "type": "keyword",
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           }
         }
@@ -64,10 +82,19 @@
         "type": "text"
       },
       "email": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "isAdmin": {
-        "type": "text"
+        "type": "boolean"
+      },
+      "isBot": {
+        "type": "boolean"
       },
       "domain" : {
         "properties": {

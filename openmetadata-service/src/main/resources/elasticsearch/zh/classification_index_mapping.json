@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -41,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -59,6 +71,10 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -77,6 +93,7 @@
       },
       "description": {
         "type": "text",
+        "index_options": "docs",
         "analyzer": "ik_max_word",
         "search_analyzer": "ik_smart"
       },
@@ -103,4 +120,4 @@
       }
     }
   }
-}
+  }

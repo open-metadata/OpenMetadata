@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -68,17 +76,8 @@
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
-      },
-      "version": {
-        "type": "float"
-      },
-      "updatedAt": {
-        "type": "date",
-        "format": "epoch_second"
-      },
-      "updatedBy": {
-        "type": "text"
+        "search_analyzer": "ik_smart",
+        "index_options": "docs"
       },
       "entityType": {
         "type": "keyword"
@@ -92,6 +91,16 @@
             "path": "deleted"
           }
         ]
+      },
+      "version": {
+        "type": "float"
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "updatedBy": {
+        "type": "text"
       },
       "pipelines": {
         "properties": {

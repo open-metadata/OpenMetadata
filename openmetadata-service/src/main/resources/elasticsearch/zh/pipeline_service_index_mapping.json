@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -54,8 +62,9 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+       "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
+        "index_options": "docs"
       },
       "displayName": {
         "type": "text",
@@ -287,4 +296,5 @@
       }
     }
   }
+
 }

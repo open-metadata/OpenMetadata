@@ -11,6 +11,21 @@
         }
       },
       "analyzer": {
+        "om_analyzer": {
+          "tokenizer": "letter",
+          "filter": [
+            "lowercase",
+            "om_stemmer"
+          ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
+        }
       },
       "filter": {
         "om_stemmer": {
@@ -26,12 +41,18 @@
         "type": "text"
       },
       "name": {
-        "type": "keyword",
+        "type": "text",
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -42,7 +63,7 @@
       "fqnParts": {
         "type": "keyword"
       },
-      "domain" : {
+      "domain": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -65,6 +86,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "keyword"
           },
@@ -82,12 +113,23 @@
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "search_analyzer": "ik_smart",
+        "index_options": "docs"
       },
       "owner": {
         "properties": {
@@ -118,6 +160,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -150,7 +193,13 @@
         "type": "text"
       },
       "synonyms": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "glossary": {
         "properties": {
@@ -167,7 +216,19 @@
             "type": "keyword"
           },
           "name": {
-            "type": "keyword",
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -176,9 +237,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text",
-            "analyzer": "ik_max_word",
-            "search_analyzer": "ik_smart"
+            "type": "text"
           },
           "description": {
             "type": "text",
@@ -217,9 +276,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text",
-            "analyzer": "ik_max_word",
-            "search_analyzer": "ik_smart"
+            "type": "text"
           },
           "description": {
             "type": "text",
@@ -304,9 +361,7 @@
             }
           },
           "fullyQualifiedName": {
-            "type": "text",
-            "analyzer": "ik_max_word",
-            "search_analyzer": "ik_smart"
+            "type": "text"
           },
           "description": {
             "type": "text",
@@ -324,13 +379,11 @@
       "usageCount": {
         "type": "integer"
       },
-      "entityType": {
-        "type": "keyword"
-      },
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -342,8 +395,7 @@
             "type": "keyword"
           },
           "state": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "type": "keyword"
           }
         }
       },
@@ -351,6 +403,10 @@
         "type": "text"
       },
       "status": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "entityType": {
         "type": "keyword"
       },
       "suggest": {
@@ -363,8 +419,17 @@
           }
         ]
       },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
+      },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "childrenCount": {
+        "type": "integer"
       }
     }
   }

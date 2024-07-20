@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -34,13 +42,16 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart",
+        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -50,6 +61,25 @@
       },
       "fqnParts": {
         "type": "keyword"
+      },
+      "displayName": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "om_analyzer",
+        "index_options": "freqs"
       },
       "tier": {
         "properties": {
@@ -73,12 +103,13 @@
       "fields": {
         "properties": {
           "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
+            "type": "text",
+            "analyzer": "om_analyzer",
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "ignore_above": 256
+                "ignore_above": 256,
+                "normalizer": "lowercase_normalizer"
               }
             }
           },
@@ -91,8 +122,7 @@
           "description": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "norms": false
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -100,7 +130,8 @@
           "tags": {
             "properties": {
               "tagFQN": {
-                "type": "keyword"
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"
@@ -163,22 +194,6 @@
           }
         }
       },
-      "displayName": {
-        "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
-      },
-      "description": {
-        "type": "text",
-        "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
-      },
       "version": {
         "type": "float"
       },
@@ -188,6 +203,22 @@
       },
       "updatedBy": {
         "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
+      "lineage": {
+        "type" : "object"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
       },
       "service": {
         "properties": {
@@ -212,6 +243,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "text"
           },
@@ -227,23 +268,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
-      },
-      "entityType": {
-        "type": "keyword"
-      },
-      "lineage": {
-        "type" : "object"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "owner": {
         "properties": {
@@ -274,6 +300,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -320,6 +347,9 @@
       "deleted": {
         "type": "text"
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "domain" : {
         "properties": {
           "id": {
@@ -349,6 +379,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -366,9 +397,6 @@
             "type": "text"
           }
         }
-      },
-      "lifeCycle": {
-        "type": "object"
       },
       "extension": {
         "type": "object"
@@ -419,6 +447,12 @@
             "type": "text"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

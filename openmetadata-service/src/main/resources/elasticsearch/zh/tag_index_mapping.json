@@ -17,6 +17,14 @@
             "lowercase",
             "om_stemmer"
           ]
+        },
+        "om_ngram": {
+          "tokenizer": "ngram",
+          "min_gram": 2,
+          "max_gram": 3,
+          "filter": [
+            "lowercase"
+          ]
         }
       },
       "filter": {
@@ -97,6 +105,12 @@
       "deleted": {
         "type": "text"
       },
+      "disabled": {
+        "type": "text"
+      },
+      "entityType": {
+        "type": "keyword"
+      },
       "classification": {
         "properties": {
           "id": {
@@ -113,10 +127,17 @@
           },
           "name": {
             "type": "text",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart",
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
+              },
+              "ngram": {
+                "type": "text",
+                "analyzer": "om_ngram"
               }
             }
           },
@@ -143,9 +164,6 @@
             "path": "deleted"
           }
         ]
-      },
-      "entityType": {
-        "type": "keyword"
       },
       "descriptionStatus": {
         "type": "keyword"

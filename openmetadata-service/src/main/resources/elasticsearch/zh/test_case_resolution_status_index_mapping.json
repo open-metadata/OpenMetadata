@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "min_gram": 2,
+          "max_gram": 3,
           "filter": [
             "lowercase"
           ]
@@ -132,14 +132,11 @@
                 "testCaseFailureComment": {
                   "type": "text",
                   "analyzer": "ik_max_word",
+                  "search_analyzer": "ik_smart",
                   "fields": {
                     "keyword": {
                       "type": "keyword",
                       "normalizer": "lowercase_normalizer"
-                    },
-                    "ngram": {
-                      "type": "text",
-                      "analyzer": "om_ngram"
                     }
                   }
                 },
@@ -290,6 +287,7 @@
           "description": {
             "type": "text",
             "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart",
             "fields": {
               "keyword": {
                 "type": "keyword",

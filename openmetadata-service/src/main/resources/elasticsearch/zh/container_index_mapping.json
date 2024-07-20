@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "min_gram": 2,
+          "max_gram": 3,
           "filter": [
             "lowercase"
           ]
@@ -49,6 +49,10 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -62,10 +66,21 @@
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "search_analyzer": "ik_smart",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
+          }
+        }
       },
       "description": {
         "type": "text",
+        "index_options": "docs",
         "analyzer": "ik_max_word",
         "search_analyzer": "ik_smart"
       },
@@ -83,6 +98,9 @@
         "type": "text"
       },
       "sourceUrl": {
+        "type": "keyword"
+      },
+      "fullPath": {
         "type": "keyword"
       },
       "lineage": {
@@ -134,13 +152,18 @@
           "columns": {
             "properties": {
               "name": {
-                "type": "keyword",
+                "type": "text",
                 "analyzer": "ik_max_word",
                 "search_analyzer": "ik_smart",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "ignore_above": 256
+                    "ignore_above": 256,
+                    "normalizer": "lowercase_normalizer"
+                  },
+                  "ngram": {
+                    "type": "text",
+                    "analyzer": "om_ngram"
                   }
                 }
               },
@@ -152,6 +175,7 @@
               },
               "description": {
                 "type": "text",
+                "index_options": "docs",
                 "analyzer": "ik_max_word",
                 "search_analyzer": "ik_smart"
               },
@@ -161,7 +185,8 @@
               "tags": {
                 "properties": {
                   "tagFQN": {
-                    "type": "keyword"
+                    "type": "keyword",
+                    "normalizer": "lowercase_normalizer"
                   },
                   "labelType": {
                     "type": "keyword"
@@ -254,6 +279,16 @@
               }
             }
           },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
           "fullyQualifiedName": {
             "type": "keyword"
           },
@@ -298,7 +333,10 @@
             "type": "text"
           },
           "description": {
-            "type": "text"
+            "type": "text",
+            "index_options": "docs",
+            "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart"
           },
           "deleted": {
             "type": "text"
@@ -315,7 +353,7 @@
         "type": "double"
       },
       "size": {
-        "type": "integer"
+        "type": "long"
       },
       "fileFormats": {
         "type": "keyword"
@@ -339,6 +377,16 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -386,6 +434,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -469,7 +518,8 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword"
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -489,7 +539,8 @@
         "type": "keyword"
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
@@ -509,6 +560,12 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

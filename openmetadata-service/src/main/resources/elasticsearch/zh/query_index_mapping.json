@@ -40,6 +40,18 @@
       "id": {
         "type": "keyword"
       },
+      "checksum": {
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "processedLineage": {
+        "type": "boolean"
+      },
       "name": {
         "type": "text",
         "fields": {
@@ -56,14 +68,53 @@
       "fqnParts": {
         "type": "keyword"
       },
+      "service": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "text"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
       "displayName": {
         "type": "text",
-        "analyzer": "ik_max_word"
+        "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart"
       },
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart"
+        "search_analyzer": "ik_smart",
+        "index_options": "docs"
       },
       "version": {
         "type": "float"
@@ -115,90 +166,6 @@
           },
           "href": {
             "type": "text"
-          }
-        }
-      },
-      "votes": {
-        "properties": {
-          "upVotes": {
-            "type": "long"
-          },
-          "downVotes": {
-            "type": "long"
-          },
-          "upVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
-          },
-          "downVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
           }
         }
       },
@@ -330,14 +297,7 @@
         "type": "keyword"
       },
       "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
+        "type": "completion"
       },
       "column_suggest": {
         "type": "completion"
@@ -397,6 +357,12 @@
             "normalizer": "lowercase_normalizer"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

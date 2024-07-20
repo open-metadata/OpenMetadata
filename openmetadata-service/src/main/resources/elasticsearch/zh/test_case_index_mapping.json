@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 2,
+          "min_gram": 2,
+          "max_gram": 3,
           "filter": [
             "lowercase"
           ]
@@ -43,6 +43,7 @@
       "name": {
         "type": "text",
         "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -58,6 +59,7 @@
       "fullyQualifiedName": {
         "type": "text",
         "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -71,6 +73,7 @@
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
+        "search_analyzer": "ik_smart",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -85,12 +88,7 @@
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "search_analyzer": "ik_smart"
       },
       "entityLink": {
         "type": "keyword",
@@ -105,27 +103,6 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "tags": {
-        "type": "nested",
-        "properties": {
-          "tagFQN": {
-            "type": "keyword"
-          },
-          "labelType": {
-            "type": "keyword"
-          },
-          "description": {
-            "type": "text",
-            "index_options": "docs"
-          },
-          "source": {
-            "type": "keyword"
-          },
-          "state": {
-            "type": "keyword"
-          }
-        }
-      },
       "entityFQN": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -135,6 +112,7 @@
           "name": {
             "type": "text",
             "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -159,6 +137,7 @@
           "name": {
             "type": "text",
             "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -177,6 +156,7 @@
           "displayName": {
             "type": "text",
             "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart",
             "fields": {
               "keyword": {
                 "type": "keyword",
@@ -191,6 +171,7 @@
           "description": {
             "type": "text",
             "analyzer": "ik_max_word",
+            "search_analyzer": "ik_smart",
             "fields": {
               "ngram": {
                 "type": "text",
@@ -213,9 +194,6 @@
         }
       },
       "entityType": {
-        "type": "keyword"
-      },
-      "dataQualityDimension": {
         "type": "keyword"
       },
       "suggest": {
@@ -452,6 +430,27 @@
           "timestamp": {
             "type": "date",
             "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
+      },
+      "tags": {
+        "type": "nested",
+        "properties": {
+          "tagFQN": {
+            "type": "keyword"
+          },
+          "labelType": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text",
+            "index_options": "docs"
+          },
+          "source": {
+            "type": "keyword"
+          },
+          "state": {
+            "type": "keyword"
           }
         }
       },
