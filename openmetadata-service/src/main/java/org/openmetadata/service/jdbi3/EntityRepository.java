@@ -781,7 +781,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : entity.getDomain());
+    // Always return domains of entity
+    entity.setDomain(getDomain(entity));
     entity.setDataProducts(
         fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
     entity.setFollowers(
@@ -800,7 +801,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwner(fields.contains(FIELD_OWNER) ? entity.getOwner() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
-    entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
+    // entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);

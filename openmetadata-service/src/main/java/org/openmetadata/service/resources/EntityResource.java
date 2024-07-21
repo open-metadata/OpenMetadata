@@ -194,7 +194,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
       } else {
-        // Hack :(
+        // TODO: Hack :(
         filter.addQueryParam("domainId", "null");
       }
     }

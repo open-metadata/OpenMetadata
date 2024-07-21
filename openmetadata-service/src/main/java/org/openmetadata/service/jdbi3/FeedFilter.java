@@ -2,6 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.util.RestUtil.decodeCursor;
 
+import java.util.List;
+import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
 import org.openmetadata.schema.type.TaskStatus;
@@ -19,6 +21,7 @@ public class FeedFilter {
   @Getter private PaginationType paginationType;
   @Getter private String before;
   @Getter private String after;
+  @Getter private List<UUID> domains;
 
   public String getCondition() {
     return getCondition(true);
@@ -53,6 +56,19 @@ public class FeedFilter {
                   after != null ? Long.parseLong(decodeCursor(after)) : Long.MAX_VALUE);
       condition1 = addCondition(condition1, paginationCondition);
     }
+
+    // Only Domain Listing based thread can be fetched
+    String domainCondition = "";
+    if (domains != null && !domains.isEmpty()) {
+      domainCondition =
+          String.format(
+              "entityDomain IN ('%s')",
+              domains.stream().map(UUID::toString).reduce((a, b) -> a + "','" + b).get());
+    } else {
+      domainCondition = "entityDomain = NULL";
+    }
+    condition1 = addCondition(condition1, domainCondition);
+
     return condition1.isEmpty() ? "WHERE TRUE" : "WHERE " + condition1;
   }
 

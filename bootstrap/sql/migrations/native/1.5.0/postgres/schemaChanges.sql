@@ -69,3 +69,5 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+
+ALTER TABLE thread_entity ADD COLUMN entityDomain VARCHAR(256) GENERATED ALWAYS AS (json ->> 'entityDomain') STORED;

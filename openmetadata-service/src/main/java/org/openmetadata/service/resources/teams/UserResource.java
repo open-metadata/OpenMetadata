@@ -174,7 +174,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
-  static final String FIELDS = "profile,roles,teams,follows,owns,userDomains,personas,defaultPersona";
+  static final String FIELDS =
+      "profile,roles,teams,follows,owns,userDomains,personas,defaultPersona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
