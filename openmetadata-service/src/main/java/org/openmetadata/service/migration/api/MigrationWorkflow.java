@@ -59,7 +59,11 @@ public class MigrationWorkflow {
   public void loadMigrations() {
     // Sort Migration on the basis of version
     List<MigrationFile> availableMigrations =
-        getMigrationFiles(nativeSQLScriptRootPath, connectionType, extensionSQLScriptRootPath, pipelineServiceClientConfiguration);
+        getMigrationFiles(
+            nativeSQLScriptRootPath,
+            connectionType,
+            extensionSQLScriptRootPath,
+            pipelineServiceClientConfiguration);
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(availableMigrations);
   }
@@ -80,7 +84,8 @@ public class MigrationWorkflow {
       String extensionSQLScriptRootPath,
       PipelineServiceClientConfiguration pipelineServiceClientConfiguration) {
     List<MigrationFile> availableOMNativeMigrations =
-        getMigrationFilesFromPath(nativeSQLScriptRootPath, connectionType, pipelineServiceClientConfiguration, false);
+        getMigrationFilesFromPath(
+            nativeSQLScriptRootPath, connectionType, pipelineServiceClientConfiguration, false);
 
     // If we only have OM migrations, return them
     if (extensionSQLScriptRootPath == null || extensionSQLScriptRootPath.isEmpty()) {
@@ -89,7 +94,8 @@ public class MigrationWorkflow {
 
     // Otherwise, fetch the extension migrations and sort the executions
     List<MigrationFile> availableExtensionMigrations =
-        getMigrationFilesFromPath(extensionSQLScriptRootPath, connectionType, pipelineServiceClientConfiguration, true);
+        getMigrationFilesFromPath(
+            extensionSQLScriptRootPath, connectionType, pipelineServiceClientConfiguration, true);
 
     /*
      If we create migrations version as:
@@ -104,9 +110,19 @@ public class MigrationWorkflow {
   }
 
   public List<MigrationFile> getMigrationFilesFromPath(
-      String path, ConnectionType connectionType, PipelineServiceClientConfiguration pipelineServiceClientConfiguration, Boolean isExtension) {
+      String path,
+      ConnectionType connectionType,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      Boolean isExtension) {
     return Arrays.stream(Objects.requireNonNull(new File(path).listFiles(File::isDirectory)))
-        .map(dir -> new MigrationFile(dir, migrationDAO, connectionType, pipelineServiceClientConfiguration, isExtension))
+        .map(
+            dir ->
+                new MigrationFile(
+                    dir,
+                    migrationDAO,
+                    connectionType,
+                    pipelineServiceClientConfiguration,
+                    isExtension))
         .sorted()
         .toList();
   }

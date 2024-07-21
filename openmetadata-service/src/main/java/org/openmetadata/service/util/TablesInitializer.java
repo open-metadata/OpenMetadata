@@ -342,7 +342,7 @@ public final class TablesInitializer {
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
             extensionSQLScriptRootPath,
-                config.getPipelineServiceClientConfiguration(),
+            config.getPipelineServiceClientConfiguration(),
             forceMigrations);
         break;
       case INFO:
@@ -397,7 +397,12 @@ public final class TablesInitializer {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, pipelineServiceClientConfiguration, forceMigrations);
+            jdbi,
+            nativeMigrationSQLPath,
+            connType,
+            extensionSQLScriptRootPath,
+            pipelineServiceClientConfiguration,
+            forceMigrations);
     // Initialize search repository
     new SearchRepository(config.getElasticSearchConfiguration());
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));

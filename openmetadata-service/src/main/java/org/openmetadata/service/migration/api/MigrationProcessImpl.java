@@ -37,7 +37,9 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.handle = handle;
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
-    this.pipelineServiceClient = PipelineServiceClientFactory.createPipelineServiceClient(this.migrationFile.pipelineServiceClientConfiguration);
+    this.pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            this.migrationFile.pipelineServiceClientConfiguration);
   }
 
   @Override

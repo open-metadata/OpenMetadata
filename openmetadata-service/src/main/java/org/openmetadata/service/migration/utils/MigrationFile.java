@@ -1,7 +1,6 @@
 package org.openmetadata.service.migration.utils;
 
 import java.io.File;
-import java.nio.channels.Pipe;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -35,7 +34,11 @@ public class MigrationFile implements Comparable<MigrationFile> {
       "org.openmetadata.service.migration.api.MigrationProcessImpl";
 
   public MigrationFile(
-          File dir, MigrationDAO migrationDAO, ConnectionType connectionType, PipelineServiceClientConfiguration pipelineServiceClientConfiguration, Boolean isExtension) {
+      File dir,
+      MigrationDAO migrationDAO,
+      ConnectionType connectionType,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      Boolean isExtension) {
     this.dir = dir;
     this.isExtension = isExtension;
     this.version = dir.getName();
