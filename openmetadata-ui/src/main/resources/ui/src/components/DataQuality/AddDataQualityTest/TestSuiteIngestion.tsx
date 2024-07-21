@@ -65,6 +65,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   testSuite,
   onCancel,
   showAddTestCase = false,
+  onViewServiceClick,
 }) => {
   const { ingestionFQN } = useFqn();
   const history = useHistory();
@@ -283,7 +284,9 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         {isIngestionCreated ? (
           <SuccessScreen
             handleDeployClick={handleDeployClick}
-            handleViewServiceClick={handleViewTestSuiteClick}
+            handleViewServiceClick={
+              onViewServiceClick ?? handleViewTestSuiteClick
+            }
             name={`${testSuite?.name}_${PipelineType.TestSuite}`}
             showDeployButton={showDeployButton}
             showIngestionButton={false}

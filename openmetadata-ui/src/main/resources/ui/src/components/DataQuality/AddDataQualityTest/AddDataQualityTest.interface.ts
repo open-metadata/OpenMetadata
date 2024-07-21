@@ -40,6 +40,7 @@ export interface TestSuiteIngestionProps {
   ingestionPipeline?: IngestionPipeline;
   onCancel?: () => void;
   showAddTestCase?: boolean;
+  onViewServiceClick?: () => void;
 }
 
 export type TestSuiteIngestionDataType = {
