@@ -799,14 +799,22 @@ public class ElasticSearchClient implements SearchClient {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
+    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    boolQueryBuilder.should(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+    boolQueryBuilder.should(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery("lineage.fromEntity.fqn.keyword", fqn)));
+    boolQueryBuilder.should(
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery("lineage.toEntity.fqn.keyword", fqn)));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(boolQueryBuilder);
     if (CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn))
+              .must(boolQueryBuilder)
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
