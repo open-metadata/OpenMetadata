@@ -102,4 +102,30 @@ public class TypeRegistry {
   public static String getPropertyName(String propertyFQN) {
     return FullyQualifiedName.split(propertyFQN)[2];
   }
+
+  public static String getCustomPropertyType(String entityType, String propertyName) {
+    Type type = TypeRegistry.TYPES.get(entityType);
+    if (type != null && type.getCustomProperties() != null) {
+      for (CustomProperty property : type.getCustomProperties()) {
+        if (property.getName().equals(propertyName)) {
+          return property.getPropertyType().getName();
+        }
+      }
+    }
+    return null;
+  }
+
+  public static String getCustomPropertyConfig(String entityType, String propertyName) {
+    Type type = TypeRegistry.TYPES.get(entityType);
+    if (type != null && type.getCustomProperties() != null) {
+      for (CustomProperty property : type.getCustomProperties()) {
+        if (property.getName().equals(propertyName)
+            && property.getCustomPropertyConfig() != null
+            && property.getCustomPropertyConfig().getConfig() != null) {
+          return property.getCustomPropertyConfig().getConfig().toString();
+        }
+      }
+    }
+    return null;
+  }
 }

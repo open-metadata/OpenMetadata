@@ -21,9 +21,9 @@ const mockGoBack = jest.fn();
 const mockPropertyTypes = [
   {
     id: '153a0c07-6480-404e-990b-555a42c8a7b5',
-    name: 'date',
-    fullyQualifiedName: 'date',
-    displayName: 'date',
+    name: 'date-cp',
+    fullyQualifiedName: 'date-cp',
+    displayName: 'date-cp',
     description: '"Date in ISO 8601 format in UTC. Example - \'2018-11-13\'."',
     category: 'field',
     nameSpace: 'basic',
@@ -35,9 +35,9 @@ const mockPropertyTypes = [
   },
   {
     id: '6ce245d8-80c0-4641-9b60-32cf03ca79a2',
-    name: 'dateTime',
-    fullyQualifiedName: 'dateTime',
-    displayName: 'dateTime',
+    name: 'dateTime-cp',
+    fullyQualifiedName: 'dateTime-cp',
+    displayName: 'dateTime-cp',
     description:
       '"Date and time in ISO 8601 format. Example - \'2018-11-13T20:20:39+00:00\'."',
     category: 'field',

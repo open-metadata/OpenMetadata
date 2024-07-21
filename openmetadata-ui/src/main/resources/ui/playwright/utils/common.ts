@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, Page, request } from '@playwright/test';
+import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { AdminClass } from '../support/user/AdminClass';
 import { UserClass } from '../support/user/UserClass';
@@ -127,4 +127,36 @@ export const performUserLogin = async (browser, user: UserClass) => {
   };
 
   return { page, apiContext, afterAction };
+};
+
+export const toastNotification = async (
+  page: Page,
+  message: string | RegExp
+) => {
+  await expect(page.getByRole('alert').first()).toHaveText(message);
+
+  await page.getByLabel('close').first().click();
+};
+
+export const clickOutside = async (page: Page) => {
+  await page.locator('body').click({
+    position: {
+      x: 0,
+      y: 0,
+    },
+  }); // with this action left menu bar is getting opened
+  await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
+};
+
+export const visitUserProfilePage = async (page: Page) => {
+  await page.getByTestId('dropdown-profile').click();
+  await page.waitForSelector('.profile-dropdown', {
+    state: 'visible',
+  });
+  const userResponse = page.waitForResponse(
+    '/api/v1/users/name/*?fields=*&include=all'
+  );
+  await page.getByTestId('user-name').click({ force: true });
+  await userResponse;
+  await clickOutside(page);
 };

@@ -42,6 +42,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -366,7 +367,10 @@ public class UserRepository extends EntityRepository<User> {
 
   public void validateLoggedInUserNameAndEmailMatches(
       String username, String email, User storedUser) {
-    if (!(username.equals(storedUser.getName()) && email.equals(storedUser.getEmail()))) {
+    String lowerCasedName = username.toLowerCase();
+    String lowerCasedEmail = email.toLowerCase();
+    if (!(lowerCasedName.equals(storedUser.getName().toLowerCase())
+        && lowerCasedEmail.equals(storedUser.getEmail().toLowerCase()))) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
   }
@@ -464,13 +468,15 @@ public class UserRepository extends EntityRepository<User> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
       User user =
-          new User()
-              .withName(csvRecord.get(0))
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withEmail(csvRecord.get(3))
-              .withTimezone(csvRecord.get(4))
-              .withIsAdmin(getBoolean(printer, csvRecord, 5))
+          UserUtil.getUser(
+                  importedBy,
+                  new CreateUser()
+                      .withName(csvRecord.get(0))
+                      .withDisplayName(csvRecord.get(1))
+                      .withDescription(csvRecord.get(2))
+                      .withEmail(csvRecord.get(3))
+                      .withTimezone(csvRecord.get(4))
+                      .withIsAdmin(getBoolean(printer, csvRecord, 5)))
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       if (processRecord) {
@@ -570,6 +576,10 @@ public class UserRepository extends EntityRepository<User> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
+      // LowerCase Email
+      updated.setEmail(updated.getEmail().toLowerCase());
+
+      // Updates
       updateRoles(original, updated);
       updateTeams(original, updated);
       updatePersonas(original, updated);
@@ -579,7 +589,7 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-      recordChange("email", original.getEmail(), updated.getEmail());
+      recordChange("email", original.getEmail(), updated.getEmail().toLowerCase());
       recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
       updateAuthenticationMechanism(original, updated);
     }

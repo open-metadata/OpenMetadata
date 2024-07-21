@@ -175,7 +175,7 @@ describe('ServiceVersionMainTabContent tests', () => {
       wrapper: MemoryRouter,
     });
 
-    const loader = await screen.findByTestId('skeleton-table');
+    const loader = await screen.findByTestId('loader');
 
     expect(loader).toBeInTheDocument();
   });

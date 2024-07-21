@@ -96,6 +96,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -924,6 +925,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotNull(testCase.getEntityLink());
     assertNotNull(testCase.getName());
     assertNotNull(testCase.getId());
+
+    // Test return only the specified dimension
+    queryParams.clear();
+    queryParams.put("dataQualityDimension", "Completeness");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertNotEquals(0, allEntities.getData().size());
   }
 
   @Test
@@ -2018,6 +2025,36 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     assertResponseContains(
         () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
+  }
+
+  @Test
+  void test_testCaseEsDocCleanUp(TestInfo testInfo) {
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withChangeDescription(new ChangeDescription())
+            .withTestSuites(
+                List.of(
+                    new TestSuite()
+                        .withId(UUID.randomUUID())
+                        .withChangeDescription(new ChangeDescription()),
+                    new TestSuite()
+                        .withId(UUID.randomUUID())
+                        .withChangeDescription(new ChangeDescription())));
+
+    Map<String, Object> doc = JsonUtils.convertValue(testCase, Map.class);
+
+    TestCaseIndex testCaseIndex = new TestCaseIndex(testCase);
+    testCaseIndex.removeNonIndexableFields(doc);
+    assertNull(doc.get("changeDescription"));
+    List<Map<String, Object>> testSuites = (List<Map<String, Object>>) doc.get("testSuites");
+    assertNull(testSuites.get(0).get("changeDescription"));
+
+    // Remove changeDescription logic handles null testSuites
+    testCase.setTestSuites(null);
+    doc = JsonUtils.convertValue(testCase, Map.class);
+    testCaseIndex = new TestCaseIndex(testCase);
+    testCaseIndex.removeNonIndexableFields(doc);
   }
 
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)

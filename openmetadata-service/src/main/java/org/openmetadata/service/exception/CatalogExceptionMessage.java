@@ -244,6 +244,11 @@ public final class CatalogExceptionMessage {
     return String.format("Unknown custom field %s", fieldName);
   }
 
+  public static String dateTimeValidationError(String fieldName, String format) {
+    return String.format(
+        "Custom field %s value is not as per defined format %s", fieldName, format);
+  }
+
   public static String jsonValidationError(String fieldName, String validationMessages) {
     return String.format("Custom field %s has invalid JSON %s", fieldName, validationMessages);
   }

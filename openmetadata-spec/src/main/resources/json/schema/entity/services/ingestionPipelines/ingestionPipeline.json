@@ -213,6 +213,10 @@
     "domain" : {
       "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../../type/entityReference.json"
+    },
+    "applicationType": {
+      "description": "Type of the application when pipelineType is 'application'.",
+      "type": "string"
     }
   },
   "required": [

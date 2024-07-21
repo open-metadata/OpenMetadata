@@ -13,7 +13,13 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { checkDescriptionInEditModal } from '../../utils/activityFeed';
+import {
+  createNewPage,
+  redirectToHomePage,
+  toastNotification,
+  visitUserProfilePage,
+} from '../../utils/common';
 import { clickOnLogo } from '../../utils/sidebar';
 import {
   createDescriptionTask,
@@ -39,7 +45,6 @@ test.describe('Activity feed', () => {
 
   test.beforeEach('Visit on landing page', async ({ page }) => {
     await redirectToHomePage(page);
-    await entity.visitEntityPage(page);
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
@@ -53,8 +58,9 @@ test.describe('Activity feed', () => {
   test('Assigned task should appear to task tab', async ({ page }) => {
     const value: TaskDetails = {
       term: entity.entity.name,
-      assignee: `${user.data.firstName}.${user.data.lastName}`,
+      assignee: user.responseData.name,
     };
+    await entity.visitEntityPage(page);
 
     await page.getByTestId('request-description').click();
 
@@ -110,21 +116,131 @@ test.describe('Activity feed', () => {
 
     await page.getByText('Accept Suggestion').click();
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Task resolved successfully/
-    );
-
-    await page.getByLabel('close').first().click();
+    await toastNotification(page, /Task resolved successfully/);
 
     // Task 1 - Request to update tag to be resolved
 
     await page.getByText('Accept Suggestion').click();
 
-    await expect(page.getByRole('alert').first()).toHaveText(
-      /Task resolved successfully/
-    );
+    await toastNotification(page, /Task resolved successfully/);
 
-    await page.getByLabel('close').first().click();
+    const closedTask = await page.getByTestId('closed-task').textContent();
+
+    expect(closedTask).toContain('2 Closed');
+  });
+
+  test('User should be able to reply on feeds in ActivityFeed', async ({
+    page,
+  }) => {
+    await visitUserProfilePage(page);
+
+    const secondFeedConversation = page
+      .locator('#center-container [data-testid="message-container"]')
+      .nth(1);
+
+    await secondFeedConversation.locator('.feed-card-v2-sidebar').click();
+
+    await page.waitForSelector('#feed-panel', {
+      state: 'visible',
+    });
+
+    // Compare the text of the second feed in the center container with the right panel feed
+    const secondFeedText = await secondFeedConversation
+      .locator('[data-testid="headerText"]')
+      .innerText();
+
+    const rightPanelFeedText = await page
+      .locator(
+        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
+      )
+      .innerText();
+
+    expect(secondFeedText).toBe(rightPanelFeedText);
+
+    for (let i = 1; i <= 3; i++) {
+      await page.fill(
+        '[data-testid="editor-wrapper"] .ql-editor',
+        `Reply message ${i}`
+      );
+      const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
+      await page.getByTestId('send-button').click();
+      await sendReply;
+    }
+
+    // Compare after adding some feeds in the right panel
+    const rightPanelFeedTextCurrent = await page
+      .locator(
+        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
+      )
+      .innerText();
+
+    expect(secondFeedText).toBe(rightPanelFeedTextCurrent);
+
+    for (let i = 1; i <= 3; i++) {
+      await expect(
+        page.locator('.right-container [data-testid="feed-replies"]')
+      ).toContainText(`Reply message ${i}`);
+    }
+  });
+
+  test('Update Description Task on Columns', async ({ page }) => {
+    const firstTaskValue: TaskDetails = {
+      term: entity.entity.name,
+      assignee: user.responseData.name,
+      description: 'Column Description 1',
+      columnName: entity.entity.columns[0].name,
+      oldDescription: entity.entity.columns[0].description,
+    };
+    const secondTaskValue: TaskDetails = {
+      ...firstTaskValue,
+      description: 'Column Description 2',
+      columnName: entity.entity.columns[1].name,
+      oldDescription: entity.entity.columns[1].description,
+    };
+    await entity.visitEntityPage(page);
+
+    await page
+      .getByRole('cell', { name: 'The ID of the store. This' })
+      .getByTestId('task-element')
+      .click();
+
+    // create description task
+    await createDescriptionTask(page, secondTaskValue);
+
+    await page.getByTestId('schema').click();
+
+    // create 2nd task for column description
+    await page
+      .getByRole('cell', { name: 'Unique identifier for the' })
+      .getByTestId('task-element')
+      .click();
+
+    await createDescriptionTask(page, firstTaskValue);
+
+    // Task 1 - check the description in edit and accept suggestion
+    await checkDescriptionInEditModal(page, firstTaskValue);
+
+    await page.getByText('Cancel').click();
+
+    await page.waitForSelector('[role="dialog"].ant-modal', {
+      state: 'detached',
+    });
+
+    // Task 2 - check the description in edit and accept suggestion
+
+    await page.getByTestId('message-container').last().click();
+
+    await checkDescriptionInEditModal(page, secondTaskValue);
+
+    await page.getByText('OK').click();
+
+    await toastNotification(page, /Task resolved successfully/);
+
+    // Task 1 - Resolved the task
+
+    await page.getByText('Accept Suggestion').click();
+
+    await toastNotification(page, /Task resolved successfully/);
 
     const closedTask = await page.getByTestId('closed-task').textContent();
 
