@@ -15,6 +15,8 @@
         devShell = {
             x86_64-linux = pkgs.mkShell {
               buildInputs = [ 
+                pkgs.starship
+                pkgs.fish
                 pkgs.yarn 
                 pkgs.jre17_minimal
                 pkgs.nodejs_18
@@ -23,6 +25,11 @@
                 pkgs.antlr4_9
                 pkgs.jq
               ];
+            shellHook = ''
+                if [ -n "$PS1" ]; then
+                    exec fish
+                fi
+            '';
             };
         };
     };
