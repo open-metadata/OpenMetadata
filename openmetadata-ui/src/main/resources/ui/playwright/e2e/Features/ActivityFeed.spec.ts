@@ -329,6 +329,7 @@ test.describe('Activity feed with Data Steward User', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await entity.create(apiContext);
+    await entity2.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
     await afterAction();
@@ -337,6 +338,7 @@ test.describe('Activity feed with Data Steward User', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await entity.delete(apiContext);
+    await entity2.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
 
@@ -483,13 +485,13 @@ test.describe('Activity feed with Data Steward User', () => {
       await performUserLogin(browser, user2);
 
     const value: TaskDetails = {
-      term: entity.entity.name,
-      assignee: `${user2.data.firstName}.${user2.data.lastName}`,
+      term: entity2.entity.name,
+      assignee: user2.responseData.name,
     };
 
     await test.step('Create, Close and Assign Task to user 2', async () => {
       await redirectToHomePage(page1);
-      await entity.visitEntityPage(page1);
+      await entity2.visitEntityPage(page1);
 
       await updateDescription(page1, '');
 
