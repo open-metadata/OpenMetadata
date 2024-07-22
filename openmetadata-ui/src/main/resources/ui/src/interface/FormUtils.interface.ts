@@ -39,6 +39,7 @@ export enum FieldTypes {
   USER_TEAM_SELECT = 'user_team_select',
   USER_MULTI_SELECT = 'user_multi_select',
   COLOR_PICKER = 'color_picker',
+  CRON_EDITOR = 'cron_editor',
 }
 
 export enum HelperTextType {
