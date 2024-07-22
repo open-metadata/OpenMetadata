@@ -269,11 +269,35 @@ def get_table_ddl(
     return None
 
 
+@reflection.cache
+def get_table_names(
+    self, connection, schema=None, **kw
+):  # pylint: disable=unused-argument
+    query = "SHOW TABLES"
+    if schema:
+        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+    tables_in_schema = connection.execute(query)
+    tables = []
+    for row in tables_in_schema:
+        # check number of columns in result
+        # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
+        # else it is hive with 1 column in the result
+        if len(row) > 1:
+            tables.append(row[1])
+        else:
+            tables.append(row[0])
+    # "SHOW TABLES" command in hive also fetches view names
+    # Below code filters out view names from table names
+    views = self.get_view_names(connection, schema)
+    return [table for table in tables if table not in views]
+
+
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
 DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
+DatabricksDialect.get_table_names = get_table_names
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
