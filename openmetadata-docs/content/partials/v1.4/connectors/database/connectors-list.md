@@ -11,6 +11,7 @@
 {% connectorInfoCard name="DB2" stage="PROD" href="/connectors/database/db2" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Delta Lake" stage="PROD" href="/connectors/database/deltalake" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Domo" stage="PROD" href="/connectors/database/domo-database" platform="OpenMetadata" / %}
+{% connectorInfoCard name="Doris" stage="PROD" href="/connectors/database/doris" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Druid" stage="PROD" href="/connectors/database/druid" platform="OpenMetadata" / %}
 {% connectorInfoCard name="DynamoDB" stage="PROD" href="/connectors/database/dynamodb" platform="OpenMetadata" / %}
 {% connectorInfoCard name="Glue" stage="PROD" href="/connectors/database/glue" platform="OpenMetadata" / %}
