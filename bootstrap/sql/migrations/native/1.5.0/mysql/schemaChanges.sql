@@ -148,3 +148,24 @@ JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpC
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.externalType') OR 
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path')
 ) is NULL AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig') is not null;
+
+-- Update thread_entity to move previousOwner and updatedOwner to array
+UPDATE thread_entity
+SET json = JSON_SET(
+    json,
+    '$.feedInfo.entitySpecificInfo.previousOwner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.previousOwner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.previousOwner');
+
+UPDATE thread_entity
+SET json = JSON_SET(
+    json,
+    '$.feedInfo.entitySpecificInfo.updatedOwner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.updatedOwner');

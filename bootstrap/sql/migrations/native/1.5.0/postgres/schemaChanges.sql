@@ -138,3 +138,24 @@ SET json = jsonb_set(
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,type}' IS NULL 
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,externalType}' IS NULL 
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,path}' IS NULL;
+
+-- Update thread_entity to move previousOwner and updatedOwner to array
+UPDATE thread_entity
+SET json = jsonb_set(
+    json,
+    '{feedInfo,entitySpecificInfo,previousOwner}',
+    to_jsonb(array[json->'feedInfo'->'entitySpecificInfo'->'previousOwner'])
+)
+WHERE json ? 'feedInfo' 
+  AND json->'feedInfo' ? 'entitySpecificInfo' 
+  AND json->'feedInfo'->'entitySpecificInfo' ? 'previousOwner';
+
+UPDATE thread_entity
+SET json = jsonb_set(
+    json,
+    '{feedInfo,entitySpecificInfo,updatedOwner}',
+    to_jsonb(array[json->'feedInfo'->'entitySpecificInfo'->'updatedOwner'])
+)
+WHERE json ? 'feedInfo' 
+  AND json->'feedInfo' ? 'entitySpecificInfo' 
+  AND json->'feedInfo'->'entitySpecificInfo' ? 'updatedOwner';
