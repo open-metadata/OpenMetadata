@@ -1011,6 +1011,7 @@
     "select-add-test-suite": "Select/Add Test Suite",
     "select-column-plural-to-exclude": "Select Columns to Exclude",
     "select-column-plural-to-include": "Select Columns to Include",
+    "select-entity": "Select {{entity}}",
     "select-field": "Select {{field}}",
     "select-to-search": "Search to Select",
     "select-type": "Select type",
