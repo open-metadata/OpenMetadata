@@ -1025,7 +1025,10 @@ export const TaskTab = ({
             entity: t('label.task-lowercase'),
           })} #${taskDetails?.id} ${taskThread.message}`}
           width={768}
-          onCancel={() => setShowEditTaskModel(false)}
+          onCancel={() => {
+            form.resetFields();
+            setShowEditTaskModel(false);
+          }}
           onOk={form.submit}>
           <Form
             form={form}
