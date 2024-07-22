@@ -387,7 +387,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
       return;
     }
 
-    IndexMapping indexType = searchRepository.getIndexMapping(entityType);
+    IndexMapping indexType =
+        searchRepository.getIndexMapping(entityType, jobData.getSearchIndexMappingLanguage());
     // Delete index
     searchRepository.deleteIndex(indexType);
     // Create index

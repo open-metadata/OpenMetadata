@@ -60,6 +60,7 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.service.Entity;
@@ -79,7 +80,7 @@ public class SearchRepository {
 
   private Map<String, IndexMapping> entityIndexMap;
 
-  private final String language;
+  private String language;
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
@@ -182,6 +183,11 @@ public class SearchRepository {
   }
 
   public IndexMapping getIndexMapping(String entityType) {
+    return entityIndexMap.get(entityType);
+  }
+
+  public IndexMapping getIndexMapping(String entityType, IndexMappingLanguage language) {
+    this.language = language.value();
     return entityIndexMap.get(entityType);
   }
 
