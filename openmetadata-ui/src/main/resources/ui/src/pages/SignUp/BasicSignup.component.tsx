@@ -17,7 +17,6 @@ import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import loginBG from '../../assets/img/login-bg.png';
-
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
