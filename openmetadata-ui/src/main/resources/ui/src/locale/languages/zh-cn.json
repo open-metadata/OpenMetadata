@@ -1023,6 +1023,7 @@
     "select-add-test-suite": "选择/添加质控测试",
     "select-column-plural-to-exclude": "选择要排除的列",
     "select-column-plural-to-include": "选择要包含的列",
+    "select-entity": "Select {{entity}}",
     "select-field": "选择{{field}}",
     "select-to-search": "搜索以选择",
     "select-type": "选择类型",

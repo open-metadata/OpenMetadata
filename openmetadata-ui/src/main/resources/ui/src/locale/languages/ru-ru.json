@@ -1023,6 +1023,7 @@
     "select-add-test-suite": "Выбрать/добавить набор тестов",
     "select-column-plural-to-exclude": "Выберите столбцы для исключения",
     "select-column-plural-to-include": "Выберите столбцы для исключения",
+    "select-entity": "Select {{entity}}",
     "select-field": "Выбрать {{field}}",
     "select-to-search": "Поиск для выбора",
     "select-type": "Выбрать тип",
