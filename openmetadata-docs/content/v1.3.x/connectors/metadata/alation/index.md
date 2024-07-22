@@ -34,7 +34,7 @@ Check the following docs to run the Ingestion Framework in any orchestrator exte
 
 ## Requirements
 
-Follow the official documentation to generate a API Access Token from [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis)
+Follow the official documentation to generate a API Access Token from [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-an-api-access-token)
 
 ## Data Mapping and Assumptions
 

@@ -22,12 +22,12 @@ We can create a workflow that will obtain the dbt information from the dbt files
 ## 1. Define the YAML Config
 
 Select the yaml config from one of the below sources:
-- [AWS S3 Buckets](#1.aws-s3-buckets)
-- [Google Cloud Storage Buckets](#2.google-cloud-storage-buckets)
-- [Azure Storage Buckets](#3.azure-storage-buckets)
-- [Local Storage](#4.local-storage)
-- [File Server](#5.file-server)
-- [dbt Cloud](#6.dbt-cloud)
+- [AWS S3 Buckets](#1.-aws-s3-buckets)
+- [Google Cloud Storage Buckets](#2.-google-cloud-storage-buckets)
+- [Azure Storage Buckets](#3.-azure-storage-buckets)
+- [Local Storage](#4.-local-storage)
+- [File Server](#5.-file-server)
+- [dbt Cloud](#6.-dbt-cloud)
 
 
 The dbt files should be present on the source mentioned and should have the necessary permissions to be able to access the files.
