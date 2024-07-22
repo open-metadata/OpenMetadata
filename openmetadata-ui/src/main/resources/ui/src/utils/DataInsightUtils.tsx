@@ -135,24 +135,11 @@ export const renderLegend = (
 
 export const getEntryFormattedValue = (
   value: number | string | undefined,
-  dataKey: number | string | undefined,
-  kpiTooltipRecord: DataInsightChartTooltipProps['kpiTooltipRecord'],
   isPercentage?: boolean
 ) => {
   let suffix = '';
   if (isPercentage) {
     suffix = '%';
-  }
-
-  // handle kpi metric type check for entry value suffix
-
-  if (
-    !isUndefined(kpiTooltipRecord) &&
-    !isEmpty(kpiTooltipRecord) &&
-    !isUndefined(dataKey)
-  ) {
-    const metricType = kpiTooltipRecord[dataKey];
-    suffix = metricType === KpiTargetType.Percentage ? '%' : suffix;
   }
 
   if (!isUndefined(value)) {
@@ -172,13 +159,13 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
   const {
     active,
     payload = [],
-    isPercentage,
     valueFormatter,
-    kpiTooltipRecord,
+    isPercentage,
+    timeStampKey = 'timestampValue',
   } = props;
 
   if (active && payload && payload.length) {
-    const timestamp = formatDate(payload[0].payload.timestampValue || 0);
+    const timestamp = formatDate(payload[0].payload[timeStampKey] || 0);
 
     return (
       <Card
@@ -197,13 +184,8 @@ export const CustomTooltip = (props: DataInsightChartTooltipProps) => {
               </span>
               <span className="font-medium">
                 {valueFormatter
-                  ? valueFormatter(entry.value)
-                  : getEntryFormattedValue(
-                      entry.value,
-                      entry.dataKey,
-                      kpiTooltipRecord,
-                      isPercentage
-                    )}
+                  ? valueFormatter(entry.value, entry.name ?? entry.dataKey)
+                  : getEntryFormattedValue(entry.value, isPercentage)}
               </span>
             </li>
           ))}

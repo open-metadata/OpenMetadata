@@ -37,16 +37,14 @@ import { SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Kpi, KpiResult } from '../../../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
+import { useDataInsightProvider } from '../../../../pages/DataInsightPage/DataInsightProvider';
+import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
 import {
   getLatestKpiResult,
   getListKpiResult,
   getListKPIs,
 } from '../../../../rest/KpiAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import KPILatestResultsV1 from '../../../DataInsight/KPILatestResultsV1';
 import './kpi-widget.less';
@@ -92,35 +90,46 @@ const KPIWidget = ({
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(false);
-  const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
+  const [kpiResults, setKpiResults] = useState<
+    Record<string, DataInsightCustomChartResult['results']>
+  >({});
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { chartFilter } = useDataInsightProvider();
 
-  const fetchKpiResults = useCallback(async () => {
+  const getKPIResult = async (kpi: Kpi) => {
+    const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
+      startTs: chartFilter.startTs,
+      endTs: chartFilter.endTs,
+    });
+
+    return { name: kpi.name, data: response.results };
+  };
+
+  const fetchKpiResults = async () => {
     setIsLoading(true);
     try {
-      const promises = kpiList.map((kpi) =>
-        getListKpiResult(kpi.fullyQualifiedName ?? '', {
-          startTs: getEpochMillisForPastDays(selectedDays),
-          endTs: getCurrentMillis(),
-        })
-      );
+      const promises = kpiList.map(getKPIResult);
       const responses = await Promise.allSettled(promises);
-      const kpiResultsList: KpiResult[] = [];
+      const kpiResultsList: Record<
+        string,
+        DataInsightCustomChartResult['results']
+      > = {};
 
       responses.forEach((response) => {
         if (response.status === 'fulfilled') {
-          kpiResultsList.push(...response.value.results);
+          kpiResultsList[response.value.name] = response.value.data;
         }
       });
+
       setKpiResults(kpiResultsList);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [kpiList, selectedDays]);
+  };
 
   const fetchKpiLatestResults = async () => {
     setIsLoading(true);
@@ -200,7 +209,7 @@ const KPIWidget = ({
   }, []);
 
   useEffect(() => {
-    setKpiResults([]);
+    setKpiResults({});
     setKpiLatestResults(undefined);
   }, [selectedDays]);
 
