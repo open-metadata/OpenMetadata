@@ -81,7 +81,9 @@ class EntityReportDataProcessor(DataProcessor):
     def name(self) -> str:
         return "Entity Report Processor"
 
-    def _get_team(self, owner: EntityReference) -> Optional[str]:
+    def _get_team(  # pylint: disable=too-many-return-statements
+        self, owner: EntityReference
+    ) -> Optional[str]:
         """Get the team from an entity. We'll use this info as well to
         add info if an entity has an owner
 
