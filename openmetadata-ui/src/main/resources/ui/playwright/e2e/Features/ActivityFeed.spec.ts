@@ -343,7 +343,7 @@ test.describe('Activity feed with Data Steward User', () => {
     await afterAction();
   });
 
-  test('Create and Assign Task', async ({ browser }) => {
+  test('Create and Assign Task with Suggestions', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const { page: page2, afterAction: afterActionUser2 } =
@@ -474,28 +474,6 @@ test.describe('Activity feed with Data Steward User', () => {
 
       await afterActionUser2();
     });
-  });
-});
-
-test.describe('Activity feed with Data Steward User', () => {
-  test.slow(true);
-
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-
-    await entity.create(apiContext);
-    await user1.create(apiContext);
-    await user2.create(apiContext);
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await entity.delete(apiContext);
-    await user1.delete(apiContext);
-    await user2.delete(apiContext);
-
-    await afterAction();
   });
 
   test('Create and Assign Task without Suggestions', async ({ browser }) => {
