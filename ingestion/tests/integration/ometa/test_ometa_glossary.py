@@ -130,9 +130,13 @@ class OMetaGlossaryTest(TestCase):
             name=EntityName("test-glossary"),
             displayName="test-glossary",
             description=Markdown("Description of test glossary"),
-            owner=EntityReference(
-                id=cls.user_1.id,
-                type="user",
+            owners=EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=cls.user_1.id,
+                        type="user",
+                    )
+                ],
             ),
         )
 
@@ -141,9 +145,13 @@ class OMetaGlossaryTest(TestCase):
             name=EntityName("GT1"),
             displayName="Glossary Term 1",
             description=Markdown("Test glossary term 1"),
-            owner=EntityReference(
-                id=cls.user_1.id,
-                type="user",
+            owners=EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=cls.user_1.id,
+                        type="user",
+                    )
+                ],
             ),
         )
 
@@ -157,9 +165,13 @@ class OMetaGlossaryTest(TestCase):
                 EntityName("GT2S2"),
                 EntityName("GT2S3"),
             ],
-            owner=EntityReference(
-                id=cls.user_1.id,
-                type="user",
+            owners=EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=cls.user_1.id,
+                        type="user",
+                    )
+                ],
             ),
         )
 
@@ -173,9 +185,13 @@ class OMetaGlossaryTest(TestCase):
                 EntityName("GT2S2"),
                 EntityName("GT2S3"),
             ],
-            owner=EntityReference(
-                id=cls.user_1.id,
-                type="user",
+            owners=EntityReferenceList(
+                root=[
+                    EntityReference(
+                        id=cls.user_1.id,
+                        type="user",
+                    )
+                ],
             ),
         )
 

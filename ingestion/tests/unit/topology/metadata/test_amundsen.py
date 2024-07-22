@@ -92,7 +92,7 @@ EXPECTED_SERVICE = [
         version=2.5,
         updatedAt=1667892646744,
         updatedBy="admin",
-        owner=None,
+        owners=None,
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/05f98ea5-1a30-480c-9bfc-55d1eabc45c7",
@@ -125,7 +125,7 @@ EXPECTED_SERVICE = [
         version=2.5,
         updatedAt=1667892646744,
         updatedBy="admin",
-        owner=None,
+        owners=None,
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/e856d239-4e74-4a7d-844b-d61c3e73b81d",
@@ -154,7 +154,7 @@ EXPECTED_SERVICE = [
         version=2.5,
         updatedAt=1667892646744,
         updatedBy="admin",
-        owner=None,
+        owners=None,
         href=Href(
             AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/836ff98d-a241-4d06-832d-745f96ac88fc",
@@ -197,7 +197,7 @@ class AmundsenUnitTest(TestCase):
         ):
             original.id = expected.id = "836ff98d-a241-4d06-832d-745f96ac88fc"
             original.href = expected.href = None
-            original.owner = expected.owner = None
+            original.owners = expected.owners = None
             original.updatedAt = expected.updatedAt = datetime.datetime.now()
             original.version = expected.version = 2.5
             original.changeDescription = None

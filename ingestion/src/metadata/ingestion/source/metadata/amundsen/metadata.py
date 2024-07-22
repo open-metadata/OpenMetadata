@@ -52,6 +52,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
@@ -220,7 +221,7 @@ class AmundsenSource(Source):
                         ),
                         tags=table_entity.tags,
                         columns=table_entity.columns,
-                        owner=user_entity_ref,
+                        owners=EntityReferenceList(root=[user_entity_ref]),
                     )
                     yield Either(right=table)
             except Exception as exc:

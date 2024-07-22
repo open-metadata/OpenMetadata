@@ -54,7 +54,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityLineage import ColumnLineage
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
@@ -131,7 +131,7 @@ class TableauSource(DashboardServiceSource):
 
     def get_owner_ref(
         self, dashboard_details: TableauDashboard
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Get dashboard owner from email
         """
@@ -204,7 +204,7 @@ class TableauSource(DashboardServiceSource):
                         serviceType=DashboardServiceType.Tableau.value,
                         columns=self.get_column_info(data_model),
                         sql=self._get_datamodel_sql_query(data_model=data_model),
-                        owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                        owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
@@ -272,7 +272,7 @@ class TableauSource(DashboardServiceSource):
                 ),
                 sourceUrl=SourceUrl(dashboard_url),
                 service=self.context.get().dashboard_service,
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

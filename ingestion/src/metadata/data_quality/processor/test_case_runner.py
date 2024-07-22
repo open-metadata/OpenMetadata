@@ -208,7 +208,7 @@ class TestCaseRunner(Processor):
                             if test_case_to_create.parameterValues
                             else None
                         ),
-                        owner=None,
+                        owners=None,
                         computePassedFailedRowCount=test_case_to_create.computePassedFailedRowCount,
                     )
                 )

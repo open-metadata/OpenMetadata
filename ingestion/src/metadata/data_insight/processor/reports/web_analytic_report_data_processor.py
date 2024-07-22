@@ -158,8 +158,11 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
                     )
 
                 try:
-                    owner = entity.owner.name if entity.owner else None
-                    owner_id = str(entity.owner.id.root) if entity.owner else None
+                    owner = None
+                    owner_id = None
+                    if entity.owners and len(entity.owners.root) > 0:
+                        owner = entity.owners.root[0].name
+                        owner_id = str(entity.owners.root[0].id.root)
                 except AttributeError as exc:
                     owner = None
                     owner_id = None

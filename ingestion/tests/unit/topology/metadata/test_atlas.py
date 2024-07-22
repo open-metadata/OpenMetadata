@@ -211,7 +211,7 @@ EXPTECTED_TABLE = Table(
     ],
     tableConstraints=None,
     tablePartition=None,
-    owner=None,
+    owners=None,
     databaseSchema=EntityReference(
         id="4cf6ee7e-9d24-4153-9318-82aa1167259b",
         type="databaseSchema",
@@ -329,7 +329,7 @@ class AtlasUnitTest(TestCase):
                 displayName=None,
                 description=None,
                 tags=None,
-                owner=None,
+                owners=None,
                 service=mock_database_service_object.fullyQualifiedName,
             )
         )

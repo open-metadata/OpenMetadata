@@ -85,7 +85,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "displayName": True,
     "sourceUrl": True,
     "description": True,
-    "owner": True,
+    "owners": True,
     "tags": True,
     "sourceHash": True,
     # Table Entity Fields
@@ -143,7 +143,7 @@ ALLOWED_COMMON_PATCH_FIELDS = {
     "fileFormats": True,
 }
 
-RESTRICT_UPDATE_LIST = ["description", "tags", "owner", "displayName"]
+RESTRICT_UPDATE_LIST = ["description", "tags", "owners", "displayName"]
 
 ARRAY_ENTITY_FIELDS = ["columns", "tasks", "fields"]
 

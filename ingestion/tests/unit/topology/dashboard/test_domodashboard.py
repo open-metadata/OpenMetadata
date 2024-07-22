@@ -101,7 +101,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://domain.domo.com/page/552315335",
     charts=[],
     tags=None,
-    owner=None,
+    owners=None,
     service=FullyQualifiedEntityName("domodashboard_source_test"),
     extension=None,
 )
@@ -117,7 +117,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://domain.domo.com/page/552315335/kpis/details/1982511286",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("domodashboard_source_test"),
     ),
     CreateChartRequest(
@@ -130,7 +130,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="https://domain.domo.com/page/552315335/kpis/details/781210736",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("domodashboard_source_test"),
     ),
 ]

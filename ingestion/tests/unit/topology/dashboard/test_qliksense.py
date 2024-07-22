@@ -111,7 +111,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://test/sense/app/1/overview",
     charts=[],
     tags=None,
-    owner=None,
+    owners=None,
     service="qliksense_source_test",
     extension=None,
 )
@@ -123,7 +123,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/1/sheet/11",
         tags=None,
-        owner=None,
+        owners=None,
         service="qliksense_source_test",
     ),
     CreateChartRequest(
@@ -132,7 +132,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://test/sense/app/1/sheet/12",
         tags=None,
-        owner=None,
+        owners=None,
         service="qliksense_source_test",
         description="dummy",
     ),
