@@ -277,7 +277,9 @@ def test_connection_engine_step(connection: Engine) -> None:
     Generic step to validate the connection against a db
     """
     with connection.connect() as conn:
-        conn.execute(ConnTestFn())
+        result = conn.execute(ConnTestFn())
+        if result:
+            result.fetchone()
 
 
 def test_connection_db_common(

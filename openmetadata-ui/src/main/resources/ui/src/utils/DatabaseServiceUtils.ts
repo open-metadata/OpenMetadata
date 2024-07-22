@@ -50,6 +50,7 @@ import sasConnection from '../jsons/connectionSchemas/connections/database/sasCo
 import singleStoreConnection from '../jsons/connectionSchemas/connections/database/singleStoreConnection.json';
 import snowflakeConnection from '../jsons/connectionSchemas/connections/database/snowflakeConnection.json';
 import sqliteConnection from '../jsons/connectionSchemas/connections/database/sqliteConnection.json';
+import synapseConnection from '../jsons/connectionSchemas/connections/database/synapseConnection.json';
 import teradataConnection from '../jsons/connectionSchemas/connections/database/teradataConnection.json';
 import trinoConnection from '../jsons/connectionSchemas/connections/database/trinoConnection.json';
 import unityCatalogConnection from '../jsons/connectionSchemas/connections/database/unityCatalogConnection.json';
@@ -187,6 +188,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.SQLite: {
       schema = sqliteConnection;
+
+      break;
+    }
+    case DatabaseServiceType.Synapse: {
+      schema = synapseConnection;
 
       break;
     }
