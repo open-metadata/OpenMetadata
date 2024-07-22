@@ -150,7 +150,6 @@ const Lineage = ({
         {init ? (
           <ReactFlowProvider>
             <ReactFlow
-              onlyRenderVisibleElements
               className="custom-react-flow"
               data-testid="react-flow-component"
               deleteKeyCode={null}

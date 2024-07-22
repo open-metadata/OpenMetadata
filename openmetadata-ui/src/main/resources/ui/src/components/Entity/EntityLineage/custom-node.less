@@ -117,7 +117,10 @@
     border-color: @primary-color;
   }
   .lineage-node {
-    border-color: @primary-color !important;
+    border-color: @primary-color;
+    &.custom-node-error {
+      border-color: @red-1;
+    }
   }
 }
 
@@ -137,7 +140,7 @@
 .react-flow__node-load-more.selectable:focus,
 .react-flow__node-load-more.selectable:focus-visible {
   .lineage-node {
-    border-color: @primary-color !important;
+    border-color: @primary-color;
   }
   .lineage-node-handle {
     border-color: @primary-color;
@@ -145,12 +148,24 @@
       color: @primary-color;
     }
   }
-  .label-container {
-    background: @primary-1;
-  }
-  .column-container {
-    background: @primary-1;
-    border-top: 1px solid @border-color;
+
+  .custom-node-header-active {
+    .label-container {
+      background: @primary-1;
+    }
+    .column-container {
+      background: @primary-1;
+      border-top: 1px solid @border-color;
+    }
+    &.custom-node-error {
+      .label-container {
+        background: @red-5;
+      }
+      .column-container {
+        border-top: 1px solid @border-color;
+        background-color: @grey-1;
+      }
+    }
   }
 }
 

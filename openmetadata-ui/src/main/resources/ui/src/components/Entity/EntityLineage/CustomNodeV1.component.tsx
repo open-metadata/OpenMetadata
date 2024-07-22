@@ -24,8 +24,12 @@ import {
 } from 'reactflow';
 import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
-import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
+import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
+import { Table } from '../../../generated/entity/data/table';
+import { TestSummary } from '../../../generated/tests/testCase';
 import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
+import { useTestSummaryStore } from '../../Database/Profiler/TestSummary/useTestSummary.store';
 import './custom-node.less';
 import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
@@ -35,6 +39,7 @@ import NodeChildren from './NodeChildren/NodeChildren.component';
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
+  const [summary, setSummary] = useState<TestSummary>();
 
   const {
     isEditMode,
@@ -42,17 +47,26 @@ const CustomNodeV1 = (props: NodeProps) => {
     selectedNode,
     nodes,
     edges,
+    activeLayer,
     upstreamDownstreamData,
     onNodeCollapse,
     removeNodeHandler,
     loadChildNodesHandler,
   } = useLineageProvider();
+  const { getTestSummaryById } = useTestSummaryStore();
+
+  const { showDataObservability } = useMemo(() => {
+    return {
+      showDataObservability: activeLayer.includes(
+        LineageLayerView.DATA_OBSERVARABILITY
+      ),
+    };
+  }, [activeLayer]);
 
   const { label, isNewNode, node = {}, isRootNode } = data;
   const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
   const isSelected = selectedNode === node;
   const { id, lineage, fullyQualifiedName } = node;
-
   const [isTraced, setIsTraced] = useState<boolean>(false);
 
   const getActiveNode = useCallback(
@@ -248,16 +262,34 @@ const CustomNodeV1 = (props: NodeProps) => {
     loadChildNodesHandler,
   ]);
 
+  const init = useCallback(async () => {
+    if (
+      node.entityType === EntityType.TABLE &&
+      (node as Table).testSuite &&
+      showDataObservability
+    ) {
+      const summaryData = await getTestSummaryById(
+        (node as Table).testSuite?.id ?? ''
+      );
+      setSummary(summaryData);
+    }
+  }, [node, showDataObservability]);
+
   useEffect(() => {
     setIsTraced(tracedNodes.includes(id));
   }, [tracedNodes, id]);
+
+  useEffect(() => {
+    init();
+  }, [id, showDataObservability]);
 
   return (
     <div
       className={classNames(
         'lineage-node p-0',
         isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
-        { 'custom-node-header-tracing': isTraced }
+        { 'custom-node-header-tracing': isTraced },
+        { 'custom-node-error': summary?.failed && summary.failed > 0 }
       )}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
       {getHandle()}

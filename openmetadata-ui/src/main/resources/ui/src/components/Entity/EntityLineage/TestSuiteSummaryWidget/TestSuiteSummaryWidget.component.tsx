@@ -11,42 +11,37 @@
  *  limitations under the License.
  */
 import { Skeleton } from 'antd';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   EntityReference,
   TestSummary,
 } from '../../../../generated/tests/testCase';
-import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import { useTestSummaryStore } from '../../../Database/Profiler/TestSummary/useTestSummary.store';
 
 const TestSuiteSummaryWidget = ({
   testSuite,
 }: {
   testSuite?: EntityReference;
 }) => {
-  const [summary, setSummary] = useState<TestSummary>();
   const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState<TestSummary>();
+  const { getTestSummaryById } = useTestSummaryStore();
 
-  const fetchTestSuiteSummary = async (testSuite: EntityReference) => {
-    setIsLoading(true);
+  const init = useCallback(async () => {
     try {
-      const response = await getTestCaseExecutionSummary(testSuite.id);
-      setSummary(response);
+      const summaryData = await getTestSummaryById(testSuite?.id ?? '');
+      setSummary(summaryData);
     } catch (error) {
       setSummary(undefined);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    if (testSuite && isUndefined(summary)) {
-      fetchTestSuiteSummary(testSuite);
-    } else {
-      setIsLoading(false);
-    }
-  }, [testSuite]);
+    init();
+  }, []);
 
   if (isLoading) {
     return <Skeleton.Input active />;

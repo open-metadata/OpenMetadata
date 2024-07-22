@@ -32,18 +32,32 @@
   font-weight: 600;
 }
 
+.custom-node-header-tracing.custom-node-error {
+  border-color: @red-1;
+  .react-flow__handle {
+    border-color: @red-1;
+  }
+  .lineage-node-handle {
+    border: 1px solid @red-1;
+    svg {
+      color: @red-1;
+    }
+  }
+}
+
 .custom-node-header-tracing {
-  border: 1px solid @primary-color;
+  border-color: @primary-color;
   .react-flow__handle {
     border-color: @primary-color;
   }
   .lineage-node-handle {
-    border: 1px solid @primary-color;
+    border-color: @primary-color;
     svg {
       color: @primary-color;
     }
   }
 }
+
 .custom-node-header-active {
   border-color: @primary-color;
 }

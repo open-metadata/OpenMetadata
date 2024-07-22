@@ -34,7 +34,6 @@ import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
-import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
 import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
@@ -47,6 +46,7 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
+import { useTestSummaryStore } from '../../../Database/Profiler/TestSummary/useTestSummary.store';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -67,6 +67,7 @@ function TableSummary({
   const location = useLocation();
   const isTourPage = location.pathname.includes(ROUTES.TOUR);
   const { getEntityPermission } = usePermissionProvider();
+  const { getTestSummaryById } = useTestSummaryStore();
 
   const [profileData, setProfileData] = useState<TableProfileDetails>();
   const [testSuiteSummary, setTestSuiteSummary] = useState<TestSummary>();
@@ -89,9 +90,7 @@ function TableSummary({
   const fetchAllTests = async () => {
     if (tableDetails?.testSuite?.id) {
       try {
-        const res = await getTestCaseExecutionSummary(
-          tableDetails.testSuite.id
-        );
+        const res = await getTestSummaryById(tableDetails.testSuite.id);
 
         setTestSuiteSummary(res);
       } catch (error) {
