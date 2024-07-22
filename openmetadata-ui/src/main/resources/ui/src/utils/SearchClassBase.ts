@@ -21,6 +21,7 @@ import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
@@ -251,6 +252,8 @@ class SearchClassBase {
             icon: GlossaryIcon,
             data: {
               entityType: EntityType.GLOSSARY_TERM,
+              isStatic: true,
+              dataId: 'Glossaries',
             },
           },
           {
@@ -260,11 +263,45 @@ class SearchClassBase {
             icon: ClassificationIcon,
             data: {
               entityType: EntityType.TAG,
+              isStatic: true,
+              dataId: 'Tags',
+            },
+          },
+        ],
+      },
+      {
+        title: i18n.t('label.domain-plural'),
+        key: 'Domain',
+        data: { isRoot: true },
+        icon: DomainIcon,
+        children: [
+          {
+            title: i18n.t('label.data-product-plural'),
+            key: '6',
+            isLeaf: true,
+            icon: DataProductIcon,
+            data: {
+              entityType: EntityType.DATA_PRODUCT,
+              isStatic: true,
             },
           },
         ],
       },
     ];
+  }
+
+  public getExploreTreeKey(tab: ExplorePageTabs) {
+    const tabMapping: Record<string, SearchIndex[]> = {
+      [ExplorePageTabs.TABLES]: [SearchIndex.DATABASE],
+      [ExplorePageTabs.DASHBOARDS]: [SearchIndex.DASHBOARD],
+      [ExplorePageTabs.TOPICS]: [SearchIndex.TOPIC],
+      [ExplorePageTabs.CONTAINERS]: [SearchIndex.CONTAINER],
+      [ExplorePageTabs.PIPELINES]: [SearchIndex.PIPELINE],
+      [ExplorePageTabs.MLMODELS]: [SearchIndex.MLMODEL],
+      [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
+    };
+
+    return tabMapping[tab] || [SearchIndex.DATABASE];
   }
 
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
