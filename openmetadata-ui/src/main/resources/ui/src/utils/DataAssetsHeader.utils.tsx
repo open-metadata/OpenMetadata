@@ -417,6 +417,18 @@ export const getDataAssetsHeaderInfo = (
         EntityType.API_COLLECTION
       );
 
+      returnData.extraInfo = (
+        <>
+          {apiCollection.endpointURL && (
+            <ExtraInfoLink
+              href={apiCollection.endpointURL}
+              label={t('label.endpoint-url')}
+              value={apiCollection.endpointURL}
+            />
+          )}
+        </>
+      );
+
       break;
     }
     case EntityType.API_ENDPOINT: {
@@ -425,6 +437,18 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getEntityBreadcrumbs(
         apiEndpoint,
         EntityType.API_ENDPOINT
+      );
+
+      returnData.extraInfo = (
+        <>
+          {apiEndpoint.endpointURL && (
+            <ExtraInfoLink
+              href={apiEndpoint.endpointURL}
+              label={t('label.endpoint-url')}
+              value={apiEndpoint.endpointURL}
+            />
+          )}
+        </>
       );
 
       break;
