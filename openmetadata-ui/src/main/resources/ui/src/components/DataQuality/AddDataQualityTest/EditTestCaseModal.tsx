@@ -15,7 +15,7 @@ import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, pick } from 'lodash';
+import { isArray, isEmpty, isEqual, pick } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -147,7 +147,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       return {
         ...acc,
         [curr.name || '']:
-          param?.dataType === TestDataType.Array
+          param?.dataType === TestDataType.Array && isArray(curr.value)
             ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
                 value: val,
               }))
