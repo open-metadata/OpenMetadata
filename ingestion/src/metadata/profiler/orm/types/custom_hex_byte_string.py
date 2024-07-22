@@ -46,7 +46,7 @@ class HexByteString(TypeDecorator):
                 f"HexByteString columns support only bytes values. Received {type(value).__name__}."
             )
 
-    def process_result_value(self, value: bytes, dialect) -> Optional[str]:
+    def process_result_value(self, value: Optiona[bytes], dialect) -> Optional[str]:
         """This is executed during result retrieval
 
         Args:
