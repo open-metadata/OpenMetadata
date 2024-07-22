@@ -65,12 +65,12 @@
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
-    },
+    }
   },
   "additionalProperties": false,
   "required": [
     "hostPort",
     "username",
-    "password",
+    "password"
   ]
 }
