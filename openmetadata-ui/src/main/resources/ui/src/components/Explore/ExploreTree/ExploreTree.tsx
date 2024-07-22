@@ -97,7 +97,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           </div>
         );
         if (isEntityType) {
-          logo = getEntityIcon(bucket.key, 'service-icon w-4 h-4');
+          logo = getEntityIcon(bucket.key, 'service-icon w-4 h-4') ?? <></>;
         } else if (isServiceType) {
           const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
           logo = (
