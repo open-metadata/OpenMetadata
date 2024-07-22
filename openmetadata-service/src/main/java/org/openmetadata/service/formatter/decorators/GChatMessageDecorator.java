@@ -66,13 +66,13 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
-  public GChatMessage buildEntityMessage(ChangeEvent event) {
-    return getGChatMessage(createEntityMessage(event));
+  public GChatMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getGChatMessage(createEntityMessage(publisherName, event));
   }
 
   @Override
-  public GChatMessage buildThreadMessage(ChangeEvent event) {
-    return getGChatMessage(createThreadMessage(event));
+  public GChatMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getGChatMessage(createThreadMessage(publisherName, event));
   }
 
   private GChatMessage getGChatMessage(OutgoingMessage outgoingMessage) {
