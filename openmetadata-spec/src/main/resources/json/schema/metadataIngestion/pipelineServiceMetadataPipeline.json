@@ -58,6 +58,12 @@
         }
       }
     },
+    "overrideLineage":{
+      "title": "Override Lineage",
+      "description": "Set the 'Override Lineage' toggle to control whether to override the existing lineage.",
+      "type": "boolean",
+      "default": false
+    },
     "markDeletedPipelines": {
       "description": "Optional configuration to soft delete Pipelines in OpenMetadata if the source Pipelines are deleted. Also, if the Pipeline is deleted, all the associated entities like lineage, etc., with that Pipeline will be deleted",
       "type": "boolean",
