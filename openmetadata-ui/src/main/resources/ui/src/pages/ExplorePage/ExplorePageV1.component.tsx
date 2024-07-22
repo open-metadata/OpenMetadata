@@ -30,7 +30,6 @@ import {
   SearchHitCounts,
   UrlParams,
 } from '../../components/Explore/ExplorePage.interface';
-import { useExploreStore } from '../../components/Explore/useExplore.store';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import { getExplorePath, PAGE_SIZE } from '../../constants/constants';
 import {
@@ -60,7 +59,6 @@ import searchClassBase from '../../utils/SearchClassBase';
 import { escapeESReservedCharacters } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
-  ExploreSidebarTab,
   QueryFieldInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
@@ -80,8 +78,6 @@ const ExplorePageV1: FunctionComponent = () => {
 
   const [searchResults, setSearchResults] =
     useState<SearchResponse<ExploreSearchIndex>>();
-
-  const { sidebarActiveTab, setSidebarActiveTab } = useExploreStore();
 
   const [showIndexNotFoundAlert, setShowIndexNotFoundAlert] =
     useState<boolean>(false);
@@ -237,7 +233,7 @@ const ExplorePageV1: FunctionComponent = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (sidebarActiveTab === ExploreSidebarTab.TREE) {
+    if (!searchQueryParam) {
       return SearchIndex.DATA_ASSET;
     }
 
@@ -253,7 +249,7 @@ const ExplorePageV1: FunctionComponent = () => {
     return !isNil(tabInfo)
       ? (tabInfo[0] as ExploreSearchIndex)
       : SearchIndex.TABLE;
-  }, [tab, searchHitCounts, sidebarActiveTab]);
+  }, [tab, searchHitCounts, searchQueryParam]);
 
   const tabItems = useMemo(() => {
     const items = Object.entries(tabsInfo).map(
@@ -377,36 +373,35 @@ const ExplorePageV1: FunctionComponent = () => {
       setUpdatedAggregations(res.aggregations);
     });
 
-    const countAPICall = searchQuery({
-      query: escapeESReservedCharacters(searchQueryParam),
-      pageNumber: 0,
-      pageSize: 0,
-      queryFilter: combinedQueryFilter,
-      searchIndex: SearchIndex.ALL,
-      includeDeleted: showDeleted,
-      trackTotalHits: true,
-      fetchSource: false,
-      filters: '',
-    }).then((res) => {
-      const buckets = res.aggregations['entityType'].buckets;
-      const counts: Record<string, number> = {};
-
-      buckets.forEach((item) => {
-        const searchIndexKey =
-          item && EntityTypeSearchIndexMapping[item.key as EntityType];
-
-        if (
-          TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)
-        ) {
-          counts[searchIndexKey ?? ''] = item.doc_count;
-        }
-      });
-      setSearchHitCounts(counts as SearchHitCounts);
-    });
-
     const apiCalls = [searchAPICall];
 
-    if (sidebarActiveTab !== ExploreSidebarTab.TREE) {
+    if (searchQueryParam) {
+      const countAPICall = searchQuery({
+        query: escapeESReservedCharacters(searchQueryParam),
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: combinedQueryFilter,
+        searchIndex: SearchIndex.ALL,
+        includeDeleted: showDeleted,
+        trackTotalHits: true,
+        fetchSource: false,
+        filters: '',
+      }).then((res) => {
+        const buckets = res.aggregations['entityType'].buckets;
+        const counts: Record<string, number> = {};
+
+        buckets.forEach((item) => {
+          const searchIndexKey =
+            item && EntityTypeSearchIndexMapping[item.key as EntityType];
+
+          if (
+            TABS_SEARCH_INDEXES.includes(searchIndexKey as ExploreSearchIndex)
+          ) {
+            counts[searchIndexKey ?? ''] = item.doc_count;
+          }
+        });
+        setSearchHitCounts(counts as SearchHitCounts);
+      });
       apiCalls.push(countAPICall);
     }
 
@@ -423,10 +418,6 @@ const ExplorePageV1: FunctionComponent = () => {
       })
       .finally(() => setIsLoading(false));
   };
-
-  useEffect(() => {
-    setSidebarActiveTab(ExploreSidebarTab.ASSETS);
-  }, []);
 
   useEffect(() => {
     if (isTourOpen) {

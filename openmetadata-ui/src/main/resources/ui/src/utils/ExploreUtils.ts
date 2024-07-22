@@ -227,3 +227,19 @@ export const updateTreeData = (
 
     return node;
   });
+
+export const getQuickFilterObject = (
+  bucketKey: EntityFields,
+  bucketValue: string
+) => {
+  return {
+    label: bucketKey,
+    key: bucketKey,
+    value: [
+      {
+        key: bucketValue,
+        label: bucketValue,
+      },
+    ],
+  };
+};

@@ -65,6 +65,7 @@ describe('DataAssetCard', () => {
       extraParameters: {
         page: '1',
         quickFilter: filterQuery,
+        defaultServiceType: 'mysql',
       },
       tab: 'tables',
     });
