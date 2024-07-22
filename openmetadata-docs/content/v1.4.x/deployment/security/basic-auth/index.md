@@ -10,7 +10,7 @@ Out of the box, OpenMetadata comes with a Username & Password Login Mechanism.
 The default Username and Password for Login are:
 
 ```commandline
-Username - admin
+Username - admin@openmetadata.org
 Password - admin
 ```
 
