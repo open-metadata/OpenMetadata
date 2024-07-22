@@ -55,16 +55,16 @@ export const prepareChartData = ({
         ? undefined
         : `${round(result.failedRowsPercentage, 2)}%`,
     };
+    const y1 = result?.minBound ?? yValues.y1;
+    const y2 = result?.maxBound ?? yValues.y2;
+    const boundArea = isUndefined(y1) || isUndefined(y2) ? undefined : [y1, y2];
 
     dataPoints.push({
       name: result.timestamp,
       status: result.testCaseStatus,
       ...values,
       ...omitBy(metric, isUndefined),
-      boundArea: [
-        result?.minBound ?? yValues.y1,
-        result?.maxBound ?? yValues.y2,
-      ],
+      boundArea,
       incidentId: result.incidentId,
       task: entityThread.find(
         (task) => task.task?.testCaseResolutionStatusId === result.incidentId
