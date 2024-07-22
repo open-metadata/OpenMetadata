@@ -25,6 +25,7 @@ import './math-equation.less';
 export const MathEquationComponent: FC<NodeViewProps> = ({
   node,
   updateAttributes,
+  editor,
 }) => {
   const { t } = useTranslation();
   const inputRef = React.useRef<TextAreaRef>(null);
@@ -78,7 +79,8 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
         ) : (
           <Latex>{equation}</Latex>
         )}
-        {!isEditing && (
+        {/* Show edit button only when the editor is editable */}
+        {!isEditing && editor.isEditable && (
           <Tooltip
             title={t('label.edit-entity', { entity: t('label.equation') })}>
             <Button

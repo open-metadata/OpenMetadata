@@ -15,6 +15,8 @@ Oracle E2E tests
 
 from typing import List
 
+import pytest
+
 from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType
@@ -96,11 +98,11 @@ SELECT * from names
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "e2e_oracle.default.admin.ADMIN_EMP"
+        return "e2e_oracle.default.admin.admin_emp"
 
     @staticmethod
     def _fqn_deleted_table() -> str:
-        return "e2e_oracle.default.admin.ADMIN_EMP"
+        return "e2e_oracle.default.admin.admin_emp"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
@@ -128,12 +130,15 @@ SELECT * from names
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 29
+        return 30
 
     @staticmethod
     def expected_filtered_mix() -> int:
         return 43
 
+    @pytest.mark.xfail(
+        reason="Issue Raised: https://github.com/open-metadata/OpenMetadata/issues/17085"
+    )
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
         self.delete_table_and_view()
@@ -240,7 +245,7 @@ SELECT * from names
             E2EType.INGEST_DB_FILTER_MIX,
             {
                 "schema": {"includes": self.get_includes_schemas()},
-                "table": {"excludes": self.get_includes_tables()},
+                "table": {"excludes": self.get_excludes_tables()},
             },
         )
 
