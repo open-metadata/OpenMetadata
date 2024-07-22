@@ -12,11 +12,10 @@
  */
 
 import classNames from 'classnames';
-import { isFunction } from 'lodash';
 import React, {
   forwardRef,
   HTMLAttributes,
-  useEffect,
+  useImperativeHandle,
   useRef,
   useState,
 } from 'react';
@@ -79,17 +78,9 @@ const ActivityFeedEditor = forwardRef<editorRef, ActivityFeedEditorProp>(
     /**
      * Handle forward ref logic and provide method access to parent component
      */
-    useEffect(() => {
-      if (!ref) {
-        return;
-      }
-
-      if (isFunction(ref)) {
-        ref(editorRef.current);
-      } else {
-        ref.current = editorRef.current;
-      }
-    }, [ref]);
+    useImperativeHandle(ref, () => ({
+      ...editorRef.current,
+    }));
 
     return (
       <div
@@ -104,9 +95,7 @@ const ActivityFeedEditor = forwardRef<editorRef, ActivityFeedEditorProp>(
           onChangeHandler={onChangeHandler}
           onSave={onSaveHandler}
         />
-        {editAction ? (
-          editAction
-        ) : (
+        {editAction ?? (
           <>
             <SendButton
               editorValue={editorValue}
