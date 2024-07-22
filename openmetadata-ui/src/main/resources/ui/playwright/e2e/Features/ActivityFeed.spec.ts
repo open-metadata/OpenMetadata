@@ -186,7 +186,7 @@ test.describe('Activity feed', () => {
   test('Update Description Task on Columns', async ({ page }) => {
     const firstTaskValue: TaskDetails = {
       term: entity.entity.name,
-      assignee: `${user.data.firstName}.${user.data.lastName}`,
+      assignee: user.responseData.name,
       description: 'Column Description 1',
       columnName: entity.entity.columns[0].name,
       oldDescription: entity.entity.columns[0].description,
