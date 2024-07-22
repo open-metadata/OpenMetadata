@@ -211,14 +211,14 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     assertListNotNull(chart.getService(), chart.getServiceType());
     assertListNull(chart.getOwners(), chart.getFollowers(), chart.getTags());
 
-    // .../charts?fields=owner
-    fields = "owner,followers,tags";
+    // .../charts?fields=owners
+    fields = "owners,followers,tags";
     chart =
         byName
             ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return chart;
   }
 

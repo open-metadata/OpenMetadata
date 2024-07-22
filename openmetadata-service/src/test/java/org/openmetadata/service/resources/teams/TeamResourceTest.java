@@ -1167,7 +1167,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         index,
         teamType,
         parent != null ? parent : "",
-        owner != null ? owner.getName() : "",
+        owner != null ? "user:" + owner.getName() : "",
         isJoinable,
         defaultRoles != null
             ? defaultRoles.stream()
