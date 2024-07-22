@@ -555,12 +555,29 @@ export const TaskTab = ({
     }
   };
 
+  const handleNoSuggestionMenuItemClick: MenuProps['onClick'] = (info) => {
+    if (info.key === TaskActionMode.EDIT) {
+      setShowEditTaskModel(true);
+    } else {
+      onTaskReject();
+    }
+    setTaskAction(
+      noSuggestionTaskMenuOptions.find((action) => action.key === info.key) ??
+        noSuggestionTaskMenuOptions[0]
+    );
+  };
+
   const onTaskDropdownClick = () => {
-    if (
-      taskAction.key === TaskActionMode.RESOLVE ||
-      taskAction.key === TaskActionMode.EDIT
-    ) {
+    if (taskAction.key === TaskActionMode.RESOLVE) {
       handleMenuItemClick({ key: taskAction.key } as MenuInfo);
+    } else {
+      onTaskReject();
+    }
+  };
+
+  const onNoSuggestionTaskDropdownClick = () => {
+    if (taskAction.key === TaskActionMode.EDIT) {
+      handleNoSuggestionMenuItemClick({ key: taskAction.key } as MenuInfo);
     } else {
       onTaskReject();
     }
@@ -690,10 +707,10 @@ export const TaskTab = ({
                     items: getFormattedMenuOptions(noSuggestionTaskMenuOptions),
                     selectable: true,
                     selectedKeys: [taskAction.key],
-                    onClick: handleMenuItemClick,
+                    onClick: handleNoSuggestionMenuItemClick,
                   }}
                   overlayClassName="task-action-dropdown"
-                  onClick={onTaskDropdownClick}>
+                  onClick={onNoSuggestionTaskDropdownClick}>
                   {taskAction.label}
                 </Dropdown.Button>
               </div>
@@ -736,6 +753,8 @@ export const TaskTab = ({
     testCaseResultFlow,
     isTaskTestCaseResult,
     renderCommentButton,
+    handleNoSuggestionMenuItemClick,
+    onNoSuggestionTaskDropdownClick,
   ]);
 
   const initialFormValue = useMemo(() => {
@@ -1006,7 +1025,10 @@ export const TaskTab = ({
             entity: t('label.task-lowercase'),
           })} #${taskDetails?.id} ${taskThread.message}`}
           width={768}
-          onCancel={() => setShowEditTaskModel(false)}
+          onCancel={() => {
+            form.resetFields();
+            setShowEditTaskModel(false);
+          }}
           onOk={form.submit}>
           <Form
             form={form}
