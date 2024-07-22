@@ -985,7 +985,10 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
       url: apiEndpoint.endpointURL,
       isLink: true,
       isExternal: true,
-      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
     },
     {
       name: i18next.t('label.api-collection'),
@@ -995,7 +998,10 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
         apiCollection?.fullyQualifiedName ?? ''
       ),
       isLink: true,
-      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
     },
     {
       name: i18next.t('label.service'),
@@ -1005,7 +1011,10 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
         ServiceCategory.API_SERVICES
       ),
       isLink: true,
-      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
     },
   ];
 

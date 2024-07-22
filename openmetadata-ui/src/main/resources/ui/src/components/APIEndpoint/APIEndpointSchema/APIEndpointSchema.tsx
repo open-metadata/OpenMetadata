@@ -16,7 +16,14 @@ import Table, { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import React, { FC, Key, useCallback, useMemo, useState } from 'react';
+import React, {
+  FC,
+  Key,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -385,6 +392,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       handleFieldTagsChange,
     ]
   );
+
+  // Set expanded row keys to all row keys on initial render
+  useEffect(() => {
+    setExpandedRowKeys(schemaAllRowKeys);
+  }, []);
 
   return (
     <Row gutter={[16, 16]}>
