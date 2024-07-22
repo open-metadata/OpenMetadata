@@ -60,7 +60,6 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -330,18 +329,24 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Valid CreateDocument cd) {
     Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
 
-    if (doc.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
-      return validateTemplateAndUpdate(doc);
-    }
+    Response emailTemplateValidationResponse = validateTemplateAndUpdate(doc);
+    if (emailTemplateValidationResponse != null) return emailTemplateValidationResponse;
 
     return createOrUpdate(uriInfo, securityContext, doc);
   }
 
-  private Response validateTemplateAndUpdate(Document updatedDocument) {
-    Map<String, Object> validationResponse =
-        templateProvider.validateEmailTemplate(updatedDocument);
+  private Response validateTemplateAndUpdate(Document document) {
+    if (!document.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      return null;
+    }
+
+    Map<String, Object> validationResponse = templateProvider.validateEmailTemplate(document);
     boolean isValid =
         (boolean) validationResponse.get(DefaultTemplateProvider.EMAIL_TEMPLATE_VALID);
+
+    if (isValid) {
+      return null;
+    }
 
     @SuppressWarnings("unchecked")
     List<String> missingPlaceholders =
@@ -349,20 +354,6 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
             validationResponse.getOrDefault(
                 DefaultTemplateProvider.EMAIL_TEMPLATE_MISSING_PLACEHOLDERS,
                 Collections.emptyList());
-
-    if (isValid) {
-      Document originalDocument =
-          repository.findByName(updatedDocument.getName(), Include.NON_DELETED);
-
-      DocumentRepository.DocumentUpdater documentUpdater =
-          repository.getUpdater(originalDocument, updatedDocument, EntityRepository.Operation.PUT);
-
-      documentUpdater.entitySpecificUpdate();
-
-      return Response.status(Response.Status.OK.getStatusCode())
-          .entity(new EmailTemplateValidationResponse())
-          .build();
-    }
 
     return Response.status(Response.Status.BAD_REQUEST.getStatusCode())
         .entity(new EmailTemplateValidationResponse(missingPlaceholders))
