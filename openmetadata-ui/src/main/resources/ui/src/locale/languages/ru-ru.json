@@ -744,6 +744,7 @@
     "no-description": "Нет описания",
     "no-diff-available": "Нет различий",
     "no-entity": "{{entity}} отсутствует",
+    "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "Подходящие объекты данных не найдены",
     "no-of-test": "№ теста",
     "no-owner": "No Owner",
