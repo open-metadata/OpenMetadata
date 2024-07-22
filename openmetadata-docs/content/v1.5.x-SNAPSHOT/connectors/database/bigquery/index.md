@@ -38,7 +38,7 @@ You need to create an service account in order to ingest metadata from bigquery 
 icon="manage_accounts"
 title="Create Custom GCP Role"
 description="Check out this documentation on how to create a custom role and assign it to the service account."
-link="/connectors/database/bigquery/roles"
+link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 
