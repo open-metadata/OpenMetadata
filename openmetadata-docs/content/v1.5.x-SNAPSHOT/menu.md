@@ -268,6 +268,10 @@ site_menu:
     url: /connectors/database/domo-database/yaml
   - category: Connectors / Database / Domo Database / Troubleshoot
     url: /connectors/database/domo-database/troubleshoot
+  - category: Connectors / Database / Doris
+    url: /connectors/database/doris
+  - category: Connectors / Database / Doris / Run Externally
+    url: /connectors/database/doris/yaml
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
   - category: Connectors / Database / Druid / Run Externally
@@ -364,6 +368,12 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / Synapse
+    url: /connectors/database/synapse
+  - category: Connectors / Database / Synapse / Run Externally
+    url: /connectors/database/synapse/yaml
+  - category: Connectors / Database / Synapse / Troubleshooting
+    url: /connectors/database/synapse/troubleshooting
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally

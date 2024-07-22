@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
@@ -43,14 +44,18 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   private final Webhook webhook;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public GenericPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == WEBHOOK) {
-      this.subscriptionDestination = subscription;
-      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
+  public GenericPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == WEBHOOK) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
+      this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
 
       // Build Client
-      this.client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
+      this.client =
+          getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
     } else {
       throw new IllegalArgumentException(
           "GenericWebhook Alert Invoked with Illegal Type and Settings.");
@@ -102,6 +107,11 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   private Invocation.Builder getTarget() {
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     return SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override
