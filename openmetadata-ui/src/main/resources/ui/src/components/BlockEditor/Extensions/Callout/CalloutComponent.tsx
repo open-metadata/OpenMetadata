@@ -45,11 +45,17 @@ const CalloutComponent: FC<NodeViewProps> = ({
   node,
   extension,
   updateAttributes,
+  editor,
 }) => {
   const { calloutType } = node.attrs;
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(false);
   const CallOutIcon =
     CALLOUT_CONTENT[calloutType as keyof typeof CALLOUT_CONTENT];
+
+  const handlePopoverVisibleChange = (visible: boolean) => {
+    // Only show the popover when the editor is in editable mode
+    setIsPopupVisible(visible && editor.isEditable);
+  };
 
   return (
     <NodeViewWrapper as="div" className="om-react-node">
@@ -73,7 +79,7 @@ const CalloutComponent: FC<NodeViewProps> = ({
           placement="bottomRight"
           showArrow={false}
           trigger="click"
-          onOpenChange={setIsPopupVisible}>
+          onOpenChange={handlePopoverVisibleChange}>
           <Button
             className="callout-type-btn"
             data-testid={`callout-${calloutType}-btn`}
