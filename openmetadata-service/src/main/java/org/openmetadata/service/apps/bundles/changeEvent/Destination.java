@@ -17,6 +17,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AC
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.AWAITING_RETRY;
 import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FAILED;
 
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.service.events.errors.EventPublisherException;
@@ -26,6 +27,8 @@ public interface Destination<T> {
   void sendMessage(T event) throws EventPublisherException;
 
   SubscriptionDestination getSubscriptionDestination();
+
+  EventSubscription getEventSubscriptionForDestination();
 
   void close();
 

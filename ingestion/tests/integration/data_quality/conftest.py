@@ -2,18 +2,26 @@ import pytest
 from testcontainers.mysql import MySqlContainer
 
 from _openmetadata_testutils.postgres.conftest import postgres_container, try_bind
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
+    BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseService,
+    DatabaseServiceType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
 
-from ..postgres.conftest import db_service as postgres_service
-from ..postgres.conftest import ingest_metadata as ingest_postgres
-
 __all__ = [
-    "ingest_postgres",
-    "postgres_service",
     "postgres_container",
 ]
 
@@ -68,3 +76,54 @@ def ingest_mysql_service(
     )
     yield db_service
     metadata.delete(DatabaseService, db_service.id, recursive=True, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def create_service_request(tmp_path_factory, postgres_container):
+    return CreateDatabaseServiceRequest(
+        name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
+        serviceType=DatabaseServiceType.Postgres,
+        connection=DatabaseConnection(
+            config=PostgresConnection(
+                username=postgres_container.username,
+                authType=BasicAuth(password=postgres_container.password),
+                hostPort="localhost:"
+                + postgres_container.get_exposed_port(postgres_container.port),
+                database="dvdrental",
+            )
+        ),
+    )
+
+
+@pytest.fixture(scope="module")
+def postgres_service(db_service):
+    return db_service
+
+
+@pytest.fixture()
+def ingest_postgres_metadata(
+    postgres_service, metadata: OpenMetadata, sink_config, workflow_config, run_workflow
+):
+    workflow_config = {
+        "source": {
+            "type": postgres_service.connection.config.type.value.lower(),
+            "serviceName": postgres_service.fullyQualifiedName.root,
+            "serviceConnection": postgres_service.connection,
+            "sourceConfig": {"config": {}},
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+    run_workflow(MetadataWorkflow, workflow_config)
+
+
+@pytest.fixture(scope="module")
+def patch_password(postgres_container):
+    def inner(service: DatabaseService):
+        service.connection.config = cast(PostgresConnection, service.connection.config)
+        service.connection.config.authType.password = type(
+            service.connection.config.authType.password
+        )(postgres_container.password)
+        return service
+
+    return inner

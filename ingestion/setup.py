@@ -341,11 +341,13 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto~=5.0",
+    "basedpyright~=1.14",
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
     # install dbt dependency
     "dbt-artifacts-parser",
+    "freezegun",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
     VERSIONS["scikit-learn"],
@@ -382,6 +384,7 @@ test = {
     *plugins["mssql"],
     *plugins["dagster"],
     *plugins["oracle"],
+    *plugins["mssql"],
 }
 
 e2e_test = {

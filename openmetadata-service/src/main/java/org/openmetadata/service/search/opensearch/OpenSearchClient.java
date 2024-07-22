@@ -1527,7 +1527,9 @@ public class OpenSearchClient implements SearchClient {
                   while (hasMoreResults) {
                     List<EntityReference> entities =
                         ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
-                            matchingKey, sourceRef.getFullyQualifiedName(), from);
+                            matchingKey,
+                            ReindexingUtil.escapeDoubleQuotes(sourceRef.getFullyQualifiedName()),
+                            from);
 
                     // Async Re-index the entities which matched
                     processEntitiesForReindex(entities);
