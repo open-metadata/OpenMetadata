@@ -18,6 +18,7 @@ import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collection-default.svg';
 import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as IconAPIService } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
@@ -234,10 +235,10 @@ class SearchClassBase {
         icon: SearchIcon,
       },
       {
-        title: i18n.t('label.api-collection-plural'),
-        key: SearchIndex.API_COLLECTION_INDEX,
+        title: i18n.t('label.api-uppercase-plural'),
+        key: SearchIndex.API_ENDPOINT_INDEX,
         data: { isRoot: true },
-        icon: IconAPICollection,
+        icon: IconAPIService,
       },
       {
         title: i18n.t('label.governance'),
@@ -299,6 +300,7 @@ class SearchClassBase {
       [ExplorePageTabs.PIPELINES]: [SearchIndex.PIPELINE],
       [ExplorePageTabs.MLMODELS]: [SearchIndex.MLMODEL],
       [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
+      [ExplorePageTabs.API_ENDPOINT]: [SearchIndex.API_ENDPOINT_INDEX],
     };
 
     return tabMapping[tab] || [SearchIndex.DATABASE];
