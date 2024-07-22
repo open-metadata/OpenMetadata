@@ -90,7 +90,9 @@ class WebAnalyticEntityViewReportDataProcessor(DataProcessor):
         self.refine_entity_event = self._refine_entity_event()
         next(self.refine_entity_event)
 
-    def _refine_entity_event(self) -> Generator[dict, WebAnalyticEventData, None]:
+    def _refine_entity_event(  # pylint: disable=too-many-branches, too-many-statements
+        self,
+    ) -> Generator[dict, WebAnalyticEventData, None]:
         """Coroutine to process entity web analytic event
 
         Yields:

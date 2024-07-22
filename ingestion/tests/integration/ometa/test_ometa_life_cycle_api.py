@@ -43,6 +43,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
@@ -170,7 +171,7 @@ class OMetaLifeCycleTest(TestCase):
 
         self.assertEqual(res.name.root, "test_create")
         self.assertEqual(res.databaseSchema.id, self.create_schema_entity.id)
-        self.assertEqual(res.owner, None)
+        self.assertEqual(res.owners, EntityReferenceList(root=[]))
 
     def test_ingest_life_cycle(self):
         """

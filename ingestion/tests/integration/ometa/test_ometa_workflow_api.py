@@ -147,7 +147,7 @@ class OMetaWorkflowTest(TestCase):
         self.assertEqual(res.description, self.entity.description)
         self.assertEqual(res.workflowType, self.entity.workflowType)
         self.assertEqual(res.status, WorkflowStatus.Pending)
-        self.assertEqual(res.owner, None)
+        self.assertIsNone(res.owners)
 
     def test_get_name(self):
         """

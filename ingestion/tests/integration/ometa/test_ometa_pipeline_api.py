@@ -134,7 +134,7 @@ class OMetaPipelineTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.service.id, self.entity.service.id)
-        self.assertIsNone(res.owners)
+        self.assertEqual(res.owners, EntityReferenceList(root=[]))
 
     def test_update(self):
         """

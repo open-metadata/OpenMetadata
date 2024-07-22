@@ -227,7 +227,7 @@ class OMetaTableTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.databaseSchema.id, self.entity.databaseSchema.id)
-        self.assertIsNone(res.owners)
+        self.assertEqual(res.owners, EntityReferenceList(root=[]))
 
     def test_update(self):
         """

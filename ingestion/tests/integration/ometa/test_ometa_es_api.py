@@ -230,6 +230,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         # We get the created table back
@@ -247,6 +248,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         self.assertIsNotNone(res)
@@ -263,6 +265,7 @@ class OMetaESTest(TestCase):
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         self.assertIsNotNone(res)
