@@ -95,7 +95,7 @@ src="/images/v1.4/connectors/bigquery/bq-create-service-account-1.png"
 alt="Create Service Accounts"
 caption="Create Service Accounts" /%}
 
-Grant a role to service account which has all the required permission to ingest BigQuery metadata in OpenMetadata checkout [this](/connectors/database/bigquery/roles) documentation for details on how to create a custom role with required permissions.
+Grant a role to service account which has all the required permission to ingest BigQuery metadata in OpenMetadata.
 
 {% image
 src="/images/v1.4/connectors/bigquery/bq-service-account-grant-role.png"
