@@ -639,17 +639,6 @@ export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
   return current && current.isBefore(moment().subtract(1, 'day'));
 };
 
-export const getKpiTargetValueByMetricType = (
-  metricType: KpiTargetType,
-  metricValue: number
-) => {
-  if (metricType === KpiTargetType.Percentage) {
-    return metricValue / 100;
-  }
-
-  return metricValue;
-};
-
 export const getKpiResultFeedback = (day: number, isTargetMet: boolean) => {
   if (day > 0 && isTargetMet) {
     return t('message.kpi-target-achieved-before-time');

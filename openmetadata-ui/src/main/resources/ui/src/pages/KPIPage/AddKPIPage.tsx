@@ -48,7 +48,6 @@ import { getListKPIs, postKPI } from '../../rest/KpiAPI';
 import {
   getDataInsightPathWithFqn,
   getDisabledDates,
-  getKpiTargetValueByMetricType,
 } from '../../utils/DataInsightUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
@@ -146,7 +145,7 @@ const AddKPIPage = () => {
     const startDate = values.startDate.valueOf();
     const endDate = values.endDate.valueOf();
 
-    const targetValue = getKpiTargetValueByMetricType(metricType, metricValue);
+    const targetValue = metricValue;
 
     const formData: CreateKpiRequest = {
       dataInsightChart: values.dataInsightChart,
