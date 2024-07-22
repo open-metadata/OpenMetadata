@@ -420,6 +420,7 @@ export const ActivityFeedTab = ({
                   'font-medium': taskFilter === 'open',
                 }
               )}
+              data-testid="open-task"
               onClick={() => {
                 handleUpdateTaskFilter('open');
                 setActiveThread();

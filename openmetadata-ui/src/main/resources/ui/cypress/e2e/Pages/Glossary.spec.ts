@@ -382,7 +382,10 @@ const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
 
   interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'resolveTask');
 
-  cy.get('[data-testid="approve-task"]').click();
+  // approve the task
+  cy.get(
+    '[data-testid="glossary-accept-reject-task-dropdown"] .ant-btn-compact-first-item > span'
+  ).click();
 
   verifyResponseStatusCode('@resolveTask', 200);
 

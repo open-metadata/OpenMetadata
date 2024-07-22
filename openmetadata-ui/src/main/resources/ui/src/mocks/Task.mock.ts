@@ -285,3 +285,53 @@ export const MOCK_TASK_ASSIGNEE = [
     value: 'id1',
   },
 ];
+
+export const MOCK_TASK = {
+  id: 1,
+  type: TaskType.RequestTag,
+  assignees: [
+    {
+      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      type: 'User',
+      name: 'xyz',
+      fullyQualifiedName: 'xyz',
+      deleted: false,
+    },
+  ],
+  status: ThreadTaskStatus.Open,
+  oldValue: '[]',
+  suggestion:
+    '[{"tagFQN":"PersonalData.SpecialCategory","source":"Classification","name":"SpecialCategory","description":"GDPR special category data is personal information of data subjects that is especially sensitive, the exposure of which could significantly impact the rights and freedoms of data subjects and potentially be used against them for unlawful discrimination."}]',
+};
+
+export const MOCK_TASK_2 = {
+  id: 1,
+  type: TaskType.RequestTag,
+  assignees: [
+    {
+      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      type: 'User',
+      name: 'xyz',
+      fullyQualifiedName: 'xyz',
+      deleted: false,
+    },
+  ],
+  status: ThreadTaskStatus.Open,
+  oldValue: '[]',
+};
+
+export const MOCK_TASK_3 = {
+  id: 1,
+  type: TaskType.RequestApproval,
+  assignees: [
+    {
+      id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+      type: 'User',
+      name: 'xyz',
+      fullyQualifiedName: 'xyz',
+      deleted: false,
+    },
+  ],
+  status: ThreadTaskStatus.Open,
+  oldValue: '[]',
+};
