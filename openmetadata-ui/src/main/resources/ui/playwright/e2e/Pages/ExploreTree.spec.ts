@@ -24,8 +24,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Explore Tree', async ({ page }) => {
-  await page.getByTestId('explore-tree-tab').getByText('Tree').click();
-
   await test.step('Check the explore tree', async () => {
     await expect(page.getByRole('tree')).toContainText('Databases');
     await expect(page.getByRole('tree')).toContainText('Dashboards');

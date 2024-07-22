@@ -230,6 +230,7 @@ class SearchClassBase {
             data: {
               entityType: EntityType.GLOSSARY_TERM,
               isStatic: true,
+              dataId: 'Glossaries',
             },
           },
           {
@@ -240,6 +241,7 @@ class SearchClassBase {
             data: {
               entityType: EntityType.TAG,
               isStatic: true,
+              dataId: 'Tags',
             },
           },
         ],
