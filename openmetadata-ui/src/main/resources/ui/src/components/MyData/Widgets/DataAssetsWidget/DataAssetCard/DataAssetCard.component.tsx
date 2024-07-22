@@ -36,6 +36,7 @@ const DataAssetCard = ({ service: { key, doc_count } }: DataAssetCardProps) => {
         extraParameters: {
           page: '1',
           quickFilter: getServiceTypeExploreQueryFilter(key),
+          defaultServiceType: key,
         },
       }),
     [key]
