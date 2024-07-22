@@ -368,6 +368,12 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / Synapse
+    url: /connectors/database/synapse
+  - category: Connectors / Database / Synapse / Run Externally
+    url: /connectors/database/synapse/yaml
+  - category: Connectors / Database / Synapse / Troubleshooting
+    url: /connectors/database/synapse/troubleshooting
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
