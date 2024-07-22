@@ -133,6 +133,7 @@ class ServiceUtilClassBase {
     StorageServiceType.Adls,
     DatabaseServiceType.QueryLog,
     DatabaseServiceType.Dbt,
+    DatabaseServiceType.Synapse,
     MetadataServiceType.Alation,
     APIServiceType.Webhook,
   ];
