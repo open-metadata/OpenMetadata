@@ -49,10 +49,7 @@ import {
 } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import {
-  ExploreSidebarTab,
-  QueryFieldInterface,
-} from '../../pages/ExplorePage/ExplorePage.interface';
+import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
@@ -67,7 +64,6 @@ import {
   ExploreSearchIndex,
 } from '../Explore/ExplorePage.interface';
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
-import { useExploreStore } from '../Explore/useExplore.store';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './exploreV1.less';
@@ -140,7 +136,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const [showSummaryPanel, setShowSummaryPanel] = useState(false);
   const [entityDetails, setEntityDetails] =
     useState<SearchedDataProps['data'][number]['_source']>();
-  const { sidebarActiveTab } = useExploreStore();
 
   const firstEntity = searchResults?.hits
     ?.hits[0] as SearchedDataProps['data'][number];
@@ -286,8 +281,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     if (
       !isUndefined(searchResults) &&
       searchResults?.hits?.hits[0] &&
-      (sidebarActiveTab === ExploreSidebarTab.TREE ||
-        searchResults?.hits?.hits[0]._index === searchIndex)
+      searchResults?.hits?.hits[0]._index === searchIndex
     ) {
       handleSummaryPanelDisplay(
         highlightEntityNameAndDescription(
@@ -309,9 +303,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
     <div className="explore-page bg-white" data-testid="explore-page">
       {tabItems.length > 0 && (
         <Layout hasSider className="bg-white">
-          <Sider
-            className="bg-white border-right"
-            width={sidebarActiveTab === ExploreSidebarTab.TREE ? 340 : 300}>
+          <Sider className="bg-white border-right" width={340}>
             <Typography.Paragraph className="explore-data-header">
               {t('label.data-asset-plural')}
             </Typography.Paragraph>
