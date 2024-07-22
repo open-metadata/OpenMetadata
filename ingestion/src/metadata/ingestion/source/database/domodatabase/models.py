@@ -26,6 +26,7 @@ class DomoDatabaseBaseModel(BaseModel):
 
 
 class User(DomoDatabaseBaseModel):
+    id: int
     email: str
     role: str
 
