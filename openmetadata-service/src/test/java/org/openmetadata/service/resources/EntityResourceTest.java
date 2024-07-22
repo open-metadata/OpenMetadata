@@ -1077,7 +1077,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
-    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    // Direct request to es needs to have es clusterAlias appended with indexName
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
@@ -1122,7 +1127,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
-    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    // Direct request to es needs to have es clusterAlias appended with indexName
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
@@ -2178,9 +2188,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    SearchResponse response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+    // search api method internally appends clusterAlias name
+    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
     SearchHit[] hits = response.getHits().getHits();
     for (SearchHit hit : hits) {
@@ -2200,9 +2209,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    SearchResponse response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+    // search api method internally appends clusterAlias name
+    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
     SearchHit[] hits = response.getHits().getHits();
     for (SearchHit hit : hits) {
@@ -2217,9 +2225,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
     // search again in search after deleting
 
-    response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+    // search api method internally appends clusterAlias name
+    response = getResponseFormSearch(indexMapping.getIndexName(null));
     hits = response.getHits().getHits();
     for (SearchHit hit : hits) {
       Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -2309,12 +2316,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Map<String, Object> getEntityDocumentFromSearch(UUID entityId, String entityType)
       throws HttpResponseException {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
+    // SearchResource.java-searchEntityInEsIndexWithId method internally appends clusterAlias name
     WebTarget target =
         getResource(
             String.format(
-                "search/get/%s/doc/%s",
-                indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
-                entityId.toString()));
+                "search/get/%s/doc/%s", indexMapping.getIndexName(null), entityId.toString()));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     GetResponse response = null;
     try {
@@ -3314,7 +3320,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    // Direct request to es needs to have es clusterAlias appended with indexName
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         String.format(
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
