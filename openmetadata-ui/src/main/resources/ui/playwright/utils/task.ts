@@ -28,10 +28,11 @@ const tag = 'PII.None';
 export const createDescriptionTask = async (
   page: Page,
   value: TaskDetails,
+  addDescription = true,
   assigneeDisabled?: boolean
 ) => {
   expect(await page.locator('#title').inputValue()).toBe(
-    `Update description for table ${
+    `${addDescription ? 'Update' : 'Request'} description for table ${
       value.columnName
         ? `${value.term} columns/${value.columnName}`
         : value.term
@@ -69,9 +70,11 @@ export const createDescriptionTask = async (
     await page.click('body');
   }
 
-  await page
-    .locator(descriptionBox)
-    .fill(value.description ?? 'Updated description');
+  if (addDescription) {
+    await page
+      .locator(descriptionBox)
+      .fill(value.description ?? 'Updated description');
+  }
   await page.click('button[type="submit"]');
 
   await toastNotification(page, /Task created successfully./);
@@ -80,6 +83,7 @@ export const createDescriptionTask = async (
 export const createTagTask = async (
   page: Page,
   value: TaskDetails,
+  addTag = true,
   assigneeDisabled?: boolean
 ) => {
   expect(await page.locator('#title').inputValue()).toBe(
@@ -117,24 +121,26 @@ export const createTagTask = async (
     await clickOutside(page);
   }
 
-  // select tags
-  const suggestTags = page.locator(
-    '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-  );
-  await suggestTags.click();
+  if (addTag) {
+    // select tags
+    const suggestTags = page.locator(
+      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
+    );
+    await suggestTags.click();
 
-  const querySearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${value.tag ?? tag}*&index=tag_search_index&*`
-  );
-  await suggestTags.fill(value.tag ?? tag);
+    const querySearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${value.tag ?? tag}*&index=tag_search_index&*`
+    );
+    await suggestTags.fill(value.tag ?? tag);
 
-  await querySearchResponse;
+    await querySearchResponse;
 
-  // select value from dropdown
-  const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`);
-  await dropdownValue.hover();
-  await dropdownValue.click();
-  await clickOutside(page);
+    // select value from dropdown
+    const dropdownValue = page.getByTestId(`tag-${value.tag ?? tag}`);
+    await dropdownValue.hover();
+    await dropdownValue.click();
+    await clickOutside(page);
+  }
 
   await page.click('button[type="submit"]');
 
