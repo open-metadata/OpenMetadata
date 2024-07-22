@@ -16,6 +16,7 @@ import { Button, Col, Divider, Row, Space, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import cronstrue from 'cronstrue';
+import { sortBy } from 'lodash';
 import React, { Fragment, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
@@ -576,7 +577,16 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   );
 
   const dataSource = useMemo(() => {
-    return testSuitePipelines.map((test) => ({
+    const sortedByTestCaseLength = sortBy(testSuitePipelines, (pipeline) => {
+      const length = pipeline?.sourceConfig?.config?.testCases?.length;
+      if (!length) {
+        return -Infinity; // Use -Infinity to ensure these come first
+      }
+
+      return length;
+    });
+
+    return sortedByTestCaseLength.map((test) => ({
       ...test,
       key: test.name,
     }));
