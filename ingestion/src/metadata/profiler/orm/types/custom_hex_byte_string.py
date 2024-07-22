@@ -46,7 +46,7 @@ class HexByteString(TypeDecorator):
                 f"HexByteString columns support only bytes values. Received {type(value).__name__}."
             )
 
-    def process_result_value(self, value: str, dialect) -> Optional[str]:
+    def process_result_value(self, value: Optional[bytes], dialect) -> Optional[str]:
         """This is executed during result retrieval
 
         Args:
@@ -66,8 +66,8 @@ class HexByteString(TypeDecorator):
                 value = bytes_value.decode(encoding=detected_encoding)
                 return value
             except Exception as exc:
+                logger.debug("Failed to parse bytes valud as string: %s", exc)
                 logger.debug(traceback.format_exc())
-                logger.error(exc)
 
         return value.hex()
 
