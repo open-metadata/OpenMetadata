@@ -126,32 +126,24 @@ class SaperpSource(CommonDbSourceService):
                     f"Unable to process table information for table: {str(table_name)} - {err}"
                 )
 
-    def _check_col_length(  # pylint: disable=arguments-renamed
-        self, datatype: str
+    def _check_col_length(  # pylint: disable=arguments-differ
+        self, datatype: str, col_length: Optional[str]
     ) -> Optional[int]:
         """
         return the column length for the dataLength attribute
         """
-        if datatype and datatype.upper() in {"CHAR", "VARCHAR", "BINARY", "VARBINARY"}:
-            return 1
-        return None
-
-    def _merge_col_descriptions(self, column: SapErpColumn) -> Optional[str]:
-        """
-        Method to merge the column descriptions from different fields
-        """
-        description = None
         try:
-            if column.scrtext_l:
-                description = f"**{column.scrtext_l}**"
-                if column.i_ddtext and column.scrtext_l != column.i_ddtext:
-                    description = f"{description}\n{column.i_ddtext}"
+            if datatype and datatype.upper() in {
+                "CHAR",
+                "VARCHAR",
+                "BINARY",
+                "VARBINARY",
+            }:
+                return int(col_length) if col_length else None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Unable to get column descriptions for {column.fieldname}: {exc}"
-            )
-        return description
+            logger.warning(f"Failed to fetch column length: {exc}")
+        return None
 
     def _get_table_constraints(
         self, columns: Optional[List[Column]]
@@ -197,6 +189,16 @@ class SaperpSource(CommonDbSourceService):
             return Constraint.PRIMARY_KEY
         return Constraint.NOT_NULL if column.notnull == "X" else Constraint.NULL
 
+    def _get_display_datatype(  # pylint: disable=arguments-differ
+        self, column_type: str, col_data_length: Optional[int]
+    ) -> str:
+        """
+        Method to get the display datatype
+        """
+        if col_data_length:
+            return f"{column_type}({str(col_data_length)})"
+        return column_type
+
     def get_columns_and_constraints(  # pylint: disable=arguments-differ
         self, table_name: str
     ) -> ColumnsAndConstraints:
@@ -209,7 +211,9 @@ class SaperpSource(CommonDbSourceService):
         for sap_column in sap_columns or []:
             try:
                 column_type = ColumnTypeParser.get_column_type(sap_column.datatype)
-                data_type_display = column_type
+                col_data_length = self._check_col_length(
+                    datatype=column_type, col_length=sap_column.leng
+                )
                 column_name = (
                     f"{sap_column.fieldname}({sap_column.precfield})"
                     if sap_column.precfield
@@ -221,6 +225,10 @@ class SaperpSource(CommonDbSourceService):
                     logger.warning(
                         f"Unknown type {repr(sap_column.datatype)}: {sap_column.fieldname}"
                     )
+                data_type_display = self._get_display_datatype(
+                    column_type, col_data_length
+                )
+                col_data_length = 1 if col_data_length is None else col_data_length
                 om_column = Column(
                     name=ColumnName(
                         root=column_name
@@ -229,15 +237,17 @@ class SaperpSource(CommonDbSourceService):
                         if column_name
                         else " "
                     ),
-                    displayName=sap_column.fieldname,
-                    description=self._merge_col_descriptions(column=sap_column),
+                    displayName=sap_column.scrtext_l
+                    if sap_column.scrtext_l
+                    else sap_column.fieldname,
+                    description=sap_column.i_ddtext,
                     dataType=column_type,
                     dataTypeDisplay=data_type_display,
                     ordinalPosition=int(sap_column.POS),
                     constraint=self._get_column_constraint(
                         column=sap_column, pk_columns=table_constraints_model.pk_columns
                     ),
-                    dataLength=self._check_col_length(datatype=column_type),
+                    dataLength=col_data_length,
                 )
                 if column_type == DataType.ARRAY.value:
                     om_column.arrayDataType = DataType.UNKNOWN
@@ -295,3 +305,6 @@ class SaperpSource(CommonDbSourceService):
                     name=table.tabname, error=error, stackTrace=traceback.format_exc()
                 )
             )
+
+    def close(self):
+        self.metadata.close()
