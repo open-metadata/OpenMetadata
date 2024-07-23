@@ -10,15 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { create } from 'zustand';
-import { ExploreSidebarTab } from '../../pages/ExplorePage/ExplorePage.interface';
+@import (reference) url('../../../../styles/variables.less');
 
-export const useExploreStore = create<{
-  sidebarActiveTab: ExploreSidebarTab;
-  setSidebarActiveTab: (tab: ExploreSidebarTab) => void;
-}>()((set) => ({
-  sidebarActiveTab: ExploreSidebarTab.ASSETS,
-  setSidebarActiveTab: (tab: ExploreSidebarTab) => {
-    set({ sidebarActiveTab: tab });
-  },
-}));
+.add-test-case-container {
+  padding: 16px;
+  border-radius: @border-radius-base;
+  background-color: @grey-1;
+
+  .form-item-horizontal {
+    margin-bottom: 0px;
+  }
+}

@@ -1012,6 +1012,7 @@
     "select-add-test-suite": "בחר/הוסף יחידת בדיקה",
     "select-column-plural-to-exclude": "בחר עמודות לא לכלול",
     "select-column-plural-to-include": "בחר עמודות לכלול",
+    "select-entity": "Select {{entity}}",
     "select-field": "בחר {{field}}",
     "select-to-search": "חפש כדי לבחור",
     "select-type": "בחר סוג",

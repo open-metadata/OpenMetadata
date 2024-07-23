@@ -1012,6 +1012,7 @@
     "select-add-test-suite": "Sélectionner/Ajouter un Ensemble de Tests",
     "select-column-plural-to-exclude": "Sélectionner les Colonnes à Exclure",
     "select-column-plural-to-include": "Sélectionner les Colonnes à Inclure",
+    "select-entity": "Select {{entity}}",
     "select-field": "Sélectionner le Champ {{field}}",
     "select-to-search": "Sélectionner pour Rechercher",
     "select-type": "Type Sélectionné",
