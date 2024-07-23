@@ -33,7 +33,7 @@ import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElem
 import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import AddIngestionButton from './AddIngestionButton.component';
 import { IngestionProps, SelectedRowDetails } from './ingestion.interface';
-import IngestionListTable from './IngestionListTable.component';
+import IngestionListTableV1 from './IngestionListTable/IngestionListTableV1';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
@@ -232,7 +232,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           <div className="relative">{renderAddIngestionButton}</div>
         </Col>
         <Col span={24}>
-          <IngestionListTable
+          <IngestionListTableV1
             airflowEndpoint={airflowEndpoint}
             deleteSelection={deleteSelection}
             deployIngestion={deployIngestion}
