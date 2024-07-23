@@ -16,12 +16,14 @@ import { UserClass } from '../../support/user/UserClass';
 import { checkDescriptionInEditModal } from '../../utils/activityFeed';
 import {
   createNewPage,
+  descriptionBox,
   performAdminLogin,
   performUserLogin,
   redirectToHomePage,
   toastNotification,
   visitUserProfilePage,
 } from '../../utils/common';
+import { updateDescription } from '../../utils/entity';
 import { clickOnLogo } from '../../utils/sidebar';
 import {
   createDescriptionTask,
@@ -327,6 +329,7 @@ test.describe('Activity feed with Data Steward User', () => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await entity.create(apiContext);
+    await entity2.create(apiContext);
     await user1.create(apiContext);
     await user2.create(apiContext);
     await afterAction();
@@ -335,13 +338,14 @@ test.describe('Activity feed with Data Steward User', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await entity.delete(apiContext);
+    await entity2.delete(apiContext);
     await user1.delete(apiContext);
     await user2.delete(apiContext);
 
     await afterAction();
   });
 
-  test('Create and Assign Task', async ({ browser }) => {
+  test('Create and Assign Task with Suggestions', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const { page: page2, afterAction: afterActionUser2 } =
@@ -472,5 +476,162 @@ test.describe('Activity feed with Data Steward User', () => {
 
       await afterActionUser2();
     });
+  });
+
+  test('Create and Assign Task without Suggestions', async ({ browser }) => {
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user1);
+    const { page: page2, afterAction: afterActionUser2 } =
+      await performUserLogin(browser, user2);
+
+    const value: TaskDetails = {
+      term: entity2.entity.name,
+      assignee: user2.responseData.name,
+    };
+
+    await test.step('Create, Close and Assign Task to user 2', async () => {
+      await redirectToHomePage(page1);
+      await entity2.visitEntityPage(page1);
+
+      await updateDescription(page1, '');
+
+      // Create 2 task for the same entity, one to close and 2nd for the user2 action
+      await page1.getByTestId('request-description').click();
+
+      await createDescriptionTask(page1, value, false);
+
+      await page1.getByTestId('schema').click();
+
+      await page1.getByTestId('request-entity-tags').click();
+
+      // create tag task
+      await createTagTask(page1, value, false);
+
+      // Should only see the close, add and comment button
+      expect(
+        await page1.locator('[data-testid="comment-button"]').isDisabled()
+      ).toBeTruthy();
+      expect(page1.locator('[data-testid="close-button"]')).toBeVisible();
+      expect(
+        page1.locator('[data-testid="edit-accept-task-dropdown"]')
+      ).not.toBeVisible();
+      expect(
+        page1.locator('[data-testid="add-close-task-dropdown"]')
+      ).not.toBeVisible();
+
+      await afterActionUser1();
+    });
+
+    await test.step(
+      'Accept Task By user 2 with adding suggestions',
+      async () => {
+        await redirectToHomePage(page2);
+
+        const taskResponse = page2.waitForResponse(
+          '/api/v1/feed?type=Task&filterType=OWNER&taskStatus=Open&userId=*'
+        );
+
+        await page2
+          .getByTestId('activity-feed-widget')
+          .getByText('Tasks')
+          .click();
+
+        await taskResponse;
+
+        await expect(
+          page2.locator(
+            '[data-testid="activity-feed-widget"] [data-testid="no-data-placeholder"]'
+          )
+        ).not.toBeVisible();
+
+        const entityPageTaskTab = page2.waitForResponse(
+          '/api/v1/feed?*&type=Task'
+        );
+
+        const tagsTask = page2.getByTestId('redirect-task-button-link').first();
+        const tagsTaskContent = await tagsTask.innerText();
+
+        expect(tagsTaskContent).toContain('Request tags for');
+
+        await tagsTask.click();
+        await entityPageTaskTab;
+
+        expect(page2.getByTestId('noDiff-placeholder')).toBeVisible();
+
+        // Should see the add_close dropdown and comment button
+        expect(
+          await page2.locator('[data-testid="comment-button"]').isDisabled()
+        ).toBeTruthy();
+        await expect(
+          page2.getByTestId('add-close-task-dropdown')
+        ).toBeVisible();
+        await expect(
+          page2.locator('[data-testid="close-button"]')
+        ).not.toBeVisible();
+        await expect(
+          page2.locator('[data-testid="edit-accept-task-dropdown"]')
+        ).not.toBeVisible();
+
+        await page2.getByRole('button', { name: 'Add Tags' }).click();
+
+        await page2.waitForSelector('[role="dialog"].ant-modal');
+
+        const modalTitleContent = await page2
+          .locator('.ant-modal-header .ant-modal-title')
+          .innerText();
+
+        expect(modalTitleContent).toContain(
+          `Request tags for table ${value.term}`
+        );
+
+        // select the Tag
+        const suggestTags = page2.locator(
+          '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
+        );
+        await suggestTags.click();
+
+        const querySearchResponse = page2.waitForResponse(
+          `/api/v1/search/query?q=*${'PII.None'}*&index=tag_search_index&*`
+        );
+        await suggestTags.fill('PII.None');
+
+        await querySearchResponse;
+
+        // select value from dropdown
+        const dropdownValue = page2.getByTestId(`tag-PII.None`);
+        await dropdownValue.hover();
+        await dropdownValue.click();
+
+        await expect(page2.getByTestId('selected-tag-PII.None')).toBeVisible();
+
+        await page2.getByText('OK').click();
+
+        await toastNotification(page2, /Task resolved successfully/);
+
+        // Accept the description task
+
+        await expect(page2.getByText('No Suggestion')).toBeVisible();
+
+        await page2.getByRole('button', { name: 'Add Description' }).click();
+
+        await page2.waitForSelector('[role="dialog"].ant-modal');
+
+        const modalTitleDescriptionContent = await page2
+          .locator('.ant-modal-header .ant-modal-title')
+          .innerText();
+
+        expect(modalTitleDescriptionContent).toContain(
+          `Request description for table ${value.term}`
+        );
+
+        await page2.locator(descriptionBox).fill('New description');
+
+        await page2.getByText('OK').click();
+
+        await toastNotification(page2, /Task resolved successfully/);
+
+        await afterActionUser2();
+      }
+    );
   });
 });

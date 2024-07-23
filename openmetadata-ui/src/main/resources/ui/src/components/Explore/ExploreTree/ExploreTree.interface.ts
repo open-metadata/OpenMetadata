@@ -12,7 +12,6 @@
  */
 import { ReactNode } from 'react';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
-import { EntityType } from '../../../enums/entity.enum';
 import { ExploreQuickFilterField } from '../ExplorePage.interface';
 
 export type ExploreTreeNode = {
@@ -30,12 +29,14 @@ export type ExploreTreeProps = {
 
 export type TreeNodeData = {
   isRoot?: boolean;
+  isStatic?: boolean;
   currentBucketKey?: string;
   currentBucketValue?: string;
   filterField?: ExploreQuickFilterField[];
   parentSearchIndex?: string;
   rootIndex?: string;
-  entityType?: EntityType;
+  entityType?: string;
+  dataId?: string;
 };
 
 export type DatabaseFields =
