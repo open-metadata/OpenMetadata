@@ -4,6 +4,7 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.REP
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.TIMESTAMP_KEY;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.pro
 import org.openmetadata.service.apps.bundles.insights.workflows.costAnalysis.processors.RawCostAnalysisReportDataProcessor;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -72,27 +74,22 @@ public class CostAnalysisWorkflow {
     this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
 
     // TODO: Implement Backfill by using DataAsset Version.
-    //        if (backfill.isPresent()) {
-    //            Long oldestPossibleTimestamp = TimestampUtils.getStartOfDayTimestamp(timestamp -
-    // TimestampUtils.subtractDays(timestamp, retentionDays));
-    //
-    //            this.endTimestamp =
-    // TimestampUtils.getEndOfDayTimestamp(Collections.max(List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
-    //            this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(Collections.max(
-    //
-    // List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()),
-    // oldestPossibleTimestamp)));
-    //
-    //            if
-    // (oldestPossibleTimestamp.equals(TimestampUtils.getStartOfDayTimestamp(endTimestamp))) {
-    //                LOG.warn("CostAnalysis Backfill won't happen because the set date is before
-    // the limit of {}", oldestPossibleTimestamp);
-    //            }
-    //        } else {
-    //            this.endTimestamp =
-    // TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
-    //            this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
-    //        }
+//    if (backfill.isPresent()) {
+//      Long oldestPossibleTimestamp = TimestampUtils.getStartOfDayTimestamp(timestamp - TimestampUtils.subtractDays(timestamp, retentionDays));
+//      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(Collections.max(List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
+//      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(Collections.max(
+//
+//     List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()),
+//     oldestPossibleTimestamp)));
+//
+//      if (oldestPossibleTimestamp.equals(TimestampUtils.getStartOfDayTimestamp(endTimestamp))) {
+//        LOG.warn("CostAnalysis Backfill won't happen because the set date is before the limit of {}", oldestPossibleTimestamp);
+//      }
+//    } else {
+//      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
+//      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
+//    }
+
     this.batchSize = batchSize;
   }
 
@@ -132,6 +129,18 @@ public class CostAnalysisWorkflow {
   public void process() throws SearchIndexException {
     initialize();
     Map<String, Object> contextData = new HashMap<>();
+
+    // Delete the records of the days we are going to process
+    // TODO: It might be good to delete and process one day at a time
+    Long pointerTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
+    while (pointerTimestamp >= startTimestamp) {
+      deleteReportDataRecordsAtDate(pointerTimestamp, ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
+      pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
+    }
+
+    // Delete the Raw Records since we only keep the last Snapshot.
+    // TODO: When implementing backfill, we should only save the last Date for the Raw Reports.
+    deleteReportDataRecords(ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
 
     for (PaginatedEntitiesSource source : sources) {
       // TODO: Could the size of the Maps be an issue?
@@ -212,7 +221,7 @@ public class CostAnalysisWorkflow {
     if (rawCostAnalysisReportData.isPresent()) {
       ReportDataSink reportDataSink =
           new ReportDataSink(
-              rawCostAnalysisReportData.get().size(), "RawCostAnalysisReportDataSink", true);
+              rawCostAnalysisReportData.get().size(), "RawCostAnalysisReportDataSink");
       try {
         reportDataSink.write(rawCostAnalysisReportData.get(), contextData);
       } catch (SearchIndexException ex) {
@@ -316,6 +325,18 @@ public class CostAnalysisWorkflow {
   private boolean databaseServiceSupportsProfilerAndUsage(DatabaseService databaseService) {
     Map<String, Object> config = JsonUtils.getMap(databaseService.getConnection().getConfig());
     return config.containsKey("supportsProfiler") && config.containsKey("supportsUsageExtraction");
+  }
+
+  private void deleteReportDataRecordsAtDate(
+          Long timestamp, ReportData.ReportDataType reportDataType) {
+    String timestampString = TimestampUtils.timestampToString(timestamp, "yyyy-MM-dd");
+    ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
+            .deleteReportDataAtDate(reportDataType, timestampString);
+  }
+
+  private void deleteReportDataRecords(ReportData.ReportDataType reportDataType) {
+    ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
+            .deleteReportData(reportDataType);
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {

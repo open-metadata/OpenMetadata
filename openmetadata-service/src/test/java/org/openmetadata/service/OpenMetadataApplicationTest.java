@@ -48,7 +48,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -203,6 +206,7 @@ public abstract class OpenMetadataApplicationTest {
         ConnectionType.from(sqlContainer.getDriverClassName()),
         nativeMigrationScriptsLocation,
         extensionMigrationScripsLocation,
+        null,
         false);
     createIndices();
     APP.before();

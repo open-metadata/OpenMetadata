@@ -29,6 +29,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.pro
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.processors.WebAnalyticsUserActivityProcessor;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.sources.PaginatedWebAnalyticEventDataSource;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.util.ResultList;
 
@@ -121,6 +122,10 @@ public class WebAnalyticsWorkflow {
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData = new HashMap<>();
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData = new HashMap<>();
       Long referenceTimestamp = source.getStartTs();
+
+      // Delete the records of the days we are going to process
+      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
+      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
 
       contextData.put(TIMESTAMP_KEY, referenceTimestamp);
       contextData.put(USER_ACTIVITY_DATA_KEY, userActivityData);
@@ -290,6 +295,13 @@ public class WebAnalyticsWorkflow {
     }
 
     return error;
+  }
+
+  private void deleteReportDataRecordsAtDate(
+          Long timestamp, ReportData.ReportDataType reportDataType) {
+    String timestampString = TimestampUtils.timestampToString(timestamp, "yyyy-MM-dd");
+    ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
+            .deleteReportDataAtDate(reportDataType, timestampString);
   }
 
   private void pruneWebAnalyticEvents() {

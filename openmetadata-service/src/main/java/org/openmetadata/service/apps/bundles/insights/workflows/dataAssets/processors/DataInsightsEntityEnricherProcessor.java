@@ -65,7 +65,7 @@ public class DataInsightsEntityEnricherProcessor
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
               .withMessage(
-                  "Entities Processor Encountered Failure. Converting requests to Es Request.")
+                  "Entities Enricher Encountered Failure.")
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[DataInsightsEntityEnricherProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));

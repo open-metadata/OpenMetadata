@@ -24,18 +24,10 @@ import org.openmetadata.service.workflows.interfaces.Sink;
 public class ReportDataSink implements Sink<List<ReportData>, Boolean> {
   @Getter private final String name;
   private final StepStats stats = new StepStats();
-  private final Boolean deleteRecords;
 
   public ReportDataSink(int total, String name) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
     this.name = name;
-    this.deleteRecords = false;
-  }
-
-  public ReportDataSink(int total, String name, Boolean deleteRecords) {
-    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
-    this.name = name;
-    this.deleteRecords = deleteRecords;
   }
 
   @Override
@@ -44,15 +36,8 @@ public class ReportDataSink implements Sink<List<ReportData>, Boolean> {
     // TODO: Understand better how the deleteReportDataRecords and createReportDataRecords might
     // fail.
     try {
-      Long timestamp = (long) contextData.get(TIMESTAMP_KEY);
       ReportData.ReportDataType reportDataType =
           (ReportData.ReportDataType) contextData.get(REPORT_DATA_TYPE_KEY);
-
-      if (deleteRecords) {
-        deleteReportDataRecords(reportDataType);
-      } else {
-        deleteReportDataRecordsAtDate(timestamp, reportDataType);
-      }
 
       createReportDataRecords(data, reportDataType);
       updateStats(data.size(), 0);
@@ -70,18 +55,6 @@ public class ReportDataSink implements Sink<List<ReportData>, Boolean> {
       throw new SearchIndexException(indexingError);
     }
     return true;
-  }
-
-  private void deleteReportDataRecordsAtDate(
-      Long timestamp, ReportData.ReportDataType reportDataType) {
-    String timestampString = TimestampUtils.timestampToString(timestamp, "yyyy-MM-dd");
-    ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
-        .deleteReportDataAtDate(reportDataType, timestampString);
-  }
-
-  private void deleteReportDataRecords(ReportData.ReportDataType reportDataType) {
-    ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
-        .deleteReportData(reportDataType);
   }
 
   private void createReportDataRecords(

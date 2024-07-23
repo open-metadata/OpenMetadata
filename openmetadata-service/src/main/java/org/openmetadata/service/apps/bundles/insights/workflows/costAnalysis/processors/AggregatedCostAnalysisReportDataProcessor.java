@@ -105,7 +105,7 @@ public class AggregatedCostAnalysisReportDataProcessor
                                   .withSixtyDays((double) 0))
                           .withTotalCount((double) 0)
                           .withTotalSize((double) 0)));
-        } else {
+        }
           CostAnalysisWorkflow.AggregatedCostAnalysisData aggregatedCostAnalysisData =
               aggregatedCostAnalysisDataMap.get(entityType).get(serviceType).get(serviceName);
 
@@ -267,7 +267,6 @@ public class AggregatedCostAnalysisReportDataProcessor
               .get(entityType)
               .get(serviceType)
               .put(serviceName, newAggregatedCostAnalysisData);
-        }
       }
       updateStats(input.size(), 0);
     } catch (Exception e) {

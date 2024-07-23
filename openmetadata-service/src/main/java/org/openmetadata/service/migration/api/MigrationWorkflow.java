@@ -12,6 +12,8 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
+
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -33,6 +35,7 @@ public class MigrationWorkflow {
   private final String nativeSQLScriptRootPath;
   private final ConnectionType connectionType;
   private final String extensionSQLScriptRootPath;
+  @Getter
   private final PipelineServiceClientConfiguration pipelineServiceClientConfiguration;
   private final MigrationDAO migrationDAO;
   private final Jdbi jdbi;
