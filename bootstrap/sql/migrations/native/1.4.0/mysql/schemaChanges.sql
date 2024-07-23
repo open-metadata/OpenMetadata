@@ -329,7 +329,7 @@ delete from QRTZ_FIRED_TRIGGERS;
 DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
 
 ALTER TABLE glossary_term_entity ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL;
-CREATE INDEX IF NOT EXISTS glossary_term_entity_fqn_index ON glossary_term_entity(fullyQualifiedName);
+CREATE INDEX glossary_term_entity_fqn_index ON glossary_term_entity(fullyQualifiedName);
 
 ALTER TABLE tag ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL;
-CREATE INDEX IF NOT EXISTS tag_fqn_index ON tag(fullyQualifiedName);
+CREATE INDEX tag_fqn_index ON tag(fullyQualifiedName);
