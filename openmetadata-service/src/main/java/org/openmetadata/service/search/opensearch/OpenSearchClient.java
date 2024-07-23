@@ -802,12 +802,6 @@ public class OpenSearchClient implements SearchClient {
     boolQueryBuilder.should(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
-    boolQueryBuilder.should(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("lineage.fromEntity.fqn.keyword", fqn)));
-    boolQueryBuilder.should(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("lineage.toEntity.fqn.keyword", fqn)));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(boolQueryBuilder);
     if (CommonUtil.nullOrEmpty(deleted)) {
@@ -863,6 +857,11 @@ public class OpenSearchClient implements SearchClient {
         }
       }
     }
+    getLineage(
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+
     if (edges.isEmpty()) {
       os.org.opensearch.action.search.SearchRequest searchRequestForEntity =
           new os.org.opensearch.action.search.SearchRequest(
