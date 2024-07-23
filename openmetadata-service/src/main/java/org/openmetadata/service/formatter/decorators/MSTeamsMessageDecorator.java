@@ -65,13 +65,13 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public TeamsMessage buildEntityMessage(ChangeEvent event) {
-    return getTeamMessage(createEntityMessage(event));
+  public TeamsMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getTeamMessage(createEntityMessage(publisherName, event));
   }
 
   @Override
-  public TeamsMessage buildThreadMessage(ChangeEvent event) {
-    return getTeamMessage(createThreadMessage(event));
+  public TeamsMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getTeamMessage(createThreadMessage(publisherName, event));
   }
 
   private TeamsMessage getTeamMessage(OutgoingMessage outgoingMessage) {
