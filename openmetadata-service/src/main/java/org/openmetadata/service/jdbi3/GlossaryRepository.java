@@ -25,6 +25,8 @@ import static org.openmetadata.csv.CsvUtil.addOwner;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.search.SearchClient.GLOSSARY_TERM_SEARCH_INDEX;
+import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 
 import java.io.IOException;
 import java.net.URI;
@@ -33,6 +35,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -62,6 +65,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -71,8 +75,6 @@ import org.openmetadata.service.util.JsonUtils;
 public class GlossaryRepository extends EntityRepository<Glossary> {
   private static final String UPDATE_FIELDS = "";
   private static final String PATCH_FIELDS = "";
-
-  FeedRepository feedRepository = Entity.getFeedRepository();
 
   public GlossaryRepository() {
     super(
@@ -84,6 +86,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         UPDATE_FIELDS);
     quoteFqn = true;
     supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -133,6 +136,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   public EntityUpdater getUpdater(Glossary original, Glossary updated, Operation operation) {
     return new GlossaryUpdater(original, updated, operation);
+  }
+
+  @Override
+  public void entityRelationshipReindex(Glossary original, Glossary updated) {
+    super.entityRelationshipReindex(original, updated);
+    if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
+        || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
+      updateAssetIndexes(original, updated);
+    }
   }
 
   /** Export glossary as CSV */
@@ -275,7 +287,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     }
   }
 
-  private void updateAssetIndexesOnGlossaryUpdate(Glossary original, Glossary updated) {
+  private void updateAssetIndexes(Glossary original, Glossary updated) {
     // Update ES indexes of entity tagged with the glossary term and its children terms to reflect
     // its latest value.
     GlossaryTermRepository repository =
@@ -285,14 +297,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
             daoCollection
                 .tagUsageDAO()
                 .getTargetFQNHashForTagPrefix(updated.getFullyQualifiedName()));
+    List<GlossaryTerm> childTerms = getAllTerms(updated);
 
-    List<EntityReference> childTerms =
-        findTo(
-            updated.getId(),
-            GLOSSARY,
-            Relationship.CONTAINS,
-            GLOSSARY_TERM); // get new value of children terms from DB
-    for (EntityReference child : childTerms) {
+    for (GlossaryTerm child : childTerms) {
       targetFQNHashesFromDb.addAll( // for each child term find the targetFQNHashes of assets
           daoCollection.tagUsageDAO().getTargetFQNHashForTag(child.getFullyQualifiedName()));
     }
@@ -301,32 +308,54 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     Map<String, EntityReference> targetFQNFromES =
         repository.getGlossaryUsageFromES(
             original.getFullyQualifiedName(), targetFQNHashesFromDb.size());
-    Map<String, EntityReference> childrenTerms =
-        repository.getGlossaryTermsContainingFQNFromES(
+    List<EntityReference> childrenTerms =
+        searchRepository.getEntitiesContainingFQNFromES(
             original.getFullyQualifiedName(),
-            getTermCount(updated)); // get old value of children term from ES
-
-    for (EntityReference child : childrenTerms.values()) {
+            getTermCount(updated),
+            GLOSSARY_TERM_SEARCH_INDEX); // get old value of children term from ES
+    for (EntityReference child : childrenTerms) {
       targetFQNFromES.putAll( // List of entity references tagged with the children term
           repository.getGlossaryUsageFromES(
               child.getFullyQualifiedName(), targetFQNHashesFromDb.size()));
       searchRepository.updateEntity(child); // update es index of child term
+      searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", child);
     }
 
-    if (targetFQNFromES.size() == targetFQNHashesFromDb.size()) {
-      for (String fqnHash : targetFQNHashesFromDb) {
-        EntityReference refDetails = targetFQNFromES.get(fqnHash);
+    searchRepository.updateEntity(original); // update es index of child term
+    searchRepository
+        .getSearchClient()
+        .reindexAcrossIndices("fullyQualifiedName", original.getEntityReference());
+    searchRepository
+        .getSearchClient()
+        .reindexAcrossIndices("glossary.name", original.getEntityReference());
+  }
 
-        if (refDetails != null) {
-          searchRepository.updateEntity(refDetails); // update ES index of assets
-        }
-      }
+  private void updateEntityLinksOnGlossaryRename(Glossary original, Glossary updated) {
+    // update field relationships for feed
+    daoCollection
+        .fieldRelationshipDAO()
+        .renameByToFQN(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+
+    MessageParser.EntityLink about =
+        new MessageParser.EntityLink(GLOSSARY_TERM, original.getFullyQualifiedName());
+
+    MessageParser.EntityLink newAbout =
+        new MessageParser.EntityLink(entityType, updated.getFullyQualifiedName());
+
+    daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), original.getId().toString());
+
+    List<GlossaryTerm> childTerms = getAllTerms(updated);
+
+    for (GlossaryTerm child : childTerms) {
+      newAbout = new MessageParser.EntityLink(GLOSSARY_TERM, child.getFullyQualifiedName());
+      daoCollection.feedDAO().updateByEntityId(newAbout.getLinkString(), child.getId().toString());
     }
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {
     // Get all the hierarchically nested terms of the glossary
-    List<String> jsons = daoCollection.glossaryTermDAO().getAllTerms(glossary.getName());
+    List<String> jsons =
+        daoCollection.glossaryTermDAO().getNestedTerms(glossary.getFullyQualifiedName());
     return JsonUtils.readObjects(jsons, GlossaryTerm.class);
   }
 
@@ -354,22 +383,30 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         // Glossary name changed - update tag names starting from glossary and all the children tags
         LOG.info("Glossary name changed from {} to {}", original.getName(), updated.getName());
         setFullyQualifiedName(updated);
-        daoCollection.glossaryTermDAO().updateFqn(original.getName(), updated.getName());
+        daoCollection
+            .glossaryTermDAO()
+            .updateFqn(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
         daoCollection
             .tagUsageDAO()
-            .updateTagPrefix(TagSource.GLOSSARY.ordinal(), original.getName(), updated.getName());
+            .updateTagPrefix(
+                TagSource.GLOSSARY.ordinal(),
+                original.getFullyQualifiedName(),
+                updated.getFullyQualifiedName());
         recordChange("name", original.getName(), updated.getName());
         invalidateGlossary(original.getId());
 
-        // update tags
+        // update Tags Of Glossary On Rename
+        daoCollection.tagUsageDAO().deleteTagsByTarget(original.getFullyQualifiedName());
+        List<TagLabel> updatedTags = updated.getTags();
+        updatedTags.sort(compareTagLabel);
+        applyTags(updatedTags, updated.getFullyQualifiedName());
         daoCollection
             .tagUsageDAO()
             .renameByTargetFQNHash(
                 TagSource.CLASSIFICATION.ordinal(),
                 original.getFullyQualifiedName(),
                 updated.getFullyQualifiedName());
-
-        updateAssetIndexesOnGlossaryUpdate(original, updated);
+        updateEntityLinksOnGlossaryRename(original, updated);
       }
     }
 

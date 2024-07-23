@@ -151,7 +151,9 @@ class DbtSource(DbtServiceSource):
             if manifest_node:
                 dbt_owner = manifest_node.meta.get(DbtCommonEnum.OWNER.value)
             if dbt_owner:
-                owner = self.metadata.get_reference_by_name(name=dbt_owner)
+                owner = self.metadata.get_reference_by_name(
+                    name=dbt_owner, is_owner=True
+                )
                 if not owner:
                     logger.warning(
                         "Unable to ingest owner from DBT since no user or"

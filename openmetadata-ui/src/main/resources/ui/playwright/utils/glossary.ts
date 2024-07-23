@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { get } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
+import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import { TableClass } from '../support/entity/TableClass';
+import { TopicClass } from '../support/entity/TopicClass';
 import { Glossary, GlossaryData } from '../support/glossary/Glossary';
 import {
   GlossaryTerm,
@@ -549,7 +553,7 @@ export const approveGlossaryTermTask = async (
 ) => {
   await validateGlossaryTermTask(page, term);
   const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-  await page.click('[data-testid="approve-task"]');
+  await page.getByRole('button', { name: 'Approve' }).click();
   await taskResolve;
 
   // Display toast notification
@@ -601,4 +605,105 @@ export const createGlossaryTerms = async (
   for (const term of glossary.terms) {
     await createGlossaryTerm(page, term.data, termStatus, false);
   }
+};
+
+export const checkAssetsCount = async (page: Page, assetsCount: number) => {
+  await expect(
+    page.locator('[data-testid="assets"] [data-testid="filter-count"]')
+  ).toHaveText(assetsCount.toString());
+};
+
+export const addAssetToGlossaryTerm = async (
+  page: Page,
+  assets: (TableClass | TopicClass | DashboardClass)[],
+  hasExistingAssets = false
+) => {
+  if (!hasExistingAssets) {
+    await page.waitForSelector(
+      'text=Adding a new Asset is easy, just give it a spin!'
+    );
+  }
+
+  await page.click('[data-testid="glossary-term-add-button-menu"]');
+  await page.getByRole('menuitem', { name: 'Assets' }).click();
+
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+  await expect(
+    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
+  ).toContainText('Add Assets');
+
+  for (const asset of assets) {
+    const entityFqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    const entityName = get(asset, 'entityResponseData.name');
+    const searchRes = page.waitForResponse('/api/v1/search/query*');
+
+    await page
+      .locator(
+        '[data-testid="asset-selection-modal"] [data-testid="searchbar"]'
+      )
+      .fill(entityName);
+
+    await searchRes;
+    await page.click(
+      `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
+    );
+  }
+
+  await page.click('[data-testid="save-btn"]');
+  await checkAssetsCount(page, assets.length);
+};
+
+export const updateNameForGlossaryTerm = async (
+  page: Page,
+  name: string,
+  endPoint: string
+) => {
+  await page.click('[data-testid="manage-button"]');
+  await page.click('[data-testid="rename-button"]');
+
+  await expect(page.locator('#name')).toBeVisible();
+
+  await page.fill('#name', name);
+  const updateNameResponsePromise = page.waitForResponse(
+    `/api/v1/${endPoint}/*`
+  );
+  await page.click('[data-testid="save-button"]');
+  const updateNameResponse = await updateNameResponsePromise;
+  const data = await updateNameResponse.json();
+
+  await expect(page.locator('[data-testid="entity-header-name"]')).toHaveText(
+    name
+  );
+
+  return data;
+};
+
+export const verifyGlossaryTermAssets = async (
+  page: Page,
+  glossary: GlossaryData,
+  glossaryTermData: GlossaryTermData,
+  assetsLength: number
+) => {
+  await page.click('[data-testid="overview"]');
+  await redirectToHomePage(page);
+  await sidebarClick(page, SidebarItem.GLOSSARY);
+  await selectActiveGlossary(page, glossary.displayName);
+  await goToAssetsTab(
+    page,
+    glossaryTermData.displayName,
+    assetsLength.toString()
+  );
+};
+
+export const renameGlossaryTerm = async (
+  page: Page,
+  glossaryTerm: GlossaryTerm,
+  glossaryNewName: string
+) => {
+  const data = await updateNameForGlossaryTerm(
+    page,
+    glossaryNewName,
+    EntityTypeEndpoint.GlossaryTerm
+  );
+  await glossaryTerm.rename(data.name, data.fullyQualifiedName);
 };
