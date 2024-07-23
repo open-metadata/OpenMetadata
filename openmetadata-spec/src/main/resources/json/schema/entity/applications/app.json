@@ -13,7 +13,8 @@
       "type": "string",
       "enum": [
         "Live",
-        "Scheduled"
+        "Scheduled",
+        "ScheduledOrManual"
       ],
       "javaEnums": [
         {
@@ -21,6 +22,9 @@
         },
         {
           "name": "Scheduled"
+        },
+        {
+          "name": "ScheduledOrManual"
         }
       ]
     },
