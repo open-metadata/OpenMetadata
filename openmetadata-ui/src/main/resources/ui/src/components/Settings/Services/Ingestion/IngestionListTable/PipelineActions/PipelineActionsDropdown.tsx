@@ -28,6 +28,7 @@ import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../../utils/EntityUtils';
 import { getEditIngestionPath } from '../../../../../../utils/RouterUtils';
 import KillIngestionModal from '../../../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
+import './pipeline-actions-dropdown.less';
 import { PipelineActionsDropdownProps } from './PipelineActionsDropdown.interface';
 
 function PipelineActionsDropdown({
@@ -189,6 +190,7 @@ function PipelineActionsDropdown({
       <Dropdown
         menu={{ items }}
         open={isOpen || !isEmpty(currTrigger.id) || !isEmpty(currDeploy.id)}
+        overlayClassName="pipeline-actions-dropdown"
         overlayStyle={{ width: '120px' }}
         trigger={['click']}
         onOpenChange={(value) => setIsOpen(value)}>
