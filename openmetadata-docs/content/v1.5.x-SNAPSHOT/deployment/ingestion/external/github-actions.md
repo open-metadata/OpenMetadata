@@ -38,7 +38,7 @@ import yaml
 
 from metadata.workflow.metadata import MetadataWorkflow
 
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 CONFIG = f"""
 source:
@@ -57,7 +57,7 @@ def run():
     workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 

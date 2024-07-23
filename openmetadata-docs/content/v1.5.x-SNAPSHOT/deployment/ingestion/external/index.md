@@ -23,7 +23,7 @@ ingestion from within a simple Python script:
 
 ```python
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 # Specify your YAML configuration
 CONFIG = """
@@ -42,7 +42,7 @@ def run():
     workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 
@@ -353,7 +353,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -392,7 +392,7 @@ def run():
     workflow = MetadataWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -464,7 +464,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -499,7 +499,7 @@ def run():
     workflow = MetadataWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -570,7 +570,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.usage import UsageWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -613,7 +613,7 @@ def run():
     workflow = UsageWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -686,7 +686,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -723,7 +723,7 @@ def run():
     workflow = ProfilerWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -800,7 +800,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.data_quality import TestSuiteWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -836,7 +836,7 @@ def run():
     workflow = TestSuiteWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 

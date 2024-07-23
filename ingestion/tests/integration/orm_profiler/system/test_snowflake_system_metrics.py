@@ -66,7 +66,6 @@ from metadata.utils.time_utils import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 TESTS_ROOT_DIR = pathlib.Path(__file__).parent.parent.parent.parent
 SNOWFLAKE_CONFIG_FILE = "cli_e2e/database/snowflake/snowflake.yaml"

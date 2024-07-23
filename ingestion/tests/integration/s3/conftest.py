@@ -20,7 +20,6 @@ from minio import Minio
 from _openmetadata_testutils.ometa import OM_JWT, int_admin_ometa
 from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 from ..containers import MinioContainerConfigs, get_minio_container
 
@@ -112,7 +111,7 @@ def ingest_s3_storage(minio, metadata, service_name, create_data):
     workflow = MetadataWorkflow.create(yaml.safe_load(config))
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
     yield

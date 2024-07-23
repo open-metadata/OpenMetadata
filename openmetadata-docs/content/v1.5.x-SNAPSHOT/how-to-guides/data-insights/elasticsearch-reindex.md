@@ -50,7 +50,7 @@ except ModuleNotFoundError:
 
 from metadata.config.common import load_config_file
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 from airflow.utils.dates import days_ago
 
 default_args = {
@@ -71,7 +71,7 @@ def metadata_ingestion_workflow():
     workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 with DAG(

@@ -25,7 +25,6 @@ from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
 from metadata.workflow.usage import UsageWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 WORKFLOW_MAP = {
     PipelineType.metadata.value: MetadataWorkflow,
@@ -109,7 +108,7 @@ def main():
     workflow = workflow_class.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 

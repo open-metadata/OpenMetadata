@@ -44,7 +44,6 @@ from metadata.utils.time_utils import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)

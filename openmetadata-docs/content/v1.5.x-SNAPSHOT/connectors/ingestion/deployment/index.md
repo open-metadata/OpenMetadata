@@ -327,7 +327,7 @@ we just need the following few lines of Python code:
 ```python
 from metadata.workflow.metadata import MetadataWorkflow
 
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 config = """
 <your YAML configuration>
@@ -337,7 +337,7 @@ workflow_config = yaml.safe_load(config)
 workflow = MetadataWorkflow.create(workflow_config)
 workflow.execute()
 workflow.raise_from_status()
-print_status(workflow)
+workflow.print_status()
 workflow.stop()
 ```
 

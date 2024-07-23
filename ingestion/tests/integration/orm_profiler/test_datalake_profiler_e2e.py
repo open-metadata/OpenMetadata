@@ -41,7 +41,6 @@ from metadata.utils.time_utils import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 SERVICE_NAME = Path(__file__).stem
 REGION = "us-west-1"

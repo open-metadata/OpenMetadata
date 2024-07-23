@@ -19,11 +19,7 @@ from pathlib import Path
 from metadata.config.common import load_config_file
 from metadata.utils.logger import cli_logger
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import (
-    WorkflowType,
-    print_init_error,
-    print_status,
-)
+from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error
 
 logger = cli_logger()
 
@@ -47,5 +43,5 @@ def run_profiler(config_path: Path) -> None:
 
     workflow.execute()
     workflow.stop()
-    print_status(workflow)
+    workflow.print_status()
     workflow.raise_from_status()
