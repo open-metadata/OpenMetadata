@@ -165,6 +165,7 @@ const SignUp = () => {
           <Form.Item
             data-testid="username-label"
             label={t('label.username')}
+            hidden
             name="name"
             rules={[
               {
