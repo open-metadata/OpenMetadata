@@ -144,14 +144,22 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         (definition) => definition.name === curr.name
       );
 
-      return {
-        ...acc,
-        [curr.name || '']:
-          param?.dataType === TestDataType.Array && isArray(curr.value)
-            ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
+      if (param?.dataType === TestDataType.Array) {
+        const value = JSON.parse(curr.value || '[]');
+
+        return {
+          ...acc,
+          [curr.name || '']: isArray(value)
+            ? value.map((val) => ({
                 value: val,
               }))
-            : curr.value,
+            : value,
+        };
+      }
+
+      return {
+        ...acc,
+        [curr.name || '']: curr.value,
       };
     }, {});
   };
