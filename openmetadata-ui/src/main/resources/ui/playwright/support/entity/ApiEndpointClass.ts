@@ -187,7 +187,7 @@ export class ApiEndpointClass extends EntityClass {
     await visitEntityPage({
       page,
       searchTerm: this.entityResponseData?.['fullyQualifiedName'],
-      dataTestId: `${this.service.name}-${this.apiCollection.name}-${this.entity.name}`,
+      dataTestId: `${this.service.name}-${this.entity.name}`,
     });
   }
 
