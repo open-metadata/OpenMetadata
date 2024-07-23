@@ -28,7 +28,6 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.profiler.orm.functions.modulo import ModuloFn
 from metadata.profiler.orm.functions.random_num import RandomNumFn
-from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.handle_partition import partition_filter_handler
 from metadata.profiler.processor.sampler.sampler_interface import SamplerInterface
 from metadata.utils.helpers import is_safe_sql_query
@@ -87,17 +86,10 @@ class SQASampler(SamplerInterface):
     def get_sample_query(self, *, column=None) -> Query:
         """get query for sample data"""
         if self.profile_sample_type == ProfileSampleType.PERCENTAGE:
-            rnd = (
-                self._base_sample_query(
-                    column,
-                    (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
-                )
-                .suffix_with(
-                    f"SAMPLE BERNOULLI ({self.profile_sample or 100})",
-                    dialect=Dialects.Snowflake,
-                )
-                .cte(f"{self.table.__tablename__}_rnd")
-            )
+            rnd = self._base_sample_query(
+                column,
+                (ModuloFn(RandomNumFn(), 100)).label(RANDOM_LABEL),
+            ).cte(f"{self.table.__tablename__}_rnd")
             session_query = self.client.query(rnd)
             return session_query.where(rnd.c.random <= self.profile_sample).cte(
                 f"{self.table.__tablename__}_sample"

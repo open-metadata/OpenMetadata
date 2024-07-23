@@ -32,6 +32,8 @@ import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
+import CronEditor from '../components/common/CronEditor/CronEditor';
+import { CronEditorProp } from '../components/common/CronEditor/CronEditor.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
@@ -198,6 +200,10 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.COLOR_PICKER:
       fieldElement = <ColorPicker {...props} />;
+
+      break;
+    case FieldTypes.CRON_EDITOR:
+      fieldElement = <CronEditor {...(props as unknown as CronEditorProp)} />;
 
       break;
 

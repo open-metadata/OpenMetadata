@@ -74,10 +74,10 @@ public abstract class EntityCsv<T extends EntityInterface> {
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
   private final List<String> expectedHeaders;
-  private final CsvImportResult importResult = new CsvImportResult();
+  protected final CsvImportResult importResult = new CsvImportResult();
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
-  private final String importedBy;
+  protected final String importedBy;
   protected int recordIndex = 0;
 
   protected EntityCsv(String entityType, List<CsvHeader> csvHeaders, String importedBy) {

@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { isNil } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Route, Switch, useLocation } from 'react-router-dom';
+import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
+import SignUpPage from '../../pages/SignUp/SignUpPage';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
@@ -28,8 +29,8 @@ const AppRouter = () => {
 
   // web analytics instance
   const analytics = useAnalytics();
-
-  const { isAuthenticated, isApplicationLoading } = useApplicationStore();
+  const { currentUser, isAuthenticated, isApplicationLoading } =
+    useApplicationStore();
 
   useEffect(() => {
     const { pathname } = location;
@@ -81,6 +82,9 @@ const AppRouter = () => {
   return (
     <Switch>
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+      <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
+        {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
+      </Route>
       {isAuthenticated ? <AppContainer /> : <UnAuthenticatedAppRouter />}
     </Switch>
   );

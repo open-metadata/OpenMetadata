@@ -10,15 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { create } from 'zustand';
-import { ExploreSidebarTab } from '../../pages/ExplorePage/ExplorePage.interface';
-
-export const useExploreStore = create<{
-  sidebarActiveTab: ExploreSidebarTab;
-  setSidebarActiveTab: (tab: ExploreSidebarTab) => void;
-}>()((set) => ({
-  sidebarActiveTab: ExploreSidebarTab.ASSETS,
-  setSidebarActiveTab: (tab: ExploreSidebarTab) => {
-    set({ sidebarActiveTab: tab });
-  },
-}));
+.add-glossary {
+  .form-item-horizontal {
+    margin-bottom: 8px;
+  }
+}

@@ -1057,6 +1057,7 @@ describe(
       });
       cy.get('[value="serviceName"]').click({ waitForAnimations: true });
       verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('#serviceName').should('not.exist');
 
       // Test case filter by Tags
       interceptURL(
@@ -1073,12 +1074,13 @@ describe(
       verifyResponseStatusCode('@getTestCaseByTags', 200);
       verifyFilterTestCase();
       verifyFilter2TestCase(true);
-      // remove service filter
+      // remove tags filter
       cy.get('[data-testid="advanced-filter"]').click({
         waitForAnimations: true,
       });
       cy.get('[value="tags"]').click({ waitForAnimations: true });
       verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('#tags').should('not.exist');
 
       // Test case filter by Tier
       interceptURL(
@@ -1094,12 +1096,13 @@ describe(
       verifyResponseStatusCode('@getTestCaseByTier', 200);
       verifyFilterTestCase();
       verifyFilter2TestCase(true);
-      // remove service filter
+      // remove tier filter
       cy.get('[data-testid="advanced-filter"]').click({
         waitForAnimations: true,
       });
       cy.get('[value="tier"]').click({ waitForAnimations: true });
       verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('#tier').should('not.exist');
 
       // Test case filter by table name
       interceptURL(
@@ -1196,6 +1199,25 @@ describe(
       verifyResponseStatusCode('@testCasePlatformByOpenMetadata', 200);
       cy.clickOutside();
       verifyFilterTestCase();
+      cy.url().then((url) => {
+        cy.reload();
+        verifyResponseStatusCode('@testCasePlatformByOpenMetadata', 200);
+        cy.url().then((updatedUrl) => {
+          expect(url).to.be.equal(updatedUrl);
+        });
+      });
+
+      cy.get('[data-testid="advanced-filter"]').click({
+        waitForAnimations: true,
+      });
+      cy.get('[value="testPlatforms"]').click({
+        waitForAnimations: true,
+      });
+      verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[value="platform-select-filter"]').should('not.exist');
+      cy.reload();
+      verifyResponseStatusCode('@getTestCase', 200);
+      cy.get('[value="tier"]').should('not.exist');
     });
 
     it('Filter with domain', () => {

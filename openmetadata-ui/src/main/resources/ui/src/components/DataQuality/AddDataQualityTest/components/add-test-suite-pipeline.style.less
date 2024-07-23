@@ -10,23 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from './Entity.interface';
+@import (reference) url('../../../../styles/variables.less');
 
-export const CustomPropertySupportedEntityList = [
-  EntityType.Database,
-  EntityType.DatabaseSchema,
-  EntityType.Table,
-  EntityType.StoreProcedure,
-  EntityType.Topic,
-  EntityType.Dashboard,
-  EntityType.Pipeline,
-  EntityType.Container,
-  EntityType.MlModel,
-  EntityType.GlossaryTerm,
-  EntityType.SearchIndex,
-];
+.add-test-case-container {
+  padding: 16px;
+  border-radius: @border-radius-base;
+  background-color: @grey-1;
 
-export const ENTITY_REFERENCE_PROPERTIES = [
-  'Entity Reference',
-  'Entity Reference List',
-];
+  .form-item-horizontal {
+    margin-bottom: 0px;
+  }
+}

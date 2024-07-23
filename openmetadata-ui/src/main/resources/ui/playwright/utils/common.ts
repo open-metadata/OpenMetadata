@@ -147,3 +147,16 @@ export const clickOutside = async (page: Page) => {
   }); // with this action left menu bar is getting opened
   await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
 };
+
+export const visitUserProfilePage = async (page: Page) => {
+  await page.getByTestId('dropdown-profile').click();
+  await page.waitForSelector('[role="menu"].profile-dropdown', {
+    state: 'visible',
+  });
+  const userResponse = page.waitForResponse(
+    '/api/v1/users/name/*?fields=*&include=all'
+  );
+  await page.getByTestId('user-name').click({ force: true });
+  await userResponse;
+  await clickOutside(page);
+};
