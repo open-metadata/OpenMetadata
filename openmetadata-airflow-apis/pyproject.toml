@@ -19,6 +19,7 @@ dependencies = [
     "apache-airflow>=2.2.2",
     "Flask>=1.1.4",
     "Flask-Admin==1.6.0",
+    "setuptools==69.0.2",
 ]
 
 [project.optional-dependencies]
