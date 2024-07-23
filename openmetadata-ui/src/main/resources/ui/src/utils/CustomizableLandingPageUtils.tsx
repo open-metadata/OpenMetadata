@@ -55,13 +55,24 @@ export const getAddWidgetHandler =
     if (
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     ) {
+      const lowestWidgetLayout = currentLayout.reduce(
+        (acc, widget) => {
+          if (widget.y > acc.y) {
+            return widget;
+          }
+
+          return acc;
+        },
+        { y: 0, x: 0 }
+      );
+
       return [
         ...moveEmptyWidgetToTheEnd(currentLayout),
         {
           w: widgetWidth,
           h: widgetHeight,
-          x: 0,
-          y: 0,
+          x: lowestWidgetLayout.x,
+          y: lowestWidgetLayout.y,
           i: widgetFQN,
           static: false,
         },
