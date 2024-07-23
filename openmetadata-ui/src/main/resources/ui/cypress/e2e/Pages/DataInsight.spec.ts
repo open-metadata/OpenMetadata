@@ -154,6 +154,8 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
 
   it('Verifying Data assets tab', () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
+    cy.get('[data-testid="date-picker-menu"]').click();
+    cy.contains('[role="menuitem"]', 'Last 60 days').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);
     cy.get('[data-testid="search-dropdown-Team"]').should('be.visible');
     cy.get('[data-testid="search-dropdown-Tier"]').should('be.visible');
@@ -218,6 +220,8 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
 
   it('Verifying App analytics tab', () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
+    cy.get('[data-testid="date-picker-menu"]').click();
+    cy.contains('[role="menuitem"]', 'Last 60 days').click();
     verifyResponseStatusCode('@getKpi', 200);
     cy.get('[data-menu-id*="app-analytics"]').click();
     verifyResponseStatusCode('@dataInsightsChart', 200);
@@ -240,6 +244,8 @@ describe('Data Insight feature', { tags: 'Observability' }, () => {
 
   it('Verifying KPI tab', () => {
     cy.sidebarClick(SidebarItem.DATA_INSIGHT);
+    cy.get('[data-testid="date-picker-menu"]').click();
+    cy.contains('[role="menuitem"]', 'Last 60 days').click();
     cy.get('[data-menu-id*="kpi"]').click();
     verifyResponseStatusCode('@getKpi', 200);
     cy.get('[data-testid="kpi-card"]').should('be.visible');
