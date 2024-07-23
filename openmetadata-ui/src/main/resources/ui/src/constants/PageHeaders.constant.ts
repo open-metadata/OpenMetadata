@@ -86,6 +86,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.search'),
     subHeader: i18n.t('message.page-sub-header-for-search'),
   },
+  API_SERVICES: {
+    header: i18n.t('label.api-uppercase-plural'),
+    subHeader: i18n.t('message.page-sub-header-for-apis'),
+  },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
     subHeader: i18n.t('message.page-sub-header-for-activity-feed'),

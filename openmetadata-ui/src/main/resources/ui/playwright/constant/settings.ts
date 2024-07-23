@@ -111,6 +111,10 @@ export const SETTINGS_OPTIONS_PATH = {
     GlobalSettingsMenuCategory.SERVICES,
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
   ],
+  [GlobalSettingOptions.APIS]: [
+    GlobalSettingsMenuCategory.SERVICES,
+    `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
+  ],
 
   // Applications
 

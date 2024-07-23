@@ -30,6 +30,7 @@ export enum EntityTypeEndpoint {
   MessagingService = 'services/messagingServices',
   SearchService = 'services/searchServices',
   MetadataService = 'services/metadataServices',
+  ApiService = 'services/apiServices',
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
