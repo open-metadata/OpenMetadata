@@ -62,6 +62,13 @@
     "datasourceLinks": {
       "$ref": "#/definitions/datasourceLinks"
     },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "connectionOptions": {
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
     },

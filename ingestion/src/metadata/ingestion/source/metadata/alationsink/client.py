@@ -23,9 +23,13 @@ from metadata.generated.schema.security.credentials.apiAccessTokenAuth import (
 )
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
-from metadata.ingestion.source.metadata.alationsink.constants import ROUTES
+from metadata.ingestion.source.metadata.alationsink.constants import (
+    ROUTES,
+    TOTAL_RECORDS,
+)
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = utils_logger()
 
@@ -38,12 +42,14 @@ class AlationSinkAuthenticationProvider(AuthenticationProvider):
     def __init__(self, config: AlationSinkConnection):
         self.config = config
         self.service_connection = self.config
+        get_verify_ssl = get_verify_ssl_fn(config.verifySSL)
         client_config = ClientConfig(
             base_url=clean_uri(config.hostPort),
             api_version="integration/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
             allow_redirects=True,
+            verify=get_verify_ssl(config.sslConfig),
         )
         self.client = REST(client_config)
         self.generated_auth_token = None
@@ -108,13 +114,14 @@ class AlationSinkClient:
     def __init__(self, config: AlationSinkConnection):
         self.config = config
         self._auth_provider = AlationSinkAuthenticationProvider.create(config)
+        get_verify_ssl = get_verify_ssl_fn(config.verifySSL)
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(config.hostPort),
             auth_header="TOKEN",
             api_version="integration",
             auth_token=self._auth_provider.get_access_token,
             auth_token_mode="",
-            verify=False,
+            verify=get_verify_ssl(config.sslConfig),
         )
         self.client = REST(client_config)
         self.pagination_limit = self.config.paginationLimit
@@ -129,11 +136,10 @@ class AlationSinkClient:
         if is_key_offset:
             skip_key_name = "offset"
         entities = []
-        total_records = 100000000
         if not data:
             data = {}
         # get entities in batches using the offset and skip settings
-        for offset in range(0, total_records, self.pagination_limit):
+        for offset in range(0, TOTAL_RECORDS, self.pagination_limit):
             data["limit"] = str(self.pagination_limit)
             data[skip_key_name] = str(offset)
             response_entities = self.client.get(api_url, data=data)

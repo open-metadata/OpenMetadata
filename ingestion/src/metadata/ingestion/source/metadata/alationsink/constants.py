@@ -54,3 +54,7 @@ SERVICE_TYPE_MAPPER = {
 }
 
 TABLE_TYPE_MAPPER = {TableType.View: "VIEW", TableType.Regular: "TABLE"}
+
+# Value is used for pagination by setting a upper limit on the total records to be fetched
+# since the alation apis do not give us total count of the records
+TOTAL_RECORDS = 100000000

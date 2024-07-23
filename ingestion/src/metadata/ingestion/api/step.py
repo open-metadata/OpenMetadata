@@ -211,7 +211,7 @@ class IterStep(Step, ABC):
         in order to create a generator with `yield`.
         """
         try:
-            for result in self._iter() or []:
+            for result in self._iter():
                 if result.left is not None:
                     self.status.failed(result.left)
                     yield None
