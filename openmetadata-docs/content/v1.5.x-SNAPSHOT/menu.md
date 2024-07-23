@@ -97,6 +97,8 @@ site_menu:
     url: /deployment/security/custom-oidc/bare-metal
   - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
     url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / OIDC SSO
+    url: /deployment/security/oidc
   - category: Deployment / Enable Security / Google SSO
     url: /deployment/security/google
   - category: Deployment / Enable Security / Google SSO / Docker
