@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { IngestionListTableProps } from '../components/Settings/Services/Ingestion/IngestionListTable.interface';
+import { IngestionListTableProps } from '../components/Settings/Services/Ingestion/IngestionListTable/IngestionListTable.interface';
 import { ServiceCategory } from '../enums/service.enum';
 import {
   AuthProvider,
@@ -157,11 +157,6 @@ export const mockIngestionListTableProps: IngestionListTableProps = {
   handleDeleteSelection: mockHandleDeleteSelection,
   handleIsConfirmationModalOpen: mockHandleIsConfirmationModalOpen,
   ingestionData: mockESIngestionData,
-  deleteSelection: {
-    id: '',
-    name: '',
-    state: '',
-  },
   permissions: ENTITY_PERMISSIONS,
   pipelineType: PipelineType.ElasticSearchReindex,
   isLoading: false,

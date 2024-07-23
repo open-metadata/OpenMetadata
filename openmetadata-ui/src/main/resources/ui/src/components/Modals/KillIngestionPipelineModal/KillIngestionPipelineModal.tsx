@@ -17,18 +17,11 @@ import React, { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-
-interface KillIngestionModalProps {
-  pipelineId: string;
-  pipelinName: string;
-  isModalOpen: boolean;
-  onClose: () => void;
-  onIngestionWorkflowsUpdate: () => void;
-}
+import { KillIngestionModalProps } from './KillIngestionPipelineModal.interface';
 
 const KillIngestionModal: FC<KillIngestionModalProps> = ({
   pipelineId,
-  pipelinName,
+  pipelineName,
   isModalOpen,
   onClose,
   onIngestionWorkflowsUpdate,
@@ -43,7 +36,9 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       const status = response.status;
       if (status === 200) {
         onClose();
-        showSuccessToast(` ${t('message.kill-successfully')}  ${pipelinName}.`);
+        showSuccessToast(
+          ` ${t('message.kill-successfully')}  ${pipelineName}.`
+        );
         onIngestionWorkflowsUpdate();
       }
     } catch (error) {
@@ -63,8 +58,8 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       data-testid="kill-modal"
       maskClosable={false}
       okText={t('label.confirm')}
-      title={`${t('label.kill')} ${pipelinName} ?`}
-      visible={isModalOpen}
+      open={isModalOpen}
+      title={`${t('label.kill')} ${pipelineName} ?`}
       onCancel={onClose}
       onOk={handleConfirm}>
       <Typography.Text data-testid="kill-modal-body">

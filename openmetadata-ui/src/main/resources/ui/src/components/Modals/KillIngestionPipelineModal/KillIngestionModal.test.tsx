@@ -15,13 +15,14 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { postKillIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import KillIngestionModal from './KillIngestionPipelineModal';
+import { KillIngestionModalProps } from './KillIngestionPipelineModal.interface';
 
 const mockHandleClose = jest.fn();
 const mockUpdateWorkflows = jest.fn();
 
-const mockProps = {
+const mockProps: KillIngestionModalProps = {
   pipelineId: 'bb2ee1a9-653f-4925-a70c-fdbb3abc2d2c',
-  pipelinName: 'MyUnsplash_Service_metadata',
+  pipelineName: 'MyUnsplash_Service_metadata',
   isModalOpen: true,
   onClose: mockHandleClose,
   onIngestionWorkflowsUpdate: mockUpdateWorkflows,

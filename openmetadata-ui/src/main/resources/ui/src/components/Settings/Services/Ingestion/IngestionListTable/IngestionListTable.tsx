@@ -11,25 +11,32 @@
  *  limitations under the License.
  */
 
-import { Space, Tooltip } from 'antd';
+import { Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import cronstrue from 'cronstrue';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { usePaging } from '../../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { getErrorPlaceHolder } from '../../../../utils/IngestionUtils';
-import NextPrevious from '../../../common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import Table from '../../../common/Table/Table';
+import {
+  DISABLED,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../../constants/constants';
+import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaging } from '../../../../../hooks/paging/usePaging';
+import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import {
+  renderNameField,
+  renderRecentRunsField,
+  renderScheduleField,
+  renderStatusField,
+  renderTypeField,
+} from '../../../../../utils/IngestionListTableUtils';
+import { getErrorPlaceHolder } from '../../../../../utils/IngestionUtils';
+import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
+import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
+import Table from '../../../../common/Table/Table';
 import { IngestionListTableProps } from './IngestionListTable.interface';
-import { IngestionRecentRuns } from './IngestionRecentRun/IngestionRecentRuns.component';
-import PipelineActions from './PipelineActions.component';
+import PipelineActions from './PipelineActions/PipelineActions';
 
 function IngestionListTable({
   airflowEndpoint,
@@ -45,11 +52,10 @@ function IngestionListTable({
   handleDeleteSelection,
   handleIsConfirmationModalOpen,
   ingestionData,
-  deleteSelection,
   permissions,
   pipelineType,
   isLoading = false,
-}: IngestionListTableProps) {
+}: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { isFetchingStatus, platform } = useAirflowStatus();
   const { theme } = useApplicationStore();
@@ -87,25 +93,6 @@ function IngestionListTable({
     onIngestionWorkflowsUpdate({}, pageSize);
   }, []);
 
-  const renderNameField = (_: string, record: IngestionPipeline) => {
-    return getEntityName(record);
-  };
-
-  const renderScheduleField = (_: string, record: IngestionPipeline) => {
-    return record.airflowConfig?.scheduleInterval ? (
-      <Tooltip
-        placement="bottom"
-        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
-          use24HourTimeFormat: true,
-          verbose: true,
-        })}>
-        {record.airflowConfig.scheduleInterval}
-      </Tooltip>
-    ) : (
-      <span>--</span>
-    );
-  };
-
   const renderActionsField = (_: string, record: IngestionPipeline) => {
     if (isFetchingStatus) {
       return <ButtonSkeleton size="default" />;
@@ -117,7 +104,6 @@ function IngestionListTable({
 
     return (
       <PipelineActions
-        deleteSelection={deleteSelection}
         deployIngestion={deployIngestion}
         handleDeleteSelection={handleDeleteSelection}
         handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -139,33 +125,40 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 500,
         render: renderNameField,
       },
       {
         title: t('label.type'),
         dataIndex: 'pipelineType',
         key: 'pipelineType',
+        render: renderTypeField,
       },
       {
         title: t('label.schedule'),
         dataIndex: 'schedule',
         key: 'schedule',
+        width: 250,
         render: renderScheduleField,
       },
       {
         title: t('label.recent-run-plural'),
         dataIndex: 'recentRuns',
         key: 'recentRuns',
-        width: 180,
-        render: (_, record) => (
-          <IngestionRecentRuns classNames="align-middle" ingestion={record} />
-        ),
+        width: 160,
+        render: renderRecentRunsField,
+      },
+      {
+        title: t('label.status'),
+        dataIndex: 'status',
+        key: 'status',
+        width: 120,
+        render: renderStatusField,
       },
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
+        width: 180,
         render: renderActionsField,
       },
     ],
@@ -178,7 +171,6 @@ function IngestionListTable({
       handleEnableDisableIngestion,
       ingestionPipelinesPermission,
       serviceName,
-      deleteSelection,
       handleDeleteSelection,
       serviceCategory,
       handleIsConfirmationModalOpen,

@@ -14,16 +14,15 @@
 import {
   IngestionServicePermission,
   OperationPermission,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { Paging } from '../../../../generated/type/paging';
-import { SelectedRowDetails } from './ingestion.interface';
+} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ServiceCategory } from '../../../../../enums/service.enum';
+import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Paging } from '../../../../../generated/type/paging';
+import { SelectedRowDetails } from '../ingestion.interface';
 
 export interface IngestionListTableProps {
   airflowEndpoint: string;
-  deleteSelection: SelectedRowDetails;
   ingestionData: Array<IngestionPipeline>;
   isRequiredDetailsAvailable: boolean;
   isLoading?: boolean;

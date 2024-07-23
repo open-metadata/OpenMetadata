@@ -26,6 +26,7 @@ import {
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
@@ -33,7 +34,7 @@ import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElem
 import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import AddIngestionButton from './AddIngestionButton.component';
 import { IngestionProps, SelectedRowDetails } from './ingestion.interface';
-import IngestionListTableV1 from './IngestionListTable/IngestionListTableV1';
+import IngestionListTable from './IngestionListTable/IngestionListTable';
 
 const Ingestion: React.FC<IngestionProps> = ({
   airflowEndpoint,
@@ -121,11 +122,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     setDeleteSelection({ id, name: displayName, state: 'waiting' });
     try {
       await deleteIngestion(id, displayName);
-
-      setTimeout(() => {
-        setDeleteSelection({ id, name: displayName, state: 'success' });
-        handleCancelConfirmationModal();
-      }, 500);
+      handleCancelConfirmationModal();
     } catch (error) {
       handleCancelConfirmationModal();
     }
@@ -232,9 +229,8 @@ const Ingestion: React.FC<IngestionProps> = ({
           <div className="relative">{renderAddIngestionButton}</div>
         </Col>
         <Col span={24}>
-          <IngestionListTableV1
+          <IngestionListTable
             airflowEndpoint={airflowEndpoint}
-            deleteSelection={deleteSelection}
             deployIngestion={deployIngestion}
             handleDeleteSelection={handleDeleteSelection}
             handleEnableDisableIngestion={handleEnableDisableIngestion}
@@ -265,11 +261,13 @@ const Ingestion: React.FC<IngestionProps> = ({
     <div data-testid="ingestion-container">
       {getIngestionTab()}
       <EntityDeleteModal
-        entityName={deleteSelection.name}
+        entityName={getEntityName(deleteSelection)}
         entityType={t('label.ingestion-lowercase')}
         visible={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
-        onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}
+        onConfirm={() =>
+          handleDelete(deleteSelection.id, getEntityName(deleteSelection))
+        }
       />
     </div>
   );

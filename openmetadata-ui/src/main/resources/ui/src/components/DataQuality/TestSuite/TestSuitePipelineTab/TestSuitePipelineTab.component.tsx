@@ -520,8 +520,8 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
                 record.id === selectedPipeline?.id && (
                   <KillIngestionModal
                     isModalOpen={isKillModalOpen}
-                    pipelinName={selectedPipeline.name}
                     pipelineId={selectedPipeline.id as string}
+                    pipelineName={selectedPipeline.name}
                     onClose={() => {
                       setIsKillModalOpen(false);
                       setSelectedPipeline(undefined);
