@@ -1,0 +1,20 @@
+{
+  "name": "ExampleAppNoTrigger",
+  "displayName": "Example App No Trigger",
+  "description": "An example app without manual trigger.",
+  "features": "Dont try this at home.",
+  "appType": "internal",
+  "appScreenshots": [
+  ],
+  "developer": "ACME Labs",
+  "developerUrl": "https://www.example.com",
+  "privacyPolicyUrl": "https://www.example.com",
+  "supportEmail": "use@example.com",
+  "scheduleType": "Scheduled",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
+  "runtime": {
+    "enabled": true
+  },
+  "appConfiguration": {}
+}
