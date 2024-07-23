@@ -124,8 +124,10 @@ public class WebAnalyticsWorkflow {
       Long referenceTimestamp = source.getStartTs();
 
       // Delete the records of the days we are going to process
-      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
-      deleteReportDataRecordsAtDate(referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
+      deleteReportDataRecordsAtDate(
+          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
+      deleteReportDataRecordsAtDate(
+          referenceTimestamp, ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA);
 
       contextData.put(TIMESTAMP_KEY, referenceTimestamp);
       contextData.put(USER_ACTIVITY_DATA_KEY, userActivityData);
@@ -298,10 +300,10 @@ public class WebAnalyticsWorkflow {
   }
 
   private void deleteReportDataRecordsAtDate(
-          Long timestamp, ReportData.ReportDataType reportDataType) {
+      Long timestamp, ReportData.ReportDataType reportDataType) {
     String timestampString = TimestampUtils.timestampToString(timestamp, "yyyy-MM-dd");
     ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
-            .deleteReportDataAtDate(reportDataType, timestampString);
+        .deleteReportDataAtDate(reportDataType, timestampString);
   }
 
   private void pruneWebAnalyticEvents() {

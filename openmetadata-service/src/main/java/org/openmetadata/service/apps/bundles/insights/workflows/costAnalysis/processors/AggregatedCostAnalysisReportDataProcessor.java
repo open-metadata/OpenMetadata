@@ -106,167 +106,162 @@ public class AggregatedCostAnalysisReportDataProcessor
                           .withTotalCount((double) 0)
                           .withTotalSize((double) 0)));
         }
-          CostAnalysisWorkflow.AggregatedCostAnalysisData aggregatedCostAnalysisData =
-              aggregatedCostAnalysisDataMap.get(entityType).get(serviceType).get(serviceName);
+        CostAnalysisWorkflow.AggregatedCostAnalysisData aggregatedCostAnalysisData =
+            aggregatedCostAnalysisDataMap.get(entityType).get(serviceType).get(serviceName);
 
-          Double tableSize = (double) 0;
+        Double tableSize = (double) 0;
 
-          if (tableData.oSize().isPresent()) {
-            tableSize = tableData.oSize().get();
+        if (tableData.oSize().isPresent()) {
+          tableSize = tableData.oSize().get();
+        }
+
+        DataAssetMetrics unusedDataAssets = aggregatedCostAnalysisData.unusedDataAssets();
+        DataAssetMetrics frequentlyUsedDataAssets =
+            aggregatedCostAnalysisData.frequentlyUsedDataAssets();
+
+        // TODO: Should be a way to do this better
+        // Compute LifeCycle
+        if (tableData.oLifeCycle().isPresent()) {
+          LifeCycle lifeCycle = tableData.oLifeCycle().get();
+          // Compute 3Days
+          Long periodTimestamp =
+              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 3));
+
+          if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
+            unusedDataAssets.withCount(
+                unusedDataAssets
+                    .getCount()
+                    .withThreeDays((double) unusedDataAssets.getCount().getThreeDays() + 1));
+            unusedDataAssets.withSize(
+                unusedDataAssets
+                    .getSize()
+                    .withThreeDays((double) unusedDataAssets.getSize().getThreeDays() + tableSize));
+          } else {
+            frequentlyUsedDataAssets.withCount(
+                frequentlyUsedDataAssets
+                    .getCount()
+                    .withThreeDays(
+                        (double) frequentlyUsedDataAssets.getCount().getThreeDays() + 1));
+            frequentlyUsedDataAssets.withSize(
+                frequentlyUsedDataAssets
+                    .getSize()
+                    .withThreeDays(
+                        (double) frequentlyUsedDataAssets.getSize().getThreeDays() + tableSize));
           }
+          // Compute 7Days
+          periodTimestamp =
+              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 7));
 
-          DataAssetMetrics unusedDataAssets = aggregatedCostAnalysisData.unusedDataAssets();
-          DataAssetMetrics frequentlyUsedDataAssets =
-              aggregatedCostAnalysisData.frequentlyUsedDataAssets();
-
-          // TODO: Should be a way to do this better
-          // Compute LifeCycle
-          if (tableData.oLifeCycle().isPresent()) {
-            LifeCycle lifeCycle = tableData.oLifeCycle().get();
-            // Compute 3Days
-            Long periodTimestamp =
-                TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 3));
-
-            if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
-              unusedDataAssets.withCount(
-                  unusedDataAssets
-                      .getCount()
-                      .withThreeDays((double) unusedDataAssets.getCount().getThreeDays() + 1));
-              unusedDataAssets.withSize(
-                  unusedDataAssets
-                      .getSize()
-                      .withThreeDays(
-                          (double) unusedDataAssets.getSize().getThreeDays() + tableSize));
-            } else {
-              frequentlyUsedDataAssets.withCount(
-                  frequentlyUsedDataAssets
-                      .getCount()
-                      .withThreeDays(
-                          (double) frequentlyUsedDataAssets.getCount().getThreeDays() + 1));
-              frequentlyUsedDataAssets.withSize(
-                  frequentlyUsedDataAssets
-                      .getSize()
-                      .withThreeDays(
-                          (double) frequentlyUsedDataAssets.getSize().getThreeDays() + tableSize));
-            }
-            // Compute 7Days
-            periodTimestamp =
-                TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 7));
-
-            if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
-              unusedDataAssets.withCount(
-                  unusedDataAssets
-                      .getCount()
-                      .withSevenDays((double) unusedDataAssets.getCount().getSevenDays() + 1));
-              unusedDataAssets.withSize(
-                  unusedDataAssets
-                      .getSize()
-                      .withSevenDays(
-                          (double) unusedDataAssets.getSize().getSevenDays() + tableSize));
-            } else {
-              frequentlyUsedDataAssets.withCount(
-                  frequentlyUsedDataAssets
-                      .getCount()
-                      .withSevenDays(
-                          (double) frequentlyUsedDataAssets.getCount().getSevenDays() + 1));
-              frequentlyUsedDataAssets.withSize(
-                  frequentlyUsedDataAssets
-                      .getSize()
-                      .withSevenDays(
-                          (double) frequentlyUsedDataAssets.getSize().getSevenDays() + tableSize));
-            }
-            // Compute 14Days
-            periodTimestamp =
-                TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 14));
-
-            if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
-              unusedDataAssets.withCount(
-                  unusedDataAssets
-                      .getCount()
-                      .withFourteenDays(
-                          (double) unusedDataAssets.getCount().getFourteenDays() + 1));
-              unusedDataAssets.withSize(
-                  unusedDataAssets
-                      .getSize()
-                      .withFourteenDays(
-                          (double) unusedDataAssets.getSize().getFourteenDays() + tableSize));
-            } else {
-              frequentlyUsedDataAssets.withCount(
-                  frequentlyUsedDataAssets
-                      .getCount()
-                      .withFourteenDays(
-                          (double) frequentlyUsedDataAssets.getCount().getFourteenDays() + 1));
-              frequentlyUsedDataAssets.withSize(
-                  frequentlyUsedDataAssets
-                      .getSize()
-                      .withFourteenDays(
-                          (double) frequentlyUsedDataAssets.getSize().getFourteenDays()
-                              + tableSize));
-            }
-            // Compute 30Days
-            periodTimestamp =
-                TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 30));
-
-            if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
-              unusedDataAssets.withCount(
-                  unusedDataAssets
-                      .getCount()
-                      .withThirtyDays((double) unusedDataAssets.getCount().getThirtyDays() + 1));
-              unusedDataAssets.withSize(
-                  unusedDataAssets
-                      .getSize()
-                      .withThirtyDays(
-                          (double) unusedDataAssets.getSize().getThirtyDays() + tableSize));
-            } else {
-              frequentlyUsedDataAssets.withCount(
-                  frequentlyUsedDataAssets
-                      .getCount()
-                      .withThirtyDays(
-                          (double) frequentlyUsedDataAssets.getCount().getThirtyDays() + 1));
-              frequentlyUsedDataAssets.withSize(
-                  frequentlyUsedDataAssets
-                      .getSize()
-                      .withThirtyDays(
-                          (double) frequentlyUsedDataAssets.getSize().getThirtyDays() + tableSize));
-            }
-            // Compute 60Days
-            periodTimestamp =
-                TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 60));
-
-            if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
-              unusedDataAssets.withCount(
-                  unusedDataAssets
-                      .getCount()
-                      .withSixtyDays((double) unusedDataAssets.getCount().getSixtyDays() + 1));
-              unusedDataAssets.withSize(
-                  unusedDataAssets
-                      .getSize()
-                      .withSixtyDays(
-                          (double) unusedDataAssets.getSize().getSixtyDays() + tableSize));
-            } else {
-              frequentlyUsedDataAssets.withCount(
-                  frequentlyUsedDataAssets
-                      .getCount()
-                      .withSixtyDays(
-                          (double) frequentlyUsedDataAssets.getCount().getSixtyDays() + 1));
-              frequentlyUsedDataAssets.withSize(
-                  frequentlyUsedDataAssets
-                      .getSize()
-                      .withSixtyDays(
-                          (double) frequentlyUsedDataAssets.getSize().getSixtyDays() + tableSize));
-            }
+          if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
+            unusedDataAssets.withCount(
+                unusedDataAssets
+                    .getCount()
+                    .withSevenDays((double) unusedDataAssets.getCount().getSevenDays() + 1));
+            unusedDataAssets.withSize(
+                unusedDataAssets
+                    .getSize()
+                    .withSevenDays((double) unusedDataAssets.getSize().getSevenDays() + tableSize));
+          } else {
+            frequentlyUsedDataAssets.withCount(
+                frequentlyUsedDataAssets
+                    .getCount()
+                    .withSevenDays(
+                        (double) frequentlyUsedDataAssets.getCount().getSevenDays() + 1));
+            frequentlyUsedDataAssets.withSize(
+                frequentlyUsedDataAssets
+                    .getSize()
+                    .withSevenDays(
+                        (double) frequentlyUsedDataAssets.getSize().getSevenDays() + tableSize));
           }
+          // Compute 14Days
+          periodTimestamp =
+              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 14));
 
-          Double totalSize = aggregatedCostAnalysisData.totalSize() + tableSize;
-          Double totalCount = aggregatedCostAnalysisData.totalCount() + 1;
+          if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
+            unusedDataAssets.withCount(
+                unusedDataAssets
+                    .getCount()
+                    .withFourteenDays((double) unusedDataAssets.getCount().getFourteenDays() + 1));
+            unusedDataAssets.withSize(
+                unusedDataAssets
+                    .getSize()
+                    .withFourteenDays(
+                        (double) unusedDataAssets.getSize().getFourteenDays() + tableSize));
+          } else {
+            frequentlyUsedDataAssets.withCount(
+                frequentlyUsedDataAssets
+                    .getCount()
+                    .withFourteenDays(
+                        (double) frequentlyUsedDataAssets.getCount().getFourteenDays() + 1));
+            frequentlyUsedDataAssets.withSize(
+                frequentlyUsedDataAssets
+                    .getSize()
+                    .withFourteenDays(
+                        (double) frequentlyUsedDataAssets.getSize().getFourteenDays() + tableSize));
+          }
+          // Compute 30Days
+          periodTimestamp =
+              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 30));
 
-          CostAnalysisWorkflow.AggregatedCostAnalysisData newAggregatedCostAnalysisData =
-              new CostAnalysisWorkflow.AggregatedCostAnalysisData(
-                  totalSize, totalCount, unusedDataAssets, frequentlyUsedDataAssets);
-          aggregatedCostAnalysisDataMap
-              .get(entityType)
-              .get(serviceType)
-              .put(serviceName, newAggregatedCostAnalysisData);
+          if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
+            unusedDataAssets.withCount(
+                unusedDataAssets
+                    .getCount()
+                    .withThirtyDays((double) unusedDataAssets.getCount().getThirtyDays() + 1));
+            unusedDataAssets.withSize(
+                unusedDataAssets
+                    .getSize()
+                    .withThirtyDays(
+                        (double) unusedDataAssets.getSize().getThirtyDays() + tableSize));
+          } else {
+            frequentlyUsedDataAssets.withCount(
+                frequentlyUsedDataAssets
+                    .getCount()
+                    .withThirtyDays(
+                        (double) frequentlyUsedDataAssets.getCount().getThirtyDays() + 1));
+            frequentlyUsedDataAssets.withSize(
+                frequentlyUsedDataAssets
+                    .getSize()
+                    .withThirtyDays(
+                        (double) frequentlyUsedDataAssets.getSize().getThirtyDays() + tableSize));
+          }
+          // Compute 60Days
+          periodTimestamp =
+              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 60));
+
+          if (lifeCycle.getAccessed().getTimestamp() <= periodTimestamp) {
+            unusedDataAssets.withCount(
+                unusedDataAssets
+                    .getCount()
+                    .withSixtyDays((double) unusedDataAssets.getCount().getSixtyDays() + 1));
+            unusedDataAssets.withSize(
+                unusedDataAssets
+                    .getSize()
+                    .withSixtyDays((double) unusedDataAssets.getSize().getSixtyDays() + tableSize));
+          } else {
+            frequentlyUsedDataAssets.withCount(
+                frequentlyUsedDataAssets
+                    .getCount()
+                    .withSixtyDays(
+                        (double) frequentlyUsedDataAssets.getCount().getSixtyDays() + 1));
+            frequentlyUsedDataAssets.withSize(
+                frequentlyUsedDataAssets
+                    .getSize()
+                    .withSixtyDays(
+                        (double) frequentlyUsedDataAssets.getSize().getSixtyDays() + tableSize));
+          }
+        }
+
+        Double totalSize = aggregatedCostAnalysisData.totalSize() + tableSize;
+        Double totalCount = aggregatedCostAnalysisData.totalCount() + 1;
+
+        CostAnalysisWorkflow.AggregatedCostAnalysisData newAggregatedCostAnalysisData =
+            new CostAnalysisWorkflow.AggregatedCostAnalysisData(
+                totalSize, totalCount, unusedDataAssets, frequentlyUsedDataAssets);
+        aggregatedCostAnalysisDataMap
+            .get(entityType)
+            .get(serviceType)
+            .put(serviceName, newAggregatedCostAnalysisData);
       }
       updateStats(input.size(), 0);
     } catch (Exception e) {

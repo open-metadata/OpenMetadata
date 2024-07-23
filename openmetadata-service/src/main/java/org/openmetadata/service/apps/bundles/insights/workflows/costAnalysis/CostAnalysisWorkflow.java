@@ -4,7 +4,6 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.REP
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.TIMESTAMP_KEY;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,21 +73,26 @@ public class CostAnalysisWorkflow {
     this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
 
     // TODO: Implement Backfill by using DataAsset Version.
-//    if (backfill.isPresent()) {
-//      Long oldestPossibleTimestamp = TimestampUtils.getStartOfDayTimestamp(timestamp - TimestampUtils.subtractDays(timestamp, retentionDays));
-//      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(Collections.max(List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
-//      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(Collections.max(
-//
-//     List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()),
-//     oldestPossibleTimestamp)));
-//
-//      if (oldestPossibleTimestamp.equals(TimestampUtils.getStartOfDayTimestamp(endTimestamp))) {
-//        LOG.warn("CostAnalysis Backfill won't happen because the set date is before the limit of {}", oldestPossibleTimestamp);
-//      }
-//    } else {
-//      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
-//      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
-//    }
+    //    if (backfill.isPresent()) {
+    //      Long oldestPossibleTimestamp = TimestampUtils.getStartOfDayTimestamp(timestamp -
+    // TimestampUtils.subtractDays(timestamp, retentionDays));
+    //      this.endTimestamp =
+    // TimestampUtils.getEndOfDayTimestamp(Collections.max(List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()))));
+    //      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(Collections.max(
+    //
+    //     List.of(TimestampUtils.getTimestampFromDateString(backfill.get().endDate()),
+    //     oldestPossibleTimestamp)));
+    //
+    //      if (oldestPossibleTimestamp.equals(TimestampUtils.getStartOfDayTimestamp(endTimestamp)))
+    // {
+    //        LOG.warn("CostAnalysis Backfill won't happen because the set date is before the limit
+    // of {}", oldestPossibleTimestamp);
+    //      }
+    //    } else {
+    //      this.endTimestamp =
+    // TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
+    //      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
+    //    }
 
     this.batchSize = batchSize;
   }
@@ -134,7 +138,8 @@ public class CostAnalysisWorkflow {
     // TODO: It might be good to delete and process one day at a time
     Long pointerTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
     while (pointerTimestamp >= startTimestamp) {
-      deleteReportDataRecordsAtDate(pointerTimestamp, ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
+      deleteReportDataRecordsAtDate(
+          pointerTimestamp, ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA);
       pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
     }
 
@@ -328,15 +333,15 @@ public class CostAnalysisWorkflow {
   }
 
   private void deleteReportDataRecordsAtDate(
-          Long timestamp, ReportData.ReportDataType reportDataType) {
+      Long timestamp, ReportData.ReportDataType reportDataType) {
     String timestampString = TimestampUtils.timestampToString(timestamp, "yyyy-MM-dd");
     ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
-            .deleteReportDataAtDate(reportDataType, timestampString);
+        .deleteReportDataAtDate(reportDataType, timestampString);
   }
 
   private void deleteReportDataRecords(ReportData.ReportDataType reportDataType) {
     ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
-            .deleteReportData(reportDataType);
+        .deleteReportData(reportDataType);
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {

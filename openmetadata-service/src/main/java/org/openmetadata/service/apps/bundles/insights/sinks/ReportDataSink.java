@@ -1,7 +1,6 @@
 package org.openmetadata.service.apps.bundles.insights.sinks;
 
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.REPORT_DATA_TYPE_KEY;
-import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.TIMESTAMP_KEY;
 import static org.openmetadata.service.jdbi3.ReportDataRepository.REPORT_DATA_EXTENSION;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
@@ -14,7 +13,6 @@ import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.util.JsonUtils;
