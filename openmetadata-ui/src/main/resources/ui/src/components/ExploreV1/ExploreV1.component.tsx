@@ -278,11 +278,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   }, [activeTabKey, quickFilters]);
 
   useEffect(() => {
-    if (
-      !isUndefined(searchResults) &&
-      searchResults?.hits?.hits[0] &&
-      searchResults?.hits?.hits[0]._index === searchIndex
-    ) {
+    if (!isUndefined(searchResults) && searchResults?.hits?.hits[0]) {
       handleSummaryPanelDisplay(
         highlightEntityNameAndDescription(
           firstEntity._source,
