@@ -172,9 +172,9 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.withReuse(false);
     ELASTIC_SEARCH_CONTAINER.withStartupAttempts(3);
     ELASTIC_SEARCH_CONTAINER.withCommand(
-            "sh", "-c",
-            "bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsearch/analysis-ik/8.10.2 && exec bin/elasticsearch"
-    );
+        "sh",
+        "-c",
+        "bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsearch/analysis-ik/8.10.2 && exec bin/elasticsearch");
     ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
         new LogMessageWaitStrategy()
             .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
