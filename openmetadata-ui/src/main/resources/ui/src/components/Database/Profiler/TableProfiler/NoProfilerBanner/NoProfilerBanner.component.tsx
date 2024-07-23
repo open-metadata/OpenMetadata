@@ -30,7 +30,7 @@ const NoProfilerBanner = () => {
           target="_blank"
           to={{
             pathname:
-              'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler',
+              'https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow',
           }}>
           {`${t('label.here-lowercase')}.`}
         </Link>
