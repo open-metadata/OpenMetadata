@@ -38,14 +38,17 @@ export interface TestCaseFormProps {
 export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
   ingestionPipeline?: IngestionPipeline;
-  onCancel: () => void;
-  testCaseNames?: string[];
-  pipelineName?: string;
+  onCancel?: () => void;
+  showAddTestCase?: boolean;
+  onViewServiceClick?: () => void;
 }
 
 export type TestSuiteIngestionDataType = {
   repeatFrequency: string;
   enableDebugLog?: boolean;
+  testCases?: string[];
+  name?: string;
+  selectTestCase?: boolean;
 };
 
 export interface TestSuiteSchedulerProps {
@@ -59,6 +62,15 @@ export interface TestSuiteSchedulerProps {
     cancelText: string;
   };
   includePeriodOptions?: string[];
+}
+
+export interface AddTestSuitePipelineProps {
+  initialData?: Partial<TestSuiteIngestionDataType>;
+  isLoading: boolean;
+  onSubmit: (data: TestSuiteIngestionDataType) => void;
+  includePeriodOptions?: string[];
+  onCancel?: () => void;
+  showAddTestCase?: boolean;
 }
 
 export interface RightPanelProps {

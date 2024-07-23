@@ -63,7 +63,7 @@ EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflow
 
 URLS = {
     WorkflowType.INGEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/metadata",
-    WorkflowType.PROFILE: "https://docs.open-metadata.org/connectors/ingestion/workflows/profiler",
+    WorkflowType.PROFILE: "https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow",
     WorkflowType.TEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality",
     WorkflowType.LINEAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/lineage",
     WorkflowType.USAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/usage",
