@@ -63,7 +63,7 @@ export const getChartById = async (id: string) => {
 
 export const getChartPreviewByName = async (
   name: SystemChartType,
-  params: { start: number; end: number }
+  params: { start: number; end: number; filter: string }
 ) => {
   const response = await APIClient.get<DataInsightCustomChartResult>(
     `/analytics/dataInsights/system/charts/name/${name}/data`,

@@ -122,12 +122,36 @@ export const DataInsightChartCard = ({
 
   const { t } = useTranslation();
 
+  const getFilter = (teamFilter?: string, tierFilter?: string) => {
+    return JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: [
+                  ...(tierFilter
+                    ? [{ term: { 'tier.tagFQN': tierFilter } }]
+                    : []),
+                  ...(teamFilter
+                    ? [{ term: { 'owner.displayName.keyword': teamFilter } }]
+                    : []),
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
       const response = await getChartPreviewByName(type, {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
+        filter: getFilter(chartFilter.team, chartFilter.tier),
       });
 
       const newData = {
@@ -283,7 +307,11 @@ export const DataInsightChartCard = ({
                 size="small"
                 type="text">
                 {t('label.explore-asset-plural-with-type', {
-                  type: t('label.no-description'),
+                  type:
+                    type ===
+                    SystemChartType.PercentageOfDataAssetWithDescription
+                      ? t('label.no-description')
+                      : t('label.no-owner'),
                 })}
                 <RightArrowIcon height={12} width={12} />
               </Button>
