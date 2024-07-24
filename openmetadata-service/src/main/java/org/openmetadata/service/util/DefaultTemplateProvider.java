@@ -88,19 +88,16 @@ public class DefaultTemplateProvider implements TemplateProvider {
             .filter(expected -> !expectedPlaceholders.contains(expected))
             .collect(Collectors.toSet());
 
-    boolean invalidPlaceholders =
-        !missingPlaceholders.isEmpty() || !additionalPlaceholders.isEmpty();
-
-    String message = "Email Template passed validations.";
-    if (invalidPlaceholders) {
-      message = "Invalid Email Template. Please check the placeholders for additional Details.";
-    }
+    boolean isValid = additionalPlaceholders.isEmpty();
 
     return new TemplateValidationResponse()
-        .withIsValid(invalidPlaceholders)
+        .withIsValid(!isValid)
         .withMissingPlaceholder(missingPlaceholders)
         .withAdditionalPlaceholder(additionalPlaceholders)
-        .withMessage(message);
+        .withMessage(
+            isValid
+                ? "Email Template passed validations."
+                : "Invalid Email Template. Please check the placeholders for additional Details.");
   }
 
   private static Set<String> extractPlaceholders(String content) {
