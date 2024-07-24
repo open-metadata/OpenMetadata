@@ -23,3 +23,12 @@ WHERE name IN (
     'columnValuesToBeBetween',
     'tableRowCountToBeBetween'
 );
+
+-- Update schedule type for applications
+UPDATE installed_apps
+SET json = JSON_MERGE_PATCH(json, '{"scheduleType": "ScheduledOrManual"}')
+WHERE JSON_UNQUOTE(json->'$.scheduleType') = 'Scheduled';
+
+-- recreate all scheduled apps
+DELETE FROM apps_marketplace
+WHERE JSON_UNQUOTE(json->'$.scheduleType') = 'Scheduled';
