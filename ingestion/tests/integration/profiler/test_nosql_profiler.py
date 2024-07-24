@@ -143,7 +143,7 @@ class NoSQLProfiler(TestCase):
         )
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        print_status(ingestion_workflow)
+        ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
     @classmethod

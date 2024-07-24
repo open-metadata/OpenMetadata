@@ -138,7 +138,7 @@ class DatalakeProfilerTestE2E(TestCase):
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        print_status(ingestion_workflow)
+        ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
     def test_datalake_profiler_workflow(self):

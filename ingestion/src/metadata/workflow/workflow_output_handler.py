@@ -33,6 +33,7 @@ from metadata.ingestion.api.parser import (
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.lineage.models import QueryParsingFailures
 from metadata.utils.constants import UTF_8
+from metadata.utils.deprecation import deprecated
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
@@ -85,8 +86,14 @@ DEFAULT_EXAMPLE_FILE = {
 }
 
 
+@deprecated(message="Use 'workflow.print_status()' instead.", release="1.8")
+def print_status(workflow: "BaseWorkflow"):  # pyright: ignore[ReportUndefinedVariable]
+    workflow.print_status()
+
+
 class WorkflowOutputHandler:
-    """ Responsible for dealing with the Workflow Outputs """
+    """Responsible for dealing with the Workflow Outputs"""
+
     def print_status(
         self,
         result_status: WorkflowResultStatus,
