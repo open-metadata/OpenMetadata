@@ -15,6 +15,7 @@ import { capitalize, toLower } from 'lodash';
 import {
   AIRBYTE,
   AIRFLOW,
+  ALATIONSINK,
   AMAZON_S3,
   AMUNDSEN,
   ATHENA,
@@ -434,6 +435,9 @@ class ServiceUtilClassBase {
 
       case this.MetadataServiceTypeSmallCase.Atlas:
         return ATLAS;
+
+      case this.MetadataServiceTypeSmallCase.AlationSink:
+        return ALATIONSINK;
 
       case this.MetadataServiceTypeSmallCase.OpenMetadata:
         return LOGO;
