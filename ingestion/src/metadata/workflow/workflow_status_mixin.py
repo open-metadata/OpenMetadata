@@ -14,7 +14,7 @@ Add methods to the workflows for updating the IngestionPipeline status
 import traceback
 import uuid
 from datetime import datetime
-from enum import Enum, auto
+from enum import Enum
 from typing import Optional, Tuple
 
 from metadata.config.common import WorkflowExecutionError
@@ -41,8 +41,8 @@ SUCCESS_THRESHOLD_VALUE = 90
 
 
 class WorkflowResultStatus(Enum):
-    SUCCESS = auto()
-    FAILURE = auto()
+    SUCCESS = 0
+    FAILURE = 1
 
 
 class WorkflowStatusMixin:

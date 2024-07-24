@@ -45,6 +45,7 @@ from metadata.utils.test_utils import accumulate_errors
 from metadata.utils.time_utils import get_end_of_day_timestamp_mill
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
+from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
 SERVICE_NAME = Path(__file__).stem
 
@@ -175,7 +176,7 @@ class NoSQLProfiler(TestCase):
         profiler_workflow.execute()
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
     def test_simple(self):
         workflow_config = deepcopy(self.ingestion_config)
