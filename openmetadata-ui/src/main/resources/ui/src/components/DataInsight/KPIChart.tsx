@@ -149,7 +149,7 @@ const KPIChart: FC<Props> = ({
               ...previous,
               [kpiName]: {
                 ...resultValue,
-                target: kpiTarget * 100,
+                target: kpiTarget,
                 metricType: kpi?.metricType as KpiTargetType,
                 startDate: kpi?.startDate,
                 endDate: kpi?.endDate,

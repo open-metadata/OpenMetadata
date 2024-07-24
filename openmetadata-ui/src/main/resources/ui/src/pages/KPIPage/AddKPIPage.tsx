@@ -28,7 +28,7 @@ import {
 import { useForm, useWatch } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import { isUndefined, kebabCase, map, startCase } from 'lodash';
+import { isUndefined, kebabCase } from 'lodash';
 import moment from 'moment';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +40,6 @@ import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import {
   CreateKpiRequest,
-  DataInsightChart,
   KpiTargetType,
 } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -49,6 +48,11 @@ import {
   getDataInsightPathWithFqn,
   getDisabledDates,
 } from '../../utils/DataInsightUtils';
+import {
+  filterChartOptions,
+  getDataInsightChartForKPI,
+  KPIMetricTypeOptions,
+} from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './kpi-page.less';
 import { KPIFormValues } from './KPIPage.interface';
@@ -74,22 +78,12 @@ const AddKPIPage = () => {
   const history = useHistory();
   const [form] = useForm<KPIFormValues>();
 
-  const [description, setDescription] = useState<string>('');
-  const [metricValue, setMetricValue] = useState<number>(0);
   const [isCreatingKPI, setIsCreatingKPI] = useState<boolean>(false);
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
+  const metricType = useWatch<KpiTargetType>('metricType', form);
 
-  const chartType = useWatch<DataInsightChart>('dataInsightChart', form);
   const chartOptions = useMemo(() => {
-    const initOptions = map(DataInsightChart, (value) => ({
-      label: startCase(value),
-      value,
-    }));
-    const addedCharts = kpiList.map(
-      (kpi) => kpi.dataInsightChart.fullyQualifiedName
-    );
-
-    return initOptions.filter((option) => !addedCharts.includes(option.value));
+    return filterChartOptions(kpiList);
   }, [kpiList]);
 
   const fetchKpiList = async () => {
@@ -132,31 +126,26 @@ const AddKPIPage = () => {
     }
   };
 
-  const metricType = useMemo(() => {
-    return [
-      DataInsightChart.PercentageOfDataAssetWithDescriptionKpi,
-      DataInsightChart.PercentageOfDataAssetWithOwnerKpi,
-    ].includes(chartType)
-      ? KpiTargetType.Percentage
-      : KpiTargetType.Number;
-  }, [chartType]);
-
   const handleSubmit: FormProps['onFinish'] = async (values) => {
     const startDate = values.startDate.valueOf();
     const endDate = values.endDate.valueOf();
 
-    const targetValue = metricValue;
+    const dataInsightChart = getDataInsightChartForKPI(
+      values.chartType,
+      metricType
+    );
 
     const formData: CreateKpiRequest = {
-      dataInsightChart: values.dataInsightChart,
-      description,
+      dataInsightChart: dataInsightChart,
+      description: values.description,
       name: kebabCase(`${values.displayName ?? ''} ${metricType}`),
       displayName: values.displayName,
       startDate,
       endDate,
       metricType,
-      targetValue,
+      targetValue: values.targetValue,
     };
+
     setIsCreatingKPI(true);
     try {
       await postKPI(formData);
@@ -198,11 +187,8 @@ const AddKPIPage = () => {
               onFinish={handleSubmit}
               onValuesChange={handleFormValuesChange}>
               <Form.Item
-                initialValue={
-                  DataInsightChart.PercentageOfDataAssetWithDescriptionKpi
-                }
                 label={t('label.select-a-chart')}
-                name="dataInsightChart"
+                name="chartType"
                 rules={[
                   {
                     required: true,
@@ -212,7 +198,7 @@ const AddKPIPage = () => {
                   },
                 ]}>
                 <Select
-                  data-testid="dataInsightChart"
+                  data-testid="chartType"
                   notFoundContent={t('message.all-charts-are-mapped')}
                   options={chartOptions}
                   placeholder={t('label.select-a-chart')}
@@ -227,15 +213,26 @@ const AddKPIPage = () => {
                 />
               </Form.Item>
 
+              <Form.Item
+                initialValue={KpiTargetType.Percentage}
+                label={t('label.metric-type')}
+                name="metricType">
+                <Select
+                  data-testid="metricType"
+                  options={KPIMetricTypeOptions}
+                />
+              </Form.Item>
+
               {!isUndefined(metricType) && (
                 <Form.Item
+                  initialValue={0}
                   label={t('label.metric-value')}
-                  name="metricValue"
+                  name="targetValue"
                   rules={[
                     {
                       required: true,
-                      validator: () => {
-                        if (metricValue >= 0) {
+                      validator: (_, value) => {
+                        if (value >= 0) {
                           return Promise.resolve();
                         }
 
@@ -249,47 +246,51 @@ const AddKPIPage = () => {
                   ]}>
                   <>
                     {metricType === KpiTargetType.Percentage && (
-                      <Row data-testid="metric-percentage-input" gutter={20}>
-                        <Col span={20}>
-                          <Slider
-                            className="kpi-slider"
-                            marks={{
-                              0: '0%',
-                              100: '100%',
-                            }}
-                            max={100}
-                            min={0}
-                            tooltip={{
-                              open: false,
-                            }}
-                            value={metricValue}
-                            onChange={(value) => {
-                              setMetricValue(value);
-                            }}
-                          />
-                        </Col>
-                        <Col span={4}>
-                          <InputNumber
-                            formatter={(value) => `${value}%`}
-                            max={100}
-                            min={0}
-                            step={1}
-                            value={metricValue}
-                            onChange={(value) => {
-                              setMetricValue(Number(value));
-                            }}
-                          />
-                        </Col>
-                      </Row>
+                      <>
+                        <Row gutter={32}>
+                          <Col span={20}>
+                            <Form.Item
+                              noStyle
+                              name="targetValue"
+                              wrapperCol={{ span: 20 }}>
+                              <Slider
+                                className="kpi-slider"
+                                marks={{
+                                  0: '0%',
+                                  100: '100%',
+                                }}
+                                max={100}
+                                min={0}
+                                tooltip={{
+                                  open: false,
+                                }}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={4}>
+                            <Form.Item
+                              noStyle
+                              name="targetValue"
+                              wrapperCol={{ span: 4 }}>
+                              <InputNumber
+                                formatter={(value) => `${value}%`}
+                                max={100}
+                                min={0}
+                                step={1}
+                              />
+                            </Form.Item>
+                          </Col>
+                        </Row>
+                      </>
                     )}
                     {metricType === KpiTargetType.Number && (
-                      <InputNumber
-                        className="w-full"
-                        data-testid="metric-number-input"
-                        min={0}
-                        value={metricValue}
-                        onChange={(value) => setMetricValue(Number(value))}
-                      />
+                      <Form.Item noStyle name="targetValue">
+                        <InputNumber
+                          className="w-full"
+                          data-testid="metric-number-input"
+                          min={0}
+                        />
+                      </Form.Item>
                     )}
                   </>
                 </Form.Item>
@@ -344,13 +345,15 @@ const AddKPIPage = () => {
                 </Col>
               </Row>
 
-              <Form.Item label={t('label.description')} name="description">
+              <Form.Item
+                label={t('label.description')}
+                name="description"
+                trigger="onTextChange"
+                valuePropName="initialValue">
                 <RichTextEditor
                   height="200px"
-                  initialValue={description}
                   placeHolder={t('message.write-your-description')}
                   style={{ margin: 0 }}
-                  onTextChange={(value) => setDescription(value)}
                 />
               </Form.Item>
 
