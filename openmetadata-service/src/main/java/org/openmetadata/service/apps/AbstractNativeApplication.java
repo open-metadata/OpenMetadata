@@ -3,6 +3,7 @@ package org.openmetadata.service.apps;
 import static org.openmetadata.service.apps.scheduler.AbstractOmAppJobListener.JOB_LISTENER_NAME;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
+import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
 import java.util.List;
 import lombok.Getter;
@@ -14,7 +15,6 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
-import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -24,6 +24,7 @@ import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -68,8 +69,7 @@ public class AbstractNativeApplication implements NativeApplication {
             && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE))) {
       return;
     }
-    if (app.getAppType() == AppType.Internal
-        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (app.getAppType().equals(AppType.Internal) && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
         ApplicationHandler.getInstance().migrateQuartzConfig(app);
@@ -82,7 +82,7 @@ public class AbstractNativeApplication implements NativeApplication {
       }
       scheduleInternal();
     } else if (app.getAppType() == AppType.External
-        && app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       scheduleExternal();
     }
   }
@@ -90,7 +90,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand() {
     // Validate Native Application
-    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application
@@ -114,6 +114,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
+      updateAppConfig(ingestionPipelineRepository, this.getApp().getAppConfiguration());
     } catch (EntityNotFoundException ex) {
       ApplicationConfig config =
           JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
@@ -149,6 +150,17 @@ public class AbstractNativeApplication implements NativeApplication {
               Entity.INGESTION_PIPELINE,
               Relationship.HAS.ordinal());
     }
+  }
+
+  private void updateAppConfig(IngestionPipelineRepository repository, Object appConfiguration) {
+    String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
+    IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
+    ApplicationPipeline appPipeline =
+        JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
+    IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
+    updated.setSourceConfig(
+        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+    repository.update(null, original, updated);
   }
 
   private void createAndBindIngestionPipeline(
