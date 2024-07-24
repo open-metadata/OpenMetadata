@@ -1,0 +1,84 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/metadata/AlationSinkConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AlationSinkConnection",
+  "description": "Alation Sink Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.metadata.AlationSinkConnection",
+  "definitions": {
+    "alationSinkType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["AlationSink"],
+      "default": "AlationSink"
+    },
+    "datasourceLinks": {
+      "title": "Datasource Links",
+      "description": "Add the links between alation datasources and OpenMetadata Database services",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "properties": {
+    "type": {
+      "description": "Service Type",
+      "$ref": "#/definitions/alationSinkType",
+      "default": "AlationSink"
+    },
+    "hostPort": {
+      "description": "Host and port of the Alation service.",
+      "title": "Host and Port",
+      "type": "string",
+      "format": "uri",
+      "expose": true
+    },
+    "authType": {
+      "mask": true,
+      "title": "Authentication type for Alation",
+      "description": "Types of methods used to authenticate to the alation instance",
+      "oneOf": [
+        {
+          "$ref": "../../../../security/credentials/basicAuth.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/apiAccessTokenAuth.json"
+        }
+      ]
+    },
+    "projectName": {
+      "title": "Project Name",
+      "description": "Project name to create the refreshToken. Can be anything",
+      "type": "string",
+      "default": "AlationAPI"
+    },
+    "paginationLimit": {
+      "title": "Pagination Limit",
+      "description": "Pagination limit used for Alation APIs pagination",
+      "type": "integer",
+      "default": 10
+    },
+    "datasourceLinks": {
+      "$ref": "#/definitions/datasourceLinks"
+    },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
+    "connectionOptions": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "supportsMetadataExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "required": ["hostPort", "authType"],
+  "additionalProperties": false
+}
