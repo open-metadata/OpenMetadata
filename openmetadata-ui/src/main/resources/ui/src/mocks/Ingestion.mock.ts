@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { PipelineState } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { ServicesType } from '../../../../interface/service.interface';
+import { IngestionProps } from '../components/Settings/Services/Ingestion/ingestion.interface';
+import { ServiceCategory } from '../enums/service.enum';
+import {
+  IngestionPipeline,
+  PipelineState,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { UseAirflowStatusProps } from '../hooks/useAirflowStatus';
+import { ServicesType } from '../interface/service.interface';
+import { ENTITY_PERMISSIONS } from './Permissions.mock';
 
 export const mockIngestionWorkFlow = {
   data: {
@@ -220,3 +227,38 @@ export const EXECUTION_RUNS = [
     endDate: 1667297373,
   },
 ];
+
+const mockUpdateWorkflows = jest.fn();
+
+const mockPaging = {
+  after: 'after',
+  before: 'before',
+  total: 1,
+};
+
+const mockCurrentHandleIngestionListUpdate = jest.fn();
+const mockCurrentHandleIngestionPagingUpdate = jest.fn();
+const mockCurrentHandleSearchChange = jest.fn();
+const mockCurrentOnPageChange = jest.fn();
+
+export const ingestionProps: IngestionProps = {
+  ingestionPipelineList: mockIngestionWorkFlow.data
+    .data as unknown as IngestionPipeline[],
+  paging: mockPaging,
+  permissions: ENTITY_PERMISSIONS,
+  serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+  serviceDetails: mockService,
+  serviceName: '',
+  onIngestionWorkflowsUpdate: mockUpdateWorkflows,
+  currentPage: 1,
+  searchText: '',
+  airflowInformation: {
+    isAirflowAvailable: true,
+    isFetchingStatus: false,
+    platform: 'airflow',
+  } as UseAirflowStatusProps,
+  handleIngestionListUpdate: mockCurrentHandleIngestionListUpdate,
+  handleIngestionPagingUpdate: mockCurrentHandleIngestionPagingUpdate,
+  handleSearchChange: mockCurrentHandleSearchChange,
+  onPageChange: mockCurrentOnPageChange,
+};

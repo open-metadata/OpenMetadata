@@ -68,6 +68,7 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { Database } from '../../generated/entity/data/database';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
+import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
@@ -131,7 +132,7 @@ export type ServicePageData =
   | Pipeline
   | Container
   | DashboardDataModel
-  | SearchIndex
+  | SearchIndexEntity
   | StoredProcedure;
 
 const ServiceDetailsPage: FunctionComponent = () => {
@@ -819,7 +820,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
             handleIngestionPagingUpdate={handleIngestionPagingUpdate}
             handleSearchChange={handleSearchChange}
             ingestionPipelineList={ingestionPipelines}
-            isAirflowAvailable={isAirflowAvailable}
             isLoading={isIngestionPipelineLoading}
             paging={ingestionPaging}
             permissions={servicePermission}
@@ -836,7 +836,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [
       airflowInformation,
       currentPage,
-      isAirflowAvailable,
       isIngestionPipelineLoading,
       serviceDetails,
       ingestionPipelines,

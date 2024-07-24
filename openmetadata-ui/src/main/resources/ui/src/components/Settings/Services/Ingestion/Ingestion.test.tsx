@@ -11,72 +11,47 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  findByTestId,
-  findByText,
-  fireEvent,
-  getAllByText,
-  queryByTestId,
-  queryByText,
-  render,
-} from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import { MemoryRouter } from 'react-router-dom';
+import { DISABLED } from '../../../../constants/constants';
+import { ingestionProps } from '../../../../mocks/Ingestion.mock';
+import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import Ingestion from './Ingestion.component';
-import { mockIngestionWorkFlow, mockService } from './Ingestion.mock';
 
-const mockPermissions = {
-  Create: true,
-  Delete: true,
-  EditAll: true,
-  EditCustomFields: true,
-  EditDataProfile: true,
-  EditDescription: true,
-  EditDisplayName: true,
-  EditLineage: true,
-  EditOwner: true,
-  EditQueries: true,
-  EditSampleData: true,
-  EditTags: true,
-  EditTests: true,
-  EditTier: true,
-  ViewAll: true,
-  ViewDataProfile: true,
-  ViewQueries: true,
-  ViewSampleData: true,
-  ViewTests: true,
-  ViewUsage: true,
-} as OperationPermission;
-
-const mockUpdateWorkflows = jest.fn();
-
-const mockPaging = {
-  after: 'after',
-  before: 'before',
-  total: 1,
-};
-
-const mockDeleteIngestion = jest.fn();
-const handleEnableDisableIngestion = jest.fn();
-const mockDeployIngestion = jest
+const mockDeleteIngestionPipelineById = jest
   .fn()
-  .mockImplementation(() => Promise.resolve());
-const mockTriggerIngestion = jest
+  .mockImplementation(() => Promise.resolve({}));
+const mockDeployIngestionPipelineById = jest
   .fn()
-  .mockImplementation(() => Promise.resolve());
+  .mockImplementation(() => Promise.resolve({}));
+const mockEnableDisableIngestionPipelineById = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({}));
+const mockTriggerIngestionPipelineById = jest
+  .fn()
+  .mockImplementation(() => Promise.resolve({}));
 
 jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest.fn().mockImplementation(() => <div>Searchbar</div>);
 });
 
 jest.mock('../../../Modals/EntityDeleteModal/EntityDeleteModal', () => {
-  return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ onConfirm }) => (
+      <button onClick={onConfirm}>EntityDeleteModal</button>
+    ));
 });
+
+jest.mock(
+  '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(() => <div>ErrorPlaceHolderIngestion</div>);
+  }
+);
 
 jest.mock(
   '../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal',
@@ -95,32 +70,38 @@ jest.mock('./IngestionRecentRun/IngestionRecentRuns.component', () => ({
     .mockImplementation(() => <p>IngestionRecentRuns</p>),
 }));
 
+jest.mock('./IngestionListTable/IngestionListTable', () =>
+  jest.fn().mockImplementation(({ handleDeleteSelection }) => (
+    <div>
+      <p>IngestionListTable</p>
+      <button
+        onClick={() =>
+          handleDeleteSelection({ id: 'delete-id', name: 'pipeline-name' })
+        }>
+        handleDeleteSelection
+      </button>
+    </div>
+  ))
+);
+
 jest.mock(
   '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component',
   () => jest.fn().mockImplementation(() => <div>ButtonSkeleton</div>)
 );
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn().mockReturnValue({
-      Create: true,
-      Delete: true,
-      ViewAll: true,
-      EditAll: true,
-      EditDescription: true,
-      EditDisplayName: true,
-      EditCustomFields: true,
-    }),
-  }),
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    getEntityPermissionByFqn: jest
+      .fn()
+      .mockImplementation(() => ENTITY_PERMISSIONS),
+  })),
 }));
 
-jest.mock('../../../../hooks/useAirflowStatus', () => ({
-  useAirflowStatus: jest.fn(() => {
-    return {
-      isFetchingStatus: false,
-      platform: 'airflow',
-    };
-  }),
+jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
+  deleteIngestionPipelineById: mockDeleteIngestionPipelineById,
+  deployIngestionPipelineById: mockDeployIngestionPipelineById,
+  enableDisableIngestionPipelineById: mockEnableDisableIngestionPipelineById,
+  triggerIngestionPipelineById: mockTriggerIngestionPipelineById,
 }));
 
 jest.mock('../../../../hoc/LimitWrapper', () => {
@@ -129,388 +110,91 @@ jest.mock('../../../../hoc/LimitWrapper', () => {
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
 
-describe('Test Ingestion page', () => {
-  it('Page Should render', async () => {
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPaging}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const ingestionPageContainer = await findByTestId(
-      container,
-      'ingestion-container'
-    );
-    const searchBox = await findByText(container, /Searchbar/i);
-    const addIngestionButton = await findByText(
-      container,
-      'AddIngestionButton'
-    );
-    const ingestionTable = await findByTestId(container, 'ingestion-table');
-
-    expect(ingestionPageContainer).toBeInTheDocument();
-    expect(searchBox).toBeInTheDocument();
-    expect(addIngestionButton).toBeInTheDocument();
-    expect(ingestionTable).toBeInTheDocument();
-  });
-
-  it('Table should render necessary fields', async () => {
-    const { findByTestId, findAllByRole } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPaging}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const ingestionTable = await findByTestId('ingestion-table');
-    const tableHeaderContainer = await findAllByRole('columnheader');
-    const runButton = await findByTestId('run');
-    const editButton = await findByTestId('edit');
-    const deleteButton = await findByTestId('delete');
-    const killButton = await findByTestId('kill');
-    const logsButton = await findByTestId('logs');
-
-    expect(ingestionTable).toBeInTheDocument();
-    expect(tableHeaderContainer).toHaveLength(5);
-    expect(runButton).toBeInTheDocument();
-    expect(editButton).toBeInTheDocument();
-    expect(deleteButton).toBeInTheDocument();
-    expect(killButton).toBeInTheDocument();
-    expect(logsButton).toBeInTheDocument();
-  });
-
-  it('Update button should work', async () => {
-    const mockPagingAfter = {
-      after: 'afterKey',
-      before: 'beforeKey',
-      total: 0,
-    };
-
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPagingAfter}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    // on click of edit button
-    const editButton = await findByTestId(container, 'edit');
-    fireEvent.click(editButton);
-
-    expect(editButton).toBeInTheDocument();
-  });
-
-  it('CTA should work', async () => {
-    const mockPagingAfter = {
-      after: 'afterKey',
-      before: 'beforeKey',
-      total: 0,
-    };
-
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPagingAfter}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    // on click of run button
-
+describe('Ingestion', () => {
+  it('should render the error placeHolder if airflow is not available', async () => {
     await act(async () => {
-      const runButton = await findByTestId(container, 'run');
-      fireEvent.click(runButton);
-
-      expect(mockTriggerIngestion).toHaveBeenCalled();
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            isAirflowAvailable: false,
+          }}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
     });
 
-    // on click of delete button
-
-    const deleteButton = await findByTestId(container, 'delete');
-    fireEvent.click(deleteButton);
-
-    expect(
-      await findByText(container, /EntityDeleteModal/i)
-    ).toBeInTheDocument();
-
-    // on click of add ingestion
-    const addIngestionButton = await findByText(
-      container,
-      'AddIngestionButton'
-    );
-    fireEvent.click(addIngestionButton);
+    expect(screen.getByText('ErrorPlaceHolderIngestion')).toBeInTheDocument();
   });
 
-  it('Airflow DAG view button should be present if endpoint is available', async () => {
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint="http://localhost"
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+  it('should render the ButtonSkeleton if airflow status is being fetched', async () => {
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            isFetchingStatus: true,
+          }}
+        />,
+        {
+          wrapper: MemoryRouter,
         }
-        paging={mockPaging}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+      );
+    });
 
-    const pipelineName = await findByText(container, 'test3_metadata');
-
-    expect(pipelineName).toBeInTheDocument();
+    expect(screen.getByText('ButtonSkeleton')).toBeInTheDocument();
   });
 
-  it('Pause button should be present if enabled is available', async () => {
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint="http://localhost"
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+  it('should not render the AddIngestionButton if platform is disabled', async () => {
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          airflowInformation={{
+            ...ingestionProps.airflowInformation,
+            platform: DISABLED,
+          }}
+        />,
+        {
+          wrapper: MemoryRouter,
         }
-        paging={mockPaging}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+      );
+    });
 
-    const pauseButton = await findByTestId(container, 'pause');
-
-    expect(pauseButton).toBeInTheDocument();
-
-    fireEvent.click(pauseButton);
-
-    expect(handleEnableDisableIngestion).toHaveBeenCalled();
+    expect(screen.queryByText('AddIngestionButton')).toBeNull();
   });
 
-  it('Unpause button should be present if enabled is false', async () => {
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint="http://localhost"
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          [
-            { ...mockIngestionWorkFlow.data.data, enabled: false },
-          ] as unknown as IngestionPipeline[]
+  it('should not render the AddIngestionButton if displayAddIngestionButton is false', async () => {
+    await act(async () => {
+      render(
+        <Ingestion {...ingestionProps} displayAddIngestionButton={false} />,
+        {
+          wrapper: MemoryRouter,
         }
-        paging={mockPaging}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+      );
+    });
 
-    const unpause = await findByTestId(container, 'unpause');
-    const run = queryByTestId(container, 'run');
-
-    expect(unpause).toBeInTheDocument();
-    expect(run).not.toBeInTheDocument();
-
-    fireEvent.click(unpause);
-
-    expect(handleEnableDisableIngestion).toHaveBeenCalled();
+    expect(screen.queryByText('AddIngestionButton')).toBeNull();
   });
 
-  it('Should render kill modal on click of kill button', async () => {
-    const mockPagingAfter = {
-      after: 'afterKey',
-      before: 'beforeKey',
-      total: 0,
-    };
-
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
+  it('should not render the AddIngestionButton if no EditAll permission', async () => {
+    await act(async () => {
+      render(
+        <Ingestion
+          {...ingestionProps}
+          displayAddIngestionButton={false}
+          permissions={{ ...ENTITY_PERMISSIONS, EditAll: false }}
+        />,
+        {
+          wrapper: MemoryRouter,
         }
-        paging={mockPagingAfter}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+      );
+    });
 
-    const killButton = await findByTestId(container, 'kill');
-    fireEvent.click(killButton);
-
-    expect(
-      await findByText(container, /KillIngestionModal/i)
-    ).toBeInTheDocument();
-  });
-
-  it('should render button skeleton if airflow status is loading', async () => {
-    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
-      isFetchingStatus: true,
-      platform: 'airflow',
-    }));
-
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPaging}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const addIngestionButton = queryByText(container, 'AddIngestionButton');
-
-    const loadingButton = getAllByText(container, 'ButtonSkeleton');
-
-    expect(loadingButton).toHaveLength(2);
-
-    expect(addIngestionButton).not.toBeInTheDocument();
-  });
-
-  it('should not render add ingestion button if platform is disabled', async () => {
-    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
-      isFetchingStatus: false,
-      platform: 'disabled',
-    }));
-
-    const { container } = render(
-      <Ingestion
-        isRequiredDetailsAvailable
-        airflowEndpoint=""
-        deleteIngestion={mockDeleteIngestion}
-        deployIngestion={mockDeployIngestion}
-        handleEnableDisableIngestion={handleEnableDisableIngestion}
-        ingestionList={
-          mockIngestionWorkFlow.data.data as unknown as IngestionPipeline[]
-        }
-        paging={mockPaging}
-        permissions={mockPermissions}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
-        serviceDetails={mockService}
-        serviceName=""
-        triggerIngestion={mockTriggerIngestion}
-        onIngestionWorkflowsUpdate={mockUpdateWorkflows}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
-
-    const addIngestionButton = queryByText(container, 'AddIngestionButton');
-
-    expect(addIngestionButton).not.toBeInTheDocument();
+    expect(screen.queryByText('AddIngestionButton')).toBeNull();
   });
 });

@@ -13,7 +13,6 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,8 +51,6 @@ const Ingestion: React.FC<IngestionProps> = ({
   pipelineType,
   displayAddIngestionButton = true,
   pipelineNameColWidth,
-  containerClassName,
-  isAirflowAvailable = true,
   isLoading,
   handleIngestionListUpdate,
   handleIngestionPagingUpdate,
@@ -78,14 +75,13 @@ const Ingestion: React.FC<IngestionProps> = ({
     setPipelineIdToFetchStatus(pipelineId);
   }, []);
 
-  const handleDeleteSelection = useCallback(
-    (row: SelectedRowDetails) => setDeleteSelection(row),
-    [setDeleteSelection]
-  );
+  const handleDeleteSelection = useCallback((row: SelectedRowDetails) => {
+    setDeleteSelection(row);
+  }, []);
 
   const handleIsConfirmationModalOpen = useCallback(
     (value: boolean) => setIsConfirmationModalOpen(value),
-    [setDeleteSelection]
+    []
   );
 
   const [ingestionPipelinesPermission, setIngestionPipelinesPermission] =
@@ -236,16 +232,15 @@ const Ingestion: React.FC<IngestionProps> = ({
   };
 
   const handleDelete = async (id: string, displayName: string) => {
-    setDeleteSelection({ id, name: displayName, state: 'waiting' });
     try {
+      setDeleteSelection({ id, name: displayName, state: 'waiting' });
       await deleteIngestion(id, displayName);
-      handleCancelConfirmationModal();
-    } catch (error) {
+    } finally {
       handleCancelConfirmationModal();
     }
   };
 
-  const { isFetchingStatus, platform } = useMemo(
+  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
     () => airflowInformation,
     [airflowInformation]
   );
@@ -294,9 +289,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
   const getIngestionTab = () => {
     return (
-      <Row
-        className={classNames('mt-4', containerClassName ?? '')}
-        data-testid="ingestion-details-container">
+      <Row className="mt-4" data-testid="ingestion-details-container">
         <Col className="d-flex justify-between" span={24}>
           <div className="w-max-400 w-full">
             <Searchbar

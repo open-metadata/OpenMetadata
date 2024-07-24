@@ -20,10 +20,10 @@ import {
 } from '@testing-library/react';
 import React from 'react';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { EXECUTION_RUNS, FAILURE } from '../../../../../mocks/Ingestion.mock';
 import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import ConnectionStepCard from '../../../../common/TestConnection/ConnectionStepCard/ConnectionStepCard';
-import { EXECUTION_RUNS, FAILURE } from '../Ingestion.mock';
 import { IngestionRecentRuns } from './IngestionRecentRuns.component';
 
 const mockHandlePipelineIdToFetchStatus = jest.fn();
@@ -76,7 +76,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const successRun = await screen.findByText(/Success/);
+    const successRun = await screen.findByText(/SUCCESS/);
 
     expect(successRun).toBeInTheDocument();
     expect(runs).toHaveLength(4);
@@ -102,7 +102,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const successRun = await screen.findByText(/Queued/);
+    const successRun = await screen.findByText(/QUEUED/);
 
     expect(successRun).toBeInTheDocument();
     expect(runs).toHaveLength(4);
@@ -128,7 +128,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const successRun = await screen.findByText(/Running/);
+    const successRun = await screen.findByText(/RUNNING/);
 
     expect(successRun).toBeInTheDocument();
     expect(runs).toHaveLength(4);
@@ -154,7 +154,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const successRun = await screen.findByText(/Failed/);
+    const successRun = await screen.findByText(/FAILED/);
 
     expect(successRun).toBeInTheDocument();
     expect(runs).toHaveLength(4);
@@ -180,7 +180,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const successRun = await screen.findByText(/Partial Success/);
+    const successRun = await screen.findByText(/PARTIAL SUCCESS/);
 
     expect(successRun).toBeInTheDocument();
     expect(runs).toHaveLength(4);
@@ -197,7 +197,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const partialSuccess = await screen.findByText(/Partial Success/);
+    const partialSuccess = await screen.findByText(/PARTIAL SUCCESS/);
 
     expect(partialSuccess).toBeInTheDocument();
     expect(runs).toHaveLength(3);
@@ -225,7 +225,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const partialSuccess = await screen.findByText(/Partial Success/);
+    const partialSuccess = await screen.findByText(/PARTIAL SUCCESS/);
 
     expect(partialSuccess).toBeInTheDocument();
     expect(runs).toHaveLength(3);
@@ -254,7 +254,7 @@ describe('Test IngestionRecentRun component', () => {
     });
 
     const runs = await screen.findAllByTestId('pipeline-status');
-    const partialSuccess = await screen.findByText(/Partial Success/);
+    const partialSuccess = await screen.findByText(/PARTIAL SUCCESS/);
 
     expect(partialSuccess).toBeInTheDocument();
     expect(runs).toHaveLength(3);

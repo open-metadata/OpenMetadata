@@ -43,9 +43,7 @@ export interface IngestionProps {
   currentPage: number;
   pipelineType?: PipelineType;
   displayAddIngestionButton?: boolean;
-  containerClassName?: string;
   isLoading?: boolean;
-  isAirflowAvailable?: boolean;
   searchText: string;
   airflowInformation: UseAirflowStatusProps;
   onIngestionWorkflowsUpdate: (
