@@ -12,7 +12,9 @@
 Client to interact with fivetran apis
 """
 import base64
-from typing import List
+from typing import List, Optional
+
+from requests import Response
 
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
@@ -86,3 +88,14 @@ class FivetranClient:
         """
         response = self.client.get(f"/connectors/{connector_id}/schemas")
         return response["data"]["schemas"]
+
+    def get_connector_column_lineage(
+        self, connector_id: str, schema_name: str, table_name: str
+    ) -> dict:
+        """
+        Method returns destination details
+        """
+        response: Optional[Response] = self.client.get(
+            f"/connectors/{connector_id}/schemas/{schema_name}/tables/{table_name}/columns"
+        )
+        return response["data"]["columns"]
