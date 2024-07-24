@@ -70,7 +70,6 @@ def get_docker_network(name: str):
 
 
 def get_mysql_container(mysql_config: MySqlContainerConfigs):
-
     container = MySqlContainer(
         **{
             k: v
