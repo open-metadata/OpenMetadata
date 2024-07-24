@@ -163,10 +163,13 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
 
   useEffect(() => {
     fetchOrganizationDetails();
-    fetchEntitiesChartData();
-    fetchMostActiveUser();
-    fetchWebChartData();
-  }, [chartFilter]);
+  }, []);
+
+  useEffect(() => {
+    tab === DataInsightTabs.DATA_ASSETS && fetchEntitiesChartData();
+    tab === DataInsightTabs.APP_ANALYTICS && fetchMostActiveUser();
+    tab === DataInsightTabs.APP_ANALYTICS && fetchWebChartData();
+  }, [chartFilter, tab]);
 
   return (
     <div data-testid="summary-card">
