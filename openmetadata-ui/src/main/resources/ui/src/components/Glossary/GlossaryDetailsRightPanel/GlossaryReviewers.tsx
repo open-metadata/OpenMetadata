@@ -46,31 +46,15 @@ function GlossaryReviewers({
   const getReviewerName = useCallback(
     (reviewer: EntityReference, operation: EntityChangeOperations) => {
       switch (operation) {
-        case EntityChangeOperations.ADDED: {
+        case EntityChangeOperations.ADDED:
           return getAddedDiffElement(getEntityName(reviewer));
-        }
-        case EntityChangeOperations.DELETED: {
+        case EntityChangeOperations.DELETED:
           return getRemovedDiffElement(getEntityName(reviewer));
-        }
         case EntityChangeOperations.UPDATED:
         case EntityChangeOperations.NORMAL:
-        default: {
+        default:
           return getEntityName(reviewer);
-        }
       }
-    },
-    []
-  );
-
-  const getReviewer = useCallback(
-    (reviewer: EntityReference, operation: EntityChangeOperations) => {
-      return (
-        <OwnerLabel
-          pills
-          owner={reviewer}
-          ownerDisplayName={getReviewerName(reviewer, operation)}
-        />
-      );
     },
     []
   );
@@ -99,23 +83,29 @@ function GlossaryReviewers({
         )
       : [];
 
-    if (
-      !isEmpty(unchangedReviewers) ||
-      !isEmpty(addedReviewers) ||
-      !isEmpty(deletedReviewers)
-    ) {
+    const allReviewers = [
+      ...unchangedReviewers.map((reviewer) => ({
+        reviewer,
+        operation: EntityChangeOperations.NORMAL,
+      })),
+      ...addedReviewers.map((reviewer) => ({
+        reviewer,
+        operation: EntityChangeOperations.ADDED,
+      })),
+      ...deletedReviewers.map((reviewer) => ({
+        reviewer,
+        operation: EntityChangeOperations.DELETED,
+      })),
+    ];
+
+    if (!isEmpty(allReviewers)) {
       return (
-        <div className="d-flex items-center gap-1 flex-wrap">
-          {unchangedReviewers.map((reviewer) =>
-            getReviewer(reviewer, EntityChangeOperations.NORMAL)
+        <OwnerLabel
+          ownerDisplayName={allReviewers.map(({ reviewer, operation }) =>
+            getReviewerName(reviewer, operation)
           )}
-          {addedReviewers.map((reviewer) =>
-            getReviewer(reviewer, EntityChangeOperations.ADDED)
-          )}
-          {deletedReviewers.map((reviewer) =>
-            getReviewer(reviewer, EntityChangeOperations.DELETED)
-          )}
-        </div>
+          owners={allReviewers.map(({ reviewer }) => reviewer)}
+        />
       );
     }
   }
@@ -125,13 +115,12 @@ function GlossaryReviewers({
     !isUndefined(glossaryData.reviewers)
   ) {
     return (
-      <div
-        className="d-flex items-center gap-1 flex-wrap"
-        data-testid="glossary-reviewer-name">
-        {glossaryData.reviewers.map((reviewer) =>
-          getReviewer(reviewer, EntityChangeOperations.NORMAL)
+      <OwnerLabel
+        ownerDisplayName={glossaryData.reviewers.map((reviewer) =>
+          getReviewerName(reviewer, EntityChangeOperations.NORMAL)
         )}
-      </div>
+        owners={glossaryData.reviewers}
+      />
     );
   }
 

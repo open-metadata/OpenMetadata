@@ -14,7 +14,7 @@
 export interface BasicEntityOverviewInfo {
   name: string;
   value: string | number | React.ReactNode;
-  isLink: boolean;
+  isLink?: boolean;
   isExternal?: boolean;
   isIcon?: boolean;
   url?: string;

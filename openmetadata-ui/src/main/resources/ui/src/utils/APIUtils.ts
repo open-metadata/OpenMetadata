@@ -86,7 +86,7 @@ export const formatDomainsResponse = (
       domainType: d._source.domainType,
       experts: d._source.experts,
       parent: d._source.parent,
-      owner: d._source.owner,
+      owners: d._source.owners,
     };
   });
 };
@@ -105,7 +105,7 @@ export const formatDataProductResponse = (
       href: d._source.href,
       domain: d._source.domain,
       experts: d._source.experts,
-      owner: d._source.owner,
+      owners: d._source.owners,
     };
   });
 };

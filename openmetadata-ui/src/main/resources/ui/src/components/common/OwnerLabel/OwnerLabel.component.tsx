@@ -45,7 +45,7 @@ export const OwnerLabel = ({
   className?: string;
   onUpdate?: (owners?: EntityReference[]) => void;
   hasPermission?: boolean;
-  ownerDisplayName?: ReactNode;
+  ownerDisplayName?: ReactNode[];
   placeHolder?: string;
   pills?: boolean;
 }) => {
@@ -62,7 +62,7 @@ export const OwnerLabel = ({
       );
     }
 
-    return owners.map((owner) => {
+    return owners.map((owner, index) => {
       const displayName = getEntityName(owner);
       const profilePicture = isNil(owner) ? (
         <Icon
@@ -102,7 +102,7 @@ export const OwnerLabel = ({
               ? getTeamAndUserDetailsPath(owner.name ?? '')
               : getUserPath(owner.name ?? '')
           }>
-          {ownerDisplayName ?? displayName}
+          {ownerDisplayName?.[index] ?? displayName}
         </Link>
       );
 
@@ -119,7 +119,7 @@ export const OwnerLabel = ({
     return (
       <div
         className={classNames(
-          'd-inline-flex items-center',
+          'd-inline-flex items-center flex-wrap',
           { 'gap-2': !pills, 'owner-pills-content': pills },
           { inherited: Boolean(owners?.some((owner) => owner.inherited)) },
           className
@@ -144,11 +144,7 @@ export const OwnerLabel = ({
             }}
             owner={owners}
             onUpdate={(updatedUsers) => {
-              if (Array.isArray(updatedUsers)) {
-                onUpdate(updatedUsers);
-              } else if (updatedUsers) {
-                onUpdate([updatedUsers]);
-              }
+              onUpdate(updatedUsers);
             }}
           />
         )}

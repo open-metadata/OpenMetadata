@@ -24,6 +24,7 @@ import {
 import { EntityField } from '../../../constants/Feeds.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { EntityChangeOperations } from '../../../enums/VersionPage.enum';
 import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -111,15 +112,9 @@ const GlossaryDetailsRightPanel = ({
     }
   };
 
-  const handleReviewerSave = async (
-    data?: EntityReference | EntityReference[]
-  ) => {
-    let reviewers: EntityReference[] = [];
-    if (Array.isArray(data)) {
-      reviewers = data;
-    } else if (data) {
-      reviewers = [data];
-    }
+  const handleReviewerSave = async (data?: EntityReference[]) => {
+    const reviewers: EntityReference[] = data ?? [];
+
     if (!isEqual(reviewers, assignedReviewers)) {
       let updatedGlossary = cloneDeep(selectedData);
       const oldReviewer = reviewers.filter((d) =>
@@ -136,20 +131,20 @@ const GlossaryDetailsRightPanel = ({
     }
   };
 
-  const handleUpdatedOwner = async (newOwner?: EntityReference) => {
+  const handleUpdatedOwner = async (newOwner?: EntityReference[]) => {
     const updatedData = {
       ...selectedData,
-      owner: newOwner,
+      owners: newOwner,
     };
     await onUpdate(updatedData);
     refreshGlossaryTerms?.();
   };
 
   const getOwner = useCallback(
-    (ownerDisplayName: string | ReactNode, owner?: EntityReference) => {
-      if (owner) {
+    (owners: EntityReference[], ownerDisplayNames: ReactNode[]) => {
+      if (!isEmpty(owners)) {
         return (
-          <OwnerLabel pills owner={owner} ownerDisplayName={ownerDisplayName} />
+          <OwnerLabel ownerDisplayName={ownerDisplayNames} owners={owners} />
         );
       }
       if (!(permissions.EditOwners || permissions.EditAll)) {
@@ -169,11 +164,11 @@ const GlossaryDetailsRightPanel = ({
           glossaryData.changeDescription as ChangeDescription
         );
 
-        const oldOwner = JSON.parse(
-          getChangedEntityOldValue(ownerDiff) ?? '{}'
+        const oldOwners: EntityReference[] = JSON.parse(
+          getChangedEntityOldValue(ownerDiff) ?? '[]'
         );
-        const newOwner = JSON.parse(
-          getChangedEntityNewValue(ownerDiff) ?? '{}'
+        const newOwners: EntityReference[] = JSON.parse(
+          getChangedEntityNewValue(ownerDiff) ?? '[]'
         );
 
         const shouldShowDiff =
@@ -182,30 +177,34 @@ const GlossaryDetailsRightPanel = ({
           !isEmpty(ownerDiff.updated);
 
         if (shouldShowDiff) {
-          if (!isEmpty(ownerDiff.added)) {
-            const ownerName = getDiffValue('', getEntityName(newOwner));
+          const ownersWithOperations = [
+            { owners: newOwners, operation: EntityChangeOperations.ADDED },
+            { owners: oldOwners, operation: EntityChangeOperations.DELETED },
+          ];
 
-            return getOwner(ownerName, newOwner);
-          }
+          const owners = ownersWithOperations.flatMap(({ owners }) => owners);
+          const ownerDisplayNames = ownersWithOperations.flatMap(
+            ({ owners, operation }) =>
+              owners.map((owner) =>
+                getDiffValue(
+                  operation === EntityChangeOperations.ADDED
+                    ? ''
+                    : getEntityName(owner),
+                  operation === EntityChangeOperations.ADDED
+                    ? getEntityName(owner)
+                    : ''
+                )
+              )
+          );
 
-          if (!isEmpty(ownerDiff.deleted)) {
-            const ownerName = getDiffValue(getEntityName(oldOwner), '');
-
-            return getOwner(ownerName, oldOwner);
-          }
-
-          if (!isEmpty(ownerDiff.updated)) {
-            const ownerName = getDiffValue(
-              getEntityName(oldOwner),
-              getEntityName(newOwner)
-            );
-
-            return getOwner(ownerName, newOwner);
-          }
+          return getOwner(owners, ownerDisplayNames);
         }
       }
 
-      return getOwner(getEntityName(glossaryData.owner), glossaryData.owner);
+      const owners = glossaryData.owners || [];
+      const ownerDisplayNames = owners.map((owner) => getEntityName(owner));
+
+      return getOwner(owners, ownerDisplayNames);
     },
     [isVersionView, getOwner]
   );
@@ -241,13 +240,13 @@ const GlossaryDetailsRightPanel = ({
             {t('label.owner')}
           </Typography.Text>
           {(permissions.EditOwners || permissions.EditAll) &&
-            selectedData.owner && (
+            selectedData.owners && (
               <UserTeamSelectableList
                 hasPermission={permissions.EditOwners || permissions.EditAll}
-                owner={selectedData.owner}
-                onUpdate={(updatedUser) =>
-                  handleUpdatedOwner(updatedUser as EntityReference)
-                }>
+                listHeight={200}
+                multiple={{ user: true, team: false }}
+                owner={selectedData.owners}
+                onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                 <Tooltip
                   title={t('label.edit-entity', {
                     entity: t('label.owner'),
@@ -266,14 +265,14 @@ const GlossaryDetailsRightPanel = ({
         <Space className="m-r-xss" size={4}>
           {getUserNames(selectedData)}
         </Space>
-        {!selectedData.owner &&
+        {selectedData.owners?.length === 0 &&
           (permissions.EditOwners || permissions.EditAll) && (
             <UserTeamSelectableList
               hasPermission={permissions.EditOwners || permissions.EditAll}
-              owner={selectedData.owner}
-              onUpdate={(updatedUser) =>
-                handleUpdatedOwner(updatedUser as EntityReference)
-              }>
+              listHeight={200}
+              multiple={{ user: true, team: false }}
+              owner={selectedData.owners}
+              onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
               <TagButton
                 className="text-primary cursor-pointer"
                 dataTestId="edit-owner"

@@ -429,7 +429,7 @@ const EntityVersionPage: FunctionComponent = () => {
 
   const { owner, domain, tier, slashedEntityName } = useMemo(() => {
     return {
-      owner: currentVersionData.owner,
+      owner: currentVersionData.owners,
       tier: getTierTags(currentVersionData.tags ?? []),
       domain: currentVersionData.domain,
       slashedEntityName: getEntityBreadcrumbs(currentVersionData, entityType),

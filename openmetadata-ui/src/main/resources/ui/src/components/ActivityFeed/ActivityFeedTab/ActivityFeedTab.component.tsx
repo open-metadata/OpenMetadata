@@ -77,7 +77,7 @@ import {
 
 export const ActivityFeedTab = ({
   fqn,
-  owner,
+  owners = [],
   columns,
   entityType,
   refetchFeed,
@@ -506,7 +506,7 @@ export const ActivityFeedTab = ({
                   columns={columns}
                   entityType={EntityType.TABLE}
                   isForFeedTab={isForFeedTab}
-                  owner={owner}
+                  owners={owners}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
@@ -516,7 +516,7 @@ export const ActivityFeedTab = ({
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}
-                  owner={owner}
+                  owners={owners}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}

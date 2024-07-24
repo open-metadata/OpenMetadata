@@ -465,7 +465,7 @@ function SearchIndexDetailsPage() {
               entityFeedTotalCount={feedCount.totalCount}
               entityType={EntityType.SEARCH_INDEX}
               fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
-              owner={searchIndexDetails?.owners}
+              owners={searchIndexDetails?.owners}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchSearchIndexDetails}
               onUpdateFeedCount={handleFeedCount}

@@ -249,7 +249,7 @@ const GlossaryTermsV1 = ({
                   entityType={EntityType.GLOSSARY_TERM}
                   fqn={glossaryTerm.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossaryTerm.reviewers)}
-                  owner={glossaryTerm.owner}
+                  owners={glossaryTerm.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={refreshActiveGlossaryTerm}
                 />

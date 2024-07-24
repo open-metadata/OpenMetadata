@@ -666,7 +666,7 @@ const TableDetailsPageV1: React.FC = () => {
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
-            owner={tableDetails?.owners}
+            owners={tableDetails?.owners}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTableDetails}
             onUpdateFeedCount={handleFeedCount}

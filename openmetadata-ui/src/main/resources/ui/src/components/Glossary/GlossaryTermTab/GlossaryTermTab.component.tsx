@@ -164,10 +164,10 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
+        dataIndex: 'owners',
+        key: 'owners',
         width: '17%',
-        render: (owner: EntityReference) => <OwnerLabel pills owner={owner} />,
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
