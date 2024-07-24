@@ -13,7 +13,7 @@ Airbyte source to extract metadata
 """
 
 import traceback
-from typing import Iterable, Optional, cast
+from typing import Iterable, List, Optional, Union, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -130,6 +130,17 @@ class FivetranSource(PipelineServiceSource):
         source_service = self.metadata.get_by_name(
             entity=DatabaseService, fqn=pipeline_details.source.get("schema")
         )
+        if not source_service:
+            es_resp: Union[
+                List[DatabaseService], None
+            ] = self.metadata.es_search_from_fqn(
+                DatabaseService, pipeline_details.source.get("schema", "")
+            )
+            if es_resp and len(es_resp) > 0 and es_resp[0].fullyQualifiedName:
+                source_service = self.metadata.get_by_name(
+                    entity=DatabaseService,
+                    fqn=(es_resp[0].fullyQualifiedName.__root__),
+                )
         destination_service = self.metadata.get_by_name(
             entity=DatabaseService, fqn=pipeline_details.group.get("name")
         )
