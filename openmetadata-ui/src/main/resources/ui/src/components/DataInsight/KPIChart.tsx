@@ -172,7 +172,7 @@ const KPIChart: FC<Props> = ({
 
   const handleLegendClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+      updateActiveChartFilter(event.value, prevActiveKeys)
     );
   };
   const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
