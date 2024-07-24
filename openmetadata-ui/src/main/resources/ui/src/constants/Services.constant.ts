@@ -35,6 +35,7 @@ import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
+import exasol from '../assets/img/service-icon-exasol.png';
 import fivetran from '../assets/img/service-icon-fivetran.png';
 import flink from '../assets/img/service-icon-flink.png';
 import gcs from '../assets/img/service-icon-gcs.png';
@@ -179,6 +180,7 @@ export const ATLAS = atlas;
 export const SAS = sas;
 export const OPENLINEAGE = openlineage;
 export const LOGO = logo;
+export const EXASOL = exasol;
 
 export const AIRFLOW = airflow;
 export const PREFECT = prefect;
