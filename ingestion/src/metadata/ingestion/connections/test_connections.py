@@ -279,7 +279,7 @@ def test_connection_engine_step(connection: Engine) -> None:
     with connection.connect() as conn:
         result = conn.execute(ConnTestFn())
         if result:
-            result.fetchall()
+            result.fetchone()
 
 
 def test_connection_db_common(
