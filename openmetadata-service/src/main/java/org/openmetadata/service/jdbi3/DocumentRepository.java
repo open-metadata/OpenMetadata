@@ -23,6 +23,7 @@ import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
 import org.openmetadata.service.util.DefaultTemplateProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -56,6 +57,9 @@ public class DocumentRepository extends EntityRepository<Document> {
 
   public EmailTemplate fetchEmailTemplateByName(String name) {
     String json = dao.fetchEmailTemplateByName(name);
+    if (json == null) {
+      throw new EntityNotFoundException("Email template not found with name : " + name);
+    }
     Document document = JsonUtils.readValue(json, Document.class);
     return JsonUtils.convertValue(document.getData(), EmailTemplate.class);
   }

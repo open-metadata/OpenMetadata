@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.DocumentRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -495,7 +496,12 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       // Only Admins Can do these operations
       authorizer.authorizeAdmin(securityContext);
       String content = JsonUtils.convertValue(cd.getData(), EmailTemplate.class).getTemplate();
-      repository.validateEmailTemplate(cd.getName(), content);
+      TemplateValidationResponse validationResp =
+          repository.validateEmailTemplate(cd.getName(), content);
+      if (Boolean.FALSE.equals(validationResp.getIsValid())) {
+        throw new CustomExceptionMessage(
+            Response.status(400).entity(validationResp).build(), "Invalid Email Template.");
+      }
     }
     return repository
         .copy(new Document(), cd, securityContext.getUserPrincipal().getName())
