@@ -500,7 +500,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
           repository.validateEmailTemplate(cd.getName(), content);
       if (Boolean.FALSE.equals(validationResp.getIsValid())) {
         throw new CustomExceptionMessage(
-            Response.status(400).entity(validationResp).build(), "Invalid Email Template.");
+            Response.status(400).entity(validationResp).build(), validationResp.getMessage());
       }
     }
     return repository
