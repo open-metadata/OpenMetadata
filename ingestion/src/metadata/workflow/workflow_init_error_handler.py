@@ -121,7 +121,7 @@ class WorkflowInitErrorHandler:
         if source_type_name and workflow_type == WorkflowType.INGEST:
             if source_type_name.endswith("lineage"):
                 return WorkflowType.LINEAGE
-            elif source_type_name.endswith("usage"):
+            if source_type_name.endswith("usage"):
                 return WorkflowType.USAGE
         return workflow_type
 

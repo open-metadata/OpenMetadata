@@ -48,8 +48,8 @@ class Failure(BaseModel):
 
 @deprecated(message="Use 'workflow.print_status()' instead.", release="1.8")
 def print_status(
-    workflow: "BaseWorkflow",
-):  # pyright: ignore[reportUndefinedVariable, reportUnknownParameterType]
+    workflow: "BaseWorkflow",  # pyright: ignore[reportUndefinedVariable,reportUnknownParameterType]
+):
     workflow.print_status()  # pyright: ignore[reportUnknownMemberType]
 
 
@@ -141,7 +141,7 @@ class WorkflowOutputHandler:
         log_ansi_encoded_string(
             color=ANSI.BRIGHT_CYAN,
             bold=True,
-            message=f"Success %: "
+            message="Success %: "
             + f"{round(total_success * 100 / (total_success + total_errors), 2)}",
         )
 
