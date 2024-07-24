@@ -308,7 +308,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -360,7 +360,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -399,7 +399,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -447,7 +447,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -487,7 +487,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -534,7 +534,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -574,7 +574,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
