@@ -111,7 +111,7 @@ class MetabaseSource(DashboardServiceSource):
 
     def get_dashboard_details(
         self, dashboard: MetabaseDashboard
-    ) -> MetabaseDashboardDetails:
+    ) -> Optional[MetabaseDashboardDetails]:
         """
         Get Dashboard Details
         """
