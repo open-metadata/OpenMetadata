@@ -57,7 +57,7 @@ export const getAddWidgetHandler =
     ) {
       const emptyWidgetPlaceholder = currentLayout.find(
         (item) => item.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-      ) ?? { x: 0, y: 0 };
+      ) ?? { x: 0, y: 99 };
 
       return [
         ...moveEmptyWidgetToTheEnd(currentLayout),
