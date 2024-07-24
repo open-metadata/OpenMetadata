@@ -515,7 +515,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
         .withEndDate(create.getEndDate())
         .withTargetValue(create.getTargetValue())
         .withDataInsightChart(
-            getEntityReference(Entity.DATA_INSIGHT_CUSTOM_CHART, create.getDataInsightChart()))
+            getEntityReference(
+                Entity.DATA_INSIGHT_CUSTOM_CHART, create.getDataInsightChart().value()))
         .withMetricType(create.getMetricType());
   }
 }

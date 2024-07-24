@@ -32,7 +32,6 @@ public class KpiRepository extends EntityRepository<Kpi> {
       "targetValue,dataInsightChart,startDate,endDate,metricType";
   private static final String PATCH_FIELDS =
       "targetValue,dataInsightChart,description,startDate,endDate,metricType";
-  public static final String KPI_RESULT_EXTENSION = "kpi.kpiResult";
 
   public KpiRepository() {
     super(

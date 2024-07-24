@@ -27,7 +27,8 @@
         },
         "dataInsightChart": {
             "description": "Fully qualified name of the Chart this kpi refers to",
-            "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName",
+            "type": "string",
+            "javaType": "org.openmetadata.schema.api.dataInsight.kpi.KpiDataInsightChart",
             "enum": [
                 "percentage_of_data_asset_with_description_kpi",
                 "percentage_of_data_asset_with_owner_kpi",
