@@ -179,9 +179,9 @@ ignore = [
   "src/metadata/workflow/metadata.py",
   "src/metadata/workflow/profiler.py",
   "src/metadata/workflow/usage.py",
-  "src/metadata/workflow/workflow_output_handler.py",
   "src/metadata/workflow/workflow_status_mixin.py",
 ]
 
 reportDeprecated = false
 reportMissingTypeStubs = false
+reportAny = false

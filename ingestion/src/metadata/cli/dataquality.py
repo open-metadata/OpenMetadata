@@ -19,7 +19,10 @@ from pathlib import Path
 from metadata.config.common import load_config_file
 from metadata.utils.logger import cli_logger
 from metadata.workflow.data_quality import TestSuiteWorkflow
-from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error
+from metadata.workflow.workflow_init_error_handler import (
+    WorkflowInitErrorHandler,
+    WorkflowType,
+)
 
 logger = cli_logger()
 
@@ -38,7 +41,9 @@ def run_test(config_path: Path) -> None:
         workflow = TestSuiteWorkflow.create(workflow_config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, workflow_config_dict, WorkflowType.TEST)
+        WorkflowInitErrorHandler.print_init_error(
+            exc, workflow_config_dict, WorkflowType.TEST
+        )
         sys.exit(1)
 
     workflow.execute()

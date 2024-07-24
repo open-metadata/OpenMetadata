@@ -19,7 +19,10 @@ from pathlib import Path
 from metadata.config.common import load_config_file
 from metadata.utils.logger import cli_logger
 from metadata.workflow.data_insight import DataInsightWorkflow
-from metadata.workflow.workflow_output_handler import WorkflowType, print_init_error
+from metadata.workflow.workflow_init_error_handler import (
+    WorkflowInitErrorHandler,
+    WorkflowType,
+)
 
 logger = cli_logger()
 
@@ -38,7 +41,9 @@ def run_insight(config_path: Path) -> None:
         logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, config_dict, WorkflowType.INSIGHT)
+        WorkflowInitErrorHandler.print_init_error(
+            exc, config_dict, WorkflowType.INSIGHT
+        )
         sys.exit(1)
 
     workflow.execute()

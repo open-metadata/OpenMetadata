@@ -14,29 +14,22 @@ Module handles the output messages from different workflows
 """
 
 import time
-import traceback
-from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel
 from tabulate import tabulate
 
-from metadata.config.common import ConfigurationError
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
-)
-from metadata.ingestion.api.parser import (
-    InvalidWorkflowException,
-    ParsingConfigurationError,
-)
+from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.lineage.models import QueryParsingFailures
-from metadata.utils.constants import UTF_8
 from metadata.utils.deprecation import deprecated
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
+from metadata.workflow.workflow_init_error_handler import (
+    WorkflowInitErrorHandler,
+    WorkflowType,
+)
 from metadata.workflow.workflow_status_mixin import WorkflowResultStatus
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
@@ -50,45 +43,29 @@ class Failure(BaseModel):
     """
 
     name: str
-    failures: List[StackTraceError]
-
-
-class WorkflowType(Enum):
-    """
-    Workflow type enums based on the `metadata` CLI commands
-    """
-
-    INGEST = "ingest"
-    PROFILE = "profile"
-    TEST = "test"
-    LINEAGE = "lineage"
-    USAGE = "usage"
-    INSIGHT = "insight"
-    APP = "application"
-
-
-EXAMPLES_WORKFLOW_PATH: Path = Path(__file__).parent / "../examples" / "workflows"
-
-URLS = {
-    WorkflowType.INGEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/metadata",
-    WorkflowType.PROFILE: "https://docs.open-metadata.org/connectors/ingestion/workflows/profiler",
-    WorkflowType.TEST: "https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality",
-    WorkflowType.LINEAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/lineage",
-    WorkflowType.USAGE: "https://docs.open-metadata.org/connectors/ingestion/workflows/usage",
-}
-
-DEFAULT_EXAMPLE_FILE = {
-    WorkflowType.INGEST: "bigquery",
-    WorkflowType.PROFILE: "bigquery_profiler",
-    WorkflowType.TEST: "test_suite",
-    WorkflowType.LINEAGE: "bigquery_lineage",
-    WorkflowType.USAGE: "bigquery_usage",
-}
+    failures: List[TruncatedStackTraceError]
 
 
 @deprecated(message="Use 'workflow.print_status()' instead.", release="1.8")
-def print_status(workflow: "BaseWorkflow"):  # pyright: ignore[ReportUndefinedVariable]
-    workflow.print_status()
+def print_status(
+    workflow: "BaseWorkflow",
+):  # pyright: ignore[reportUndefinedVariable, reportUnknownParameterType]
+    workflow.print_status()  # pyright: ignore[reportUnknownMemberType]
+
+
+@deprecated(
+    message=(
+        "Use 'WorkflowInitErrorHandler.print_init_error(exc, config, workflow_type)'"
+        " from 'metadata.workflow.workflow_init_error_handler'"
+    ),
+    release="1.8",
+)
+def print_init_error(
+    exc: Union[Exception, Type[Exception]],
+    config: Dict[str, Any],
+    workflow_type: WorkflowType = WorkflowType.INGEST,
+):
+    WorkflowInitErrorHandler.print_init_error(exc, config, workflow_type)
 
 
 class WorkflowOutputHandler:
@@ -111,7 +88,7 @@ class WorkflowOutputHandler:
                 color=ANSI.BRIGHT_CYAN,
                 bold=True,
                 message="Workflow finished in time: "
-                f"{pretty_print_time_duration(time.time() - start_time)}",
+                + f"{pretty_print_time_duration(time.time() - start_time)}",
             )
 
         if result_status == WorkflowResultStatus.FAILURE:
@@ -122,6 +99,7 @@ class WorkflowOutputHandler:
             )
 
     def print_summary(self, steps: List[Step], debug: bool = False):
+        """Prints the summary information for a Workflow Execution."""
         if debug:
             self._print_debug_summary(steps)
             self._print_execution_time_summary()
@@ -130,7 +108,7 @@ class WorkflowOutputHandler:
         self._print_summary(steps)
 
     def _print_summary(self, steps: List[Step]):
-        failures = []
+        failures: List[Failure] = []
         total_records: int = 0
         total_errors: int = 0
 
@@ -164,7 +142,7 @@ class WorkflowOutputHandler:
             color=ANSI.BRIGHT_CYAN,
             bold=True,
             message=f"Success %: "
-            f"{round(total_success * 100 / (total_success + total_errors), 2)}",
+            + f"{round(total_success * 100 / (total_success + total_errors), 2)}",
         )
 
     def _print_debug_summary(self, steps: List[Step]):
@@ -178,7 +156,7 @@ class WorkflowOutputHandler:
         """Log the ExecutionTimeTracker Summary."""
         tracker = ExecutionTimeTracker()
 
-        summary_table = {
+        summary_table: Dict[str, List[Union[str, float]]] = {
             "Context": [],
             "Execution Time Aggregate": [],
         }
@@ -196,7 +174,7 @@ class WorkflowOutputHandler:
         """Log the QueryParsingFailures Summary."""
         query_failures = QueryParsingFailures()
 
-        summary_table = {
+        summary_table: Dict[str, List[Optional[str]]] = {
             "Query": [],
             "Error": [],
         }
@@ -208,10 +186,10 @@ class WorkflowOutputHandler:
         if summary_table["Query"]:
             log_ansi_encoded_string(bold=True, message="Query Parsing Error Summary")
             log_ansi_encoded_string(
-                message=f"\n{tabulate(summary_table, tablefmt='grid', headers=summary_table.keys())}"
+                message=f"\n{tabulate(summary_table, tablefmt='grid', headers=list(summary_table.keys()))}"
             )
 
-    def _get_failures(self, failure: Failure) -> List[Dict[str, str]]:
+    def _get_failures(self, failure: Failure) -> List[Dict[str, Optional[str]]]:
         return [
             {
                 "From": failure.name,
@@ -244,99 +222,3 @@ class WorkflowOutputHandler:
             log_ansi_encoded_string(
                 message=f"\n{tabulate(error_table, headers='keys', tablefmt='grid')}"
             )
-
-
-def calculate_ingestion_type(source_type_name: str) -> WorkflowType:
-    """
-    Calculates the ingestion type depending on the source type name
-    """
-    if source_type_name.endswith("lineage"):
-        return WorkflowType.LINEAGE
-    if source_type_name.endswith("usage"):
-        return WorkflowType.USAGE
-    return WorkflowType.INGEST
-
-
-def calculate_example_file(source_type_name: str, workflow_type: WorkflowType) -> str:
-    """
-    Calculates the ingestion type depending on the source type name and workflow_type
-    """
-    if workflow_type == WorkflowType.USAGE:
-        return f"{source_type_name}_usage"
-    if workflow_type == WorkflowType.LINEAGE:
-        return f"{source_type_name}_lineage"
-    if workflow_type == WorkflowType.PROFILE:
-        return f"{source_type_name}_profiler"
-    if workflow_type == WorkflowType.TEST:
-        return DEFAULT_EXAMPLE_FILE[workflow_type]
-    return source_type_name
-
-
-def print_file_example(source_type_name: str, workflow_type: WorkflowType):
-    """
-    Print an example file for a given configuration
-    """
-    if source_type_name is not None:
-        example_file = calculate_example_file(source_type_name, workflow_type)
-        example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
-        if not example_path.exists():
-            example_file = DEFAULT_EXAMPLE_FILE[workflow_type]
-            example_path = EXAMPLES_WORKFLOW_PATH / f"{example_file}.yaml"
-        log_ansi_encoded_string(
-            message=f"\nMake sure you are following the following format e.g. '{example_file}':"
-        )
-        log_ansi_encoded_string(message="------------")
-        with open(example_path, encoding=UTF_8) as file:
-            log_ansi_encoded_string(message=file.read())
-        log_ansi_encoded_string(message="------------")
-
-
-def print_more_info(workflow_type: WorkflowType) -> None:
-    """
-    Print more information message
-    """
-    log_ansi_encoded_string(
-        message=f"\nFor more information, please visit: {URLS[workflow_type]}"
-        "\nOr join us in Slack: https://slack.open-metadata.org/"
-    )
-
-
-def print_error_msg(msg: str) -> None:
-    """
-    Print message with error style
-    """
-    log_ansi_encoded_string(color=ANSI.BRIGHT_RED, bold=False, message=f"{msg}")
-
-
-def print_init_error(
-    exc: Union[Exception, Type[Exception]],
-    config: dict,
-    workflow_type: WorkflowType = WorkflowType.INGEST,
-) -> None:
-    """
-    Print a workflow initialization error
-    """
-    source_type_name = None
-    if (
-        config
-        and config.get("source", None) is not None
-        and config["source"].get("type", None) is not None
-    ):
-        source_type_name = config["source"].get("type")
-        source_type_name = source_type_name.replace("-", "-")
-        workflow_type = (
-            calculate_ingestion_type(source_type_name)
-            if workflow_type == WorkflowType.INGEST
-            else workflow_type
-        )
-
-    if isinstance(
-        exc, (ParsingConfigurationError, ConfigurationError, InvalidWorkflowException)
-    ):
-        print_error_msg(f"Error loading {workflow_type.name} configuration: {exc}")
-        print_file_example(source_type_name, workflow_type)
-        print_more_info(workflow_type)
-    else:
-        print_error_msg(f"\nError initializing {workflow_type.name}: {exc}")
-        print_error_msg(traceback.format_exc())
-        print_more_info(workflow_type)
