@@ -14,7 +14,7 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { TestCase } from '../../../../generated/tests/testCase';
 
 export interface IncidentManagerPageHeaderProps {
-  onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
+  onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
   testCaseData?: TestCase;
   fetchTaskCount: () => void;
 }

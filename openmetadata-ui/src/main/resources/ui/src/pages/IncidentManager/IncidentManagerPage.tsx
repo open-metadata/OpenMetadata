@@ -435,7 +435,7 @@ const IncidentManagerPage = () => {
         width: 150,
         render: (value?: Assigned) => (
           <OwnerLabel
-            owner={value?.assignee}
+            owners={value?.assignee ? [value.assignee] : []}
             placeHolder={t('label.no-entity', { entity: t('label.assignee') })}
           />
         ),

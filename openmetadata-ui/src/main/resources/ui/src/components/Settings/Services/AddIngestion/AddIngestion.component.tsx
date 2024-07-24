@@ -172,10 +172,12 @@ const AddIngestion = ({
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: 'user',
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: 'user',
+        },
+      ],
       pipelineType: pipelineType,
       service: {
         id: serviceData.id as string,

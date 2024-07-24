@@ -208,23 +208,23 @@ const DataModelsPage = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (updatedOwner?: DashboardDataModel['owner']) => {
+    async (updatedOwners?: DashboardDataModel['owners']) => {
       try {
-        const { owner: newOwner, version } = await handleUpdateDataModelData({
+        const { owners: newOwners, version } = await handleUpdateDataModelData({
           ...(dataModelData as DashboardDataModel),
-          owner: updatedOwner ? updatedOwner : undefined,
+          owners: updatedOwners,
         });
 
         setDataModelData((prev) => ({
           ...(prev as DashboardDataModel),
-          owner: newOwner,
+          owners: newOwners,
           version,
         }));
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [dataModelData, dataModelData?.owner]
+    [dataModelData, dataModelData?.owners]
   );
 
   const handleUpdateTier = async (updatedTier?: Tag) => {

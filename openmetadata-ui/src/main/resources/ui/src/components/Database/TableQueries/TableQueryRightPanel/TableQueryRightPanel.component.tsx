@@ -21,7 +21,6 @@ import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
 import { DE_ACTIVE_COLOR, getUserPath } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
-import { EntityReference } from '../../../../generated/entity/type';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -43,12 +42,12 @@ const TableQueryRightPanel = ({
 
   const [isEditDescription, setIsEditDescription] = useState(false);
 
-  const handleUpdateOwner = async (owner: Query['owner']) => {
+  const handleUpdateOwner = async (owners: Query['owners']) => {
     const updatedData = {
       ...query,
-      owner,
+      owners,
     };
-    await onQueryUpdate(updatedData, 'owner');
+    await onQueryUpdate(updatedData, 'owners');
   };
 
   const onDescriptionUpdate = async (description: string) => {
@@ -93,9 +92,10 @@ const TableQueryRightPanel = ({
                 {(EditAll || EditOwners) && (
                   <UserTeamSelectableList
                     hasPermission={EditAll || EditOwners}
-                    owner={query.owner}
-                    onUpdate={(updatedUser) =>
-                      handleUpdateOwner(updatedUser as EntityReference)
+                    multiple={{ user: true, team: false }}
+                    owner={query.owners}
+                    onUpdate={(updatedUsers) =>
+                      handleUpdateOwner(updatedUsers)
                     }>
                     <Tooltip
                       title={t('label.edit-entity', {
@@ -112,7 +112,7 @@ const TableQueryRightPanel = ({
                   </UserTeamSelectableList>
                 )}
               </Space>
-              <OwnerLabel pills hasPermission={false} owner={query.owner} />
+              <OwnerLabel hasPermission={false} owners={query.owners} />
             </Space>
           </Col>
           <Col span={24}>

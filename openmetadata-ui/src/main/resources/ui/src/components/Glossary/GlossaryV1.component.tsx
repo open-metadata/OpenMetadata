@@ -298,7 +298,7 @@ const GlossaryV1 = ({
           references,
           mutuallyExclusive,
           reviewers,
-          owner,
+          owners,
           relatedTerms,
           style,
         } = formData || {};
@@ -311,7 +311,7 @@ const GlossaryV1 = ({
         newTermData.tags = tags;
         newTermData.mutuallyExclusive = mutuallyExclusive;
         newTermData.reviewers = reviewers;
-        newTermData.owner = owner;
+        newTermData.owners = owners;
         newTermData.references = references;
         newTermData.relatedTerms = relatedTerms?.map((term) => ({
           id: term,

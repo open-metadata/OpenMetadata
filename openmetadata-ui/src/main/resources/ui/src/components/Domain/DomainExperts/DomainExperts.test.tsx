@@ -35,15 +35,17 @@ const MOCK_DATA_PRODUCT: DataProduct = {
     href: 'http://localhost:8585/api/v1/domains/353a1cf3-1608-4405-b2e9-58bfe52fa8d2',
   },
   href: 'http://localhost:8585/api/v1/dataProducts/601fdef5-47c5-4efc-b1a5-44989f0cc150',
-  owner: {
-    id: '35fcf658-d2e3-4579-bb57-e6bb5b526b0a',
-    type: 'user',
-    name: 'aaron.singh2',
-    fullyQualifiedName: '"aaron.singh2"',
-    displayName: 'Aaron Singh',
-    deleted: false,
-    href: 'http://localhost:8585/api/v1/users/35fcf658-d2e3-4579-bb57-e6bb5b526b0a',
-  },
+  owners: [
+    {
+      id: '35fcf658-d2e3-4579-bb57-e6bb5b526b0a',
+      type: 'user',
+      name: 'aaron.singh2',
+      fullyQualifiedName: '"aaron.singh2"',
+      displayName: 'Aaron Singh',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/users/35fcf658-d2e3-4579-bb57-e6bb5b526b0a',
+    },
+  ],
   experts: [
     {
       id: '35fcf658-d2e3-4579-bb57-e6bb5b526b0a',

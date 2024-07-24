@@ -93,13 +93,7 @@ function GlossaryTermSummary({
           <Col span={24}>
             {reviewers.length > 0 ? (
               <Space wrap size={[8, 8]}>
-                {reviewers.map((assignee) => (
-                  <OwnerLabel
-                    pills
-                    key={assignee.fullyQualifiedName}
-                    owner={assignee}
-                  />
-                ))}
+                <OwnerLabel owners={reviewers} />
               </Space>
             ) : (
               <Typography.Text

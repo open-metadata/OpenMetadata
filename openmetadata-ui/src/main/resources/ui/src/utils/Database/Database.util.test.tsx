@@ -67,10 +67,14 @@ describe('Database Util', () => {
         name: 'schema1',
         fullyQualifiedName: 'database.schema1',
         description: 'Schema 1 description',
-        owner: { id: '1', type: 'user', name: 'John Doe' },
+        owner: [{ id: '1', type: 'user', name: 'John Doe' }],
         usageSummary: {
-          weeklyStats: { percentileRank: 80 },
+          weeklyStats: { percentileRank: 80, count: 10 },
+          dailyStats: { count: 10 },
+          date: new Date(),
         },
+        database: { name: 'database', id: 'database', type: 'database' },
+        service: { name: 'service1', id: 'service1', type: 'service' },
       } as DatabaseSchema;
 
       const expectedColumns = [
@@ -129,7 +133,7 @@ describe('Database Util', () => {
       // Test render function for owner column
       const ownerRender = ownerColumn.render;
       const ownerRenderResult =
-        ownerRender && ownerRender(record.owner, record, 0);
+        ownerRender && ownerRender(record.owners, record, 0);
 
       expect(ownerRenderResult).toMatchSnapshot();
 

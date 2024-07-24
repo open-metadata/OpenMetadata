@@ -95,9 +95,9 @@ const TestSuiteDetailsPage = () => {
     TitleBreadcrumbProps['titleLinks']
   >([]);
 
-  const { testSuiteDescription, testSuiteId, testOwner } = useMemo(() => {
+  const { testSuiteDescription, testSuiteId, testOwners } = useMemo(() => {
     return {
-      testOwner: testSuite?.owner,
+      testOwners: testSuite?.owners,
       testSuiteId: testSuite?.id ?? '',
       testSuiteDescription: testSuite?.description ?? '',
     };
@@ -239,20 +239,15 @@ const TestSuiteDetailsPage = () => {
   };
 
   const onUpdateOwner = useCallback(
-    (updatedOwner: TestSuite['owner']) => {
+    (updatedOwners: TestSuite['owners']) => {
       const updatedTestSuite = {
         ...testSuite,
-        owner: updatedOwner
-          ? {
-              ...testOwner,
-              ...updatedOwner,
-            }
-          : undefined,
+        owners: updatedOwners,
       } as TestSuite;
 
       updateTestSuiteData(updatedTestSuite, ACTION_TYPE.UPDATE);
     },
-    [testOwner, testSuite]
+    [testOwners, testSuite]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
@@ -375,7 +370,7 @@ const TestSuiteDetailsPage = () => {
           <div className="w-full m-t-xxs m-b-xs">
             <OwnerLabel
               hasPermission={isAdminUser}
-              owner={testOwner}
+              owners={testOwners}
               onUpdate={onUpdateOwner}
             />
           </div>

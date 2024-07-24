@@ -118,7 +118,7 @@ const UserListPageV1 = () => {
           TabSpecificField.PROFILE,
           TabSpecificField.TEAMS,
           TabSpecificField.ROLES,
-        ],
+        ].join(','),
         limit: pageSize,
         ...params,
       });
