@@ -50,6 +50,7 @@ public class OpenSearchSummaryCardAggregator implements OpenSearchDynamicChartAg
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
     searchSourceBuilder.query(queryFilter);
+    searchSourceBuilder.size(0);
     os.org.opensearch.action.search.SearchRequest searchRequest =
         new os.org.opensearch.action.search.SearchRequest(
             DataInsightSystemChartRepository.DI_SEARCH_INDEX);

@@ -41,7 +41,7 @@ import org.springframework.expression.Expression;
 public interface ElasticSearchDynamicChartAggregatorInterface {
   long MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
 
-  private ValuesSourceAggregationBuilder getSubAggregationsByFunction(
+  private static ValuesSourceAggregationBuilder getSubAggregationsByFunction(
       Function function, String field, int index) {
     switch (function) {
       case COUNT:
@@ -58,7 +58,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
     return null;
   }
 
-  default void getDateHistogramByFormula(
+  static void getDateHistogramByFormula(
       String formula,
       DateHistogramAggregationBuilder dateHistogramAggregationBuilder,
       List<FormulaHolder> formulas) {
@@ -146,8 +146,9 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
       dateHistogramAggregationBuilder.subAggregation(
           AggregationBuilders.filter("filer", queryFilter).subAggregation(subAgg));
+    } else {
+      dateHistogramAggregationBuilder.subAggregation(subAgg);
     }
-    dateHistogramAggregationBuilder.subAggregation(subAgg);
   }
 
   SearchRequest prepareSearchRequest(

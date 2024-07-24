@@ -52,6 +52,7 @@ public class ElasticSearchSummaryCardAggregator
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
     searchSourceBuilder.query(queryFilter);
+    searchSourceBuilder.size(0);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             DataInsightSystemChartRepository.DI_SEARCH_INDEX);
