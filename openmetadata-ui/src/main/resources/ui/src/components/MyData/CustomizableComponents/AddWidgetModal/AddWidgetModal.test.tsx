@@ -113,6 +113,24 @@ describe('AddWidgetModal component', () => {
     expect(screen.queryByTestId('TotalAssets-check-icon')).toBeNull();
   });
 
+  it('AddWidgetModal should not display check icons in the tab labels only if widget includes EmptyWidgetPlaceholder with it', async () => {
+    await act(async () => {
+      render(
+        <AddWidgetModal
+          {...mockProps}
+          addedWidgetsList={[
+            'KnowledgePanel.ActivityFeed',
+            'KnowledgePanel.Following-EmptyWidgetPlaceholder',
+          ]}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('ActivityFeed-check-icon')).toBeInTheDocument();
+    expect(screen.queryByTestId('Following-check-icon')).toBeNull();
+    expect(screen.queryByTestId('KPI-check-icon')).toBeNull();
+  });
+
   it('AddWidgetModal should call handleAddWidget when clicked on add widget button', async () => {
     await act(async () => {
       render(<AddWidgetModal {...mockProps} />);
