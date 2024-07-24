@@ -15,7 +15,8 @@
       "type": "array",
       "items": {
         "$ref": "./emailTemplatePlaceholder.json"
-      }
+      },
+      "uniqueItems": true
     }
   },
   "required": ["template", "placeHolders"],

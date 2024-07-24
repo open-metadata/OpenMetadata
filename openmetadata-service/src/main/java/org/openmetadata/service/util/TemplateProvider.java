@@ -2,10 +2,10 @@ package org.openmetadata.service.util;
 
 import freemarker.template.Template;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.schema.email.EmailTemplatePlaceholder;
-import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.schema.email.TemplateValidationResponse;
 
 public interface TemplateProvider {
 
@@ -17,11 +17,11 @@ public interface TemplateProvider {
    *         - "valid" (boolean): Indicates whether the template is valid.
    *         - "missingParameters" (List<String>): If validation fails, lists the placeholders that are missing.
    */
-  Map<String, Object> validateEmailTemplate(Document document);
+  TemplateValidationResponse validateEmailTemplate(String docName, String actualContent);
 
   /**
    * Maps each template's name to a list of
    * {@link EmailTemplatePlaceholder}s extracted from the template data.
    */
-  Map<String, List<EmailTemplatePlaceholder>> getPlaceholders();
+  Map<String, Set<EmailTemplatePlaceholder>> getDocumentPlaceHolders();
 }

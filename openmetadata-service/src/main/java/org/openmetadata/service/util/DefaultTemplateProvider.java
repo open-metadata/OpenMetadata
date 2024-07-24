@@ -4,17 +4,17 @@ import freemarker.template.Configuration;
 import freemarker.template.Template;
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.EmailTemplatePlaceholder;
+import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DocumentRepository;
@@ -22,9 +22,7 @@ import org.openmetadata.service.jdbi3.DocumentRepository;
 @Slf4j
 public class DefaultTemplateProvider implements TemplateProvider {
   private final DocumentRepository documentRepository;
-  public static final String EMAIL_TEMPLATE_VALID = "valid";
   public static final String ENTITY_TYPE_EMAIL_TEMPLATE = "EmailTemplate";
-  public static final String EMAIL_TEMPLATE_MISSING_PLACEHOLDERS = "missingPlaceholders";
 
   public DefaultTemplateProvider() {
     this.documentRepository = (DocumentRepository) Entity.getEntityRepository(Entity.DOCUMENT);
@@ -42,7 +40,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
         templateName, new StringReader(template), new Configuration(Configuration.VERSION_2_3_31));
   }
 
-  public Map<String, List<EmailTemplatePlaceholder>> getPlaceholders() {
+  public Map<String, Set<EmailTemplatePlaceholder>> getDocumentPlaceHolders() {
     List<Document> documents = documentRepository.fetchAllEmailTemplates();
 
     return documents.stream()
@@ -56,7 +54,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
                 }));
   }
 
-  public Map<String, List<String>> getPlaceholdersFromTemplate() {
+  public Map<String, Set<String>> getPlaceholdersFromTemplate() {
     List<Document> listOfDocuments = documentRepository.fetchAllEmailTemplates();
 
     return listOfDocuments.stream()
@@ -70,39 +68,43 @@ public class DefaultTemplateProvider implements TemplateProvider {
   }
 
   @Override
-  public Map<String, Object> validateEmailTemplate(Document document) {
-    Map<String, Object> validationResponse = new HashMap<>();
+  public TemplateValidationResponse validateEmailTemplate(String docName, String actualContent) {
+    Set<String> expectedPlaceholders =
+        documentRepository.fetchEmailTemplateByName(docName).getPlaceHolders().stream()
+            .map(EmailTemplatePlaceholder::getName)
+            .collect(Collectors.toSet());
+    Set<String> actualPlaceholders = extractPlaceholders(actualContent);
 
-    try {
-      List<String> expectedPlaceholders =
-          getPlaceholdersFromTemplate().getOrDefault(document.getName(), Collections.emptyList());
+    // Check if all required Placeholder are present
+    Set<String> missingPlaceholders =
+        expectedPlaceholders.stream()
+            .filter(expected -> !actualPlaceholders.contains(expected))
+            .collect(Collectors.toSet());
 
-      String content =
-          JsonUtils.convertValue(document.getData(), EmailTemplate.class).getTemplate();
-      List<String> presentPlaceholders = extractPlaceholders(content);
+    // Check if there are additional Placeholder in the template (we cannot supply those values at
+    // runtime!)
+    Set<String> additionalPlaceholders =
+        actualPlaceholders.stream()
+            .filter(expected -> !expectedPlaceholders.contains(expected))
+            .collect(Collectors.toSet());
 
-      List<String> missingPlaceholders =
-          expectedPlaceholders.stream()
-              .filter(expected -> !presentPlaceholders.contains(expected))
-              .collect(Collectors.toList());
+    boolean invalidPlaceholders =
+        !missingPlaceholders.isEmpty() || !additionalPlaceholders.isEmpty();
 
-      boolean allPresent = missingPlaceholders.isEmpty();
-
-      validationResponse.put(EMAIL_TEMPLATE_VALID, allPresent);
-      if (!allPresent) {
-        validationResponse.put(EMAIL_TEMPLATE_MISSING_PLACEHOLDERS, missingPlaceholders);
-      }
-
-    } catch (Exception e) {
-      validationResponse.put("valid", false);
-      LOG.error("Error validating email template: {}", e.getMessage());
+    String message = "Email Template passed validations.";
+    if (invalidPlaceholders) {
+      message = "Invalid Email Template. Please check the placeholders for additional Details.";
     }
 
-    return validationResponse;
+    return new TemplateValidationResponse()
+        .withIsValid(invalidPlaceholders)
+        .withMissingPlaceholder(missingPlaceholders)
+        .withAdditionalPlaceholder(additionalPlaceholders)
+        .withMessage(message);
   }
 
-  private static List<String> extractPlaceholders(String content) {
-    List<String> placeholders = new ArrayList<>();
+  private static Set<String> extractPlaceholders(String content) {
+    Set<String> placeholders = new HashSet<>();
     Pattern pattern = Pattern.compile("\\$\\{([^}]*)}");
     Matcher matcher = pattern.matcher(content);
     while (matcher.find()) {

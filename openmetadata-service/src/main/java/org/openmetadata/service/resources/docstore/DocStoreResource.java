@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.docstore;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,9 +26,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -50,8 +47,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.email.EmailTemplate;
+import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.type.EntityHistory;
@@ -66,8 +64,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.DefaultTemplateProvider;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
-import org.openmetadata.service.util.TemplateProvider;
 
 @Slf4j
 @Path("/v1/docStore")
@@ -77,7 +75,6 @@ import org.openmetadata.service.util.TemplateProvider;
 @Collection(name = "knowledgePanel", order = 2)
 public class DocStoreResource extends EntityResource<Document, DocumentRepository> {
   public static final String COLLECTION_PATH = "/v1/docStore";
-  private static TemplateProvider templateProvider;
 
   @Override
   public Document addHref(UriInfo uriInfo, Document doc) {
@@ -103,7 +100,6 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     // Load any existing rules from database, before loading seed data.
     repository.initSeedDataFromResources();
-    templateProvider = new DefaultTemplateProvider();
   }
 
   @GET
@@ -304,7 +300,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
+    Document doc = getDocument(cd, securityContext);
     return create(uriInfo, securityContext, doc);
   }
 
@@ -327,37 +323,37 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
-    Document doc = getDocument(cd, securityContext.getUserPrincipal().getName());
-
-    Response emailTemplateValidationResponse = validateTemplateAndUpdate(doc);
-    if (emailTemplateValidationResponse != null) return emailTemplateValidationResponse;
-
+    Document doc = getDocument(cd, securityContext);
     return createOrUpdate(uriInfo, securityContext, doc);
   }
 
-  private Response validateTemplateAndUpdate(Document document) {
-    if (!document.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
-      return null;
-    }
-
-    Map<String, Object> validationResponse = templateProvider.validateEmailTemplate(document);
-    boolean isValid =
-        (boolean) validationResponse.get(DefaultTemplateProvider.EMAIL_TEMPLATE_VALID);
-
-    if (isValid) {
-      return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    List<String> missingPlaceholders =
-        (List<String>)
-            validationResponse.getOrDefault(
-                DefaultTemplateProvider.EMAIL_TEMPLATE_MISSING_PLACEHOLDERS,
-                Collections.emptyList());
-
-    return Response.status(Response.Status.BAD_REQUEST.getStatusCode())
-        .entity(new EmailTemplateValidationResponse(missingPlaceholders))
-        .build();
+  @PUT
+  @Path("/validateTemplate/{templateName}")
+  @Operation(
+      operationId = "validateEmailTemplate",
+      summary = "Validate Email Template",
+      description = "Validates is the give content is a valid Email Template.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The Template Validation Response.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TemplateValidationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public TemplateValidationResponse validateEmailTemplate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Template name for the email template to be validated",
+              schema = @Schema(type = "string"))
+          @PathParam("templateName")
+          String templateName,
+      @Valid EmailTemplate emailTemplate) {
+    authorizer.authorizeAdmin(securityContext);
+    return repository.validateEmailTemplate(templateName, emailTemplate.getTemplate());
   }
 
   @PATCH
@@ -493,35 +489,18 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
     }
   }
 
-  private Document getDocument(CreateDocument cd, String user) {
+  private Document getDocument(CreateDocument cd, SecurityContext securityContext) {
+    // Validate email template
+    if (cd.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      // Only Admins Can do these operations
+      authorizer.authorizeAdmin(securityContext);
+      String content = JsonUtils.convertValue(cd.getData(), EmailTemplate.class).getTemplate();
+      repository.validateEmailTemplate(cd.getName(), content);
+    }
     return repository
-        .copy(new Document(), cd, user)
+        .copy(new Document(), cd, securityContext.getUserPrincipal().getName())
         .withFullyQualifiedName(cd.getFullyQualifiedName())
         .withData(cd.getData())
         .withEntityType(cd.getEntityType());
-  }
-}
-
-@Getter
-class EmailTemplateValidationResponse {
-  private final int status;
-  private final String message;
-
-  @JsonInclude(JsonInclude.Include.NON_NULL)
-  private final List<String> missingParameters;
-
-  public static final String EMAIL_VALIDATION_FAILED_MESSAGE = "Email template validation failed.";
-  public static final String EMAIL_TEMPLATE_PUT_MESSAGE = "Email template updated.";
-
-  public EmailTemplateValidationResponse(List<String> missingParameters) {
-    this.status = Response.Status.BAD_REQUEST.getStatusCode();
-    this.message = EMAIL_VALIDATION_FAILED_MESSAGE;
-    this.missingParameters = missingParameters;
-  }
-
-  public EmailTemplateValidationResponse() {
-    this.status = Response.Status.OK.getStatusCode();
-    this.message = EMAIL_TEMPLATE_PUT_MESSAGE;
-    this.missingParameters = null;
   }
 }

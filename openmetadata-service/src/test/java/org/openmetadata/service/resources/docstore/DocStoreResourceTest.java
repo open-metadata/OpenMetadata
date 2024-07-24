@@ -15,10 +15,10 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.email.EmailTemplate;
 import org.openmetadata.schema.email.EmailTemplatePlaceholder;
+import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -69,8 +70,8 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
     emailTemplate.setTemplate("initial template ${placeholder1} ${placeholder2} ${placeholder3}");
 
-    List<EmailTemplatePlaceholder> placeholderList =
-        List.of(
+    Set<EmailTemplatePlaceholder> placeholderList =
+        Set.of(
             new EmailTemplatePlaceholder()
                 .withName("placeholder1")
                 .withDescription("desc_placeholder1"),
@@ -100,10 +101,10 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
             .method("PUT", Entity.entity(create, MediaType.APPLICATION_JSON));
 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-    EmailTemplateValidationResponse validationResponse =
-        response.readEntity(EmailTemplateValidationResponse.class);
-    List<String> expectedMissingPlaceholders = Collections.singletonList("placeholder3");
-    assertEquals(expectedMissingPlaceholders, validationResponse.getMissingParameters());
+    TemplateValidationResponse validationResponse =
+        response.readEntity(TemplateValidationResponse.class);
+    Set<String> expectedMissingPlaceholders = Set.of("placeholder3");
+    assertEquals(expectedMissingPlaceholders, validationResponse.getMissingPlaceholder());
 
     // removed two placeholders - 400 with 2 missingParameters
     emailTemplate.setTemplate("test template ${placeholder1}");
@@ -114,10 +115,10 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
             .method("PUT", Entity.entity(create, MediaType.APPLICATION_JSON));
 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-    EmailTemplateValidationResponse validationResponse2 =
-        response.readEntity(EmailTemplateValidationResponse.class);
-    List<String> expectedMissingPlaceholders2 = List.of("placeholder2", "placeholder3");
-    assertEquals(expectedMissingPlaceholders2, validationResponse2.getMissingParameters());
+    TemplateValidationResponse validationResponse2 =
+        response.readEntity(TemplateValidationResponse.class);
+    Set<String> expectedMissingPlaceholders2 = Set.of("placeholder2", "placeholder3");
+    assertEquals(expectedMissingPlaceholders2, validationResponse2.getMissingPlaceholder());
 
     // with all the required placeholder -> 200
     emailTemplate.setTemplate(

@@ -19,6 +19,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.email.EmailTemplate;
+import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
@@ -26,12 +27,14 @@ import org.openmetadata.service.resources.docstore.DocStoreResource;
 import org.openmetadata.service.util.DefaultTemplateProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.TemplateProvider;
 
 @Slf4j
 public class DocumentRepository extends EntityRepository<Document> {
   static final String DOCUMENT_UPDATE_FIELDS = "data";
   static final String DOCUMENT_PATCH_FIELDS = "data";
   private final CollectionDAO.DocStoreDAO dao;
+  private final TemplateProvider templateProvider;
 
   public DocumentRepository() {
     super(
@@ -43,6 +46,7 @@ public class DocumentRepository extends EntityRepository<Document> {
         DOCUMENT_PATCH_FIELDS);
     supportsSearch = false;
     this.dao = Entity.getCollectionDAO().docStoreDAO();
+    this.templateProvider = new DefaultTemplateProvider();
   }
 
   public List<Document> fetchAllEmailTemplates() {
@@ -89,6 +93,10 @@ public class DocumentRepository extends EntityRepository<Document> {
   @Override
   public void storeRelationships(Document entity) {
     // validations are not implemented for Document
+  }
+
+  public TemplateValidationResponse validateEmailTemplate(String name, String content) {
+    return templateProvider.validateEmailTemplate(name, content);
   }
 
   @Override
