@@ -37,6 +37,7 @@ import {
 import { getTeamByName } from '../../rest/teamsAPI';
 import {
   getEntitiesChartSummary,
+  getQueryFilterForDataInsightChart,
   getWebChartSummary,
 } from '../../utils/DataInsightUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -99,7 +100,14 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
           SystemChartType.DataAssetsWithOwnerSummaryCard,
           SystemChartType.TotalDataAssetsWithTierSummaryCard,
         ],
-        { start: chartFilter.startTs, end: chartFilter.endTs }
+        {
+          start: chartFilter.startTs,
+          end: chartFilter.endTs,
+          filter: getQueryFilterForDataInsightChart(
+            chartFilter.team,
+            chartFilter.tier
+          ),
+        }
       );
 
       setEntitiesChartSummary(chartsData);

@@ -747,3 +747,29 @@ export const renderDataInsightLineChart = (
     </LineChart>
   );
 };
+
+export const getQueryFilterForDataInsightChart = (
+  teamFilter?: string,
+  tierFilter?: string
+) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              must: [
+                ...(tierFilter
+                  ? [{ term: { 'tier.tagFQN': tierFilter } }]
+                  : []),
+                ...(teamFilter
+                  ? [{ term: { 'owner.displayName.keyword': teamFilter } }]
+                  : []),
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};

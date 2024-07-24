@@ -42,6 +42,7 @@ import {
 } from '../../rest/DataInsightAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
 import {
+  getQueryFilterForDataInsightChart,
   isPercentageSystemGraph,
   renderDataInsightLineChart,
 } from '../../utils/DataInsightUtils';
@@ -122,36 +123,16 @@ export const DataInsightChartCard = ({
 
   const { t } = useTranslation();
 
-  const getFilter = (teamFilter?: string, tierFilter?: string) => {
-    return JSON.stringify({
-      query: {
-        bool: {
-          must: [
-            {
-              bool: {
-                must: [
-                  ...(tierFilter
-                    ? [{ term: { 'tier.tagFQN': tierFilter } }]
-                    : []),
-                  ...(teamFilter
-                    ? [{ term: { 'owner.displayName.keyword': teamFilter } }]
-                    : []),
-                ],
-              },
-            },
-          ],
-        },
-      },
-    });
-  };
-
   const fetchData = async () => {
     setIsLoading(true);
     try {
       const response = await getChartPreviewByName(type, {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
-        filter: getFilter(chartFilter.team, chartFilter.tier),
+        filter: getQueryFilterForDataInsightChart(
+          chartFilter.team,
+          chartFilter.tier
+        ),
       });
 
       const newData = {

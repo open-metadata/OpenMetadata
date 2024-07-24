@@ -77,7 +77,7 @@ export const getChartPreviewByName = async (
 
 export const getMultiChartsPreviewByName = async (
   chartNames: SystemChartType[],
-  params: { start: number; end: number }
+  params: { start: number; end: number; filter: string }
 ) => {
   const response = await APIClient.get<
     Record<SystemChartType, DataInsightCustomChartResult>
