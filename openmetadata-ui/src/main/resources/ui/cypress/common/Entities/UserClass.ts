@@ -146,7 +146,16 @@ class UsersTestClass {
       cy.get('[data-testid="add-service-button"] > span').should('not.exist');
     });
     cy.sidebarClick(SidebarItem.EXPLORE);
-    cy.get('[data-testid="tables-tab"]').click();
+
+    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+
+    cy.get('[data-testid="search-dropdown-Data Assets"]').click();
+    cy.get('[data-testid="table-checkbox"]').scrollIntoView();
+    cy.get('[data-testid="table-checkbox"]').click();
+    cy.get('[data-testid="update-btn"]').click();
+
+    verifyResponseStatusCode('@getSearchResult', 200);
+
     cy.get(
       '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
     ).click();
