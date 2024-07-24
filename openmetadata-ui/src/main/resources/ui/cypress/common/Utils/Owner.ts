@@ -105,11 +105,12 @@ export const addOwner = (
 };
 
 export const updateOwner = (ownerName: string, dataTestId?: string) => {
+  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="edit-owner"]').click();
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
-
+  
+  verifyResponseStatusCode('@getUsers', 200);
   interceptURL(
     'GET',
     `api/v1/search/query?q=*${encodeURI(ownerName)}*&index=user_search_index`,
