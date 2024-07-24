@@ -49,6 +49,7 @@ import {
   App,
   ScheduleTimeline,
 } from '../../../../generated/entity/applications/app';
+import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
@@ -60,6 +61,7 @@ import {
   triggerOnDemandApp,
   uninstallApp,
 } from '../../../../rest/applicationAPI';
+import { getMarketPlaceApplicationByFqn } from '../../../../rest/applicationMarketPlaceAPI';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
@@ -106,9 +108,16 @@ const AppDetails = () => {
       });
       setAppData(data);
 
-      const schema = await applicationsClassBase.importSchema(fqn);
+      const marketPlaceDefinition: AppMarketPlaceDefinition =
+        await getMarketPlaceApplicationByFqn(fqn, {
+          fields: 'owner',
+        });
 
-      setJsonSchema(schema.default);
+      const schema =
+        marketPlaceDefinition.configSchema ||
+        (await applicationsClassBase.importSchema(fqn));
+
+      setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

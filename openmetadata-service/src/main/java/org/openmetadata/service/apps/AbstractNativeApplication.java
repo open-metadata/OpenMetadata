@@ -24,6 +24,7 @@ import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -114,6 +115,7 @@ public class AbstractNativeApplication implements NativeApplication {
 
     try {
       bindExistingIngestionToApplication(ingestionPipelineRepository);
+      updateAppConfig(ingestionPipelineRepository, this.getApp().getAppConfiguration());
     } catch (EntityNotFoundException ex) {
       ApplicationConfig config =
           JsonUtils.convertValue(this.getApp().getAppConfiguration(), ApplicationConfig.class);
@@ -149,6 +151,17 @@ public class AbstractNativeApplication implements NativeApplication {
               Entity.INGESTION_PIPELINE,
               Relationship.HAS.ordinal());
     }
+  }
+
+  private void updateAppConfig(IngestionPipelineRepository repository, Object appConfiguration) {
+    String fqn = FullyQualifiedName.add(SERVICE_NAME, this.getApp().getName());
+    IngestionPipeline updated = repository.findByName(fqn, Include.NON_DELETED);
+    ApplicationPipeline appPipeline =
+        JsonUtils.convertValue(updated.getSourceConfig().getConfig(), ApplicationPipeline.class);
+    IngestionPipeline original = JsonUtils.deepCopy(updated, IngestionPipeline.class);
+    updated.setSourceConfig(
+        updated.getSourceConfig().withConfig(appPipeline.withAppConfig(appConfiguration)));
+    repository.update(null, original, updated);
   }
 
   private void createAndBindIngestionPipeline(

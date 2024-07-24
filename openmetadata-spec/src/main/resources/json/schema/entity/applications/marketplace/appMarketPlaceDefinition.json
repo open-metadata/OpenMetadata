@@ -6,6 +6,13 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
+  "definitions": {
+    "appConfigSchema": {
+      "javaType": "org.openmetadata.schema.type.AppConfigSchema",
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
   "properties": {
     "id": {
       "description": "Unique identifier of this application.",
@@ -143,7 +150,7 @@
     },
     "configSchema": {
       "description": "Configuration Schema for the application.",
-      "$ref": "../type.json#/definitions/appConfigSchema"
+      "$ref": "#/definitions/appConfigSchema"
     }
   },
   "additionalProperties": false,

@@ -105,7 +105,7 @@
     },
     "configSchema": {
       "description": "Configuration Schema for the application.",
-      "$ref": "../type.json#/definitions/appConfigSchema"
+      "$ref": "./appMarketPlaceDefinition.json#/definitions/appConfigSchema"
     }
   },
   "additionalProperties": false,

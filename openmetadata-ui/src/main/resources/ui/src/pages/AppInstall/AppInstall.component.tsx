@@ -111,12 +111,10 @@ const AppInstall = () => {
           fields: 'owner',
         });
       setAppData(data);
-      if (data.configSchema) {
-        setJsonSchema(data.configSchema);
-      } else {
-        const schema = await applicationSchemaClassBase.importSchema(fqn);
-        setJsonSchema(schema);
-      }
+      const schema =
+        data.configSchema ||
+        (await applicationSchemaClassBase.importSchema(fqn));
+      setJsonSchema(schema);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
