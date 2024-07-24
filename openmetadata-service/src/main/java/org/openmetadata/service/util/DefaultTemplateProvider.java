@@ -91,7 +91,7 @@ public class DefaultTemplateProvider implements TemplateProvider {
     boolean isValid = additionalPlaceholders.isEmpty();
 
     return new TemplateValidationResponse()
-        .withIsValid(!isValid)
+        .withIsValid(isValid)
         .withMissingPlaceholder(missingPlaceholders)
         .withAdditionalPlaceholder(additionalPlaceholders)
         .withMessage(
