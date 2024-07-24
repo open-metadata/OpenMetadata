@@ -39,7 +39,7 @@ const TableQueryRightPanel = ({
   permission,
 }: TableQueryRightPanelProps) => {
   const { t } = useTranslation();
-  const { EditAll, EditDescription, EditOwner, EditTags } = permission;
+  const { EditAll, EditDescription, EditOwners, EditTags } = permission;
 
   const [isEditDescription, setIsEditDescription] = useState(false);
 
@@ -90,9 +90,9 @@ const TableQueryRightPanel = ({
                   {t('label.owner')}
                 </Typography.Text>
 
-                {(EditAll || EditOwner) && (
+                {(EditAll || EditOwners) && (
                   <UserTeamSelectableList
-                    hasPermission={EditAll || EditOwner}
+                    hasPermission={EditAll || EditOwners}
                     owner={query.owner}
                     onUpdate={(updatedUser) =>
                       handleUpdateOwner(updatedUser as EntityReference)

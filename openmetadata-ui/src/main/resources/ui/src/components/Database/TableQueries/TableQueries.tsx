@@ -50,6 +50,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -191,7 +192,13 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       await updateQueryVote(id ?? '', data);
       const response = await getQueryById(id ?? '', {
-        fields: 'owner,votes,tags,queryUsedIn,users',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.TAGS,
+          TabSpecificField.QUERY_USED_IN,
+          TabSpecificField.USERS,
+        ],
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {

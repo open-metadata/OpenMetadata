@@ -208,7 +208,7 @@ const getUsageData = (usageSummary: UsageDetails | undefined) =>
 const getTableFieldsFromTableDetails = (tableDetails: Table) => {
   const {
     fullyQualifiedName,
-    owner,
+    owners,
     tags,
     usageSummary,
     profile,
@@ -232,7 +232,7 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
 
   return {
     fullyQualifiedName,
-    owner,
+    owners,
     service: serviceDisplayName,
     database: databaseDisplayName,
     schema: schemaDisplayName,
@@ -247,7 +247,7 @@ const getTableFieldsFromTableDetails = (tableDetails: Table) => {
 const getTableOverview = (tableDetails: Table) => {
   const {
     fullyQualifiedName,
-    owner,
+    owners,
     profile,
     columns,
     tableType,
@@ -261,9 +261,9 @@ const getTableOverview = (tableDetails: Table) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value: <OwnerLabel pills hasPermission={false} owner={owner} />,
-      url: getOwnerValue(owner as EntityReference),
-      isLink: !isEmpty(owner?.name),
+      value: <OwnerLabel pills hasPermission={false} owners={owners} />,
+      // url: getOwnerValue(owner as EntityReference),
+      isLink: !isEmpty(owners),
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {

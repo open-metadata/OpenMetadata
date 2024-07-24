@@ -19,7 +19,7 @@ import { getChartById } from '../rest/chartAPI';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const sortTagsForCharts = (charts: ChartType[]) => {
   return charts.map((chart) => ({
@@ -34,7 +34,7 @@ export const fetchCharts = async (charts: Dashboard['charts']) => {
   try {
     if (charts?.length) {
       promiseArr = charts.map((chart) =>
-        getChartById(chart.id, { fields: 'tags' })
+        getChartById(chart.id, { fields: TabSpecificField.TAGS })
       );
       const res = await Promise.allSettled(promiseArr);
 

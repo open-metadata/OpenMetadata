@@ -85,7 +85,7 @@ const DocumentationTab = ({
       );
 
       const editOwner = checkPermission(
-        Operation.EditOwner,
+        Operation.EditOwners,
         resourceType,
         permissions
       );

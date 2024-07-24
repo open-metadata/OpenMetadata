@@ -24,7 +24,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
-import { AssetsType } from '../../../../enums/entity.enum';
+import { AssetsType, TabSpecificField } from '../../../../enums/entity.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -145,7 +145,7 @@ function CustomizeMyData({
     setIsLoadingOwnedData(true);
     try {
       const userData = await getUserById(currentUser?.id, {
-        fields: 'follows, owns',
+        fields: [TabSpecificField.FOLLOWS, TabSpecificField.OWNS],
       });
 
       if (userData) {

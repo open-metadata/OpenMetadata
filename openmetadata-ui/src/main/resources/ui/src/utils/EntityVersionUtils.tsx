@@ -592,12 +592,12 @@ export const getEntityReferenceDiffFromFieldName = (
 
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
-  owner?: EntityReference,
+  owners?: EntityReference[],
   tier?: TagLabel,
   domain?: EntityReference
 ) => {
   const { entityRef: ownerRef, entityDisplayName: ownerDisplayName } =
-    getEntityReferenceDiffFromFieldName('owner', changeDescription, owner);
+    getEntityReferenceDiffFromFieldName('owners', changeDescription, owners);
 
   const { entityDisplayName: domainDisplayName } =
     getEntityReferenceDiffFromFieldName('domain', changeDescription, domain);

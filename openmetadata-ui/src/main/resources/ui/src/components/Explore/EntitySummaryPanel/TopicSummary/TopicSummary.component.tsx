@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getTopicByFqn } from '../../../../rest/topicsAPI';
@@ -82,7 +83,7 @@ function TopicSummary({
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
       const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', {
-        fields: 'tags,owner',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
       });
 
       const { partitions, messageSchema } = res;

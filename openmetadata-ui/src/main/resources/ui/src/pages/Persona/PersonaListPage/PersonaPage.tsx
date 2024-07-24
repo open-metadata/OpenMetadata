@@ -27,6 +27,7 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
@@ -67,7 +68,7 @@ export const PersonaPage = () => {
       setIsLoading(true);
       const { data, paging } = await getAllPersonas({
         limit: pageSize,
-        fields: 'users',
+        fields: TabSpecificField.USERS,
         after: params?.after,
         before: params?.before,
       });

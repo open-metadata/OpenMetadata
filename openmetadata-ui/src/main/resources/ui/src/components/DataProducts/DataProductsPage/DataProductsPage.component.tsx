@@ -23,7 +23,7 @@ import {
   getVersionPath,
 } from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useFqn } from '../../../hooks/useFqn';
@@ -104,7 +104,12 @@ const DataProductsPage = () => {
     setIsMainContentLoading(true);
     try {
       const data = await getDataProductByName(fqn, {
-        fields: 'domain,owner,experts,assets',
+        fields: [
+          TabSpecificField.DOMAIN,
+          TabSpecificField.OWNERS,
+          TabSpecificField.EXPERTS,
+          TabSpecificField.ASSETS,
+        ],
       });
       setDataProduct(data);
 

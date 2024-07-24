@@ -472,7 +472,7 @@ export const fetchEntityDetail = (
       break;
     case EntityType.TOPIC:
       getTopicByFqn(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res as EntityData);
@@ -567,7 +567,7 @@ export const fetchEntityDetail = (
     case EntityType.GLOSSARY:
       getGlossariesByName(entityFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.TAGS,
           TabSpecificField.REVIEWERS,
         ].join(','),
@@ -581,7 +581,7 @@ export const fetchEntityDetail = (
     case EntityType.GLOSSARY_TERM:
       getGlossaryTermByFQN(entityFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.TAGS,
           TabSpecificField.REVIEWERS,
         ].join(','),

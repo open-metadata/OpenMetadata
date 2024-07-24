@@ -39,7 +39,7 @@ const mockPermissions = {
   EditDescription: true,
   EditDisplayName: true,
   EditLineage: true,
-  EditOwner: true,
+  EditOwners: true,
   EditQueries: true,
   EditSampleData: true,
   EditTags: true,

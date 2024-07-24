@@ -34,6 +34,7 @@ import { EntityField } from '../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
@@ -167,7 +168,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        'owner,tags,usageSummary',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}, ${TabSpecificField.USAGE_SUMMARY}`,
         paging
       );
 
@@ -181,7 +182,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -194,7 +195,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        'owner,usageSummary,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -207,7 +208,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -220,7 +221,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging
       );
       setData(data);
@@ -233,7 +234,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,
@@ -249,7 +250,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
         paging,
         root: true,
         include: Include.NonDeleted,

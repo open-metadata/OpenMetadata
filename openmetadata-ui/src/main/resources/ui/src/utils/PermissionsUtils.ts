@@ -106,7 +106,7 @@ export const DEFAULT_ENTITY_PERMISSION = {
   EditDescription: false,
   EditDisplayName: false,
   EditLineage: false,
-  EditOwner: false,
+  EditOwners: false,
   EditQueries: false,
   EditSampleData: false,
   EditTags: false,

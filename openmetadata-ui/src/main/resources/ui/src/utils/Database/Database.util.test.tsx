@@ -55,7 +55,7 @@ describe('Database Util', () => {
 
   describe('Database Util - DatabaseFields', () => {
     it('should have the correct fields', () => {
-      const expectedFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+      const expectedFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
 
       expect(DatabaseFields).toEqual(expectedFields);
     });

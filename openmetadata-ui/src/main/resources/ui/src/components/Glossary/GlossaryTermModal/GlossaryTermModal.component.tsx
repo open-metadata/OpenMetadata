@@ -15,6 +15,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../rest/glossaryAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -52,7 +53,12 @@ const GlossaryTermModal: FC<Props> = ({
   const fetchCurrentEntity = useCallback(async () => {
     try {
       const data = await getGlossaryTermByFQN(glossaryTermFQN, {
-        fields: 'tags,reviewers,relatedTerms,owner',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.RELATED_TERMS,
+        ],
       });
       setGlossaryTerm(data);
     } catch (error) {

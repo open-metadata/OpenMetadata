@@ -219,7 +219,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         decodedDatabaseSchemaFQN,
         {
           // eslint-disable-next-line max-len
-          fields: `${TabSpecificField.OWNER},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
           include: Include.All,
         }
       );
@@ -319,11 +319,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleUpdateOwner = useCallback(
-    async (owner: DatabaseSchema['owner']) => {
+    async (owners: DatabaseSchema['owners']) => {
       try {
         const updatedData = {
           ...databaseSchema,
-          owner: owner,
+          owners,
         };
 
         const response = await saveUpdatedDatabaseSchemaData(
@@ -340,7 +340,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         );
       }
     },
-    [databaseSchema, databaseSchema?.owner]
+    [databaseSchema, databaseSchema?.owners]
   );
 
   const handleTagsUpdate = async (selectedTags?: Array<EntityTags>) => {
@@ -704,7 +704,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          fields: 'owner,usageSummary,tags,votes',
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.USAGE_SUMMARY,
+            TabSpecificField.TAGS,
+            TabSpecificField.VOTES,
+          ],
           include: Include.All,
         }
       );

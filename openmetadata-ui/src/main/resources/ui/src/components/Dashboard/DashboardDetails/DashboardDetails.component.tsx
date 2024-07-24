@@ -122,7 +122,7 @@ const DashboardDetails = ({
   >([]);
 
   const {
-    owner,
+    owners,
     description,
     entityName,
     followers = [],
@@ -264,14 +264,14 @@ const DashboardDetails = ({
   };
 
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Dashboard['owner']) => {
+    async (newOwners?: Dashboard['owners']) => {
       const updatedDashboard = {
         ...dashboardDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
-      await onDashboardUpdate(updatedDashboard, 'owner');
+      await onDashboardUpdate(updatedDashboard, 'owners');
     },
-    [owner]
+    [owners]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -627,7 +627,7 @@ const DashboardDetails = ({
                         hasEditAccess={editDescriptionPermission}
                         isDescriptionExpanded={isEmpty(charts)}
                         isEdit={isEdit}
-                        owner={dashboardDetails.owner}
+                        owner={dashboardDetails.owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}

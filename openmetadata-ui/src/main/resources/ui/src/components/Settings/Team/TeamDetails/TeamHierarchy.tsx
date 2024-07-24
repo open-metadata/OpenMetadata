@@ -28,6 +28,7 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { TABLE_CONSTANTS } from '../../../../constants/Teams.constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Team } from '../../../../generated/entity/teams/team';
 import { Include } from '../../../../generated/type/include';
 import { getTeamByName, patchTeamDetail } from '../../../../rest/teamsAPI';
@@ -184,7 +185,14 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
       try {
         const dropTeam = movedTeam.to?.id;
         const data = await getTeamByName(movedTeam.from.name, {
-          fields: 'users, defaultRoles, policies, owner, parents, children',
+          fields: [
+            TabSpecificField.USERS,
+            TabSpecificField.DEFAULT_ROLES,
+            TabSpecificField.POLICIES,
+            TabSpecificField.OWNERS,
+            TabSpecificField.PARENTS,
+            TabSpecificField.CHILDREN,
+          ],
           include: Include.All,
         });
         const updatedData = {

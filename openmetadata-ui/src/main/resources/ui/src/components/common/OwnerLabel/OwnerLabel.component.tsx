@@ -33,7 +33,7 @@ import './owner-label.less';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 
 export const OwnerLabel = ({
-  owner,
+  owners,
   className,
   onUpdate,
   hasPermission,
@@ -41,72 +41,18 @@ export const OwnerLabel = ({
   placeHolder,
   pills = false,
 }: {
-  owner?: EntityReference;
+  owners?: EntityReference[];
   className?: string;
-  onUpdate?: (owner?: EntityReference) => void;
+  onUpdate?: (owners?: EntityReference[]) => void;
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode;
   placeHolder?: string;
   pills?: boolean;
 }) => {
-  const displayName = getEntityName(owner);
   const { t } = useTranslation();
 
-  const profilePicture = useMemo(() => {
-    if (isNil(owner)) {
-      return (
-        <Icon
-          component={IconUser}
-          data-testid="no-owner-icon"
-          style={{ fontSize: '18px' }}
-        />
-      );
-    }
-
-    return owner.type === OwnerType.TEAM ? (
-      <Icon
-        component={IconTeamsGrey}
-        data-testid="team-owner-icon"
-        style={{ fontSize: '18px' }}
-      />
-    ) : (
-      <div style={{ flexBasis: '18px' }}>
-        <ProfilePicture
-          displayName={displayName}
-          key="profile-picture"
-          name={owner.name ?? ''}
-          type="circle"
-          width="18"
-        />
-      </div>
-    );
-  }, [owner, displayName, pills]);
-
-  const ownerLink = useMemo(() => {
-    if (displayName) {
-      if (pills) {
-        return (
-          <div data-testid="owner-link">{ownerDisplayName ?? displayName}</div>
-        );
-      }
-
-      return (
-        <Link
-          className={classNames(
-            'no-underline',
-            { 'font-medium text-xs text-primary ': !pills },
-            className
-          )}
-          data-testid="owner-link"
-          to={
-            owner?.type === OwnerType.TEAM
-              ? getTeamAndUserDetailsPath(owner?.name ?? '')
-              : getUserPath(owner?.name ?? '')
-          }>
-          {ownerDisplayName ?? displayName}
-        </Link>
-      );
-    } else {
+  const ownerElements = useMemo(() => {
+    if (!owners || owners.length === 0) {
       return (
         <Typography.Text
           className={classNames('font-medium text-xs', className)}
@@ -115,7 +61,59 @@ export const OwnerLabel = ({
         </Typography.Text>
       );
     }
-  }, [displayName, owner, ownerDisplayName, placeHolder, pills, className]);
+
+    return owners.map((owner) => {
+      const displayName = getEntityName(owner);
+      const profilePicture = isNil(owner) ? (
+        <Icon
+          component={IconUser}
+          data-testid="no-owner-icon"
+          style={{ fontSize: '18px' }}
+        />
+      ) : owner.type === OwnerType.TEAM ? (
+        <Icon
+          component={IconTeamsGrey}
+          data-testid="team-owner-icon"
+          style={{ fontSize: '18px' }}
+        />
+      ) : (
+        <div key={owner.id} style={{ flexBasis: '18px' }}>
+          <ProfilePicture
+            displayName={displayName}
+            key="profile-picture"
+            name={owner.name ?? ''}
+            type="circle"
+            width="18"
+          />
+        </div>
+      );
+
+      const ownerLink = (
+        <Link
+          className={classNames(
+            'no-underline',
+            { 'font-medium text-xs text-primary ': !pills },
+            className
+          )}
+          data-testid="owner-link"
+          key={owner.id}
+          to={
+            owner.type === OwnerType.TEAM
+              ? getTeamAndUserDetailsPath(owner.name ?? '')
+              : getUserPath(owner.name ?? '')
+          }>
+          {ownerDisplayName ?? displayName}
+        </Link>
+      );
+
+      return (
+        <div className="d-inline-flex items-center gap-1" key={owner.id}>
+          <div className="owner-avatar-icon d-flex">{profilePicture}</div>
+          {ownerLink}
+        </div>
+      );
+    });
+  }, [owners, ownerDisplayName, placeHolder, pills, className, t]);
 
   const ownerContent = useMemo(() => {
     return (
@@ -123,14 +121,12 @@ export const OwnerLabel = ({
         className={classNames(
           'd-inline-flex items-center',
           { 'gap-2': !pills, 'owner-pills-content': pills },
-          { inherited: Boolean(owner?.inherited) },
+          { inherited: Boolean(owners?.some((owner) => owner.inherited)) },
           className
         )}
         data-testid="owner-label">
-        <div className="owner-avatar-icon d-flex">{profilePicture}</div>
-        {ownerLink}
-
-        {pills && Boolean(owner?.inherited) && (
+        {ownerElements}
+        {pills && owners?.some((owner) => owner.inherited) && (
           <Tooltip
             title={t('label.inherited-entity', {
               entity: t('label.user'),
@@ -142,31 +138,42 @@ export const OwnerLabel = ({
         {onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
-            owner={owner}
-            onUpdate={(updatedUser) => onUpdate(updatedUser as EntityReference)}
+            multiple={{
+              user: true,
+              team: false,
+            }}
+            owner={owners}
+            onUpdate={(updatedUsers) => {
+              if (Array.isArray(updatedUsers)) {
+                onUpdate(updatedUsers);
+              } else if (updatedUsers) {
+                onUpdate([updatedUsers]);
+              }
+            }}
           />
         )}
       </div>
     );
   }, [
     onUpdate,
-    ownerLink,
+    ownerElements,
     hasPermission,
-    owner,
+    owners,
     ownerDisplayName,
     placeHolder,
     pills,
     className,
+    t,
   ]);
 
-  if (pills && displayName) {
+  if (pills && owners && owners.length > 0) {
     return (
       <Link
         className="no-underline font-medium text-xs text-primary owner-link-pills"
         to={
-          owner?.type === OwnerType.TEAM
-            ? getTeamAndUserDetailsPath(owner?.name ?? '')
-            : getUserPath(owner?.name ?? '')
+          owners[0].type === OwnerType.TEAM
+            ? getTeamAndUserDetailsPath(owners[0].name ?? '')
+            : getUserPath(owners[0].name ?? '')
         }>
         {ownerContent}
       </Link>

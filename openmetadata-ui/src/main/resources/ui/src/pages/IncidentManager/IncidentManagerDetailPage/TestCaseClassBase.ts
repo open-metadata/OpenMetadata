@@ -16,6 +16,7 @@ import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.i
 import { TestCaseFormType } from '../../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestCaseIncidentTab from '../../../components/DataQuality/IncidentManager/TestCaseIncidentTab/TestCaseIncidentTab.component';
 import TestCaseResultTab from '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { FieldProp } from '../../../interface/FormUtils.interface';
@@ -67,11 +68,11 @@ class TestCaseClassBase {
 
   public getFields(): string[] {
     return [
-      'testSuite',
-      'testCaseResult',
-      'testDefinition',
-      'owner',
-      'incidentId',
+      TabSpecificField.TESTSUITE,
+      TabSpecificField.TEST_CASE_RESULT,
+      TabSpecificField.TEST_DEFINITION,
+      TabSpecificField.OWNERS,
+      TabSpecificField.INCIDENT_ID,
     ];
   }
 

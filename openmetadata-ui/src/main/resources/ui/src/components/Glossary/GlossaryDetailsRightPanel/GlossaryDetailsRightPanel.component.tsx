@@ -152,7 +152,7 @@ const GlossaryDetailsRightPanel = ({
           <OwnerLabel pills owner={owner} ownerDisplayName={ownerDisplayName} />
         );
       }
-      if (!(permissions.EditOwner || permissions.EditAll)) {
+      if (!(permissions.EditOwners || permissions.EditAll)) {
         return <div>{NO_DATA_PLACEHOLDER}</div>;
       }
 
@@ -240,10 +240,10 @@ const GlossaryDetailsRightPanel = ({
           <Typography.Text className="right-panel-label">
             {t('label.owner')}
           </Typography.Text>
-          {(permissions.EditOwner || permissions.EditAll) &&
+          {(permissions.EditOwners || permissions.EditAll) &&
             selectedData.owner && (
               <UserTeamSelectableList
-                hasPermission={permissions.EditOwner || permissions.EditAll}
+                hasPermission={permissions.EditOwners || permissions.EditAll}
                 owner={selectedData.owner}
                 onUpdate={(updatedUser) =>
                   handleUpdatedOwner(updatedUser as EntityReference)
@@ -266,22 +266,23 @@ const GlossaryDetailsRightPanel = ({
         <Space className="m-r-xss" size={4}>
           {getUserNames(selectedData)}
         </Space>
-        {!selectedData.owner && (permissions.EditOwner || permissions.EditAll) && (
-          <UserTeamSelectableList
-            hasPermission={permissions.EditOwner || permissions.EditAll}
-            owner={selectedData.owner}
-            onUpdate={(updatedUser) =>
-              handleUpdatedOwner(updatedUser as EntityReference)
-            }>
-            <TagButton
-              className="text-primary cursor-pointer"
-              dataTestId="edit-owner"
-              icon={<PlusIcon height={16} name="plus" width={16} />}
-              label={t('label.add')}
-              tooltip=""
-            />
-          </UserTeamSelectableList>
-        )}
+        {!selectedData.owner &&
+          (permissions.EditOwners || permissions.EditAll) && (
+            <UserTeamSelectableList
+              hasPermission={permissions.EditOwners || permissions.EditAll}
+              owner={selectedData.owner}
+              onUpdate={(updatedUser) =>
+                handleUpdatedOwner(updatedUser as EntityReference)
+              }>
+              <TagButton
+                className="text-primary cursor-pointer"
+                dataTestId="edit-owner"
+                icon={<PlusIcon height={16} name="plus" width={16} />}
+                label={t('label.add')}
+                tooltip=""
+              />
+            </UserTeamSelectableList>
+          )}
       </Col>
       <Col data-testid="glossary-reviewer" span="24">
         <div className={`d-flex items-center ${hasReviewers ? 'm-b-xss' : ''}`}>

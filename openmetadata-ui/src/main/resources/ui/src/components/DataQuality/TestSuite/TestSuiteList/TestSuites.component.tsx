@@ -35,7 +35,11 @@ import {
   ERROR_PLACEHOLDER_TYPE,
   SORT_ORDER,
 } from '../../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -195,7 +199,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     try {
       const result = await getListTestSuitesBySearch({
         ...params,
-        fields: 'owner,summary',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
         q: searchValue ? `*${searchValue}*` : undefined,
         owner: ownerFilterValue?.key,
         offset: (currentPage - 1) * pageSize,

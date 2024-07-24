@@ -20,6 +20,7 @@ import {
   VALIDATION_MESSAGES,
 } from '../../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../../constants/Form.constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuites } from '../../../../rest/testAPI';
@@ -42,7 +43,7 @@ const AddTestSuiteForm: React.FC<AddTestSuiteFormProps> = ({
     try {
       setIsLoading(true);
       const response = await getListTestSuites({
-        fields: 'owner,tests',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TESTS],
         limit: PAGE_SIZE_MEDIUM,
       });
       setTestSuites(response.data);

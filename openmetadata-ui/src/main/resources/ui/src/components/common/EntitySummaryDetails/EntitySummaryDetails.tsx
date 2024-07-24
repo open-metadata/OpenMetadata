@@ -36,7 +36,7 @@ export interface GetInfoElementsProps {
   data: ExtraInfo;
   tier?: TagLabel;
   currentTier?: string;
-  currentOwner?: Dashboard['owner'];
+  currentOwner?: Dashboard['owners'];
   deleted?: boolean;
   allowTeamOwner?: boolean;
 }

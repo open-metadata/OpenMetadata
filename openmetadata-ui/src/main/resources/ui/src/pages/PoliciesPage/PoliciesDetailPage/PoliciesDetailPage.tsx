@@ -44,7 +44,7 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -160,7 +160,7 @@ const PoliciesDetailPage = () => {
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
       const team = await getTeamByName(data.fullyQualifiedName || '', {
-        fields: 'policies',
+        fields: TabSpecificField.POLICIES,
       });
       const updatedAttributeData = (team.policies ?? []).filter(
         (attrData) => attrData.id !== policy.id

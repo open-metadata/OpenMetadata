@@ -37,7 +37,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ACTION_TYPE, ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { TestCase } from '../../generated/tests/testCase';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { Include } from '../../generated/type/include';
@@ -145,7 +145,12 @@ const TestSuiteDetailsPage = () => {
     setIsTestCaseLoading(true);
     try {
       const response = await getListTestCase({
-        fields: 'testCaseResult,testDefinition,testSuite,incidentId',
+        fields: [
+          TabSpecificField.TEST_CASE_RESULT,
+          TabSpecificField.TEST_DEFINITION,
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.INCIDENT_ID,
+        ],
         testSuiteId,
         ...param,
         limit: pageSize,
@@ -184,7 +189,7 @@ const TestSuiteDetailsPage = () => {
   const fetchTestSuiteByName = async () => {
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
         include: Include.All,
       });
       setSlashedBreadCrumb([

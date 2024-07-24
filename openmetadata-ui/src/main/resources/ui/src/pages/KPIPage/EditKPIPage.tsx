@@ -39,6 +39,7 @@ import RichTextEditor from '../../components/common/RichTextEditor/RichTextEdito
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { DataInsightChart } from '../../generated/dataInsight/dataInsightChart';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { useAuth } from '../../hooks/authHooks';
@@ -123,8 +124,13 @@ const EditKPIPage = () => {
     setIsLoading(true);
     try {
       const response = await getKPIByName(kpiName, {
-        fields:
-          'startDate,endDate,targetDefinition,dataInsightChart,metricType',
+        fields: [
+          TabSpecificField.START_DATE,
+          TabSpecificField.END_DATE,
+          TabSpecificField.TARGET_DEFINITION,
+          TabSpecificField.DATA_INSIGHT_CHART,
+          TabSpecificField.METRIC_TYPE,
+        ],
       });
       setKpiData(response);
     } catch (error) {

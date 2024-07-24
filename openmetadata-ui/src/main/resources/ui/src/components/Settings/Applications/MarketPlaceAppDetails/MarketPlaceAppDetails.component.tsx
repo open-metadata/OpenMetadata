@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
 import { ROUTES } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Include } from '../../../../generated/type/include';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -74,7 +75,7 @@ const MarketPlaceAppDetails = () => {
     setIsLoading(true);
     try {
       const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setAppData(data);
 
@@ -102,7 +103,7 @@ const MarketPlaceAppDetails = () => {
   const fetchInstalledAppDetails = useCallback(async () => {
     try {
       await getApplicationByName(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
         include: Include.All,
       });
       setIsInstalled(true);
