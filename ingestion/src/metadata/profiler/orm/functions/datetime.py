@@ -188,7 +188,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
             "Bigquery does not support `month` or `year` interval for table partitioned on timestamp",
             "field types. You can set the `interval_unit to day or hour directly from OpenMetadata UI`."
             # pylint: disable=line-too-long
-            "Visit https://docs.open-metadata.org/connectors/ingestion/workflows/profiler#4-updating-profiler-setting-at-the-table-level for more details.",
+            "Visit https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow#4-updating-profiler-setting-at-the-table-level for more details.",
         )
 
     return (
