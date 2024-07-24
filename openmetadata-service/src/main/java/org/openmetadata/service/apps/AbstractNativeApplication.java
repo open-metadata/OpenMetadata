@@ -69,7 +69,8 @@ public class AbstractNativeApplication implements NativeApplication {
             && app.getAppSchedule().getScheduleTimeline().equals(ScheduleTimeline.NONE))) {
       return;
     }
-    if (app.getAppType().equals(AppType.Internal) && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
+    if (app.getAppType().equals(AppType.Internal)
+        && (SCHEDULED_TYPES.contains(app.getScheduleType()))) {
       try {
         ApplicationHandler.getInstance().removeOldJobs(app);
         ApplicationHandler.getInstance().migrateQuartzConfig(app);
