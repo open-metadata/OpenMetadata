@@ -114,7 +114,7 @@ public class DocumentRepository extends EntityRepository<Document> {
     @Override
     public void entitySpecificUpdate() {
       updateEmailTemplatePlaceholders(original, updated);
-      recordChange("data", original, updated, true);
+      recordChange("data", original.getData(), updated.getData(), true);
     }
   }
 
