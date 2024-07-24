@@ -586,9 +586,9 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     checkDisplayName(GLOSSARY_1.name);
     addOwner(userName, GLOSSARY_OWNER_LINK_TEST_ID);
     cy.reload();
-    addOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
+    addOwner('Cynthia Meyer', GLOSSARY_OWNER_LINK_TEST_ID);
     cy.reload();
-    removeOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
+    removeOwner('Cynthia Meyer', GLOSSARY_OWNER_LINK_TEST_ID);
   });
 
   it('Create glossary term should work properly', () => {

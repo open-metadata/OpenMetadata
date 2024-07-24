@@ -635,7 +635,7 @@ export const DOMAIN_1 = {
   updatedDescription:
     'This is the updated description for Cypress for testing domain creation',
   experts: 'Aaron Johnson',
-  owner: 'Alex Pollard',
+  owner: 'Cynthia Meyer',
   updatedOwner: 'Aaron Johnson',
   domainType: 'Source-aligned',
   dataProducts: [
@@ -662,8 +662,8 @@ export const DOMAIN_2 = {
   updatedDisplayName: 'Cypress.Domain.New',
   fullyQualifiedName: '"Cypress.Domain.New"',
   description: 'This is the Cypress for testing domain creation',
-  experts: 'Alex Pollard',
-  owner: 'Alex Pollard',
+  experts: 'Cynthia Meyer',
+  owner: 'Cynthia Meyer',
   domainType: 'Source-aligned',
   dataProducts: [
     {
@@ -710,8 +710,8 @@ export const DOMAIN_3 = {
   updatedDisplayName: 'Cypress Space',
   fullyQualifiedName: 'Cypress Space',
   description: 'This is the Cypress for testing domain with space creation',
-  experts: 'Alex Pollard',
-  owner: 'Alex Pollard',
+  experts: 'Cynthia Meyer',
+  owner: 'Cynthia Meyer',
   domainType: 'Source-aligned',
   dataProducts: [
     {

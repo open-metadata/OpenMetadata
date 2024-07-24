@@ -172,6 +172,7 @@ export const setValueForProperty = (
     .as('editbutton');
 
   cy.get('@editbutton').should('be.visible').click({ force: true });
+  cy.wait(100);
 
   interceptURL('PATCH', `/api/v1/*/*`, 'patchEntity');
   // Checking for value text box or markdown box
