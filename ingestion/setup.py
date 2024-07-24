@@ -222,6 +222,7 @@ plugins: Dict[str, Set[str]] = {
     "elasticsearch": {
         VERSIONS["elasticsearch8"],
     },  # also requires requests-aws4auth which is in base
+    "exasol": {"sqlalchemy_exasol>=5"},
     "glue": {VERSIONS["boto3"]},
     "great-expectations": {VERSIONS["great-expectations"]},
     "greenplum": {*COMMONS["postgres"]},
