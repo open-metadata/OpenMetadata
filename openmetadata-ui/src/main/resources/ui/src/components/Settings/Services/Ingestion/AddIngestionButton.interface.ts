@@ -23,6 +23,5 @@ export interface AddIngestionButtonProps {
   ingestionList: Array<IngestionPipeline>;
   serviceCategory: ServiceCategory;
   serviceName: string;
-  ingestionData: Array<IngestionPipeline>;
   permissions: OperationPermission;
 }

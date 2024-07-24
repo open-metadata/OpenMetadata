@@ -13,36 +13,33 @@
 
 import { Space } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DISABLED,
   NO_DATA_PLACEHOLDER,
+  PAGE_SIZE,
 } from '../../../../../constants/constants';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
-import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import {
   renderNameField,
-  renderRecentRunsField,
   renderScheduleField,
   renderStatusField,
   renderTypeField,
 } from '../../../../../utils/IngestionListTableUtils';
 import { getErrorPlaceHolder } from '../../../../../utils/IngestionUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
-import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
+import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
 import { IngestionListTableProps } from './IngestionListTable.interface';
 import PipelineActions from './PipelineActions/PipelineActions';
 
 function IngestionListTable({
-  airflowEndpoint,
   triggerIngestion,
   deployIngestion,
-  isRequiredDetailsAvailable,
   paging,
   handleEnableDisableIngestion,
   onIngestionWorkflowsUpdate,
@@ -52,46 +49,29 @@ function IngestionListTable({
   handleDeleteSelection,
   handleIsConfirmationModalOpen,
   ingestionData,
-  permissions,
   pipelineType,
   isLoading = false,
+  pipelineIdToFetchStatus = '',
+  handlePipelineIdToFetchStatus,
+  onPageChange,
+  currentPage,
+  airflowInformation,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
-  const { isFetchingStatus, platform } = useAirflowStatus();
   const { theme } = useApplicationStore();
-
-  const {
-    currentPage,
-    pageSize,
-    handlePageChange,
-    handlePageSizeChange,
-    handlePagingChange,
-    showPagination,
-  } = usePaging(10);
+  const { pageSize, handlePageSizeChange, handlePagingChange, showPagination } =
+    usePaging(PAGE_SIZE);
 
   useEffect(() => {
     handlePagingChange(paging);
   }, [paging]);
 
-  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
-
-  const ingestionPagingHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        onIngestionWorkflowsUpdate(
-          { [cursorType]: paging[cursorType] },
-          pageSize
-        );
-        handlePageChange(currentPage);
-      }
-    },
-    [paging, handlePageChange, onIngestionWorkflowsUpdate, pageSize]
+  const { isFetchingStatus, platform } = useMemo(
+    () => airflowInformation,
+    [airflowInformation]
   );
 
-  const handlePipelinePageSizeChange = useCallback((pageSize: number) => {
-    handlePageSizeChange(pageSize);
-    onIngestionWorkflowsUpdate({}, pageSize);
-  }, []);
+  const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
   const renderActionsField = (_: string, record: IngestionPipeline) => {
     if (isFetchingStatus) {
@@ -109,7 +89,6 @@ function IngestionListTable({
         handleEnableDisableIngestion={handleEnableDisableIngestion}
         handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
         ingestionPipelinesPermission={ingestionPipelinesPermission}
-        isRequiredDetailsAvailable={isRequiredDetailsAvailable}
         record={record}
         serviceCategory={serviceCategory}
         serviceName={serviceName}
@@ -145,7 +124,14 @@ function IngestionListTable({
         dataIndex: 'recentRuns',
         key: 'recentRuns',
         width: 160,
-        render: renderRecentRunsField,
+        render: (_: string, record: IngestionPipeline) => (
+          <IngestionRecentRuns
+            classNames="align-middle"
+            handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
+            ingestion={record}
+            pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+          />
+        ),
       },
       {
         title: t('label.status'),
@@ -162,23 +148,7 @@ function IngestionListTable({
         render: renderActionsField,
       },
     ],
-    [
-      permissions,
-      airflowEndpoint,
-      deployIngestion,
-      triggerIngestion,
-      isRequiredDetailsAvailable,
-      handleEnableDisableIngestion,
-      ingestionPipelinesPermission,
-      serviceName,
-      handleDeleteSelection,
-      serviceCategory,
-      handleIsConfirmationModalOpen,
-      onIngestionWorkflowsUpdate,
-      ingestionData,
-      isFetchingStatus,
-      isPlatFormDisabled,
-    ]
+    [pipelineIdToFetchStatus, renderActionsField, handlePipelineIdToFetchStatus]
   );
 
   return (
@@ -195,7 +165,6 @@ function IngestionListTable({
         loading={isLoading}
         locale={{
           emptyText: getErrorPlaceHolder(
-            isRequiredDetailsAvailable,
             ingestionData.length,
             isPlatFormDisabled,
             theme,
@@ -212,8 +181,8 @@ function IngestionListTable({
           currentPage={currentPage}
           pageSize={pageSize}
           paging={paging}
-          pagingHandler={ingestionPagingHandler}
-          onShowSizeChange={handlePipelinePageSizeChange}
+          pagingHandler={onPageChange}
+          onShowSizeChange={handlePageSizeChange}
         />
       )}
     </Space>

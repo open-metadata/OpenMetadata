@@ -28,7 +28,6 @@ function PipelineActions({
   ingestionPipelinesPermission,
   triggerIngestion,
   deployIngestion,
-  isRequiredDetailsAvailable,
   handleEnableDisableIngestion,
   serviceCategory,
   serviceName,
@@ -74,7 +73,7 @@ function PipelineActions({
   );
 
   const getIngestionPermission = (name: string): boolean =>
-    !isRequiredDetailsAvailable || getEditPermission(name);
+    getEditPermission(name);
 
   return (
     <Row
@@ -114,7 +113,6 @@ function PipelineActions({
         <Space align="center" size={12}>
           <Button
             data-testid="logs-button"
-            disabled={!isRequiredDetailsAvailable}
             icon={<LogsIcon height={12} width={12} />}
             onClick={handleLogsClick}>
             {t('label.log-plural')}

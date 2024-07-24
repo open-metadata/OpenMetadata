@@ -16,7 +16,9 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
+import { UseAirflowStatusProps } from '../../../../hooks/useAirflowStatus';
 import { ServicesType } from '../../../../interface/service.interface';
+import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 
 export interface ConnectorConfig {
   username: string;
@@ -31,29 +33,33 @@ export interface ConnectorConfig {
 }
 
 export interface IngestionProps {
-  airflowEndpoint: string;
   serviceDetails: ServicesType;
   serviceName: string;
   serviceCategory: ServiceCategory;
-  isRequiredDetailsAvailable: boolean;
   paging: Paging;
-  ingestionList: Array<IngestionPipeline>;
+  ingestionPipelineList: Array<IngestionPipeline>;
   permissions: OperationPermission;
   pipelineNameColWidth?: number;
+  currentPage: number;
   pipelineType?: PipelineType;
   displayAddIngestionButton?: boolean;
   containerClassName?: string;
   isLoading?: boolean;
   isAirflowAvailable?: boolean;
-  deleteIngestion: (id: string, displayName: string) => Promise<void>;
-  deployIngestion: (id: string) => Promise<void>;
-  handleEnableDisableIngestion: (id: string) => Promise<void>;
-  triggerIngestion: (id: string, displayName: string) => Promise<void>;
+  searchText: string;
+  airflowInformation: UseAirflowStatusProps;
   onIngestionWorkflowsUpdate: (
     paging?: Omit<Paging, 'total'>,
     limit?: number
   ) => void;
-  handleIngestionDataChange?: (data: Array<IngestionPipeline>) => void;
+  handleIngestionListUpdate: (
+    ingestionList: React.SetStateAction<IngestionPipeline[]>
+  ) => void;
+  handleIngestionPagingUpdate: (
+    ingestionPaging: React.SetStateAction<Paging>
+  ) => void;
+  handleSearchChange: (searchValue: string) => void;
+  onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;
 }
 
 export interface SelectedRowDetails {

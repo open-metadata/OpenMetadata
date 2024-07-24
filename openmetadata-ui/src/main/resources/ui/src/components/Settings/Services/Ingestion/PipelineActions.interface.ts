@@ -19,10 +19,9 @@ import { SelectedRowDetails } from './ingestion.interface';
 export interface PipelineActionsProps {
   record: IngestionPipeline;
   ingestionPipelinesPermission?: IngestionServicePermission;
-  isRequiredDetailsAvailable: boolean;
   serviceCategory: ServiceCategory;
   serviceName: string;
-  deployIngestion: (id: string) => Promise<void>;
+  deployIngestion: (id: string, displayName: string) => Promise<void>;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   handleDeleteSelection: (row: SelectedRowDetails) => void;
   handleEditClick?: (fqn: string) => void;

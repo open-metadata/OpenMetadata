@@ -11,29 +11,28 @@
  *  limitations under the License.
  */
 
-import {
-  IngestionServicePermission,
-  OperationPermission,
-} from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { IngestionServicePermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
+import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
+import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { SelectedRowDetails } from '../ingestion.interface';
 
 export interface IngestionListTableProps {
-  airflowEndpoint: string;
   ingestionData: Array<IngestionPipeline>;
-  isRequiredDetailsAvailable: boolean;
   isLoading?: boolean;
+  pipelineIdToFetchStatus?: string;
   paging: Paging;
-  permissions: OperationPermission;
   pipelineType?: PipelineType;
   pipelineNameColWidth?: number;
+  currentPage: number;
+  airflowInformation: UseAirflowStatusProps;
   serviceCategory: ServiceCategory;
   serviceName: string;
   ingestionPipelinesPermission?: IngestionServicePermission;
-  deployIngestion: (id: string) => Promise<void>;
+  deployIngestion: (id: string, displayName: string) => Promise<void>;
   handleDeleteSelection: (row: SelectedRowDetails) => void;
   handleEnableDisableIngestion: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
@@ -42,4 +41,6 @@ export interface IngestionListTableProps {
     limit?: number
   ) => void;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
+  handlePipelineIdToFetchStatus: (pipelineId?: string) => void;
+  onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;
 }

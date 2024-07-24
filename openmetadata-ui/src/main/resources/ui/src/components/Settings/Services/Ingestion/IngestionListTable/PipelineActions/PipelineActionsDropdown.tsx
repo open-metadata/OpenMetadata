@@ -68,10 +68,10 @@ function PipelineActionsDropdown({
     }
   };
 
-  const handleDeployIngestion = async (id: string) => {
+  const handleDeployIngestion = async (id: string, displayName: string) => {
     try {
       setCurrDeploy({ id, state: 'waiting' });
-      await deployIngestion(id);
+      await deployIngestion(id, displayName);
     } finally {
       setCurrDeploy({ id: '', state: '' });
       setIsOpen(false);
@@ -121,7 +121,7 @@ function PipelineActionsDropdown({
               id,
               <RunIcon height={12} width={12} />
             ),
-            onClick: () => handleTriggerIngestion(id, name),
+            onClick: () => handleTriggerIngestion(id, getEntityName(ingestion)),
             key: 'run-button',
             'data-testid': 'run-button',
           },
@@ -132,7 +132,7 @@ function PipelineActionsDropdown({
               id,
               <ReloadIcon height={12} width={12} />
             ),
-            onClick: () => handleDeployIngestion(id),
+            onClick: () => handleDeployIngestion(id, getEntityName(ingestion)),
             key: 're-deploy-button',
             'data-testid': 're-deploy-button',
           },
@@ -145,7 +145,7 @@ function PipelineActionsDropdown({
               id,
               <DeployIcon height={12} width={12} />
             ),
-            onClick: () => handleDeployIngestion(id),
+            onClick: () => handleDeployIngestion(id, getEntityName(ingestion)),
             key: 'deploy-button',
             'data-testid': 'deploy-button',
           },

@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { getAirflowStatus } from '../rest/ingestionPipelineAPI';
 
-interface UseAirflowStatusProps {
+export interface UseAirflowStatusProps {
   isFetchingStatus: boolean;
   isAirflowAvailable: boolean;
   error: AxiosError | undefined;

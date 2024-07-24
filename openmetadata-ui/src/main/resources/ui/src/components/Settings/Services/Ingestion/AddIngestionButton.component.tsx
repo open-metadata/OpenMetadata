@@ -32,7 +32,6 @@ function AddIngestionButton({
   pipelineType,
   serviceCategory,
   serviceName,
-  ingestionData,
   ingestionList,
   permissions,
 }: Readonly<AddIngestionButtonProps>) {
@@ -74,12 +73,12 @@ function AddIngestionButton({
     [hasMetadata, pipelineType, handleAddIngestionClick]
   );
 
-  const isDataSightIngestionExists = useMemo(
+  const isDataInSightIngestionExists = useMemo(
     () =>
-      ingestionData.some(
+      ingestionList.some(
         (ingestion) => ingestion.pipelineType === PipelineType.DataInsight
       ),
-    [ingestionData]
+    [ingestionList]
   );
 
   const types = useMemo(
@@ -101,7 +100,7 @@ function AddIngestionButton({
     <LimitWrapper resource="ingestionPipeline">
       <Dropdown
         menu={{
-          items: getMenuItems(types, isDataSightIngestionExists),
+          items: getMenuItems(types, isDataInSightIngestionExists),
           onClick: (item) => {
             handleAddIngestionClick(item.key as PipelineType);
           },

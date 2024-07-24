@@ -17,7 +17,6 @@ import { t } from 'i18next';
 import { capitalize, isUndefined } from 'lodash';
 import React from 'react';
 import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
-import { IngestionRecentRuns } from '../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../constants/pipeline.constants';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -37,10 +36,6 @@ export const renderTypeField = (_: string, record: IngestionPipeline) => (
     data-testid="pipeline-name">
     {record.pipelineType}
   </Typography.Text>
-);
-
-export const renderRecentRunsField = (_: string, record: IngestionPipeline) => (
-  <IngestionRecentRuns classNames="align-middle" ingestion={record} />
 );
 
 export const renderStatusField = (_: string, record: IngestionPipeline) => (
