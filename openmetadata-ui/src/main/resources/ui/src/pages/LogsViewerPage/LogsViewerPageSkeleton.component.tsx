@@ -21,6 +21,7 @@ const LogViewerPageSkeleton = () => {
         <div className="flex items-center gap-2 justify-end">
           <Skeleton.Button active />
           <Skeleton.Button active shape="circle" />
+          <Skeleton.Button active shape="circle" />
         </div>
         <Skeleton
           active
