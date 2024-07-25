@@ -88,3 +88,12 @@ WHERE  toid = (SELECT id
        AND toentity = 'dataInsightChart'
        AND fromentity = 'kpi';
 -- KPI MIgrations end
+
+-- Update schedule type for applications
+UPDATE installed_apps
+SET json = json || '{"scheduleType": "ScheduledOrManual"}'
+WHERE json->>'scheduleType' = 'Scheduled';
+
+-- recreate all scheduled apps
+DELETE FROM apps_marketplace
+WHERE json->>'scheduleType' = 'Scheduled';

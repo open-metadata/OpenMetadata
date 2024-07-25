@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { create } from 'zustand';
-import { ExploreSidebarTab } from '../../pages/ExplorePage/ExplorePage.interface';
+import { expect, Page } from '@playwright/test';
 
-export const useExploreStore = create<{
-  sidebarActiveTab: ExploreSidebarTab;
-  setSidebarActiveTab: (tab: ExploreSidebarTab) => void;
-}>()((set) => ({
-  sidebarActiveTab: ExploreSidebarTab.ASSETS,
-  setSidebarActiveTab: (tab: ExploreSidebarTab) => {
-    set({ sidebarActiveTab: tab });
-  },
-}));
+export const deleteTestCase = async (page: Page, testCaseName: string) => {
+  await page.getByTestId(`delete-${testCaseName}`).click();
+  await page.fill('#deleteTextInput', 'DELETE');
+
+  await expect(page.getByTestId('confirm-button')).toBeEnabled();
+
+  await page.getByTestId('confirm-button').click();
+
+  await expect(page.getByRole('alert')).toHaveText(/deleted successfully!/);
+};

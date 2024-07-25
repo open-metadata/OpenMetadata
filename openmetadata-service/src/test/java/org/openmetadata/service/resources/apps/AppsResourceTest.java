@@ -342,6 +342,14 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     }
   }
 
+  @Test
+  void post_trigger_no_trigger_app_400() {
+    assertResponseContains(
+        () -> postTriggerApp("ExampleAppNoTrigger", ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "App does not support manual trigger.");
+  }
+
   @Override
   public void validateCreatedEntity(
       App createdEntity, CreateApp request, Map<String, String> authHeaders)
