@@ -1,0 +1,9 @@
+{
+  "name": "ExampleAppNoTrigger",
+  "displayName": "Example App No Trigger",
+  "appConfiguration": {},
+  "appSchedule": {
+    "scheduleTimeline": "Custom",
+    "cronExpression": "0 0 1/1 * *"
+  }
+}
