@@ -196,6 +196,17 @@ const KPIChart: FC<Props> = ({
 
   const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
 
+  const kpiTooltipValueFormatter = (
+    value: string | number,
+    key?: string
+  ): string => {
+    const isPercentage = key
+      ? mapKPIMetricType[key] === KpiTargetType.Percentage
+      : KpiTargetType.Number;
+
+    return isPercentage ? round(Number(value), 2) + '%' : value + '';
+  };
+
   useEffect(() => {
     setKpiResults({});
     setKpiLatestResults(undefined);
@@ -240,16 +251,7 @@ const KPIChart: FC<Props> = ({
                       content={
                         <CustomTooltip
                           timeStampKey="day"
-                          valueFormatter={(value, key) => {
-                            const isPercentage = key
-                              ? mapKPIMetricType[key] ===
-                                KpiTargetType.Percentage
-                              : KpiTargetType.Number;
-
-                            return isPercentage
-                              ? round(Number(value), 2) + '%'
-                              : value + '';
-                          }}
+                          valueFormatter={kpiTooltipValueFormatter}
                         />
                       }
                     />

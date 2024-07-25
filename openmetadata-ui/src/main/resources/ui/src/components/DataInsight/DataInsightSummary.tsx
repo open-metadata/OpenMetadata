@@ -56,9 +56,6 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
     useParams<{ tab: DataInsightTabs }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  //   const [entitiesCharts, setEntitiesChart] = useState<
-  //     (DataInsightChartResult | undefined)[]
-  //   >([]);
   const [entitiesChartsSummary, setEntitiesChartSummary] =
     useState<Record<SystemChartType, DataInsightCustomChartResult>>();
   const [webCharts, setWebCharts] = useState<

@@ -31,7 +31,7 @@ import {
   CHART_WIDGET_DAYS_DURATION,
   GRAPH_BACKGROUND_COLOR,
 } from '../../../../constants/constants';
-import { KPI_WIDGET_GRAPH_COLORS } from '../../../../constants/DataInsight.constants';
+import { DATA_INSIGHT_GRAPH_COLORS } from '../../../../constants/DataInsight.constants';
 import { DATA_INSIGHT_DOCS } from '../../../../constants/docs.constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
@@ -45,6 +45,7 @@ import {
   getListKPIs,
 } from '../../../../rest/KpiAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
+import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import KPILatestResultsV1 from '../../../DataInsight/KPILatestResultsV1';
 import './kpi-widget.less';
@@ -175,11 +176,6 @@ const KPIWidget = ({
     }
   };
 
-  const { kpis, graphData } = useMemo(() => {
-    return { kpis: [], graphData: [] };
-    // return { ...getKpiGraphData(kpiResults, kpiList) };
-  }, [kpiResults, kpiList]);
-
   const fetchKpiList = async () => {
     try {
       setIsKPIListLoading(true);
@@ -201,6 +197,8 @@ const KPIWidget = ({
     () => selectedGridSize === WidgetWidths.medium,
     [selectedGridSize]
   );
+
+  const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
 
   useEffect(() => {
     fetchKpiList().catch(() => {
@@ -251,14 +249,13 @@ const KPIWidget = ({
           </Typography.Text>
         </Col>
       </Row>
-      {isEmpty(kpiList) || isEmpty(graphData) ? (
+      {isEmpty(kpiList) || isEmpty(kpiResults) ? (
         <EmptyPlaceholder />
       ) : (
         <Row className="p-t-md">
           <Col span={isWidgetSizeMedium ? 14 : 24}>
             <ResponsiveContainer debounce={1} height={250} width="100%">
               <LineChart
-                data={graphData}
                 margin={{
                   top: 10,
                   right: isWidgetSizeMedium ? 50 : 20,
@@ -269,13 +266,23 @@ const KPIWidget = ({
                   stroke={GRAPH_BACKGROUND_COLOR}
                   vertical={false}
                 />
-                <XAxis dataKey="timestamp" />
-                <YAxis />
-                {kpis.map((kpi, i) => (
+                <XAxis
+                  allowDuplicatedCategory={false}
+                  dataKey="day"
+                  tickFormatter={(value: number) =>
+                    customFormatDateTime(value, 'MMM DD')
+                  }
+                  type="category"
+                />
+                <YAxis dataKey="count" />
+
+                {kpiNames.map((key, i) => (
                   <Line
-                    dataKey={kpi}
-                    key={kpi}
-                    stroke={KPI_WIDGET_GRAPH_COLORS[i]}
+                    data={kpiResults[key]}
+                    dataKey="count"
+                    key={key}
+                    name={key}
+                    stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
                     type="monotone"
                   />
                 ))}
