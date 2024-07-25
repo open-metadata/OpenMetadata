@@ -980,10 +980,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
-    const userOwnsService = currentUser?.id === serviceDetails?.owner?.id;
-
+    const ownerIds = serviceDetails?.owners?.map((owner) => owner.id) ?? [];
+    const userOwnsService = ownerIds.includes(currentUser?.id ?? '');
     const userInOwnerTeam = Boolean(
-      currentUser?.teams?.some((team) => team.id === serviceDetails?.owner?.id)
+      currentUser?.teams?.some((team) => ownerIds.includes(team.id))
     );
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;

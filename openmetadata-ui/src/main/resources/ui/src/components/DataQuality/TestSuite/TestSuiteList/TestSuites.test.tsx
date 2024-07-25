@@ -148,7 +148,7 @@ describe('TestSuites component', () => {
       await screen.findByTestId('test-suite-container')
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
-      fields: 'owner,summary',
+      fields: ['owners', 'summary'],
       includeEmptyTestSuites: false,
       limit: 15,
       offset: 0,
@@ -170,7 +170,7 @@ describe('TestSuites component', () => {
     render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
-      fields: 'owner,summary',
+      fields: ['owners', 'summary'],
       includeEmptyTestSuites: false,
       limit: 15,
       offset: 0,
@@ -215,7 +215,7 @@ describe('TestSuites component', () => {
       await screen.findByTestId('test-suite-container')
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
-      fields: 'owner,summary',
+      fields: ['owners', 'summary'],
       includeEmptyTestSuites: true,
       limit: 15,
       offset: 0,

@@ -494,7 +494,7 @@ const getMlModelOverview = (mlModelDetails: Mlmodel) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value: <OwnerLabel pills hasPermission={false} owners={owners} />,
+      value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
@@ -729,7 +729,7 @@ const getStoredProcedureOverview = (
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value: <OwnerLabel pills hasPermission={false} owners={owners} />,
+      value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.lineage],
     },
     {
@@ -847,7 +847,7 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value: <OwnerLabel pills hasPermission={false} owners={owners} />,
+      value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
 
@@ -896,7 +896,7 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   const overview = [
     {
       name: i18next.t('label.owner'),
-      value: <OwnerLabel pills hasPermission={false} owners={owners} />,
+      value: <OwnerLabel hasPermission={false} owners={owners} />,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
     },
     {

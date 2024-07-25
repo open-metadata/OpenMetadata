@@ -21,7 +21,7 @@ export interface TopicVersionProp {
   version: string;
   currentVersionData: Topic;
   isVersionLoading: boolean;
-  owner: Topic['owner'];
+  owners: Topic['owners'];
   domain: Topic['domain'];
   dataProducts: Topic['dataProducts'];
   tier: TagLabel;

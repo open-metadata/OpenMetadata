@@ -263,8 +263,17 @@ describe('Container Page Component', () => {
     expect(getContainerByName).toHaveBeenCalledWith(
       CONTAINER_DATA.fullyQualifiedName,
       {
-        fields:
-          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        fields: [
+          'parent',
+          'dataModel',
+          'owners',
+          'tags',
+          'followers',
+          'extension',
+          'domain',
+          'dataProducts',
+          'votes',
+        ],
         include: Include.All,
       }
     );

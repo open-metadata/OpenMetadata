@@ -105,11 +105,13 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     return data;
   }, [table, fqn, isColumnFqn]);
 
-  const owner = useMemo(
-    () => ({
-      id: currentUser?.id ?? '',
-      type: OwnerType.USER,
-    }),
+  const owners = useMemo(
+    () => [
+      {
+        id: currentUser?.id ?? '',
+        type: OwnerType.USER,
+      },
+    ],
     [currentUser]
   );
 
@@ -128,7 +130,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
     const testSuite = {
       name: `${table.fullyQualifiedName}.testSuite`,
       executableEntityReference: table.fullyQualifiedName,
-      owner,
+      owners,
     };
     const response = await createExecutableTestSuite(testSuite);
     setTestSuiteData(response);
@@ -161,7 +163,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
 
       const testCasePayload: CreateTestCase = {
         ...data,
-        owner,
+        owners,
         testSuite: testSuite?.fullyQualifiedName ?? '',
       };
 

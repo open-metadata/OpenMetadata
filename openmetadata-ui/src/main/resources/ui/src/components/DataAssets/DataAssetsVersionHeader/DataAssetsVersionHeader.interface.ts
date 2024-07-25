@@ -26,7 +26,7 @@ export interface DataAssetsVersionHeaderProps {
   displayName: string;
   serviceName?: string;
   currentVersionData: VersionData | ServicesType | Database | DatabaseSchema;
-  ownerDisplayName: React.ReactNode;
+  ownerDisplayName: React.ReactNode[];
   domainDisplayName?: React.ReactNode;
   tierDisplayName: React.ReactNode;
   ownerRef?: EntityReference[];

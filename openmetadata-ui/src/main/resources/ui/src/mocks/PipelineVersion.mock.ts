@@ -115,7 +115,7 @@ export const pipelineVersionMockProps: PipelineVersionProp = {
   version: '0.3',
   currentVersionData: mockPipelineData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

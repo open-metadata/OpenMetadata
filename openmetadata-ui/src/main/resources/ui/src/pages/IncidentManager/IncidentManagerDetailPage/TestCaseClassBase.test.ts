@@ -72,7 +72,7 @@ describe('TestCaseClassBase', () => {
       'testSuite',
       'testCaseResult',
       'testDefinition',
-      'owner',
+      'owners',
       'incidentId',
     ];
 

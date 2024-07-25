@@ -69,7 +69,7 @@ describe('AddDataQualityTestPage', () => {
     render(<AddDataQualityTestPage />);
 
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('test-fqn', {
-      fields: 'testSuite,customMetrics,columns',
+      fields: ['testSuite', 'customMetrics', 'columns'],
     });
   });
 

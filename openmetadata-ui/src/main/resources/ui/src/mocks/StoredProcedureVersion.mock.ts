@@ -91,7 +91,7 @@ export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {
   version: '0.3',
   currentVersionData: mockData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

@@ -12,19 +12,14 @@
  */
 import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
 import { t } from 'i18next';
-import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
-import React, { ReactNode, useCallback, useMemo } from 'react';
+import { cloneDeep, includes, isEqual } from 'lodash';
+import React, { useMemo } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  DE_ACTIVE_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
-import { EntityField } from '../../../constants/Feeds.constants';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
-import { EntityChangeOperations } from '../../../enums/VersionPage.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary, TagSource } from '../../../generated/entity/data/glossary';
 import {
   GlossaryTerm,
@@ -32,22 +27,16 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
-  getChangedEntityNewValue,
-  getChangedEntityOldValue,
-  getDiffByFieldName,
-  getDiffValue,
   getEntityVersionTags,
+  getOwnerVersionLabel,
 } from '../../../utils/EntityVersionUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntitiesKeys } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TagButton from '../../common/TagButton/TagButton.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
-import GlossaryReviewers from './GlossaryReviewers';
 
 type Props = {
   isVersionView?: boolean;
@@ -140,75 +129,6 @@ const GlossaryDetailsRightPanel = ({
     refreshGlossaryTerms?.();
   };
 
-  const getOwner = useCallback(
-    (owners: EntityReference[], ownerDisplayNames: ReactNode[]) => {
-      if (!isEmpty(owners)) {
-        return (
-          <OwnerLabel ownerDisplayName={ownerDisplayNames} owners={owners} />
-        );
-      }
-      if (!(permissions.EditOwners || permissions.EditAll)) {
-        return <div>{NO_DATA_PLACEHOLDER}</div>;
-      }
-
-      return null;
-    },
-    [permissions]
-  );
-
-  const getUserNames = useCallback(
-    (glossaryData: Glossary | GlossaryTerm) => {
-      if (isVersionView) {
-        const ownerDiff = getDiffByFieldName(
-          EntityField.OWNER,
-          glossaryData.changeDescription as ChangeDescription
-        );
-
-        const oldOwners: EntityReference[] = JSON.parse(
-          getChangedEntityOldValue(ownerDiff) ?? '[]'
-        );
-        const newOwners: EntityReference[] = JSON.parse(
-          getChangedEntityNewValue(ownerDiff) ?? '[]'
-        );
-
-        const shouldShowDiff =
-          !isEmpty(ownerDiff.added) ||
-          !isEmpty(ownerDiff.deleted) ||
-          !isEmpty(ownerDiff.updated);
-
-        if (shouldShowDiff) {
-          const ownersWithOperations = [
-            { owners: newOwners, operation: EntityChangeOperations.ADDED },
-            { owners: oldOwners, operation: EntityChangeOperations.DELETED },
-          ];
-
-          const owners = ownersWithOperations.flatMap(({ owners }) => owners);
-          const ownerDisplayNames = ownersWithOperations.flatMap(
-            ({ owners, operation }) =>
-              owners.map((owner) =>
-                getDiffValue(
-                  operation === EntityChangeOperations.ADDED
-                    ? ''
-                    : getEntityName(owner),
-                  operation === EntityChangeOperations.ADDED
-                    ? getEntityName(owner)
-                    : ''
-                )
-              )
-          );
-
-          return getOwner(owners, ownerDisplayNames);
-        }
-      }
-
-      const owners = glossaryData.owners || [];
-      const ownerDisplayNames = owners.map((owner) => getEntityName(owner));
-
-      return getOwner(owners, ownerDisplayNames);
-    },
-    [isVersionView, getOwner]
-  );
-
   const tags = useMemo(
     () =>
       isVersionView
@@ -263,7 +183,12 @@ const GlossaryDetailsRightPanel = ({
             )}
         </div>
         <Space className="m-r-xss" size={4}>
-          {getUserNames(selectedData)}
+          {getOwnerVersionLabel(
+            selectedData,
+            isVersionView ?? false,
+            TabSpecificField.OWNERS,
+            permissions.EditOwners || permissions.EditAll
+          )}
         </Space>
         {selectedData.owners?.length === 0 &&
           (permissions.EditOwners || permissions.EditAll) && (
@@ -316,11 +241,15 @@ const GlossaryDetailsRightPanel = ({
           )}
         </div>
         <div>
-          <GlossaryReviewers
-            editPermission={hasEditReviewerAccess}
-            glossaryData={selectedData}
-            isVersionView={isVersionView}
-          />
+          <div>
+            {getOwnerVersionLabel(
+              selectedData,
+              isVersionView ?? false,
+              TabSpecificField.REVIEWERS,
+              hasEditReviewerAccess
+            )}
+          </div>
+
           {hasEditReviewerAccess && !hasReviewers && (
             <UserTeamSelectableList
               previewSelected

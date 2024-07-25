@@ -242,8 +242,11 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     });
   };
 
-  const handleOwnerSelect = (owner?: EntityReference) => {
-    handleSearchParam(owner ? JSON.stringify(owner) : '', 'owner');
+  const handleOwnerSelect = (owners: EntityReference[] = []) => {
+    handleSearchParam(
+      owners?.length > 0 ? JSON.stringify(owners?.[0]) : '',
+      'owner'
+    );
   };
 
   useEffect(() => {
@@ -289,9 +292,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   <UserTeamSelectableList
                     hasPermission
                     owner={selectedOwner}
-                    onUpdate={(updatedUser) =>
-                      handleOwnerSelect(updatedUser as EntityReference)
-                    }>
+                    onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
                     <Select
                       data-testid="owner-select-filter"
                       open={false}

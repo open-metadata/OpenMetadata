@@ -110,7 +110,7 @@ export const tableVersionMockProps: TableVersionProp = {
   version: '0.3',
   currentVersionData: mockTableData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

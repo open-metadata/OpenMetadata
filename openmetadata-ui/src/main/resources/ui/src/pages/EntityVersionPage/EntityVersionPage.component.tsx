@@ -427,9 +427,9 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityType, version, viewVersionPermission]
   );
 
-  const { owner, domain, tier, slashedEntityName } = useMemo(() => {
+  const { owners, domain, tier, slashedEntityName } = useMemo(() => {
     return {
-      owner: currentVersionData.owners,
+      owners: currentVersionData.owners,
       tier: getTierTags(currentVersionData.tags ?? []),
       domain: currentVersionData.domain,
       slashedEntityName: getEntityBreadcrumbs(currentVersionData, entityType),
@@ -458,7 +458,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -477,7 +477,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTopicName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -497,7 +497,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedDashboardName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -517,7 +517,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedPipelineName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -537,7 +537,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedMlModelName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -557,7 +557,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -576,7 +576,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -595,7 +595,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedDataModelName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -615,7 +615,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
