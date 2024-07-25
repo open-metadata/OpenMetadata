@@ -15,17 +15,27 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DOCUMENT;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.email.EmailTemplate;
+import org.openmetadata.schema.email.TemplateValidationResponse;
+import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.docstore.DocStoreResource;
+import org.openmetadata.service.util.DefaultTemplateProvider;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.TemplateProvider;
 
 @Slf4j
 public class DocumentRepository extends EntityRepository<Document> {
   static final String DOCUMENT_UPDATE_FIELDS = "data";
   static final String DOCUMENT_PATCH_FIELDS = "data";
+  private final CollectionDAO.DocStoreDAO dao;
+  private final TemplateProvider templateProvider;
 
   public DocumentRepository() {
     super(
@@ -36,6 +46,27 @@ public class DocumentRepository extends EntityRepository<Document> {
         DOCUMENT_UPDATE_FIELDS,
         DOCUMENT_PATCH_FIELDS);
     supportsSearch = false;
+    this.dao = Entity.getCollectionDAO().docStoreDAO();
+    this.templateProvider = new DefaultTemplateProvider();
+  }
+
+  public List<Document> fetchAllEmailTemplates() {
+    List<String> jsons = dao.fetchAllEmailTemplates();
+    return jsons.stream().map(json -> JsonUtils.readValue(json, Document.class)).toList();
+  }
+
+  public EmailTemplate fetchEmailTemplateByName(String name) {
+    String json = dao.fetchEmailTemplateByName(name);
+    if (json == null) {
+      throw new EntityNotFoundException("Email template not found with name : " + name);
+    }
+    Document document = JsonUtils.readValue(json, Document.class);
+    return JsonUtils.convertValue(document.getData(), EmailTemplate.class);
+  }
+
+  @Transaction
+  public void deleteEmailTemplates() {
+    dao.deleteEmailTemplates();
   }
 
   @Override
@@ -68,6 +99,10 @@ public class DocumentRepository extends EntityRepository<Document> {
     // validations are not implemented for Document
   }
 
+  public TemplateValidationResponse validateEmailTemplate(String name, String content) {
+    return templateProvider.validateEmailTemplate(name, content);
+  }
+
   @Override
   public DocumentUpdater getUpdater(Document original, Document updated, Operation operation) {
     return new DocumentUpdater(original, updated, operation);
@@ -82,7 +117,19 @@ public class DocumentRepository extends EntityRepository<Document> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
+      updateEmailTemplatePlaceholders(original, updated);
       recordChange("data", original.getData(), updated.getData(), true);
+    }
+  }
+
+  public void updateEmailTemplatePlaceholders(Document original, Document updated) {
+    if (updated.getEntityType().equals(DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      EmailTemplate originalTemplate =
+          JsonUtils.convertValue(original.getData(), EmailTemplate.class);
+      EmailTemplate updatedTemplate =
+          JsonUtils.convertValue(updated.getData(), EmailTemplate.class);
+      updatedTemplate.setPlaceHolders(originalTemplate.getPlaceHolders());
+      updated.setData(JsonUtils.convertValue(updatedTemplate, Data.class));
     }
   }
 }

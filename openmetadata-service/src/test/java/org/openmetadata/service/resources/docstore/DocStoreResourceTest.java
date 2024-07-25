@@ -1,10 +1,14 @@
 package org.openmetadata.service.resources.docstore;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.Entity.DOCUMENT;
 import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
+import static org.openmetadata.service.util.EmailUtil.EMAIL_VERIFICATION_TEMPLATE;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
@@ -12,16 +16,26 @@ import static org.openmetadata.service.util.TestUtils.TEST_USER_NAME;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.put;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import javax.ws.rs.client.Entity;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.openmetadata.schema.email.EmailTemplate;
+import org.openmetadata.schema.email.EmailTemplatePlaceholder;
+import org.openmetadata.schema.email.TemplateValidationResponse;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -39,6 +53,9 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDocument> {
+
+  private static final String EMAIL_TEMPLATE = "EmailTemplate";
+
   public DocStoreResourceTest() {
     super(DOCUMENT, Document.class, DocStoreResource.DocumentList.class, "docStore", "");
     supportsSearchIndex = false;
@@ -52,6 +69,106 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
 
     createDoc = createRequest(test, 11).withName("myData");
     MY_DATA_KNOWLEDGE_PANEL = createEntity(createDoc, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void put_document_validate_emailTemplate(TestInfo test) throws HttpResponseException {
+    Document emailVerificationStoreTemplate =
+        getEntityByName(EMAIL_VERIFICATION_TEMPLATE, ADMIN_AUTH_HEADERS);
+    Set<String> emailVerificationStoreTemplatePlaceHolders =
+        JsonUtils.convertValue(emailVerificationStoreTemplate.getData(), EmailTemplate.class)
+            .getPlaceHolders()
+            .stream()
+            .sorted(Comparator.comparing(EmailTemplatePlaceholder::getName))
+            .map(EmailTemplatePlaceholder::getName)
+            .collect(Collectors.toSet());
+    EmailTemplate emailTemplate = new EmailTemplate();
+
+    emailTemplate.setTemplate("initial template ${placeholder1} ${placeholder2} ${placeholder3}");
+
+    Set<EmailTemplatePlaceholder> placeholderList =
+        Set.of(
+            new EmailTemplatePlaceholder()
+                .withName("placeholder1")
+                .withDescription("desc_placeholder1"),
+            new EmailTemplatePlaceholder()
+                .withName("placeholder2")
+                .withDescription("desc_placeholder2"),
+            new EmailTemplatePlaceholder()
+                .withName("placeholder3")
+                .withDescription("desc_placeholder3"));
+
+    emailTemplate.setPlaceHolders(placeholderList);
+
+    // TODO: Instead of hardcoding the template, we can use the templateProvider to get the template
+    CreateDocument create =
+        createRequest(test, 1)
+            .withName(EMAIL_VERIFICATION_TEMPLATE)
+            .withFullyQualifiedName(EMAIL_VERIFICATION_TEMPLATE)
+            .withEntityType(EMAIL_TEMPLATE)
+            .withData(JsonUtils.convertValue(emailTemplate, Data.class));
+
+    TemplateValidationResponse validateResponse =
+        put(
+            getResource(String.format("docStore/validateTemplate/%s", EMAIL_VERIFICATION_TEMPLATE)),
+            emailTemplate,
+            TemplateValidationResponse.class,
+            Response.Status.OK,
+            ADMIN_AUTH_HEADERS);
+    assertFalse(validateResponse.getIsValid());
+    assertEquals(
+        validateResponse.getMissingPlaceholder().size(),
+        emailVerificationStoreTemplatePlaceHolders.size());
+    assertEquals(validateResponse.getAdditionalPlaceholder().size(), placeholderList.size());
+
+    assertThrows(
+        HttpResponseException.class,
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        validateResponse.getMessage());
+
+    String[] missingPlaceholdersArr =
+        validateResponse.getMissingPlaceholder().toArray(new String[0]);
+    // removed one placeholder, results in 400 with 1 missingParameters
+    emailTemplate.setTemplate(
+        String.format("test template ${%s} ${placeholder2}", missingPlaceholdersArr[0]));
+    create.withData(JsonUtils.convertValue(emailTemplate, Data.class));
+
+    TemplateValidationResponse validateResponse2 =
+        put(
+            getResource(String.format("docStore/validateTemplate/%s", EMAIL_VERIFICATION_TEMPLATE)),
+            emailTemplate,
+            TemplateValidationResponse.class,
+            Response.Status.OK,
+            ADMIN_AUTH_HEADERS);
+    assertFalse(validateResponse2.getIsValid());
+    assertEquals(
+        validateResponse2.getMissingPlaceholder().size(),
+        emailVerificationStoreTemplatePlaceHolders.size() - 1);
+    assertEquals(validateResponse2.getAdditionalPlaceholder().size(), 1);
+
+    Response errorResponse =
+        SecurityUtil.addHeaders(getResource("docStore"), ADMIN_AUTH_HEADERS)
+            .method("PUT", Entity.entity(create, MediaType.APPLICATION_JSON));
+
+    assertEquals(errorResponse.getStatus(), BAD_REQUEST.getStatusCode());
+
+    // Push Valid Template
+    String newUpdatedTemplate =
+        String.format(
+            "test template ${%s} ${%s}", missingPlaceholdersArr[0], missingPlaceholdersArr[1]);
+    emailTemplate.setTemplate(newUpdatedTemplate);
+    create.withData(JsonUtils.convertValue(emailTemplate, Data.class));
+
+    Response validResp =
+        SecurityUtil.addHeaders(getResource("docStore"), ADMIN_AUTH_HEADERS)
+            .method("PUT", Entity.entity(create, MediaType.APPLICATION_JSON));
+
+    assertEquals(validResp.getStatus(), Response.Status.OK.getStatusCode());
+
+    Document updatedTemplateInDb = getEntityByName(EMAIL_VERIFICATION_TEMPLATE, ADMIN_AUTH_HEADERS);
+    EmailTemplate updatedEmailTemplate =
+        JsonUtils.convertValue(updatedTemplateInDb.getData(), EmailTemplate.class);
+    assertEquals(updatedEmailTemplate.getTemplate(), newUpdatedTemplate);
   }
 
   @Test
