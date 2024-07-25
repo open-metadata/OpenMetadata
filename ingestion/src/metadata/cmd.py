@@ -24,7 +24,6 @@ from metadata.__version__ import get_metadata_version
 from metadata.cli.app import run_app
 from metadata.cli.dataquality import run_test
 from metadata.cli.ingest import run_ingest
-from metadata.cli.insight import run_insight
 from metadata.cli.lineage import run_lineage
 from metadata.cli.profile import run_profiler
 from metadata.cli.usage import run_usage
@@ -39,7 +38,6 @@ class MetadataCommands(Enum):
     PROFILE = "profile"
     TEST = "test"
     WEBHOOK = "webhook"
-    INSIGHT = "insight"
     LINEAGE = "lineage"
     APP = "app"
 
@@ -48,7 +46,6 @@ RUN_PATH_METHODS = {
     MetadataCommands.INGEST.value: run_ingest,
     MetadataCommands.USAGE.value: run_usage,
     MetadataCommands.LINEAGE.value: run_lineage,
-    MetadataCommands.INSIGHT.value: run_insight,
     MetadataCommands.PROFILE.value: run_profiler,
     MetadataCommands.TEST.value: run_test,
     MetadataCommands.APP.value: run_app,
@@ -131,11 +128,6 @@ def get_parser(args: Optional[List[str]] = None):
         sub_parser.add_parser(
             MetadataCommands.WEBHOOK.value,
             help="Simple Webserver to test webhook metadata events",
-        )
-    )
-    create_common_config_parser_args(
-        sub_parser.add_parser(
-            MetadataCommands.INSIGHT.value, help="Data Insights Workflow"
         )
     )
 
