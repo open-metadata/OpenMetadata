@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.AppType;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
+import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -91,7 +92,7 @@ public class AbstractNativeApplication implements NativeApplication {
   @Override
   public void triggerOnDemand() {
     // Validate Native Application
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+    if (app.getScheduleType().equals(ScheduleType.ScheduledOrManual)) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
       // Trigger the application
