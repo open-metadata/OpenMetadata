@@ -163,6 +163,7 @@ const SignUp = () => {
           </Form.Item>
 
           <Form.Item
+            hidden
             data-testid="username-label"
             label={t('label.username')}
             name="name"

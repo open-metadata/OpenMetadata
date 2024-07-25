@@ -88,6 +88,7 @@ export const addOwner = (
     .click({ waitForAnimations: false });
 
   verifyResponseStatusCode('@getUsers', 200);
+  cy.get('[data-testid="loader"]').should('not.exist');
   interceptURL(
     'GET',
     `api/v1/search/query?q=*&index=user_search_index*`,
@@ -113,12 +114,11 @@ export const addOwner = (
 };
 
 export const updateOwner = (ownerName: string, dataTestId?: string) => {
-  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
   cy.get('[data-testid="edit-owner"]').click();
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.get('.ant-tabs [id*=tab-users]').click();
-  
-  verifyResponseStatusCode('@getUsers', 200);
+
+  cy.get('[data-testid="loader"]').should('not.exist');
   interceptURL(
     'GET',
     `api/v1/search/query?q=*${encodeURI(ownerName)}*&index=user_search_index`,

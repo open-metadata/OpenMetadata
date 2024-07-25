@@ -204,4 +204,13 @@ describe('SignUp page', () => {
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(0);
   });
+
+  it('should have username as hidden field', async () => {
+    render(<SignUp />);
+
+    const usernameInput = screen.getByTestId('username-label');
+    usernameInput.parentElement?.parentElement;
+
+    expect(usernameInput.parentElement).toHaveClass('ant-form-item-hidden');
+  });
 });
