@@ -31,6 +31,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
+import { SystemChartType } from '../../rest/DataInsightAPI';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import './data-insight.less';
@@ -73,10 +74,14 @@ const DataInsightPage = () => {
     [permissions]
   );
 
-  const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
+  const [selectedChart, setSelectedChart] = useState<
+    SystemChartType | DataInsightChartType
+  >();
 
-  const handleScrollToChart = (chartType: DataInsightChartType) => {
-    if (ENTITIES_CHARTS.includes(chartType)) {
+  const handleScrollToChart = (
+    chartType: SystemChartType | DataInsightChartType
+  ) => {
+    if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
       history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
     } else {
       history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));

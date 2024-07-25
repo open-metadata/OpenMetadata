@@ -48,7 +48,7 @@ import './data-insight-detail.less';
 
 interface Props {
   chartFilter: ChartFilter;
-  onScrollToChart: (chartType: DataInsightChartType) => void;
+  onScrollToChart: (chartType: SystemChartType | DataInsightChartType) => void;
 }
 
 const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {

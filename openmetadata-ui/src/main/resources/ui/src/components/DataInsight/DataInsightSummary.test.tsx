@@ -37,6 +37,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('../../rest/DataInsightAPI', () => ({
+  ...jest.requireActual('../../rest/DataInsightAPI'),
   getAggregateChartData: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 

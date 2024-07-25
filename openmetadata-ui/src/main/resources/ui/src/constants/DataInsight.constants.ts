@@ -63,10 +63,10 @@ export const INITIAL_CHART_FILTER: ChartFilter = {
 };
 
 export const ENTITIES_CHARTS = [
-  DataInsightChartType.TotalEntitiesByType,
-  DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
-  DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
-  DataInsightChartType.TotalEntitiesByTier,
+  SystemChartType.TotalDataAssets,
+  SystemChartType.PercentageOfDataAssetWithDescription,
+  SystemChartType.PercentageOfDataAssetWithOwner,
+  SystemChartType.TotalDataAssetsByTier,
 ];
 
 export const WEB_CHARTS = [

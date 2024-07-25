@@ -254,7 +254,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
         data: kpiList,
       },
       teamFilter: {
-        options: uniqBy(teamsOptions.options, 'id'),
+        options: uniqBy(teamsOptions.options, 'key'),
         selectedKeys: teamsOptions.selectedOptions,
         onChange: handleTeamChange,
         onGetInitialOptions: fetchDefaultTeamOptions,
