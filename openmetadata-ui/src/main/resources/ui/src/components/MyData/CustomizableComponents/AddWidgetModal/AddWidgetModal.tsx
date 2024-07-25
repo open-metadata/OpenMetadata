@@ -83,8 +83,10 @@ function AddWidgetModal({
           label: (
             <Space data-testid={`${widget.name}-widget-tab-label`}>
               <span>{widget.name}</span>
-              {addedWidgetsList.some((w) =>
-                w.startsWith(widget.fullyQualifiedName)
+              {addedWidgetsList.some(
+                (w) =>
+                  w.startsWith(widget.fullyQualifiedName) &&
+                  !w.includes('EmptyWidgetPlaceholder')
               ) && (
                 <CheckOutlined
                   className="m-l-xs"
