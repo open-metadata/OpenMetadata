@@ -39,7 +39,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
         showSuccessToast(
           ` ${t('message.kill-successfully')}  ${pipelineName}.`
         );
-        onIngestionWorkflowsUpdate();
+        onIngestionWorkflowsUpdate?.();
       }
     } catch (error) {
       // catch block error is unknown type so we have to cast it to respective type

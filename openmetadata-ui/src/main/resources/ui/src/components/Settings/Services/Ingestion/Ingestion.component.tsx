@@ -17,8 +17,8 @@ import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DISABLED } from '../../../../constants/constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -39,9 +39,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   ingestionPipelineList,
   ingestionPagingInfo,
   onIngestionWorkflowsUpdate,
-  permissions,
   pipelineType,
-  displayAddIngestionButton = true,
   isLoading,
   handleIngestionListUpdate,
   searchText,
@@ -50,8 +48,14 @@ const Ingestion: React.FC<IngestionProps> = ({
   airflowInformation,
 }: IngestionProps) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
   const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
     useState<string>();
+
+  const ingestionPermissions = useMemo(
+    () => permissions['ingestionPipeline'],
+    [permissions]
+  );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
     setPipelineIdToFetchStatus(pipelineId);
@@ -152,9 +156,8 @@ const Ingestion: React.FC<IngestionProps> = ({
   );
 
   const showAddIngestionButton = useMemo(
-    () =>
-      permissions.EditAll && displayAddIngestionButton && platform !== DISABLED,
-    [permissions, displayAddIngestionButton, platform]
+    () => ingestionPermissions.Create && platform !== DISABLED,
+    [ingestionPermissions, platform]
   );
 
   const renderAddIngestionButton = useMemo(() => {
@@ -164,16 +167,13 @@ const Ingestion: React.FC<IngestionProps> = ({
 
     if (showAddIngestionButton) {
       return (
-        <LimitWrapper resource="ingestionPipeline">
-          <AddIngestionButton
-            ingestionList={ingestionPipelineList}
-            permissions={permissions}
-            pipelineType={pipelineType}
-            serviceCategory={serviceCategory}
-            serviceDetails={serviceDetails}
-            serviceName={serviceName}
-          />
-        </LimitWrapper>
+        <AddIngestionButton
+          ingestionList={ingestionPipelineList}
+          pipelineType={pipelineType}
+          serviceCategory={serviceCategory}
+          serviceDetails={serviceDetails}
+          serviceName={serviceName}
+        />
       );
     }
 
@@ -182,56 +182,51 @@ const Ingestion: React.FC<IngestionProps> = ({
     isFetchingStatus,
     showAddIngestionButton,
     ingestionPipelineList,
-    permissions,
     pipelineType,
     serviceCategory,
     serviceDetails,
     serviceName,
   ]);
 
-  const getIngestionTab = () => {
-    return (
-      <Row className="mt-4" data-testid="ingestion-details-container">
-        <Col className="d-flex justify-between" span={24}>
-          <div className="w-max-400 w-full">
-            <Searchbar
-              placeholder={`${t('message.search-for-ingestion')}...`}
-              searchValue={searchText}
-              typingInterval={500}
-              onSearch={handleSearchChange}
-            />
-          </div>
-          <div className="relative">{renderAddIngestionButton}</div>
-        </Col>
-        <Col span={24}>
-          <IngestionListTable
-            airflowInformation={airflowInformation}
-            deployIngestion={deployIngestion}
-            handleEnableDisableIngestion={handleEnableDisableIngestion}
-            handleIngestionListUpdate={handleIngestionListUpdate}
-            handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
-            ingestionData={ingestionPipelineList}
-            ingestionPagingInfo={ingestionPagingInfo}
-            isLoading={isLoading}
-            isNumberBasedPaging={!isEmpty(searchText)}
-            pipelineIdToFetchStatus={pipelineIdToFetchStatus}
-            pipelineType={pipelineType}
-            serviceCategory={serviceCategory}
-            serviceName={serviceName}
-            triggerIngestion={triggerIngestion}
-            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-            onPageChange={onPageChange}
-          />
-        </Col>
-      </Row>
-    );
-  };
-
   if (!isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;
   }
 
-  return <div data-testid="ingestion-container">{getIngestionTab()}</div>;
+  return (
+    <Row className="mt-4" data-testid="ingestion-details-container">
+      <Col className="d-flex justify-between" span={24}>
+        <div className="w-max-400 w-full">
+          <Searchbar
+            placeholder={`${t('message.search-for-ingestion')}...`}
+            searchValue={searchText}
+            typingInterval={500}
+            onSearch={handleSearchChange}
+          />
+        </div>
+        <div className="relative">{renderAddIngestionButton}</div>
+      </Col>
+      <Col span={24}>
+        <IngestionListTable
+          airflowInformation={airflowInformation}
+          deployIngestion={deployIngestion}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+          handleIngestionListUpdate={handleIngestionListUpdate}
+          handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
+          ingestionData={ingestionPipelineList}
+          ingestionPagingInfo={ingestionPagingInfo}
+          isLoading={isLoading}
+          isNumberBasedPaging={!isEmpty(searchText)}
+          pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+          pipelineType={pipelineType}
+          serviceCategory={serviceCategory}
+          serviceName={serviceName}
+          triggerIngestion={triggerIngestion}
+          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+          onPageChange={onPageChange}
+        />
+      </Col>
+    </Row>
+  );
 };
 
 export default Ingestion;

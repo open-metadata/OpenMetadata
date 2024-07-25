@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { TableProps } from 'antd';
+import { ColumnsType } from 'antd/lib/table';
 import { ReactNode } from 'react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -21,26 +23,29 @@ import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 
 export interface IngestionListTableProps {
+  enableActions?: boolean;
   isNumberBasedPaging?: boolean;
   ingestionPagingInfo?: UsePagingInterface;
   ingestionData: Array<IngestionPipeline>;
   isLoading?: boolean;
   pipelineIdToFetchStatus?: string;
   pipelineType?: PipelineType;
-  airflowInformation: UseAirflowStatusProps;
-  serviceCategory: ServiceCategory;
+  airflowInformation?: UseAirflowStatusProps;
+  serviceCategory?: ServiceCategory;
   emptyPlaceholder?: ReactNode;
-  serviceName: string;
-  deployIngestion: (id: string, displayName: string) => Promise<void>;
-  handleIngestionListUpdate: (
+  serviceName?: string;
+  deployIngestion?: (id: string, displayName: string) => Promise<void>;
+  handleIngestionListUpdate?: (
     ingestionList: React.SetStateAction<IngestionPipeline[]>
   ) => void;
-  handleEnableDisableIngestion: (id: string) => Promise<void>;
-  onIngestionWorkflowsUpdate: (
+  handleEnableDisableIngestion?: (id: string) => Promise<void>;
+  onIngestionWorkflowsUpdate?: (
     paging?: Omit<Paging, 'total'>,
     limit?: number
   ) => void;
-  triggerIngestion: (id: string, displayName: string) => Promise<void>;
-  handlePipelineIdToFetchStatus: (pipelineId?: string) => void;
+  triggerIngestion?: (id: string, displayName: string) => Promise<void>;
+  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
   onPageChange?: ({ cursorType, currentPage }: PagingHandlerParams) => void;
+  extraTableProps?: TableProps<IngestionPipeline>;
+  pipelineTypeColumnObj?: ColumnsType<IngestionPipeline>;
 }

@@ -28,6 +28,7 @@ import {
   ResourceEntity,
 } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { deleteIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import { getEntityName } from '../../../../../utils/EntityUtils';
@@ -69,6 +70,9 @@ function IngestionListTable({
   emptyPlaceholder,
   ingestionPagingInfo,
   isNumberBasedPaging = false,
+  enableActions = true,
+  extraTableProps,
+  pipelineTypeColumnObj,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -95,7 +99,7 @@ function IngestionListTable({
     async (id: string, displayName: string) => {
       try {
         await deleteIngestionPipelineById(id);
-        handleIngestionListUpdate((pipelines) =>
+        handleIngestionListUpdate?.((pipelines) =>
           pipelines.filter((ing) => ing.id !== id)
         );
         // Update the paging total count to reflect on tab count
@@ -164,7 +168,7 @@ function IngestionListTable({
   }, [ingestionData]);
 
   const { isFetchingStatus, platform } = useMemo(
-    () => airflowInformation,
+    () => airflowInformation ?? ({} as UseAirflowStatusProps),
     [airflowInformation]
   );
 
@@ -230,13 +234,15 @@ function IngestionListTable({
         key: 'name',
         render: renderNameField,
       },
-      {
-        title: t('label.type'),
-        dataIndex: 'pipelineType',
-        key: 'pipelineType',
-        width: 120,
-        render: renderTypeField,
-      },
+      ...(pipelineTypeColumnObj ?? [
+        {
+          title: t('label.type'),
+          dataIndex: 'pipelineType',
+          key: 'pipelineType',
+          width: 120,
+          render: renderTypeField,
+        },
+      ]),
       {
         title: t('label.schedule'),
         dataIndex: 'schedule',
@@ -264,15 +270,25 @@ function IngestionListTable({
         width: 100,
         render: renderStatusField,
       },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        width: 180,
-        render: renderActionsField,
-      },
+      ...(enableActions
+        ? [
+            {
+              title: t('label.action-plural'),
+              dataIndex: 'actions',
+              key: 'actions',
+              width: 180,
+              render: renderActionsField,
+            },
+          ]
+        : []),
     ],
-    [pipelineIdToFetchStatus, renderActionsField, handlePipelineIdToFetchStatus]
+    [
+      pipelineIdToFetchStatus,
+      renderActionsField,
+      enableActions,
+      handlePipelineIdToFetchStatus,
+      pipelineTypeColumnObj,
+    ]
   );
 
   return (
@@ -296,13 +312,14 @@ function IngestionListTable({
                 ),
             }}
             pagination={false}
-            rowKey="name"
+            rowKey="fullyQualifiedName"
             size="small"
+            {...extraTableProps}
           />
         </Col>
 
         {!isUndefined(ingestionPagingInfo) &&
-          ingestionPagingInfo?.showPagination &&
+          ingestionPagingInfo.showPagination &&
           onPageChange && (
             <Col span={24}>
               <NextPrevious

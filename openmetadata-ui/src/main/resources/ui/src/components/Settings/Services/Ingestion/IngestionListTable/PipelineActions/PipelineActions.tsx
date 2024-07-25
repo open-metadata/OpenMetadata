@@ -52,21 +52,24 @@ function PipelineActions({
     [record]
   );
 
-  const { editStatusPermission } = useMemo(() => {
-    const pipelinePermission = ingestionPipelinePermissions?.[pipelineName];
+  const { editPermission, deletePermission, editStatusPermission } =
+    useMemo(() => {
+      const pipelinePermission = ingestionPipelinePermissions?.[pipelineName];
 
-    return {
-      editStatusPermission:
-        pipelinePermission?.[Operation.EditAll] ||
-        pipelinePermission?.[Operation.EditIngestionPipelineStatus],
-    };
-  }, [ingestionPipelinePermissions, pipelineName]);
+      return {
+        editPermission: pipelinePermission?.[Operation.EditAll],
+        deletePermission: pipelinePermission?.[Operation.Delete],
+        editStatusPermission:
+          pipelinePermission?.[Operation.EditAll] ||
+          pipelinePermission?.[Operation.EditIngestionPipelineStatus],
+      };
+    }, [ingestionPipelinePermissions, pipelineName]);
 
   const onPauseUnpauseClick = useCallback(
     async (id: string) => {
       try {
         setCurrPauseId({ id, state: 'waiting' });
-        await handleEnableDisableIngestion(id);
+        await handleEnableDisableIngestion?.(id);
       } finally {
         setCurrPauseId({ id: '', state: '' });
       }
@@ -80,13 +83,63 @@ function PipelineActions({
         getLogsViewerPath(
           record.pipelineType === PipelineType.TestSuite
             ? EntityType.TEST_SUITE
-            : serviceCategory,
+            : serviceCategory ?? '',
           record.service?.name ?? '',
           record?.fullyQualifiedName ?? record?.name ?? ''
         )
       ),
     [record, serviceCategory]
   );
+
+  const playPauseButton = useMemo(() => {
+    if (editStatusPermission) {
+      return (
+        <Col>
+          {record.enabled ? (
+            <Tooltip
+              title={
+                record.deployed
+                  ? t('label.pause')
+                  : t('message.pipeline-not-deployed')
+              }>
+              <Button
+                data-testid="pause-button"
+                disabled={!record.deployed}
+                icon={getLoadingStatus(
+                  currPauseId,
+                  record.id,
+                  <PauseIcon height={12} width={12} />
+                )}
+                onClick={() => onPauseUnpauseClick(pipelineId)}>
+                {t('label.pause')}
+              </Button>
+            </Tooltip>
+          ) : (
+            <Tooltip
+              title={
+                record.deployed
+                  ? t('label.resume')
+                  : t('message.pipeline-not-deployed')
+              }>
+              <Button
+                data-testid="resume-button"
+                disabled={!record.deployed}
+                icon={getLoadingStatus(
+                  currPauseId,
+                  record.id,
+                  <ResumeIcon height={12} width={12} />
+                )}
+                onClick={() => onPauseUnpauseClick(pipelineId)}>
+                {t('label.resume')}
+              </Button>
+            </Tooltip>
+          )}
+        </Col>
+      );
+    }
+
+    return null;
+  }, [editStatusPermission, record, currPauseId, pipelineId]);
 
   return (
     <Row
@@ -95,47 +148,7 @@ function PipelineActions({
       gutter={[12, 12]}
       justify="space-between"
       wrap={false}>
-      <Col>
-        {record.enabled ? (
-          <Tooltip
-            title={
-              record.deployed
-                ? t('label.pause')
-                : t('message.pipeline-not-deployed')
-            }>
-            <Button
-              data-testid="pause-button"
-              disabled={!editStatusPermission || !record.deployed}
-              icon={getLoadingStatus(
-                currPauseId,
-                record.id,
-                <PauseIcon height={12} width={12} />
-              )}
-              onClick={() => onPauseUnpauseClick(pipelineId)}>
-              {t('label.pause')}
-            </Button>
-          </Tooltip>
-        ) : (
-          <Tooltip
-            title={
-              record.deployed
-                ? t('label.resume')
-                : t('message.pipeline-not-deployed')
-            }>
-            <Button
-              data-testid="resume-button"
-              disabled={!editStatusPermission}
-              icon={getLoadingStatus(
-                currPauseId,
-                record.id,
-                <ResumeIcon height={12} width={12} />
-              )}
-              onClick={() => onPauseUnpauseClick(pipelineId)}>
-              {t('label.resume')}
-            </Button>
-          </Tooltip>
-        )}
-      </Col>
+      {playPauseButton}
       <Col>
         <Row align="middle" gutter={[8, 8]} wrap={false}>
           <Col>
@@ -146,20 +159,22 @@ function PipelineActions({
               {t('label.log-plural')}
             </Button>
           </Col>
-          <Col>
-            <PipelineActionsDropdown
-              deployIngestion={deployIngestion}
-              handleDeleteSelection={handleDeleteSelection}
-              handleEditClick={handleEditClick}
-              handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-              ingestion={record}
-              ingestionPipelinePermissions={ingestionPipelinePermissions}
-              serviceCategory={serviceCategory}
-              serviceName={serviceName}
-              triggerIngestion={triggerIngestion}
-              onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-            />
-          </Col>
+          {(editPermission || deletePermission) && (
+            <Col>
+              <PipelineActionsDropdown
+                deployIngestion={deployIngestion}
+                handleDeleteSelection={handleDeleteSelection}
+                handleEditClick={handleEditClick}
+                handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+                ingestion={record}
+                ingestionPipelinePermissions={ingestionPipelinePermissions}
+                serviceCategory={serviceCategory}
+                serviceName={serviceName}
+                triggerIngestion={triggerIngestion}
+                onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+              />
+            </Col>
+          )}
         </Row>
       </Col>
     </Row>

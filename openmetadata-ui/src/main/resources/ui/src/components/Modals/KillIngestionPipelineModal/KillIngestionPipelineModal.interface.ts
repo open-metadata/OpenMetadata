@@ -16,5 +16,5 @@ export interface KillIngestionModalProps {
   pipelineName: string;
   isModalOpen: boolean;
   onClose: () => void;
-  onIngestionWorkflowsUpdate: () => void;
+  onIngestionWorkflowsUpdate?: () => void;
 }

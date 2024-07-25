@@ -33,7 +33,6 @@ function AddIngestionButton({
   serviceCategory,
   serviceName,
   ingestionList,
-  permissions,
 }: Readonly<AddIngestionButtonProps>) {
   const history = useHistory();
 
@@ -110,7 +109,6 @@ function AddIngestionButton({
         <Button
           className="flex-center gap-2"
           data-testid="add-new-ingestion-button"
-          disabled={!permissions?.Create}
           type="primary"
           onClick={handleAddIngestionButtonClick}>
           {getIngestionButtonText(hasMetadata, pipelineType)}

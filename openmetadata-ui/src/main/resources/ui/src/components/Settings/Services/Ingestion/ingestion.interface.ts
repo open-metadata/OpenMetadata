@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -39,9 +38,7 @@ export interface IngestionProps {
   serviceName: string;
   serviceCategory: ServiceCategory;
   ingestionPipelineList: Array<IngestionPipeline>;
-  permissions: OperationPermission;
   pipelineType?: PipelineType;
-  displayAddIngestionButton?: boolean;
   isLoading?: boolean;
   searchText: string;
   airflowInformation: UseAirflowStatusProps;

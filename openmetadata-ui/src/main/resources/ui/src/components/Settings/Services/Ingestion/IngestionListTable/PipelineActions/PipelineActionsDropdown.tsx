@@ -71,9 +71,6 @@ function PipelineActionsDropdown({
     return {
       editPermission: pipelinePermission?.[Operation.EditAll],
       deletePermission: pipelinePermission?.[Operation.Delete],
-      editStatusPermission:
-        pipelinePermission?.[Operation.EditAll] ||
-        pipelinePermission?.[Operation.EditIngestionPipelineStatus],
     };
   }, [ingestionPipelinePermissions, name]);
 
@@ -81,7 +78,7 @@ function PipelineActionsDropdown({
     async (id: string, displayName: string) => {
       try {
         setCurrTrigger({ id, state: 'waiting' });
-        await triggerIngestion(id, displayName);
+        await triggerIngestion?.(id, displayName);
       } finally {
         setCurrTrigger({ id: '', state: '' });
         setIsOpen(false);
@@ -94,7 +91,7 @@ function PipelineActionsDropdown({
     async (id: string, displayName: string) => {
       try {
         setCurrDeploy({ id, state: 'waiting' });
-        await deployIngestion(id, displayName);
+        await deployIngestion?.(id, displayName);
       } finally {
         setCurrDeploy({ id: '', state: '' });
         setIsOpen(false);
@@ -123,8 +120,8 @@ function PipelineActionsDropdown({
       if (isUndefined(handleEditClick)) {
         history.push(
           getEditIngestionPath(
-            serviceCategory,
-            serviceName,
+            serviceCategory ?? '',
+            serviceName ?? '',
             fullyQualifiedName,
             ingestion.pipelineType
           )
@@ -160,6 +157,7 @@ function PipelineActionsDropdown({
                 id,
                 <RunIcon height={12} width={12} />
               ),
+              hidden: !editPermission,
               onClick: () =>
                 handleTriggerIngestion(id, getEntityName(ingestion)),
               key: 'run-button',
@@ -172,6 +170,7 @@ function PipelineActionsDropdown({
                 id,
                 <ReloadIcon height={12} width={12} />
               ),
+              hidden: !editPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 're-deploy-button',
@@ -186,21 +185,22 @@ function PipelineActionsDropdown({
                 id,
                 <DeployIcon height={12} width={12} />
               ),
+              hidden: !editPermission,
               onClick: () =>
                 handleDeployIngestion(id, getEntityName(ingestion)),
               key: 'deploy-button',
               'data-testid': 'deploy-button',
             },
           ],
-    [ingestion, currTrigger, id, currDeploy]
+    [ingestion, currTrigger, id, currDeploy, editPermission]
   );
 
-  const items = useMemo(
-    () => [
+  const menuItems = useMemo(() => {
+    const items = [
       ...(ingestion.enabled ? deployItems : []),
       {
         label: t('label.edit'),
-        disabled: !editPermission,
+        hidden: !editPermission,
         icon: <EditIcon height={12} width={12} />,
         onClick: () => {
           handleUpdate(ingestion);
@@ -211,7 +211,7 @@ function PipelineActionsDropdown({
       },
       {
         label: t('label.kill'),
-        disabled: !editPermission,
+        hidden: !editPermission,
         icon: <KillIcon height={12} width={12} />,
         onClick: () => {
           setIsKillModalOpen(true);
@@ -223,7 +223,7 @@ function PipelineActionsDropdown({
       },
       {
         label: t('label.delete'),
-        disabled: !deletePermission,
+        hidden: !deletePermission,
         icon: <DeleteIcon height={12} width={12} />,
         onClick: () => {
           handleConfirmDelete(id, name, displayName);
@@ -231,24 +231,25 @@ function PipelineActionsDropdown({
         },
         key: 'delete-button',
       },
-    ],
-    [
-      ingestion,
-      deployItems,
-      editPermission,
-      handleUpdate,
-      handleConfirmDelete,
-      id,
-      name,
-      displayName,
-      deletePermission,
-    ]
-  );
+    ];
+
+    return items.filter((item) => !item.hidden);
+  }, [
+    ingestion,
+    deployItems,
+    editPermission,
+    handleUpdate,
+    handleConfirmDelete,
+    id,
+    name,
+    displayName,
+    deletePermission,
+  ]);
 
   return (
     <>
       <Dropdown
-        menu={{ items }}
+        menu={{ items: menuItems }}
         open={isOpen || !isEmpty(currTrigger.id) || !isEmpty(currDeploy.id)}
         overlayClassName="pipeline-actions-dropdown"
         overlayStyle={{ width: '120px' }}

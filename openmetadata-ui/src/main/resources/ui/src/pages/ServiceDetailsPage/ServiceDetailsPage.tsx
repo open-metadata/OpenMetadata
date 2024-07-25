@@ -837,7 +837,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
             ingestionPagingInfo={ingestionPagingInfo}
             ingestionPipelineList={ingestionPipelines}
             isLoading={isIngestionPipelineLoading}
-            permissions={servicePermission}
             searchText={searchText}
             serviceCategory={serviceCategory as ServiceCategory}
             serviceDetails={serviceDetails}
