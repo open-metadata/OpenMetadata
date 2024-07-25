@@ -31,15 +31,22 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
+from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
@@ -139,7 +146,7 @@ class FivetranSource(PipelineServiceSource):
             if es_resp and len(es_resp) > 0 and es_resp[0].fullyQualifiedName:
                 source_service = self.metadata.get_by_name(
                     entity=DatabaseService,
-                    fqn=(es_resp[0].fullyQualifiedName.__root__),
+                    fqn=(es_resp[0].fullyQualifiedName.root),
                 )
         destination_service = self.metadata.get_by_name(
             entity=DatabaseService, fqn=pipeline_details.group.get("name")
@@ -156,9 +163,50 @@ class FivetranSource(PipelineServiceSource):
                 col_details = self.client.get_connector_column_lineage(
                     pipeline_details.connector_id, schema_name=schema, table_name=table
                 )
+
+                try:
+                    from_entity_fqn: str = self._get_table_fqn_from_om(
+                        table_details=TableDetails(schema=schema, name=table)
+                    )
+                    to_entity_fqn: str = self._get_table_fqn_from_om(
+                        table_details=TableDetails(
+                            schema=schema_data.get("name_in_destination"),
+                            name=schema_data["tables"][table]["name_in_destination"],
+                        )
+                    )
+                except FQNNotFoundException:
+                    to_entity_fqn = ""
+                    from_entity_fqn = ""
+
+                if from_entity_fqn and to_entity_fqn:
+                    to_table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=to_entity_fqn
+                    )
+                    from_table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=from_entity_fqn
+                    )
+                    col_lineage_arr = []
+                    for key, value in col_details.items():
+                        if value["enabled"] == True:
+                            if from_table_entity and to_table_entity:
+                                from_col = get_column_fqn(
+                                    table_entity=from_table_entity, column=key
+                                )
+                                to_col = get_column_fqn(
+                                    table_entity=to_table_entity,
+                                    column=value.get("name_in_destination"),
+                                )
+                            col_lineage_arr.append(
+                                ColumnLineage(
+                                    toColumn=to_col,
+                                    fromColumns=[from_col],
+                                    function=None,
+                                )
+                            )
+
                 from_fqn = fqn.build(
-                    self.metadata,
-                    Table,
+                    metadata=self.metadata,
+                    entity_type=Table,
                     table_name=table,
                     database_name=pipeline_details.source.get("config", {}).get(
                         "database"
@@ -197,6 +245,9 @@ class FivetranSource(PipelineServiceSource):
                         id=pipeline_entity.id.root, type="pipeline"
                     ),
                     source=LineageSource.PipelineLineage,
+                    columnsLineage=col_lineage_arr,
+                    sqlQuery=None,
+                    description=None,
                 )
 
                 yield Either(
@@ -212,17 +263,16 @@ class FivetranSource(PipelineServiceSource):
     def get_pipelines_list(self) -> Iterable[FivetranPipelineDetails]:
         """Get List of all pipelines"""
         for group in self.client.list_groups():
-            for connector in self.client.list_group_connectors(
-                group_id=group.get("id")
-            ):
-                connector_id: str = connector.get("id")
+            destination_id: str = group.get("id", "")
+            for connector in self.client.list_group_connectors(group_id=destination_id):
+                connector_id: str = connector.get("id", "")
                 yield FivetranPipelineDetails(
                     destination=self.client.get_destination_details(
-                        destination_id=group.get("id")
+                        destination_id=destination_id
                     ),
                     source=self.client.get_connector_details(connector_id=connector_id),
                     group=group,
-                    connector_id=connector_id,  # type: ignore
+                    connector_id=connector_id,
                 )
 
     def get_pipeline_name(self, pipeline_details: FivetranPipelineDetails) -> str:
