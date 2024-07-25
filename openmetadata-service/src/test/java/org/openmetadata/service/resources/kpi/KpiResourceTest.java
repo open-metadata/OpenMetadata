@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.kpi;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -11,6 +12,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
+import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
@@ -23,11 +25,14 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
 import org.openmetadata.schema.api.dataInsight.kpi.KpiDataInsightChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
-import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.dataInsight.type.KpiTarget;
 import org.openmetadata.schema.dataInsight.type.KpiTargetType;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface;
+import org.openmetadata.service.apps.bundles.insights.search.elasticsearch.ElasticSearchDataInsightsClient;
+import org.openmetadata.service.apps.bundles.insights.search.opensearch.OpenSearchDataInsightsClient;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 
@@ -39,7 +44,32 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     supportsPatch = false;
   }
 
+  private void createDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface;
+    if (getSearchRepository()
+        .getSearchType()
+        .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
+      searchInterface =
+          new ElasticSearchDataInsightsClient(
+              (RestClient) getSearchRepository().getSearchClient().getLowLevelClient());
+    } else {
+      searchInterface =
+          new OpenSearchDataInsightsClient(
+              (os.org.opensearch.client.RestClient)
+                  getSearchRepository().getSearchClient().getLowLevelClient());
+    }
+
+    try {
+      if (!searchInterface.dataAssetDataStreamExists("di-data-assets")) {
+        searchInterface.createDataAssetsDataStream();
+      }
+    } catch (IOException ex) {
+      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.");
+    }
+  }
+
   public void setupKpi() throws IOException {
+    createDataAssetsDataStream();
     KPI_TARGET = new KpiTarget().withName("Percentage").withValue("80.0");
   }
 
@@ -65,10 +95,6 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     createdKpi = updateAndCheckEntity(create, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
     createdKpi = getEntity(createdKpi.getId(), KpiResource.FIELDS, ADMIN_AUTH_HEADERS);
     validateCreatedEntity(createdKpi, create, ADMIN_AUTH_HEADERS);
-  }
-
-  private void verifyKpiResult(KpiResult expected, KpiResult actual) {
-    assertEquals(expected, actual);
   }
 
   @Override
