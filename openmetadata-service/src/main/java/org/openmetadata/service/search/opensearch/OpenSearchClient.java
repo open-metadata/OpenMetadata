@@ -1043,11 +1043,9 @@ public class OpenSearchClient implements SearchClient {
     JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
     Optional<JsonObject> aggregationResults =
         Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
-    DataQualityReport dataQualityReport =
-        SearchIndexUtils.parseAggregationResults(
-            aggregationResults,
-            (List<List<Map<String, String>>>) aggregationMetadata.get("aggregationMapList"));
-    return dataQualityReport;
+    return SearchIndexUtils.parseAggregationResults(
+        aggregationResults,
+        (List<List<Map<String, String>>>) aggregationMetadata.get("aggregationMapList"));
   }
 
   @Override
