@@ -531,7 +531,9 @@ export const checkAddRuleWithOperator = ({
   // Select the condition
   cy.get('.rule--operator').eq(index_2).scrollIntoView().click();
 
-  cy.get(`[label="${condition_2}"]`).eq(index_2).scrollIntoView().click();
+  cy.get(`.ant-select-dropdown:visible [label="${condition_2}"]`)
+    .scrollIntoView()
+    .click();
   // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item').should(
     'contain',
