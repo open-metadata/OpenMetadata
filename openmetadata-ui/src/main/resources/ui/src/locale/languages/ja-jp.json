@@ -1011,6 +1011,7 @@
     "select-add-test-suite": "Select/Add Test Suite",
     "select-column-plural-to-exclude": "除外するカラムを選択",
     "select-column-plural-to-include": "含めるカラムを選択",
+    "select-entity": "Select {{entity}}",
     "select-field": "{{field}}を選択",
     "select-to-search": "Search to Select",
     "select-type": "Select type",

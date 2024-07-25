@@ -23,7 +23,15 @@ WHERE name IN (
     'tableRowCountToBeBetween'
 );
 
--- DROP entityId column from thread_entity table
+-- Update schedule type for applications
+UPDATE installed_apps
+SET json = json || '{"scheduleType": "ScheduledOrManual"}'
+WHERE json->>'scheduleType' = 'Scheduled';
+
+-- recreate all scheduled apps
+DELETE FROM apps_marketplace
+WHERE json->>'scheduleType' = 'Scheduled';
+
 ALTER TABLE thread_entity DROP COLUMN entityId;
 
 -- Add entityRef column to thread_entity table
