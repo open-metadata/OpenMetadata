@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
+import React from 'react';
+import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
+import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
+import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getEntityDetailsPath,
@@ -595,14 +598,38 @@ export const fetchEntityDetail = (
   }
 };
 
+export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
+  {
+    label: i18Next.t('label.close'),
+    key: TaskActionMode.CLOSE,
+    icon: CancelColored,
+  },
+];
+
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
+    icon: SuccessColored,
   },
   {
     label: i18Next.t('label.edit-amp-accept-suggestion'),
     key: TaskActionMode.EDIT,
+    icon: EditColored,
+  },
+  ...TASK_ACTION_COMMON_ITEM,
+];
+
+export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
+  {
+    label: i18Next.t('label.approve'),
+    key: TaskActionMode.RESOLVE,
+    icon: SuccessColored,
+  },
+  {
+    label: i18Next.t('label.reject'),
+    key: TaskActionMode.CLOSE,
+    icon: CancelColored,
   },
 ];
 
