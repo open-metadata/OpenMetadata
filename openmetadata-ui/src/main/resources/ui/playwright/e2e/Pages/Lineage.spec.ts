@@ -12,6 +12,7 @@
  */
 import test from '@playwright/test';
 import { get } from 'lodash';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
@@ -50,6 +51,7 @@ const entities = [
   MlModelClass,
   ContainerClass,
   SearchIndexClass,
+  ApiEndpointClass,
 ] as const;
 
 const pipeline = new PipelineClass();

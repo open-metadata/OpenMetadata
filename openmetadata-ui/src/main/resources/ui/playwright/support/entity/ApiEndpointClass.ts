@@ -142,7 +142,7 @@ export class ApiEndpointClass extends EntityClass {
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_ENDPOINT);
     this.service.name = name ?? this.service.name;
-    this.type = 'Api Endpoint';
+    this.type = 'ApiEndpoint';
   }
 
   async create(apiContext: APIRequestContext) {
