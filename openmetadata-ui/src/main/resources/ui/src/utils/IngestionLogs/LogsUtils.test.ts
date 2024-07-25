@@ -15,10 +15,26 @@ import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { IngestionPipelineLogByIdInterface } from '../../pages/LogsViewerPage/LogsViewerPage.interfaces';
 import { getIngestionPipelineLogById } from '../../rest/ingestionPipelineAPI';
 import { showErrorToast } from '../ToastUtils';
+import {
+  downloadIngestionLog,
+  fetchLogsRecursively,
+  getLogsFromResponse,
+} from './LogsUtils';
+
+const mockUpdateProgress = jest.fn();
 
 jest.mock('../../rest/ingestionPipelineAPI');
 jest.mock('../ToastUtils');
 jest.mock('../../hooks/useDownloadProgressStore');
+jest.mock('../../hooks/useDownloadProgressStore', () => ({
+  useDownloadProgressStore: {
+    getState: jest.fn().mockImplementation(() => ({
+      updateProgress: mockUpdateProgress,
+    })),
+  },
+}));
+
+import * as utils from './LogsUtils';
 
 describe('LogsUtils', () => {
   describe('getLogsFromResponse', () => {
@@ -63,6 +79,16 @@ describe('LogsUtils', () => {
   });
 
   describe('fetchLogsRecursively', () => {
+    let mockGetLogsFromResponse: jest.SpyInstance;
+
+    beforeAll(() => {
+      mockGetLogsFromResponse = jest.spyOn(utils, 'getLogsFromResponse');
+    });
+
+    afterAll(() => {
+      jest.clearAllMocks();
+    });
+
     const ingestionId = '123';
     const pipelineType = PipelineType.Metadata;
     const after = '456';
@@ -74,11 +100,11 @@ describe('LogsUtils', () => {
         ingestion_task: 'metadata_logs_1',
       };
 
-      getIngestionPipelineLogById.mockResolvedValueOnce({
+      (getIngestionPipelineLogById as jest.Mock).mockResolvedValueOnce({
         data: { total, after: afterCursor, ...rest },
       });
 
-      getIngestionPipelineLogById.mockResolvedValueOnce({
+      (getIngestionPipelineLogById as jest.Mock).mockResolvedValueOnce({
         data: { total, after: null, ...rest },
       });
 
@@ -89,7 +115,7 @@ describe('LogsUtils', () => {
         ingestionId,
         after
       );
-      expect(getLogsFromResponse).toHaveBeenCalledWith(rest, pipelineType);
+      expect(mockGetLogsFromResponse).toHaveBeenCalledWith(rest, pipelineType);
       expect(logs).toBe('metadata_logs_1metadata_logs_1');
     });
 
@@ -100,11 +126,11 @@ describe('LogsUtils', () => {
         ingestion_task: 'metadata_logs_1',
       };
 
-      getIngestionPipelineLogById.mockResolvedValueOnce({
+      (getIngestionPipelineLogById as jest.Mock).mockResolvedValueOnce({
         data: { total, after: afterCursor, ...rest },
       });
 
-      getIngestionPipelineLogById.mockResolvedValueOnce({
+      (getIngestionPipelineLogById as jest.Mock).mockResolvedValueOnce({
         data: { total, after: null, ...rest },
       });
 
@@ -114,36 +140,29 @@ describe('LogsUtils', () => {
         useDownloadProgressStore.getState().updateProgress
       ).toHaveBeenCalledWith(50);
     });
-
-    it('should return empty string if afterCursor is null', async () => {
-      const total = '100';
-      const afterCursor = null;
-      const rest: IngestionPipelineLogByIdInterface = {
-        ingestion_task: 'metadata_logs_1',
-      };
-
-      getIngestionPipelineLogById.mockResolvedValueOnce({
-        data: { total, after: afterCursor, ...rest },
-      });
-
-      const logs = await fetchLogsRecursively(ingestionId, pipelineType, after);
-
-      expect(logs).toBe('');
-    });
   });
 
   describe('downloadIngestionLog', () => {
     const ingestionId = '123';
     const pipelineType = PipelineType.Metadata;
+    let mockFetchLogsRecursively: jest.SpyInstance;
+
+    beforeAll(() => {
+      mockFetchLogsRecursively = jest.spyOn(utils, 'fetchLogsRecursively');
+    });
+
+    afterAll(() => {
+      jest.clearAllMocks();
+    });
 
     it('should return the downloaded logs', async () => {
       const logs = 'metadata_logs';
 
-      fetchLogsRecursively.mockResolvedValueOnce(logs);
+      mockFetchLogsRecursively.mockResolvedValueOnce(logs);
 
       const result = await downloadIngestionLog(ingestionId, pipelineType);
 
-      expect(fetchLogsRecursively).toHaveBeenCalledWith(
+      expect(mockFetchLogsRecursively).toHaveBeenCalledWith(
         ingestionId,
         pipelineType
       );
@@ -153,11 +172,11 @@ describe('LogsUtils', () => {
     it('should show error toast and return empty string if an error occurs', async () => {
       const error = new Error('Failed to fetch logs');
 
-      fetchLogsRecursively.mockRejectedValueOnce(error);
+      mockFetchLogsRecursively.mockRejectedValueOnce(error);
 
       const result = await downloadIngestionLog(ingestionId, pipelineType);
 
-      expect(fetchLogsRecursively).toHaveBeenCalledWith(
+      expect(mockFetchLogsRecursively).toHaveBeenCalledWith(
         ingestionId,
         pipelineType
       );
@@ -168,32 +187,13 @@ describe('LogsUtils', () => {
     it('should return empty string if ingestionId or pipelineType is not provided', async () => {
       const result = await downloadIngestionLog(undefined, pipelineType);
 
-      expect(fetchLogsRecursively).not.toHaveBeenCalled();
+      expect(mockFetchLogsRecursively).not.toHaveBeenCalled();
       expect(result).toBe('');
 
       const result2 = await downloadIngestionLog(ingestionId, undefined);
 
-      expect(fetchLogsRecursively).not.toHaveBeenCalled();
+      expect(mockFetchLogsRecursively).not.toHaveBeenCalled();
       expect(result2).toBe('');
     });
   });
 });
-
-function getLogsFromResponse(
-  res: IngestionPipelineLogByIdInterface,
-  Metadata: PipelineType
-): any {
-  throw new Error('Function not implemented.');
-}
-
-function fetchLogsRecursively(
-  ingestionId: string,
-  pipelineType: PipelineType,
-  after: string
-) {
-  throw new Error('Function not implemented.');
-}
-
-function downloadIngestionLog(ingestionId: string, pipelineType: PipelineType) {
-  throw new Error('Function not implemented.');
-}

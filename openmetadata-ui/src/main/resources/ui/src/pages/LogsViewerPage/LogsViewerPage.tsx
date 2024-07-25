@@ -52,6 +52,7 @@ import {
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
 import { downloadIngestionLog } from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -318,7 +319,9 @@ const LogsViewerPage = () => {
       const element = document.createElement('a');
       const file = new Blob([logs || ''], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
-      element.download = 'logs.txt';
+      element.download = `${getEntityName(ingestionDetails)}-${
+        ingestionDetails?.pipelineType
+      }.log`;
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
@@ -376,14 +379,8 @@ const LogsViewerPage = () => {
                       <Tooltip title={`${progress}%`}>
                         <Progress
                           className="h-8 m-l-md relative flex-center"
-                          format={() => (
-                            <DownloadOutlined
-                              data-testid="download-icon"
-                              width="16"
-                            />
-                          )}
                           percent={progress}
-                          showInfo={false}
+                          strokeWidth={5}
                           type="circle"
                           width={32}
                         />
