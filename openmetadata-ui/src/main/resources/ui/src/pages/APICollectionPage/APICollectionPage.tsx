@@ -228,7 +228,7 @@ const APICollectionPage: FunctionComponent = () => {
       try {
         const res = await getApiEndPoints({
           ...params,
-          fields: 'owner',
+          fields: TabSpecificField.OWNER,
           apiCollection: decodedAPICollectionFQN,
           service: apiCollection?.service?.fullyQualifiedName ?? '',
           include: showDeletedEndpoints ? Include.Deleted : Include.NonDeleted,
@@ -670,7 +670,7 @@ const APICollectionPage: FunctionComponent = () => {
     try {
       await updateApiCollectionVote(id, data);
       const response = await getApiCollectionByFQN(decodedAPICollectionFQN, {
-        fields: 'owner,tags,votes',
+        fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.VOTES}`,
         include: Include.All,
       });
       setAPICollection(response);
