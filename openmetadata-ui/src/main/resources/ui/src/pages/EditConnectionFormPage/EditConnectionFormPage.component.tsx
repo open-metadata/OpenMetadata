@@ -90,7 +90,7 @@ function EditConnectionFormPage() {
       );
       setServiceDetails({
         ...response,
-        owner: response?.owner ?? serviceDetails?.owner,
+        owners: response?.owners ?? serviceDetails?.owners,
       });
     } catch (error) {
       showErrorToast(error as AxiosError);

@@ -90,8 +90,8 @@ export const getServiceMainTabColumns = (
     : []),
   {
     title: t('label.owner'),
-    dataIndex: 'owner',
-    key: 'owner',
+    dataIndex: 'owners',
+    key: 'owners',
     render: (owners: ServicePageData['owners']) =>
       !isUndefined(owners) && owners.length > 0 ? (
         owners.map((owner: EntityReference) => (

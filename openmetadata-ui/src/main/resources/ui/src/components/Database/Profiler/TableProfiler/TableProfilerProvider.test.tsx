@@ -88,7 +88,7 @@ describe('TableProfilerProvider', () => {
     expect(mockGetListTestCase).toHaveBeenCalledTimes(1);
     expect(mockGetListTestCase).toHaveBeenCalledWith({
       entityLink: 'entityLink',
-      fields: 'testCaseResult, incidentId',
+      fields: ['testCaseResult', 'incidentId'],
       includeAllTests: true,
       limit: 10,
     });

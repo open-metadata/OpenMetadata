@@ -13,7 +13,6 @@
 import Icon from '@ant-design/icons';
 import { Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { isNil } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -33,7 +32,7 @@ import './owner-label.less';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 
 export const OwnerLabel = ({
-  owners,
+  owners = [],
   className,
   onUpdate,
   hasPermission,
@@ -54,39 +53,43 @@ export const OwnerLabel = ({
   const ownerElements = useMemo(() => {
     if (!owners || owners.length === 0) {
       return (
-        <Typography.Text
-          className={classNames('font-medium text-xs', className)}
-          data-testid="owner-link">
-          {placeHolder ?? t('label.no-entity', { entity: t('label.owner') })}
-        </Typography.Text>
+        <div className="d-inline-flex items-center gap-1">
+          <div className="owner-avatar-icon d-flex">
+            <Icon
+              component={IconUser}
+              data-testid="no-owner-icon"
+              style={{ fontSize: '18px' }}
+            />
+          </div>
+          <Typography.Text
+            className={classNames('font-medium text-xs', className)}
+            data-testid="owner-link">
+            {placeHolder ?? t('label.no-entity', { entity: t('label.owner') })}
+          </Typography.Text>
+        </div>
       );
     }
 
     return owners.map((owner, index) => {
       const displayName = getEntityName(owner);
-      const profilePicture = isNil(owner) ? (
-        <Icon
-          component={IconUser}
-          data-testid="no-owner-icon"
-          style={{ fontSize: '18px' }}
-        />
-      ) : owner.type === OwnerType.TEAM ? (
-        <Icon
-          component={IconTeamsGrey}
-          data-testid="team-owner-icon"
-          style={{ fontSize: '18px' }}
-        />
-      ) : (
-        <div key={owner.id} style={{ flexBasis: '18px' }}>
-          <ProfilePicture
-            displayName={displayName}
-            key="profile-picture"
-            name={owner.name ?? ''}
-            type="circle"
-            width="18"
+      const profilePicture =
+        owner.type === OwnerType.TEAM ? (
+          <Icon
+            component={IconTeamsGrey}
+            data-testid="team-owner-icon"
+            style={{ fontSize: '18px' }}
           />
-        </div>
-      );
+        ) : (
+          <div key={owner.id} style={{ flexBasis: '18px' }}>
+            <ProfilePicture
+              displayName={displayName}
+              key="profile-picture"
+              name={owner.name ?? ''}
+              type="circle"
+              width="18"
+            />
+          </div>
+        );
 
       const ownerLink = (
         <Link

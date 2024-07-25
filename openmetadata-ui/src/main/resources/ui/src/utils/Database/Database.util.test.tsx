@@ -67,7 +67,7 @@ describe('Database Util', () => {
         name: 'schema1',
         fullyQualifiedName: 'database.schema1',
         description: 'Schema 1 description',
-        owner: [{ id: '1', type: 'user', name: 'John Doe' }],
+        owners: [{ id: '1', type: 'user', name: 'John Doe' }],
         usageSummary: {
           weeklyStats: { percentileRank: 80, count: 10 },
           dailyStats: { count: 10 },
@@ -93,8 +93,8 @@ describe('Database Util', () => {
         },
         {
           title: 'label.owner',
-          dataIndex: 'owner',
-          key: 'owner',
+          dataIndex: 'owners',
+          key: 'owners',
           width: 120,
           render: expect.any(Function),
         },

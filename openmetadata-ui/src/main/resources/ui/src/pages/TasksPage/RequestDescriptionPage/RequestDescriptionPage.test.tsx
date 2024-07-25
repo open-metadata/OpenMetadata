@@ -45,11 +45,13 @@ jest.mock('../../../utils/TasksUtils', () => ({
         name: 'dim_location',
         fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_location',
         tableType: 'Regular',
-        owner: {
-          id: 'id1',
-          name: 'sample_data',
-          type: 'User',
-        },
+        owners: [
+          {
+            id: 'id1',
+            name: 'sample_data',
+            type: 'User',
+          },
+        ],
       });
     }),
   fetchOptions: jest.fn(),

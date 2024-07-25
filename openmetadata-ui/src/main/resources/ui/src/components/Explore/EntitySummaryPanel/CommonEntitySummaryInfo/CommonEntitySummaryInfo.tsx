@@ -35,7 +35,7 @@ function CommonEntitySummaryInfo({
         return info.visible?.includes(componentType) ? (
           <Col key={info.name} span={24}>
             <Row
-              className={classNames('kh-test', {
+              className={classNames('', {
                 'p-b-md': isOwner,
               })}
               gutter={[16, 32]}>
@@ -80,7 +80,9 @@ function CommonEntitySummaryInfo({
                   </Col>
                 </>
               ) : (
-                <Col span={24}>{info.value}</Col>
+                <Col data-testid={`${info.name}-value`} span={24}>
+                  {info.value}
+                </Col>
               )}
             </Row>
           </Col>

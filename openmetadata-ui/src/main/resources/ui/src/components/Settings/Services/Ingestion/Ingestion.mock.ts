@@ -24,14 +24,16 @@ export const mockIngestionWorkFlow = {
         enabled: true,
         displayName: 'test3_metadata',
         pipelineType: 'metadata',
-        owner: {
-          id: 'fd96fdc7-a159-4802-84be-33c68d8b7e07',
-          type: 'user',
-          name: 'anonymous',
-          fullyQualifiedName: 'anonymous',
-          deleted: false,
-          href: 'http://localhost:8585/api/v1/users/fd96fdc7-a159-4802-84be-33c68d8b7e07',
-        },
+        owners: [
+          {
+            id: 'fd96fdc7-a159-4802-84be-33c68d8b7e07',
+            type: 'user',
+            name: 'anonymous',
+            fullyQualifiedName: 'anonymous',
+            deleted: false,
+            href: 'http://localhost:8585/api/v1/users/fd96fdc7-a159-4802-84be-33c68d8b7e07',
+          },
+        ],
         fullyQualifiedName: 'test3.test3_metadata',
         source: {
           type: 'bigquery',

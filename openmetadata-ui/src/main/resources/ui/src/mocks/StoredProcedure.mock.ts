@@ -176,14 +176,16 @@ export const mockStoredProcedureData = [
     },
     serviceType: DatabaseServiceType.CustomDatabase,
     deleted: false,
-    owner: {
-      id: '306ac549-7804-4695-9b1a-f0730a1fb809',
-      type: 'team',
-      name: 'Compute',
-      fullyQualifiedName: 'Compute',
-      deleted: false,
-      href: 'http://localhost:8585/api/v1/teams/306ac549-7804-4695-9b1a-f0730a1fb809',
-    },
+    owners: [
+      {
+        id: '306ac549-7804-4695-9b1a-f0730a1fb809',
+        type: 'team',
+        name: 'Compute',
+        fullyQualifiedName: 'Compute',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/teams/306ac549-7804-4695-9b1a-f0730a1fb809',
+      },
+    ],
     followers: [
       {
         id: 'bdd9b364-7905-48d8-8a06-50bab8d372ef',

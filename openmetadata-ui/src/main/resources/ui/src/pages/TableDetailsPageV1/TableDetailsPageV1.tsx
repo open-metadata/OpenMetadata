@@ -688,7 +688,7 @@ const TableDetailsPageV1: React.FC = () => {
           ) : (
             <SampleDataTableComponent
               isTableDeleted={deleted}
-              ownerId={tableDetails?.owner?.id ?? ''}
+              owners={tableDetails?.owners ?? []}
               permissions={tablePermissions}
               tableId={tableDetails?.id ?? ''}
             />
