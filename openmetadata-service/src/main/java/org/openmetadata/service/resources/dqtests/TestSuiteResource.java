@@ -488,14 +488,14 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
       description =
           """
             Use the search service to perform data quality aggregation. You can use the `q` parameter to filter the results.
-            the `aggQuery` is of the form `bucketName=<bucketName>:aggType=<aggType>:field=<field>`. You can sperate aggregation
+            the `aggregationQuery` is of the form `bucketName=<bucketName>:aggType=<aggType>:field=<field>`. You can sperate aggregation
             query with a comma `,` to perform nested aggregations.
             For example, `bucketName=table:aggType=terms:field=databaseName,bucketName=<bucketName>:aggType=<aggType>:field=<field>`
             """,
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Tests Execution Summary",
+            description = "Data Quality Report Results",
             content =
                 @Content(
                     mediaType = "application/json",
