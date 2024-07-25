@@ -1696,6 +1696,7 @@
     "pipeline-action-success-message": "Pipeline {{action}} successfully!",
     "pipeline-description-message": "工作流的描述信息",
     "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
+    "pipeline-not-deployed": "Pipeline is not deployed",
     "pipeline-scheduler-message": "元数据提取编排器无回复，请联系系统管理员",
     "pipeline-will-trigger-manually": "工作流仅能手动触发",
     "pipeline-will-triggered-manually": "工作流仅能手动触发",

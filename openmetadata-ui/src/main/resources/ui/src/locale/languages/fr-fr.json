@@ -1696,6 +1696,7 @@
     "pipeline-action-success-message": "Pipeline {{action}} successfully!",
     "pipeline-description-message": "Description de la pipeline.",
     "pipeline-disabled-ingestion-deployment": "Pour voir les données d'ingestion, lancez l'ingestion de métadonnées sur votre environnement en suivant <0>{{link}}</0>",
+    "pipeline-not-deployed": "Pipeline is not deployed",
     "pipeline-scheduler-message": "Le planificateur d'ingestion ne peut pas répondre. Veuillez contacter le support Collate. Merci.",
     "pipeline-will-trigger-manually": "La pipeline ne sera déclenchée manuellement que.",
     "pipeline-will-triggered-manually": "La pipeline ne sera déclenchée manuellement que.",

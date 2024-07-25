@@ -1696,6 +1696,7 @@
     "pipeline-action-success-message": "Pipeline {{action}} successfully!",
     "pipeline-description-message": "Beschreibung der Pipeline.",
     "pipeline-disabled-ingestion-deployment": "To view Ingestion Data, run the metadata ingestion on your own environment following these <0>{{link}}</0>",
+    "pipeline-not-deployed": "Pipeline is not deployed",
     "pipeline-scheduler-message": "Der Ingestion Scheduler kann nicht antworten. Bitte wende dich an den Collate-Support. Vielen Dank.",
     "pipeline-will-trigger-manually": "Die Pipeline wird nur manuell ausgelöst.",
     "pipeline-will-triggered-manually": "Die Pipeline wird nur manuell ausgelöst",
