@@ -388,7 +388,7 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer_jp"
           },
           "deleted": {
             "type": "text"
