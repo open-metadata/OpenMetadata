@@ -140,16 +140,16 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = ReactDOMServer.renderToString(
-          getEntityIcon(item.type as string)
-        );
+        const icon = getEntityIcon(item.type as string);
+
+        const iconString = ReactDOMServer.renderToString(icon ?? <></>);
 
         const typeSpan = !breadcrumbEle
           ? `<span class="text-grey-muted text-xs">${item.type}</span>`
           : '';
 
         const result = `<div class="d-flex items-center gap-2">
-          <div class="flex-center mention-icon-image">${icon}</div>
+          <div class="flex-center mention-icon-image">${iconString}</div>
           <div>
             ${breadcrumbEle}
             <div class="d-flex flex-col">

@@ -744,6 +744,7 @@
     "no-description": "説明がありません",
     "no-diff-available": "差分を見ることはできません",
     "no-entity": "No {{entity}}",
+    "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "マッチするデータアセットはありません",
     "no-of-test": " テスト番号",
     "no-owner": "No Owner",

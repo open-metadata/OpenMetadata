@@ -744,6 +744,7 @@
     "no-description": "-",
     "no-diff-available": "אין הבדל זמין",
     "no-entity": "אין {{entity}}",
+    "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "לא נמצאו נכסי נתונים תואמים",
     "no-of-test": "מספר הבדיקות",
     "no-owner": "No Owner",

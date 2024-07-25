@@ -744,6 +744,7 @@
     "no-description": "No description",
     "no-diff-available": "No diff available",
     "no-entity": "No {{entity}}",
+    "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "No matching data assets found",
     "no-of-test": " No. of Test",
     "no-owner": "No Owner",

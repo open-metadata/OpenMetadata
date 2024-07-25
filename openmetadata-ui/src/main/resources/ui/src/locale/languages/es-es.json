@@ -744,6 +744,7 @@
     "no-description": "Sin descripción",
     "no-diff-available": "Sin diferencia disponible",
     "no-entity": "No hay {{entity}}",
+    "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "No se encontraron activos de datos coincidentes",
     "no-of-test": "No. de prueba",
     "no-owner": "No Owner",
