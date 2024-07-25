@@ -478,9 +478,7 @@
                             "name": "max",
                             "value": "None"
                         }
-                    ],
-                    "maxBound": 96162,
-                    "minBound": 90001
+                    ]
                 },
                 {
                     "result": "Found min=35005, max=92808 vs. the expected min=90001, max=96162.",
@@ -494,9 +492,7 @@
                             "name": "max",
                             "value": "92808"
                         }
-                    ],
-                    "maxBound": 96162,
-                    "minBound": 90001
+                    ]
                 },
                 {
                     "result": "Found min=90006, max=92808 vs. the expected min=90001, max=96162.",
@@ -538,9 +534,7 @@
                             "name": "max",
                             "value": "99001"
                         }
-                    ],
-                    "maxBound": 96162,
-                    "minBound": 90001
+                    ]
                 },
                 {
                     "result": "Found min=1001, max=2789 vs. the expected min=90001, max=96162.",
@@ -554,9 +548,7 @@
                             "name": "max",
                             "value": "2789"
                         }
-                    ],
-                    "maxBound": 96162,
-                    "minBound": 90001
+                    ]
                 },
                 {
                     "result": "Found min=91009, max=92808 vs. the expected min=90001, max=96162.",
@@ -570,8 +562,7 @@
                             "name": "max",
                             "value": "92808"
                         }
-                    ],
-                    "minBound": 90001
+                    ]
                 },
                 {
                     "result": "Found min=90008, max=92808 vs. the expected min=90001, max=96162.",
@@ -585,9 +576,7 @@
                             "name": "max",
                             "value": "92808"
                         }
-                    ],
-                    "maxBound": 96162,
-                    "minBound": 90001
+                    ]
                 },
                 {
                     "result": "Found min=92000, max=92808 vs. the expected min=90001, max=96162.",
@@ -601,9 +590,7 @@
                             "name": "max",
                             "value": "92808"
                         }
-                    ],
-                    "maxBound": 96162,
-                    "minBound": 90001
+                    ]
                 },
                 {
                     "result": "Found min=90001, max=96612 vs. the expected min=90001, max=96162.",
@@ -617,9 +604,7 @@
                             "name": "max",
                             "value": "96612"
                         }
-                    ],
-                    "maxBound": 96162,
-                    "minBound": 90001
+                    ]
                 }
             ]
         },

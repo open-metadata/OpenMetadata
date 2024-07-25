@@ -17,6 +17,14 @@ import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
+type ResponseDataType = {
+  name: string;
+  displayName: string;
+  description: string;
+  id: string;
+  fullyQualifiedName: string;
+};
+
 export class MlModelClass extends EntityClass {
   service = {
     name: `pw-ml-model-service-${uuid()}`,
@@ -44,8 +52,8 @@ export class MlModelClass extends EntityClass {
     ],
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType;
+  entityResponseData: ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.MlModel);
@@ -81,9 +89,7 @@ export class MlModelClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/mlmodels/${
-        (this.entityResponseData as { id: string })?.id ?? ''
-      }`,
+      `/api/v1/mlmodels/${this.entityResponseData.id}`,
       {
         data: patchData,
         headers: {
