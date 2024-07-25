@@ -72,17 +72,11 @@ public class MigrationWorkflowTest extends OpenMetadataApplicationTest {
     Mockito.doReturn(omMigrationList)
         .when(migrationWorkflow)
         .getMigrationFilesFromPath(
-            eq("nativePath"),
-            any(ConnectionType.class),
-            migrationWorkflow.getPipelineServiceClientConfiguration(),
-            eq(false));
+            eq("nativePath"), any(ConnectionType.class), eq(null), eq(false));
     Mockito.doReturn(collateMigrationList)
         .when(migrationWorkflow)
         .getMigrationFilesFromPath(
-            eq("extensionPath"),
-            any(ConnectionType.class),
-            migrationWorkflow.getPipelineServiceClientConfiguration(),
-            eq(true));
+            eq("extensionPath"), any(ConnectionType.class), eq(null), eq(true));
 
     List<MigrationFile> foundList =
         migrationWorkflow.getMigrationFiles(
