@@ -744,6 +744,7 @@
     "no-description": "无描述",
     "no-diff-available": "没有可用的差异",
     "no-entity": "没有{{entity}}",
+    "no-entity-selected": "No {{entity}} Selected",
     "no-matching-data-asset": "未找到匹配的数据资产",
     "no-of-test": "测试数量",
     "no-owner": "No Owner",
