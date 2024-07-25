@@ -65,7 +65,7 @@ public class FeedFilter {
               "entityDomain IN ('%s')",
               domains.stream().map(UUID::toString).reduce((a, b) -> a + "','" + b).get());
     } else {
-      domainCondition = "entityDomain = NULL";
+      domainCondition = "entityDomain is null";
     }
     condition1 = addCondition(condition1, domainCondition);
 

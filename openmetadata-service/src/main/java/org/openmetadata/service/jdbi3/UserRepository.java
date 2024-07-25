@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -621,9 +622,11 @@ public class UserRepository extends EntityRepository<User> {
       }
 
       List<EntityReference> origDomains =
-          listOrEmpty(EntityUtil.populateEntityReferences(original.getUserDomains()));
+          listOrEmpty(
+              EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getUserDomains())));
       List<EntityReference> updatedDomains =
-          listOrEmpty(EntityUtil.populateEntityReferences(updated.getUserDomains()));
+          listOrEmpty(
+              EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getUserDomains())));
 
       // Remove Domains for the user
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);
