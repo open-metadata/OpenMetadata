@@ -68,6 +68,8 @@ import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
 import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
@@ -205,6 +207,7 @@ export const getEntityIcon = (
   const entityIconMapping: Record<string, SvgComponent> = {
     [SearchIndex.DATABASE]: DatabaseIcon,
     [EntityType.DATABASE]: DatabaseIcon,
+    [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
     [EntityType.DATABASE_SERVICE]: DatabaseIcon,
     [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
     [EntityType.DATABASE_SCHEMA]: SchemaIcon,
@@ -245,6 +248,7 @@ export const getEntityIcon = (
     [EntityType.CHART]: ChartIcon,
     [SearchIndex.TABLE]: TableIcon,
     [EntityType.TABLE]: TableIcon,
+    [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
     [SearchIndex.DATA_PRODUCT]: DataProductIcon,
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestSuite,
@@ -275,6 +279,7 @@ export const getEntityIcon = (
     [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
     [EntityType.API_COLLECTION]: APICollectionIcon,
     [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
+    ['location']: LocationIcon,
   };
 
   switch (indexType) {
@@ -293,7 +298,8 @@ export const getEntityIcon = (
       break;
   }
 
-  return Icon ? <Icon className={className} style={style} /> : <></>;
+  // If icon is not found, return null
+  return Icon ? <Icon className={className} style={style} /> : null;
 };
 
 export const getServiceIcon = (source: SourceType) => {
