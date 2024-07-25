@@ -28,14 +28,12 @@ import {
   VerifySSL,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { UseAirflowStatusProps } from '../hooks/useAirflowStatus';
-import { ENTITY_PERMISSIONS } from './Permissions.mock';
 
 const mockTriggerIngestion = jest.fn();
 const mockDeployIngestion = jest.fn();
 const mockHandleEnableDisableIngestion = jest.fn();
 const mockOnIngestionWorkflowsUpdate = jest.fn();
-const mockHandleDeleteSelection = jest.fn();
-const mockHandleIsConfirmationModalOpen = jest.fn();
+const mockHandleIngestionListUpdate = jest.fn();
 const mockHandlePipelineIdToFetchStatus = jest.fn();
 const mockOnPageChange = jest.fn();
 
@@ -147,20 +145,13 @@ const mockESIngestionData: IngestionPipeline[] = [
 export const mockIngestionListTableProps: IngestionListTableProps = {
   triggerIngestion: mockTriggerIngestion,
   deployIngestion: mockDeployIngestion,
-  paging: { total: 2 },
   handleEnableDisableIngestion: mockHandleEnableDisableIngestion,
   onIngestionWorkflowsUpdate: mockOnIngestionWorkflowsUpdate,
-  ingestionPipelinesPermission: {
-    OpenMetadata_elasticSearchReindex: ENTITY_PERMISSIONS,
-  },
   serviceCategory: ServiceCategory.METADATA_SERVICES,
   serviceName: 'OpenMetadata',
-  handleDeleteSelection: mockHandleDeleteSelection,
-  handleIsConfirmationModalOpen: mockHandleIsConfirmationModalOpen,
   ingestionData: mockESIngestionData,
   pipelineType: PipelineType.ElasticSearchReindex,
   isLoading: false,
-  currentPage: 1,
   airflowInformation: {
     isFetchingStatus: false,
     isAirflowAvailable: true,
@@ -168,4 +159,5 @@ export const mockIngestionListTableProps: IngestionListTableProps = {
   } as UseAirflowStatusProps,
   handlePipelineIdToFetchStatus: mockHandlePipelineIdToFetchStatus,
   onPageChange: mockOnPageChange,
+  handleIngestionListUpdate: mockHandleIngestionListUpdate,
 };

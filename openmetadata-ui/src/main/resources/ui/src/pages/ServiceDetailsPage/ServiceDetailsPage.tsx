@@ -159,8 +159,21 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const history = useHistory();
   const { isAdminUser } = useAuth();
-  const { currentPage, pageSize, handlePageChange, handlePagingChange } =
-    usePaging(PAGE_SIZE);
+  const ingestionPagingInfo = usePaging(PAGE_SIZE);
+  const pagingInfo = usePaging(PAGE_SIZE);
+
+  const {
+    paging: ingestionPaging,
+    currentPage: currentIngestionPage,
+    pageSize: ingestionPageSize,
+    handlePageChange: handleIngestionPageChange,
+    handlePagingChange: handleIngestionPagingChange,
+  } = useMemo(() => ingestionPagingInfo, [ingestionPagingInfo]);
+
+  const { paging, currentPage, handlePageChange, handlePagingChange } = useMemo(
+    () => pagingInfo,
+    [pagingInfo]
+  );
 
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
@@ -171,11 +184,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
     useState(false);
   const [isServiceLoading, setIsServiceLoading] = useState(true);
   const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
-  const [paging, setPaging] = useState<Paging>(pagingObject);
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
   >([]);
-  const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
   const [showDeleted, setShowDeleted] = useState<boolean>(false);
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
@@ -195,10 +206,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const handleSearchChange = useCallback(
     (searchValue: string) => {
-      handlePageChange(INITIAL_PAGING_VALUE);
+      handleIngestionPageChange(INITIAL_PAGING_VALUE);
       setSearchText(searchValue);
     },
-    [handlePageChange]
+    [handleIngestionPageChange]
   );
 
   const handleIngestionListUpdate = useCallback(
@@ -210,9 +221,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const handleIngestionPagingUpdate = useCallback(
     (ingestionPaging: React.SetStateAction<Paging>) => {
-      setIngestionPaging(ingestionPaging);
+      handleIngestionPagingChange(ingestionPaging);
     },
-    []
+    [handleIngestionPagingChange]
   );
 
   const extraDropdownContent = useMemo(
@@ -293,15 +304,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
         if (response.data) {
           setIngestionPipelines(response.data);
-          setIngestionPaging(response.paging);
+          handleIngestionPagingChange(response.paging);
         } else {
-          setIngestionPaging({} as Paging);
+          handleIngestionPagingChange({} as Paging);
         }
       } finally {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [decodedServiceFQN, serviceCategory, paging]
+    [decodedServiceFQN, serviceCategory, ingestionPaging]
   );
 
   const searchPipelines = useCallback(
@@ -310,7 +321,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsIngestionPipelineLoading(true);
         const res = await searchQuery({
           pageNumber: page,
-          pageSize: pageSize,
+          pageSize: ingestionPageSize,
           searchIndex: SearchIndex.INGESTION_PIPELINE,
           query: `*${getEncodedFqn(
             escapeESReservedCharacters(searchText ?? '')
@@ -326,12 +337,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         const total = res?.hits?.total.value ?? 0;
 
         setIngestionPipelines(pipelines);
-        handlePagingChange({ total });
+        handleIngestionPagingChange({ total });
       } finally {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [pageSize, handlePageChange]
+    [ingestionPageSize, handleIngestionPagingChange]
   );
 
   const include = useMemo(
@@ -349,7 +360,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       );
 
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -363,7 +374,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -377,7 +388,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -396,7 +407,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        setPaging(pagingObject);
+        handlePagingChange(pagingObject);
       }
     },
     [decodedServiceFQN, include]
@@ -411,7 +422,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -425,7 +436,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -441,7 +452,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
     [decodedServiceFQN, include]
   );
@@ -457,7 +468,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
     [decodedServiceFQN, include]
   );
@@ -507,7 +518,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         }
       } catch (error) {
         setData([]);
-        setPaging(pagingObject);
+        handlePagingChange(pagingObject);
       } finally {
         setIsServiceLoading(false);
       }
@@ -682,14 +693,20 @@ const ServiceDetailsPage: FunctionComponent = () => {
       if (cursorType) {
         getAllIngestionWorkflows(
           { [cursorType]: ingestionPaging[cursorType] },
-          pageSize
+          ingestionPageSize
         );
       } else if (!isEmpty(searchText)) {
         searchPipelines(searchText, currentPage);
       }
-      handlePageChange(currentPage);
+      handleIngestionPageChange(currentPage);
     },
-    [ingestionPaging, searchText, pageSize]
+    [
+      ingestionPaging,
+      searchText,
+      ingestionPageSize,
+      handleIngestionPageChange,
+      searchPipelines,
+    ]
   );
 
   const versionHandler = useCallback(() => {
@@ -804,10 +821,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   useEffect(() => {
     if (isAirflowAvailable && !isOpenMetadataService) {
       isEmpty(searchText)
-        ? getAllIngestionWorkflows({}, pageSize)
-        : searchPipelines(searchText, currentPage);
+        ? getAllIngestionWorkflows({}, ingestionPageSize)
+        : searchPipelines(searchText, currentIngestionPage);
     }
-  }, [isAirflowAvailable, searchText, pageSize]);
+  }, [isAirflowAvailable, searchText, ingestionPageSize]);
 
   const ingestionTab = useMemo(
     () => (
@@ -815,13 +832,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <Col className="p-x-lg" span={24}>
           <Ingestion
             airflowInformation={airflowInformation}
-            currentPage={currentPage}
             handleIngestionListUpdate={handleIngestionListUpdate}
-            handleIngestionPagingUpdate={handleIngestionPagingUpdate}
             handleSearchChange={handleSearchChange}
+            ingestionPagingInfo={ingestionPagingInfo}
             ingestionPipelineList={ingestionPipelines}
             isLoading={isIngestionPipelineLoading}
-            paging={ingestionPaging}
             permissions={servicePermission}
             searchText={searchText}
             serviceCategory={serviceCategory as ServiceCategory}
@@ -835,7 +850,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ),
     [
       airflowInformation,
-      currentPage,
       isIngestionPipelineLoading,
       serviceDetails,
       ingestionPipelines,
@@ -849,6 +863,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       searchText,
       handleSearchChange,
       onPageChange,
+      ingestionPagingInfo,
     ]
   );
 

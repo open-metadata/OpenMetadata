@@ -13,7 +13,7 @@
 
 import { Button, Dropdown } from 'antd';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
@@ -23,10 +23,18 @@ import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-de
 import { ReactComponent as MoreIcon } from '../../../../../../assets/svg/menu.svg';
 import { ReactComponent as ReloadIcon } from '../../../../../../assets/svg/reload.svg';
 import { ReactComponent as RunIcon } from '../../../../../../assets/svg/run.svg';
-import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { Operation } from '../../../../../../generated/entity/policies/accessControl/resourceDescriptor';
+import {
+  IngestionPipeline,
+  PipelineType,
+} from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../../utils/EntityUtils';
-import { getEditIngestionPath } from '../../../../../../utils/RouterUtils';
+import {
+  getEditIngestionPath,
+  getTestSuiteIngestionPath,
+} from '../../../../../../utils/RouterUtils';
+import { getTestSuiteFQN } from '../../../../../../utils/TestSuiteUtils';
 import KillIngestionModal from '../../../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
 import './pipeline-actions-dropdown.less';
 import { PipelineActionsDropdownProps } from './PipelineActionsDropdown.interface';
@@ -38,11 +46,10 @@ function PipelineActionsDropdown({
   serviceName,
   serviceCategory,
   handleEditClick,
-  getIngestionPermission,
   handleDeleteSelection,
   handleIsConfirmationModalOpen,
-  ingestionPipelinesPermission,
   onIngestionWorkflowsUpdate,
+  ingestionPipelinePermissions,
 }: Readonly<PipelineActionsDropdownProps>) {
   const history = useHistory();
   const { t } = useTranslation();
@@ -58,132 +65,185 @@ function PipelineActionsDropdown({
     id = '',
   } = useMemo(() => ingestion, [ingestion]);
 
-  const handleTriggerIngestion = async (id: string, displayName: string) => {
-    try {
-      setCurrTrigger({ id, state: 'waiting' });
-      await triggerIngestion(id, displayName);
-    } finally {
-      setCurrTrigger({ id: '', state: '' });
-      setIsOpen(false);
-    }
-  };
+  const { editPermission, deletePermission } = useMemo(() => {
+    const pipelinePermission = ingestionPipelinePermissions?.[name];
 
-  const handleDeployIngestion = async (id: string, displayName: string) => {
-    try {
-      setCurrDeploy({ id, state: 'waiting' });
-      await deployIngestion(id, displayName);
-    } finally {
-      setCurrDeploy({ id: '', state: '' });
-      setIsOpen(false);
-    }
-  };
+    return {
+      editPermission: pipelinePermission?.[Operation.EditAll],
+      deletePermission: pipelinePermission?.[Operation.Delete],
+      editStatusPermission:
+        pipelinePermission?.[Operation.EditAll] ||
+        pipelinePermission?.[Operation.EditIngestionPipelineStatus],
+    };
+  }, [ingestionPipelinePermissions, name]);
 
-  const handleUpdate = (ingestion: IngestionPipeline) => {
-    const fullyQualifiedName =
-      isUndefined(ingestion.fullyQualifiedName) ||
-      isNil(ingestion.fullyQualifiedName)
+  const handleTriggerIngestion = useCallback(
+    async (id: string, displayName: string) => {
+      try {
+        setCurrTrigger({ id, state: 'waiting' });
+        await triggerIngestion(id, displayName);
+      } finally {
+        setCurrTrigger({ id: '', state: '' });
+        setIsOpen(false);
+      }
+    },
+    []
+  );
+
+  const handleDeployIngestion = useCallback(
+    async (id: string, displayName: string) => {
+      try {
+        setCurrDeploy({ id, state: 'waiting' });
+        await deployIngestion(id, displayName);
+      } finally {
+        setCurrDeploy({ id: '', state: '' });
+        setIsOpen(false);
+      }
+    },
+    []
+  );
+
+  const handleUpdate = useCallback(
+    (ingestion: IngestionPipeline) => {
+      const fullyQualifiedName = isNil(ingestion.fullyQualifiedName)
         ? `${serviceName}.${ingestion.name}`
         : ingestion.fullyQualifiedName;
 
-    if (isUndefined(handleEditClick)) {
-      history.push(
-        getEditIngestionPath(
-          serviceCategory,
-          serviceName,
-          fullyQualifiedName,
-          ingestion.pipelineType
-        )
-      );
-    } else {
-      handleEditClick(fullyQualifiedName);
-    }
-  };
-  const handleConfirmDelete = (
-    id: string,
-    name: string,
-    displayName?: string
-  ) => {
-    handleDeleteSelection({
+      if (ingestion.pipelineType === PipelineType.TestSuite) {
+        history.push(
+          getTestSuiteIngestionPath(
+            getTestSuiteFQN(fullyQualifiedName),
+            fullyQualifiedName
+          )
+        );
+
+        return;
+      }
+
+      if (isUndefined(handleEditClick)) {
+        history.push(
+          getEditIngestionPath(
+            serviceCategory,
+            serviceName,
+            fullyQualifiedName,
+            ingestion.pipelineType
+          )
+        );
+      } else {
+        handleEditClick(fullyQualifiedName);
+      }
+    },
+    [ingestion, serviceCategory, serviceName, handleEditClick]
+  );
+
+  const handleConfirmDelete = useCallback(
+    (id: string, name: string, displayName?: string) => {
+      handleDeleteSelection({
+        id,
+        name,
+        displayName,
+        state: '',
+      });
+      handleIsConfirmationModalOpen(true);
+    },
+    [handleDeleteSelection, handleIsConfirmationModalOpen]
+  );
+
+  const deployItems = useMemo(
+    () =>
+      ingestion.deployed
+        ? [
+            {
+              label: t('label.run'),
+              icon: getLoadingStatus(
+                currTrigger,
+                id,
+                <RunIcon height={12} width={12} />
+              ),
+              onClick: () =>
+                handleTriggerIngestion(id, getEntityName(ingestion)),
+              key: 'run-button',
+              'data-testid': 'run-button',
+            },
+            {
+              label: t('label.re-deploy'),
+              icon: getLoadingStatus(
+                currDeploy,
+                id,
+                <ReloadIcon height={12} width={12} />
+              ),
+              onClick: () =>
+                handleDeployIngestion(id, getEntityName(ingestion)),
+              key: 're-deploy-button',
+              'data-testid': 're-deploy-button',
+            },
+          ]
+        : [
+            {
+              label: t('label.deploy'),
+              icon: getLoadingStatus(
+                currDeploy,
+                id,
+                <DeployIcon height={12} width={12} />
+              ),
+              onClick: () =>
+                handleDeployIngestion(id, getEntityName(ingestion)),
+              key: 'deploy-button',
+              'data-testid': 'deploy-button',
+            },
+          ],
+    [ingestion, currTrigger, id, currDeploy]
+  );
+
+  const items = useMemo(
+    () => [
+      ...(ingestion.enabled ? deployItems : []),
+      {
+        label: t('label.edit'),
+        disabled: !editPermission,
+        icon: <EditIcon height={12} width={12} />,
+        onClick: () => {
+          handleUpdate(ingestion);
+          setIsOpen(false);
+        },
+        key: 'edit-button',
+        'data-testid': 'edit-button',
+      },
+      {
+        label: t('label.kill'),
+        disabled: !editPermission,
+        icon: <KillIcon height={12} width={12} />,
+        onClick: () => {
+          setIsKillModalOpen(true);
+          setSelectedPipeline(ingestion);
+          setIsOpen(false);
+        },
+        key: 'kill-button',
+        'data-testid': 'kill-button',
+      },
+      {
+        label: t('label.delete'),
+        disabled: !deletePermission,
+        icon: <DeleteIcon height={12} width={12} />,
+        onClick: () => {
+          handleConfirmDelete(id, name, displayName);
+          setIsOpen(false);
+        },
+        key: 'delete-button',
+      },
+    ],
+    [
+      ingestion,
+      deployItems,
+      editPermission,
+      handleUpdate,
+      handleConfirmDelete,
       id,
       name,
       displayName,
-      state: '',
-    });
-    handleIsConfirmationModalOpen(true);
-  };
-  const items = [
-    ...(ingestion.deployed
-      ? [
-          {
-            label: t('label.run'),
-            icon: getLoadingStatus(
-              currTrigger,
-              id,
-              <RunIcon height={12} width={12} />
-            ),
-            onClick: () => handleTriggerIngestion(id, getEntityName(ingestion)),
-            key: 'run-button',
-            'data-testid': 'run-button',
-          },
-          {
-            label: t('label.re-deploy'),
-            icon: getLoadingStatus(
-              currDeploy,
-              id,
-              <ReloadIcon height={12} width={12} />
-            ),
-            onClick: () => handleDeployIngestion(id, getEntityName(ingestion)),
-            key: 're-deploy-button',
-            'data-testid': 're-deploy-button',
-          },
-        ]
-      : [
-          {
-            label: t('label.deploy'),
-            icon: getLoadingStatus(
-              currDeploy,
-              id,
-              <DeployIcon height={12} width={12} />
-            ),
-            onClick: () => handleDeployIngestion(id, getEntityName(ingestion)),
-            key: 'deploy-button',
-            'data-testid': 'deploy-button',
-          },
-        ]),
-    {
-      label: t('label.edit'),
-      disabled: getIngestionPermission(name),
-      icon: <EditIcon height={12} width={12} />,
-      onClick: () => {
-        handleUpdate(ingestion);
-        setIsOpen(false);
-      },
-      key: 'edit-button',
-      'data-testid': 'edit-button',
-    },
-    {
-      label: t('label.kill'),
-      disabled: getIngestionPermission(name),
-      icon: <KillIcon height={12} width={12} />,
-      onClick: () => {
-        setIsKillModalOpen(true);
-        setSelectedPipeline(ingestion);
-        setIsOpen(false);
-      },
-      key: 'kill-button',
-      'data-testid': 'kill-button',
-    },
-    {
-      label: t('label.delete'),
-      disabled: !ingestionPipelinesPermission?.[name]?.Delete,
-      icon: <DeleteIcon height={12} width={12} />,
-      onClick: () => {
-        handleConfirmDelete(id, name, displayName);
-        setIsOpen(false);
-      },
-      key: 'delete-button',
-    },
-  ];
+      deletePermission,
+    ]
+  );
 
   return (
     <>

@@ -18,7 +18,7 @@ import { SelectedRowDetails } from './ingestion.interface';
 
 export interface PipelineActionsProps {
   record: IngestionPipeline;
-  ingestionPipelinesPermission?: IngestionServicePermission;
+  ingestionPipelinePermissions?: IngestionServicePermission;
   serviceCategory: ServiceCategory;
   serviceName: string;
   deployIngestion: (id: string, displayName: string) => Promise<void>;

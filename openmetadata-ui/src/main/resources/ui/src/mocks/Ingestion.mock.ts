@@ -237,20 +237,17 @@ const mockPaging = {
 };
 
 const mockCurrentHandleIngestionListUpdate = jest.fn();
-const mockCurrentHandleIngestionPagingUpdate = jest.fn();
 const mockCurrentHandleSearchChange = jest.fn();
 const mockCurrentOnPageChange = jest.fn();
 
 export const ingestionProps: IngestionProps = {
   ingestionPipelineList: mockIngestionWorkFlow.data
     .data as unknown as IngestionPipeline[],
-  paging: mockPaging,
   permissions: ENTITY_PERMISSIONS,
   serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
   serviceDetails: mockService,
   serviceName: '',
   onIngestionWorkflowsUpdate: mockUpdateWorkflows,
-  currentPage: 1,
   searchText: '',
   airflowInformation: {
     isAirflowAvailable: true,
@@ -258,7 +255,15 @@ export const ingestionProps: IngestionProps = {
     platform: 'airflow',
   } as UseAirflowStatusProps,
   handleIngestionListUpdate: mockCurrentHandleIngestionListUpdate,
-  handleIngestionPagingUpdate: mockCurrentHandleIngestionPagingUpdate,
   handleSearchChange: mockCurrentHandleSearchChange,
   onPageChange: mockCurrentOnPageChange,
+  ingestionPagingInfo: {
+    paging: mockPaging,
+    handlePagingChange: jest.fn(),
+    currentPage: 1,
+    handlePageChange: jest.fn(),
+    pageSize: 10,
+    handlePageSizeChange: jest.fn(),
+    showPagination: true,
+  },
 };

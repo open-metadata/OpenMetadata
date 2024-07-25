@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space } from 'antd';
+import { Button, Col, Row, Tooltip } from 'antd';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
 import { ReactComponent as PauseIcon } from '../../../../../../assets/svg/pause.svg';
 import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resume.svg';
+import { EntityType } from '../../../../../../enums/entity.enum';
+import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
+import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/CommonUtils';
 import { getLogsViewerPath } from '../../../../../../utils/RouterUtils';
 import { PipelineActionsProps } from '../../PipelineActions.interface';
@@ -25,7 +28,7 @@ import PipelineActionsDropdown from './PipelineActionsDropdown';
 
 function PipelineActions({
   record,
-  ingestionPipelinesPermission,
+  ingestionPipelinePermissions,
   triggerIngestion,
   deployIngestion,
   handleEnableDisableIngestion,
@@ -41,39 +44,49 @@ function PipelineActions({
 
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
 
-  const { recordId } = useMemo(
+  const { pipelineId, pipelineName } = useMemo(
     () => ({
-      recordId: record.id ?? '',
+      pipelineId: record.id ?? '',
+      pipelineName: record.name ?? '',
     }),
     [record]
   );
 
-  const getEditPermission = (service: string): boolean =>
-    !ingestionPipelinesPermission?.[service]?.EditAll;
+  const { editStatusPermission } = useMemo(() => {
+    const pipelinePermission = ingestionPipelinePermissions?.[pipelineName];
 
-  const onPauseUnpauseClick = async (id: string) => {
-    try {
-      setCurrPauseId({ id, state: 'waiting' });
-      await handleEnableDisableIngestion(id);
-    } finally {
-      setCurrPauseId({ id: '', state: '' });
-    }
-  };
+    return {
+      editStatusPermission:
+        pipelinePermission?.[Operation.EditAll] ||
+        pipelinePermission?.[Operation.EditIngestionPipelineStatus],
+    };
+  }, [ingestionPipelinePermissions, pipelineName]);
+
+  const onPauseUnpauseClick = useCallback(
+    async (id: string) => {
+      try {
+        setCurrPauseId({ id, state: 'waiting' });
+        await handleEnableDisableIngestion(id);
+      } finally {
+        setCurrPauseId({ id: '', state: '' });
+      }
+    },
+    [handleEnableDisableIngestion]
+  );
 
   const handleLogsClick = useCallback(
     () =>
       history.push(
         getLogsViewerPath(
-          serviceCategory,
+          record.pipelineType === PipelineType.TestSuite
+            ? EntityType.TEST_SUITE
+            : serviceCategory,
           record.service?.name ?? '',
           record?.fullyQualifiedName ?? record?.name ?? ''
         )
       ),
     [record, serviceCategory]
   );
-
-  const getIngestionPermission = (name: string): boolean =>
-    getEditPermission(name);
 
   return (
     <Row
@@ -84,53 +97,70 @@ function PipelineActions({
       wrap={false}>
       <Col>
         {record.enabled ? (
-          <Button
-            data-testid="pause-button"
-            disabled={getIngestionPermission(record.name)}
-            icon={getLoadingStatus(
-              currPauseId,
-              record.id,
-              <PauseIcon height={12} width={12} />
-            )}
-            onClick={() => onPauseUnpauseClick(recordId)}>
-            {t('label.pause')}
-          </Button>
+          <Tooltip
+            title={
+              record.deployed
+                ? t('label.pause')
+                : t('message.pipeline-not-deployed')
+            }>
+            <Button
+              data-testid="pause-button"
+              disabled={!editStatusPermission || !record.deployed}
+              icon={getLoadingStatus(
+                currPauseId,
+                record.id,
+                <PauseIcon height={12} width={12} />
+              )}
+              onClick={() => onPauseUnpauseClick(pipelineId)}>
+              {t('label.pause')}
+            </Button>
+          </Tooltip>
         ) : (
-          <Button
-            data-testid="resume-button"
-            disabled={getIngestionPermission(record.name)}
-            icon={getLoadingStatus(
-              currPauseId,
-              record.id,
-              <ResumeIcon height={12} width={12} />
-            )}
-            onClick={() => onPauseUnpauseClick(recordId)}>
-            {t('label.resume')}
-          </Button>
+          <Tooltip
+            title={
+              record.deployed
+                ? t('label.resume')
+                : t('message.pipeline-not-deployed')
+            }>
+            <Button
+              data-testid="resume-button"
+              disabled={!editStatusPermission}
+              icon={getLoadingStatus(
+                currPauseId,
+                record.id,
+                <ResumeIcon height={12} width={12} />
+              )}
+              onClick={() => onPauseUnpauseClick(pipelineId)}>
+              {t('label.resume')}
+            </Button>
+          </Tooltip>
         )}
       </Col>
       <Col>
-        <Space align="center" size={12}>
-          <Button
-            data-testid="logs-button"
-            icon={<LogsIcon height={12} width={12} />}
-            onClick={handleLogsClick}>
-            {t('label.log-plural')}
-          </Button>
-          <PipelineActionsDropdown
-            deployIngestion={deployIngestion}
-            getIngestionPermission={getIngestionPermission}
-            handleDeleteSelection={handleDeleteSelection}
-            handleEditClick={handleEditClick}
-            handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-            ingestion={record}
-            ingestionPipelinesPermission={ingestionPipelinesPermission}
-            serviceCategory={serviceCategory}
-            serviceName={serviceName}
-            triggerIngestion={triggerIngestion}
-            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-          />
-        </Space>
+        <Row align="middle" gutter={[8, 8]} wrap={false}>
+          <Col>
+            <Button
+              data-testid="logs-button"
+              icon={<LogsIcon height={12} width={12} />}
+              onClick={handleLogsClick}>
+              {t('label.log-plural')}
+            </Button>
+          </Col>
+          <Col>
+            <PipelineActionsDropdown
+              deployIngestion={deployIngestion}
+              handleDeleteSelection={handleDeleteSelection}
+              handleEditClick={handleEditClick}
+              handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+              ingestion={record}
+              ingestionPipelinePermissions={ingestionPipelinePermissions}
+              serviceCategory={serviceCategory}
+              serviceName={serviceName}
+              triggerIngestion={triggerIngestion}
+              onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+            />
+          </Col>
+        </Row>
       </Col>
     </Row>
   );

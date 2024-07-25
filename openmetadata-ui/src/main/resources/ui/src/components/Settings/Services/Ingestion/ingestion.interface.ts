@@ -16,6 +16,7 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../generated/type/paging';
+import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { UseAirflowStatusProps } from '../../../../hooks/useAirflowStatus';
 import { ServicesType } from '../../../../interface/service.interface';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -33,14 +34,12 @@ export interface ConnectorConfig {
 }
 
 export interface IngestionProps {
+  ingestionPagingInfo: UsePagingInterface;
   serviceDetails: ServicesType;
   serviceName: string;
   serviceCategory: ServiceCategory;
-  paging: Paging;
   ingestionPipelineList: Array<IngestionPipeline>;
   permissions: OperationPermission;
-  pipelineNameColWidth?: number;
-  currentPage: number;
   pipelineType?: PipelineType;
   displayAddIngestionButton?: boolean;
   isLoading?: boolean;
@@ -52,9 +51,6 @@ export interface IngestionProps {
   ) => void;
   handleIngestionListUpdate: (
     ingestionList: React.SetStateAction<IngestionPipeline[]>
-  ) => void;
-  handleIngestionPagingUpdate: (
-    ingestionPaging: React.SetStateAction<Paging>
   ) => void;
   handleSearchChange: (searchValue: string) => void;
   onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;

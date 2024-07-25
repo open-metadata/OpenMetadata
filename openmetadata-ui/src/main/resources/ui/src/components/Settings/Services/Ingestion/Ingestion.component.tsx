@@ -13,31 +13,23 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DISABLED } from '../../../../constants/constants';
-import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  IngestionServicePermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import {
-  deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   triggerIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import AddIngestionButton from './AddIngestionButton.component';
-import { IngestionProps, SelectedRowDetails } from './ingestion.interface';
+import { IngestionProps } from './ingestion.interface';
 import IngestionListTable from './IngestionListTable/IngestionListTable';
 
 const Ingestion: React.FC<IngestionProps> = ({
@@ -45,72 +37,25 @@ const Ingestion: React.FC<IngestionProps> = ({
   serviceCategory,
   serviceDetails,
   ingestionPipelineList,
-  paging,
+  ingestionPagingInfo,
   onIngestionWorkflowsUpdate,
   permissions,
   pipelineType,
   displayAddIngestionButton = true,
-  pipelineNameColWidth,
   isLoading,
   handleIngestionListUpdate,
-  handleIngestionPagingUpdate,
   searchText,
   handleSearchChange,
   onPageChange,
-  currentPage,
   airflowInformation,
 }: IngestionProps) => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
-    id: '',
-    name: '',
-    state: '',
-  });
   const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
     useState<string>();
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
     setPipelineIdToFetchStatus(pipelineId);
   }, []);
-
-  const handleDeleteSelection = useCallback((row: SelectedRowDetails) => {
-    setDeleteSelection(row);
-  }, []);
-
-  const handleIsConfirmationModalOpen = useCallback(
-    (value: boolean) => setIsConfirmationModalOpen(value),
-    []
-  );
-
-  const [ingestionPipelinesPermission, setIngestionPipelinesPermission] =
-    useState<IngestionServicePermission>();
-
-  const deleteIngestion = useCallback(
-    async (id: string, displayName: string) => {
-      try {
-        await deleteIngestionPipelineById(id);
-        handleIngestionListUpdate((pipelines) =>
-          pipelines.filter((ing) => ing.id !== id)
-        );
-        // Update the paging total count to reflect on tab count
-        handleIngestionPagingUpdate((prevData) => ({
-          ...prevData,
-          total: prevData.total > 0 ? prevData.total - 1 : 0,
-        }));
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.ingestion-workflow-operation-error', {
-            operation: t('label.deleting-lowercase'),
-            displayName,
-          })
-        );
-      }
-    },
-    [handleIngestionListUpdate, handleIngestionPagingUpdate]
-  );
 
   const updateCurrentSelectedIngestion = useCallback(
     (
@@ -201,45 +146,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     [handlePipelineIdToFetchStatus]
   );
 
-  const fetchIngestionPipelinesPermission = async () => {
-    try {
-      const promises = ingestionPipelineList.map((item) =>
-        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
-      );
-      const response = await Promise.allSettled(promises);
-
-      const permissionData = response.reduce((acc, cv, index) => {
-        return {
-          ...acc,
-          [ingestionPipelineList?.[index].name]:
-            cv.status === 'fulfilled' ? cv.value : {},
-        };
-      }, {});
-
-      setIngestionPipelinesPermission(permissionData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleCancelConfirmationModal = () => {
-    setIsConfirmationModalOpen(false);
-    setDeleteSelection({
-      id: '',
-      name: '',
-      state: '',
-    });
-  };
-
-  const handleDelete = async (id: string, displayName: string) => {
-    try {
-      setDeleteSelection({ id, name: displayName, state: 'waiting' });
-      await deleteIngestion(id, displayName);
-    } finally {
-      handleCancelConfirmationModal();
-    }
-  };
-
   const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
     () => airflowInformation,
     [airflowInformation]
@@ -283,10 +189,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     serviceName,
   ]);
 
-  useEffect(() => {
-    fetchIngestionPipelinesPermission();
-  }, [ingestionPipelineList]);
-
   const getIngestionTab = () => {
     return (
       <Row className="mt-4" data-testid="ingestion-details-container">
@@ -304,18 +206,15 @@ const Ingestion: React.FC<IngestionProps> = ({
         <Col span={24}>
           <IngestionListTable
             airflowInformation={airflowInformation}
-            currentPage={currentPage}
             deployIngestion={deployIngestion}
-            handleDeleteSelection={handleDeleteSelection}
             handleEnableDisableIngestion={handleEnableDisableIngestion}
-            handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
+            handleIngestionListUpdate={handleIngestionListUpdate}
             handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
             ingestionData={ingestionPipelineList}
-            ingestionPipelinesPermission={ingestionPipelinesPermission}
+            ingestionPagingInfo={ingestionPagingInfo}
             isLoading={isLoading}
-            paging={paging}
+            isNumberBasedPaging={!isEmpty(searchText)}
             pipelineIdToFetchStatus={pipelineIdToFetchStatus}
-            pipelineNameColWidth={pipelineNameColWidth}
             pipelineType={pipelineType}
             serviceCategory={serviceCategory}
             serviceName={serviceName}
@@ -332,20 +231,7 @@ const Ingestion: React.FC<IngestionProps> = ({
     return <ErrorPlaceHolderIngestion />;
   }
 
-  return (
-    <div data-testid="ingestion-container">
-      {getIngestionTab()}
-      <EntityDeleteModal
-        entityName={getEntityName(deleteSelection)}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
-        onCancel={handleCancelConfirmationModal}
-        onConfirm={() =>
-          handleDelete(deleteSelection.id, getEntityName(deleteSelection))
-        }
-      />
-    </div>
-  );
+  return <div data-testid="ingestion-container">{getIngestionTab()}</div>;
 };
 
 export default Ingestion;

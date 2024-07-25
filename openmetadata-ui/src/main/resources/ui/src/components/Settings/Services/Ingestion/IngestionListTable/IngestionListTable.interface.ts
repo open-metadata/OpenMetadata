@@ -11,36 +11,36 @@
  *  limitations under the License.
  */
 
-import { IngestionServicePermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ReactNode } from 'react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Paging } from '../../../../../generated/type/paging';
+import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
 import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import { SelectedRowDetails } from '../ingestion.interface';
 
 export interface IngestionListTableProps {
+  isNumberBasedPaging?: boolean;
+  ingestionPagingInfo?: UsePagingInterface;
   ingestionData: Array<IngestionPipeline>;
   isLoading?: boolean;
   pipelineIdToFetchStatus?: string;
-  paging: Paging;
   pipelineType?: PipelineType;
-  pipelineNameColWidth?: number;
-  currentPage: number;
   airflowInformation: UseAirflowStatusProps;
   serviceCategory: ServiceCategory;
+  emptyPlaceholder?: ReactNode;
   serviceName: string;
-  ingestionPipelinesPermission?: IngestionServicePermission;
   deployIngestion: (id: string, displayName: string) => Promise<void>;
-  handleDeleteSelection: (row: SelectedRowDetails) => void;
+  handleIngestionListUpdate: (
+    ingestionList: React.SetStateAction<IngestionPipeline[]>
+  ) => void;
   handleEnableDisableIngestion: (id: string) => Promise<void>;
-  handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate: (
     paging?: Omit<Paging, 'total'>,
     limit?: number
   ) => void;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   handlePipelineIdToFetchStatus: (pipelineId?: string) => void;
-  onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;
+  onPageChange?: ({ cursorType, currentPage }: PagingHandlerParams) => void;
 }

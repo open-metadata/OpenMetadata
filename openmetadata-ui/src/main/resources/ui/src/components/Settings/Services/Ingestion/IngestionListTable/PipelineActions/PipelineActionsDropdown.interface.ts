@@ -19,11 +19,10 @@ export interface PipelineActionsDropdownProps {
   ingestion: IngestionPipeline;
   serviceName: string;
   serviceCategory: string;
-  ingestionPipelinesPermission?: IngestionServicePermission;
   triggerIngestion: (id: string, displayName: string) => Promise<void>;
   deployIngestion: (id: string, displayName: string) => Promise<void>;
   handleEditClick: ((fqn: string) => void) | undefined;
-  getIngestionPermission: (name: string) => boolean;
+  ingestionPipelinePermissions?: IngestionServicePermission;
   handleDeleteSelection: (row: SelectedRowDetails) => void;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate: () => void;
