@@ -227,10 +227,6 @@ public final class TestUtils {
     }
   }
 
-  public static boolean isCI() {
-    return System.getenv("CI") != null;
-  }
-
   public enum UpdateType {
     CREATED, // Not updated instead entity was created
     NO_CHANGE, // PUT/PATCH made no change to the entity and the version remains the same
@@ -669,9 +665,14 @@ public final class TestUtils {
   }
 
   public static void assertEventually(String name, CheckedRunnable runnable) {
+    assertEventually(name, runnable, elasticSearchRetryRegistry);
+  }
+
+  public static void assertEventually(
+      String name, CheckedRunnable runnable, RetryRegistry retryRegistry) {
     try {
       Retry.decorateCheckedRunnable(
-              elasticSearchRetryRegistry.retry(name),
+              retryRegistry.retry(name),
               () -> {
                 try {
                   runnable.run();

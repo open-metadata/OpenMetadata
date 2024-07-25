@@ -101,6 +101,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owner";
   private SearchRepository searchRepository;
+  public static List<ScheduleType> SCHEDULED_TYPES =
+      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -145,7 +147,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
 
         // Schedule
-        if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
           ApplicationHandler.getInstance()
               .installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
@@ -559,7 +561,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         securityContext,
         getResourceContext(),
         new OperationContext(Entity.APPLICATION, MetadataOperation.CREATE));
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       ApplicationHandler.getInstance()
@@ -604,7 +606,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
@@ -648,7 +650,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
@@ -683,7 +685,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
@@ -782,7 +784,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
-      if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
         ApplicationHandler.getInstance()
             .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       }
@@ -818,7 +820,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
