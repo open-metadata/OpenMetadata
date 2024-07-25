@@ -236,16 +236,8 @@
                     "description": "test the number of column in table is between x and y",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
                     "testDefinitionName": "columnValuesToBeBetween",
-                    "parameterValues": [
-                        {
-                            "name": "min",
-                            "value": "90001"
-                        },
-                        {
-                            "name": "max",
-                            "value": "96162"
-                        }
-                    ],
+                    "parameterValues": [],
+                    "useDynamicAssertion": true,
                     "resolutions": {
                         "sequenceOne": [
                             {
