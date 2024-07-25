@@ -389,7 +389,7 @@ export const getResourceEntityFromServiceCategory = (
 
     case 'apiServices':
     case ServiceCategory.API_SERVICES:
-      return ResourceEntity.STORAGE_SERVICE;
+      return ResourceEntity.API_SERVICE;
   }
 
   return ResourceEntity.DATABASE_SERVICE;

@@ -164,7 +164,7 @@ class AdvancedSearchClassBase {
       },
     },
     'responseSchema.schemaFields.name.keyword': {
-      label: t('label.request-schema-field'),
+      label: t('label.response-schema-field'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
