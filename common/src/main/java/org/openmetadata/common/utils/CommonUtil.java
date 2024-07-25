@@ -179,7 +179,7 @@ public final class CommonUtil {
   }
 
   public static <T> List<T> listOrEmptyMutable(List<T> list) {
-    return nullOrEmpty(list) ? new ArrayList<>() : list;
+    return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
   }
 
   public static boolean nullOrEmpty(String string) {
