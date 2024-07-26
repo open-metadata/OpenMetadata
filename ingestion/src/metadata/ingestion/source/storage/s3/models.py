@@ -41,6 +41,19 @@ class S3BucketResponse(BaseModel):
     )
 
 
+class S3Tag(BaseModel):
+    Key: str
+    Value: str
+
+
+class S3TagResponse(BaseModel):
+    """
+    Class modelling a response received from s3_client.get_bucket_tagging operation
+    """
+
+    TagSet: List[S3Tag] = Field([], description="List of tags")
+
+
 class S3ContainerDetails(BaseModel):
     """
     Class mapping container details used to create the container requests
@@ -50,6 +63,10 @@ class S3ContainerDetails(BaseModel):
         extra="forbid",
     )
 
+    leaf_container: bool = Field(False, description="Leaf container")
+    container_fqn: Optional[str] = Field(
+        None, description="Fully qualified name of the container"
+    )
     name: str = Field(..., description="Bucket name")
     prefix: str = Field(..., description="Prefix for the container")
     number_of_objects: Optional[float] = Field(
