@@ -30,10 +30,13 @@ export enum EntityTypeEndpoint {
   MessagingService = 'services/messagingServices',
   SearchService = 'services/searchServices',
   MetadataService = 'services/metadataServices',
+  ApiService = 'services/apiServices',
   Database = 'databases',
   DatabaseSchema = 'databaseSchemas',
   DataModel = 'dashboard/datamodels',
   User = 'users',
+  API_COLLECTION = 'apiCollections',
+  API_ENDPOINT = 'apiEndpoints',
 }
 
 export type EntityDataType = {
@@ -57,4 +60,6 @@ export enum ENTITY_PATH {
   databases = 'database',
   databaseSchemas = 'databaseSchema',
   'dashboard/datamodels' = 'dashboardDataModel',
+  'apiCollections' = 'apiCollection',
+  'apiEndpoints' = 'apiEndpoint',
 }

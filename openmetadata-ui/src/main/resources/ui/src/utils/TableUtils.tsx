@@ -42,6 +42,9 @@ import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
@@ -270,6 +273,12 @@ export const getEntityIcon = (
     ['services']: ServicesIcon,
     ['automator']: AutomatorBotIcon,
     ['notification']: NotificationIcon,
+    [EntityType.API_ENDPOINT]: APIEndpointIcon,
+    [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
+    [EntityType.API_SERVICE]: APIServiceIcon,
+    [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
+    [EntityType.API_COLLECTION]: APICollectionIcon,
+    [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
     ['location']: LocationIcon,
   };
 

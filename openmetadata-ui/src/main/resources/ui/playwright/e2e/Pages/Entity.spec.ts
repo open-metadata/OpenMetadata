@@ -12,6 +12,7 @@
  */
 import { test } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
@@ -32,6 +33,7 @@ import {
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
+  ApiEndpointClass,
   TableClass,
   StoredProcedureClass,
   DashboardClass,

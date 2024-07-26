@@ -40,4 +40,7 @@ export enum ExplorePageTabs {
   ML_MODEL_SERVICE = 'mlmodelService',
   STORAGE_SERVICE = 'storageService',
   SEARCH_INDEX_SERVICE = 'searchIndexService',
+  API_SERVICE = 'apiService',
+  API_COLLECTION = 'apiCollection',
+  API_ENDPOINT = 'apiEndpoint',
 }

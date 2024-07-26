@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  API_ENDPOINT_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DATA_MODEL_TYPE,
@@ -110,6 +111,15 @@ describe('SearchClassBase', () => {
     expect(searchIndexMapping[EntityType.DATABASE_SCHEMA]).toEqual(
       SearchIndex.DATABASE_SCHEMA
     );
+    expect(searchIndexMapping[EntityType.API_SERVICE]).toEqual(
+      SearchIndex.API_SERVICE_INDEX
+    );
+    expect(searchIndexMapping[EntityType.API_COLLECTION]).toEqual(
+      SearchIndex.API_COLLECTION_INDEX
+    );
+    expect(searchIndexMapping[EntityType.API_ENDPOINT]).toEqual(
+      SearchIndex.API_ENDPOINT_INDEX
+    );
   });
 
   it('should return dropdown item based on entity type', () => {
@@ -148,6 +158,13 @@ describe('SearchClassBase', () => {
     const databaseSchemaItems = searchClassBase.getDropDownItems(
       SearchIndex.DATABASE_SCHEMA
     );
+    const apiEndpointItems = searchClassBase.getDropDownItems(
+      SearchIndex.API_ENDPOINT_INDEX
+    );
+
+    const apiCollectionItems = searchClassBase.getDropDownItems(
+      SearchIndex.API_COLLECTION_INDEX
+    );
 
     expect(tableItems).toEqual([
       ...COMMON_DROPDOWN_ITEMS,
@@ -157,6 +174,10 @@ describe('SearchClassBase', () => {
     expect(topicItems).toEqual([
       ...COMMON_DROPDOWN_ITEMS,
       ...TOPIC_DROPDOWN_ITEMS,
+    ]);
+    expect(apiEndpointItems).toEqual([
+      ...COMMON_DROPDOWN_ITEMS,
+      ...API_ENDPOINT_DROPDOWN_ITEMS,
     ]);
     expect(dashboardItems).toEqual([
       ...COMMON_DROPDOWN_ITEMS,
@@ -195,6 +216,7 @@ describe('SearchClassBase', () => {
 
     expect(databaseItems).toEqual(COMMON_DROPDOWN_ITEMS);
     expect(databaseSchemaItems).toEqual(COMMON_DROPDOWN_ITEMS);
+    expect(apiCollectionItems).toEqual(COMMON_DROPDOWN_ITEMS);
   });
 
   it('should return empty dropdown item based if index not related to explore items', () => {

@@ -34,6 +34,7 @@ test.describe('Explore Tree scenarios ', () => {
       await expect(page.getByRole('tree')).toContainText('Containers');
       await expect(page.getByRole('tree')).toContainText('Search Indexes');
       await expect(page.getByRole('tree')).toContainText('Governance');
+      await expect(page.getByRole('tree')).toContainText('APIs');
 
       await page
         .locator('div')
@@ -44,6 +45,16 @@ test.describe('Explore Tree scenarios ', () => {
 
       await expect(page.getByRole('tree')).toContainText('Glossaries');
       await expect(page.getByRole('tree')).toContainText('Tags');
+
+      // APIs
+      await page
+        .locator('div')
+        .filter({ hasText: /^APIs$/ })
+        .locator('svg')
+        .first()
+        .click();
+
+      await expect(page.getByRole('tree')).toContainText('rest');
     });
 
     await test.step('Check the quick filters', async () => {

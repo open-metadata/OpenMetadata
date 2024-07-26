@@ -18,6 +18,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import {
+  APICollectionSource,
+  APIEndpointSource,
   ChartSource,
   DashboardSource,
   DataProductSource,
@@ -101,6 +103,14 @@ const Suggestions = ({
 
   const [chartSuggestions, setChartSuggestions] = useState<ChartSource[]>([]);
 
+  const [apiCollectionSuggestions, setApiCollectionSuggestions] = useState<
+    APICollectionSource[]
+  >([]);
+
+  const [apiEndpointSuggestions, setApiEndpointSuggestions] = useState<
+    APIEndpointSource[]
+  >([]);
+
   const isMounting = useRef(true);
 
   const updateSuggestions = (options: Array<Option>) => {
@@ -132,6 +142,14 @@ const Suggestions = ({
     );
 
     setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
+
+    setApiCollectionSuggestions(
+      filterOptionsByIndex(options, SearchIndex.API_COLLECTION_INDEX)
+    );
+
+    setApiEndpointSuggestions(
+      filterOptionsByIndex(options, SearchIndex.API_ENDPOINT_INDEX)
+    );
   };
 
   const getSuggestionsForIndex = (
@@ -197,6 +215,14 @@ const Suggestions = ({
           {
             suggestions: chartSuggestions,
             searchIndex: SearchIndex.CHART,
+          },
+          {
+            suggestions: apiCollectionSuggestions,
+            searchIndex: SearchIndex.API_COLLECTION_INDEX,
+          },
+          {
+            suggestions: apiEndpointSuggestions,
+            searchIndex: SearchIndex.API_ENDPOINT_INDEX,
           },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>

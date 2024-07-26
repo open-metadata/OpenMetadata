@@ -181,6 +181,12 @@ const CustomEntityDetailV1 = () => {
       case ENTITY_PATH.databaseSchemas:
         return PAGE_HEADERS.DATABASE_SCHEMA_CUSTOM_ATTRIBUTES;
 
+      case ENTITY_PATH.apiEndpoints:
+        return PAGE_HEADERS.API_ENDPOINT_CUSTOM_ATTRIBUTES;
+
+      case ENTITY_PATH.apiCollections:
+        return PAGE_HEADERS.API_COLLECTION_CUSTOM_ATTRIBUTES;
+
       default:
         return PAGE_HEADERS.TABLES_CUSTOM_ATTRIBUTES;
     }

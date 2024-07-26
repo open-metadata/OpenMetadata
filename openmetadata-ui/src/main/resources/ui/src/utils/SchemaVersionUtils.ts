@@ -19,10 +19,9 @@ import {
   DataTypeTopic,
   Field,
   MessageSchemaObject,
-  Topic,
 } from '../generated/entity/data/topic';
+import { APISchema } from '../generated/type/apiSchema';
 import { EntityDiffProps } from '../interface/EntityVersion.interface';
-import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,
@@ -139,7 +138,7 @@ export function getSchemasDiff(
   schemaFieldsDiff: EntityDiffProps,
   changedEntity = '',
   schemaFields: Array<Field> = [],
-  clonedMessageSchema?: MessageSchemaObject
+  clonedMessageSchema?: MessageSchemaObject | APISchema
 ) {
   if (schemaFieldsDiff.added) {
     createAddedSchemasDiff(schemaFieldsDiff, schemaFields);
@@ -178,13 +177,11 @@ export function getSchemasDiff(
   };
 }
 
-export const getUpdatedMessageSchema = (
-  currentVersionData: VersionData,
+export const getVersionedSchema = (
+  schema: MessageSchemaObject | APISchema,
   changeDescription: ChangeDescription
-): Topic['messageSchema'] => {
-  let clonedMessageSchema = cloneDeep(
-    (currentVersionData as Topic).messageSchema
-  );
+): MessageSchemaObject | APISchema => {
+  let clonedMessageSchema = cloneDeep(schema);
   const schemaFields = clonedMessageSchema?.schemaFields;
   const schemaFieldsDiff = getAllDiffByFieldName(
     EntityField.SCHEMA_FIELDS,

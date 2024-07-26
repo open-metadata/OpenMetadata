@@ -19,6 +19,8 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
@@ -165,6 +167,17 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconChart;
 
       break;
+    case SearchIndex.API_COLLECTION_INDEX:
+      label = i18next.t('label.api-collection-plural');
+      GroupIcon = IconApiCollection;
+
+      break;
+
+    case SearchIndex.API_ENDPOINT_INDEX:
+      label = i18next.t('label.api-endpoint-plural');
+      GroupIcon = IconApiEndpoint;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
@@ -276,6 +289,9 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.DATABASE]: EntityType.DATABASE,
     [SearchIndex.DOMAIN]: EntityType.DOMAIN,
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
+    [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
+    [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+    [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found

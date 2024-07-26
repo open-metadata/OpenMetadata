@@ -96,6 +96,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     MlModel: 'mlmodel_search_index',
     Container: 'container_search_index',
     SearchIndex: 'search_entity_search_index',
+    ApiEndpoint: 'api_endpoint_search_index',
   };
 
   return entityMapping[entityType];

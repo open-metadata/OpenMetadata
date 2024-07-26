@@ -67,6 +67,9 @@ export enum GlobalSettingOptions {
   OM_HEALTH = 'om-health',
   APPEARANCE = 'appearance',
   DATA_OBSERVABILITY = 'dataObservability',
+  APIS = 'apiServices',
+  API_COLLECTIONS = 'apiCollections',
+  API_ENDPOINTS = 'apiEndpoints',
 }
 
 export const SETTINGS_OPTIONS_PATH = {
@@ -107,6 +110,10 @@ export const SETTINGS_OPTIONS_PATH = {
   [GlobalSettingOptions.DATA_OBSERVABILITY]: [
     GlobalSettingsMenuCategory.SERVICES,
     `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DATA_OBSERVABILITY}`,
+  ],
+  [GlobalSettingOptions.APIS]: [
+    GlobalSettingsMenuCategory.SERVICES,
+    `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
   ],
 
   // Applications
@@ -225,5 +232,13 @@ export const SETTING_CUSTOM_PROPERTIES_PATH = {
   [GlobalSettingOptions.GLOSSARY_TERM]: [
     GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
     `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.GLOSSARY_TERM}`,
+  ],
+  [GlobalSettingOptions.API_COLLECTIONS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_COLLECTIONS}`,
+  ],
+  [GlobalSettingOptions.API_ENDPOINTS]: [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
   ],
 };
