@@ -49,6 +49,7 @@ const DataAssetsWidget = ({
         SearchIndex.MLMODEL,
         SearchIndex.CONTAINER,
         SearchIndex.SEARCH_INDEX,
+        SearchIndex.API_ENDPOINT_INDEX,
       ]);
       setServices(res?.data.aggregations?.['sterms#serviceType'].buckets);
     } catch (error) {

@@ -17,6 +17,7 @@ import {
   Pipeline,
   PipelineType,
 } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { APIService } from '../generated/entity/services/apiService';
 import {
   DashboardConnection,
   DashboardService,
@@ -103,7 +104,8 @@ export type ServicesType =
   | MlmodelService
   | MetadataService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIService;
 
 export interface ServiceResponse {
   data: Array<ServicesType>;
