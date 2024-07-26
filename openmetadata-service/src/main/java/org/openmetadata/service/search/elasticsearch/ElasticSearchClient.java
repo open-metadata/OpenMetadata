@@ -803,14 +803,16 @@ public class ElasticSearchClient implements SearchClient {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
+    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    boolQueryBuilder.should(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(boolQueryBuilder);
     if (CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn))
+              .must(boolQueryBuilder)
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
@@ -860,6 +862,11 @@ public class ElasticSearchClient implements SearchClient {
         }
       }
     }
+    getLineage(
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+
     // TODO: Fix this , this is hack
     if (edges.isEmpty()) {
       es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
