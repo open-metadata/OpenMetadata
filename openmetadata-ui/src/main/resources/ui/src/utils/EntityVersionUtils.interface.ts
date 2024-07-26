@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { APICollection } from '../generated/entity/data/apiCollection';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
@@ -38,6 +39,7 @@ export type VersionEntityTypes =
   | GlossaryTerm
   | ServicesType
   | Database
-  | DatabaseSchema;
+  | DatabaseSchema
+  | APICollection;
 
 export type AssetsChildForVersionPages = TableColumn | ContainerColumn | Field;

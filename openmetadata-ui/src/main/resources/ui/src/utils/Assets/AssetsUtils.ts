@@ -20,6 +20,14 @@ import { Table } from '../../generated/entity/data/table';
 import { Domain } from '../../generated/entity/domains/domain';
 import { ListParams } from '../../interface/API.interface';
 import {
+  getApiCollectionByFQN,
+  patchApiCollection,
+} from '../../rest/apiCollectionsAPI';
+import {
+  getApiEndPointByFQN,
+  patchApiEndPoint,
+} from '../../rest/apiEndpointsAPI';
+import {
   getDashboardByFqn,
   patchDashboardDetails,
 } from '../../rest/dashboardAPI';
@@ -98,6 +106,10 @@ export const getAPIfromSource = (
       return patchDatabaseDetails;
     case EntityType.TEAM:
       return patchTeamDetail;
+    case EntityType.API_COLLECTION:
+      return patchApiCollection;
+    case EntityType.API_ENDPOINT:
+      return patchApiEndPoint;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -105,6 +117,7 @@ export const getAPIfromSource = (
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -148,6 +161,10 @@ export const getEntityAPIfromSource = (
       return getSearchIndexDetailsByFQN;
     case EntityType.TEAM:
       return getTeamByName;
+    case EntityType.API_COLLECTION:
+      return getApiCollectionByFQN;
+    case EntityType.API_ENDPOINT:
+      return getApiEndPointByFQN;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -155,6 +172,7 @@ export const getEntityAPIfromSource = (
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 

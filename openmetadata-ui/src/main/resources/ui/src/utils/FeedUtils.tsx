@@ -561,6 +561,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
     case EntityType.METADATA_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
     case EntityType.TYPE:
       displayName = getPartialNameFromFQN(entityFQN, ['service']);
 

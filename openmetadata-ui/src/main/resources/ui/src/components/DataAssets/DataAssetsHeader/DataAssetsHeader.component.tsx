@@ -169,6 +169,7 @@ export const DataAssetsHeader = ({
       [
         EntityType.DATABASE,
         EntityType.DATABASE_SCHEMA,
+        EntityType.API_COLLECTION,
         ...SERVICE_TYPES,
       ].includes(entityType),
     [entityType]
