@@ -150,6 +150,15 @@ jest.mock(
     })),
   })
 );
+const mockSetShowAILearningBanner = jest.fn();
+jest.mock(
+  '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
+  () => ({
+    useTestCaseStore: jest.fn().mockImplementation(() => ({
+      setShowAILearningBanner: mockSetShowAILearningBanner,
+    })),
+  })
+);
 
 describe('TestSummaryGraph', () => {
   it('should display error placeholder when the result data is empty', () => {
@@ -213,5 +222,11 @@ describe('TestSummaryGraph', () => {
 
     expect(minLineChart).toBeInTheDocument();
     expect(maxLineChart).toBeInTheDocument();
+  });
+
+  it('should call mockSetShowAILearningBanner', () => {
+    render(<TestSummaryGraph {...mockProps} />);
+
+    expect(mockSetShowAILearningBanner).toHaveBeenCalledWith(false);
   });
 });
