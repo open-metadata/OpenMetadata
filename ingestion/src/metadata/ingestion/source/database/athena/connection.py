@@ -17,6 +17,7 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.inspection import inspect
 
 from metadata.clients.aws_client import AWSClient
@@ -99,16 +100,25 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
+    def get_test_schema(inspector: Inspector):
+        all_schemas = inspector.get_schema_names()
+        return all_schemas[0] if all_schemas else None
+
     def custom_executor_for_table():
         inspector = inspect(engine)
-        all_schemas = inspector.get_schema_names()
-        return inspector.get_table_names(all_schemas[0])
+        test_schema = get_test_schema(inspector)
+        return inspector.get_table_names(test_schema) if test_schema else []
+
+    def custom_executor_for_view():
+        inspector = inspect(engine)
+        test_schema = get_test_schema(inspector)
+        return inspector.get_view_names(test_schema) if test_schema else []
 
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, engine),
         "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
         "GetTables": custom_executor_for_table,
-        "GetViews": partial(execute_inspector_func, engine, "get_view_names"),
+        "GetViews": custom_executor_for_view,
     }
 
     test_connection_steps(
