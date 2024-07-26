@@ -70,6 +70,11 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
+  public TeamsMessage buildTestMessage(String publisherName) {
+    return getTeamTestMessage(publisherName);
+  }
+
+  @Override
   public TeamsMessage buildThreadMessage(String publisherName, ChangeEvent event) {
     return getTeamMessage(createThreadMessage(publisherName, event));
   }
@@ -91,6 +96,25 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
       return teamsMessage;
     }
     throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private TeamsMessage getTeamTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      TeamsMessage teamsMessage = new TeamsMessage();
+      teamsMessage.setSummary(
+          "This is a test message from OpenMetadata to confirm your Microsoft Teams destination is configured correctly.");
+
+      // Sections
+      TeamsMessage.Section teamsSection = new TeamsMessage.Section();
+      teamsSection.setActivityTitle("Alert: " + publisherName);
+
+      List<TeamsMessage.Section> sectionList = new ArrayList<>();
+      sectionList.add(teamsSection);
+
+      teamsMessage.setSections(sectionList);
+      return teamsMessage;
+    }
+    throw new UnhandledServerException("Publisher name not found.");
   }
 
   private TeamsMessage.Section getTeamsSection(String activityTitle, String message) {

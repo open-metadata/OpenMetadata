@@ -26,6 +26,8 @@ import org.openmetadata.service.events.subscription.AlertUtil;
 public interface Destination<T> {
   void sendMessage(T event) throws EventPublisherException;
 
+  void sendTestMessage() throws EventPublisherException;
+
   SubscriptionDestination getSubscriptionDestination();
 
   EventSubscription getEventSubscriptionForDestination();

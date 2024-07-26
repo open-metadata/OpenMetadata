@@ -71,6 +71,11 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
   }
 
   @Override
+  public GChatMessage buildTestMessage(String publisherName) {
+    return getGChatTestMessage(publisherName);
+  }
+
+  @Override
   public GChatMessage buildThreadMessage(String publisherName, ChangeEvent event) {
     return getGChatMessage(createThreadMessage(publisherName, event));
   }
@@ -99,6 +104,30 @@ public class GChatMessageDecorator implements MessageDecorator<GChatMessage> {
       return gChatMessage;
     }
     throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private GChatMessage getGChatTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      GChatMessage gChatMessage = new GChatMessage();
+      GChatMessage.CardsV2 cardsV2 = new GChatMessage.CardsV2();
+      GChatMessage.Card card = new GChatMessage.Card();
+      GChatMessage.Section section = new GChatMessage.Section();
+
+      // Header
+      gChatMessage.setText(
+          "This is a test message from OpenMetadata to confirm your GChat destination is configured correctly.");
+      GChatMessage.CardHeader cardHeader = new GChatMessage.CardHeader();
+      cardHeader.setTitle("Alert: " + publisherName);
+      cardHeader.setSubtitle("GChat destination test successful.");
+
+      card.setHeader(cardHeader);
+      card.setSections(List.of(section));
+      cardsV2.setCard(card);
+      gChatMessage.setCardsV2(List.of(cardsV2));
+
+      return gChatMessage;
+    }
+    throw new UnhandledServerException("Publisher name not found.");
   }
 
   private GChatMessage.Widget getGChatWidget(String message) {
