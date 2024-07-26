@@ -11,7 +11,6 @@ from testcontainers.core.generic import DbContainer
 from testcontainers.minio import MinioContainer
 from testcontainers.mysql import MySqlContainer
 
-from _openmetadata_testutils.postgres.conftest import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -23,6 +22,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+
+from _openmetadata_testutils.helpers.docker import try_bind
 
 
 class TrinoContainer(DbContainer):
