@@ -89,8 +89,9 @@ const FeedCardHeaderV2 = ({
             data-testid="entity-link"
             to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
             <span>
-              {getEntityName(feed.entityRef) ??
-                entityDisplayName(entityType, entityFQN)}
+              {feed?.entityRef
+                ? getEntityName(feed.entityRef)
+                : entityDisplayName(entityType, entityFQN)}
             </span>
           </Link>
         </UserPopOverCard>
@@ -107,8 +108,9 @@ const FeedCardHeaderV2 = ({
               data-testid="entity-link"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
-                {getEntityName(feed.entityRef) ??
-                  entityDisplayName(entityType, entityFQN)}
+                {feed?.entityRef
+                  ? getEntityName(feed.entityRef)
+                  : entityDisplayName(entityType, entityFQN)}
               </span>
             </Link>
           </>
@@ -121,8 +123,9 @@ const FeedCardHeaderV2 = ({
             {getEntityIcon(entityType ?? '')}
           </span>
           <Typography.Text className="break-all font-bold">
-            {getEntityName(feed.entityRef) ??
-              entityDisplayName(entityType, entityFQN)}
+            {feed?.entityRef
+              ? getEntityName(feed.entityRef)
+              : entityDisplayName(entityType, entityFQN)}
           </Typography.Text>
         </>
       );

@@ -65,8 +65,9 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
               data-testid="entitylink"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
-                {getEntityName(feed?.entityRef) ??
-                  entityDisplayName(entityType, entityFQN)}
+                {feed?.entityRef
+                  ? getEntityName(feed.entityRef)
+                  : entityDisplayName(entityType, entityFQN)}
               </span>
             </Link>
           )}
