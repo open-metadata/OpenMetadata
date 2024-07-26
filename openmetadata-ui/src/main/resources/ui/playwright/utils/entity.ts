@@ -159,7 +159,7 @@ export const addMultiOwner = async (data: {
 
   expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
 
-  await page.click('.ant-tabs [id*=tab-users]');
+  await page.getByRole('tab', { name: 'Users' }).click();
   await getUsers;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 

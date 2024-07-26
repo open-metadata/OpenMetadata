@@ -38,7 +38,6 @@ export const OwnerLabel = ({
   hasPermission,
   ownerDisplayName,
   placeHolder,
-  pills = false,
 }: {
   owners?: EntityReference[];
   className?: string;
@@ -46,7 +45,6 @@ export const OwnerLabel = ({
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode[];
   placeHolder?: string;
-  pills?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -94,8 +92,8 @@ export const OwnerLabel = ({
       const ownerLink = (
         <Link
           className={classNames(
-            'no-underline',
-            { 'font-medium text-xs text-primary ': !pills },
+            'no-underline font-medium text-xs text-primary',
+
             className
           )}
           data-testid="owner-link"
@@ -116,20 +114,19 @@ export const OwnerLabel = ({
         </div>
       );
     });
-  }, [owners, ownerDisplayName, placeHolder, pills, className, t]);
+  }, [owners, ownerDisplayName, placeHolder, className, t]);
 
   const ownerContent = useMemo(() => {
     return (
       <div
         className={classNames(
-          'd-inline-flex items-center flex-wrap',
-          { 'gap-2': !pills, 'owner-pills-content': pills },
+          'd-inline-flex items-center flex-wrap gap-2',
           { inherited: Boolean(owners?.some((owner) => owner.inherited)) },
           className
         )}
         data-testid="owner-label">
         {ownerElements}
-        {pills && owners?.some((owner) => owner.inherited) && (
+        {owners?.some((owner) => owner.inherited) && (
           <Tooltip
             title={t('label.inherited-entity', {
               entity: t('label.user'),
@@ -160,24 +157,8 @@ export const OwnerLabel = ({
     owners,
     ownerDisplayName,
     placeHolder,
-    pills,
     className,
-    t,
   ]);
-
-  if (pills && owners && owners.length > 0) {
-    return (
-      <Link
-        className="no-underline font-medium text-xs text-primary owner-link-pills"
-        to={
-          owners[0].type === OwnerType.TEAM
-            ? getTeamAndUserDetailsPath(owners[0].name ?? '')
-            : getUserPath(owners[0].name ?? '')
-        }>
-        {ownerContent}
-      </Link>
-    );
-  }
 
   return ownerContent;
 };
