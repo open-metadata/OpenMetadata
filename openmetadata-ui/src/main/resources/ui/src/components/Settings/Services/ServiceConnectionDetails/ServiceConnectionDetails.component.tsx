@@ -25,6 +25,7 @@ import {
   JWT_CONFIG,
 } from '../../../../constants/Services.constant';
 import { EntityType } from '../../../../enums/entity.enum';
+import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
@@ -266,6 +267,16 @@ const ServiceConnectionDetails = ({
             serviceFQN as SearchServiceType
           ).schema
         );
+
+        break;
+
+      case EntityType.API_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getAPIServiceConfig(serviceFQN as APIServiceType)
+            .schema
+        );
+
+        break;
     }
   }, [serviceCategory, serviceFQN]);
 

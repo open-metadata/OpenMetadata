@@ -183,6 +183,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     // Update owner
     cy.get(':nth-child(2) > [data-testid="edit-owner"]').click();
     verifyResponseStatusCode('@getUsers', 200);
+    cy.get('[data-testid="loader"]').should('not.exist');
     interceptURL(
       'GET',
       `api/v1/search/query?q=*${encodeURI(DATA.owner)}*`,
