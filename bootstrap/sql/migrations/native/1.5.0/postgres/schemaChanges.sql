@@ -159,3 +159,14 @@ SET json = jsonb_set(
 WHERE json ? 'feedInfo' 
   AND json->'feedInfo' ? 'entitySpecificInfo' 
   AND json->'feedInfo'->'entitySpecificInfo' ? 'updatedOwner';
+
+-- Update entity_extension to move owner to array
+UPDATE entity_extension
+SET json = jsonb_set(
+    json,
+    '{owner}',
+    to_jsonb(array[
+        jsonb_path_query_first(json, '$.owner')
+    ])
+)
+WHERE jsonb_path_exists(json, '$.owner');
