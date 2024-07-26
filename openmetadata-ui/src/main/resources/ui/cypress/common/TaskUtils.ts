@@ -100,6 +100,10 @@ export const createDescriptionTask = (
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
 
+    cy.get(
+      '.ant-select-dropdown .rc-virtual-list .rc-virtual-list-holder-inner'
+    ).should('be.visible');
+
     cy.get(`[data-testid="${value.assignee ?? assignee}"]`)
       .should('be.visible')
       .trigger('mouseover')
