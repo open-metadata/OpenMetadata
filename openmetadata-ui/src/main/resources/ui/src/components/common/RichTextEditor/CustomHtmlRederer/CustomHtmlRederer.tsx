@@ -27,7 +27,7 @@ import { t } from 'i18next';
 import katex from 'katex';
 import React from 'react';
 import ReactDOMServer from 'react-dom/server';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
+import CopyIcon from '../../../../assets/svg/icon-copy.svg';
 import {
   markdownTextAndIdRegex,
   MARKDOWN_MATCH_ID,
@@ -116,9 +116,14 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
               data-testid="copied-message">
               {t('label.copied')}
             </span>
-            <span data-testid="code-block-copy-icon">
-              <CopyIcon className="code-copy-button" data-copied="false" />
-            </span>
+            <img
+              className="code-copy-button"
+              data-copied="false"
+              data-testid="code-block-copy-icon"
+              height={24}
+              src={CopyIcon}
+              width={24}
+            />
           </>
         ),
       },
