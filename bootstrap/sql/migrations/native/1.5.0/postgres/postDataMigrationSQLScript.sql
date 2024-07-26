@@ -17,7 +17,7 @@ WHERE name IN (
     'columnValueMedianToBeBetween',
     'columnValueMinToBeBetween',
     'columnValueStdDevToBeBetween',
-    'columnValuesLengthsToBeBetween',
+    'columnValueLengthsToBeBetween',
     'columnValuesSumToBeBetween',
     'columnValuesToBeBetween',
     'tableRowCountToBeBetween'
