@@ -103,5 +103,6 @@ class FullyQualifiedNameTest {
     assertFalse(FullyQualifiedName.isParent("a", "a.b.c"));
     assertFalse(FullyQualifiedName.isParent("a.b", "a.b.c"));
     assertFalse(FullyQualifiedName.isParent("a.b.c", "a.b.c"));
+    assertFalse(FullyQualifiedName.isParent("a.b c", "a.b"));
   }
 }

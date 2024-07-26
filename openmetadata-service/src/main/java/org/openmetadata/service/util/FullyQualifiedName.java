@@ -117,7 +117,9 @@ public class FullyQualifiedName {
 
   public static boolean isParent(String childFqn, String parentFqn) {
     // Returns true if the childFqn is indeed the child of parentFqn
-    return childFqn.startsWith(parentFqn) && childFqn.length() > parentFqn.length();
+    // Adding "." ensures that we are checking for a true parent-child relationship
+    // For example, "a.b.c" should be a child of "a.b" but  "a.b c" should not be a child of "a.b"
+    return childFqn.startsWith(parentFqn + ".") && childFqn.length() > parentFqn.length();
   }
 
   private static class SplitListener extends FqnBaseListener {
