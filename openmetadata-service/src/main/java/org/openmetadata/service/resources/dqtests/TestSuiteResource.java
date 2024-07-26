@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.EntityHistory;
@@ -460,6 +462,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public TestSummary getTestsExecutionSummary(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Parameter(
               description = "get summary for a specific test suite",
               schema = @Schema(type = "String", format = "uuid"))
@@ -469,7 +472,62 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
     OperationContext operationContext =
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    // Set the deprecation header based on draft specification from IETF
+    // https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-deprecation-header-02
+    response.setHeader("Deprecation", "Monday, October 30, 2024");
+    response.setHeader(
+        "Link", "api/v1/dataQuality/testSuites/dataQualityReport; rel=\"alternate\"");
     return repository.getTestSummary(testSuiteId);
+  }
+
+  @GET
+  @Path("/dataQualityReport")
+  @Operation(
+      operationId = "getDataQualityReport",
+      summary = "Get Data Quality Report",
+      description =
+          """
+            Use the search service to perform data quality aggregation. You can use the `q` parameter to filter the results.
+            the `aggregationQuery` is of the form `bucketName=<bucketName>:aggType=<aggType>:field=<field>`. You can sperate aggregation
+            query with a comma `,` to perform nested aggregations.
+            For example, `bucketName=table:aggType=terms:field=databaseName,bucketName=<bucketName>:aggType=<aggType>:field=<field>`
+            """,
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Data Quality Report Results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataQualityReport.class)))
+      })
+  public DataQualityReport getDataQualityReport(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Search query to filter the aggregation results",
+              schema = @Schema(type = "String"))
+          @QueryParam("q")
+          String query,
+      @Parameter(
+              description = "Aggregation query to perform aggregation on the search results",
+              schema = @Schema(type = "String"))
+          @QueryParam("aggregationQuery")
+          String aggregationQuery,
+      @Parameter(
+              description = "Index to perform the aggregation against",
+              schema = @Schema(type = "String"))
+          @QueryParam("index")
+          String index)
+      throws IOException {
+    ResourceContext<?> resourceContext = getResourceContext();
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_TESTS);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (nullOrEmpty(aggregationQuery) || nullOrEmpty(index)) {
+      throw new IllegalArgumentException("aggregationQuery and index are required parameters");
+    }
+    return repository.getDataQualityReport(query, aggregationQuery, index);
   }
 
   @POST

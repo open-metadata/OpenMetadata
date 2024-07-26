@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.FIELD_OWNER;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.api.data.CreateSearchIndex;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SearchIndexDataType;
@@ -59,6 +61,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.SearchServiceResourceTest;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -406,6 +410,107 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     // No lingering relationships should cause error in listing the entity
     listEntities(null, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testBuildAggregationString(TestInfo testInfo) {
+    String aggregationString = "bucketName=my-agg-name:aggType=terms:field=my-field";
+    String expectedAggregationString = "\"my-agg-name\":{\"terms\":{\"field\":\"my-field\"}}";
+    Map<String, Object> actualAggregationstring =
+        SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Nested Aggregation (1 level)
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=status_counts:aggType=terms:field=testCaseResults.testCaseStatus";
+    expectedAggregationString =
+        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"status_counts\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"}}}}";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Nested Aggregation (2 levels)
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=statusCount:aggType=terms:field=testCaseResults.testCaseStatus,bucketName=owner:aggType=terms:field=testSuite.owner";
+    expectedAggregationString =
+        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"statusCount\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"},\"aggs\":{\"owner\":{\"terms\":{\"field\":\"testSuite.owner\"}}}}}}";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Metric Aggregation
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=minPrice:aggType=min:field=price.adjusted";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    expectedAggregationString =
+        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+  }
+
+  @Test
+  void testNewAggregation(TestInfo testInfo) throws IOException {
+    DataQualityReport dataQualityReport = new DataQualityReport();
+    SearchRepository searchRepository = getSearchRepository();
+    String query =
+        "{\"query\":{\"bool\":{\"should\":[{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuite\"}}},{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuiteTwo\"}}}]}}}";
+
+    String aggregationQuery =
+        "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=avgTime:aggType=avg:field=updatedAt";
+    Map<String, Object> aggregationString =
+        SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("fullyQualifiedName", "updatedAt")));
+            });
+
+    aggregationQuery =
+        "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=owner:aggType=terms:field=owner.name";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("fullyQualifiedName", "owner.name")));
+            });
+
+    aggregationQuery =
+        "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=owner:aggType=terms:field=owner.name,bucketName=avgTime:aggType=avg:field=updatedAt";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(
+                  m.keySet().containsAll(List.of("fullyQualifiedName", "owner.name", "updatedAt")));
+            });
+
+    aggregationQuery = "bucketName=avgTime:aggType=avg:field=updatedAt";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("updatedAt")));
+            });
+
+    aggregationQuery = "bucketName=fqn:aggType=terms:field=fullyQualifiedName";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("fullyQualifiedName")));
+            });
   }
 
   @Override
