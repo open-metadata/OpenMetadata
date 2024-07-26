@@ -26,6 +26,8 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.GlossaryTerm,
   EntityTypeEndpoint.SearchIndex,
   EntityTypeEndpoint.DataModel,
+  EntityTypeEndpoint.API_COLLECTION,
+  EntityTypeEndpoint.API_ENDPOINT,
 ];
 
 export const ENTITY_REFERENCE_PROPERTIES = [
@@ -230,6 +232,41 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityReferenceConfig: ['User', 'Team'],
     entityObj: {},
     entityApiType: 'topics',
+  },
+  entity_apiCollection: {
+    name: 'apiCollection',
+    description: 'This is API Collection custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'apiCollections',
+  },
+
+  entity_apiEndpoint: {
+    name: 'apiEndpoint',
+    description: 'This is API Endpoint custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'apiEndpoints',
   },
 };
 

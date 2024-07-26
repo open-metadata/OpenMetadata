@@ -12,6 +12,8 @@
  */
 
 import { EntityType } from '../../../enums/entity.enum';
+import { APICollection } from '../../../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -40,6 +42,8 @@ export type ExtentionEntities = {
   [EntityType.DATABASE]: Database;
   [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
   [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
+  [EntityType.API_COLLECTION]: APICollection;
+  [EntityType.API_ENDPOINT]: APIEndpoint;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;

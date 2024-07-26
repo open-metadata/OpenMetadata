@@ -175,19 +175,13 @@
             "type": "text",
             "analyzer": "om_analyzer_jp"
           },
-          "entityType": {
+          "type": {
             "type": "keyword"
-          },
-          "testPlatforms": {
-            "type": "text",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
           }
         }
+      },
+      "testCaseType": {
+        "type": "keyword"
       },
       "entityType": {
         "type": "keyword"

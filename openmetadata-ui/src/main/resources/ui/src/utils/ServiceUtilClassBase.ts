@@ -75,6 +75,7 @@ import {
   REDASH,
   REDPANDA,
   REDSHIFT,
+  REST_SERVICE,
   SAGEMAKER,
   SALESFORCE,
   SAP_ERP,
@@ -97,6 +98,7 @@ import {
 import { SearchSuggestions } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
+  ApiServiceTypeSmallCaseType,
   DashboardServiceTypeSmallCaseType,
   DatabaseServiceTypeSmallCaseType,
   MessagingServiceTypeSmallCaseType,
@@ -113,8 +115,10 @@ import { MlModelServiceType } from '../generated/entity/data/mlmodel';
 import { PipelineServiceType } from '../generated/entity/data/pipeline';
 import { SearchServiceType } from '../generated/entity/data/searchIndex';
 import { MessagingServiceType } from '../generated/entity/data/topic';
+import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { SearchSourceAlias } from '../interface/search.interface';
+import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
@@ -132,6 +136,7 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Dbt,
     DatabaseServiceType.Synapse,
     MetadataServiceType.Alation,
+    APIServiceType.Webhook,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -174,6 +179,11 @@ class ServiceUtilClassBase {
     SearchServiceTypeSmallCaseType
   >(SearchServiceType);
 
+  ApiServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    ApiServiceTypeSmallCaseType
+  >(APIServiceType);
+
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
   }
@@ -207,6 +217,9 @@ class ServiceUtilClassBase {
       ).sort(customServiceComparator),
       searchServices: this.filterUnsupportedServiceType(
         Object.values(SearchServiceType) as string[]
+      ).sort(customServiceComparator),
+      apiServices: this.filterUnsupportedServiceType(
+        Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
     };
   }
@@ -450,6 +463,9 @@ class ServiceUtilClassBase {
       case this.SearchServiceTypeSmallCase.OpenSearch:
         return OPEN_SEARCH;
 
+      case this.ApiServiceTypeSmallCase.REST:
+        return REST_SERVICE;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -488,6 +504,7 @@ class ServiceUtilClassBase {
     const mlmodel = this.MlModelServiceTypeSmallCase;
     const storage = this.StorageServiceTypeSmallCase;
     const search = this.SearchServiceTypeSmallCase;
+    const api = this.ApiServiceTypeSmallCase;
 
     switch (true) {
       case Object.values(database).includes(
@@ -518,6 +535,11 @@ class ServiceUtilClassBase {
         serviceType as typeof search[keyof typeof search]
       ):
         return ExplorePageTabs.SEARCH_INDEX;
+
+      case Object.values(api).includes(
+        serviceType as typeof api[keyof typeof api]
+      ):
+        return ExplorePageTabs.API_ENDPOINT;
 
       default:
         return ExplorePageTabs.TABLES;
@@ -630,6 +652,10 @@ class ServiceUtilClassBase {
 
   public getMetadataServiceConfig(type: MetadataServiceType) {
     return getMetadataConfig(type);
+  }
+
+  public getAPIServiceConfig(type: APIServiceType) {
+    return getAPIConfig(type);
   }
 
   /**

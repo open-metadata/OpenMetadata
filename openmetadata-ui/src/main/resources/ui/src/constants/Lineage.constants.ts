@@ -56,12 +56,20 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
+    type: SearchIndex.PIPELINE,
+    label: t('label.pipeline-plural'),
+  },
+  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
   {
     type: SearchIndex.DASHBOARD_DATA_MODEL,
     label: t('label.data-model-plural'),
+  },
+  {
+    type: SearchIndex.API_ENDPOINT_INDEX,
+    label: t('label.api-endpoint-plural'),
   },
 ];
 
