@@ -9,13 +9,19 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Generic Workflow entrypoint to execute Applications
+Validate the deprecated functions still work.
 """
+from metadata.workflow.workflow_output_handler import print_init_error, print_status
 
-from metadata.utils.deprecation import deprecated
-from metadata.workflow.base import BaseWorkflow
+from .test_base_workflow import SimpleWorkflow, config
 
 
-@deprecated(message="Use 'workflow.print_status()' instead.", release="1.6")
-def print_status(workflow: BaseWorkflow):
-    workflow.print_status()
+# TODO: remove after the print_status and print_init_error functions are removed in Release 1.6
+class TestDeprecatedSimpleWorkflow:
+    def test_workflow_print_status(self):
+        workflow = SimpleWorkflow(config=config)
+        workflow.execute()
+        print_status(workflow)
+
+    def test_workflow_print_init_error(self):
+        print_init_error(Exception(), config.model_dump())

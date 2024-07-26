@@ -85,11 +85,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         log_level: LogLevels,
         metadata_config: OpenMetadataConnection,
         service_type: ServiceType,
+        output_handler: WorkflowOutputHandler = WorkflowOutputHandler(),
     ):
         """
         Disabling pylint to wait for workflow reimplementation as a topology
         """
-        self._output_handler = None
+        self.output_handler = output_handler
         self.config = config
         self.service_type = service_type
         self._timer: Optional[RepeatedTimer] = None
@@ -109,22 +110,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.post_init()
 
     @property
-    def output_handler(self) -> WorkflowOutputHandler:
-        if not self._output_handler:
-            self._output_handler = WorkflowOutputHandler()
-        return self._output_handler
-
-    @property
     def ingestion_pipeline(self) -> Optional[IngestionPipeline]:
         """Get or create the Ingestion Pipeline from the configuration"""
         if not self._ingestion_pipeline and self.config.ingestionPipelineFQN:
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
 
         return self._ingestion_pipeline
-
-    def with_output_handler(self, output_handler: WorkflowOutputHandler):
-        self._output_handler = output_handler
-        return self
 
     def stop(self) -> None:
         """

@@ -26,10 +26,11 @@ from metadata.utils.deprecation import deprecated
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import pretty_print_time_duration
 from metadata.utils.logger import ANSI, log_ansi_encoded_string
-from metadata.workflow.workflow_init_error_handler import (
-    WorkflowInitErrorHandler,
+from metadata.workflow.output_handler import (
     WorkflowType,
+    workflow_type_to_pipeline_type,
 )
+from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
 from metadata.workflow.workflow_status_mixin import WorkflowResultStatus
 
 WORKFLOW_FAILURE_MESSAGE = "Workflow finished with failures"
@@ -46,7 +47,7 @@ class Failure(BaseModel):
     failures: List[TruncatedStackTraceError]
 
 
-@deprecated(message="Use 'workflow.print_status()' instead.", release="1.8")
+@deprecated(message="Use 'workflow.print_status()' instead.", release="1.6")
 def print_status(
     workflow: "BaseWorkflow",  # pyright: ignore[reportUndefinedVariable,reportUnknownParameterType]
 ):
@@ -58,14 +59,20 @@ def print_status(
         "Use 'WorkflowInitErrorHandler.print_init_error(exc, config, workflow_type)'"
         " from 'metadata.workflow.workflow_init_error_handler'"
     ),
-    release="1.8",
+    release="1.6",
 )
 def print_init_error(
     exc: Union[Exception, Type[Exception]],
     config: Dict[str, Any],
     workflow_type: WorkflowType = WorkflowType.INGEST,
 ):
-    WorkflowInitErrorHandler.print_init_error(exc, config, workflow_type)
+    # pylint: disable=W0212
+    source_type_name = WorkflowInitErrorHandler._get_source_type_name(  # type: ignore[reportPrivateUsage]
+        config
+    )
+    WorkflowInitErrorHandler.print_init_error(
+        exc, config, workflow_type_to_pipeline_type(workflow_type, source_type_name)
+    )
 
 
 class WorkflowOutputHandler:
