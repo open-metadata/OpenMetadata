@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { TagLabel } from '../generated/entity/data/container';
-import { getTagsWithoutTier, getTierTags } from '../utils/TableUtils';
+import {
+  getEntityIcon,
+  getTagsWithoutTier,
+  getTierTags,
+} from '../utils/TableUtils';
 
 describe('TableUtils', () => {
   it('getTierTags should return the correct usage percentile', () => {
@@ -39,5 +43,9 @@ describe('TableUtils', () => {
     ]);
   });
 
-  // Add more tests for other functions in TableUtils...
+  it('getEntityIcon should return null if no icon is found', () => {
+    const result = getEntityIcon('entity');
+
+    expect(result).toBeNull();
+  });
 });

@@ -20,6 +20,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Legend,
+  LegendProps,
   Line,
   LineProps,
   ReferenceArea,
@@ -39,14 +40,21 @@ import {
   RED_3_OPACITY,
   YELLOW_2,
 } from '../../../../constants/Color.constants';
-import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+} from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
-import { axisTickFormatter } from '../../../../utils/ChartUtils';
+import {
+  axisTickFormatter,
+  updateActiveChartFilter,
+} from '../../../../utils/ChartUtils';
 import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
@@ -67,6 +75,8 @@ function TestSummaryGraph({
   const chartRef = useRef(null);
   const [chartMouseEvent, setChartMouseEvent] =
     useState<CategoricalChartState>();
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const tooltipOffset = useMemo(() => {
     const lineChartContainer = chartRef?.current as unknown as LineChartRef;
@@ -117,18 +127,37 @@ function TestSummaryGraph({
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
       value: info.label,
+      dataKey: info.label,
       type: 'line',
       color: info.color,
     }));
 
     legendPayload.push({
       value: 'Incident',
+      dataKey: 'Incident',
       type: 'rect',
       color: RED_3,
-    });
+    } as Payload);
 
     return legendPayload;
   }, [chartData]);
+
+  const handleLegendClick: LegendProps['onClick'] = (event) => {
+    if (event.dataKey === 'Incident') {
+      return;
+    }
+
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
+
+  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
+    setActiveMouseHoverKey(event.dataKey);
+  };
+  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
+    setActiveMouseHoverKey('');
+  };
 
   const updatedDot: LineProps['dot'] = (props): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
@@ -228,7 +257,12 @@ function TestSummaryGraph({
           wrapperStyle={{ pointerEvents: 'auto' }}
         />
         {referenceArea}
-        <Legend payload={customLegendPayLoad} />
+        <Legend
+          payload={customLegendPayLoad}
+          onClick={handleLegendClick}
+          onMouseEnter={handleLegendMouseEnter}
+          onMouseLeave={handleLegendMouseLeave}
+        />
         <Area
           connectNulls
           activeDot={false}
@@ -243,8 +277,18 @@ function TestSummaryGraph({
           <Line
             dataKey={info.label}
             dot={updatedDot}
+            hide={
+              activeKeys.length && info.label !== activeMouseHoverKey
+                ? !activeKeys.includes(info.label)
+                : false
+            }
             key={info.label}
             stroke={info.color}
+            strokeOpacity={
+              isEmpty(activeMouseHoverKey) || info.label === activeMouseHoverKey
+                ? DEFAULT_CHART_OPACITY
+                : HOVER_CHART_OPACITY
+            }
             type="monotone"
           />
         ))}

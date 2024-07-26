@@ -5,18 +5,23 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.assertEventually;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.readResponse;
 
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RestClient;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.time.Duration;
+import java.util.Map;
+import java.util.Objects;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
@@ -62,6 +67,7 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
+import org.openmetadata.service.util.RetryableAssertionError;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -73,6 +79,14 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     supportsFieldsQueryParam = false;
     supportedNameCharacters = "_-.";
   }
+
+  public static RetryRegistry appTriggerRetry =
+      RetryRegistry.of(
+          RetryConfig.custom()
+              .maxAttempts(60) // about 30 seconds
+              .waitDuration(Duration.ofMillis(500))
+              .retryExceptions(RetryableAssertionError.class)
+              .build());
 
   @Override
   @SneakyThrows
@@ -312,34 +326,31 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   }
 
   @Test
-  void post_trigger_app_200() throws HttpResponseException, InterruptedException {
-    postTriggerApp("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
-    AppRunRecord latestRun = null;
-    while (latestRun == null) {
-      try {
-        latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
-        Thread.sleep(1000);
-      } catch (HttpResponseException ex) {
-        LOG.info("Waiting for the app to start running");
-      }
-    }
-    assert latestRun.getStatus().equals(AppRunRecord.Status.RUNNING);
-    TimeUnit timeout = TimeUnit.SECONDS;
-    long timeoutValue = 30;
-    long startTime = System.currentTimeMillis();
-    while (latestRun.getStatus().equals(AppRunRecord.Status.RUNNING)) {
-      // skip this loop in CI because it causes weird problems
-      if (TestUtils.isCI()) {
-        break;
-      }
-      assert !latestRun.getStatus().equals(AppRunRecord.Status.FAILED);
-      if (System.currentTimeMillis() - startTime > timeout.toMillis(timeoutValue)) {
-        throw new AssertionError(
-            String.format("Expected the app to succeed within %d %s", timeoutValue, timeout));
-      }
-      TimeUnit.MILLISECONDS.sleep(500);
-      latestRun = getLatestAppRun("SearchIndexingApplication", ADMIN_AUTH_HEADERS);
-    }
+  void post_trigger_app_200() throws HttpResponseException {
+    String appName = "SearchIndexingApplication";
+    postTriggerApp(appName, ADMIN_AUTH_HEADERS);
+    assertAppRanAfterTrigger(appName);
+  }
+
+  private void assertAppRanAfterTrigger(String appName) {
+    assertEventually(
+        "appIsRunning",
+        () -> {
+          try {
+            assert Objects.nonNull(getLatestAppRun(appName, ADMIN_AUTH_HEADERS));
+          } catch (HttpResponseException ex) {
+            throw new AssertionError(ex);
+          }
+        },
+        appTriggerRetry);
+    assertEventually(
+        "appSuccess",
+        () -> {
+          assert getLatestAppRun(appName, ADMIN_AUTH_HEADERS)
+              .getStatus()
+              .equals(AppRunRecord.Status.SUCCESS);
+        },
+        appTriggerRetry);
   }
 
   @Test

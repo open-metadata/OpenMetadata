@@ -20,6 +20,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -123,6 +124,9 @@ public interface SearchClient {
   Response aggregate(String index, String fieldName, String value, String query) throws IOException;
 
   JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
+
+  DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
 
   Response suggest(SearchRequest request) throws IOException;
 
