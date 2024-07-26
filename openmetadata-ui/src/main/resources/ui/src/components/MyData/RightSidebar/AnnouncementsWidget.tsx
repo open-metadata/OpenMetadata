@@ -80,6 +80,7 @@ function AnnouncementsWidget({
                         about={item.about}
                         className="d-inline"
                         createdBy={item.createdBy}
+                        feed={item}
                         fieldName={item.feedInfo?.fieldName}
                         timeStamp={item.threadTs}
                       />

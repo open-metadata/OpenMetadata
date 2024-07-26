@@ -479,6 +479,7 @@ export const ActivityFeedTab = ({
                   hideCloseIcon
                   className="p-x-md"
                   entityLink={selectedThread.about}
+                  feed={selectedThread}
                   threadType={selectedThread?.type ?? ThreadType.Conversation}
                   onCancel={noop}
                 />

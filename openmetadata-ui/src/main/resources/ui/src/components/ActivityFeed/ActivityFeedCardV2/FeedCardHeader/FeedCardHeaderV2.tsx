@@ -51,6 +51,7 @@ const FeedCardHeaderV2 = ({
   fieldOperation,
   fieldName,
   cardStyle,
+  feed,
 }: FeedCardHeaderV2Props) => {
   const [, , user] = useUserProfile({
     permission: true,
@@ -87,7 +88,10 @@ const FeedCardHeaderV2 = ({
             className="break-all text-body"
             data-testid="entity-link"
             to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-            <span>{entityDisplayName(entityType, entityFQN)}</span>
+            <span>
+              {getEntityName(feed.entityRef) ??
+                entityDisplayName(entityType, entityFQN)}
+            </span>
           </Link>
         </UserPopOverCard>
       );
@@ -102,7 +106,10 @@ const FeedCardHeaderV2 = ({
               className="break-all"
               data-testid="entity-link"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-              <span>{entityDisplayName(entityType, entityFQN)}</span>
+              <span>
+                {getEntityName(feed.entityRef) ??
+                  entityDisplayName(entityType, entityFQN)}
+              </span>
             </Link>
           </>
         </EntityPopOverCard>
@@ -114,7 +121,8 @@ const FeedCardHeaderV2 = ({
             {getEntityIcon(entityType ?? '')}
           </span>
           <Typography.Text className="break-all font-bold">
-            {entityDisplayName(entityType, entityFQN)}
+            {getEntityName(feed.entityRef) ??
+              entityDisplayName(entityType, entityFQN)}
           </Typography.Text>
         </>
       );

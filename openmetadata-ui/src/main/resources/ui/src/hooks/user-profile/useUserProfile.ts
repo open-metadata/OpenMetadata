@@ -46,13 +46,14 @@ export const useUserProfile = ({
   );
 
   useEffect(() => {
-    if (user && !profilePic) {
-      setProfilePic(
-        getImageWithResolutionAndFallback(
-          ImageQuality['6x'],
-          user?.profile?.images
-        ) ?? ''
-      );
+    const profileImagePic =
+      getImageWithResolutionAndFallback(
+        ImageQuality['6x'],
+        user?.profile?.images
+      ) ?? '';
+
+    if (user && profilePic !== profileImagePic) {
+      setProfilePic(profileImagePic);
     }
   }, [user, profilePic]);
 
