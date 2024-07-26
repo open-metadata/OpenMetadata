@@ -28,8 +28,8 @@ import {
   ChartFilter,
   DataInsightTabs,
 } from '../../interface/data-insight.interface';
+import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
-  DataInsightCustomChartResult,
   getAggregateChartData,
   getMultiChartsPreviewByName,
   SystemChartType,
@@ -56,19 +56,18 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
     useParams<{ tab: DataInsightTabs }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [entitiesChartsSummary, setEntitiesChartSummary] =
-    useState<Record<SystemChartType, DataInsightCustomChartResult>>();
   const [webCharts, setWebCharts] = useState<
     (DataInsightChartResult | undefined)[]
   >([]);
+  const { entitiesSummary, updateEntitySummary } = useDataInsightProvider();
 
   const [mostActiveUser, setMostActiveUser] = useState<MostActiveUsers>();
 
   const [OrganizationDetails, setOrganizationDetails] = useState<Team>();
 
   const entitiesSummaryList = useMemo(
-    () => getEntitiesChartSummary(entitiesChartsSummary),
-    [entitiesChartsSummary, chartFilter]
+    () => getEntitiesChartSummary(entitiesSummary),
+    [entitiesSummary, chartFilter]
   );
 
   const webSummaryList = useMemo(
@@ -108,7 +107,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
         }
       );
 
-      setEntitiesChartSummary(chartsData);
+      updateEntitySummary(chartsData);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -203,12 +202,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                   total={0}
                   value={`${summary.latest}
                     ${
-                      summary.id.startsWith('Percentage') ||
-                      summary.id.includes(
-                        DataInsightChartType.TotalEntitiesByTier
-                      )
-                        ? '%'
-                        : ''
+                      summary.id === SystemChartType.TotalDataAssets ? '' : '%'
                     }`}
                 />
               </Col>

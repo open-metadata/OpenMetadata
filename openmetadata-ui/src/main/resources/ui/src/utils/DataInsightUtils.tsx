@@ -492,17 +492,14 @@ export const getEntitiesChartSummary = (
   chartResults?: Record<SystemChartType, DataInsightCustomChartResult>
 ) => {
   const updatedSummaryList = ENTITIES_SUMMARY_LIST.map((summary) => {
-    const chartData = get(chartResults, summary.id);
+    const chartData = get(chartResults, summary.type);
 
     const count = round(first(chartData?.results)?.count ?? 0, 2);
 
     return chartData
       ? {
           ...summary,
-          latest:
-            summary.id === SystemChartType.TotalDataAssetsSummaryCard
-              ? count
-              : `${count}%`,
+          latest: count,
         }
       : summary;
   });
@@ -604,6 +601,7 @@ export const isPercentageSystemGraph = (graph: SystemChartType) => {
     SystemChartType.PercentageOfDataAssetWithOwner,
     SystemChartType.PercentageOfServiceWithDescription,
     SystemChartType.PercentageOfServiceWithOwner,
+    SystemChartType.TotalDataAssetsByTier,
   ].includes(graph);
 };
 

@@ -12,7 +12,17 @@
  */
 import { Button, Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { first, groupBy, includes, map, round, toLower } from 'lodash';
+import {
+  first,
+  groupBy,
+  includes,
+  last,
+  map,
+  round,
+  sortBy,
+  startCase,
+  toLower,
+} from 'lodash';
 import {
   default as React,
   ReactNode,
@@ -33,7 +43,7 @@ import {
 import { INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER } from '../../constants/explore.constants';
 
 import { SearchIndex } from '../../enums/search.enum';
-import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
+import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
 import { useDataInsightProvider } from '../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
@@ -79,10 +89,11 @@ export const DataInsightChartCard = ({
     chartFilter,
     selectedDaysFilter: selectedDays,
     kpi,
+    entitiesSummary,
   } = useDataInsightProvider();
   const isPercentageGraph = isPercentageSystemGraph(type);
 
-  const { rightSideEntityList, latestData, graphData, total, changeInValue } =
+  const { rightSideEntityList, latestData, graphData, changeInValue } =
     useMemo(() => {
       const results = chartData.results ?? [];
 
@@ -93,12 +104,12 @@ export const DataInsightChartCard = ({
       let firstRecordTotal = 0;
 
       Object.entries(groupedResults).forEach(([key, value]) => {
-        value.sort((a, b) => a.day - b.day);
+        const newValues = sortBy(value, 'day');
 
-        latestData[key] = first(value)?.count ?? 0;
+        latestData[key] = last(newValues)?.count ?? 0;
 
         total += latestData[key];
-        firstRecordTotal += first(value)?.count ?? 0;
+        firstRecordTotal += first(newValues)?.count ?? 0;
       });
 
       const changeInValue = firstRecordTotal
@@ -118,22 +129,61 @@ export const DataInsightChartCard = ({
         ),
         latestData,
         graphData,
-        total,
         changeInValue,
       };
     }, [chartData.results, searchEntityKeyWord]);
 
   const targetValue = useMemo(() => {
-    if (type === SystemChartType.PercentageOfDataAssetWithDescription) {
-      kpi.data.find(
-        (value) =>
-          value.dataInsightChart.name ===
-          DataInsightChartType.PercentageOfEntitiesWithDescriptionByType
-      )?.targetValue;
+    if (
+      [
+        SystemChartType.PercentageOfDataAssetWithDescription,
+        SystemChartType.PercentageOfDataAssetWithOwner,
+        SystemChartType.PercentageOfServiceWithDescription,
+        SystemChartType.PercentageOfServiceWithOwner,
+      ].includes(type)
+    ) {
+      const kpiChart = [
+        SystemChartType.PercentageOfDataAssetWithDescription,
+        SystemChartType.PercentageOfServiceWithDescription,
+      ].includes(type)
+        ? DataInsightChart.PercentageOfDataAssetWithDescriptionKpi
+        : DataInsightChart.PercentageOfDataAssetWithOwnerKpi;
+
+      return kpi.data.find((value) => value.dataInsightChart.name === kpiChart)
+        ?.targetValue;
     }
 
     return undefined;
-  }, [kpi]);
+  }, [kpi.data, type]);
+
+  const totalValue = useMemo(() => {
+    switch (type) {
+      case SystemChartType.TotalDataAssets:
+        return (
+          entitiesSummary[SystemChartType.TotalDataAssetsSummaryCard]
+            ?.results[0].count ?? 0
+        );
+      case SystemChartType.PercentageOfDataAssetWithDescription:
+      case SystemChartType.PercentageOfServiceWithDescription:
+        return (
+          entitiesSummary[SystemChartType.DataAssetsWithDescriptionSummaryCard]
+            ?.results[0].count ?? 0
+        );
+      case SystemChartType.PercentageOfDataAssetWithOwner:
+      case SystemChartType.PercentageOfServiceWithOwner:
+        return (
+          entitiesSummary[SystemChartType.DataAssetsWithOwnerSummaryCard]
+            ?.results[0].count ?? 0
+        );
+      case SystemChartType.TotalDataAssetsByTier:
+        return (
+          entitiesSummary[SystemChartType.TotalDataAssetsWithTierSummaryCard]
+            ?.results[0].count ?? 0
+        );
+    }
+
+    return 0;
+  }, [type, entitiesSummary]);
 
   const { t } = useTranslation();
 
@@ -231,7 +281,7 @@ export const DataInsightChartCard = ({
                 label={`${t('label.completed-entity', {
                   entity: t('label.description'),
                 })}${isPercentageGraph ? ' %' : ''}`}
-                progress={isPercentageGraph ? 100 : total}
+                progress={round(totalValue, 2)}
                 showProgress={isPercentageGraph}
                 suffix={isPercentageGraph ? '%' : ''}
                 target={targetValue}
@@ -256,13 +306,20 @@ export const DataInsightChartCard = ({
                       onMouseEnter={() => handleLegendMouseEnter(entity)}
                       onMouseLeave={handleLegendMouseLeave}>
                       <EntitySummaryProgressBar
-                        entity={entity}
+                        entity={startCase(entity)}
                         isActive={
                           activeKeys.length ? activeKeys.includes(entity) : true
                         }
                         label={`${round(latestData[entity] ?? 0, 2)}${
                           isPercentageGraph ? '%' : ''
                         }`}
+                        pluralize={
+                          ![
+                            SystemChartType.TotalDataAssetsByTier,
+                            SystemChartType.PercentageOfServiceWithDescription,
+                            SystemChartType.PercentageOfServiceWithOwner,
+                          ].includes(type)
+                        }
                         progress={latestData[entity]}
                         strokeColor={TOTAL_ENTITY_CHART_COLOR[i]}
                       />

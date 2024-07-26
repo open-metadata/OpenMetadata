@@ -33,6 +33,10 @@ import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { Tag } from '../../generated/entity/classification/tag';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import {
+  DataInsightCustomChartResult,
+  SystemChartType,
+} from '../../rest/DataInsightAPI';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTags } from '../../rest/tagAPI';
@@ -64,6 +68,9 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     selectedOptions: [],
     options: [],
   });
+  const [entitiesChartsSummary, setEntitiesChartSummary] = useState<
+    Record<SystemChartType, DataInsightCustomChartResult>
+  >({} as Record<SystemChartType, DataInsightCustomChartResult>);
 
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
@@ -269,6 +276,8 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
         onSearch: handleTierSearch,
       },
       tierTag: tier,
+      entitiesSummary: entitiesChartsSummary,
+      updateEntitySummary: setEntitiesChartSummary,
     }),
     [
       handleTeamSearch,
@@ -284,6 +293,8 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
       handleTeamChange,
       teamsOptions,
       isTeamLoading,
+      entitiesChartsSummary,
+      setEntitiesChartSummary,
     ]
   );
 
