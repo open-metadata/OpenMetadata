@@ -99,28 +99,28 @@ export const ENTITIES_SUMMARY_LIST = [
       entity: i18n.t('label.data-asset-plural'),
     }),
     latest: 0,
-    id: SystemChartType.TotalDataAssetsSummaryCard,
+    id: SystemChartType.TotalDataAssets,
   },
   {
     label: i18n.t('label.data-asset-plural-with-field', {
       field: i18n.t('label.description'),
     }),
     latest: 0,
-    id: SystemChartType.DataAssetsWithDescriptionSummaryCard,
+    id: SystemChartType.PercentageOfDataAssetWithDescription,
   },
   {
     label: i18n.t('label.data-asset-plural-with-field', {
       field: i18n.t('label.owner-plural'),
     }),
     latest: 0,
-    id: SystemChartType.DataAssetsWithOwnerSummaryCard,
+    id: SystemChartType.PercentageOfDataAssetWithOwner,
   },
   {
     label: i18n.t('label.total-entity', {
       entity: i18n.t('label.data-assets-with-tier-plural'),
     }),
     latest: 0,
-    id: SystemChartType.TotalDataAssetsWithTierSummaryCard,
+    id: SystemChartType.TotalDataAssetsByTier,
   },
 ];
 

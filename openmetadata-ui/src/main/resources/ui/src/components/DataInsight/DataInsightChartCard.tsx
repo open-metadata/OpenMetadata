@@ -179,6 +179,7 @@ export const DataInsightChartCard = ({
     return (
       <Card
         className="data-insight-card"
+        id={type}
         loading={isLoading}
         title={
           <PageHeader

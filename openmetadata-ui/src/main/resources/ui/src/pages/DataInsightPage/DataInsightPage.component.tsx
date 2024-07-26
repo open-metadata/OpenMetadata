@@ -35,10 +35,7 @@ import { SystemChartType } from '../../rest/DataInsightAPI';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import './data-insight.less';
-import {
-  default as DataInsightClassBase,
-  default as dataInsightClassBase,
-} from './DataInsightClassBase';
+import { default as dataInsightClassBase } from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
 import DataInsightProvider from './DataInsightProvider';
 
@@ -107,7 +104,7 @@ const DataInsightPage = () => {
           (tab === DataInsightTabs.APP_ANALYTICS ||
             tab === DataInsightTabs.DATA_ASSETS),
         noKPIPermission: !viewKPIPermission && tab === DataInsightTabs.KPIS,
-        dataInsightTabs: DataInsightClassBase.getDataInsightTab(),
+        dataInsightTabs: dataInsightClassBase.getDataInsightTab(),
       };
 
       return data;

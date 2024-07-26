@@ -130,7 +130,7 @@ const KPIList = () => {
         render: (value: Kpi['targetValue'], record: Kpi) => {
           const isPercentageMetric =
             record.metricType === KpiTargetType.Percentage;
-          const targetValue = isPercentageMetric ? `${+value * 100}%` : value;
+          const targetValue = isPercentageMetric ? `${+value}%` : value;
 
           return <Typography.Text>{targetValue}</Typography.Text>;
         },

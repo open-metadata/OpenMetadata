@@ -23,7 +23,6 @@ import {
   isString,
   isUndefined,
   last,
-  omit,
   round,
   sortBy,
   startCase,
@@ -32,7 +31,6 @@ import {
 } from 'lodash';
 import moment from 'moment';
 import React from 'react';
-import { ListItem } from 'react-awesome-query-builder';
 import {
   CartesianGrid,
   LegendProps,
@@ -43,7 +41,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import {
   DEFAULT_CHART_OPACITY,
   GRAPH_BACKGROUND_COLOR,
@@ -58,14 +55,11 @@ import {
   TOTAL_ENTITY_CHART_COLOR,
   WEB_SUMMARY_LIST,
 } from '../constants/DataInsight.constants';
-import { KpiTargetType } from '../generated/api/dataInsight/kpi/createKpiRequest';
 import {
   DataInsightChartResult,
   DataInsightChartType,
 } from '../generated/dataInsight/dataInsightChartResult';
-import { Kpi, KpiResult } from '../generated/dataInsight/kpi/kpi';
 import { DailyActiveUsers } from '../generated/dataInsight/type/dailyActiveUsers';
-import { TotalEntitiesByTier } from '../generated/dataInsight/type/totalEntitiesByTier';
 import {
   ChartValue,
   DataInsightChartTooltipProps,
@@ -473,60 +467,6 @@ export const getGraphDataByEntityType = (
   };
 };
 
-/**
- *
- * @param rawData raw chart data
- * @returns required graph data by tier type
- */
-export const getGraphDataByTierType = (rawData: TotalEntitiesByTier[]) => {
-  const tiers: string[] = [];
-  const timestamps: string[] = [];
-
-  const filteredData = rawData.map((data) => {
-    if (data.timestamp && data.entityTier) {
-      const tiering = data.entityTier;
-      const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
-      if (!tiers.includes(tiering)) {
-        tiers.push(tiering);
-      }
-
-      if (!timestamps.includes(timestamp)) {
-        timestamps.push(timestamp);
-      }
-
-      return {
-        timestampValue: data.timestamp,
-        timestamp: timestamp,
-        [tiering]: ((data?.entityCountFraction || 0) * 100).toFixed(2),
-      };
-    }
-
-    return;
-  });
-
-  const graphData = prepareGraphData(timestamps, filteredData);
-  const latestData = getLatestCount(omit(last(graphData), 'NoTier'));
-  const oldestData = getLatestCount(omit(first(graphData), 'NoTier'));
-  const relativePercentage = latestData - oldestData;
-
-  return {
-    data: graphData,
-    tiers,
-    total: round(latestData, 2),
-    relativePercentage,
-    latestData: last(graphData) as Record<string, number>,
-  };
-};
-
-export const getTeamFilter = (
-  suggestionValues: ListItem[]
-): SearchDropdownOption[] => {
-  return suggestionValues.map((suggestion) => ({
-    key: suggestion.value,
-    label: suggestion.value,
-  }));
-};
-
 export const getFormattedActiveUsersData = (
   activeUsers: DailyActiveUsers[]
 ) => {
@@ -601,36 +541,6 @@ export const getWebChartSummary = (
   }
 
   return updatedSummary;
-};
-
-export const getKpiGraphData = (kpiResults: KpiResult[], kpiList: Kpi[]) => {
-  const kpis: string[] = [];
-  const timeStamps: string[] = [];
-
-  const formattedData = kpiResults.map((kpiResult) => {
-    const timestamp = customFormatDateTime(kpiResult.timestamp, 'MMM dd');
-    const kpiFqn = kpiResult.kpiFqn ?? '';
-    const currentKpi = kpiList.find((kpi) => kpi.fullyQualifiedName === kpiFqn);
-    const kpiTarget = kpiResult.targetResult[0];
-    const kpiValue = toNumber(kpiTarget.value);
-    if (!timeStamps.includes(timestamp)) {
-      timeStamps.push(timestamp);
-    }
-    if (!kpis.includes(kpiFqn)) {
-      kpis.push(kpiFqn);
-    }
-
-    return {
-      timestampValue: kpiResult.timestamp,
-      timestamp,
-      [kpiFqn]:
-        currentKpi?.metricType === KpiTargetType.Percentage
-          ? kpiValue * 100
-          : kpiValue,
-    };
-  });
-
-  return { graphData: prepareGraphData(timeStamps, formattedData), kpis };
 };
 
 export const getDisabledDates: RangePickerProps['disabledDate'] = (current) => {
