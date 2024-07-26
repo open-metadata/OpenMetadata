@@ -24,8 +24,6 @@ import {
 } from '../utils/date-time/DateTimeUtils';
 import { DEFAULT_SELECTED_RANGE } from './profiler.constant';
 
-export const DEFAULT_SELECTED_DAYS = 7;
-
 export const BAR_CHART_MARGIN: Margin = {
   top: 20,
   right: 30,

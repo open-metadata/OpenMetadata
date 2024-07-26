@@ -176,7 +176,7 @@ const KPIChart: FC<Props> = ({
     );
   };
   const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
-    setActiveMouseHoverKey(event.dataKey);
+    setActiveMouseHoverKey(event.value);
   };
   const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
     setActiveMouseHoverKey('');

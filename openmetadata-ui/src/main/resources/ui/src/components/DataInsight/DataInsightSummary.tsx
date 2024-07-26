@@ -90,6 +90,10 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
   const fetchEntitiesChartData = async () => {
     setIsLoading(true);
     try {
+      const filter = getQueryFilterForDataInsightChart(
+        chartFilter.team,
+        chartFilter.tier
+      );
       const chartsData = await getMultiChartsPreviewByName(
         [
           SystemChartType.TotalDataAssetsSummaryCard,
@@ -100,10 +104,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
         {
           start: chartFilter.startTs,
           end: chartFilter.endTs,
-          filter: getQueryFilterForDataInsightChart(
-            chartFilter.team,
-            chartFilter.tier
-          ),
+          filter,
         }
       );
 

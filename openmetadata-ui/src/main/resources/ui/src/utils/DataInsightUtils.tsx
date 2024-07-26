@@ -704,19 +704,21 @@ export const renderDataInsightLineChart = (
   }[],
   activeKeys: string[],
   activeMouseHoverKey: string,
-  rightSideEntityList: string[]
+  isPercentage = true
 ) => {
   return (
     <LineChart margin={BAR_CHART_MARGIN}>
       <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
       <Tooltip
-        content={<CustomTooltip isPercentage />}
+        content={
+          <CustomTooltip isPercentage={isPercentage} timeStampKey="day" />
+        }
         wrapperStyle={{ pointerEvents: 'auto' }}
       />
       <XAxis
         allowDuplicatedCategory={false}
         dataKey="day"
-        tickFormatter={formatDate}
+        tickFormatter={(value: number) => customFormatDateTime(value, 'MMM dd')}
         type="category"
       />
       <YAxis
@@ -730,7 +732,7 @@ export const renderDataInsightLineChart = (
           dataKey="count"
           hide={
             activeKeys.length && s.name !== activeMouseHoverKey
-              ? !rightSideEntityList.includes(s.name)
+              ? !activeKeys.includes(s.name)
               : false
           }
           key={s.name}
@@ -752,6 +754,10 @@ export const getQueryFilterForDataInsightChart = (
   teamFilter?: string,
   tierFilter?: string
 ) => {
+  if (!tierFilter && !teamFilter) {
+    return undefined;
+  }
+
   return JSON.stringify({
     query: {
       bool: {

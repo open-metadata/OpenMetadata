@@ -114,11 +114,11 @@ export const PROFILER_FILTER_RANGE: DateFilterType = {
 };
 
 export const DEFAULT_SELECTED_RANGE = {
-  key: 'last3days',
+  key: 'last7Days',
   title: t('label.last-number-of-days', {
-    numberOfDays: 3,
+    numberOfDays: 7,
   }),
-  days: 3,
+  days: 7,
 };
 
 export const DEFAULT_RANGE_DATA = {

@@ -82,32 +82,46 @@ export const DataInsightChartCard = ({
   } = useDataInsightProvider();
   const isPercentageGraph = isPercentageSystemGraph(type);
 
-  const { rightSideEntityList, latestData, graphData } = useMemo(() => {
-    const results = chartData.results ?? [];
+  const { rightSideEntityList, latestData, graphData, total, changeInValue } =
+    useMemo(() => {
+      const results = chartData.results ?? [];
 
-    const groupedResults = groupBy(results, 'group');
-    const latestData: Record<string, number> = {};
-    Object.entries(groupedResults).forEach(([key, value]) => {
-      value.sort((a, b) => a.day - b.day);
+      const groupedResults = groupBy(results, 'group');
+      const latestData: Record<string, number> = {};
+      let total = 0;
 
-      latestData[key] = first(value)?.count ?? 0;
-    });
+      let firstRecordTotal = 0;
 
-    const graphData = map(groupedResults, (value, key) => ({
-      name: key,
-      data: value,
-    }));
+      Object.entries(groupedResults).forEach(([key, value]) => {
+        value.sort((a, b) => a.day - b.day);
 
-    const labels = Object.keys(groupedResults);
+        latestData[key] = first(value)?.count ?? 0;
 
-    return {
-      rightSideEntityList: labels.filter((entity) =>
-        includes(toLower(entity), toLower(searchEntityKeyWord))
-      ),
-      latestData,
-      graphData,
-    };
-  }, [chartData.results, searchEntityKeyWord]);
+        total += latestData[key];
+        firstRecordTotal += first(value)?.count ?? 0;
+      });
+
+      const changeInValue = firstRecordTotal
+        ? (total - firstRecordTotal) / firstRecordTotal
+        : 0;
+
+      const graphData = map(groupedResults, (value, key) => ({
+        name: key,
+        data: value,
+      }));
+
+      const labels = Object.keys(groupedResults);
+
+      return {
+        rightSideEntityList: labels.filter((entity) =>
+          includes(toLower(entity), toLower(searchEntityKeyWord))
+        ),
+        latestData,
+        graphData,
+        total,
+        changeInValue,
+      };
+    }, [chartData.results, searchEntityKeyWord]);
 
   const targetValue = useMemo(() => {
     if (type === SystemChartType.PercentageOfDataAssetWithDescription) {
@@ -126,23 +140,17 @@ export const DataInsightChartCard = ({
   const fetchData = async () => {
     setIsLoading(true);
     try {
+      const filter = getQueryFilterForDataInsightChart(
+        chartFilter.team,
+        chartFilter.tier
+      );
       const response = await getChartPreviewByName(type, {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
-        filter: getQueryFilterForDataInsightChart(
-          chartFilter.team,
-          chartFilter.tier
-        ),
+        filter,
       });
 
-      const newData = {
-        results: response.results.map((result) => ({
-          ...result,
-          day: new Date(result.day).valueOf(),
-        })),
-      };
-
-      setChartData(newData);
+      setChartData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -209,7 +217,7 @@ export const DataInsightChartCard = ({
               graphData,
               activeKeys,
               activeMouseHoverKey,
-              rightSideEntityList
+              isPercentageGraph
             )}
           </ResponsiveContainer>
         </Col>
@@ -217,12 +225,13 @@ export const DataInsightChartCard = ({
           <Row gutter={[8, 16]}>
             <Col span={24}>
               <DataInsightProgressBar
-                changeInValue={0.2}
+                changeInValue={changeInValue}
                 duration={selectedDays}
                 label={`${t('label.completed-entity', {
                   entity: t('label.description'),
                 })}${isPercentageGraph ? ' %' : ''}`}
-                progress={Number(100)}
+                progress={isPercentageGraph ? 100 : total}
+                showProgress={isPercentageGraph}
                 suffix={isPercentageGraph ? '%' : ''}
                 target={targetValue}
               />
