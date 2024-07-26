@@ -169,3 +169,14 @@ SET json = JSON_SET(
     )
 )
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.updatedOwner');
+
+-- Update entity_extension to move owner to array
+UPDATE entity_extension
+SET json = JSON_SET(
+    json,
+    '$.owner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.owner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner');
