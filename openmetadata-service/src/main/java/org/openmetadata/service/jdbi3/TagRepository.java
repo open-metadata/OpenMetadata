@@ -51,6 +51,11 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  public String getCursorValue(Tag entity) {
+    return entity.getFullyQualifiedName();
+  }
+
+  @Override
   public void prepare(Tag entity, boolean update) {
     // Validate parent term
     EntityReference parentTerm = Entity.getEntityReference(entity.getParent(), NON_DELETED);

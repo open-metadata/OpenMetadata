@@ -142,6 +142,11 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
+  public String getCursorValue(Table entity) {
+    return entity.getFullyQualifiedName();
+  }
+
+  @Override
   public void setFields(Table table, Fields fields) {
     setDefaultFields(table);
     if (table.getUsageSummary() == null) {

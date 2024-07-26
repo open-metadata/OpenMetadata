@@ -122,6 +122,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  public String getCursorValue(GlossaryTerm entity) {
+    return entity.getFullyQualifiedName();
+  }
+
+  @Override
   public void setFields(GlossaryTerm entity, Fields fields) {
     entity.withParent(getParent(entity)).withGlossary(getGlossary(entity));
     entity.setRelatedTerms(

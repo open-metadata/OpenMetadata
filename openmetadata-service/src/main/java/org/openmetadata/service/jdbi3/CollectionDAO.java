@@ -2062,6 +2062,11 @@ public interface CollectionDAO {
     }
 
     @Override
+    default String getPaginationColumnPrefix() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
     default Class<GlossaryTerm> getEntityClass() {
       return GlossaryTerm.class;
     }
@@ -2102,7 +2107,13 @@ public interface CollectionDAO {
                 condition);
       }
 
-      return listBefore(getTableName(), filter.getQueryParams(), condition, limit, before);
+      return listBeforePagination(
+          getTableName(),
+          getPaginationColumnPrefix(),
+          filter.getQueryParams(),
+          condition,
+          limit,
+          before);
     }
 
     @Override
@@ -2118,8 +2129,13 @@ public interface CollectionDAO {
                 " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
                 condition);
       }
-
-      return listAfter(getTableName(), filter.getQueryParams(), condition, limit, after);
+      return listAfterPagination(
+          getTableName(),
+          getPaginationColumnPrefix(),
+          filter.getQueryParams(),
+          condition,
+          limit,
+          after);
     }
 
     @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
@@ -2351,6 +2367,11 @@ public interface CollectionDAO {
     }
 
     @Override
+    default String getPaginationColumnPrefix() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
     default Class<Table> getEntityClass() {
       return Table.class;
     }
@@ -2403,8 +2424,9 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listBefore(
+        return listBeforePagination(
             getTableName(),
+            getPaginationColumnPrefix(),
             filter.getQueryParams(),
             mySqlCondition,
             postgresCondition,
@@ -2412,8 +2434,14 @@ public interface CollectionDAO {
             before);
       }
       String condition = filter.getCondition(getTableName());
-      return listBefore(
-          getTableName(), filter.getQueryParams(), condition, condition, limit, before);
+      return listBeforePagination(
+          getTableName(),
+          getPaginationColumnPrefix(),
+          filter.getQueryParams(),
+          condition,
+          condition,
+          limit,
+          before);
     }
 
     @Override
@@ -2431,8 +2459,9 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listAfter(
+        return listAfterPagination(
             getTableName(),
+            getPaginationColumnPrefix(),
             filter.getQueryParams(),
             mySqlCondition,
             postgresCondition,
@@ -2440,7 +2469,14 @@ public interface CollectionDAO {
             after);
       }
       String condition = filter.getCondition(getTableName());
-      return listAfter(getTableName(), filter.getQueryParams(), condition, condition, limit, after);
+      return listAfterPagination(
+          getTableName(),
+          getPaginationColumnPrefix(),
+          filter.getQueryParams(),
+          condition,
+          condition,
+          limit,
+          after);
     }
   }
 
@@ -2598,6 +2634,11 @@ public interface CollectionDAO {
     }
 
     @Override
+    default String getPaginationColumnPrefix() {
+      return "fullyQualifiedName";
+    }
+
+    @Override
     default Class<Tag> getEntityClass() {
       return Tag.class;
     }
@@ -2683,8 +2724,9 @@ public interface CollectionDAO {
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
 
-      return listBefore(
+      return listBeforePagination(
           getTableName(),
+          getPaginationColumnPrefix(),
           filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
@@ -2726,8 +2768,14 @@ public interface CollectionDAO {
 
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-      return listAfter(
-          getTableName(), filter.getQueryParams(), mySqlCondition, postgresCondition, limit, after);
+      return listAfterPagination(
+          getTableName(),
+          getPaginationColumnPrefix(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          after);
     }
 
     @SqlQuery("select json FROM tag where fqnhash LIKE CONCAT(:fqnhash, '.%')")
