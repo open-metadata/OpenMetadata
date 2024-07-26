@@ -26,6 +26,8 @@ import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -180,6 +182,16 @@ export const PopoverContent: React.FC<{
 
       case EntityType.TAG:
         promise = getTagByFqn(entityFQN);
+
+        break;
+
+      case EntityType.API_COLLECTION:
+        promise = getApiCollectionByFQN(entityFQN, { fields });
+
+        break;
+
+      case EntityType.API_ENDPOINT:
+        promise = getApiEndPointByFQN(entityFQN, { fields });
 
         break;
 

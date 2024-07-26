@@ -43,6 +43,7 @@ import { Paging } from '../../generated/type/paging';
 import { useFqn } from '../../hooks/useFqn';
 import { ServicesType } from '../../interface/service.interface';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
+import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getDashboards } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
@@ -262,6 +263,20 @@ function ServiceVersionPage() {
     [decodedServiceFQN]
   );
 
+  const fetchCollections = useCallback(
+    async (paging?: PagingWithoutTotal) => {
+      const response = await getApiCollections({
+        service: decodedServiceFQN,
+        fields: 'owner,tags',
+        paging,
+      });
+
+      setData(response.data);
+      setPaging(response.paging);
+    },
+    [decodedServiceFQN]
+  );
+
   const getOtherDetails = useCallback(
     async (paging?: PagingWithoutTotal) => {
       try {
@@ -302,6 +317,11 @@ function ServiceVersionPage() {
 
             break;
           }
+          case ServiceCategory.API_SERVICES: {
+            await fetchCollections(paging);
+
+            break;
+          }
           default:
             break;
         }
@@ -320,6 +340,7 @@ function ServiceVersionPage() {
       fetchPipeLines,
       fetchMlModal,
       fetchContainers,
+      fetchCollections,
     ]
   );
 

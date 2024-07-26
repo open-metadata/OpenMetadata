@@ -20,15 +20,18 @@ import { useHistory, useParams } from 'react-router-dom';
 import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { ChangeDescription } from '../../../generated/entity/data/topic';
+import {
+  ChangeDescription,
+  MessageSchemaObject,
+} from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getUpdatedMessageSchema } from '../../../utils/TopicVersionUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -75,7 +78,11 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
 
   const messageSchemaDiff = useMemo(
-    () => getUpdatedMessageSchema(currentVersionData, changeDescription),
+    () =>
+      getVersionedSchema(
+        currentVersionData['messageSchema'] as MessageSchemaObject,
+        changeDescription
+      ),
     [currentVersionData, changeDescription]
   );
 

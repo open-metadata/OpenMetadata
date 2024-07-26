@@ -17,6 +17,7 @@ import { cloneDeep } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -36,6 +37,7 @@ import {
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
+import APIEndpointSummary from '../../Explore/EntitySummaryPanel/APIEndpointSummary/APIEndpointSummary';
 import ContainerSummary from '../../Explore/EntitySummaryPanel/ContainerSummary/ContainerSummary.component';
 import DashboardSummary from '../../Explore/EntitySummaryPanel/DashboardSummary/DashboardSummary.component';
 import DataModelSummary from '../../Explore/EntitySummaryPanel/DataModelSummary/DataModelSummary.component';
@@ -166,6 +168,14 @@ const EntityInfoDrawer = ({
             componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
             entityDetails={entityDetail as SearchIndex}
             tags={tags}
+          />
+        );
+
+      case EntityType.API_ENDPOINT:
+        return (
+          <APIEndpointSummary
+            componentType={DRAWER_NAVIGATION_OPTIONS.lineage}
+            entityDetails={entityDetail as APIEndpoint}
           />
         );
 

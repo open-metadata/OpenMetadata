@@ -44,4 +44,7 @@ export enum SearchIndex {
   DASHBOARD_DATA_MODEL = 'dashboard_data_model_search_index',
   DATA_PRODUCT = 'data_product_search_index',
   INGESTION_PIPELINE = 'ingestion_pipeline_search_index',
+  API_SERVICE_INDEX = 'api_service_search_index',
+  API_COLLECTION_INDEX = 'api_collection_search_index',
+  API_ENDPOINT_INDEX = 'api_endpoint_search_index',
 }
