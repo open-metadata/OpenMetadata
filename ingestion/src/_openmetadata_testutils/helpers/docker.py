@@ -20,7 +20,7 @@ def try_bind(container, container_port, host_port):
 
 
 def copy_dir_to_container(dir_path: str, container: Container, container_path: str):
-    """Copy the contents of a directory to a path in a container. If the path 
+    """Copy the contents of a directory to a path in a container. If the path
     does not exist it will be created.
 
     Args:
