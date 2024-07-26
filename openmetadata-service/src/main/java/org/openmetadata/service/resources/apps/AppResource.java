@@ -966,7 +966,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         return Response.status(status.getCode()).entity(status).build();
       }
     }
-    throw new BadRequestException("Failed to trigger application.");
+    throw new InternalServerErrorException("Failed to deploy application.");
   }
 
   private void decryptOrNullify(
