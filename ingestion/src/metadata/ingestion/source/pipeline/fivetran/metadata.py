@@ -125,6 +125,52 @@ class FivetranSource(PipelineServiceSource):
     ) -> Optional[Iterable[Either[OMetaPipelineStatus]]]:
         """Method to get task & pipeline status"""
 
+    def fetch_column_lineage(
+        self, pipeline_details: FivetranPipelineDetails, schema, schema_data, table
+    ):
+        col_details = self.client.get_connector_column_lineage(
+            pipeline_details.connector_id, schema_name=schema, table_name=table
+        )
+
+        try:
+            from_entity_fqn: Optional[str] = self._get_table_fqn_from_om(
+                table_details=TableDetails(schema=schema, name=table)
+            )
+            to_entity_fqn: Optional[str] = self._get_table_fqn_from_om(
+                table_details=TableDetails(
+                    schema=schema_data.get("name_in_destination"),
+                    name=schema_data["tables"][table]["name_in_destination"],
+                )
+            )
+        except FQNNotFoundException:
+            to_entity_fqn = ""
+            from_entity_fqn = ""
+
+        if from_entity_fqn and to_entity_fqn:
+            to_table_entity = self.metadata.get_by_name(entity=Table, fqn=to_entity_fqn)
+            from_table_entity = self.metadata.get_by_name(
+                entity=Table, fqn=from_entity_fqn
+            )
+            col_lineage_arr = []
+            for key, value in col_details.items():
+                if value["enabled"] == True:
+                    if from_table_entity and to_table_entity:
+                        from_col = get_column_fqn(
+                            table_entity=from_table_entity, column=key
+                        )
+                        to_col = get_column_fqn(
+                            table_entity=to_table_entity,
+                            column=value.get("name_in_destination"),
+                        )
+                    col_lineage_arr.append(
+                        ColumnLineage(
+                            toColumn=to_col,
+                            fromColumns=[from_col],
+                            function=None,
+                        )
+                    )
+        return col_lineage_arr if col_lineage_arr else []
+
     def yield_pipeline_lineage_details(
         self, pipeline_details: FivetranPipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -160,49 +206,13 @@ class FivetranSource(PipelineServiceSource):
         ).items():
 
             for table in schema_data.get("tables", {}).keys():
-                col_details = self.client.get_connector_column_lineage(
-                    pipeline_details.connector_id, schema_name=schema, table_name=table
+
+                col_lineage_arr = self.fetch_column_lineage(
+                    pipeline_details=pipeline_details,
+                    schema=schema,
+                    schema_data=schema_data,
+                    table=table,
                 )
-
-                try:
-                    from_entity_fqn: str = self._get_table_fqn_from_om(
-                        table_details=TableDetails(schema=schema, name=table)
-                    )
-                    to_entity_fqn: str = self._get_table_fqn_from_om(
-                        table_details=TableDetails(
-                            schema=schema_data.get("name_in_destination"),
-                            name=schema_data["tables"][table]["name_in_destination"],
-                        )
-                    )
-                except FQNNotFoundException:
-                    to_entity_fqn = ""
-                    from_entity_fqn = ""
-
-                if from_entity_fqn and to_entity_fqn:
-                    to_table_entity = self.metadata.get_by_name(
-                        entity=Table, fqn=to_entity_fqn
-                    )
-                    from_table_entity = self.metadata.get_by_name(
-                        entity=Table, fqn=from_entity_fqn
-                    )
-                    col_lineage_arr = []
-                    for key, value in col_details.items():
-                        if value["enabled"] == True:
-                            if from_table_entity and to_table_entity:
-                                from_col = get_column_fqn(
-                                    table_entity=from_table_entity, column=key
-                                )
-                                to_col = get_column_fqn(
-                                    table_entity=to_table_entity,
-                                    column=value.get("name_in_destination"),
-                                )
-                            col_lineage_arr.append(
-                                ColumnLineage(
-                                    toColumn=to_col,
-                                    fromColumns=[from_col],
-                                    function=None,
-                                )
-                            )
 
                 from_fqn = fqn.build(
                     metadata=self.metadata,
@@ -243,9 +253,9 @@ class FivetranSource(PipelineServiceSource):
                 lineage_details = LineageDetails(
                     pipeline=EntityReference(
                         id=pipeline_entity.id.root, type="pipeline"
-                    ),
+                    ),  # type: ignore
                     source=LineageSource.PipelineLineage,
-                    columnsLineage=col_lineage_arr,
+                    columnsLineage=col_lineage_arr if col_lineage_arr else None,
                     sqlQuery=None,
                     description=None,
                 )
