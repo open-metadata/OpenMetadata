@@ -67,7 +67,7 @@ def print_init_error(
     workflow_type: WorkflowType = WorkflowType.INGEST,
 ):
     # pylint: disable=W0212
-    source_type_name = WorkflowInitErrorHandler._get_source_type_name(  # type: ignore[reportPrivateUsage]
+    source_type_name = WorkflowInitErrorHandler._get_source_type_name(  # pyright: ignore[reportPrivateUsage]
         config
     )
     WorkflowInitErrorHandler.print_init_error(
