@@ -80,7 +80,9 @@ class QueryParserTest(TestCase):
             "shopify.raw_customer": 10,
         }
         config_dict = json.loads(config)
-        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"]["sampleDataFolder"] = (
+        config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
+            "sampleDataFolder"
+        ] = (
             os.path.dirname(__file__)
             + "/../../../"
             + config_dict["source"]["serviceConnection"]["config"]["connectionOptions"][
