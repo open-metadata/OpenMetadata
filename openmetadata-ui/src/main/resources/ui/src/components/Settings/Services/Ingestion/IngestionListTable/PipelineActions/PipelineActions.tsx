@@ -27,7 +27,7 @@ import './pipeline-actions.less';
 import PipelineActionsDropdown from './PipelineActionsDropdown';
 
 function PipelineActions({
-  record,
+  pipeline,
   ingestionPipelinePermissions,
   triggerIngestion,
   deployIngestion,
@@ -41,15 +41,14 @@ function PipelineActions({
 }: Readonly<PipelineActionsProps>) {
   const history = useHistory();
   const { t } = useTranslation();
-
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
 
   const { pipelineId, pipelineName } = useMemo(
     () => ({
-      pipelineId: record.id ?? '',
-      pipelineName: record.name ?? '',
+      pipelineId: pipeline.id ?? '',
+      pipelineName: pipeline.name ?? '',
     }),
-    [record]
+    [pipeline]
   );
 
   const { editPermission, deletePermission, editStatusPermission } =
@@ -81,33 +80,33 @@ function PipelineActions({
     () =>
       history.push(
         getLogsViewerPath(
-          record.pipelineType === PipelineType.TestSuite
+          pipeline.pipelineType === PipelineType.TestSuite
             ? EntityType.TEST_SUITE
             : serviceCategory ?? '',
-          record.service?.name ?? '',
-          record?.fullyQualifiedName ?? record?.name ?? ''
+          pipeline.service?.name ?? '',
+          pipeline?.fullyQualifiedName ?? pipeline?.name ?? ''
         )
       ),
-    [record, serviceCategory]
+    [pipeline, serviceCategory]
   );
 
   const playPauseButton = useMemo(() => {
     if (editStatusPermission) {
       return (
         <Col>
-          {record.enabled ? (
+          {pipeline.enabled ? (
             <Tooltip
               title={
-                record.deployed
+                pipeline.deployed
                   ? t('label.pause')
                   : t('message.pipeline-not-deployed')
               }>
               <Button
                 data-testid="pause-button"
-                disabled={!record.deployed}
+                disabled={!pipeline.deployed}
                 icon={getLoadingStatus(
                   currPauseId,
-                  record.id,
+                  pipeline.id,
                   <PauseIcon height={12} width={12} />
                 )}
                 onClick={() => onPauseUnpauseClick(pipelineId)}>
@@ -117,16 +116,16 @@ function PipelineActions({
           ) : (
             <Tooltip
               title={
-                record.deployed
+                pipeline.deployed
                   ? t('label.resume')
                   : t('message.pipeline-not-deployed')
               }>
               <Button
                 data-testid="resume-button"
-                disabled={!record.deployed}
+                disabled={!pipeline.deployed}
                 icon={getLoadingStatus(
                   currPauseId,
-                  record.id,
+                  pipeline.id,
                   <ResumeIcon height={12} width={12} />
                 )}
                 onClick={() => onPauseUnpauseClick(pipelineId)}>
@@ -139,7 +138,7 @@ function PipelineActions({
     }
 
     return null;
-  }, [editStatusPermission, record, currPauseId, pipelineId]);
+  }, [editStatusPermission, pipeline, currPauseId, pipelineId]);
 
   return (
     <Row
@@ -166,7 +165,7 @@ function PipelineActions({
                 handleDeleteSelection={handleDeleteSelection}
                 handleEditClick={handleEditClick}
                 handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-                ingestion={record}
+                ingestion={pipeline}
                 ingestionPipelinePermissions={ingestionPipelinePermissions}
                 serviceCategory={serviceCategory}
                 serviceName={serviceName}

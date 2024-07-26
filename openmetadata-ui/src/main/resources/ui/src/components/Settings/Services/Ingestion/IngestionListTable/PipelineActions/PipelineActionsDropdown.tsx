@@ -230,6 +230,7 @@ function PipelineActionsDropdown({
           setIsOpen(false);
         },
         key: 'delete-button',
+        'data-testid': 'delete-button',
       },
     ];
 

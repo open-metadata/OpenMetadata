@@ -28,7 +28,6 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import {
-  deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
@@ -40,7 +39,6 @@ import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
-import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionListTable from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable';
 
 interface Props {
@@ -59,12 +57,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const [testSuitePipelines, setTestSuitePipelines] = useState<
     IngestionPipeline[]
   >([]);
-  const [deleteSelection, setDeleteSelection] = useState({
-    id: '',
-    name: '',
-    state: '',
-  });
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
     useState<string>();
 
@@ -93,15 +85,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     [permissions]
   );
 
-  const handleCancelConfirmationModal = useCallback(() => {
-    setIsConfirmationModalOpen(false);
-    setDeleteSelection({
-      id: '',
-      name: '',
-      state: '',
-    });
-  }, []);
-
   const getAllIngestionWorkflows = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -118,33 +101,17 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     }
   }, [testSuiteFQN]);
 
-  const handleDelete = useCallback(
-    async (id: string, displayName: string) => {
-      try {
-        setDeleteSelection({ id, name: displayName, state: 'waiting' });
-        await deleteIngestionPipelineById(id);
-        setDeleteSelection({ id, name: displayName, state: 'success' });
-        getAllIngestionWorkflows();
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.ingestion-workflow-operation-error', {
-            operation: 'deleting',
-            displayName,
-          })
-        );
-      } finally {
-        handleCancelConfirmationModal();
-      }
-    },
-    [getAllIngestionWorkflows, handleCancelConfirmationModal]
-  );
-
   const handleEnableDisableIngestion = useCallback(
     async (id: string) => {
       try {
-        await enableDisableIngestionPipelineById(id);
-        getAllIngestionWorkflows();
+        const { data } = await enableDisableIngestionPipelineById(id);
+        if (data.id) {
+          setTestSuitePipelines((list) =>
+            list.map((row) =>
+              row.id === id ? { ...row, enabled: data.enabled } : row
+            )
+          );
+        }
       } catch (error) {
         showErrorToast(error as AxiosError, t('server.unexpected-response'));
       }
@@ -279,17 +246,6 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           serviceName={getServiceFromTestSuiteFQN(testSuiteFQN)}
           triggerIngestion={handleTriggerIngestion}
           onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
-        />
-      </Col>
-      <Col span={24}>
-        <EntityDeleteModal
-          entityName={deleteSelection.name}
-          entityType={t('label.ingestion-lowercase')}
-          visible={isConfirmationModalOpen}
-          onCancel={handleCancelConfirmationModal}
-          onConfirm={() =>
-            handleDelete(deleteSelection.id, deleteSelection.name)
-          }
         />
       </Col>
     </Row>

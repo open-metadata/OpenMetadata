@@ -249,6 +249,7 @@ export const IngestionPipelineList = ({
     <Row className={className} gutter={[16, 16]}>
       <Col className="text-right" span={24}>
         <Button
+          data-testid="bulk-re-deploy-button"
           disabled={selectedPipelines?.length === 0}
           loading={deploying}
           type="primary"

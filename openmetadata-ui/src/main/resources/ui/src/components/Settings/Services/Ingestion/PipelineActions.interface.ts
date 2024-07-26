@@ -17,7 +17,7 @@ import { IngestionPipeline } from '../../../../generated/entity/services/ingesti
 import { SelectedRowDetails } from './ingestion.interface';
 
 export interface PipelineActionsProps {
-  record: IngestionPipeline;
+  pipeline: IngestionPipeline;
   ingestionPipelinePermissions?: IngestionServicePermission;
   serviceCategory?: ServiceCategory;
   serviceName?: string;

@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DISABLED,
+  MAX_CHAR_LIMIT_ENTITY_SUMMARY,
   NO_DATA_PLACEHOLDER,
   pagingObject,
 } from '../../../../../constants/constants';
@@ -44,6 +45,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
+import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
 import ButtonSkeleton from '../../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import Table from '../../../../common/Table/Table';
 import EntityDeleteModal from '../../../../Modals/EntityDeleteModal/EntityDeleteModal';
@@ -53,26 +55,29 @@ import { IngestionListTableProps } from './IngestionListTable.interface';
 import PipelineActions from './PipelineActions/PipelineActions';
 
 function IngestionListTable({
-  triggerIngestion,
-  deployIngestion,
-  handleEnableDisableIngestion,
-  onIngestionWorkflowsUpdate,
-  serviceCategory,
-  serviceName,
-  ingestionData,
-  pipelineType,
-  isLoading = false,
-  pipelineIdToFetchStatus = '',
-  handlePipelineIdToFetchStatus,
-  onPageChange,
+  afterDeleteAction,
   airflowInformation,
-  handleIngestionListUpdate,
+  deployIngestion,
   emptyPlaceholder,
-  ingestionPagingInfo,
-  isNumberBasedPaging = false,
   enableActions = true,
   extraTableProps,
+  handleEditClick,
+  handleEnableDisableIngestion,
+  handleIngestionListUpdate,
+  handlePipelineIdToFetchStatus,
+  ingestionData,
+  ingestionPagingInfo,
+  isLoading = false,
+  isNumberBasedPaging = false,
+  onIngestionWorkflowsUpdate,
+  onPageChange,
+  pipelineIdToFetchStatus = '',
+  pipelineType,
   pipelineTypeColumnObj,
+  serviceCategory,
+  serviceName,
+  showDescriptionCol,
+  triggerIngestion,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -174,6 +179,11 @@ function IngestionListTable({
 
   const isPlatFormDisabled = useMemo(() => platform === DISABLED, [platform]);
 
+  const handleDeleteConfirm = useCallback(async () => {
+    await handleDelete(deleteSelection.id, getEntityName(deleteSelection));
+    afterDeleteAction?.();
+  }, [handleDelete, deleteSelection]);
+
   useEffect(() => {
     fetchIngestionPipelinesPermission();
   }, [ingestionData]);
@@ -200,10 +210,11 @@ function IngestionListTable({
         <PipelineActions
           deployIngestion={deployIngestion}
           handleDeleteSelection={handleDeleteSelection}
+          handleEditClick={handleEditClick}
           handleEnableDisableIngestion={handleEnableDisableIngestion}
           handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
           ingestionPipelinePermissions={ingestionPipelinePermissions}
-          record={record}
+          pipeline={record}
           serviceCategory={serviceCategory}
           serviceName={serviceName}
           triggerIngestion={triggerIngestion}
@@ -223,6 +234,7 @@ function IngestionListTable({
       serviceName,
       triggerIngestion,
       onIngestionWorkflowsUpdate,
+      handleEditClick,
     ]
   );
 
@@ -234,6 +246,28 @@ function IngestionListTable({
         key: 'name',
         render: renderNameField,
       },
+      ...(showDescriptionCol
+        ? [
+            {
+              title: t('label.description'),
+              dataIndex: 'description',
+              key: 'description',
+              render: (description: string) =>
+                !isUndefined(description) && description.trim() ? (
+                  <RichTextEditorPreviewer
+                    markdown={description}
+                    maxLength={MAX_CHAR_LIMIT_ENTITY_SUMMARY}
+                  />
+                ) : (
+                  <span className="text-grey-muted">
+                    {t('label.no-entity', {
+                      entity: t('label.description'),
+                    })}
+                  </span>
+                ),
+            },
+          ]
+        : []),
       ...(pipelineTypeColumnObj ?? [
         {
           title: t('label.type'),
@@ -339,9 +373,7 @@ function IngestionListTable({
         entityType={t('label.ingestion-lowercase')}
         visible={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
-        onConfirm={() =>
-          handleDelete(deleteSelection.id, getEntityName(deleteSelection))
-        }
+        onConfirm={handleDeleteConfirm}
       />
     </>
   );

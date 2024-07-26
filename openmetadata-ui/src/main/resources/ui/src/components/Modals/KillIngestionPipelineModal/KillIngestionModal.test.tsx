@@ -34,6 +34,11 @@ jest.mock('../../../rest/ingestionPipelineAPI', () => ({
     .mockImplementation(() => Promise.resolve()),
 }));
 
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
@@ -79,5 +84,25 @@ describe('Test Kill Ingestion Modal component', () => {
         mockProps.pipelineId
       );
     });
+  });
+
+  it('Should call onIngestionWorkflowsUpdate after killing the pipeline', async () => {
+    (postKillIngestionPipelineById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ status: 200 })
+    );
+
+    await act(async () => {
+      render(<KillIngestionModal {...mockProps} />);
+    });
+
+    const confirmButton = await screen.findByText('label.confirm');
+
+    expect(confirmButton).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    expect(mockUpdateWorkflows).toHaveBeenCalled();
   });
 });

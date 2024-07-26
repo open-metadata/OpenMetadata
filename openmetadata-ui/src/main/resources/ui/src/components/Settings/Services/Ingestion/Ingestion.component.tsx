@@ -13,12 +13,11 @@
 
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
@@ -61,46 +60,21 @@ const Ingestion: React.FC<IngestionProps> = ({
     setPipelineIdToFetchStatus(pipelineId);
   }, []);
 
-  const updateCurrentSelectedIngestion = useCallback(
-    (
-      id: string,
-      data: IngestionPipeline | undefined,
-      updateKey: keyof IngestionPipeline,
-      isDeleted = false
-    ) => {
-      const rowIndex = ingestionPipelineList.findIndex((row) => row.id === id);
+  const handleEnableDisableIngestion = useCallback(async (id: string) => {
+    try {
+      const { data } = await enableDisableIngestionPipelineById(id);
 
-      const updatedRow = !isUndefined(data)
-        ? { ...ingestionPipelineList[rowIndex], [updateKey]: data[updateKey] }
-        : null;
-
-      const updatedData = isDeleted
-        ? ingestionPipelineList.filter((_, index) => index !== rowIndex)
-        : undefined;
-
-      const ingestionPipelinesList = updatedRow
-        ? Object.assign([...ingestionPipelineList], { [rowIndex]: updatedRow })
-        : [...ingestionPipelineList];
-
-      handleIngestionListUpdate(updatedData ?? ingestionPipelinesList);
-    },
-    [ingestionPipelineList]
-  );
-
-  const handleEnableDisableIngestion = useCallback(
-    async (id: string) => {
-      try {
-        const response = await enableDisableIngestionPipelineById(id);
-
-        if (response.data) {
-          updateCurrentSelectedIngestion(id, response.data, 'enabled');
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      if (data.id) {
+        handleIngestionListUpdate((list) =>
+          list.map((row) =>
+            row.id === id ? { ...row, enabled: data.enabled } : row
+          )
+        );
       }
-    },
-    [updateCurrentSelectedIngestion]
-  );
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    }
+  }, []);
 
   const triggerIngestion = useCallback(
     async (id: string, displayName: string) => {
@@ -112,7 +86,7 @@ const Ingestion: React.FC<IngestionProps> = ({
           })
         );
 
-        handlePipelineIdToFetchStatus(id);
+        setPipelineIdToFetchStatus(id);
       } catch (err) {
         showErrorToast(
           t('message.ingestion-workflow-operation-error', {
@@ -122,7 +96,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         );
       }
     },
-    [handlePipelineIdToFetchStatus]
+    []
   );
 
   const deployIngestion = useCallback(
@@ -136,7 +110,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         );
 
         setTimeout(() => {
-          handlePipelineIdToFetchStatus(id);
+          setPipelineIdToFetchStatus(id);
         }, 500);
       } catch (error) {
         showErrorToast(
@@ -147,7 +121,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         );
       }
     },
-    [handlePipelineIdToFetchStatus]
+    []
   );
 
   const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(

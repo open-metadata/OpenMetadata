@@ -32,12 +32,12 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
   const handleConfirm = async () => {
     setIsLoading(true);
     try {
-      const response = await postKillIngestionPipelineById(pipelineId);
-      const status = response.status;
+      const { status } = await postKillIngestionPipelineById(pipelineId);
       if (status === 200) {
-        onClose();
         showSuccessToast(
-          ` ${t('message.kill-successfully')}  ${pipelineName}.`
+          t('message.pipeline-killed-successfully', {
+            pipelineName,
+          })
         );
         onIngestionWorkflowsUpdate?.();
       }
@@ -45,6 +45,7 @@ const KillIngestionModal: FC<KillIngestionModalProps> = ({
       // catch block error is unknown type so we have to cast it to respective type
       showErrorToast(error as AxiosError);
     } finally {
+      onClose();
       setIsLoading(false);
     }
   };

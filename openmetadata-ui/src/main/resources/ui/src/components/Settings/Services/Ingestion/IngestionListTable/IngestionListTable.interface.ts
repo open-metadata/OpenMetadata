@@ -23,29 +23,32 @@ import { UseAirflowStatusProps } from '../../../../../hooks/useAirflowStatus';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 
 export interface IngestionListTableProps {
-  enableActions?: boolean;
-  isNumberBasedPaging?: boolean;
-  ingestionPagingInfo?: UsePagingInterface;
-  ingestionData: Array<IngestionPipeline>;
-  isLoading?: boolean;
-  pipelineIdToFetchStatus?: string;
-  pipelineType?: PipelineType;
+  afterDeleteAction?: () => void;
   airflowInformation?: UseAirflowStatusProps;
-  serviceCategory?: ServiceCategory;
-  emptyPlaceholder?: ReactNode;
-  serviceName?: string;
   deployIngestion?: (id: string, displayName: string) => Promise<void>;
+  emptyPlaceholder?: ReactNode;
+  enableActions?: boolean;
+  extraTableProps?: TableProps<IngestionPipeline>;
+  handleEditClick?: (fqn: string) => void;
+  handleEnableDisableIngestion?: (id: string) => Promise<void>;
   handleIngestionListUpdate?: (
     ingestionList: React.SetStateAction<IngestionPipeline[]>
   ) => void;
-  handleEnableDisableIngestion?: (id: string) => Promise<void>;
+  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
+  ingestionData: Array<IngestionPipeline>;
+  ingestionPagingInfo?: UsePagingInterface;
+  isLoading?: boolean;
+  isNumberBasedPaging?: boolean;
   onIngestionWorkflowsUpdate?: (
     paging?: Omit<Paging, 'total'>,
     limit?: number
   ) => void;
-  triggerIngestion?: (id: string, displayName: string) => Promise<void>;
-  handlePipelineIdToFetchStatus?: (pipelineId?: string) => void;
   onPageChange?: ({ cursorType, currentPage }: PagingHandlerParams) => void;
-  extraTableProps?: TableProps<IngestionPipeline>;
+  pipelineIdToFetchStatus?: string;
+  pipelineType?: PipelineType;
   pipelineTypeColumnObj?: ColumnsType<IngestionPipeline>;
+  serviceCategory?: ServiceCategory;
+  serviceName?: string;
+  showDescriptionCol?: boolean;
+  triggerIngestion?: (id: string, displayName: string) => Promise<void>;
 }
