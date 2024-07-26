@@ -523,6 +523,8 @@ export const ENTITY_PATH = {
   databases: 'database',
   databaseSchemas: 'databaseSchema',
   dashboardDataModels: 'dashboardDataModel',
+  apiCollections: 'apiCollection',
+  apiEndpoints: 'apiEndpoint',
 };
 
 export const VALIDATION_MESSAGES = {
