@@ -44,6 +44,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
+import { isValidJSONString } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -144,7 +145,10 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         (definition) => definition.name === curr.name
       );
 
-      if (param?.dataType === TestDataType.Array) {
+      if (
+        param?.dataType === TestDataType.Array &&
+        isValidJSONString(curr.value)
+      ) {
         const value = JSON.parse(curr.value || '[]');
 
         return {

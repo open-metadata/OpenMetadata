@@ -127,7 +127,7 @@ def test_check_datalake_type():
         "column10": DataType.JSON,
         "column11": DataType.ARRAY,
     }
-    df = pd.read_csv("ingestion/tests/unit/test_column_type_parser.csv")
+    df = pd.read_csv(root + "/test_column_type_parser.csv")
     for column_name in df.columns.values.tolist():
         assert assert_col_type_dict.get(
             column_name
