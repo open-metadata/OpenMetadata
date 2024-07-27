@@ -566,7 +566,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getApiCollections({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging,
         include,
       });

@@ -96,7 +96,7 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -111,11 +111,11 @@ function DatabaseSchemaVersionPage() {
       () =>
         getCommonExtraInfoForVersionDetails(
           currentVersionData.changeDescription as ChangeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [currentVersionData.changeDescription, owner, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domain]
     );
 
   const fetchResourcePermission = useCallback(async () => {

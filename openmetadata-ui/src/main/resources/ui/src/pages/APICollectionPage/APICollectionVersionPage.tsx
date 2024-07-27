@@ -105,7 +105,7 @@ const APICollectionVersionPage = () => {
   const [currentEndpointsPage, setCurrentEndpointsPage] =
     useState<number>(INITIAL_PAGING_VALUE);
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -125,11 +125,11 @@ const APICollectionVersionPage = () => {
       () =>
         getCommonExtraInfoForVersionDetails(
           currentVersionData?.changeDescription as ChangeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [currentVersionData?.changeDescription, owner, tier, domain]
+      [currentVersionData?.changeDescription, owners, tier, domain]
     );
 
   const init = useCallback(async () => {

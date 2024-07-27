@@ -106,7 +106,15 @@ const PoliciesDetailPage = () => {
   const fetchPolicy = async () => {
     setLoading(true);
     try {
-      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
+      const data = await getPolicyByName(
+        fqn,
+        `${
+          (TabSpecificField.OWNERS,
+          TabSpecificField.LOCATION,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES)
+        }`
+      );
       setPolicy(data ?? ({} as Policy));
     } catch (error) {
       showErrorToast(error as AxiosError);

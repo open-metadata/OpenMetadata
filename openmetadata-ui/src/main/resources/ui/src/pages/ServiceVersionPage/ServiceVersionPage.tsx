@@ -106,7 +106,7 @@ function ServiceVersionPage() {
     [serviceCategory]
   );
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () => getBasicEntityInfoFromVersionData(currentVersionData, entityType),
       [currentVersionData, entityType]
@@ -122,11 +122,11 @@ function ServiceVersionPage() {
       () =>
         getCommonExtraInfoForVersionDetails(
           currentVersionData.changeDescription as ChangeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [currentVersionData.changeDescription, owner, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domain]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -267,7 +267,7 @@ function ServiceVersionPage() {
     async (paging?: PagingWithoutTotal) => {
       const response = await getApiCollections({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging,
       });
 

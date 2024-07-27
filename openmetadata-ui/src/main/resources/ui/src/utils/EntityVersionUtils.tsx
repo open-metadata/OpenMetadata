@@ -910,7 +910,7 @@ export const getBasicEntityInfoFromVersionData = (
   entityType: EntityType
 ) => ({
   tier: getTierTags(currentVersionData.tags ?? []),
-  owner: currentVersionData.owners,
+  owners: currentVersionData.owners,
   domain: (currentVersionData as Exclude<VersionEntityTypes, MetadataService>)
     .domain,
   breadcrumbLinks: getEntityBreadcrumbs(currentVersionData, entityType),

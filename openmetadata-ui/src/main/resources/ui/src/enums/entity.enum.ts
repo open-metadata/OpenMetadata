@@ -161,6 +161,7 @@ export enum TabSpecificField {
   TARGET_DEFINITION = 'targetDefinition',
   METRIC_TYPE = 'metricType',
   CUSTOM_PROPERTIES = 'customProperties',
+  LOCATION = 'location',
 }
 
 export enum FqnPart {
