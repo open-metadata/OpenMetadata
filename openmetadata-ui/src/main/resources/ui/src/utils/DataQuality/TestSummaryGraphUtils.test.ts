@@ -96,6 +96,7 @@ describe('prepareChartData', () => {
           label: 'max',
         },
       ],
+      showAILearningBanner: false,
     });
   });
 
@@ -185,6 +186,7 @@ describe('prepareChartData', () => {
           label: 'max',
         },
       ],
+      showAILearningBanner: true,
     });
   });
 
@@ -230,6 +232,7 @@ describe('prepareChartData', () => {
           label: 'max',
         },
       ],
+      showAILearningBanner: false,
     });
   });
 
@@ -254,6 +257,7 @@ describe('prepareChartData', () => {
     expect(result).toEqual({
       data: [],
       information: [],
+      showAILearningBanner: false,
     });
   });
 });
