@@ -22,7 +22,7 @@ import { TestCase } from '../../../../generated/tests/testCase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import TestCaseResultTab from './TestCaseResultTab.component';
 
-const mockTestCaseData = {
+const mockTestCaseData: TestCase = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
   name: 'table_column_count_equals',
   fullyQualifiedName:
@@ -68,6 +68,7 @@ const mockTestCaseData = {
 const mockUseTestCaseStore = {
   testCase: mockTestCaseData,
   setTestCase: jest.fn(),
+  showAILearningBanner: false,
 };
 
 jest.mock(
@@ -76,6 +77,11 @@ jest.mock(
     useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
   })
 );
+const mockBannerComponent = () => <div>BannerComponent</div>;
+jest.mock('./TestCaseResultTabClassBase', () => ({
+  getAdditionalComponents: jest.fn().mockReturnValue([]),
+  getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+}));
 jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
@@ -188,5 +194,33 @@ describe('TestCaseResultTab', () => {
     expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
 
     mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+  });
+
+  it('Should show banner if banner component is available, useDynamicAssertion and showAILearningBanner is true', async () => {
+    mockTestCaseData.useDynamicAssertion = true;
+    mockUseTestCaseStore.showAILearningBanner = true;
+
+    render(<TestCaseResultTab />);
+
+    const bannerComponent = await screen.findByText('BannerComponent');
+
+    expect(bannerComponent).toBeInTheDocument();
+
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = false;
+  });
+
+  it('Should not show banner if banner component is available, useDynamicAssertion is false and showAILearningBanner is true', async () => {
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = true;
+
+    render(<TestCaseResultTab />);
+
+    const bannerComponent = screen.queryByText('BannerComponent');
+
+    expect(bannerComponent).not.toBeInTheDocument();
+
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = false;
   });
 });
