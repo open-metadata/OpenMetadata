@@ -97,6 +97,8 @@ site_menu:
     url: /deployment/security/custom-oidc/bare-metal
   - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
     url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / OIDC SSO
+    url: /deployment/security/oidc
   - category: Deployment / Enable Security / Google SSO
     url: /deployment/security/google
   - category: Deployment / Enable Security / Google SSO / Docker
@@ -575,6 +577,10 @@ site_menu:
     url: /connectors/metadata/alation
   - category: Connectors / Metadata / Alation / Run Externally
     url: /connectors/metadata/alation/yaml
+  - category: Connectors / Metadata / Alation Sink
+    url: /connectors/metadata/alationsink
+  - category: Connectors / Metadata / Alation Sink / Run Externally
+    url: /connectors/metadata/alationsink/yaml
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors

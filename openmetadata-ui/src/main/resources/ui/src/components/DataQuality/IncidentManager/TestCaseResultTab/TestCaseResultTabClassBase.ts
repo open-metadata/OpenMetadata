@@ -21,6 +21,10 @@ class TestCaseResultTabClassBase {
   public getAdditionalComponents(): Array<AdditionalComponentInterface> {
     return [];
   }
+
+  public getAlertBanner(): React.FC | null {
+    return null;
+  }
 }
 
 const testCaseResultTabClassBase = new TestCaseResultTabClassBase();

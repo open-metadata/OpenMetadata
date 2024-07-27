@@ -15,7 +15,7 @@ import { Form, FormProps, Input } from 'antd';
 import Modal from 'antd/lib/modal/Modal';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, pick } from 'lodash';
+import { isArray, isEmpty, isEqual, pick } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
@@ -44,6 +44,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { getEntityFQN } from '../../../utils/FeedUtils';
 import { generateFormFields } from '../../../utils/formUtils';
+import { isValidJSONString } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
@@ -144,14 +145,25 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
         (definition) => definition.name === curr.name
       );
 
-      return {
-        ...acc,
-        [curr.name || '']:
-          param?.dataType === TestDataType.Array
-            ? (JSON.parse(curr.value || '[]') as string[]).map((val) => ({
+      if (
+        param?.dataType === TestDataType.Array &&
+        isValidJSONString(curr.value)
+      ) {
+        const value = JSON.parse(curr.value || '[]');
+
+        return {
+          ...acc,
+          [curr.name || '']: isArray(value)
+            ? value.map((val) => ({
                 value: val,
               }))
-            : curr.value,
+            : value,
+        };
+      }
+
+      return {
+        ...acc,
+        [curr.name || '']: curr.value,
       };
     }, {});
   };

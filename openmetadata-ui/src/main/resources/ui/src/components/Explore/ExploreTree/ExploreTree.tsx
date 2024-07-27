@@ -35,7 +35,6 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import {
   ExploreTreeNode,
@@ -57,8 +56,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
   const [treeData, setTreeData] = useState(initTreeData);
-  const [defaultSelectedKeys, setDefaultSelectedKeys] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
   const defaultExpandedKeys = useMemo(() => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
@@ -85,10 +83,6 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       try {
         if (treeNode.children) {
           return;
-        }
-
-        if (defaultServiceType) {
-          setLoading(true);
         }
 
         const {
@@ -142,7 +136,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
           let logo = undefined;
           if (isEntityType) {
-            logo = getEntityIcon(bucket.key, 'service-icon w-4 h-4');
+            logo = getEntityIcon(bucket.key, 'service-icon w-4 h-4') ?? <></>;
           } else if (isServiceType) {
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
             logo = (
@@ -155,7 +149,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           }
 
           if (bucket.key.toLowerCase() === defaultServiceType) {
-            setDefaultSelectedKeys([id]);
+            setSelectedKeys([id]);
           }
 
           const title = (
@@ -193,14 +187,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         setTreeData((origin) => updateTreeData(origin, treeNode.key, children));
       } catch (error) {
         showErrorToast(error as AxiosError);
-      } finally {
-        setLoading(false);
       }
     },
     [updateTreeData, searchQueryParam, defaultServiceType]
   );
 
-  const switcherIcon = useCallback(({ expanded }: { expanded: boolean }) => {
+  const switcherIcon = useCallback(({ expanded }) => {
     return expanded ? <IconDown /> : <IconRight />;
   }, []);
 
@@ -215,13 +207,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         ];
         onFieldValueSelect(filterField);
       }
+      setSelectedKeys([node.key]);
     },
     [onFieldValueSelect]
   );
-
-  if (loading) {
-    return <Loader />;
-  }
 
   return (
     <Tree
@@ -230,8 +219,8 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       className="explore-tree p-sm p-t-0"
       data-testid="explore-tree"
       defaultExpandedKeys={defaultExpandedKeys}
-      defaultSelectedKeys={defaultSelectedKeys}
       loadData={onLoadData}
+      selectedKeys={selectedKeys}
       switcherIcon={switcherIcon}
       titleRender={(node) => <ExploreTreeTitle node={node} />}
       treeData={treeData}
