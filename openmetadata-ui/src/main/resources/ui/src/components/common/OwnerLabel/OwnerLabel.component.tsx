@@ -60,15 +60,14 @@ export const OwnerLabel = ({
     const remainingCountLabel = `+ ${remainingOwnersCount}`;
 
     return (
-      <>
+      <div className="d-flex items-center gap-1" data-testid="owner-label">
         {hasOwners ? (
           <div
             className={classNames(
               'd-inline-flex items-center flex-wrap gap-2',
               { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
               className
-            )}
-            data-testid="owner-label">
+            )}>
             {visibleOwners.map((owner, index) => {
               const displayName = getEntityName(owner);
               const profilePicture =
@@ -170,7 +169,7 @@ export const OwnerLabel = ({
             }}
           />
         )}
-      </>
+      </div>
     );
   }, [
     owners,

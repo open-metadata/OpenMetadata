@@ -160,7 +160,8 @@ const GlossaryDetailsRightPanel = ({
             {t('label.owner')}
           </Typography.Text>
           {(permissions.EditOwners || permissions.EditAll) &&
-            selectedData.owners && (
+            selectedData.owners &&
+            selectedData.owners.length > 0 && (
               <UserTeamSelectableList
                 hasPermission={permissions.EditOwners || permissions.EditAll}
                 listHeight={200}
@@ -241,7 +242,7 @@ const GlossaryDetailsRightPanel = ({
           )}
         </div>
         <div>
-          <div>
+          <div data-testid="glossary-reviewer-name">
             {getOwnerVersionLabel(
               selectedData,
               isVersionView ?? false,
