@@ -168,6 +168,7 @@ plugins: Dict[str, Set[str]] = {
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
+        "croniter<3",
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
