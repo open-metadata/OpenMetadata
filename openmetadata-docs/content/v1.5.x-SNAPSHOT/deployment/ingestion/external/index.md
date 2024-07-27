@@ -17,6 +17,10 @@ component that can be run from - **literally** - anywhere.
 
 In order to install it, you just need to get it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
 
+```shell
+pip install openmetadata-ingestion
+```
+
 We will show further examples later, but a piece of code is the best showcase for its simplicity. In order to run
 a full ingestion process, you just need to execute a single function. For example, if we wanted to run the metadata
 ingestion from within a simple Python script:

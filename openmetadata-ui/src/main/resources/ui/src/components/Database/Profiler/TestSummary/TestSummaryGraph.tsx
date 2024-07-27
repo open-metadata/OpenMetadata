@@ -51,6 +51,7 @@ import {
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
+import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
   axisTickFormatter,
   updateActiveChartFilter,
@@ -72,6 +73,7 @@ function TestSummaryGraph({
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
   const { entityThread = [] } = useActivityFeedProvider();
+  const { setShowAILearningBanner } = useTestCaseStore();
   const chartRef = useRef(null);
   const [chartMouseEvent, setChartMouseEvent] =
     useState<CategoricalChartState>();
@@ -91,11 +93,14 @@ function TestSummaryGraph({
   }, [chartRef, chartMouseEvent]);
 
   const chartData = useMemo(() => {
-    return prepareChartData({
+    const data = prepareChartData({
       testCaseParameterValue: testCaseParameterValue ?? [],
       testCaseResults,
       entityThread,
     });
+    setShowAILearningBanner(data.showAILearningBanner);
+
+    return data;
   }, [testCaseResults, entityThread, testCaseParameterValue]);
 
   const incidentData = useMemo(() => {
