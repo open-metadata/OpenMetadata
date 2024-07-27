@@ -12,7 +12,7 @@
  */
 
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Space } from 'antd';
+import { Space } from 'antd';
 import Tooltip, { RenderFunction } from 'antd/lib/tooltip';
 import classNames from 'classnames';
 import { isEmpty, isString, isUndefined, lowerCase, toLower } from 'lodash';
@@ -240,21 +240,9 @@ const EntitySummaryDetails = ({ data }: GetInfoElementsProps) => {
               ) : null}
             </>
           ) : isOwner ? (
-            <>
-              <span
-                className={classNames(
-                  'd-inline-block truncate link-text align-middle',
-                  {
-                    'w-52': (displayVal as string).length > 32,
-                  }
-                )}
-                data-testid="owner-link"
-                title={displayVal as string}>
-                <Button data-testid="owner-dropdown" type="link">
-                  {displayVal}
-                </Button>
-              </span>
-            </>
+            <div className="d-flex" data-testid="owner-link">
+              {displayVal}
+            </div>
           ) : isTier ? (
             <Space
               className={classNames(

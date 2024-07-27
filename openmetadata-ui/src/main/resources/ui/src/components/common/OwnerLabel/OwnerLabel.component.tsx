@@ -65,7 +65,7 @@ export const OwnerLabel = ({
           <div
             className={classNames(
               'd-inline-flex items-center flex-wrap gap-2',
-              { inherited: Boolean(owners.some((owner) => owner.inherited)) },
+              { inherited: Boolean(owners.some((owner) => owner?.inherited)) },
               className
             )}
             data-testid="owner-label">
@@ -107,7 +107,7 @@ export const OwnerLabel = ({
                 </Link>
               );
 
-              const inheritedIcon = owner.inherited ? (
+              const inheritedIcon = owner?.inherited ? (
                 <Tooltip
                   title={t('label.inherited-entity', {
                     entity: t('label.user'),
