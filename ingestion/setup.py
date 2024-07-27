@@ -114,6 +114,7 @@ DATA_DIFF = {
 }
 
 base_requirements = {
+    "croniter<3",
     "antlr4-python3-runtime==4.9.2",
     VERSIONS["azure-identity"],
     "azure-keyvault-secrets",  # Azure Key Vault SM
