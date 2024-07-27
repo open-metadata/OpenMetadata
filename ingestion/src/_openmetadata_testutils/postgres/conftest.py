@@ -8,10 +8,7 @@ from subprocess import CalledProcessError
 import pytest
 from testcontainers.postgres import PostgresContainer
 
-from ingestion.src._openmetadata_testutils.helpers.docker import (
-    copy_dir_to_container,
-    try_bind,
-)
+from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bind
 
 
 @pytest.fixture(autouse=True, scope="session")
