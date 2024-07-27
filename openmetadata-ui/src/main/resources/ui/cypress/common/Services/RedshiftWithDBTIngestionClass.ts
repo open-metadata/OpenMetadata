@@ -102,11 +102,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       );
       interceptURL(
         'GET',
-        '/api/v1/system/config/pipeline-service-client',
-        'airflow'
-      );
-      interceptURL(
-        'GET',
         '/api/v1/permissions/ingestionPipeline/name/*',
         'ingestionPermissions'
       );
@@ -126,7 +121,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         responseTimeout: 50000,
       });
       verifyResponseStatusCode('@serviceDetails', 200);
-      verifyResponseStatusCode('@airflow', 200);
       verifyResponseStatusCode('@databases', 200);
       cy.get('[data-testid="tabs"]').should('exist');
       cy.get('[data-testid="ingestions"]')

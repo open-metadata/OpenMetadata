@@ -77,12 +77,16 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
       <Col>
         <Row className="line-height-16">
           <Col span={24}>
-            <Typography.Text className="font-medium">
+            <Typography.Text
+              className="font-medium"
+              data-testid="schedule-primary-details">
               {descriptionFirstPart}
             </Typography.Text>
           </Col>
           <Col span={24}>
-            <Typography.Text className="text-xs text-grey-muted">
+            <Typography.Text
+              className="text-xs text-grey-muted"
+              data-testid="schedule-secondary-details">
               {descriptionSecondPart}
             </Typography.Text>
           </Col>

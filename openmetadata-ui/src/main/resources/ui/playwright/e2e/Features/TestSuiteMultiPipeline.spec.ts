@@ -96,7 +96,13 @@ test('TestSuite multi pipeline support', async ({ page }) => {
       .getByRole('row', {
         name: new RegExp(pipelineName),
       })
-      .getByTestId('edit')
+      .getByTestId('more-actions')
+      .click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+      )
       .click();
 
     await expect(page.getByRole('checkbox').first()).toBeVisible();
@@ -176,7 +182,13 @@ test("Edit the pipeline's test case", async ({ page }) => {
     .getByRole('row', {
       name: new RegExp(pipeline?.['name']),
     })
-    .getByTestId('edit')
+    .getByTestId('more-actions')
+    .click();
+
+  await page
+    .locator(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    )
     .click();
 
   for (const testCaseName of testCaseNames) {
@@ -205,7 +217,13 @@ test("Edit the pipeline's test case", async ({ page }) => {
     .getByRole('row', {
       name: new RegExp(pipeline?.['name']),
     })
-    .getByTestId('edit')
+    .getByTestId('more-actions')
+    .click();
+
+  await page
+    .locator(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    )
     .click();
 
   await expect(

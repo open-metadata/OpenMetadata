@@ -98,7 +98,7 @@ export const retryIngestionRun = () => {
 
     // the latest run should be success
     cy.get('[data-testid="pipeline-status"]').then(($ingestionStatus) => {
-      if ($ingestionStatus.text() !== 'Success' && retryCount <= RETRY_TIMES) {
+      if ($ingestionStatus.text() !== 'SUCCESS' && retryCount <= RETRY_TIMES) {
         // retry after waiting with log1 method [20s,40s,80s,160s,320s]
         cy.wait(timer);
         timer *= 2;
@@ -107,7 +107,7 @@ export const retryIngestionRun = () => {
         verifyResponseStatusCode('@pipelineStatus', 200);
         checkSuccessState();
       } else {
-        cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
+        cy.get('[data-testid="pipeline-status"]').should('contain', 'SUCCESS');
       }
     });
   };

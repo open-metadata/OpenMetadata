@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from 'antd';
+import { Button, Dropdown, DropdownProps } from 'antd';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -146,6 +146,13 @@ function PipelineActionsDropdown({
     [handleDeleteSelection, handleIsConfirmationModalOpen]
   );
 
+  const handleRenderDropdown: DropdownProps['dropdownRender'] = useCallback(
+    (originNode) => {
+      return <div data-testid="actions-dropdown">{originNode}</div>;
+    },
+    []
+  );
+
   const deployItems = useMemo(
     () =>
       ingestion.deployed
@@ -250,6 +257,8 @@ function PipelineActionsDropdown({
   return (
     <>
       <Dropdown
+        destroyPopupOnHide
+        dropdownRender={handleRenderDropdown}
         menu={{ items: menuItems }}
         open={isOpen || !isEmpty(currTrigger.id) || !isEmpty(currDeploy.id)}
         overlayClassName="pipeline-actions-dropdown"

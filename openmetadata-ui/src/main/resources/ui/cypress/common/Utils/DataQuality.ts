@@ -118,10 +118,10 @@ const verifyPipelineSuccessStatus = (time = 20000) => {
   cy.wait('@pipelineStatus');
   cy.get('[data-testid="pipeline-status"]').then(($el) => {
     const text = $el.text();
-    if (text !== 'Success' && text !== 'Failed' && newTime > 500) {
+    if (text !== 'SUCCESS' && text !== 'FAILED' && newTime > 500) {
       verifyPipelineSuccessStatus(newTime);
-    } else if (text === 'Success') {
-      cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
+    } else if (text === 'SUCCESS') {
+      cy.get('[data-testid="pipeline-status"]').should('contain', 'SUCCESS');
     }
   });
 };
@@ -175,7 +175,11 @@ export const triggerTestCasePipeline = ({
   );
   cy.get('[id*="tab-pipeline"]').click();
   verifyResponseStatusCode('@getPipelineStatus', 200);
-  cy.get('[data-testid="run"]').click();
+  cy.get('[data-testid="more-actions"]').click();
+
+  cy.get(
+    '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
+  ).click();
   cy.wait('@triggerPipeline');
   verifyPipelineSuccessStatus();
 };
