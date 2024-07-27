@@ -630,7 +630,7 @@ export const fetchEntityDetail = (
 
     case EntityType.API_COLLECTION: {
       getApiCollectionByFQN(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res as EntityData);
@@ -641,7 +641,7 @@ export const fetchEntityDetail = (
     }
     case EntityType.API_ENDPOINT: {
       getApiEndPointByFQN(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res as EntityData);

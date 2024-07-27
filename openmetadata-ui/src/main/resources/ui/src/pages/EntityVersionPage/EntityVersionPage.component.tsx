@@ -662,7 +662,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedApiEndpointName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}

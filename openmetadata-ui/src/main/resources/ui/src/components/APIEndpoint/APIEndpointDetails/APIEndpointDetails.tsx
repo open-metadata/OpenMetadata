@@ -87,7 +87,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   );
 
   const {
-    owner,
+    owners,
     deleted,
     description,
     followers = [],
@@ -193,14 +193,14 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
     }
   };
   const onOwnerUpdate = useCallback(
-    async (newOwner?: APIEndpoint['owner']) => {
+    async (newOwners?: APIEndpoint['owners']) => {
       const updatedApiEndpointDetails = {
         ...apiEndpointDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
-      await onApiEndpointUpdate(updatedApiEndpointDetails, 'owner');
+      await onApiEndpointUpdate(updatedApiEndpointDetails, 'owners');
     },
-    [owner]
+    [owners]
   );
 
   const onTierUpdate = (newTier?: Tag) => {
@@ -310,7 +310,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
                         entityType={EntityType.API_ENDPOINT}
                         hasEditAccess={editDescriptionPermission}
                         isEdit={isEdit}
-                        owner={apiEndpointDetails.owner}
+                        owner={apiEndpointDetails.owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}

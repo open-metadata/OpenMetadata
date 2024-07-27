@@ -42,7 +42,7 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   tier,
   slashedApiEndpointName,
   versionList,
@@ -63,11 +63,11 @@ const APIEndpointVersion: FC<APIEndpointVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   useEffect(() => {

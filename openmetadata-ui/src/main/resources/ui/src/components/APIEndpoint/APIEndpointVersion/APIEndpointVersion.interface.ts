@@ -22,7 +22,7 @@ export interface APIEndpointVersionProp {
   version: string;
   currentVersionData: APIEndpoint;
   isVersionLoading: boolean;
-  owner: APIEndpoint['owner'];
+  owners: APIEndpoint['owners'];
   domain: APIEndpoint['domain'];
   tier: TagLabel;
   slashedApiEndpointName: TitleBreadcrumbProps['titleLinks'];
