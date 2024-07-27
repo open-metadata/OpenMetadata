@@ -64,10 +64,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     setPipelineIdToFetchStatus(pipelineId);
   }, []);
 
-  const { isAirflowAvailable, isFetchingStatus } = useMemo(
-    () => airflowInformation,
-    [airflowInformation]
-  );
+  const { isAirflowAvailable, isFetchingStatus } = airflowInformation;
 
   const handlePipelineListUpdate = useCallback(
     (pipelineList: React.SetStateAction<IngestionPipeline[]>) => {

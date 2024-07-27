@@ -171,12 +171,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
     pageSize: ingestionPageSize,
     handlePageChange: handleIngestionPageChange,
     handlePagingChange: handleIngestionPagingChange,
-  } = useMemo(() => ingestionPagingInfo, [ingestionPagingInfo]);
+  } = ingestionPagingInfo;
 
-  const { paging, currentPage, handlePageChange, handlePagingChange } = useMemo(
-    () => pagingInfo,
-    [pagingInfo]
-  );
+  const { paging, currentPage, handlePageChange, handlePagingChange } =
+    ingestionPagingInfo;
 
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
