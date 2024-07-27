@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Tooltip, Typography } from 'antd';
+import { Button, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import React, { ReactNode, useMemo } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconTeamsGrey } from '../../../assets/svg/teams-grey.svg';
@@ -38,6 +38,7 @@ export const OwnerLabel = ({
   hasPermission,
   ownerDisplayName,
   placeHolder,
+  maxVisibleOwners = 3, // Default to 3 if not provided
 }: {
   owners?: EntityReference[];
   className?: string;
@@ -45,96 +46,117 @@ export const OwnerLabel = ({
   hasPermission?: boolean;
   ownerDisplayName?: ReactNode[];
   placeHolder?: string;
+  maxVisibleOwners?: number;
 }) => {
   const { t } = useTranslation();
+  const [showAllOwners, setShowAllOwners] = useState(false);
 
   const ownerElements = useMemo(() => {
-    if (!owners || owners.length === 0) {
-      return (
-        <div className="d-inline-flex items-center gap-1">
-          <div className="owner-avatar-icon d-flex">
-            <Icon
-              component={IconUser}
-              data-testid="no-owner-icon"
-              style={{ fontSize: '18px' }}
-            />
-          </div>
-          <Typography.Text
-            className={classNames('font-medium text-xs', className)}
-            data-testid="owner-link">
-            {placeHolder ?? t('label.no-entity', { entity: t('label.owner') })}
-          </Typography.Text>
-        </div>
-      );
-    }
+    const hasOwners = owners && owners.length > 0;
+    const visibleOwners = showAllOwners
+      ? owners
+      : owners.slice(0, maxVisibleOwners);
+    const remainingOwnersCount = owners.length - maxVisibleOwners;
+    const remainingCountLabel = `+ ${remainingOwnersCount}`;
 
-    return owners.map((owner, index) => {
-      const displayName = getEntityName(owner);
-      const profilePicture =
-        owner.type === OwnerType.TEAM ? (
-          <Icon
-            component={IconTeamsGrey}
-            data-testid="team-owner-icon"
-            style={{ fontSize: '18px' }}
-          />
-        ) : (
-          <div key={owner.id} style={{ flexBasis: '18px' }}>
-            <ProfilePicture
-              displayName={displayName}
-              key="profile-picture"
-              name={owner.name ?? ''}
-              type="circle"
-              width="18"
-            />
-          </div>
-        );
-
-      const ownerLink = (
-        <Link
-          className={classNames(
-            'no-underline font-medium text-xs text-primary',
-
-            className
-          )}
-          data-testid="owner-link"
-          key={owner.id}
-          to={
-            owner.type === OwnerType.TEAM
-              ? getTeamAndUserDetailsPath(owner.name ?? '')
-              : getUserPath(owner.name ?? '')
-          }>
-          {ownerDisplayName?.[index] ?? displayName}
-        </Link>
-      );
-
-      return (
-        <div className="d-inline-flex items-center gap-1" key={owner.id}>
-          <div className="owner-avatar-icon d-flex">{profilePicture}</div>
-          {ownerLink}
-        </div>
-      );
-    });
-  }, [owners, ownerDisplayName, placeHolder, className, t]);
-
-  const ownerContent = useMemo(() => {
     return (
-      <div
-        className={classNames(
-          'd-inline-flex items-center flex-wrap gap-2',
-          { inherited: Boolean(owners?.some((owner) => owner.inherited)) },
-          className
-        )}
-        data-testid="owner-label">
-        {ownerElements}
-        {owners?.some((owner) => owner.inherited) && (
-          <Tooltip
-            title={t('label.inherited-entity', {
-              entity: t('label.user'),
-            })}>
-            <InheritIcon className="inherit-icon cursor-pointer" width={14} />
-          </Tooltip>
-        )}
+      <>
+        {hasOwners ? (
+          <div
+            className={classNames(
+              'd-inline-flex items-center flex-wrap gap-2',
+              { inherited: Boolean(owners.some((owner) => owner.inherited)) },
+              className
+            )}
+            data-testid="owner-label">
+            {visibleOwners.map((owner, index) => {
+              const displayName = getEntityName(owner);
+              const profilePicture =
+                owner.type === OwnerType.TEAM ? (
+                  <Icon
+                    component={IconTeamsGrey}
+                    data-testid="team-owner-icon"
+                    style={{ fontSize: '18px' }}
+                  />
+                ) : (
+                  <div key={owner.id} style={{ flexBasis: '18px' }}>
+                    <ProfilePicture
+                      displayName={displayName}
+                      key="profile-picture"
+                      name={owner.name ?? ''}
+                      type="circle"
+                      width="18"
+                    />
+                  </div>
+                );
 
+              const ownerLink = (
+                <Link
+                  className={classNames(
+                    'no-underline font-medium text-xs text-primary',
+                    className
+                  )}
+                  data-testid="owner-link"
+                  key={owner.id}
+                  to={
+                    owner.type === OwnerType.TEAM
+                      ? getTeamAndUserDetailsPath(owner.name ?? '')
+                      : getUserPath(owner.name ?? '')
+                  }>
+                  {ownerDisplayName?.[index] ?? displayName}
+                </Link>
+              );
+
+              const inheritedIcon = owner.inherited ? (
+                <Tooltip
+                  title={t('label.inherited-entity', {
+                    entity: t('label.user'),
+                  })}>
+                  <InheritIcon
+                    className="inherit-icon cursor-pointer"
+                    width={14}
+                  />
+                </Tooltip>
+              ) : null;
+
+              return (
+                <div
+                  className="d-inline-flex items-center gap-1"
+                  key={owner.id}>
+                  <div className="owner-avatar-icon d-flex">
+                    {profilePicture}
+                  </div>
+                  {ownerLink}
+                  {inheritedIcon && <div>{inheritedIcon}</div>}
+                </div>
+              );
+            })}
+            {remainingOwnersCount > 0 && (
+              <Button
+                className="more-owners-button"
+                size="small"
+                onClick={() => setShowAllOwners(!showAllOwners)}>
+                {showAllOwners ? t('label.show-less') : remainingCountLabel}
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="d-inline-flex items-center gap-1">
+            <div className="owner-avatar-icon d-flex">
+              <Icon
+                component={IconUser}
+                data-testid="no-owner-icon"
+                style={{ fontSize: '18px' }}
+              />
+            </div>
+            <Typography.Text
+              className={classNames('font-medium text-xs', className)}
+              data-testid="owner-link">
+              {placeHolder ??
+                t('label.no-entity', { entity: t('label.owner') })}
+            </Typography.Text>
+          </div>
+        )}
         {onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
@@ -148,17 +170,19 @@ export const OwnerLabel = ({
             }}
           />
         )}
-      </div>
+      </>
     );
   }, [
-    onUpdate,
-    ownerElements,
-    hasPermission,
     owners,
-    ownerDisplayName,
-    placeHolder,
     className,
+    onUpdate,
+    hasPermission,
+    showAllOwners,
+    maxVisibleOwners,
+    placeHolder,
+    t,
+    ownerDisplayName,
   ]);
 
-  return ownerContent;
+  return ownerElements;
 };
