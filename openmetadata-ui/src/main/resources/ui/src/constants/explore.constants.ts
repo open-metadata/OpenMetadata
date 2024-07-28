@@ -28,7 +28,7 @@ export const searchFilterQS = 'searchFilter';
 export const MAX_RESULT_HITS = 10000;
 
 export const SUPPORTED_EMPTY_FILTER_FIELDS = [
-  EntityFields.OWNER,
+  EntityFields.OWNERS,
   EntityFields.DOMAIN,
   EntityFields.TIER,
   EntityFields.TAG,

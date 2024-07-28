@@ -86,7 +86,7 @@ export const ELEMENT_DELETE_STATE = {
 
 export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   EntityFields.DOMAIN,
-  EntityFields.OWNER,
+  EntityFields.OWNERS,
   EntityFields.TAG,
   EntityFields.COLUMN,
 ];

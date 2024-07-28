@@ -153,7 +153,6 @@ export const addMultiOwner = async (data: {
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
 
-  const getUsers = page.waitForResponse('/api/v1/users?*isBot=false*');
   await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
 
   await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
@@ -161,7 +160,6 @@ export const addMultiOwner = async (data: {
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.getByRole('tab', { name: 'Users' }).click();
-  await getUsers;
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 

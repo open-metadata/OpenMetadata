@@ -55,8 +55,6 @@ entities.forEach((EntityClass) => {
   const deleteEntity = new EntityClass();
 
   test.describe(entity.getType(), () => {
-    test.slow(true);
-
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
 
