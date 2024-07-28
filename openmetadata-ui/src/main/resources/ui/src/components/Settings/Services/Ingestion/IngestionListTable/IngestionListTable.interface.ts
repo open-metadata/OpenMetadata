@@ -51,4 +51,8 @@ export interface IngestionListTableProps {
   serviceName?: string;
   showDescriptionCol?: boolean;
   triggerIngestion?: (id: string, displayName: string) => Promise<void>;
+  customRenderNameField?: (
+    text: string,
+    record: IngestionPipeline
+  ) => ReactNode;
 }

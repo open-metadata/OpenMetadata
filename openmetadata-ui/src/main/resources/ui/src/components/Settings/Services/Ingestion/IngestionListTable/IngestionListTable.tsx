@@ -78,6 +78,7 @@ function IngestionListTable({
   serviceName,
   showDescriptionCol,
   triggerIngestion,
+  customRenderNameField,
 }: Readonly<IngestionListTableProps>) {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
@@ -244,7 +245,7 @@ function IngestionListTable({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        render: renderNameField,
+        render: customRenderNameField ?? renderNameField,
       },
       ...(showDescriptionCol
         ? [

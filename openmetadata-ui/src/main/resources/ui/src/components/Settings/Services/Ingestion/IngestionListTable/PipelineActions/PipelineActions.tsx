@@ -144,6 +144,7 @@ function PipelineActions({
     <Row
       align="middle"
       className="pipeline-actions-container"
+      data-tesid="pipeline-actions"
       gutter={[12, 12]}
       justify="space-between"
       wrap={false}>

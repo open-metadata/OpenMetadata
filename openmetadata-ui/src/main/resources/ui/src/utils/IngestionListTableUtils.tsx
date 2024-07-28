@@ -33,7 +33,7 @@ export const renderNameField = (_: string, record: IngestionPipeline) => (
 export const renderTypeField = (_: string, record: IngestionPipeline) => (
   <Typography.Text
     className="m-b-0 d-block break-word"
-    data-testid="pipeline-name">
+    data-testid="pipeline-type">
     {record.pipelineType}
   </Typography.Text>
 );
@@ -49,7 +49,11 @@ export const renderStatusField = (_: string, record: IngestionPipeline) => (
 
 export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   if (isUndefined(record.airflowConfig?.scheduleInterval)) {
-    return <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>;
+    return (
+      <Typography.Text data-testid="scheduler-no-data">
+        {NO_DATA_PLACEHOLDER}
+      </Typography.Text>
+    );
   }
   const scheduleDescription = cronstrue.toString(
     record.airflowConfig.scheduleInterval,

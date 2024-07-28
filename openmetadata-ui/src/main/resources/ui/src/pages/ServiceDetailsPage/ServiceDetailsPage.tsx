@@ -174,7 +174,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   } = ingestionPagingInfo;
 
   const { paging, currentPage, handlePageChange, handlePagingChange } =
-    ingestionPagingInfo;
+    pagingInfo;
 
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
