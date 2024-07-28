@@ -3023,7 +3023,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       CustomMetric storedMetric = columnMetricMap.get(metric.getName());
       assertNotNull(storedMetric);
       assertEquals(metric.getDescription(), storedMetric.getDescription());
-      assertEquals(metric.getOwner(), storedMetric.getOwner());
+      assertEquals(metric.getOwners(), storedMetric.getOwners());
       assertEquals(metric.getExpression(), storedMetric.getExpression());
     }
   }

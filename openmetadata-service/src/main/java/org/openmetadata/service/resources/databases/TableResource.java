@@ -1251,7 +1251,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withColumnName(create.getColumnName())
-        .withOwner(create.getOwner())
+        .withOwners(create.getOwners())
         .withExpression(create.getExpression())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());
