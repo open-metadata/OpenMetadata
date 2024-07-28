@@ -129,8 +129,15 @@ test('TestSuite multi pipeline support', async ({ page }) => {
       .getByRole('row', {
         name: new RegExp(pipelineName),
       })
-      .getByTestId('delete')
+      .getByTestId('more-actions')
       .click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+      )
+      .click();
+
     await page.getByTestId('confirmation-text-input').fill('DELETE');
     const deleteRes = page.waitForResponse(
       '/api/v1/services/ingestionPipelines/*?hardDelete=true'
@@ -138,7 +145,13 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     await page.getByTestId('confirm-button').click();
     await deleteRes;
 
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.getByTestId('more-actions').click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+      )
+      .click();
     await page.getByTestId('confirmation-text-input').fill('DELETE');
     await page.getByTestId('confirm-button').click();
     await deleteRes;
