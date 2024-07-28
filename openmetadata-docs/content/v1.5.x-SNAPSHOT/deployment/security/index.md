@@ -13,6 +13,12 @@ Enabling Security is only required for your **Production** installation. If you 
 and faster to set up without security. To get up and running quickly with OpenMetadata (without security), 
 please follow the [Quickstart](/quick-start) guide.
 
+{% note %}
+
+OpenMetadata currently does not support the simultaneous use of multiple authentication mechanisms, such as combining SSO and Basic Authentication.
+
+{% /note %}
+
 {%inlineCalloutContainer%}
   {%inlineCallout
     color="violet-70"
