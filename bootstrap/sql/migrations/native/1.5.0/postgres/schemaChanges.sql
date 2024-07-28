@@ -138,12 +138,3 @@ SET json = jsonb_set(
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,type}' IS NULL 
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,externalType}' IS NULL 
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,path}' IS NULL;
-
-ALTER TABLE glossary_term_entity ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json->>'fullyQualifiedName') STORED NOT NULL;
-CREATE INDEX glossary_term_entity_fqn_index ON glossary_term_entity(fullyQualifiedName);
-
-ALTER TABLE tag ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json->>'fullyQualifiedName') STORED NOT NULL;
-CREATE INDEX tag_fqn_index ON tag(fullyQualifiedName);
-
-ALTER TABLE table_entity ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json->>'fullyQualifiedName') STORED NOT NULL;
-CREATE INDEX table_entity_fqn_index ON table_entity(fullyQualifiedName);

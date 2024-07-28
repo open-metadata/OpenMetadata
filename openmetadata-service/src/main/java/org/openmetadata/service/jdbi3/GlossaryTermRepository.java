@@ -122,8 +122,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  public String getCursorValue(GlossaryTerm entity) {
-    return entity.getFullyQualifiedName();
+  public String getCursorValue(GlossaryTerm term) {
+    Map<String, String> cursorMap =
+        Map.of("name", term.getName(), "id", String.valueOf(term.getId()));
+    return JsonUtils.pojoToJson(cursorMap);
   }
 
   @Override

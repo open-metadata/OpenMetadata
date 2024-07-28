@@ -2062,11 +2062,6 @@ public interface CollectionDAO {
     }
 
     @Override
-    default String getPaginationColumnPrefix() {
-      return "fullyQualifiedName";
-    }
-
-    @Override
     default Class<GlossaryTerm> getEntityClass() {
       return GlossaryTerm.class;
     }
@@ -2095,6 +2090,9 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
+      Map<String, String> cursorMap = parseCursorMap(before);
+      String beforeName = cursorMap.get("name");
+      String beforeId = cursorMap.get("id");
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
@@ -2108,16 +2106,14 @@ public interface CollectionDAO {
       }
 
       return listBeforePagination(
-          getTableName(),
-          getPaginationColumnPrefix(),
-          filter.getQueryParams(),
-          condition,
-          limit,
-          before);
+          getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
+      Map<String, String> cursorMap = parseCursorMap(after);
+      String afterName = cursorMap.get("name");
+      String afterId = cursorMap.get("id");
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
@@ -2130,12 +2126,7 @@ public interface CollectionDAO {
                 condition);
       }
       return listAfterPagination(
-          getTableName(),
-          getPaginationColumnPrefix(),
-          filter.getQueryParams(),
-          condition,
-          limit,
-          after);
+          getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
     @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
@@ -2367,11 +2358,6 @@ public interface CollectionDAO {
     }
 
     @Override
-    default String getPaginationColumnPrefix() {
-      return "fullyQualifiedName";
-    }
-
-    @Override
     default Class<Table> getEntityClass() {
       return Table.class;
     }
@@ -2411,6 +2397,9 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
+      Map<String, String> cursorMap = parseCursorMap(before);
+      String beforeName = cursorMap.get("name");
+      String beforeId = cursorMap.get("id");
       String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
       if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
         String condition =
@@ -2426,26 +2415,29 @@ public interface CollectionDAO {
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
         return listBeforePagination(
             getTableName(),
-            getPaginationColumnPrefix(),
             filter.getQueryParams(),
             mySqlCondition,
             postgresCondition,
             limit,
-            before);
+            beforeName,
+            beforeId);
       }
       String condition = filter.getCondition(getTableName());
       return listBeforePagination(
           getTableName(),
-          getPaginationColumnPrefix(),
           filter.getQueryParams(),
           condition,
           condition,
           limit,
-          before);
+          beforeName,
+          beforeId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
+      Map<String, String> cursorMap = parseCursorMap(after);
+      String afterName = cursorMap.get("name");
+      String afterId = cursorMap.get("id");
       String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
       if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
         String condition =
@@ -2461,22 +2453,16 @@ public interface CollectionDAO {
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
         return listAfterPagination(
             getTableName(),
-            getPaginationColumnPrefix(),
             filter.getQueryParams(),
             mySqlCondition,
             postgresCondition,
             limit,
-            after);
+            afterName,
+            afterId);
       }
       String condition = filter.getCondition(getTableName());
       return listAfterPagination(
-          getTableName(),
-          getPaginationColumnPrefix(),
-          filter.getQueryParams(),
-          condition,
-          condition,
-          limit,
-          after);
+          getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
   }
 
@@ -2634,11 +2620,6 @@ public interface CollectionDAO {
     }
 
     @Override
-    default String getPaginationColumnPrefix() {
-      return "fullyQualifiedName";
-    }
-
-    @Override
     default Class<Tag> getEntityClass() {
       return Tag.class;
     }
@@ -2691,6 +2672,9 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
+      Map<String, String> cursorMap = parseCursorMap(before);
+      String beforeName = cursorMap.get("name");
+      String beforeId = cursorMap.get("id");
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -2726,16 +2710,19 @@ public interface CollectionDAO {
 
       return listBeforePagination(
           getTableName(),
-          getPaginationColumnPrefix(),
           filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
           limit,
-          before);
+          beforeName,
+          beforeId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
+      Map<String, String> cursorMap = parseCursorMap(after);
+      String afterName = cursorMap.get("name");
+      String afterId = cursorMap.get("id");
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -2770,12 +2757,12 @@ public interface CollectionDAO {
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
       return listAfterPagination(
           getTableName(),
-          getPaginationColumnPrefix(),
           filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
           limit,
-          after);
+          afterName,
+          afterId);
     }
 
     @SqlQuery("select json FROM tag where fqnhash LIKE CONCAT(:fqnhash, '.%')")

@@ -142,8 +142,10 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  public String getCursorValue(Table entity) {
-    return entity.getFullyQualifiedName();
+  public String getCursorValue(Table table) {
+    Map<String, String> cursorMap =
+        Map.of("name", table.getName(), "id", String.valueOf(table.getId()));
+    return JsonUtils.pojoToJson(cursorMap);
   }
 
   @Override

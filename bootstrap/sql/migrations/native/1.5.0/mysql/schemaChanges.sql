@@ -148,12 +148,3 @@ JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpC
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.externalType') OR 
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path')
 ) is NULL AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig') is not null;
-
-ALTER TABLE glossary_term_entity ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL;
-CREATE INDEX glossary_term_entity_fqn_index ON glossary_term_entity(fullyQualifiedName);
-
-ALTER TABLE tag ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL;
-CREATE INDEX tag_fqn_index ON tag(fullyQualifiedName);
-
-ALTER TABLE table_entity ADD COLUMN fullyQualifiedName VARCHAR(768) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL;
-CREATE INDEX table_entity_fqn_index ON table_entity(fullyQualifiedName);
