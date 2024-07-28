@@ -20,6 +20,7 @@ export type TagsSelectFormProps = {
   placeholder: string;
   defaultValue: string[];
   tagData?: SelectOption[];
+  filterOptions?: string[]; // array of fqn
   onChange?: (value: string[]) => void;
   onSubmit: (option: DefaultOptionType | DefaultOptionType[]) => Promise<void>;
   onCancel: () => void;
