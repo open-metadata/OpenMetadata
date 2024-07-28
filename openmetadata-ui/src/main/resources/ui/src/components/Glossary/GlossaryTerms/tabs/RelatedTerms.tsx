@@ -269,6 +269,7 @@ const RelatedTerms = ({
           defaultValue={selectedOption.map(
             (item) => item.fullyQualifiedName ?? ''
           )}
+          filterOptions={[glossaryTerm?.fullyQualifiedName ?? '']}
           placeholder={t('label.add-entity', {
             entity: t('label.related-term-plural'),
           })}

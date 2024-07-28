@@ -41,6 +41,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   convertGlossaryTermsToTreeOptions,
+  filterTreeNodeOptions,
   findGlossaryTermByFqn,
 } from '../../../utils/GlossaryUtils';
 import {
@@ -63,6 +64,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
   initialOptions,
   tagType,
   isSubmitLoading,
+  filterOptions = [],
   onCancel,
   ...props
 }) => {
@@ -82,7 +84,9 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       const { data } = await getGlossariesList({
         limit: PAGE_SIZE_LARGE,
       });
-      setGlossaries((prev) => [...prev, ...data]);
+      setGlossaries((prev) =>
+        filterTreeNodeOptions([...prev, ...data], filterOptions)
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -229,14 +233,17 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       const activeGlossary = results[0];
 
       setGlossaries((prev) =>
-        prev.map((glossary) => ({
-          ...glossary,
-          children: get(
-            glossary.id === activeGlossary?.id ? activeGlossary : glossary,
-            'children',
-            []
-          ),
-        }))
+        filterTreeNodeOptions(
+          prev.map((glossary) => ({
+            ...glossary,
+            children: get(
+              glossary.id === activeGlossary?.id ? activeGlossary : glossary,
+              'children',
+              []
+            ),
+          })),
+          filterOptions
+        )
       );
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -248,7 +255,7 @@ const TreeAsyncSelectList: FC<Omit<AsyncSelectListProps, 'fetchOptions'>> = ({
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
       const results: Glossary[] = await searchGlossaryTerms(encodedValue);
 
-      setSearchOptions(results);
+      setSearchOptions(filterTreeNodeOptions(results, filterOptions));
       setExpandedRowKeys(
         results.map((result) => result.fullyQualifiedName as string)
       );

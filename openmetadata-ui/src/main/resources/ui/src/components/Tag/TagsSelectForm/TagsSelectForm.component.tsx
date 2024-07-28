@@ -28,6 +28,7 @@ const TagSelectForm = ({
   onCancel,
   tagData,
   tagType,
+  filterOptions,
 }: TagsSelectFormProps) => {
   const [form] = useForm();
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
@@ -52,6 +53,7 @@ const TagSelectForm = ({
           <AsyncSelectList
             open
             fetchOptions={fetchApi}
+            filterOptions={filterOptions}
             initialOptions={tagData}
             isSubmitLoading={isSubmitLoading}
             mode="multiple"
@@ -62,6 +64,7 @@ const TagSelectForm = ({
           />
         ) : (
           <TreeAsyncSelectList
+            filterOptions={filterOptions}
             initialOptions={tagData}
             isSubmitLoading={isSubmitLoading}
             optionClassName="tag-select-box"

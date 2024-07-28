@@ -13,7 +13,7 @@
 
 import { Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React from 'react';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
@@ -264,4 +264,48 @@ export const findExpandableKeysForArray = (
   });
 
   return expandableKeys;
+};
+
+/**
+ * Filter out the tree node options based on the filter options.
+ *
+ * @param options - An array of Glossary objects.
+ * @param filterOptions - An array of FQN string to filter.
+ * @returns An array of filtered Glossary
+ */
+export const filterTreeNodeOptions = (
+  options: Glossary[],
+  filterOptions: string[]
+): Glossary[] => {
+  if (isEmpty(filterOptions)) {
+    return options;
+  }
+
+  const filterNodes = (
+    nodes: ModifiedGlossaryTerm[]
+  ): ModifiedGlossaryTerm[] => {
+    return nodes.reduce(
+      (acc: ModifiedGlossaryTerm[], node: ModifiedGlossaryTerm) => {
+        const isMatching = filterOptions.includes(
+          node.fullyQualifiedName ?? ''
+        );
+
+        const filteredChildren = !isUndefined(node.children)
+          ? filterNodes(node.children as unknown as ModifiedGlossaryTerm[])
+          : [];
+
+        if (!isMatching) {
+          acc.push({
+            ...node,
+            children: filteredChildren as GlossaryTerm[],
+          });
+        }
+
+        return acc;
+      },
+      []
+    );
+  };
+
+  return filterNodes(options as ModifiedGlossaryTerm[]);
 };

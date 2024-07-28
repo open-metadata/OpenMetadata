@@ -32,6 +32,7 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
     ]),
   convertGlossaryTermsToTreeOptions: jest.fn(),
   findGlossaryTermByFqn: jest.fn(),
+  filterTreeNodeOptions: jest.fn().mockReturnValue([]),
 }));
 
 describe('TreeAsyncSelectList', () => {
