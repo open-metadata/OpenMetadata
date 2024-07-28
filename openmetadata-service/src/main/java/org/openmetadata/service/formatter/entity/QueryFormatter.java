@@ -59,7 +59,9 @@ public class QueryFormatter implements EntityFormatter {
   @SuppressWarnings("unchecked")
   private static String getFieldValue(
       Object fieldValue, MessageDecorator<?> messageFormatter, Thread thread) {
-    Query query = Entity.getEntity(thread.getEntityType(), thread.getEntityId(), "id", Include.ALL);
+    Query query =
+        Entity.getEntity(
+            thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     StringBuilder field = new StringBuilder();
     List<EntityReference> tableRefs =
         fieldValue instanceof String

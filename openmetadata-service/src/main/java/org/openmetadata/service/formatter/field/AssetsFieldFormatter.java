@@ -52,7 +52,7 @@ public class AssetsFieldFormatter extends DefaultFieldFormatter {
         HEADER_MESSAGE,
         thread.getUpdatedBy(),
         opMessage,
-        thread.getEntityType(),
+        thread.getEntityRef().getType(),
         thread.getEntityUrlLink());
   }
 }

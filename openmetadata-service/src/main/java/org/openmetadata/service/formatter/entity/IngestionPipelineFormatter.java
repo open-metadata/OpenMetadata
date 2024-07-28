@@ -49,7 +49,8 @@ public class IngestionPipelineFormatter implements EntityFormatter {
   private String transformIngestionPipelineStatus(
       MessageDecorator<?> messageFormatter, Thread thread, FieldChange fieldChange) {
     EntityInterface entity =
-        Entity.getEntity(thread.getEntityType(), thread.getEntityId(), "id", Include.ALL);
+        Entity.getEntity(
+            thread.getEntityRef().getType(), thread.getEntityRef().getId(), "id", Include.ALL);
     String ingestionPipelineName = entity.getName();
     PipelineStatus status =
         JsonUtils.readOrConvertValue(fieldChange.getNewValue(), PipelineStatus.class);

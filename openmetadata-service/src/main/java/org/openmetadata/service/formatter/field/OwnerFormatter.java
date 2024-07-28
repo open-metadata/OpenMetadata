@@ -98,7 +98,7 @@ public class OwnerFormatter extends DefaultFieldFormatter {
         HEADER_MESSAGE,
         thread.getUpdatedBy(),
         eventTypeMessage,
-        thread.getEntityType(),
+        thread.getEntityRef().getType(),
         thread.getEntityUrlLink());
   }
 }

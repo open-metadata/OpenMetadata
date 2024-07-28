@@ -34,6 +34,7 @@ interface ActivityFeedListV1Props {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
+  selectedThread?: Thread;
 }
 
 const ActivityFeedListV1 = ({
@@ -49,6 +50,7 @@ const ActivityFeedListV1 = ({
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
+  selectedThread,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -59,9 +61,12 @@ const ActivityFeedListV1 = ({
 
   useEffect(() => {
     if (onFeedClick) {
-      onFeedClick(entityThread[0]);
+      onFeedClick(
+        entityThread.find((feed) => feed.id === selectedThread?.id) ??
+          entityThread[0]
+      );
     }
-  }, [entityThread, onFeedClick]);
+  }, [entityThread, selectedThread, onFeedClick]);
 
   if (isLoading) {
     return <Loader />;

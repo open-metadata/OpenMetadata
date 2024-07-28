@@ -13,7 +13,10 @@
 import test, { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
-import { checkDescriptionInEditModal } from '../../utils/activityFeed';
+import {
+  checkDescriptionInEditModal,
+  deleteFeedComments,
+} from '../../utils/activityFeed';
 import {
   createNewPage,
   descriptionBox,
@@ -137,7 +140,7 @@ test.describe('Activity feed', () => {
     expect(closedTask).toContain('2 Closed');
   });
 
-  test('User should be able to reply on feeds in ActivityFeed', async ({
+  test('User should be able to reply and delete comment in feeds in ActivityFeed', async ({
     page,
   }) => {
     await visitUserProfilePage(page);
@@ -165,7 +168,7 @@ test.describe('Activity feed', () => {
 
     expect(secondFeedText).toBe(rightPanelFeedText);
 
-    for (let i = 1; i <= 3; i++) {
+    for (let i = 1; i <= 4; i++) {
       await page.fill(
         '[data-testid="editor-wrapper"] .ql-editor',
         `Reply message ${i}`
@@ -175,7 +178,7 @@ test.describe('Activity feed', () => {
       await sendReply;
     }
 
-    // Compare after adding some feeds in the right panel
+    // Compare if feed is same after adding some comments in the right panel
     const rightPanelFeedTextCurrent = await page
       .locator(
         '.right-container [data-testid="message-container"] [data-testid="headerText"]'
@@ -184,11 +187,47 @@ test.describe('Activity feed', () => {
 
     expect(secondFeedText).toBe(rightPanelFeedTextCurrent);
 
-    for (let i = 1; i <= 3; i++) {
+    // Verify if the comments are visible
+    for (let i = 2; i <= 4; i++) {
       await expect(
         page.locator('.right-container [data-testid="feed-replies"]')
       ).toContainText(`Reply message ${i}`);
     }
+
+    // Only show comment of latest 3 replies
+    await expect(
+      page.locator('.right-container [data-testid="feed-replies"]')
+    ).not.toContainText('Reply message 1');
+
+    await expect(
+      page.locator(
+        '[data-testid="message-container"] .active [data-testid="reply-count"]'
+      )
+    ).toContainText('04 Replies');
+
+    // Deleting last 2 comments from the Feed
+    const feedReplies = page.locator(
+      '.right-container [data-testid="feed-replies"] .feed-card-v2-container'
+    );
+
+    await deleteFeedComments(page, feedReplies.nth(2));
+
+    await deleteFeedComments(page, feedReplies.nth(2));
+
+    // Compare if feed is same after deleting some comments in the right panel
+    const rightPanelFeedTextCurrentAfterDelete = await page
+      .locator(
+        '.right-container [data-testid="message-container"] [data-testid="headerText"]'
+      )
+      .innerText();
+
+    expect(secondFeedText).toBe(rightPanelFeedTextCurrentAfterDelete);
+
+    await expect(
+      page.locator(
+        '[data-testid="message-container"] .active [data-testid="reply-count"]'
+      )
+    ).toContainText('02 Replies');
   });
 
   test('Update Description Task on Columns', async ({ page }) => {

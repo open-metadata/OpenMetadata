@@ -34,6 +34,8 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   const { t } = useTranslation();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
 
+  const breadcrumbData = useMemo(() => titleLinks.slice(0, -1), [titleLinks]);
+
   const finalWidthOfBreadcrumb = useMemo(() => {
     return (
       screenWidth -
@@ -68,7 +70,12 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           style={{
             maxWidth,
           }}
-          to={link.url}>
+          to={{
+            pathname: link.url,
+            state: {
+              breadcrumbData,
+            },
+          }}>
           {link.name}
         </Link>
       );
@@ -125,7 +132,12 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                         maxWidth,
                         fontSize: '16px',
                       }}
-                      to={link.url}>
+                      to={{
+                        pathname: link.url,
+                        state: {
+                          breadcrumbData,
+                        },
+                      }}>
                       {link.name}
                     </Link>
                     <span className="text-xss p-x-xs text-grey-muted">

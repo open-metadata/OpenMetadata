@@ -50,7 +50,7 @@ public class FormatterUtil {
   public static MessageParser.EntityLink getEntityLinkForFieldName(
       String fieldName, Thread thread) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
-    String entityType = thread.getEntityType();
+    String entityType = thread.getEntityRef().getType();
     String entityFQN = entityLink.getEntityFQN();
     String arrayFieldName = null;
     String arrayFieldValue = null;
@@ -201,7 +201,7 @@ public class FormatterUtil {
       Thread tempEntity = JsonUtils.deepCopy(thread, Thread.class).withId(UUID.randomUUID());
       // We are creating multiple thread on the same entity based on different messages
       String message =
-          ParserFactory.getEntityParser(thread.getEntityType())
+          ParserFactory.getEntityParser(thread.getEntityRef().getType())
               .format(messageFormatter, tempEntity, field, changeType);
       tempEntity.withMessage(message);
       threads.add(tempEntity);

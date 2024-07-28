@@ -15,8 +15,7 @@ import { Col, Drawer, Row } from 'antd';
 import classNames from 'classnames';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ThreadType } from '../../../generated/api/feed/createThread';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Thread, ThreadType } from '../../../generated/entity/feed/thread';
 import Loader from '../../common/Loader/Loader';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
@@ -61,6 +60,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
           <FeedPanelHeader
             className="p-x-md"
             entityLink={selectedThread?.about ?? ''}
+            feed={selectedThread}
             threadType={selectedThread?.type ?? ThreadType.Conversation}
             onCancel={hideDrawer}
           />

@@ -161,7 +161,7 @@ public class FeedRepository {
       this.aboutEntity = Entity.getEntity(about, getFields(), ALL);
       this.createdBy =
           Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
-      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+      thread.withEntityRef(aboutEntity.getEntityReference()); // Add entity id to thread
     }
 
     ThreadContext(Thread thread, ChangeEvent event) {
@@ -176,7 +176,7 @@ public class FeedRepository {
       }
       this.createdBy =
           Entity.getEntityReferenceByName(Entity.USER, thread.getCreatedBy(), NON_DELETED);
-      thread.withEntityId(aboutEntity.getId()); // Add entity id to thread
+      thread.withEntityRef(aboutEntity.getEntityReference()); // Add entity id to thread
     }
 
     public TaskWorkflow getTaskWorkflow() {
@@ -910,7 +910,8 @@ public class FeedRepository {
     // TODO fix this - overlapping announcements should be allowed
     List<String> announcements =
         dao.feedDAO()
-            .listAnnouncementBetween(thread.getId(), thread.getEntityId(), startTime, endTime);
+            .listAnnouncementBetween(
+                thread.getId(), thread.getEntityRef().getId(), startTime, endTime);
     if (!announcements.isEmpty()) {
       // There is already an announcement that overlaps the new one
       throw new IllegalArgumentException(ANNOUNCEMENT_OVERLAP);

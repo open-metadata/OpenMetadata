@@ -579,8 +579,9 @@ public class FeedResource {
   }
 
   private Thread getThread(SecurityContext securityContext, CreateThread create) {
+    UUID randomUUID = UUID.randomUUID();
     return new Thread()
-        .withId(UUID.randomUUID())
+        .withId(randomUUID)
         .withThreadTs(System.currentTimeMillis())
         .withMessage(create.getMessage())
         .withCreatedBy(create.getFrom())
@@ -593,7 +594,7 @@ public class FeedResource {
         .withChatbot(create.getChatbotDetails())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis())
-        .withEntityType(Entity.THREAD)
+        .withEntityRef(new EntityReference().withId(randomUUID).withType(Entity.THREAD))
         .withGeneratedBy(Thread.GeneratedBy.USER);
   }
 
