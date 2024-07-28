@@ -290,7 +290,7 @@ class ServiceBaseClass {
         // Being set from this.scheduleIngestion method
         cy.get('[data-testid="schedule-primary-details"]').should(
           'contain',
-          'At 12:00 AM'
+          'Every hour'
         );
         cy.get('[data-testid="schedule-secondary-details"]').should(
           'contain',
