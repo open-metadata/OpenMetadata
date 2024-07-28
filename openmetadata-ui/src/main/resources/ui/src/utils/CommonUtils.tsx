@@ -140,6 +140,11 @@ export const getPartialNameFromTableFQN = (
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
+  if (fqnParts.includes(FqnPart.ApiEndpoint)) {
+    // Remove the first 3 parts ( service, database, schema)
+    return splitFqn.slice(3).join(FQN_SEPARATOR_CHAR);
+  }
+
   if (fqnParts.includes(FqnPart.SearchIndexField)) {
     // Remove the first 2 parts ( service, searchIndex)
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);

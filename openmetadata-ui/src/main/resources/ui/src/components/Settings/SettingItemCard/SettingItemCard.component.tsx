@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Card, Typography } from 'antd';
+import { Badge, Card, Typography } from 'antd';
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import './setting-item-card.style.less';
 
@@ -22,6 +23,7 @@ interface SettingMenuItemProps {
 }
 
 const SettingItemCard = ({ data, onClick }: SettingMenuItemProps) => {
+  const { t } = useTranslation();
   const handleOnClick = useCallback(() => onClick(data.key), []);
 
   return (
@@ -35,7 +37,10 @@ const SettingItemCard = ({ data, onClick }: SettingMenuItemProps) => {
 
       <div className="setting-card-item-content">
         <Typography.Text className="setting-card-title">
-          {data.category ?? data.label}
+          {data.category ?? data.label}{' '}
+          {Boolean(data?.isBeta) && (
+            <Badge className="service-beta-tag" count={t('label.beta')} />
+          )}
         </Typography.Text>
         <Typography.Paragraph
           className="setting-card-description"

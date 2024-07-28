@@ -15,6 +15,8 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { DataInsightIndex } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Tag } from '../generated/entity/classification/tag';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -32,6 +34,7 @@ import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
+import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -170,6 +173,16 @@ export interface StorageServiceSearchSource
   extends SearchSourceBase,
     SearchService {}
 
+export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
+
+export interface APICollectionSearchSource
+  extends SearchSourceBase,
+    APICollection {}
+
+export interface APIEndpointSearchSource
+  extends SearchSourceBase,
+    APIEndpoint {}
+
 export type ExploreSearchSource =
   | TableSearchSource
   | DashboardSearchSource
@@ -195,7 +208,10 @@ export type ExploreSearchSource =
   | SearchServiceSearchSource
   | StorageServiceSearchSource
   | DomainSearchSource
-  | SearchIndexSearchSource;
+  | SearchIndexSearchSource
+  | APIServiceSearchSource
+  | APICollectionSearchSource
+  | APIEndpointSearchSource;
 
 export type SearchIndexSearchSourceMapping = {
   [SearchIndex.ALL]: TableSearchSource;
@@ -230,6 +246,9 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.DATA_PRODUCT]: DataProductSearchSource;
   [SearchIndex.TEST_SUITE]: TestSuiteSearchSource;
   [SearchIndex.INGESTION_PIPELINE]: IngestionPipelineSearchSource;
+  [SearchIndex.API_SERVICE_INDEX]: APIServiceSearchSource;
+  [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
+  [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
 };
 
 export type SearchRequest<
