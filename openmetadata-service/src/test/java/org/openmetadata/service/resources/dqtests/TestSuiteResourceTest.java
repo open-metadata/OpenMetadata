@@ -402,7 +402,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 8. List test suites with owner
     // 8.1 Team owner
     queryParams.clear();
-    queryParams.put("owners", TEAM11_REF.getFullyQualifiedName());
+    queryParams.put("owner", TEAM11_REF.getFullyQualifiedName());
     queryParams.put("fields", "owners");
     ResultList<TestSuite> teamOwnerTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);

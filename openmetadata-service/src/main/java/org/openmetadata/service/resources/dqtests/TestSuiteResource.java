@@ -291,7 +291,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         // If the owner is not a user, then we'll try to geta team
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
       }
-      searchListFilter.addQueryParam("owner", entity.getId().toString());
+      searchListFilter.addQueryParam("owners", entity.getId().toString());
     }
 
     EntityUtil.Fields fields = getFields(fieldsParam);

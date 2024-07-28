@@ -822,7 +822,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertRows(result, expectedRows);
 
     // Invalid owner
-    record = getRecord(1, GROUP, team.getName(), "invalidOwner", false, "", "");
+    record = getRecord(1, GROUP, team.getName(), "user:invalidOwner", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);

@@ -848,11 +848,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         testCasesNum, allEntities.getData().size()); // Should return either values matching
 
     queryParams.clear();
-    queryParams.put("owners", USER2_REF.getName());
+    queryParams.put("owner", USER2_REF.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(2, allEntities.getData().size()); // we have 2 test cases with USER2_REF as owner
 
-    queryParams.put("owners", USER_TEAM21.getName());
+    queryParams.put("owner", USER_TEAM21.getName());
     allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
     assertEquals(
         1,

@@ -408,9 +408,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("serviceName", serviceName);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
-      StringBuffer owners = new StringBuffer();
+      StringBuilder owners = new StringBuilder();
       try {
-        User user = (User) Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
+        User user = Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
         owners.append(user.getId().toString());
         if (!nullOrEmpty(user.getTeams())) {
           owners
