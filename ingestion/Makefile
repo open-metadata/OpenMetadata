@@ -23,8 +23,7 @@ install_test:  ## Install the ingestion module with test dependencies
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	export PIP_CONSTRAINT=$(INGESTION_DIR)/constraints.txt
-	python -m pip install "$(INGESTION_DIR)[all]/"
+	PIP_CONSTRAINT=$(INGESTION_DIR)/constraints.txt python -m pip install "$(INGESTION_DIR)[all]/"
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
