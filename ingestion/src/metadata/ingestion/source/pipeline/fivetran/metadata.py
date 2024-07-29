@@ -83,16 +83,7 @@ class FivetranSource(PipelineServiceSource):
                 name=pipeline_details.pipeline_name,
                 displayName=pipeline_details.pipeline_display_name,
                 sourceUrl=source_url,
-                fullyQualifiedName=None,
-                description=None,
-                downstreamTasks=None,
-                taskType=None,
-                taskSQL=None,
-                startDate=None,
-                endDate=None,
-                tags=None,
-                owner=None,
-            )
+            )  # type: ignore
         ]
 
     def yield_pipeline(
@@ -127,7 +118,7 @@ class FivetranSource(PipelineServiceSource):
 
     def fetch_column_lineage(
         self, pipeline_details: FivetranPipelineDetails, schema, schema_data, table
-    ):
+    ) -> List[Optional[ColumnLineage]]:
         col_details = self.client.get_connector_column_lineage(
             pipeline_details.connector_id, schema_name=schema, table_name=table
         )
@@ -263,12 +254,12 @@ class FivetranSource(PipelineServiceSource):
                 yield Either(
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
-                            fromEntity=EntityReference(id=from_entity.id, type="table"),
-                            toEntity=EntityReference(id=to_entity.id, type="table"),
+                            fromEntity=EntityReference(id=from_entity.id, type="table"),  # type: ignore
+                            toEntity=EntityReference(id=to_entity.id, type="table"),  # type: ignore
                             lineageDetails=lineage_details,
                         )
                     )
-                )
+                )  # type: ignore
 
     def get_pipelines_list(self) -> Iterable[FivetranPipelineDetails]:
         """Get List of all pipelines"""

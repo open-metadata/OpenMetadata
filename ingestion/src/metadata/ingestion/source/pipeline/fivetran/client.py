@@ -46,8 +46,8 @@ class FivetranClient:
 
     def run_paginator(self, path: str) -> List[dict]:
         response = self.client.get(f"{path}?limit={self.config.limit}")
-        data = response["data"]
-        result = data["items"]
+        data = response.get("data")
+        result = data.get("items")
         while data.get("next_cursor"):
             response = self.client.get(
                 f"{path}?limit={self.config.limit}&cursor={data['next_cursor']}"
@@ -80,14 +80,14 @@ class FivetranClient:
         Method returns destination details
         """
         response = self.client.get(f"/destinations/{destination_id}")
-        return response["data"]
+        return response.get("data")
 
     def get_connector_schema_details(self, connector_id: str) -> dict:
         """
         Method returns destination details
         """
         response = self.client.get(f"/connectors/{connector_id}/schemas")
-        return response["data"]["schemas"]
+        return response.get("data", {}).get("schemas", [])
 
     def get_connector_column_lineage(
         self, connector_id: str, schema_name: str, table_name: str
@@ -98,4 +98,4 @@ class FivetranClient:
         response: Optional[Response] = self.client.get(
             f"/connectors/{connector_id}/schemas/{schema_name}/tables/{table_name}/columns"
         )
-        return response["data"]["columns"]
+        return response.get("data", {}).get("columns", [])
