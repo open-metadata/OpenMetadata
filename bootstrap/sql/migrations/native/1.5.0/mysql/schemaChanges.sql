@@ -161,7 +161,8 @@ SET json = JSON_SET(
         JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.previousOwner')
     )
 )
-WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.previousOwner');
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.previousOwner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.previousOwner')) <> 'ARRAY';
 
 UPDATE thread_entity
 SET json = JSON_SET(
@@ -171,7 +172,8 @@ SET json = JSON_SET(
         JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')
     )
 )
-WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.updatedOwner');
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.updatedOwner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')) <> 'ARRAY';
 
 -- Update entity_extension to move owner to array
 UPDATE entity_extension
@@ -182,4 +184,5 @@ SET json = JSON_SET(
         JSON_EXTRACT(json, '$.owner')
     )
 )
-WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner');
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
