@@ -42,7 +42,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_insight import DataInsightWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 
 def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
@@ -63,7 +62,7 @@ def data_insight_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 

@@ -17,7 +17,10 @@ import { useTranslation } from 'react-i18next';
 
 import { TEST_CASE_FEED_GRAPH_HEIGHT } from '../../../../../constants/constants';
 import { PROFILER_FILTER_RANGE } from '../../../../../constants/profiler.constant';
-import { EntityTestResultSummaryObject } from '../../../../../generated/entity/feed/thread';
+import {
+  EntityTestResultSummaryObject,
+  TestCaseStatus,
+} from '../../../../../generated/entity/feed/thread';
 import {
   formatTestStatusData,
   getTestCaseResultCount,
@@ -40,10 +43,19 @@ function TestCaseFeed({
     [entitySpecificInfo?.entityTestResultSummary]
   );
 
-  const testCaseResult = useMemo(
-    () => (entitySpecificInfo?.testCaseResult ?? []).slice(0, 10),
-    [entitySpecificInfo?.testCaseResult]
-  );
+  const { testCaseResult, showTestCaseGraph } = useMemo(() => {
+    const testCaseResult = (entitySpecificInfo?.testCaseResult ?? []).slice(
+      0,
+      10
+    );
+
+    return {
+      testCaseResult,
+      showTestCaseGraph: !testCaseResult.every(
+        (item) => item.testCaseStatus === TestCaseStatus.Success
+      ),
+    };
+  }, [entitySpecificInfo?.testCaseResult]);
 
   const renderTestCaseResult = useMemo(() => {
     return (
@@ -76,7 +88,7 @@ function TestCaseFeed({
         </Row>
       </Col>
 
-      <Col span={24}>{renderTestCaseResult}</Col>
+      {showTestCaseGraph && <Col span={24}>{renderTestCaseResult}</Col>}
     </Row>
   );
 }

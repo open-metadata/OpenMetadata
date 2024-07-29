@@ -42,6 +42,9 @@ import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
@@ -65,6 +68,8 @@ import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
 import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
@@ -202,6 +207,7 @@ export const getEntityIcon = (
   const entityIconMapping: Record<string, SvgComponent> = {
     [SearchIndex.DATABASE]: DatabaseIcon,
     [EntityType.DATABASE]: DatabaseIcon,
+    [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
     [EntityType.DATABASE_SERVICE]: DatabaseIcon,
     [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
     [EntityType.DATABASE_SCHEMA]: SchemaIcon,
@@ -242,6 +248,7 @@ export const getEntityIcon = (
     [EntityType.CHART]: ChartIcon,
     [SearchIndex.TABLE]: TableIcon,
     [EntityType.TABLE]: TableIcon,
+    [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
     [SearchIndex.DATA_PRODUCT]: DataProductIcon,
     [EntityType.DATA_PRODUCT]: DataProductIcon,
     [EntityType.TEST_CASE]: IconTestSuite,
@@ -266,6 +273,13 @@ export const getEntityIcon = (
     ['services']: ServicesIcon,
     ['automator']: AutomatorBotIcon,
     ['notification']: NotificationIcon,
+    [EntityType.API_ENDPOINT]: APIEndpointIcon,
+    [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
+    [EntityType.API_SERVICE]: APIServiceIcon,
+    [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
+    [EntityType.API_COLLECTION]: APICollectionIcon,
+    [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
+    ['location']: LocationIcon,
   };
 
   switch (indexType) {
@@ -284,7 +298,8 @@ export const getEntityIcon = (
       break;
   }
 
-  return Icon ? <Icon className={className} style={style} /> : <></>;
+  // If icon is not found, return null
+  return Icon ? <Icon className={className} style={style} /> : null;
 };
 
 export const getServiceIcon = (source: SourceType) => {

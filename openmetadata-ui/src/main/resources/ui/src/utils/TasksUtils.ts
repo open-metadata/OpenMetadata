@@ -37,6 +37,7 @@ import {
   TabSpecificField,
 } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -58,6 +59,8 @@ import {
   TaskAction,
   TaskActionMode,
 } from '../pages/TasksPage/TasksPage.interface';
+import { getApiCollectionByFQN } from '../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../rest/apiEndpointsAPI';
 import { getDashboardByFqn } from '../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -279,6 +282,17 @@ export const getEntityColumnsDetails = (
     case EntityType.CONTAINER:
       return (entityData as Container).dataModel?.columns ?? [];
 
+    case EntityType.API_ENDPOINT: {
+      // API endpoint has two types of schema, request and response
+      const entityDetails = entityData as APIEndpoint;
+      const requestSchemaFields =
+        entityDetails.requestSchema?.schemaFields ?? [];
+      const responseSchemaFields =
+        entityDetails.responseSchema?.schemaFields ?? [];
+
+      return [...requestSchemaFields, ...responseSchemaFields];
+    }
+
     default:
       return (entityData as Table).columns ?? [];
   }
@@ -338,6 +352,8 @@ export const TASK_ENTITIES = [
   EntityType.SEARCH_INDEX,
   EntityType.GLOSSARY,
   EntityType.GLOSSARY_TERM,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
 ];
 
 export const getBreadCrumbList = (
@@ -448,6 +464,25 @@ export const getBreadCrumbList = (
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM: {
       return getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? '');
+    }
+
+    case EntityType.API_ENDPOINT: {
+      const apiCollection = (entityData as APIEndpoint)?.apiCollection;
+
+      return [
+        service(ServiceCategory.API_SERVICES),
+        {
+          name: getEntityName(apiCollection),
+          url: entityUtilClassBase.getEntityLink(
+            entityType,
+            apiCollection?.fullyQualifiedName || ''
+          ),
+        },
+        activeEntity,
+      ];
+    }
+    case EntityType.API_COLLECTION: {
+      return [service(ServiceCategory.API_SERVICES), activeEntity];
     }
 
     default:
@@ -593,6 +628,29 @@ export const fetchEntityDetail = (
 
       break;
 
+    case EntityType.API_COLLECTION: {
+      getApiCollectionByFQN(entityFQN, {
+        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+    case EntityType.API_ENDPOINT: {
+      getApiEndPointByFQN(entityFQN, {
+        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+
     default:
       break;
   }
@@ -698,6 +756,16 @@ export const getEntityTaskDetails = (
     case EntityType.SEARCH_INDEX:
       fqnPartTypes = FqnPart.Topic;
       entityField = EntityField.FIELDS;
+
+      break;
+    case EntityType.API_COLLECTION:
+      fqnPartTypes = FqnPart.Database;
+      entityField = '';
+
+      break;
+    case EntityType.API_ENDPOINT:
+      fqnPartTypes = FqnPart.ApiEndpoint;
+      entityField = 'requestSchema';
 
       break;
 
