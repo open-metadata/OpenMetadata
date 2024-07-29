@@ -26,7 +26,7 @@ function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
   const { message, fieldOperation } = useMemo(() => {
     return {
       message: (feed.feedInfo?.entitySpecificInfo?.diffMessage ?? '').split(
-        ':'
+        '**description**:'
       )[1],
       fieldOperation: feed.fieldOperation,
       fieldChanged: getFeedChangeFieldLabel(
