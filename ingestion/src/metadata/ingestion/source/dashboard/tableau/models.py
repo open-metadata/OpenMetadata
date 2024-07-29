@@ -123,6 +123,7 @@ class DataSource(BaseModel):
     name: Optional[str] = None
     fields: Optional[List[DatasourceField]] = None
     upstreamTables: Optional[List[UpstreamTable]] = None
+    upstreamDatasources: Optional[List["DataSource"]] = None
 
 
 class TableauDatasources(BaseModel):
