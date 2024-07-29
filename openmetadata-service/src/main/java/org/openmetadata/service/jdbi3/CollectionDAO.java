@@ -4834,6 +4834,30 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    String fetchEmailTemplateByName(@Bind("name") String name);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    List<String> fetchAllEmailTemplates();
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    void deleteEmailTemplates();
   }
 
   interface SuggestionDAO {

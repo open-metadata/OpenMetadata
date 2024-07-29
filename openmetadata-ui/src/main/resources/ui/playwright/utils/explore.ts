@@ -107,3 +107,12 @@ export const checkCheckboxStatus = async (
 
   await expect(isCheckedOnPage).toEqual(isChecked);
 };
+
+export const selectDataAssetFilter = async (
+  page: Page,
+  filterValue: string
+) => {
+  await page.getByRole('button', { name: 'Data Assets' }).click();
+  await page.getByTestId(`${filterValue}-checkbox`).check();
+  await page.getByTestId('update-btn').click();
+};
