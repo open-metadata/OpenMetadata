@@ -80,6 +80,9 @@ export enum ResourceEntity {
   STORED_PROCEDURE = 'storedProcedure',
   APPLICATION = 'application',
   PERSONA = 'persona',
+  API_SERVICE = 'apiService',
+  API_COLLECTION = 'apiCollection',
+  API_ENDPOINT = 'apiEndpoint',
 }
 
 export interface PermissionContextType {

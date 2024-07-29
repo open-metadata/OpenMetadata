@@ -109,7 +109,9 @@ function FeedCardFooter({
                 ))}
               </Avatar.Group>
             )}
-            <Typography.Text className="text-xs font-medium text-primary">
+            <Typography.Text
+              className="text-xs font-medium text-primary"
+              data-testid="reply-count">
               {postLength <= 1
                 ? t('label.one-reply')
                 : t('label.number-reply-plural', {

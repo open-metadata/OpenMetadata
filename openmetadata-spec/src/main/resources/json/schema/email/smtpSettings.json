@@ -49,6 +49,9 @@
       "type": "string",
       "enum": ["SMTP", "SMTPS", "SMTP_TLS"],
       "default": "SMTP"
+    },
+    "templatePath": {
+      "type": "string"
     }
   },
   "additionalProperties": false,
