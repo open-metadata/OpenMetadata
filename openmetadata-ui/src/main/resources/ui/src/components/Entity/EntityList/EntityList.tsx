@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom';
 import { EntityReference } from '../../../generated/entity/type';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import EntityListSkeleton from '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import './entity.less';
 
@@ -75,7 +75,7 @@ export const EntityListWithV1: FunctionComponent<AntdEntityListProp> = ({
                         className="entity-button flex-center p-0 m--ml-1"
                         icon={
                           <div className="entity-button-icon m-r-xs">
-                            {getEntityIcon(item.type || '')}
+                            {searchClassBase.getEntityIcon(item.type || '')}
                           </div>
                         }
                         title={getEntityName(
