@@ -119,7 +119,7 @@ test('Table difference test case', async ({ page }) => {
     await test.step('Delete', async () => {
       await deleteTestCase(page, testCase.name);
     });
-  } catch (error) {
+  } finally {
     await table1.delete(apiContext);
     await table2.delete(apiContext);
 
@@ -212,7 +212,7 @@ test('Custom SQL Query', async ({ page }) => {
     await test.step('Delete', async () => {
       await deleteTestCase(page, testCase.name);
     });
-  } catch (error) {
+  } finally {
     await table.delete(apiContext);
     await afterAction();
   }

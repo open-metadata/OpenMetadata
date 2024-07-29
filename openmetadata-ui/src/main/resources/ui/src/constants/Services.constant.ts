@@ -94,6 +94,7 @@ import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
+import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
@@ -106,6 +107,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { WorkflowStatus } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
+import { APIServiceType } from '../generated/entity/services/apiService';
 import { DashboardServiceType } from '../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';
@@ -213,6 +215,7 @@ export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
+export const REST_SERVICE = restService;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -227,6 +230,7 @@ export const arrServiceTypes: Array<ServiceTypes> = [
   'pipelineServices',
   'mlmodelServices',
   'storageServices',
+  'apiServices',
 ];
 
 export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
@@ -238,6 +242,7 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   metadata: ServiceCategory.METADATA_SERVICES,
   storages: ServiceCategory.STORAGE_SERVICES,
   search: ServiceCategory.SEARCH_SERVICES,
+  apiServices: ServiceCategory.API_SERVICES,
 };
 
 export const servicesDisplayName: { [key: string]: string } = {
@@ -267,6 +272,9 @@ export const servicesDisplayName: { [key: string]: string } = {
   }),
   dashboardDataModel: i18n.t('label.entity-service', {
     entity: i18n.t('label.data-model'),
+  }),
+  apiServices: i18n.t('label.entity-service', {
+    entity: i18n.t('label.api-uppercase'),
   }),
 };
 
@@ -383,6 +391,7 @@ export const SERVICE_TYPE_MAP = {
   [ServiceCategory.STORAGE_SERVICES]: ServiceType.Storage,
   [ServiceCategory.PIPELINE_SERVICES]: ServiceType.Pipeline,
   [ServiceCategory.SEARCH_SERVICES]: ServiceType.Search,
+  [ServiceCategory.API_SERVICES]: ServiceType.API,
 };
 
 export const SERVICE_TYPES_ENUM = {
@@ -394,6 +403,7 @@ export const SERVICE_TYPES_ENUM = {
   [ServiceCategory.STORAGE_SERVICES]: StorageServiceType,
   [ServiceCategory.PIPELINE_SERVICES]: PipelineServiceType,
   [ServiceCategory.SEARCH_SERVICES]: SearchServiceType,
+  [ServiceCategory.API_SERVICES]: APIServiceType,
 };
 
 export const BETA_SERVICES = [
@@ -410,6 +420,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Greenplum,
   DatabaseServiceType.Iceberg,
   DatabaseServiceType.Teradata,
+  APIServiceType.REST,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
@@ -462,4 +473,13 @@ export const SERVICE_TYPES = [
   EntityType.METADATA_SERVICE,
   EntityType.STORAGE_SERVICE,
   EntityType.SEARCH_SERVICE,
+  EntityType.API_SERVICE,
+];
+
+export const SERVICE_INGESTION_PIPELINE_TYPES = [
+  PipelineType.Metadata,
+  PipelineType.Usage,
+  PipelineType.Lineage,
+  PipelineType.Profiler,
+  PipelineType.Dbt,
 ];
