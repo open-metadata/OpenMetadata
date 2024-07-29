@@ -1319,12 +1319,28 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // When domain is not set for a user term, carry it forward from the parent team
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
-        teamResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        teamResourceTest
+            .createRequest(test)
+            .withTeamDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
+      throws IOException, InterruptedException {
+    User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getUserDomains().get(0)); // Inherited owner
+    entity = getEntity(entity.getId(), "userDomains", ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getUserDomains().get(0)); // Inherited owner
+    assertTrue(entity.getUserDomains().get(0).getInherited());
+    entity = getEntityByName(entity.getFullyQualifiedName(), "userDomains", ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getUserDomains().get(0)); // Inherited owner
+    assertTrue(entity.getUserDomains().get(0).getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain, "userDomains");
+    return entity;
   }
 
   @Test
