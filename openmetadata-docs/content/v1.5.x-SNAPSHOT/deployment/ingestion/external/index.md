@@ -17,13 +17,17 @@ component that can be run from - **literally** - anywhere.
 
 In order to install it, you just need to get it from [PyPI](https://pypi.org/project/openmetadata-ingestion/).
 
+```shell
+pip install openmetadata-ingestion
+```
+
 We will show further examples later, but a piece of code is the best showcase for its simplicity. In order to run
 a full ingestion process, you just need to execute a single function. For example, if we wanted to run the metadata
 ingestion from within a simple Python script:
 
 ```python
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 # Specify your YAML configuration
 CONFIG = """
@@ -42,7 +46,7 @@ def run():
     workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 
@@ -353,7 +357,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -392,7 +396,7 @@ def run():
     workflow = MetadataWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -464,7 +468,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -499,7 +503,7 @@ def run():
     workflow = MetadataWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -570,7 +574,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.usage import UsageWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -613,7 +617,7 @@ def run():
     workflow = UsageWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -686,7 +690,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -723,7 +727,7 @@ def run():
     workflow = ProfilerWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 
@@ -800,7 +804,7 @@ import yaml
 
 ```python  {% srNumber=1 %}
 from metadata.workflow.data_quality import TestSuiteWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 ```
 
@@ -836,7 +840,7 @@ def run():
     workflow = TestSuiteWorkflow.create(CONFIG)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 ```
 

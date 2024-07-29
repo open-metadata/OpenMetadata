@@ -12,9 +12,11 @@
  */
 import { test } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
@@ -32,6 +34,8 @@ import {
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
 
 const entities = [
+  ApiServiceClass,
+  ApiCollectionClass,
   DatabaseServiceClass,
   DashboardServiceClass,
   MessagingServiceClass,

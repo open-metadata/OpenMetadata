@@ -78,6 +78,25 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      Set<String> receivers = emailAlertConfig.getReceivers();
+      EmailMessage emailMessage =
+          emailDecorator.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+      for (String email : receivers) {
+        EmailUtil.sendChangeEventMail(
+            eventSubscription.getFullyQualifiedName(), email, emailMessage);
+      }
+      setSuccessStatus(System.currentTimeMillis());
+    } catch (Exception e) {
+      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
+      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
   public EventSubscription getEventSubscriptionForDestination() {
     return eventSubscription;
   }

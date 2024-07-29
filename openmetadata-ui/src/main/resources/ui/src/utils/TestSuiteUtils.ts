@@ -42,3 +42,10 @@ export const getTestSuiteFQN = (fqn: string) => {
 
   return fqnPart.join(FQN_SEPARATOR_CHAR);
 };
+
+// get the FQN of the test suite without the service name
+export const getServiceFromTestSuiteFQN = (fqn: string) => {
+  const fqnPart = Fqn.split(fqn);
+
+  return fqnPart.shift();
+};
