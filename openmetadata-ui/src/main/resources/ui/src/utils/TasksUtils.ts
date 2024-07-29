@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { AxiosError } from 'axios';
 import { Change, diffWordsWithSpace } from 'diff';
 import i18Next from 'i18next';
 import { isEmpty, isEqual, isUndefined } from 'lodash';
+import React from 'react';
+import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.svg';
+import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
+import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   getEntityDetailsPath,
@@ -34,6 +37,7 @@ import {
   TabSpecificField,
 } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -55,6 +59,8 @@ import {
   TaskAction,
   TaskActionMode,
 } from '../pages/TasksPage/TasksPage.interface';
+import { getApiCollectionByFQN } from '../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../rest/apiEndpointsAPI';
 import { getDashboardByFqn } from '../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
@@ -276,6 +282,17 @@ export const getEntityColumnsDetails = (
     case EntityType.CONTAINER:
       return (entityData as Container).dataModel?.columns ?? [];
 
+    case EntityType.API_ENDPOINT: {
+      // API endpoint has two types of schema, request and response
+      const entityDetails = entityData as APIEndpoint;
+      const requestSchemaFields =
+        entityDetails.requestSchema?.schemaFields ?? [];
+      const responseSchemaFields =
+        entityDetails.responseSchema?.schemaFields ?? [];
+
+      return [...requestSchemaFields, ...responseSchemaFields];
+    }
+
     default:
       return (entityData as Table).columns ?? [];
   }
@@ -335,6 +352,8 @@ export const TASK_ENTITIES = [
   EntityType.SEARCH_INDEX,
   EntityType.GLOSSARY,
   EntityType.GLOSSARY_TERM,
+  EntityType.API_COLLECTION,
+  EntityType.API_ENDPOINT,
 ];
 
 export const getBreadCrumbList = (
@@ -445,6 +464,25 @@ export const getBreadCrumbList = (
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM: {
       return getGlossaryBreadcrumbs(entityData.fullyQualifiedName ?? '');
+    }
+
+    case EntityType.API_ENDPOINT: {
+      const apiCollection = (entityData as APIEndpoint)?.apiCollection;
+
+      return [
+        service(ServiceCategory.API_SERVICES),
+        {
+          name: getEntityName(apiCollection),
+          url: entityUtilClassBase.getEntityLink(
+            entityType,
+            apiCollection?.fullyQualifiedName || ''
+          ),
+        },
+        activeEntity,
+      ];
+    }
+    case EntityType.API_COLLECTION: {
+      return [service(ServiceCategory.API_SERVICES), activeEntity];
     }
 
     default:
@@ -590,19 +628,66 @@ export const fetchEntityDetail = (
 
       break;
 
+    case EntityType.API_COLLECTION: {
+      getApiCollectionByFQN(entityFQN, {
+        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+    case EntityType.API_ENDPOINT: {
+      getApiEndPointByFQN(entityFQN, {
+        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    }
+
     default:
       break;
   }
 };
 
+export const TASK_ACTION_COMMON_ITEM: TaskAction[] = [
+  {
+    label: i18Next.t('label.close'),
+    key: TaskActionMode.CLOSE,
+    icon: CancelColored,
+  },
+];
+
 export const TASK_ACTION_LIST: TaskAction[] = [
   {
     label: i18Next.t('label.accept-suggestion'),
     key: TaskActionMode.VIEW,
+    icon: SuccessColored,
   },
   {
     label: i18Next.t('label.edit-amp-accept-suggestion'),
     key: TaskActionMode.EDIT,
+    icon: EditColored,
+  },
+  ...TASK_ACTION_COMMON_ITEM,
+];
+
+export const GLOSSARY_TASK_ACTION_LIST: TaskAction[] = [
+  {
+    label: i18Next.t('label.approve'),
+    key: TaskActionMode.RESOLVE,
+    icon: SuccessColored,
+  },
+  {
+    label: i18Next.t('label.reject'),
+    key: TaskActionMode.CLOSE,
+    icon: CancelColored,
   },
 ];
 
@@ -671,6 +756,16 @@ export const getEntityTaskDetails = (
     case EntityType.SEARCH_INDEX:
       fqnPartTypes = FqnPart.Topic;
       entityField = EntityField.FIELDS;
+
+      break;
+    case EntityType.API_COLLECTION:
+      fqnPartTypes = FqnPart.Database;
+      entityField = '';
+
+      break;
+    case EntityType.API_ENDPOINT:
+      fqnPartTypes = FqnPart.ApiEndpoint;
+      entityField = 'requestSchema';
 
       break;
 

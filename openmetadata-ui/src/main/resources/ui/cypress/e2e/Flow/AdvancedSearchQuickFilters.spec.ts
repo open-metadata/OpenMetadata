@@ -79,7 +79,8 @@ const postRequisitesForTests = () => {
   });
 };
 
-describe(
+// migrated to playwright
+describe.skip(
   `Advanced search quick filters should work properly for assets`,
   { tags: 'DataAssets' },
   () => {

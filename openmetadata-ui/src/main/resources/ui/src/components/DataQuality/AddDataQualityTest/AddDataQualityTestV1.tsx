@@ -287,6 +287,7 @@ const AddDataQualityTestV1: React.FC<AddDataQualityTestProps> = ({
                 <TestSuiteIngestion
                   testSuite={testSuiteData as TestSuite}
                   onCancel={() => setAddIngestion(false)}
+                  onViewServiceClick={handleRedirection}
                 />
               ) : (
                 <Row className="p-xs" gutter={[16, 16]}>

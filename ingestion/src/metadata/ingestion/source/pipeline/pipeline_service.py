@@ -36,6 +36,7 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -177,10 +178,19 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """Yields lineage if config is enabled"""
         if self.source_config.includeLineage:
-            yield from self.yield_pipeline_lineage_details(pipeline_details) or []
+            for lineage in self.yield_pipeline_lineage_details(pipeline_details) or []:
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideLineage,
+                        )
+                    )
+                else:
+                    yield lineage
 
     def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""

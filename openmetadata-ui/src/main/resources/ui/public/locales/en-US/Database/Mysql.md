@@ -25,7 +25,7 @@ OpenMetadata supports MySQL version `8.0.0` and up.
 $$
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 You can find further information on the MySQL connector in the [docs](https://docs.open-metadata.org/connectors/database/mysql).
 
@@ -46,8 +46,9 @@ $$section
 There are 2 types of auth configs:
 - Basic Auth.
 - IAM based Auth.
+- Azure Based Auth.
 
-User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services.
+User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
 $$
 
 
@@ -148,6 +149,62 @@ $$section
 The source identity specified by the principal that is calling the `AssumeRole` operation. You can use source identity information in AWS CloudTrail logs to determine who took actions with a role.
 
 Find more information about [Source Identity](https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity).
+$$
+
+## Azure Auth Config
+
+$$section
+### Client ID $(id="clientId")
+
+This is a unique identifier for the service account. To fetch this key, look for the value associated with the `client_id` key in the service account key file.
+$$
+
+$$section
+### Client Secret $(id="clientSecret")
+To get the client secret, follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for this connection.
+4. Under `Manage`, select `Certificates & secrets`.
+5. Under `Client secrets`, select `New client secret`.
+6. In the `Add a client secret` pop-up window, provide a description for your application secret. Choose when the application should expire, and select `Add`.
+7. From the `Client secrets` section, copy the string in the `Value` column of the newly created application secret.
+
+$$
+
+$$section
+### Tenant ID $(id="tenantId")
+
+To get the tenant ID, follow these steps:
+
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Power BI.
+4. From the `Overview` section, copy the `Directory (tenant) ID`.
+$$
+
+$$section
+### Storage Account Name $(id="accountName")
+
+Account Name of your storage account
+$$
+
+$$section
+### Key Vault Name $(id="vaultName")
+
+Key Vault Name
+$$
+
+$$section
+### Scopes $(id="scopes")
+
+To let OM use the Trino Auth APIs using your Azure AD app, you'll need to add the scope
+1. Log into [Microsoft Azure](https://ms.portal.azure.com/#allservices).
+2. Search for `App registrations` and select the `App registrations link`.
+3. Select the `Azure AD` app you're using for Trino.
+4. From the `Expose an API` section, copy the `Application ID URI`
+5. Make sure the URI ends with `/.default` in case it does not, you can append the same manually
 $$
 
 $$section

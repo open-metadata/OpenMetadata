@@ -90,6 +90,7 @@ import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramIn
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.AvgAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -118,6 +119,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -139,6 +141,7 @@ import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SearchException;
@@ -147,6 +150,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -810,14 +814,16 @@ public class ElasticSearchClient implements SearchClient {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
+    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    boolQueryBuilder.should(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(boolQueryBuilder);
     if (CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn))
+              .must(boolQueryBuilder)
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
@@ -867,6 +873,11 @@ public class ElasticSearchClient implements SearchClient {
         }
       }
     }
+    getLineage(
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+
     // TODO: Fix this , this is hack
     if (edges.isEmpty()) {
       es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
@@ -966,6 +977,12 @@ public class ElasticSearchClient implements SearchClient {
                 AggregationBuilders.terms(key).field(termAggregation.getString("field"));
             aggregationBuilders.add(termsAggregationBuilder);
             break;
+          case "avg":
+            JsonObject avgAggregation = aggregation.getJsonObject(aggregationType);
+            AvgAggregationBuilder avgAggregationBuilder =
+                AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
+            aggregationBuilders.add(avgAggregationBuilder);
+            break;
           case "nested":
             JsonObject nestedAggregation = aggregation.getJsonObject("nested");
             AggregationBuilder nestedAggregationBuilder =
@@ -1001,6 +1018,45 @@ public class ElasticSearchClient implements SearchClient {
       }
     }
     return aggregationBuilders;
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+    String aggregationStr = (String) aggregationMetadata.get("aggregationStr");
+    JsonObject aggregationObj = JsonUtils.readJson("{%s}".formatted(aggregationStr)).asJsonObject();
+    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregationObj);
+
+    // Create search request
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+
+    // Create search source builder
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (query != null) {
+      XContentParser queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
+      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
+      searchSourceBuilder.query(boolQueryBuilder);
+    }
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    for (AggregationBuilder aggregation : aggregationBuilder) {
+      searchSourceBuilder.aggregation(aggregation);
+    }
+
+    searchRequest.source(searchSourceBuilder);
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+    Optional<JsonObject> aggregationResults =
+        Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
+    return SearchIndexUtils.parseAggregationResults(
+        aggregationResults,
+        (List<List<Map<String, String>>>) aggregationMetadata.get("aggregationMapList"));
   }
 
   @Override

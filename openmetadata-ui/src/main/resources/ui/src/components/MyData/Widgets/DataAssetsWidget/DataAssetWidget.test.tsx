@@ -58,6 +58,7 @@ describe('DataAssetsWidget', () => {
       SearchIndex.MLMODEL,
       SearchIndex.CONTAINER,
       SearchIndex.SEARCH_INDEX,
+      SearchIndex.API_ENDPOINT_INDEX,
     ]);
   });
 

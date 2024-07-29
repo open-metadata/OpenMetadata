@@ -40,6 +40,7 @@ export enum FieldTypes {
   USER_MULTI_SELECT = 'user_multi_select',
   COLOR_PICKER = 'color_picker',
   DOMAIN_SELECT = 'domain_select',
+  CRON_EDITOR = 'cron_editor',
 }
 
 export enum HelperTextType {

@@ -118,6 +118,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return SearchIndex.STORAGE_SERVICE;
       case ServiceCategory.SEARCH_SERVICES:
         return SearchIndex.SEARCH_SERVICE;
+      case ServiceCategory.API_SERVICES:
+        return SearchIndex.API_SERVICE_INDEX;
     }
 
     return SearchIndex.DATABASE_SERVICE;
@@ -236,6 +238,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return PAGE_HEADERS.STORAGE_SERVICES;
       case ServiceCategory.SEARCH_SERVICES:
         return PAGE_HEADERS.SEARCH_SERVICES;
+      case ServiceCategory.API_SERVICES:
+        return PAGE_HEADERS.API_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }

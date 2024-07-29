@@ -894,6 +894,44 @@ public interface CollectionDAO {
     List<EntityRelationshipRecord> findFromPipeline(
         @BindUUID("toId") UUID toId, @Bind("relation") int relation);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND (toId = :toId AND toEntity = :toEntity) "
+                + "AND relation = :relation ORDER BY fromId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+                + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
+                + "AND relation = :relation ORDER BY fromId",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findLineageBySource(
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("source") String source,
+        @Bind("relation") int relation);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation FROM entity_relationship "
+                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "AND json->>'source' = :source ORDER BY toId",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(RelationshipObjectMapper.class)
+    List<EntityRelationshipObject> findLineageBySourcePipeline(
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("source") String source,
+        @Bind("relation") int relation);
+
     @SqlQuery(
         "SELECT count(*) FROM entity_relationship WHERE fromEntity = :fromEntity AND toEntity = :toEntity")
     int findIfAnyRelationExist(
@@ -957,6 +995,42 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE from entity_relationship WHERE fromId = :id or toId = :id")
     void deleteAllWithId(@BindUUID("id") UUID id);
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND toId = :toId AND toEntity = :toEntity "
+                + "AND relation = :relation ORDER BY fromId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
+                + "AND relation = :relation ORDER BY fromId",
+        connectionType = POSTGRES)
+    void deleteLineageBySource(
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("source") String source,
+        @Bind("relation") int relation);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM entity_relationship "
+                + "WHERE  json->'pipeline'->>'id' =:toId OR toId = :toId AND relation = :relation "
+                + "AND json->>'source' = :source ORDER BY toId",
+        connectionType = POSTGRES)
+    void deleteLineageBySourcePipeline(
+        @BindUUID("toId") UUID toId,
+        @Bind("toEntity") String toEntity,
+        @Bind("source") String source,
+        @Bind("relation") int relation);
+
     class FromRelationshipMapper implements RowMapper<EntityRelationshipRecord> {
       @Override
       public EntityRelationshipRecord map(ResultSet rs, StatementContext ctx) throws SQLException {
@@ -975,6 +1049,19 @@ public interface CollectionDAO {
             .id(UUID.fromString(rs.getString("toId")))
             .type(rs.getString("toEntity"))
             .json(rs.getString("json"))
+            .build();
+      }
+    }
+
+    class RelationshipObjectMapper implements RowMapper<EntityRelationshipObject> {
+      @Override
+      public EntityRelationshipObject map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return EntityRelationshipObject.builder()
+            .fromId(rs.getString("fromId"))
+            .fromEntity(rs.getString("fromEntity"))
+            .toEntity(rs.getString("toEntity"))
+            .toId(rs.getString("toId"))
+            .relation(rs.getInt("relation"))
             .build();
       }
     }
@@ -4747,6 +4834,30 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    String fetchEmailTemplateByName(@Bind("name") String name);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    List<String> fetchAllEmailTemplates();
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    void deleteEmailTemplates();
   }
 
   interface SuggestionDAO {

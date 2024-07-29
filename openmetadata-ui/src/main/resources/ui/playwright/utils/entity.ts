@@ -885,7 +885,7 @@ export const checkDataAssetWidget = async (
   await page.click('[data-testid="welcome-screen-close-btn"]');
 
   const quickFilterResponse = page.waitForResponse(
-    `/api/v1/search/query?q=&index=${index}*${serviceType}*`
+    `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
 
   await page
@@ -898,13 +898,13 @@ export const checkDataAssetWidget = async (
     page.locator('[data-testid="search-dropdown-Service Type"]')
   ).toContainText(serviceType);
 
-  const isSelected = await page
-    .getByRole('menuitem', { name: type })
-    .evaluate((element) => {
-      return element.classList.contains('ant-menu-item-selected');
-    });
-
-  expect(isSelected).toBe(true);
+  await expect(
+    page
+      .getByTestId('explore-tree')
+      .locator('span')
+      .filter({ hasText: serviceType })
+      .first()
+  ).toHaveClass(/ant-tree-node-selected/);
 };
 
 export const escapeESReservedCharacters = (text?: string) => {

@@ -420,6 +420,7 @@ export const ActivityFeedTab = ({
                   'font-medium': taskFilter === 'open',
                 }
               )}
+              data-testid="open-task"
               onClick={() => {
                 handleUpdateTaskFilter('open');
                 setActiveThread();
@@ -454,6 +455,7 @@ export const ActivityFeedTab = ({
           feedList={threads}
           isForFeedTab={isForFeedTab}
           isLoading={false}
+          selectedThread={selectedThread}
           showThread={false}
           onFeedClick={handleFeedClick}
         />
@@ -478,6 +480,7 @@ export const ActivityFeedTab = ({
                   hideCloseIcon
                   className="p-x-md"
                   entityLink={selectedThread.about}
+                  feed={selectedThread}
                   threadType={selectedThread?.type ?? ThreadType.Conversation}
                   onCancel={noop}
                 />

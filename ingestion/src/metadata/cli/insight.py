@@ -17,13 +17,12 @@ import traceback
 from pathlib import Path
 
 from metadata.config.common import load_config_file
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
 from metadata.utils.logger import cli_logger
 from metadata.workflow.data_insight import DataInsightWorkflow
-from metadata.workflow.workflow_output_handler import (
-    WorkflowType,
-    print_init_error,
-    print_status,
-)
+from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
 
 logger = cli_logger()
 
@@ -42,10 +41,12 @@ def run_insight(config_path: Path) -> None:
         logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, config_dict, WorkflowType.INSIGHT)
+        WorkflowInitErrorHandler.print_init_error(
+            exc, config_dict, PipelineType.dataInsight
+        )
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    print_status(workflow)
+    workflow.print_status()
     workflow.raise_from_status()

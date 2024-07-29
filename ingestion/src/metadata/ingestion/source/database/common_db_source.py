@@ -59,6 +59,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
@@ -578,18 +579,27 @@ class CommonDbSourceService(
             )
 
     @calculate_execution_time_generator()
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
             v for v in self.context.get().table_views if v.view_definition is not None
         ]:
-            yield from get_view_lineage(
+            for lineage in get_view_lineage(
                 view=view,
                 metadata=self.metadata,
                 service_name=self.context.get().database_service,
                 connection_type=self.service_connection.type.value,
                 timeout_seconds=self.source_config.queryParsingTimeoutLimit,
-            )
+            ):
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideViewLineage,
+                        )
+                    )
+                else:
+                    yield lineage
 
     def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
         """

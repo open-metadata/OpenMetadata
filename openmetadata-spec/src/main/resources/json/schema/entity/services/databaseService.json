@@ -56,7 +56,8 @@
         "SAS",
         "Iceberg",
         "Teradata",
-        "SapErp"
+        "SapErp",
+        "Synapse"
       ],
       "javaEnums": [
         {
@@ -184,6 +185,9 @@
         },
         {
           "name": "SapErp"
+        },
+        {
+          "name": "Synapse"
         }
       ]
     },
@@ -316,6 +320,9 @@
             },
             {
               "$ref": "./connections/database/sapErpConnection.json"
+            },
+            {
+              "$ref": "./connections/database/synapseConnection.json"
             }
           ]
         }

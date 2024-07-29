@@ -26,6 +26,7 @@ import {
   SearchResponse,
 } from '../interface/search.interface';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const searchData = <SI extends SearchIndex>(
@@ -264,7 +265,9 @@ export const getAggregateFieldOptions = (
   value: string,
   q: string
 ) => {
-  const withWildCardValue = value ? `.*${value}.*` : '.*';
+  const withWildCardValue = value
+    ? `.*${escapeESReservedCharacters(value)}.*`
+    : '.*';
   const params = {
     index,
     field,

@@ -96,6 +96,7 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
     MlModel: 'mlmodel_search_index',
     Container: 'container_search_index',
     SearchIndex: 'search_entity_search_index',
+    ApiEndpoint: 'api_endpoint_search_index',
   };
 
   return entityMapping[entityType];
@@ -150,7 +151,7 @@ export const clickOutside = async (page: Page) => {
 
 export const visitUserProfilePage = async (page: Page) => {
   await page.getByTestId('dropdown-profile').click();
-  await page.waitForSelector('.profile-dropdown', {
+  await page.waitForSelector('[role="menu"].profile-dropdown', {
     state: 'visible',
   });
   const userResponse = page.waitForResponse(
