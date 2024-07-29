@@ -16,7 +16,7 @@ on:
       docker_release_tag:
         description: "Ingestion Base Slim Docker Image Tag (3 digit docker image tag)"
         required: true
-      release_version:
+      pypi_release_version:
         description: "Provide the Release Version (4 digit docker image tag)"
         required: true
       push_latest_tag_to_release:
@@ -44,7 +44,7 @@ jobs:
           push_latest: ${{ inputs.push_latest_tag_to_release }}
           is_ingestion: true
           is_release_candidate: ${{ inputs.build_for_release_candidate }}
-          release_version: ${{ inputs.release_version }}
+          release_version: ${{ inputs.pypi_release_version }}
           dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
