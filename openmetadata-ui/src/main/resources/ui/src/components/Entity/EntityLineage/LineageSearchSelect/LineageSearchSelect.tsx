@@ -22,8 +22,8 @@ import { useLineageProvider } from '../../../../context/LineageProvider/LineageP
 import { Column } from '../../../../generated/entity/data/table';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
-import { getEntityIcon } from '../../../../utils/TableUtils';
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
@@ -85,7 +85,7 @@ const LineageSearchSelect = () => {
               </div>
               <div className="d-flex items-center gap-1 ">
                 <div className="flex-center w-4 h-4 text-base-color">
-                  {getEntityIcon(node.entityType ?? '')}
+                  {searchClassBase.getEntityIcon(node.entityType ?? '')}
                 </div>
                 <Typography.Text>{getEntityName(column)}</Typography.Text>
               </div>
