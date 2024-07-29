@@ -25,9 +25,10 @@ import { DescriptionFeedProps } from './DescriptionFeed.interface';
 function DescriptionFeed({ feed }: Readonly<DescriptionFeedProps>) {
   const { message, fieldOperation } = useMemo(() => {
     return {
-      message: (feed.feedInfo?.entitySpecificInfo?.diffMessage ?? '').split(
-        '**description**:'
-      )[1],
+      message: (feed.feedInfo?.entitySpecificInfo?.diffMessage ?? '')
+        .split(':')
+        .slice(1)
+        .join(':'),
       fieldOperation: feed.fieldOperation,
       fieldChanged: getFeedChangeFieldLabel(
         feed.feedInfo?.fieldName as EntityField
