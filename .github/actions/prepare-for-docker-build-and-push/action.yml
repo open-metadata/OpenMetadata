@@ -16,10 +16,6 @@ inputs:
     description: true if we are building an Ingestion image, false otherwise
     required: true
     default: "false"
-  is_release_candidate:
-    description: true if this build is a Release Candidate one.
-    required: true
-    default: "false"
   release_version:
     description: OpenMetadata Release Version
   dockerhub_username:
@@ -76,4 +72,4 @@ runs:
         sep-tags: ','
         tags: |
           type=raw,value=${{ inputs.release_version }},enable=${{ inputs.is_ingestion == 'true' }}
-          type=raw,${{ inputs.tag }},enable=${{ inputs.is_ingestion == 'false' || (inputs.is_ingestion == 'true' && inputs.is_release_candidate == 'false') }}
+          type=raw,${{ inputs.tag }}

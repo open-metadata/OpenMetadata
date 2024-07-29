@@ -19,10 +19,6 @@ on:
       push_latest_tag_to_release:
         description: "Do you want to update docker image latest tag as well ?"
         type: boolean
-      build_for_release_candidate:
-        description: "Mark this Build for Release Candidate ?"
-        type: boolean
-        default: false
 
 jobs:
   push_to_docker_hub:
@@ -39,7 +35,6 @@ jobs:
           image: openmetadata/db
           tag: ${{ inputs.docker_release_tag }}
           push_latest: ${{ inputs.push_latest_tag_to_release }}
-          is_release_candidate: ${{ inputs.build_for_release_candidate }}
           dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
