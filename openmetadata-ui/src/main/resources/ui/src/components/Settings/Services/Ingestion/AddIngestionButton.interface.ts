@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -23,6 +22,4 @@ export interface AddIngestionButtonProps {
   ingestionList: Array<IngestionPipeline>;
   serviceCategory: ServiceCategory;
   serviceName: string;
-  ingestionData: Array<IngestionPipeline>;
-  permissions: OperationPermission;
 }

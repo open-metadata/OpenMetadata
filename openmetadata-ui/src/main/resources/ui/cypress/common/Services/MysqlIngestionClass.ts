@@ -100,11 +100,19 @@ class MysqlIngestionClass extends ServiceBaseClass {
         ]);
       });
       cy.get('[data-testid="ingestions"]').scrollIntoView().click();
-      cy.get('[data-testid="re-deploy-btn"]').scrollIntoView().click();
+      cy.get('[data-testid="more-actions"]').click();
+
+      cy.get(
+        '[data-testid="actions-dropdown"]:visible [data-testid="re-deploy-button"]'
+      ).click();
       verifyResponseStatusCode('@deployIngestion', 200);
 
       cy.reload();
-      cy.get('[data-testid="run"]').scrollIntoView().click();
+      cy.get('[data-testid="more-actions"]').click();
+
+      cy.get(
+        '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
+      ).click();
       verifyResponseStatusCode('@triggerIngestionPipeline', 200);
     });
   }

@@ -56,8 +56,12 @@ export const handleIngestionRetry = (count = 0, ingestionType = 'metadata') => {
 
       cy.contains('td', `${ingestionType}`) // find the element with the text
         .parent('tr') // find the parent 'tr'
-        .find('[data-testid="run"]')
+        .find('[data-testid="more-actions"]')
         .click();
+
+      cy.get(
+        '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
+      ).click();
     }
   };
   const checkSuccessState = () => {
@@ -78,14 +82,14 @@ export const handleIngestionRetry = (count = 0, ingestionType = 'metadata') => {
 
     cy.contains('td', `${ingestionType}`) // find the element with the text
       .parent('tr') // find the parent 'tr'
-      .find('[data-testid="pipeline-status"]') // find the element with '[data-testid="run"]'
+      .find('[data-testid="pipeline-status"]') // find the element with '[data-testid="pipeline-status"]'
       .as('checkRun');
     // the latest run should be success
     cy.get('@checkRun').then(($ingestionStatus) => {
       const text = $ingestionStatus.text();
       if (
-        text !== 'Success' &&
-        text !== 'Failed' &&
+        text !== 'SUCCESS' &&
+        text !== 'FAILED' &&
         retryCount <= RETRY_TIMES
       ) {
         // retry after waiting with log1 method [20s,40s,80s,160s,320s]
@@ -94,7 +98,7 @@ export const handleIngestionRetry = (count = 0, ingestionType = 'metadata') => {
         cy.reload();
         checkSuccessState();
       } else {
-        cy.get('@checkRun').should('contain', 'Success');
+        cy.get('@checkRun').should('contain', 'SUCCESS');
       }
     });
   };

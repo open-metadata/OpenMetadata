@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,21 +11,19 @@
  *  limitations under the License.
  */
 
-import { IngestionServicePermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ServiceCategory } from '../../../../enums/service.enum';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { SelectedRowDetails } from './ingestion.interface';
+import { IngestionServicePermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { IngestionPipeline } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { SelectedRowDetails } from '../../ingestion.interface';
 
-export interface PipelineActionsProps {
-  pipeline: IngestionPipeline;
-  ingestionPipelinePermissions?: IngestionServicePermission;
-  serviceCategory?: ServiceCategory;
+export interface PipelineActionsDropdownProps {
+  ingestion: IngestionPipeline;
   serviceName?: string;
-  deployIngestion?: (id: string, displayName: string) => Promise<void>;
+  serviceCategory?: string;
   triggerIngestion?: (id: string, displayName: string) => Promise<void>;
+  deployIngestion?: (id: string, displayName: string) => Promise<void>;
+  handleEditClick: ((fqn: string) => void) | undefined;
+  ingestionPipelinePermissions?: IngestionServicePermission;
   handleDeleteSelection: (row: SelectedRowDetails) => void;
-  handleEditClick?: (fqn: string) => void;
-  handleEnableDisableIngestion?: (id: string) => Promise<void>;
   handleIsConfirmationModalOpen: (value: boolean) => void;
   onIngestionWorkflowsUpdate?: () => void;
 }
