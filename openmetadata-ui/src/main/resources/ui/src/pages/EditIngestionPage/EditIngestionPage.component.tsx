@@ -126,7 +126,7 @@ const EditIngestionPage = () => {
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
       getIngestionPipelineByFqn(ingestionFQN, {
-        fields: TabSpecificField.PIPELINE_STATUS,
+        fields: TabSpecificField.PIPELINE_STATUSES,
       })
         .then((res) => {
           if (res) {

@@ -163,7 +163,7 @@ const LogsViewerPage = () => {
     try {
       setIsLoading(true);
       const res = await getIngestionPipelineByFqn(ingestionName, {
-        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINE_STATUS],
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINE_STATUSES],
       });
       if (res) {
         setIngestionDetails(res);
