@@ -76,14 +76,14 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-ENV PIP_CONSTRAINT=./constraints.txt
+ENV PIP_CONSTRAINT=/home/airflow/openmetadata-airflow-apis/constraints.txt
 RUN pip install "."
 
 WORKDIR /home/airflow/ingestion
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
+ENV PIP_CONSTRAINT=/home/airflow/ingestion/constraints.txt
 ARG INGESTION_DEPENDENCY="all"
-ENV PIP_CONSTRAINT=./constraints.txt
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
