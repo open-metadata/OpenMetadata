@@ -76,13 +76,15 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
+ENV PIP_CONSTRAINT=./constraints.txt
 RUN pip install "."
 
 WORKDIR /home/airflow/ingestion
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
-RUN pip install ".[${INGESTION_DEPENDENCY}]"
+ENV PIP_CONSTRAINT=./constraints.txt
+RUN pip install ".[mysql,airflow,bigquery,hive,oracle,postgres,redshift,doris,datalake-gcs,datalake-s3,qliksense,databricks]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
