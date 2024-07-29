@@ -48,6 +48,7 @@ import {
   getBotsPath,
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
+  getKpiPath,
   getServiceDetailsPath,
   getTagsDetailsPath,
   NO_DATA,
@@ -69,6 +70,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
+import { Kpi } from '../generated/dataInsight/kpi/kpi';
 import { Classification } from '../generated/entity/classification/classification';
 import { APICollection } from '../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -110,12 +112,14 @@ import { EntityReference } from '../generated/type/entityUsage';
 import { TagLabel } from '../generated/type/tagLabel';
 import { UsageDetails } from '../generated/type/usageDetails';
 import { Votes } from '../generated/type/votes';
+import { DataInsightTabs } from '../interface/data-insight.interface';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import {
   getPartialNameFromTableFQN,
   getTableFQNFromColumnFQN,
 } from './CommonUtils';
+import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import Fqn from './Fqn';
@@ -1534,6 +1538,8 @@ export const getEntityLinkFromType = (
       return getPolicyWithFqnPath(fullyQualifiedName);
     case EntityType.PERSONA:
       return getPersonaDetailsPath(fullyQualifiedName);
+    case EntityType.KPI:
+      return getKpiPath(fullyQualifiedName);
     default:
       return '';
   }
@@ -1754,6 +1760,19 @@ export const getBreadcrumbForTestSuite = (entity: TestSuite) => {
           url: '',
         },
       ];
+};
+
+export const getBreadCrumbForKpi = (entity: Kpi) => {
+  return [
+    {
+      name: i18next.t('label.kpi-uppercase'),
+      url: getDataInsightPathWithFqn(DataInsightTabs.KPIS),
+    },
+    {
+      name: getEntityName(entity),
+      url: getKpiPath(entity.name),
+    },
+  ];
 };
 
 export const getEntityBreadcrumbs = (
@@ -2116,6 +2135,9 @@ export const getEntityBreadcrumbs = (
 
     case EntityType.API_ENDPOINT:
       return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
+
+    case EntityType.KPI:
+      return getBreadCrumbForKpi(entity as Kpi);
 
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:

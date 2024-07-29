@@ -20,7 +20,7 @@ import { Node } from 'reactflow';
 import { ReactComponent as DragIconDotted } from '../../../assets/svg/dots-six-bold.svg';
 import { entityData } from '../../../constants/Lineage.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import './entity-lineage-sidebar.less';
 
 interface SidebarProps extends HTMLAttributes<HTMLDivElement> {
@@ -56,7 +56,7 @@ const EntityNode: FC<EntityNodeProps> = ({ type, label, draggable }) => {
             e.preventDefault();
             e.stopPropagation();
           }}>
-          {getEntityIcon(type || '')}
+          {searchClassBase.getEntityIcon(type ?? '')}
         </span>
         <span className="d-flex m-l-xs">
           <Icon
