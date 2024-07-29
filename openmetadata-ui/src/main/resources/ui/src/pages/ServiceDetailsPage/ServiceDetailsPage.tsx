@@ -44,9 +44,13 @@ import ServiceConnectionDetails from '../../components/Settings/Services/Service
 import {
   getServiceDetailsPath,
   INITIAL_PAGING_VALUE,
+  PAGE_SIZE,
   pagingObject,
 } from '../../constants/constants';
-import { OPEN_METADATA } from '../../constants/Services.constant';
+import {
+  OPEN_METADATA,
+  SERVICE_INGESTION_PIPELINE_TYPES,
+} from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -55,8 +59,8 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { ServiceCategory } from '../../enums/service.enum';
-import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Tag } from '../../generated/entity/classification/tag';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { Container } from '../../generated/entity/data/container';
@@ -65,7 +69,7 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { Database } from '../../generated/entity/data/database';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
-import { SearchIndex } from '../../generated/entity/data/searchIndex';
+import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Topic } from '../../generated/entity/data/topic';
 import { DashboardConnection } from '../../generated/entity/services/dashboardService';
@@ -73,6 +77,7 @@ import { IngestionPipeline } from '../../generated/entity/services/ingestionPipe
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { useAuth } from '../../hooks/authHooks';
+import { usePaging } from '../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
@@ -84,16 +89,10 @@ import {
   ListDataModelParams,
 } from '../../rest/dashboardAPI';
 import { getDatabases } from '../../rest/databaseAPI';
-import {
-  deleteIngestionPipelineById,
-  deployIngestionPipelineById,
-  enableDisableIngestionPipelineById,
-  getIngestionPipelines,
-  triggerIngestionPipelineById,
-} from '../../rest/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '../../rest/miscAPI';
+import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import { getMlModels } from '../../rest/mlModelAPI';
 import { getPipelines } from '../../rest/pipelineAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getSearchIndexes } from '../../rest/SearchIndexAPI';
 import {
   getServiceByFQN,
@@ -119,6 +118,10 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from '../../utils/ServiceUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+} from '../../utils/StringsUtils';
 import { updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import ServiceMainTabContent from './ServiceMainTabContent';
@@ -131,25 +134,65 @@ export type ServicePageData =
   | Pipeline
   | Container
   | DashboardDataModel
-  | SearchIndex
+  | SearchIndexEntity
   | StoredProcedure
   | APICollection;
 
 const ServiceDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { isAirflowAvailable } = useAirflowStatus();
+  const airflowInformation = useAirflowStatus();
+  const { isAirflowAvailable } = useMemo(
+    () => airflowInformation,
+    [airflowInformation]
+  );
   const { serviceCategory, tab } = useParams<{
     serviceCategory: ServiceTypes;
     tab: string;
   }>();
-
   const { fqn: decodedServiceFQN } = useFqn();
-
   const isMetadataService = useMemo(
     () => serviceCategory === ServiceCategory.METADATA_SERVICES,
     [serviceCategory]
   );
+  const isOpenMetadataService = useMemo(
+    () => decodedServiceFQN === OPEN_METADATA,
+    [decodedServiceFQN]
+  );
+  const { getEntityPermissionByFqn } = usePermissionProvider();
+  const history = useHistory();
+  const { isAdminUser } = useAuth();
+  const ingestionPagingInfo = usePaging(PAGE_SIZE);
+  const pagingInfo = usePaging(PAGE_SIZE);
+
+  const {
+    paging: ingestionPaging,
+    currentPage: currentIngestionPage,
+    pageSize: ingestionPageSize,
+    handlePageChange: handleIngestionPageChange,
+    handlePagingChange: handleIngestionPagingChange,
+  } = ingestionPagingInfo;
+
+  const { paging, currentPage, handlePageChange, handlePagingChange } =
+    pagingInfo;
+
+  const [serviceDetails, setServiceDetails] = useState<ServicesType>(
+    {} as ServicesType
+  );
+  const [data, setData] = useState<Array<ServicePageData>>([]);
+  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
+    useState(false);
+  const [isServiceLoading, setIsServiceLoading] = useState(true);
+  const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
+  const [ingestionPipelines, setIngestionPipelines] = useState<
+    IngestionPipeline[]
+  >([]);
+  const [showDeleted, setShowDeleted] = useState<boolean>(false);
+  const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
+  const [servicePermission, setServicePermission] =
+    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
+  const [searchText, setSearchText] = useState('');
 
   const activeTab = useMemo(() => {
     if (tab) {
@@ -162,35 +205,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return getCountLabel(serviceCategory).toLowerCase();
   }, [tab, serviceCategory, isMetadataService]);
 
-  const isOpenMetadataService = useMemo(
-    () => decodedServiceFQN === OPEN_METADATA,
-    [decodedServiceFQN]
+  const handleSearchChange = useCallback(
+    (searchValue: string) => {
+      handleIngestionPageChange(INITIAL_PAGING_VALUE);
+      setSearchText(searchValue);
+    },
+    [handleIngestionPageChange]
   );
 
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const history = useHistory();
-
-  const { isAdminUser } = useAuth();
-  const [serviceDetails, setServiceDetails] = useState<ServicesType>(
-    {} as ServicesType
+  const handleIngestionListUpdate = useCallback(
+    (ingestionList: React.SetStateAction<IngestionPipeline[]>) => {
+      setIngestionPipelines(ingestionList);
+    },
+    []
   );
-  const [data, setData] = useState<Array<ServicePageData>>([]);
-  const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
-  const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] =
-    useState(false);
-  const [isServiceLoading, setIsServiceLoading] = useState(true);
-  const [dataModelPaging, setDataModelPaging] = useState<Paging>(pagingObject);
-  const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [ingestionPipelines, setIngestionPipelines] = useState<
-    IngestionPipeline[]
-  >([]);
-  const [ingestionPaging, setIngestionPaging] = useState<Paging>({} as Paging);
-  const [showDeleted, setShowDeleted] = useState<boolean>(false);
-  const [airflowEndpoint, setAirflowEndpoint] = useState<string>();
-  const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
-  const [servicePermission, setServicePermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
+
+  const handleIngestionPagingUpdate = useCallback(
+    (ingestionPaging: React.SetStateAction<Paging>) => {
+      handleIngestionPagingChange(ingestionPaging);
+    },
+    [handleIngestionPagingChange]
+  );
 
   const extraDropdownContent = useMemo(
     () =>
@@ -204,10 +239,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [servicePermission, decodedServiceFQN, serviceCategory]
   );
 
-  const handleShowDeleted = useCallback((value: boolean) => {
-    setShowDeleted(value);
-    setCurrentPage(INITIAL_PAGING_VALUE);
-  }, []);
+  const handleShowDeleted = useCallback(
+    (value: boolean) => {
+      setShowDeleted(value);
+      handlePageChange(INITIAL_PAGING_VALUE);
+    },
+    [handlePageChange]
+  );
 
   const allowTestConn = useMemo(() => {
     return shouldTestConnection(serviceCategory);
@@ -218,7 +256,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails]
   );
 
-  const fetchServicePermission = async () => {
+  const fetchServicePermission = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await getEntityPermissionByFqn(
@@ -226,26 +264,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         decodedServiceFQN
       );
       setServicePermission(response);
-    } catch (error) {
-      // Error
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const isTestingDisabled = useMemo(
-    () =>
-      !servicePermission.EditAll ||
-      (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
-      isUndefined(connectionDetails),
-    [
-      servicePermission,
-      serviceCategory,
-      decodedServiceFQN,
-      connectionDetails,
-      isMetadataService,
-    ]
-  );
+  }, [serviceCategory, decodedServiceFQN]);
 
   const goToEditConnection = useCallback(() => {
     history.push(
@@ -268,16 +290,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [activeTab, decodedServiceFQN, serviceCategory]
   );
 
-  const getAirflowEndpoint = useCallback(async () => {
-    try {
-      const response = await fetchAirflowConfig();
-
-      setAirflowEndpoint(response.apiEndpoint ?? '');
-    } catch (error) {
-      // Error
-    }
-  }, []);
-
   const getAllIngestionWorkflows = useCallback(
     async (paging?: Omit<Paging, 'total'>, limit?: number) => {
       try {
@@ -290,145 +302,51 @@ const ServiceDetailsPage: FunctionComponent = () => {
           serviceFilter: decodedServiceFQN,
           serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
-          pipelineType: [
-            PipelineType.Metadata,
-            PipelineType.Usage,
-            PipelineType.Lineage,
-            PipelineType.Profiler,
-            PipelineType.Dbt,
-          ],
+          pipelineType: SERVICE_INGESTION_PIPELINE_TYPES,
           limit,
         });
 
         if (response.data) {
           setIngestionPipelines(response.data);
-          setIngestionPaging(response.paging);
+          handleIngestionPagingChange(response.paging);
         } else {
-          setIngestionPaging({} as Paging);
+          handleIngestionPagingChange({} as Paging);
         }
-      } catch (error) {
-        // Error
       } finally {
         setIsIngestionPipelineLoading(false);
       }
     },
-    [decodedServiceFQN, paging]
+    [decodedServiceFQN, serviceCategory, ingestionPaging]
   );
 
-  const updateCurrentSelectedIngestion = useCallback(
-    (
-      id: string,
-      data: IngestionPipeline | undefined,
-      updateKey: keyof IngestionPipeline,
-      isDeleted = false
-    ) => {
-      const rowIndex = ingestionPipelines.findIndex((row) => row.id === id);
-
-      const updatedRow = !isUndefined(data)
-        ? { ...ingestionPipelines[rowIndex], [updateKey]: data[updateKey] }
-        : null;
-
-      const updatedData = isDeleted
-        ? ingestionPipelines.filter((_, index) => index !== rowIndex)
-        : undefined;
-
-      const ingestionPipelinesList = updatedRow
-        ? Object.assign([...ingestionPipelines], { [rowIndex]: updatedRow })
-        : [...ingestionPipelines];
-
-      setIngestionPipelines(updatedData ?? ingestionPipelinesList);
-    },
-    [ingestionPipelines]
-  );
-
-  const triggerIngestionById = useCallback(
-    async (id: string, displayName: string) => {
+  const searchPipelines = useCallback(
+    async (searchText: string, page?: number) => {
       try {
-        const data = await triggerIngestionPipelineById(id);
-        showSuccessToast(t('message.pipeline-trigger-success-message'));
+        setIsIngestionPipelineLoading(true);
+        const res = await searchQuery({
+          pageNumber: page,
+          pageSize: ingestionPageSize,
+          searchIndex: SearchIndex.INGESTION_PIPELINE,
+          query: `*${getEncodedFqn(
+            escapeESReservedCharacters(searchText ?? '')
+          )}*`,
+          filters: `(${SERVICE_INGESTION_PIPELINE_TYPES.map(
+            (type, index) =>
+              `pipelineType:${type} ${
+                index < SERVICE_INGESTION_PIPELINE_TYPES.length - 1 ? 'OR' : ''
+              }`
+          ).join(' ')})`,
+        });
+        const pipelines = res.hits.hits.map((hit) => hit._source);
+        const total = res?.hits?.total.value ?? 0;
 
-        updateCurrentSelectedIngestion(id, data, 'pipelineStatuses');
-      } catch (err) {
-        showErrorToast(
-          t('server.ingestion-workflow-operation-error', {
-            operation: t('label.triggering-lowercase'),
-            displayName,
-          })
-        );
+        setIngestionPipelines(pipelines);
+        handleIngestionPagingChange({ total });
       } finally {
-        setIsLoading(false);
+        setIsIngestionPipelineLoading(false);
       }
     },
-    [updateCurrentSelectedIngestion]
-  );
-
-  const deployIngestion = useCallback(
-    async (id: string) => {
-      try {
-        const response = await deployIngestionPipelineById(id);
-        if (response.data) {
-          setTimeout(() => {
-            updateCurrentSelectedIngestion(
-              id,
-              response.data,
-              'fullyQualifiedName'
-            );
-
-            setIsLoading(false);
-          }, 500);
-        }
-      } catch (error) {
-        showErrorToast(
-          t('server.entity-updating-error', {
-            entity: t('label.ingestion-workflow-lowercase'),
-          })
-        );
-      }
-    },
-    [updateCurrentSelectedIngestion]
-  );
-
-  const handleEnableDisableIngestion = useCallback(
-    async (id: string) => {
-      try {
-        const response = await enableDisableIngestionPipelineById(id);
-        if (response.data) {
-          updateCurrentSelectedIngestion(id, response.data, 'enabled');
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError, t('server.unexpected-response'));
-      }
-    },
-    [updateCurrentSelectedIngestion]
-  );
-
-  const deleteIngestionById = useCallback(
-    async (id: string, displayName: string) => {
-      try {
-        await deleteIngestionPipelineById(id);
-        setIngestionPipelines((pipelines) =>
-          pipelines.filter((ing) => ing.id !== id)
-        );
-        /**
-         * update the paging total count to reflect on tab count
-         */
-        setIngestionPaging((prevData) => ({
-          ...prevData,
-          total: prevData.total > 0 ? prevData.total - 1 : 0,
-        }));
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.ingestion-workflow-operation-error', {
-            operation: t('label.deleting-lowercase'),
-            displayName,
-          })
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
+    [ingestionPageSize, handleIngestionPagingChange]
   );
 
   const include = useMemo(
@@ -446,7 +364,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       );
 
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -460,7 +378,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -474,7 +392,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -497,7 +415,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setDataModelPaging(resPaging);
       } catch (error) {
         showErrorToast(error as AxiosError);
-        setPaging(pagingObject);
+        handlePagingChange(pagingObject);
       }
     },
     [decodedServiceFQN, include]
@@ -512,7 +430,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -526,7 +444,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         include
       );
       setData(data);
-      setPaging(resPaging);
+      handlePagingChange(resPaging);
     },
     [decodedServiceFQN, include]
   );
@@ -542,7 +460,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
     [decodedServiceFQN, include]
   );
@@ -558,7 +476,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
     [decodedServiceFQN, include]
   );
@@ -572,7 +490,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       });
 
       setData(response.data);
-      setPaging(response.paging);
+      handlePagingChange(response.paging);
     },
     [decodedServiceFQN, include]
   );
@@ -627,7 +545,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         }
       } catch (error) {
         setData([]);
-        setPaging(pagingObject);
+        handlePagingChange(pagingObject);
       } finally {
         setIsServiceLoading(false);
       }
@@ -669,23 +587,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [serviceCategory, decodedServiceFQN, isMetadataService]);
 
-  useEffect(() => {
-    getOtherDetails();
-  }, [activeTab, showDeleted, deleted]);
-
-  useEffect(() => {
-    // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
-    if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
-      fetchDashboardsDataModel({ limit: 0 });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
-      fetchServiceDetails();
-    }
-  }, [decodedServiceFQN, serviceCategory, servicePermission]);
-
   const handleUpdateDisplayName = useCallback(
     async (data: EntityName) => {
       if (isEmpty(serviceDetails)) {
@@ -715,30 +616,33 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [serviceDetails, serviceCategory]
   );
 
-  const handleDescriptionUpdate = async (updatedHTML: string) => {
-    if (
-      serviceDetails.description !== updatedHTML &&
-      !isEmpty(serviceDetails)
-    ) {
-      const updatedData: ServicesType = {
-        ...serviceDetails,
-        description: updatedHTML,
-      };
+  const handleDescriptionUpdate = useCallback(
+    async (updatedHTML: string) => {
+      if (
+        serviceDetails.description !== updatedHTML &&
+        !isEmpty(serviceDetails)
+      ) {
+        const updatedData: ServicesType = {
+          ...serviceDetails,
+          description: updatedHTML,
+        };
 
-      const jsonPatch = compare(serviceDetails, updatedData);
+        const jsonPatch = compare(serviceDetails, updatedData);
 
-      try {
-        const response = await patchService(
-          serviceCategory,
-          serviceDetails.id,
-          jsonPatch
-        );
-        setServiceDetails(response);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+        try {
+          const response = await patchService(
+            serviceCategory,
+            serviceDetails.id,
+            jsonPatch
+          );
+          setServiceDetails(response);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [serviceDetails, serviceCategory]
+  );
 
   const handleUpdateOwner = useCallback(
     async (owners: ServicesType['owners']) => {
@@ -814,45 +718,184 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }));
   }, []);
 
+  const onPageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getAllIngestionWorkflows(
+          { [cursorType]: ingestionPaging[cursorType] },
+          ingestionPageSize
+        );
+      } else if (!isEmpty(searchText)) {
+        searchPipelines(searchText, currentPage);
+      }
+      handleIngestionPageChange(currentPage);
+    },
+    [
+      ingestionPaging,
+      searchText,
+      ingestionPageSize,
+      handleIngestionPageChange,
+      searchPipelines,
+    ]
+  );
+
+  const versionHandler = useCallback(() => {
+    currentVersion &&
+      history.push(
+        getServiceVersionPath(
+          serviceCategory,
+          decodedServiceFQN,
+          toString(currentVersion)
+        )
+      );
+  }, [currentVersion, serviceCategory, decodedServiceFQN]);
+
+  const entityType = useMemo(
+    () => getEntityTypeFromServiceCategory(serviceCategory),
+    [serviceCategory]
+  );
+
+  const pagingHandler = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        getOtherDetails({
+          [cursorType]: paging[cursorType],
+        });
+        handlePageChange(currentPage);
+      }
+    },
+    [paging, getOtherDetails, handlePageChange]
+  );
+
+  const handleToggleDelete = useCallback((version?: number) => {
+    setServiceDetails((prev) => {
+      if (!prev) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        deleted: !prev?.deleted,
+        ...(version ? { version } : {}),
+      };
+    });
+
+    // toggle showDeleted to show the deleted child entities
+    setShowDeleted((prev) => !prev);
+  }, []);
+
+  const afterDeleteAction = useCallback(
+    (isSoftDelete?: boolean, version?: number) =>
+      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
+    [handleToggleDelete]
+  );
+
+  const handleRestoreService = useCallback(async () => {
+    try {
+      const { version: newVersion } = await restoreService(
+        serviceCategory,
+        serviceDetails.id
+      );
+      showSuccessToast(
+        t('message.restore-entities-success', {
+          entity: t('label.service'),
+        }),
+        2000
+      );
+      handleToggleDelete(newVersion);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('message.restore-entities-error', {
+          entity: t('label.service'),
+        })
+      );
+    }
+  }, [serviceCategory, serviceDetails, handleToggleDelete]);
+
+  const isTestingDisabled = useMemo(
+    () =>
+      !servicePermission.EditAll ||
+      (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
+      isUndefined(connectionDetails),
+    [
+      servicePermission,
+      serviceCategory,
+      decodedServiceFQN,
+      connectionDetails,
+      isMetadataService,
+    ]
+  );
+
+  useEffect(() => {
+    handlePageChange(INITIAL_PAGING_VALUE);
+    getOtherDetails();
+  }, [activeTab, showDeleted, deleted]);
+
+  useEffect(() => {
+    // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
+    if (serviceCategory === ServiceCategory.DASHBOARD_SERVICES) {
+      fetchDashboardsDataModel({ limit: 0 });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (servicePermission.ViewAll || servicePermission.ViewBasic) {
+      fetchServiceDetails();
+    }
+  }, [decodedServiceFQN, serviceCategory, servicePermission]);
+
+  useEffect(() => {
+    if (!isOpenMetadataService) {
+      fetchServicePermission();
+    }
+  }, [decodedServiceFQN, serviceCategory]);
+
+  useEffect(() => {
+    if (isAirflowAvailable && !isOpenMetadataService) {
+      isEmpty(searchText)
+        ? getAllIngestionWorkflows({}, ingestionPageSize)
+        : searchPipelines(searchText, currentIngestionPage);
+    }
+  }, [isAirflowAvailable, searchText, ingestionPageSize]);
+
   const ingestionTab = useMemo(
     () => (
       <Row>
         <Col className="p-x-lg" span={24}>
           <Ingestion
-            isRequiredDetailsAvailable
-            airflowEndpoint={airflowEndpoint ?? ''}
-            deleteIngestion={deleteIngestionById}
-            deployIngestion={deployIngestion}
-            handleEnableDisableIngestion={handleEnableDisableIngestion}
-            ingestionList={ingestionPipelines}
-            isAirflowAvailable={isAirflowAvailable}
+            airflowInformation={airflowInformation}
+            handleIngestionListUpdate={handleIngestionListUpdate}
+            handleSearchChange={handleSearchChange}
+            ingestionPagingInfo={ingestionPagingInfo}
+            ingestionPipelineList={ingestionPipelines}
             isLoading={isIngestionPipelineLoading}
-            paging={ingestionPaging}
-            permissions={servicePermission}
+            searchText={searchText}
             serviceCategory={serviceCategory as ServiceCategory}
             serviceDetails={serviceDetails}
             serviceName={decodedServiceFQN}
-            triggerIngestion={triggerIngestionById}
             onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
+            onPageChange={onPageChange}
           />
         </Col>
       </Row>
     ),
     [
-      isAirflowAvailable,
+      airflowInformation,
       isIngestionPipelineLoading,
-      airflowEndpoint,
       serviceDetails,
-      deleteIngestionById,
-      deployIngestion,
-      handleEnableDisableIngestion,
       ingestionPipelines,
       ingestionPaging,
       servicePermission,
       serviceCategory,
       decodedServiceFQN,
-      triggerIngestionById,
       getAllIngestionWorkflows,
+      handleIngestionListUpdate,
+      handleIngestionPagingUpdate,
+      searchText,
+      handleSearchChange,
+      onPageChange,
+      ingestionPagingInfo,
     ]
   );
 
@@ -930,82 +973,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     serviceCategory,
   ]);
 
-  useEffect(() => {
-    if (!isOpenMetadataService) {
-      fetchServicePermission();
-    }
-  }, [decodedServiceFQN, serviceCategory]);
-
-  useEffect(() => {
-    if (isAirflowAvailable && !isOpenMetadataService) {
-      getAllIngestionWorkflows();
-      getAirflowEndpoint();
-    }
-  }, [isAirflowAvailable]);
-
-  const entityType = useMemo(
-    () => getEntityTypeFromServiceCategory(serviceCategory),
-    [serviceCategory]
-  );
-
-  const pagingHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getOtherDetails({
-          [cursorType]: paging[cursorType],
-        });
-        setCurrentPage(currentPage);
-      }
-    },
-    [paging, getOtherDetails]
-  );
-
-  const handleToggleDelete = (version?: number) => {
-    setServiceDetails((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        deleted: !prev?.deleted,
-        ...(version ? { version } : {}),
-      };
-    });
-
-    // toggle showDeleted to show the deleted child entities
-    setShowDeleted((prev) => !prev);
-  };
-
-  const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean, version?: number) =>
-      isSoftDelete ? handleToggleDelete(version) : history.goBack(),
-    [handleToggleDelete]
-  );
-
-  const handleRestoreService = useCallback(async () => {
-    try {
-      const { version: newVersion } = await restoreService(
-        serviceCategory,
-        serviceDetails.id
-      );
-      showSuccessToast(
-        t('message.restore-entities-success', {
-          entity: t('label.service'),
-        }),
-        2000
-      );
-      handleToggleDelete(newVersion);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.restore-entities-error', {
-          entity: t('label.service'),
-        })
-      );
-    }
-  }, [serviceCategory, serviceDetails]);
-
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
     const ownerIds = serviceDetails?.owners?.map((owner) => owner.id) ?? [];
@@ -1081,6 +1048,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
         children: tab.children,
       }));
   }, [
+    currentUser,
+    currentPage,
+    pagingHandler,
     serviceDetails,
     isAdminUser,
     serviceCategory,
@@ -1100,17 +1070,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     activeTab,
     isMetadataService,
   ]);
-
-  const versionHandler = () => {
-    currentVersion &&
-      history.push(
-        getServiceVersionPath(
-          serviceCategory,
-          decodedServiceFQN,
-          toString(currentVersion)
-        )
-      );
-  };
 
   if (isLoading) {
     return <Loader />;

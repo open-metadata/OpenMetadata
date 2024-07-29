@@ -11,57 +11,43 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
-import { Button, Col, Divider, Row, Space, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import cronstrue from 'cronstrue';
 import { sortBy } from 'lodash';
-import React, { Fragment, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import {
-  deleteIngestionPipelineById,
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
   triggerIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
-import { fetchAirflowConfig } from '../../../../rest/miscAPI';
-import { getLoadingStatus } from '../../../../utils/CommonUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import {
-  checkPermission,
-  userPermissions,
-} from '../../../../utils/PermissionsUtils';
-import {
-  getLogsViewerPath,
-  getTestSuiteIngestionPath,
-} from '../../../../utils/RouterUtils';
+import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { getTestSuiteIngestionPath } from '../../../../utils/RouterUtils';
+import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
-import Loader from '../../../common/Loader/Loader';
-import Table from '../../../common/Table/Table';
-import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
-import KillIngestionModal from '../../../Modals/KillIngestionPipelineModal/KillIngestionPipelineModal';
-import { IngestionRecentRuns } from '../../../Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
+import IngestionListTable from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionListTable';
 
 interface Props {
   testSuite: TableType['testSuite'];
 }
 
 const TestSuitePipelineTab = ({ testSuite }: Props) => {
-  const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
+  const airflowInformation = useAirflowStatus();
   const { t } = useTranslation();
   const testSuiteFQN = testSuite?.fullyQualifiedName ?? testSuite?.name ?? '';
 
@@ -72,25 +58,20 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
   const [testSuitePipelines, setTestSuitePipelines] = useState<
     IngestionPipeline[]
   >([]);
-  const [airFlowEndPoint, setAirFlowEndPoint] = useState('');
-  const [selectedPipeline, setSelectedPipeline] = useState<IngestionPipeline>();
-  const [isKillModalOpen, setIsKillModalOpen] = useState<boolean>(false);
-  const [deleteSelection, setDeleteSelection] = useState({
-    id: '',
-    name: '',
-    state: '',
-  });
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [currTriggerId, setCurrTriggerId] = useState({ id: '', state: '' });
-  const [currDeployId, setCurrDeployId] = useState({ id: '', state: '' });
+  const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
+    useState<string>();
 
-  const viewPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.INGESTION_PIPELINE,
-        permissions
-      ),
-    [permissions]
+  const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
+    setPipelineIdToFetchStatus(pipelineId);
+  }, []);
+
+  const { isAirflowAvailable, isFetchingStatus } = airflowInformation;
+
+  const handlePipelineListUpdate = useCallback(
+    (pipelineList: React.SetStateAction<IngestionPipeline[]>) => {
+      setTestSuitePipelines(pipelineList);
+    },
+    []
   );
   const createPermission = useMemo(
     () =>
@@ -102,36 +83,7 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     [permissions]
   );
 
-  const deletePermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.Delete,
-        ResourceEntity.INGESTION_PIPELINE,
-        permissions
-      ),
-    [permissions]
-  );
-
-  const editPermission = useMemo(
-    () =>
-      checkPermission(
-        Operation.EditAll,
-        ResourceEntity.INGESTION_PIPELINE,
-        permissions
-      ),
-    [permissions]
-  );
-
-  const handleCancelConfirmationModal = () => {
-    setIsConfirmationModalOpen(false);
-    setDeleteSelection({
-      id: '',
-      name: '',
-      state: '',
-    });
-  };
-
-  const getAllIngestionWorkflows = async () => {
+  const getAllIngestionWorkflows = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await getIngestionPipelines({
@@ -148,407 +100,90 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [testSuiteFQN]);
 
-  const handleDelete = async (id: string, displayName: string) => {
-    setDeleteSelection({ id, name: displayName, state: 'waiting' });
-    try {
-      await deleteIngestionPipelineById(id);
-      setDeleteSelection({ id, name: displayName, state: 'success' });
-      getAllIngestionWorkflows();
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.ingestion-workflow-operation-error', {
-          operation: 'deleting',
-          displayName,
-        })
-      );
-    } finally {
-      handleCancelConfirmationModal();
-    }
-  };
+  const handleEnableDisableIngestion = useCallback(
+    async (id: string) => {
+      try {
+        const { data } = await enableDisableIngestionPipelineById(id);
+        if (data.id) {
+          setTestSuitePipelines((list) =>
+            list.map((row) =>
+              row.id === id ? { ...row, enabled: data.enabled } : row
+            )
+          );
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError, t('server.unexpected-response'));
+      }
+    },
+    [getAllIngestionWorkflows]
+  );
 
-  const fetchAirFlowEndPoint = async () => {
-    try {
-      const response = await fetchAirflowConfig();
-      setAirFlowEndPoint(response.apiEndpoint);
-    } catch {
-      setAirFlowEndPoint('');
-    }
-  };
-
-  const handleEnableDisableIngestion = async (id: string) => {
-    try {
-      await enableDisableIngestionPipelineById(id);
-      getAllIngestionWorkflows();
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  };
-
-  const confirmDelete = (id: string, name: string) => {
-    setDeleteSelection({
-      id,
-      name,
-      state: '',
-    });
-    setIsConfirmationModalOpen(true);
-  };
-
-  const handleTriggerIngestion = async (id: string, displayName: string) => {
-    setCurrTriggerId({ id, state: 'waiting' });
-
-    try {
-      await triggerIngestionPipelineById(id);
-      setCurrTriggerId({ id, state: 'success' });
-      setTimeout(() => {
-        setCurrTriggerId({ id: '', state: '' });
+  const handleTriggerIngestion = useCallback(
+    async (id: string, displayName: string) => {
+      try {
+        await triggerIngestionPipelineById(id);
         showSuccessToast('Pipeline triggered successfully');
-      }, 1500);
-      getAllIngestionWorkflows();
-    } catch (error) {
-      showErrorToast(
-        t('server.ingestion-workflow-operation-error', {
-          operation: 'triggering',
-          displayName,
-        })
-      );
-      setCurrTriggerId({ id: '', state: '' });
-    }
-  };
 
-  const handleDeployIngestion = async (id: string, reDeployed: boolean) => {
-    setCurrDeployId({ id, state: 'waiting' });
+        setPipelineIdToFetchStatus(id);
+      } catch (error) {
+        showErrorToast(
+          t('server.ingestion-workflow-operation-error', {
+            operation: 'triggering',
+            displayName,
+          })
+        );
+      }
+    },
+    []
+  );
 
-    try {
-      await deployIngestionPipelineById(id);
-      setCurrDeployId({ id, state: 'success' });
-      setTimeout(() => setCurrDeployId({ id: '', state: '' }), 1500);
-      showSuccessToast(
-        `${t('label.pipeline')}  ${
-          reDeployed ? t('label.re-deploy') : t('label.deployed')
-        }  ${t('label.successfully-lowercase')}`
-      );
-    } catch (error) {
-      setCurrDeployId({ id: '', state: '' });
-      showErrorToast(
-        error as AxiosError,
-        t('server.ingestion-workflow-operation-error', {
-          operation: 'updating',
-          displayName: '',
-        })
-      );
-    }
-  };
+  const handleDeployIngestion = useCallback(
+    async (id: string, displayName: string) => {
+      try {
+        await deployIngestionPipelineById(id);
+        showSuccessToast(
+          t('message.pipeline-action-success-message', {
+            action: t('label.deployed-lowercase'),
+          })
+        );
 
-  const getTriggerDeployButton = (ingestion: IngestionPipeline) => {
-    if (ingestion.deployed) {
-      return (
-        <>
-          <Tooltip
-            title={
-              editPermission
-                ? t('label.run')
-                : t('message.no-permission-for-action')
-            }>
-            <Button
-              className="p-0"
-              data-testid="run"
-              disabled={!editPermission}
-              size="small"
-              type="link"
-              onClick={() =>
-                handleTriggerIngestion(ingestion.id as string, ingestion.name)
-              }>
-              {getLoadingStatus(currTriggerId, ingestion.id, t('label.run'))}
-            </Button>
-          </Tooltip>
-          <Divider type="vertical" />
-          <Tooltip
-            title={
-              editPermission
-                ? t('label.re-deploy')
-                : t('message.no-permission-for-action')
-            }>
-            <Button
-              className="p-0"
-              data-testid="re-deploy-btn"
-              disabled={!editPermission}
-              size="small"
-              type="link"
-              onClick={() =>
-                handleDeployIngestion(ingestion.id as string, true)
-              }>
-              {getLoadingStatus(
-                currDeployId,
-                ingestion.id,
-                t('label.re-deploy')
-              )}
-            </Button>
-          </Tooltip>
-        </>
-      );
-    } else {
-      return (
-        <Tooltip
-          title={
-            editPermission
-              ? t('label.deploy')
-              : t('message.no-permission-for-action')
-          }>
-          <Button
-            data-testid="deploy"
-            disabled={!editPermission}
-            type="link"
-            onClick={() =>
-              handleDeployIngestion(ingestion.id as string, false)
-            }>
-            {getLoadingStatus(currDeployId, ingestion.id, t('label.deploy'))}
-          </Button>
-        </Tooltip>
-      );
-    }
-  };
+        setPipelineIdToFetchStatus(id);
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.ingestion-workflow-operation-error', {
+            operation: 'updating',
+            displayName,
+          })
+        );
+      }
+    },
+    []
+  );
+
+  const dataSource = useMemo(() => {
+    const sortedByTestCaseLength = sortBy(testSuitePipelines, (pipeline) => {
+      const length = pipeline?.sourceConfig?.config?.testCases?.length;
+      if (!length) {
+        return -Infinity; // Use -Infinity to ensure these come first
+      }
+
+      return length;
+    });
+
+    return sortedByTestCaseLength.map((test) => ({
+      ...test,
+      key: test.name,
+    }));
+  }, [testSuitePipelines]);
 
   useEffect(() => {
     getAllIngestionWorkflows();
-    fetchAirFlowEndPoint();
   }, []);
 
-  const pipelineColumns = useMemo(() => {
-    const column: ColumnsType<IngestionPipeline> = [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 300,
-        render: (_, record) => {
-          return getEntityName(record);
-        },
-      },
-      {
-        title: t('label.type'),
-        dataIndex: 'pipelineType',
-        key: 'pipelineType',
-      },
-      {
-        title: t('label.schedule'),
-        dataIndex: 'airflowConfig',
-        key: 'airflowEndpoint',
-        render: (_, record) => {
-          return (
-            <>
-              {record?.airflowConfig.scheduleInterval ? (
-                <Tooltip
-                  placement="bottom"
-                  title={cronstrue.toString(
-                    record.airflowConfig.scheduleInterval || '',
-                    {
-                      use24HourTimeFormat: true,
-                      verbose: true,
-                    }
-                  )}>
-                  <span>{record.airflowConfig.scheduleInterval ?? '--'}</span>
-                </Tooltip>
-              ) : (
-                <span>--</span>
-              )}
-            </>
-          );
-        },
-      },
-      {
-        title: t('label.recent-run-plural'),
-        dataIndex: 'pipelineStatuses',
-        key: 'recentRuns',
-        render: (_, record) => (
-          <Row align="middle">
-            <IngestionRecentRuns ingestion={record} />
-          </Row>
-        ),
-      },
-      {
-        title: t('label.action-plural'),
-        dataIndex: 'actions',
-        key: 'actions',
-        render: (_, record) => {
-          return (
-            <>
-              <Space align="start">
-                {record.enabled ? (
-                  <Fragment>
-                    {getTriggerDeployButton(record)}
-                    <Divider type="vertical" />
-                    <Tooltip
-                      title={
-                        editPermission
-                          ? t('label.pause')
-                          : t('message.no-permission-for-action')
-                      }>
-                      <Button
-                        className="p-0"
-                        data-testid="pause"
-                        disabled={!editPermission}
-                        size="small"
-                        type="link"
-                        onClick={() =>
-                          handleEnableDisableIngestion(record.id || '')
-                        }>
-                        {t('label.pause')}
-                      </Button>
-                    </Tooltip>
-                  </Fragment>
-                ) : (
-                  <Tooltip
-                    title={
-                      editPermission
-                        ? t('label.play')
-                        : t('message.no-permission-for-action')
-                    }>
-                    <Button
-                      className="p-0"
-                      data-testid="unpause"
-                      disabled={!editPermission}
-                      size="small"
-                      type="link"
-                      onClick={() =>
-                        handleEnableDisableIngestion(record.id || '')
-                      }>
-                      {t('label.play')}
-                    </Button>
-                  </Tooltip>
-                )}
-                <Divider type="vertical" />
-                <Tooltip
-                  title={
-                    editPermission
-                      ? t('label.edit')
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    className="p-0"
-                    data-testid="edit"
-                    disabled={!editPermission}
-                    size="small"
-                    type="link"
-                    onClick={() => {
-                      history.push(
-                        getTestSuiteIngestionPath(
-                          testSuiteFQN,
-                          record.fullyQualifiedName ?? ''
-                        )
-                      );
-                    }}>
-                    {t('label.edit')}
-                  </Button>
-                </Tooltip>
-                <Divider type="vertical" />
-                <Tooltip
-                  title={
-                    deletePermission
-                      ? t('label.delete')
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    className="p-0"
-                    data-testid="delete"
-                    disabled={!deletePermission}
-                    size="small"
-                    type="link"
-                    onClick={() =>
-                      confirmDelete(record.id as string, record.name)
-                    }>
-                    {deleteSelection.id === record.id ? (
-                      deleteSelection.state === 'success' ? (
-                        <CheckOutlined />
-                      ) : (
-                        <Loader size="small" type="default" />
-                      )
-                    ) : (
-                      t('label.delete')
-                    )}
-                  </Button>
-                </Tooltip>
-                <Divider type="vertical" />
-                <Tooltip
-                  title={
-                    editPermission
-                      ? t('label.kill')
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Button
-                    className="p-0"
-                    data-testid="kill"
-                    disabled={!editPermission}
-                    size="small"
-                    type="link"
-                    onClick={() => {
-                      setIsKillModalOpen(true);
-                      setSelectedPipeline(record);
-                    }}>
-                    {t('label.kill')}
-                  </Button>
-                </Tooltip>
-                <Divider type="vertical" />
-                <Tooltip
-                  title={
-                    viewPermission
-                      ? t('label.log-plural')
-                      : t('message.no-permission-for-action')
-                  }>
-                  <Link
-                    to={getLogsViewerPath(
-                      EntityType.TEST_SUITE,
-                      record.service?.name || '',
-                      record.fullyQualifiedName || ''
-                    )}>
-                    <Button
-                      className="p-0"
-                      data-testid="logs"
-                      disabled={!viewPermission}
-                      size="small"
-                      type="link"
-                      onClick={() => {
-                        setSelectedPipeline(record);
-                      }}>
-                      {t('label.log-plural')}
-                    </Button>
-                  </Link>
-                </Tooltip>
-              </Space>
-
-              {isKillModalOpen &&
-                selectedPipeline &&
-                record.id === selectedPipeline?.id && (
-                  <KillIngestionModal
-                    isModalOpen={isKillModalOpen}
-                    pipelinName={selectedPipeline.name}
-                    pipelineId={selectedPipeline.id as string}
-                    onClose={() => {
-                      setIsKillModalOpen(false);
-                      setSelectedPipeline(undefined);
-                    }}
-                    onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
-                  />
-                )}
-            </>
-          );
-        },
-      },
-    ];
-
-    return column;
-  }, [
-    airFlowEndPoint,
-    isKillModalOpen,
-    selectedPipeline,
-    currDeployId,
-    currTriggerId,
-    isConfirmationModalOpen,
-  ]);
-
-  const errorPlaceholder = useMemo(
+  const emptyPlaceholder = useMemo(
     () =>
       testSuite ? (
         <ErrorPlaceHolder
@@ -576,24 +211,8 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
           type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
         />
       ),
-    [testSuiteFQN]
+    [testSuite, testSuiteFQN, createPermission]
   );
-
-  const dataSource = useMemo(() => {
-    const sortedByTestCaseLength = sortBy(testSuitePipelines, (pipeline) => {
-      const length = pipeline?.sourceConfig?.config?.testCases?.length;
-      if (!length) {
-        return -Infinity; // Use -Infinity to ensure these come first
-      }
-
-      return length;
-    });
-
-    return sortedByTestCaseLength.map((test) => ({
-      ...test,
-      key: test.name,
-    }));
-  }, [testSuitePipelines]);
 
   if (!isAirflowAvailable && !(isLoading || isFetchingStatus)) {
     return <ErrorPlaceHolderIngestion />;
@@ -614,27 +233,20 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
         </Col>
       )}
       <Col span={24}>
-        <Table
-          bordered
-          columns={pipelineColumns}
-          dataSource={dataSource}
-          loading={isLoading || isFetchingStatus}
-          locale={{ emptyText: errorPlaceholder }}
-          pagination={false}
-          rowKey="name"
-          scroll={{ x: 1200 }}
-          size="small"
-        />
-      </Col>
-      <Col span={24}>
-        <EntityDeleteModal
-          entityName={deleteSelection.name}
-          entityType={t('label.ingestion-lowercase')}
-          visible={isConfirmationModalOpen}
-          onCancel={handleCancelConfirmationModal}
-          onConfirm={() =>
-            handleDelete(deleteSelection.id, deleteSelection.name)
-          }
+        <IngestionListTable
+          airflowInformation={airflowInformation}
+          deployIngestion={handleDeployIngestion}
+          emptyPlaceholder={emptyPlaceholder}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+          handleIngestionListUpdate={handlePipelineListUpdate}
+          handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
+          ingestionData={testSuitePipelines}
+          isLoading={isLoading}
+          pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+          serviceCategory={ServiceCategory.DATABASE_SERVICES}
+          serviceName={getServiceFromTestSuiteFQN(testSuiteFQN)}
+          triggerIngestion={handleTriggerIngestion}
+          onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
         />
       </Col>
     </Row>

@@ -12,7 +12,7 @@
  */
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { isString, startCase, uniqueId } from 'lodash';
+import { isObject, isString, startCase, uniqueId } from 'lodash';
 import { ExtraInfo } from 'Models';
 import React, { forwardRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -161,6 +161,11 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return;
     }, [source, showEntityIcon, getEntityIcon]);
 
+    const entityLink = useMemo(
+      () => searchClassBase.getEntityLink(source),
+      [source]
+    );
+
     const header = useMemo(() => {
       const hasGlossaryTermStatus =
         source.entityType === EntityType.GLOSSARY_TERM &&
@@ -221,7 +226,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     source,
                     openEntityInNewPage
                   )}
-                  to={searchClassBase.getEntityLink(source)}>
+                  to={{
+                    pathname: isObject(entityLink)
+                      ? entityLink.pathname
+                      : entityLink,
+                    state: {
+                      breadcrumbData: breadcrumbs.slice(0, -1),
+                    },
+                  }}>
                   <Typography.Text
                     className="text-lg font-medium text-link-color break-word whitespace-normal"
                     data-testid="entity-header-display-name">
@@ -239,7 +251,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           </Col>
         </Row>
       );
-    }, [breadcrumbs, source, hideBreadcrumbs, showCheckboxes, checked]);
+    }, [
+      breadcrumbs,
+      source,
+      hideBreadcrumbs,
+      showCheckboxes,
+      checked,
+      entityLink,
+    ]);
 
     return (
       <div
