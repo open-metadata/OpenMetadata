@@ -89,6 +89,9 @@ WHERE
 """
 )
 CHECK_ACCESS_TO_ALL = "SELECT table_name FROM ALL_TABLES where ROWNUM < 2"
+
+
+# Adding TZ and changes in the format as we modified the format in the ingestion code
 ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (SELECT
@@ -98,7 +101,7 @@ WITH SP_HISTORY AS (SELECT
     PARSING_SCHEMA_NAME as user_name
   FROM gv$sql
   WHERE UPPER(sql_text) LIKE '%%CALL%%' or UPPER(sql_text) LIKE '%%BEGIN%%'
-  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+  AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') >= TO_TIMESTAMP_TZ('{start_date}', 'YYYY-MM-DD HH24:MI:SS+TZH:TZM')
  ),
  Q_HISTORY AS (SELECT
       sql_text AS query_text,
@@ -118,7 +121,7 @@ WITH SP_HISTORY AS (SELECT
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND SQL_FULLTEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND TO_TIMESTAMP(FIRST_LOAD_TIME, 'YYYY-MM-DD HH24:MI:SS') 
-      >= TO_TIMESTAMP('{start_date}', 'YYYY-MM-DD HH24:MI:SS')
+      >= TO_TIMESTAMP_TZ('{start_date}', 'YYYY-MM-DD HH24:MI:SS+TZH:TZM')
 )
 SELECT
   Q.QUERY_TYPE AS QUERY_TYPE,
