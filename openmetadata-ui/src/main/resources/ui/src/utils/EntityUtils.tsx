@@ -1741,10 +1741,9 @@ export const getBreadcrumbForContainer = (data: {
 
 export const getBreadcrumbForTestCase = (entity: TestCase) => [
   {
-    name: i18next.t('label.incident-manager'),
-    url: ROUTES.INCIDENT_MANAGER,
+    name: i18next.t('label.data-quality'),
+    url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
   },
-
   {
     name: entity.name,
     url: getEntityLinkFromType(

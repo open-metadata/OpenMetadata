@@ -14,6 +14,7 @@
 import {
   CardStyle,
   FieldOperation,
+  Thread,
 } from '../../../../generated/entity/feed/thread';
 
 export interface FeedCardHeaderV2Props {
@@ -26,4 +27,5 @@ export interface FeedCardHeaderV2Props {
   fieldOperation?: FieldOperation;
   fieldName?: string;
   cardStyle?: CardStyle;
+  feed: Thread;
 }

@@ -31,7 +31,6 @@ export const TASK_FEED: Thread = {
   threadTs: 1701686127533,
   about:
     '<#E::table::sample_data.ecommerce_db.shopify."dim.shop"::columns::shop_id::tags>',
-  entityId: 'defcff8c-0823-40e6-9c1e-9b0458ba0fa5',
   createdBy: 'admin',
   updatedAt: 1701686127534,
   updatedBy: 'admin',
