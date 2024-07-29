@@ -444,11 +444,16 @@ export const AuthProvider = ({
     const isGetRequest = config.method === 'get';
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = window.location.pathname;
+    const shouldNotIntercept = [
+      '/domain',
+      '/auth/logout',
+      '/auth/refresh',
+    ].reduce((prev, curr) => {
+      return prev || currentPath.startsWith(curr);
+    }, false);
 
     // Do not intercept requests from domains page or /auth endpoints
-    if (
-      ['/domain', '/auth/logout', '/auth/refresh'].indexOf(currentPath) > -1
-    ) {
+    if (shouldNotIntercept) {
       return config;
     }
 

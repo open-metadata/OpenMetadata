@@ -12,35 +12,26 @@
  */
 import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { SearchIndex } from '../../../enums/search.enum';
 import {
   Domain,
   EntityReference,
 } from '../../../generated/entity/domains/domain';
-import { useFqn } from '../../../hooks/useFqn';
-import { searchData } from '../../../rest/miscAPI';
-import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
+import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
-const SubDomainsTable = ({ isVersionsView }: { isVersionsView: boolean }) => {
-  const { fqn: domainFqn } = useFqn();
+const SubDomainsTable = ({
+  subDomains = [],
+  isLoading = false,
+}: SubDomainsTableProps) => {
   const { t } = useTranslation();
-  const [subDomains, setSubDomains] = useState<Domain[]>([]);
-  const encodedFqn = getEncodedFqn(escapeESReservedCharacters(domainFqn));
-  const [isLoading, setIsLoading] = useState(false);
   const { permissions } = usePermissionProvider();
 
   const columns: ColumnsType<Domain> = useMemo(() => {
@@ -88,34 +79,6 @@ const SubDomainsTable = ({ isVersionsView }: { isVersionsView: boolean }) => {
 
     return data;
   }, [subDomains, permissions]);
-
-  const fetchSubDomains = async () => {
-    if (!isVersionsView) {
-      try {
-        setIsLoading(true);
-        const res = await searchData(
-          '',
-          1,
-          PAGE_SIZE_LARGE,
-          `(parent.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DOMAIN
-        );
-
-        const data = formatDomainsResponse(res.data.hits.hits);
-        setSubDomains(data);
-      } catch (error) {
-        setSubDomains([]);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  useEffect(() => {
-    fetchSubDomains();
-  }, [domainFqn]);
 
   if (subDomains.length === 0) {
     return <ErrorPlaceHolder />;

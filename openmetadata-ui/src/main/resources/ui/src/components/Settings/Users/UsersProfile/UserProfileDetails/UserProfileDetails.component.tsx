@@ -266,12 +266,12 @@ const UserProfileDetails = ({
           entityFqn={userData.fullyQualifiedName ?? ''}
           entityId={userData.id ?? ''}
           entityType={EntityType.USER}
-          hasPermission={hasEditPermission}
+          hasPermission={Boolean(isAdminUser) && !userData.deleted}
           textClassName="text-sm text-grey-muted"
         />
       </div>
     ),
-    [userData.userDomains]
+    [userData.userDomains, isAdminUser]
   );
 
   const handleDefaultPersonaUpdate = useCallback(

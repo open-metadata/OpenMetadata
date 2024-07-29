@@ -58,6 +58,8 @@ const DocumentationTab = ({
   onUpdate,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
+  subDomains,
+  isSubDomainsLoading,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -191,7 +193,10 @@ const DocumentationTab = ({
 
             {!isSubDomain && (
               <div className="p-t-lg">
-                <SubDomainsTable isVersionsView={isVersionsView} />
+                <SubDomainsTable
+                  isLoading={isSubDomainsLoading}
+                  subDomains={subDomains}
+                />
               </div>
             )}
           </div>

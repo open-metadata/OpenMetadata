@@ -27,7 +27,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, toString } from 'lodash';
+import { cloneDeep, isEmpty, toString } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -56,6 +56,7 @@ import {
   DE_ACTIVE_COLOR,
   ERROR_MESSAGE,
   getEntityDetailsPath,
+  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -72,11 +73,16 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { ChangeDescription } from '../../../generated/entity/type';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
+import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { addDomains } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
+import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
-import { getQueryFilterToExcludeDomainTerms } from '../../../utils/DomainUtils';
+import {
+  getQueryFilterToExcludeDomainTerms,
+  getQueryFilterToIncludeDomain,
+} from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
@@ -124,7 +130,7 @@ const DomainDetailsPage = ({
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [assetModalVisible, setAssetModelVisible] = useState(false);
+  const [assetModalVisible, setAssetModalVisible] = useState(false);
   const [showAddDataProductModal, setShowAddDataProductModal] = useState(false);
   const [showAddSubDomainModal, setShowAddSubDomainModal] = useState(false);
   const [showActions, setShowActions] = useState(false);
@@ -135,9 +141,14 @@ const DomainDetailsPage = ({
     useState<EntityDetailsObjectInterface>();
   const [assetCount, setAssetCount] = useState<number>(0);
   const [dataProductsCount, setDataProductsCount] = useState<number>(0);
+  const [subDomains, setSubDomains] = useState<Domain[]>([]);
+  const [isSubDomainsLoading, setIsSubDomainsLoading] =
+    useState<boolean>(false);
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
+
+  const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -192,13 +203,17 @@ const DomainDetailsPage = ({
     {
       label: t('label.asset-plural'),
       key: '1',
-      onClick: () => setAssetModelVisible(true),
+      onClick: () => setAssetModalVisible(true),
     },
-    {
-      label: t('label.sub-domain-plural'),
-      key: '2',
-      onClick: () => setShowAddSubDomainModal(true),
-    },
+    ...(isSubDomain
+      ? []
+      : [
+          {
+            label: t('label.sub-domain-plural'),
+            key: '2',
+            onClick: () => setShowAddSubDomainModal(true),
+          },
+        ]),
     {
       label: t('label.data-product-plural'),
       key: '3',
@@ -206,31 +221,59 @@ const DomainDetailsPage = ({
     },
   ];
 
-  const addSubDomain = useCallback(async (formData: CreateDomain) => {
-    const data = {
-      ...formData,
-      parent: domain.fullyQualifiedName,
-    };
+  const fetchSubDomains = useCallback(async () => {
+    if (!isVersionsView) {
+      try {
+        setIsSubDomainsLoading(true);
+        const res = await searchData(
+          '',
+          1,
+          PAGE_SIZE_LARGE,
+          `(parent.fullyQualifiedName:"${encodedFqn}")`,
+          '',
+          '',
+          SearchIndex.DOMAIN
+        );
 
-    try {
-      await addDomains(data as CreateDomain);
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.sub-domain'),
-              entityPlural: t('label.sub-domain-lowercase-plural'),
-              name: data.name,
-            })
-          : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.sub-domain-lowercase'),
-        })
-      );
-    } finally {
-      setShowAddSubDomainModal(false);
+        const data = formatDomainsResponse(res.data.hits.hits);
+        setSubDomains(data);
+      } catch (error) {
+        setSubDomains([]);
+      } finally {
+        setIsSubDomainsLoading(false);
+      }
     }
-  }, []);
+  }, [isVersionsView, encodedFqn]);
+
+  const addSubDomain = useCallback(
+    async (formData: CreateDomain) => {
+      const data = {
+        ...formData,
+        parent: domain.fullyQualifiedName,
+      };
+
+      try {
+        await addDomains(data as CreateDomain);
+        fetchSubDomains();
+      } catch (error) {
+        showErrorToast(
+          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+            ? t('server.entity-already-exist', {
+                entity: t('label.sub-domain'),
+                entityPlural: t('label.sub-domain-lowercase-plural'),
+                name: data.name,
+              })
+            : (error as AxiosError),
+          t('server.add-entity-error', {
+            entity: t('label.sub-domain-lowercase'),
+          })
+        );
+      } finally {
+        setShowAddSubDomainModal(false);
+      }
+    },
+    [domain, fetchSubDomains]
+  );
 
   const addDataProduct = useCallback(
     async (formData: CreateDataProduct) => {
@@ -469,7 +512,9 @@ const DomainDetailsPage = ({
         children: (
           <DocumentationTab
             domain={domain}
+            isSubDomainsLoading={isSubDomainsLoading}
             isVersionsView={isVersionsView}
+            subDomains={subDomains}
             onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />
         ),
@@ -518,7 +563,7 @@ const DomainDetailsPage = ({
                           permissions={domainPermission}
                           ref={assetTabRef}
                           type={AssetsOfEntity.DOMAIN}
-                          onAddAsset={() => setAssetModelVisible(true)}
+                          onAddAsset={() => setAssetModalVisible(true)}
                           onAssetClick={handleAssetClick}
                           onRemoveAsset={handleAssetSave}
                         />
@@ -556,6 +601,8 @@ const DomainDetailsPage = ({
     assetCount,
     dataProductsCount,
     activeTab,
+    subDomains,
+    isSubDomainsLoading,
   ]);
 
   useEffect(() => {
@@ -563,6 +610,10 @@ const DomainDetailsPage = ({
     fetchDomainAssets();
     fetchDataProducts();
   }, [domain.fullyQualifiedName]);
+
+  useEffect(() => {
+    fetchSubDomains();
+  }, [domainFqn]);
 
   return (
     <>
@@ -578,6 +629,7 @@ const DomainDetailsPage = ({
             icon={
               domain.style?.iconURL ? (
                 <img
+                  alt="domain-icon"
                   className="align-middle"
                   data-testid="icon"
                   height={36}
@@ -731,9 +783,16 @@ const DomainDetailsPage = ({
         <AssetSelectionModal
           entityFqn={domainFqn}
           open={assetModalVisible}
-          queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
+          queryFilter={
+            isSubDomain
+              ? (getQueryFilterToIncludeDomain(
+                  domain.parent?.fullyQualifiedName ?? '',
+                  domain.fullyQualifiedName ?? ''
+                ) as QueryFilterInterface)
+              : getQueryFilterToExcludeDomainTerms(domainFqn)
+          }
           type={AssetsOfEntity.DOMAIN}
-          onCancel={() => setAssetModelVisible(false)}
+          onCancel={() => setAssetModalVisible(false)}
           onSave={handleAssetSave}
         />
       )}

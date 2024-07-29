@@ -14,7 +14,7 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { get, isUndefined } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
@@ -72,9 +72,9 @@ export const DomainLabel = ({
           const entityDomains = get(res, fieldData, {});
           if (Array.isArray(entityDomains)) {
             setActiveDomain(entityDomains);
-          } else if (entityDomains) {
+          } else {
             // update the domain details here
-            setActiveDomain([entityDomains]);
+            setActiveDomain(isEmpty(entityDomains) ? [] : [entityDomains]);
           }
           !isUndefined(afterDomainUpdateAction) &&
             afterDomainUpdateAction(res as DataAssetWithDomains);

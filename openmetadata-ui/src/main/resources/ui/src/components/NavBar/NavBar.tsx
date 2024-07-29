@@ -60,7 +60,7 @@ import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { refreshPage } from '../../utils/CommonUtils';
+import { getNameFromFQN, refreshPage } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   getEntityFQN,
@@ -478,7 +478,7 @@ const NavBar = ({
                   width={24}
                 />
               </Col>
-              <Col className="flex-center">{activeDomain}</Col>
+              <Col className="flex-center">{getNameFromFQN(activeDomain)}</Col>
               <Col className="flex-center">
                 <DropDownIcon height={14} width={14} />
               </Col>
