@@ -14,10 +14,10 @@ on:
   workflow_dispatch:
     inputs:
       docker_release_tag:
-        description: "Ingestion Docker Image Tag"
+        description: "Ingestion Docker Image Tag (3 digit docker image tag)"
         required: true
-      release_version:
-        description: "Provide the Release Version"
+      pypi_release_version:
+        description: "Provide the Release Version (4 digit docker image tag)"
         required: true
       push_latest_tag_to_release:
         description: "Mark this as latest tag as well ?"
@@ -39,7 +39,7 @@ jobs:
           tag: ${{ inputs.docker_release_tag }}
           push_latest: ${{ inputs.push_latest_tag_to_release }}
           is_ingestion: true
-          release_version: ${{ inputs.release_version }}
+          release_version: ${{ inputs.pypi_release_version }}
           dockerhub_username: ${{ secrets.DOCKERHUB_OPENMETADATA_USERNAME }}
           dockerhub_token: ${{ secrets.DOCKERHUB_OPENMETADATA_TOKEN }}
 
