@@ -171,8 +171,17 @@ ignore = [
   "src/metadata/readers/*",
   "src/metadata/timer/*",
   "src/metadata/utils/*",
-  "src/metadata/workflow/*",
+  "src/metadata/workflow/base.py",
+  "src/metadata/workflow/application.py",
+  "src/metadata/workflow/data_insight.py",
+  "src/metadata/workflow/data_quality.py",
+  "src/metadata/workflow/ingestion.py",
+  "src/metadata/workflow/metadata.py",
+  "src/metadata/workflow/profiler.py",
+  "src/metadata/workflow/usage.py",
+  "src/metadata/workflow/workflow_status_mixin.py",
 ]
 
 reportDeprecated = false
 reportMissingTypeStubs = false
+reportAny = false

@@ -19,7 +19,6 @@ from pathlib import Path
 from metadata.config.common import load_config_file
 from metadata.utils.logger import cli_logger
 from metadata.workflow.application import ApplicationWorkflow
-from metadata.workflow.application_output_handler import print_status
 
 logger = cli_logger()
 
@@ -42,5 +41,5 @@ def run_app(config_path: Path) -> None:
 
     workflow.execute()
     workflow.stop()
-    print_status(workflow)
+    workflow.print_status()
     workflow.raise_from_status()

@@ -38,7 +38,6 @@ from metadata.utils.time_utils import (
     get_end_of_day_timestamp_mill,
 )
 from metadata.workflow.metadata import MetadataWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 Base = declarative_base()
 
@@ -149,7 +148,7 @@ class TestGreatExpectationIntegration(TestCase):
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        print_status(ingestion_workflow)
+        ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
     @classmethod

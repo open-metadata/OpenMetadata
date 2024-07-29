@@ -36,7 +36,6 @@ from metadata.generated.schema.metadataIngestion.application import (
 from metadata.generated.schema.type.basic import Timestamp, Uuid
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-from metadata.workflow.workflow_output_handler import print_status
 
 # pylint: disable=ungrouped-imports
 try:
@@ -207,7 +206,7 @@ def metadata_ingestion_workflow(workflow_config: OpenMetadataWorkflowConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 
