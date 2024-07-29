@@ -139,7 +139,7 @@ SET json = jsonb_set(
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,externalType}' IS NULL 
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,path}' IS NULL;
 
---Update Owner Field to Owners
+-- Update Owner Field to Owners
 DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
 
 -- Update thread_entity to move previousOwner and updatedOwner to array
