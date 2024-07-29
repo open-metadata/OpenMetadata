@@ -75,5 +75,5 @@ runs:
           ${{ inputs.image }}
         sep-tags: ','
         tags: |
-          type=raw,value=${{ inputs.release_version }},enable=${{ inputs.is_ingestion }}
-          type=raw,${{ inputs.tag }},enable=${{ !inputs.is_ingestion || (inputs.is_ingestion && !inputs.is_release_candidate) }}
+          type=raw,value=${{ inputs.release_version }},enable=${{ inputs.is_ingestion == 'true' }}
+          type=raw,${{ inputs.tag }},enable=${{ !(inputs.is_ingestion) == 'false' || (inputs.is_ingestion == 'true' && !(inputs.is_release_candidate) == 'false') }}
