@@ -13,7 +13,6 @@ Client to interact with SAP ERP APIs
 """
 
 import math
-import time
 import traceback
 from typing import Any, List, Optional, Union
 
@@ -21,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.database.sapErpConnec
     SapErpConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.ingestion.source.database.saperp.constants import PARAMS_DATA
 from metadata.ingestion.source.database.saperp.models import (
     SapErpColumn,
     SapErpColumnResponse,
@@ -29,6 +29,7 @@ from metadata.ingestion.source.database.saperp.models import (
 )
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_registry import get_verify_ssl_fn
 
 logger = ingestion_logger()
 
@@ -49,14 +50,17 @@ class SapErpClient:
     def __init__(self, config: SapErpConnection):
         self.config: SapErpConnection = config
         self.auth_token = self.config.apiKey.get_secret_value()
+        get_verify_ssl = get_verify_ssl_fn(config.verifySSL)
         client_config: ClientConfig = ClientConfig(
             base_url=clean_uri(config.hostPort),
             auth_header="APIKey",
             auth_token_mode="",
             auth_token=lambda: (self.auth_token, 0),
             api_version="v1",
-            verify=False,
             allow_redirects=True,
+            retry_codes=[500, 504],
+            retry_wait=5,
+            verify=get_verify_ssl(config.sslConfig),
         )
         self.client = REST(client_config)
 
@@ -64,7 +68,7 @@ class SapErpClient:
         """
         Check metadata connection to SAS ERP tables API
         """
-        params_data = {"$top": "1", "$format": "json", "$inlinecount": "allpages"}
+        params_data = PARAMS_DATA
         response_data = self.client._request(  # pylint: disable=protected-access
             method="GET",
             path="/ECC/DDIC/ZZ_I_DDIC_TAB_CDS/",
@@ -81,7 +85,7 @@ class SapErpClient:
         """
         Check metadata connection to SAP ERP columns API
         """
-        params_data = {"$top": "1", "$format": "json", "$inlinecount": "allpages"}
+        params_data = PARAMS_DATA
         response_data = self.client._request(  # pylint: disable=protected-access
             method="GET",
             path="/ECC/DDIC/ZZ_I_DDIC_COL_CDS/",
@@ -101,7 +105,7 @@ class SapErpClient:
         Method to paginate the APIs
         """
         entities_list = []
-        params_data.update({"$top": "1", "$format": "json", "$inlinecount": "allpages"})
+        params_data.update(PARAMS_DATA)
         response_data = self.client._request(  # pylint: disable=protected-access
             method="GET", path=api_url, headers=HEADERS, data=params_data
         )
@@ -123,9 +127,6 @@ class SapErpClient:
                 )
                 response = model_class(**response_data)
                 entities_list.extend(response.d.results)
-                # Adding a delay before sending the requests to server
-                # due to server throwing error when too many requests are sent
-                time.sleep(0.5)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error fetching entities for pagination: {exc}")
@@ -152,7 +153,10 @@ class SapErpClient:
         List all the columns on the SAP ERP instance
         """
         try:
-            params_data = {"$filter": f"tabname eq '{table_name}'"}
+            logger.debug(f"Fetching columns for table {table_name}")
+            params_data = {
+                "$filter": f"tabname eq '{table_name}' and fieldname ne '.INCLUDE'"
+            }
             table_columns = self.paginate(
                 api_url="/ECC/DDIC/ZZ_I_DDIC_COL_CDS/",
                 params_data=params_data,

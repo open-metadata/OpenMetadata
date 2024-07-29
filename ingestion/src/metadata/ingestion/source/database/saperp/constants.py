@@ -23,3 +23,5 @@ TABLE_TYPE_MAP = {
     "VIEW": TableType.View,
     "APPEND": TableType.View,
 }
+
+PARAMS_DATA = {"$top": "1", "$format": "json", "$inlinecount": "allpages"}

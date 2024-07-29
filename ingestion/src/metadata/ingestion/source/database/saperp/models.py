@@ -44,6 +44,7 @@ class SapErpColumn(BaseModel):
     scrtext_l: Optional[str] = None
     i_ddtext: Optional[str] = None
     dd_text: Optional[str] = None
+    leng: Optional[str] = None
 
 
 class SapErpTableList(BaseModel):
