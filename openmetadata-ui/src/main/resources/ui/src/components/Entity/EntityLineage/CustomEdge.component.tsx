@@ -22,6 +22,7 @@ import { ReactComponent as PipelineIcon } from '../../../assets/svg/pipeline-gre
 import { FOREIGN_OBJECT_SIZE } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
 import { StatusType } from '../../../generated/entity/data/pipeline';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getColumnSourceTargetHandles } from '../../../utils/EntityLineageUtils';
@@ -77,7 +78,8 @@ export const CustomEdge = ({
   } = data;
   const offset = 4;
 
-  const { pipeline, pipelineEntityType } = data?.edge ?? {};
+  const { fromEntity, toEntity, pipeline, pipelineEntityType } =
+    data?.edge ?? {};
 
   const {
     tracedNodes,
@@ -150,7 +152,18 @@ export const CustomEdge = ({
     };
   }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
 
-  const isColumnLineageAllowed = !isColumnLineage;
+  const isPipelineEdgeAllowed = (
+    sourceType: EntityType,
+    targetType: EntityType
+  ) => {
+    return (
+      [EntityType.PIPELINE].indexOf(sourceType) > -1 &&
+      [EntityType.PIPELINE].indexOf(targetType) > -1
+    );
+  };
+
+  const isColumnLineageAllowed =
+    !isColumnLineage && isPipelineEdgeAllowed(fromEntity.type, toEntity.type);
 
   const hasLabel = useMemo(() => {
     if (isColumnLineage) {

@@ -97,7 +97,7 @@ export const UserTab = ({
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
     setIsLoading(true);
     getUsers({
-      fields: `${TabSpecificField.TEAMS}, ${TabSpecificField.ROLES}`,
+      fields: `${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`,
       limit: pageSize,
       team: getDecodedFqn(team),
       ...paging,

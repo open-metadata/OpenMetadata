@@ -126,7 +126,9 @@ export const OwnerLabel = ({
                     {profilePicture}
                   </div>
                   {ownerLink}
-                  {inheritedIcon && <div>{inheritedIcon}</div>}
+                  {inheritedIcon && (
+                    <div className="d-flex">{inheritedIcon}</div>
+                  )}
                 </div>
               );
             })}
