@@ -105,6 +105,31 @@ public class MSTeamsPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      TeamsMessage teamsMessage =
+          teamsMessageFormatter.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+
+      if (target != null) {
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(
+                      webhook.getSecretKey(), JsonUtils.pojoToJson(teamsMessage));
+          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), teamsMessage);
+        } else {
+          postWebhookMessage(this, target, teamsMessage);
+        }
+      }
+    } catch (Exception e) {
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(MS_TEAMS, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
   public EventSubscription getEventSubscriptionForDestination() {
     return eventSubscription;
   }
