@@ -22,7 +22,7 @@
       {
         "name": "matchAnyFieldChange",
         "effect": "include",
-        "condition": "matchAnyFieldChange({'description', 'domain', 'owner', 'tags', 'followers', 'extension','parameterValues', 'assets'})",
+        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers', 'extension','parameterValues', 'assets'})",
         "prefixCondition": "OR"
       },
       {
@@ -73,7 +73,7 @@
             "input": [
               "description",
               "domain",
-              "owner",
+              "owners",
               "tags",
               "followers",
               "extension",

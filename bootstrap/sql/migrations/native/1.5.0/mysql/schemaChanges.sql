@@ -149,6 +149,9 @@ JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpC
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path')
 ) is NULL AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig') is not null;
 
+--Update Owner Field to Owners
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
+
 -- Update thread_entity to move previousOwner and updatedOwner to array
 UPDATE thread_entity
 SET json = JSON_SET(
