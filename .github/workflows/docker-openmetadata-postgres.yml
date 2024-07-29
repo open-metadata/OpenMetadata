@@ -50,6 +50,6 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          push: true
+          push: false
           tags: ${{ steps.prepare.outputs.tags }}
           file: ./docker/postgresql/Dockerfile_postgres
