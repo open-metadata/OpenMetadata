@@ -14,10 +14,10 @@ on:
   workflow_dispatch:
     inputs:
       docker_release_tag:
-        description: "Ingestion Base Slim Docker Image Tag (4 digit docker image tag)"
+        description: "Ingestion Base Slim Docker Image Tag (3 digit docker image tag)"
         required: true
       release_version:
-        description: "Provide the Release Version"
+        description: "Provide the Release Version (4 digit docker image tag)"
         required: true
       push_latest_tag_to_release:
         description: "Do you want to update docker image latest tag as well ?"
