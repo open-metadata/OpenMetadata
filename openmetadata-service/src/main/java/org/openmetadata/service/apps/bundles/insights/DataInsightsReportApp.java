@@ -1,7 +1,5 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE;
-import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
@@ -17,14 +15,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
@@ -276,7 +272,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
-        PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
+        "percentage_of_data_asset_with_description_kpi",
         currentPercentCompleted,
         currentPercentCompleted - previousPercentCompleted,
         currentCompletedDescription.intValue(),
@@ -324,7 +320,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
-        PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
+        "percentage_of_data_asset_with_owner_kpi",
         currentPercentCompleted,
         currentPercentCompleted - previousPercentCompleted,
         currentHasOwner.intValue(),
@@ -409,19 +405,18 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private DataInsightDescriptionAndOwnerTemplate getTemplate(
       DataInsightDescriptionAndOwnerTemplate.MetricType metricType,
-      DataInsightChartResult.DataInsightChartType chartType,
+      String chartKpiName,
       Double percentCompleted,
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
-      Map<String, Integer> dateMap)
-      throws IOException {
+      Map<String, Integer> dateMap) {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;
     boolean isKpiAvailable = false;
     for (Kpi kpiObj : kpiList) {
-      if (Objects.equals(kpiObj.getDataInsightChart().getName(), chartType.value())) {
+      if (kpiObj.getDataInsightChart().getName().equals(chartKpiName)) {
         validKpi = kpiObj;
         isKpiAvailable = true;
         break;
@@ -434,7 +429,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     String targetKpi = KPI_NOT_SET;
 
     if (isKpiAvailable) {
-      targetKpi = String.format("%.2f", validKpi.getTargetValue() * 100);
+      targetKpi = String.format("%.2f", validKpi.getTargetValue());
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
         isTargetMet = result.getTargetResult().get(0).getTargetMet();
