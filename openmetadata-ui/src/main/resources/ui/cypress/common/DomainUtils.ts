@@ -98,6 +98,7 @@ const updateOwner = (newOwner) => {
   cy.get('[data-testid="owner-select-users-search-bar"]').type(newOwner);
   verifyResponseStatusCode('@searchOwner', 200);
   cy.get(`.ant-popover [title="${newOwner}"]`).click();
+  cy.get('[data-testid="selectable-list-update-btn"]').click();
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get(`[data-testid="domain-owner-name"]`).should('contain', newOwner);

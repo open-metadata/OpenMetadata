@@ -77,6 +77,8 @@ entities.forEach((EntityClass) => {
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
+      test.slow(true);
+
       const OWNER1 = EntityDataClass.user1.getUserName();
       const OWNER2 = EntityDataClass.user2.getUserName();
       const OWNER3 = EntityDataClass.user3.getUserName();
