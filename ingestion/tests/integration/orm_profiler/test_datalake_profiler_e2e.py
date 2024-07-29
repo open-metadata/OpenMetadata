@@ -41,7 +41,7 @@ from metadata.utils.time_utils import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
 SERVICE_NAME = Path(__file__).stem
 REGION = "us-west-1"
@@ -139,7 +139,7 @@ class DatalakeProfilerTestE2E(TestCase):
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        print_status(ingestion_workflow)
+        ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
     def test_datalake_profiler_workflow(self):
@@ -159,7 +159,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table_profile = self.metadata.get_profile_data(
             f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
@@ -207,7 +207,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -252,7 +252,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -298,7 +298,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -355,7 +355,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
