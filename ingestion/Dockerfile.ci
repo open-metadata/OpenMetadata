@@ -84,7 +84,7 @@ WORKDIR /home/airflow/ingestion
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
 ENV PIP_CONSTRAINT=./constraints.txt
-RUN pip install ".[mysql,airflow,bigquery,hive,oracle,postgres,redshift,doris,datalake-gcs,datalake-s3,qliksense,databricks]"
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
