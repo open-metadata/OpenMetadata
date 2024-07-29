@@ -234,7 +234,9 @@ class S3Source(StorageServiceSource):
                 tags_list: List[S3Tag] = S3TagResponse.model_validate(tags).TagSet
                 for tag in tags_list:
                     yield from get_ometa_tag_and_classification(
-                        tag_fqn=FullyQualifiedEntityName(container_details.container_fqn),
+                        tag_fqn=FullyQualifiedEntityName(
+                            container_details.container_fqn
+                        ),
                         tags=[tag.Value],
                         classification_name=tag.Key,
                         tag_description="S3 TAG VALUE",
@@ -243,7 +245,6 @@ class S3Source(StorageServiceSource):
         except Exception as exc:
             logger.debug(f"Failed to ingest tags due to: {exc}")
             logger.debug(traceback.format_exc())
-
 
     def yield_create_container_requests(
         self, container_details: S3ContainerDetails
