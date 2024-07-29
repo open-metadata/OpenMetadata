@@ -77,7 +77,7 @@ export class Glossary {
   }
 
   async create(apiContext: APIRequestContext) {
-    const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owner']);
+    const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owners']);
     const response = await apiContext.post('/api/v1/glossaries', {
       data: apiData,
     });

@@ -118,15 +118,21 @@ export class EntityClass {
 
   async owner(
     page: Page,
-    owner1: string,
-    owner2: string,
+    owner1: string[],
+    owner2: string[],
     type: 'Teams' | 'Users' = 'Users'
   ) {
     if (type === 'Teams') {
-      await addOwner(page, owner1, type, this.endpoint, 'data-assets-header');
+      await addOwner(
+        page,
+        owner1[0],
+        type,
+        this.endpoint,
+        'data-assets-header'
+      );
       await updateOwner(
         page,
-        owner2,
+        owner2[0],
         type,
         this.endpoint,
         'data-assets-header'
@@ -134,21 +140,21 @@ export class EntityClass {
       await removeOwner(
         page,
         this.endpoint,
-        owner2,
+        owner2[0],
         type,
         'data-assets-header'
       );
     } else {
       await addMultiOwner({
         page,
-        ownerNames: [owner1],
+        ownerNames: owner1,
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: this.endpoint,
       });
       await addMultiOwner({
         page,
-        ownerNames: [owner2],
+        ownerNames: owner2,
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: this.endpoint,
@@ -156,7 +162,7 @@ export class EntityClass {
       await removeOwner(
         page,
         this.endpoint,
-        owner2,
+        owner2[0],
         type,
         'data-assets-header'
       );

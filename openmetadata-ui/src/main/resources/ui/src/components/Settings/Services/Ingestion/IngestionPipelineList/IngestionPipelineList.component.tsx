@@ -18,7 +18,7 @@ import cronstrue from 'cronstrue';
 import { isNil, map, startCase } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
   IngestionPipeline,
@@ -194,7 +194,7 @@ export const IngestionPipelineList = ({
     setLoading(true);
     try {
       const { data, paging: pagingRes } = await getIngestionPipelines({
-        arrQueryFields: ['owner'],
+        arrQueryFields: [TabSpecificField.OWNERS],
         serviceType:
           serviceName === 'testSuites'
             ? EntityType.TEST_SUITE

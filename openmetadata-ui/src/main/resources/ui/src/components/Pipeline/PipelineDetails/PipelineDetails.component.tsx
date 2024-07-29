@@ -434,8 +434,8 @@ const PipelineDetails = ({
       },
       {
         title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
+        dataIndex: 'owners',
+        key: 'owners',
         width: 120,
         accessor: 'owner',
         filterIcon: (filtered) => (

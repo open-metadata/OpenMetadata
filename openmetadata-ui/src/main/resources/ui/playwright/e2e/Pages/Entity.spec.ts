@@ -77,13 +77,14 @@ entities.forEach((EntityClass) => {
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.user1.getUserName();
       const OWNER2 = EntityDataClass.user2.getUserName();
-      await entity.owner(page, OWNER1, OWNER2);
+      const OWNER3 = EntityDataClass.user3.getUserName();
+      await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
     test('Team as Owner Add, Update and Remove', async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.data.displayName;
       const OWNER2 = EntityDataClass.team2.data.displayName;
-      await entity.owner(page, OWNER1, OWNER2, 'Teams');
+      await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
     test('Tier Add, Update and Remove', async ({ page }) => {
