@@ -157,8 +157,7 @@ export const CustomEdge = ({
     targetType: EntityType
   ) => {
     return (
-      [EntityType.PIPELINE].indexOf(sourceType) > -1 &&
-      [EntityType.PIPELINE].indexOf(targetType) > -1
+      sourceType !== EntityType.PIPELINE && targetType !== EntityType.PIPELINE
     );
   };
 

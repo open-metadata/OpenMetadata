@@ -222,6 +222,7 @@ const fillForm = (formObj, type) => {
   cy.get('[data-testid="owner-select-users-search-bar"]').type(formObj.owner);
   verifyResponseStatusCode('@searchOwner', 200);
   cy.get(`.ant-popover [title="${formObj.owner}"]`).click();
+  cy.get('[data-testid="selectable-list-update-btn"]').click();
   cy.get('[data-testid="owner-container"]').children().should('have.length', 1);
 
   cy.get('[data-testid="add-experts"]').scrollIntoView().click();

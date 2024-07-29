@@ -882,7 +882,9 @@ export const TaskTab = ({
         <Typography.Text className="text-grey-muted">
           {t('label.created-by')}:{' '}
         </Typography.Text>
-        <OwnerLabel owners={owners} />
+        <OwnerLabel
+          owners={[{ name: taskThread.createdBy, type: 'user', id: '' }]}
+        />
       </div>
     </div>
   );
