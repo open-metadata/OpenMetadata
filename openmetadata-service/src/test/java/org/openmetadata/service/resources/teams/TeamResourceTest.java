@@ -916,6 +916,20 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertDomainInheritance(createTeam, DOMAIN.getEntityReference());
   }
 
+  public Team assertDomainInheritance(CreateTeam createRequest, EntityReference expectedDomain)
+      throws IOException, InterruptedException {
+    Team entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getTeamDomains().get(0)); // Inherited owner
+    entity = getEntity(entity.getId(), "teamDomains", ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getTeamDomains().get(0)); // Inherited owner
+    assertTrue(entity.getTeamDomains().get(0).getInherited());
+    entity = getEntityByName(entity.getFullyQualifiedName(), "teamDomains", ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getTeamDomains().get(0)); // Inherited owner
+    assertTrue(entity.getTeamDomains().get(0).getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain, "teamDomains");
+    return entity;
+  }
+
   private static void validateTeam(
       Team team,
       String expectedDescription,

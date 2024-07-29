@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -26,7 +27,6 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.Entity.ROLE;
@@ -50,6 +50,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -252,13 +253,19 @@ public class TeamRepository extends EntityRepository<Team> {
   public void setInheritedFields(Team team, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
-    if (fields.contains(FIELD_DOMAIN) && team.getDomain() == null) {
+    if (fields.contains("teamDomains")) {
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> parents =
           !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
       if (!nullOrEmpty(parents)) {
-        Team parent = Entity.getEntity(TEAM, parents.get(0).getId(), "domain", ALL);
-        inheritDomain(team, fields, parent);
+        for (EntityReference parentRef : parents) {
+          Team parentTeam = Entity.getEntity(TEAM, parentRef.getId(), "teamDomains", ALL);
+          combinedParent.addAll(parentTeam.getTeamDomains());
+        }
       }
+      team.setTeamDomains(
+          EntityUtil.mergedInheritedEntityRefs(
+              team.getTeamDomains(), combinedParent.stream().toList()));
     }
   }
 
@@ -815,9 +822,9 @@ public class TeamRepository extends EntityRepository<Team> {
       }
 
       List<EntityReference> origDomains =
-          EntityUtil.populateEntityReferences(original.getTeamDomains());
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getTeamDomains()));
       List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(updated.getTeamDomains());
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getTeamDomains()));
 
       // Remove Domains for the user
       deleteTo(original.getId(), TEAM, Relationship.HAS, Entity.DOMAIN);
