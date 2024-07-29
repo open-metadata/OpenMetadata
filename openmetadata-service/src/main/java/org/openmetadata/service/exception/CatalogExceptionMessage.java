@@ -327,6 +327,11 @@ public final class CatalogExceptionMessage {
         JsonUtils.pojoToJson(event), type.value(), message);
   }
 
+  public static String eventPublisherFailedToPublish(
+      SubscriptionDestination.SubscriptionType type, String message) {
+    return String.format("Failed to publish event %s due to %s ", type.value(), message);
+  }
+
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
     return String.format(
         "The Entity link with no field name - %s is not supported for %s task.",

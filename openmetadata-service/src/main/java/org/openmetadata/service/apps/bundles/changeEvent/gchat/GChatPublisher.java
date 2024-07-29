@@ -95,6 +95,24 @@ public class GChatPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      GChatMessage gchatMessage =
+          gChatMessageMessageDecorator.buildOutgoingTestMessage(
+              eventSubscription.getFullyQualifiedName());
+
+      if (target != null) {
+        postWebhookMessage(this, target, gchatMessage);
+      }
+    } catch (Exception e) {
+      String message =
+          CatalogExceptionMessage.eventPublisherFailedToPublish(G_CHAT, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
   public EventSubscription getEventSubscriptionForDestination() {
     return eventSubscription;
   }
