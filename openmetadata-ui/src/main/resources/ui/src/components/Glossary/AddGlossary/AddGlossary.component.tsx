@@ -29,6 +29,7 @@ import {
 import { generateFormFields, getField } from '../../../utils/formUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
