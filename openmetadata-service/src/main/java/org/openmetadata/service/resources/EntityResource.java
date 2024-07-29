@@ -18,9 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
-import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.EntityUtil.createOrUpdateOperation;
-import static org.openmetadata.service.util.EntityUtil.getCommaSeparatedIdsFromRefs;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -54,7 +52,6 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
@@ -158,7 +155,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     // Add Domain Filter
-    addDomainQueryParam(securityContext, filter);
+    EntityUtil.addDomainQueryParam(securityContext, filter);
 
     // List
     ResultList<T> resultList;
@@ -185,19 +182,6 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return repository.listFromSearchWithOffset(
         uriInfo, fields, searchListFilter, limit, offset, searchSortFilter, q);
-  }
-
-  private void addDomainQueryParam(SecurityContext securityContext, ListFilter filter) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (!subjectContext.isAdmin()) {
-      if (!nullOrEmpty(subjectContext.getUserDomains())) {
-        filter.addQueryParam(
-            "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
-      } else {
-        // TODO: Hack :(
-        filter.addQueryParam("domainId", "null");
-      }
-    }
   }
 
   public T getInternal(

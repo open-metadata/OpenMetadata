@@ -21,6 +21,7 @@ public class FeedFilter {
   @Getter private PaginationType paginationType;
   @Getter private String before;
   @Getter private String after;
+  @Getter private boolean applyDomainFilter;
   @Getter private List<UUID> domains;
 
   public String getCondition() {
@@ -59,13 +60,15 @@ public class FeedFilter {
 
     // Only Domain Listing based thread can be fetched
     String domainCondition = "";
-    if (domains != null && !domains.isEmpty()) {
-      domainCondition =
-          String.format(
-              "entityDomain IN ('%s')",
-              domains.stream().map(UUID::toString).reduce((a, b) -> a + "','" + b).get());
-    } else {
-      domainCondition = "entityDomain is null";
+    if (applyDomainFilter) {
+      if (domains != null && !domains.isEmpty()) {
+        domainCondition =
+            String.format(
+                "entityDomain IN ('%s')",
+                domains.stream().map(UUID::toString).reduce((a, b) -> a + "','" + b).get());
+      } else {
+        domainCondition = "entityDomain is null";
+      }
     }
     condition1 = addCondition(condition1, domainCondition);
 

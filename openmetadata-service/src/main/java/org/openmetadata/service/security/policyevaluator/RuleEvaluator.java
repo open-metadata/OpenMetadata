@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.Arrays;
@@ -66,6 +67,26 @@ public class RuleEvaluator {
       return false;
     }
     return subjectContext.isOwner(resourceContext.getOwner());
+  }
+
+  @Function(
+      name = "hasDomain",
+      input = "none",
+      description =
+          "Returns true if the logged in user is the has domain access of the entity being accessed",
+      examples = {"hasDomain()", "!hasDomain()"})
+  public boolean hasDomain() {
+    if (expressionValidation) {
+      return false;
+    }
+    if (subjectContext == null || resourceContext == null) {
+      return false;
+    }
+    // If the Entity belongs to a domain , then user needs to be part of that domain
+    if (!nullOrEmpty(resourceContext.getDomain())) {
+      return subjectContext.hasDomain(resourceContext.getDomain());
+    }
+    return true;
   }
 
   @Function(

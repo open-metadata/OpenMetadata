@@ -81,9 +81,6 @@ public class DefaultAuthorizer implements Authorizer {
       return; // Reviewer of a resource gets admin level privilege on the resource
     }
 
-    // Check if the user has domain level permission
-    PolicyEvaluator.hasDomainPermission(subjectContext, resourceContext, operationContext);
-
     // Check if the user has resource level permission
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }

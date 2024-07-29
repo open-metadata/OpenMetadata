@@ -22,6 +22,7 @@ public class SearchRequest {
   private final String fieldName;
   private final String sortOrder;
   private final List<String> includeSourceFields;
+  private final boolean applyDomainFilter;
   private final List<String> domains;
   private final boolean getHierarchy;
 
@@ -41,6 +42,7 @@ public class SearchRequest {
     this.fieldName = builder.fieldName;
     this.getHierarchy = builder.getHierarchy;
     this.domains = builder.domains;
+    this.applyDomainFilter = builder.applyDomainFilter;
   }
 
   // Builder class for ElasticSearchRequest
@@ -60,6 +62,7 @@ public class SearchRequest {
     private String sortOrder;
     private List<String> includeSourceFields;
     private boolean getHierarchy;
+    private boolean applyDomainFilter;
     private List<String> domains;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
@@ -100,6 +103,11 @@ public class SearchRequest {
 
     public ElasticSearchRequestBuilder deleted(boolean deleted) {
       this.deleted = deleted;
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder applyDomainFilter(boolean applyDomainFilter) {
+      this.applyDomainFilter = applyDomainFilter;
       return this;
     }
 

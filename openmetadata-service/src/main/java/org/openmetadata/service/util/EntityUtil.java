@@ -17,6 +17,8 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -35,6 +37,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.validation.constraints.NotNull;
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.SecurityContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -59,12 +62,13 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public final class EntityUtil {
-
   //
   // Comparators used for sorting list based on the given type
   //
@@ -663,5 +667,20 @@ public final class EntityUtil {
 
     result.addAll(uniqueEntityRefFromParent);
     return result.stream().toList();
+  }
+
+  public static void addDomainQueryParam(SecurityContext securityContext, ListFilter filter) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    // If the User is admin then no need to add domainId in the query param
+    // Also if there are domain restriction on the subject context via role
+    if (!subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+      if (!nullOrEmpty(subjectContext.getUserDomains())) {
+        filter.addQueryParam(
+            "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+      } else {
+        // TODO: Hack :(
+        filter.addQueryParam("domainId", "null");
+      }
+    }
   }
 }

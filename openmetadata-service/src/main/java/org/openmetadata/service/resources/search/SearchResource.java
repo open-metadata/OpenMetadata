@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.search;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.search.SearchRepository.ELASTIC_SEARCH_EXTENSION;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
@@ -193,6 +194,8 @@ public class SearchResource {
             .includeSourceFields(includeSourceFields)
             .getHierarchy(getHierarchy)
             .domains(domains)
+            .applyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .build();
     return searchRepository.search(request);
   }

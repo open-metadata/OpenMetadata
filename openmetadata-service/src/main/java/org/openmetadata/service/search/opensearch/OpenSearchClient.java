@@ -322,11 +322,19 @@ public class OpenSearchClient implements SearchClient {
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
 
     // Add Domain filter
-    if (!nullOrEmpty(request.getDomains())) {
-      TermsQueryBuilder domainFilter =
-          QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
+    if (request.isApplyDomainFilter()) {
+      if (!nullOrEmpty(request.getDomains())) {
+        TermsQueryBuilder domainFilter =
+            QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
+      } else {
+        // Else condition to list entries where domain field is null
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .mustNot(QueryBuilders.existsQuery("domain.fullyQualifiedName")));
+      }
     }
 
     // Add Query Filter
