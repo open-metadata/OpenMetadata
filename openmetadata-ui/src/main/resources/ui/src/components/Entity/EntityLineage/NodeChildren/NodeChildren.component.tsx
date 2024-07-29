@@ -26,7 +26,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Column, Table } from '../../../../generated/entity/data/table';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import { getColumnContent } from '../CustomNode.utils';
 import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
@@ -200,7 +200,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 }}>
                 <Space>
                   <div className=" w-5 h-5 text-base-color">
-                    {getEntityIcon(node.entityType ?? '')}
+                    {searchClassBase.getEntityIcon(node.entityType ?? '')}
                   </div>
                   {childrenHeading}
                   {isExpanded ? (

@@ -36,7 +36,7 @@ import { ASSET_CARD_STYLES } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CardStyle } from '../../../../generated/entity/feed/thread';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './feed-card-header-v2.less';
 import { FeedCardHeaderV2Props } from './FeedCardHeaderV2.interface';
@@ -101,7 +101,7 @@ const FeedCardHeaderV2 = ({
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <>
             <span className="w-5 h-5 m-r-xss d-inline-flex text-xl align-middle">
-              {getEntityIcon(entityType ?? '')}
+              {searchClassBase.getEntityIcon(entityType ?? '')}
             </span>
             <Link
               className="break-all"
@@ -120,7 +120,7 @@ const FeedCardHeaderV2 = ({
       return (
         <>
           <span className="w-5 h-5 m-r-xss d-inline-flex text-xl align-middle">
-            {getEntityIcon(entityType ?? '')}
+            {searchClassBase.getEntityIcon(entityType ?? '')}
           </span>
           <Typography.Text className="break-all font-bold">
             {feed?.entityRef

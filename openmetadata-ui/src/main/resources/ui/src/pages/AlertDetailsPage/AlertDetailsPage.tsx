@@ -55,7 +55,7 @@ import {
   getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -366,7 +366,7 @@ function AlertDetailsPage({
                   subHeading={t('message.alerts-source-description')}>
                   <div className="d-flex items-center gap-2 m-l-sm">
                     <div className="d-flex h-4 w-4">
-                      {getEntityIcon(resource ?? '')}
+                      {searchClassBase.getEntityIcon(resource ?? '')}
                     </div>
                     <span data-testid="resource-name">
                       {startCase(resource)}

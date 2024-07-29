@@ -20,7 +20,7 @@ import { ReactComponent as Layers } from '../../../../assets/svg/ic-layers.svg';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineageLayerView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../../enums/entity.enum';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import './lineage-layers.less';
 
 const LineageLayers = () => {
@@ -47,7 +47,7 @@ const LineageLayers = () => {
             onClick={() => onButtonClick(LineageLayerView.COLUMN)}>
             <div className="lineage-layer-btn">
               <div className="layer-icon">
-                {getEntityIcon(EntityType.TABLE)}
+                {searchClassBase.getEntityIcon(EntityType.TABLE)}
               </div>
               <Typography.Text className="text-xss">
                 {t('label.column')}

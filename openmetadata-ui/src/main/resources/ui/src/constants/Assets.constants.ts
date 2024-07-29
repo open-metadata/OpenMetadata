@@ -178,4 +178,5 @@ export const NON_SERVICE_TYPE_ASSETS = [
   EntityType.PERSONA,
   EntityType.ROLE,
   EntityType.POLICY,
+  EntityType.KPI,
 ];

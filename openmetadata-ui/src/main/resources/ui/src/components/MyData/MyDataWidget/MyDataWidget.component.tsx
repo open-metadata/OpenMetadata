@@ -30,9 +30,9 @@ import { searchData } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import searchClassBase from '../../../utils/SearchClassBase';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import EntityListSkeleton from '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -172,7 +172,9 @@ const MyDataWidgetInternal = ({
                         className="entity-button flex-center p-0 m--ml-1"
                         icon={
                           <div className="entity-button-icon m-r-xs">
-                            {getEntityIcon(item.entityType ?? '')}
+                            {searchClassBase.getEntityIcon(
+                              item.entityType ?? ''
+                            )}
                           </div>
                         }
                         type="text">

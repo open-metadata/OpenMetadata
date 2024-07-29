@@ -24,7 +24,7 @@ import {
   getEntityName,
   getEntityReferenceFromEntity,
 } from '../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
@@ -155,7 +155,7 @@ const DataAssetAsyncSelectList: FC<DataAssetAsyncSelectListProps> = ({
             className="d-flex items-center gap-2"
             data-testid={`option-${value}`}>
             <div className="flex-center data-asset-icon">
-              {getEntityIcon(reference.type)}
+              {searchClassBase.getEntityIcon(reference.type)}
             </div>
             <div className="d-flex flex-col">
               <span className="text-grey-muted text-xs">{reference.type}</span>

@@ -33,7 +33,7 @@ import { getEntityId, getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getEntityIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import { getUsagePercentile } from '../../../utils/TableUtils';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { GlossaryStatusBadge } from '../../Glossary/GlossaryStatusBadge/GlossaryStatusBadge.component';
@@ -166,13 +166,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
-            {getEntityIcon(source.entityType ?? '')}
+            {searchClassBase.getEntityIcon(source.entityType ?? '')}
           </span>
         );
       }
 
       return;
-    }, [source, showEntityIcon, getEntityIcon]);
+    }, [source, showEntityIcon]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),

@@ -15,7 +15,7 @@ import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import React, { forwardRef, useImperativeHandle, useState } from 'react';
 import { isInViewport } from '../../../../utils/BlockEditorUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef, SuggestionItem } from '../../BlockEditor.interface';
 
 export default forwardRef<
@@ -128,7 +128,7 @@ export default forwardRef<
             </div>
             <Space align="center">
               <div className="w-5" style={{ marginTop: '6px' }}>
-                {getEntityIcon(item.type)}
+                {searchClassBase.getEntityIcon(item.type)}
               </div>
               <Typography className="truncate w-max-200">
                 {item.label}
