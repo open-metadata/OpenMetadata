@@ -825,11 +825,13 @@ const DomainDetailsPage = ({
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
-      <AddSubDomainModal
-        open={showAddSubDomainModal}
-        onCancel={() => setShowAddSubDomainModal(false)}
-        onSubmit={(data: CreateDomain) => addSubDomain(data)}
-      />
+      {showAddSubDomainModal && (
+        <AddSubDomainModal
+          open={showAddSubDomainModal}
+          onCancel={() => setShowAddSubDomainModal(false)}
+          onSubmit={(data: CreateDomain) => addSubDomain(data)}
+        />
+      )}
     </>
   );
 };
