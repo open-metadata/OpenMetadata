@@ -44,7 +44,7 @@ from metadata.utils.time_utils import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger(__name__)
@@ -185,7 +185,7 @@ class ProfilerWorkflowTest(TestCase):
         ingestion_workflow = MetadataWorkflow.create(ingestion_config)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        print_status(ingestion_workflow)
+        ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
     @classmethod
@@ -253,7 +253,7 @@ class ProfilerWorkflowTest(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -278,7 +278,7 @@ class ProfilerWorkflowTest(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -309,7 +309,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -361,7 +361,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -400,7 +400,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -448,7 +448,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -488,7 +488,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -535,7 +535,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -575,7 +575,7 @@ class ProfilerWorkflowTest(TestCase):
 
         profiler_workflow = ProfilerWorkflow.create(workflow_config)
         profiler_workflow.execute()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         table = self.metadata.get_by_name(
@@ -633,7 +633,7 @@ class ProfilerWorkflowTest(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -726,7 +726,7 @@ class ProfilerWorkflowTest(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
