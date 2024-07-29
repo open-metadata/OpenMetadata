@@ -76,7 +76,7 @@ class FivetranSource(PipelineServiceSource):
         self,
         pipeline_details: FivetranPipelineDetails,
         source_url: Optional[SourceUrl] = None,
-    ) -> list[Task]:
+    ) -> List[Task]:
         """Returns the list of tasks linked to connection"""
         return [
             Task(
@@ -122,7 +122,7 @@ class FivetranSource(PipelineServiceSource):
         col_details = self.client.get_connector_column_lineage(
             pipeline_details.connector_id, schema_name=schema, table_name=table
         )
-
+        col_lineage_arr = []
         try:
             from_entity_fqn: Optional[str] = self._get_table_fqn_from_om(
                 table_details=TableDetails(schema=schema, name=table)
@@ -142,7 +142,6 @@ class FivetranSource(PipelineServiceSource):
             from_table_entity = self.metadata.get_by_name(
                 entity=Table, fqn=from_entity_fqn
             )
-            col_lineage_arr = []
             for key, value in col_details.items():
                 if value["enabled"] == True:
                     if from_table_entity and to_table_entity:
@@ -197,7 +196,6 @@ class FivetranSource(PipelineServiceSource):
         ).items():
 
             for table in schema_data.get("tables", {}).keys():
-
                 col_lineage_arr = self.fetch_column_lineage(
                     pipeline_details=pipeline_details,
                     schema=schema,
