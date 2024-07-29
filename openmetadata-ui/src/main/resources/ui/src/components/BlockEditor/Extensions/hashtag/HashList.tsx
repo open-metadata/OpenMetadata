@@ -128,7 +128,7 @@ export default forwardRef<
             </div>
             <Space align="center">
               <div className="w-5" style={{ marginTop: '6px' }}>
-                {searchClassBase.getEntityIcon(item.type ?? '')}
+                {searchClassBase.getEntityIcon(item.type)}
               </div>
               <Typography className="truncate w-max-200">
                 {item.label}
