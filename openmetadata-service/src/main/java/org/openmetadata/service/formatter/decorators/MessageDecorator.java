@@ -66,6 +66,8 @@ public interface MessageDecorator<T> {
 
   T buildEntityMessage(String publisherName, ChangeEvent event);
 
+  T buildTestMessage(String publisherName);
+
   T buildThreadMessage(String publisherName, ChangeEvent event);
 
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
@@ -149,6 +151,10 @@ public interface MessageDecorator<T> {
       throw new IllegalArgumentException(
           "Cannot Build Message, Unsupported Entity Type: " + event.getEntityType());
     }
+  }
+
+  default T buildOutgoingTestMessage(String publisherName) {
+    return buildTestMessage(publisherName);
   }
 
   default String getPlaintextDiff(String oldValue, String newValue) {

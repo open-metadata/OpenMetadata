@@ -71,6 +71,11 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
   }
 
   @Override
+  public SlackMessage buildTestMessage(String publisherName) {
+    return getSlackTestMessage(publisherName);
+  }
+
+  @Override
   public SlackMessage buildThreadMessage(String publisherName, ChangeEvent event) {
     return getSlackMessage(createThreadMessage(publisherName, event));
   }
@@ -86,6 +91,30 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
       return message;
     }
     throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private SlackMessage getSlackTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      SlackMessage message = new SlackMessage();
+      message.setUsername("Slack destination test");
+      message.setText("Slack has been successfully configured for alerts from: " + publisherName);
+
+      SlackAttachment attachment = new SlackAttachment();
+      attachment.setFallback("Slack destination test successful.");
+      attachment.setColor("#36a64f"); // Setting a green color to indicate success
+      attachment.setTitle("Test Successful");
+      attachment.setText(
+          "This is a test message from OpenMetadata confirming that your Slack destination is correctly set up to receive alerts.");
+      attachment.setFooter("OpenMetadata");
+      attachment.setTs(String.valueOf(System.currentTimeMillis() / 1000)); // Adding timestamp
+
+      List<SlackAttachment> attachmentList = new ArrayList<>();
+      attachmentList.add(attachment);
+      message.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
+
+      return message;
+    }
+    throw new UnhandledServerException("Publisher name not found.");
   }
 
   private SlackAttachment getSlackAttachment(String message) {

@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -69,6 +70,11 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
+  public EmailMessage buildTestMessage(String publisherName) {
+    return getEmailTestMessage(publisherName);
+  }
+
+  @Override
   public EmailMessage buildThreadMessage(String publisherName, ChangeEvent event) {
     return getEmailMessage(createThreadMessage(publisherName, event));
   }
@@ -83,5 +89,23 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
       return emailMessage;
     }
     throw new UnhandledServerException("No messages found for the event");
+  }
+
+  public EmailMessage getEmailTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      EmailMessage emailMessage = new EmailMessage();
+      emailMessage.setUserName("test_user");
+      emailMessage.setUpdatedBy("system");
+      emailMessage.setChangeMessage(
+          new ArrayList<>(
+              Collections.singleton(
+                  "This is a test alert to verify the destination configuration for alerts. "
+                      + "Publisher: "
+                      + publisherName
+                      + ". If you received this message, your alert "
+                      + "configuration is correct.")));
+      return emailMessage;
+    }
+    throw new UnhandledServerException("Publisher name not found.");
   }
 }
