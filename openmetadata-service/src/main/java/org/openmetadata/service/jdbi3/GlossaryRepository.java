@@ -21,7 +21,7 @@ import static org.openmetadata.csv.CsvUtil.FIELD_SEPARATOR;
 import static org.openmetadata.csv.CsvUtil.addEntityReference;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
-import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -155,7 +155,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
     ListFilter filter = new ListFilter(Include.NON_DELETED).addQueryParam("parent", name);
     List<GlossaryTerm> terms =
-        repository.listAll(repository.getFields("owner,reviewers,tags,relatedTerms"), filter);
+        repository.listAll(repository.getFields("owners,reviewers,tags,relatedTerms"), filter);
     terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms);
   }
@@ -197,7 +197,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
               getTagLabels(
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
           .withReviewers(getEntityReferences(printer, csvRecord, 8, Entity.USER))
-          .withOwner(getOwner(printer, csvRecord, 9))
+          .withOwners(getOwners(printer, csvRecord, 9))
           .withStatus(getTermStatus(printer, csvRecord));
       if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm);
@@ -261,7 +261,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addField(recordList, termReferencesToRecord(entity.getReferences()));
       addTagLabels(recordList, entity.getTags());
       addField(recordList, reviewerReferencesToRecord(entity.getReviewers()));
-      addOwner(recordList, entity.getOwner());
+      addOwners(recordList, entity.getOwners());
       addField(recordList, entity.getStatus().value());
       addRecord(csvFile, recordList);
     }
@@ -282,6 +282,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return nullOrEmpty(reviewers)
           ? null
           : reviewers.stream()
+              .map(EntityReference::getName)
+              .collect(Collectors.joining(FIELD_SEPARATOR));
+    }
+
+    private String reviewerOwnerReferencesToRecord(List<EntityReference> owners) {
+      return nullOrEmpty(owners)
+          ? null
+          : owners.stream()
               .map(EntityReference::getName)
               .collect(Collectors.joining(FIELD_SEPARATOR));
     }

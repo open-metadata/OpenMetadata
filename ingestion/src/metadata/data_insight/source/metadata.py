@@ -131,7 +131,7 @@ class DataInsightSource(Source):
 
                 for data in (
                     producer.fetch_data(
-                        fields=["owner", "tags"], entities_cache=self.entities_cache
+                        fields=["owners", "tags"], entities_cache=self.entities_cache
                     )
                     or []
                 ):

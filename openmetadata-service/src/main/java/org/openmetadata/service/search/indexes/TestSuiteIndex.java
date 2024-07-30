@@ -29,7 +29,7 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_SUITE);
-    doc.put("owner", getEntityWithDisplayName(testSuite.getOwner()));
+    doc.put("owners", getEntitiesWithDisplayName(testSuite.getOwners()));
     doc.put("followers", SearchIndexUtils.parseFollowers(testSuite.getFollowers()));
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TEST_SUITE, testSuite));
     doc.put("tags", parseTags.getTags());

@@ -73,7 +73,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "domains", order = 4) // initialize after user resource
 public class DomainResource extends EntityResource<Domain, DomainRepository> {
   public static final String COLLECTION_PATH = "/v1/domains/";
-  static final String FIELDS = "children,owner,experts";
+  static final String FIELDS = "children,owners,experts";
 
   public DomainResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOMAIN, authorizer, limits);

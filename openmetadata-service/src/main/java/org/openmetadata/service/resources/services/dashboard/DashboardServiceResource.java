@@ -74,7 +74,7 @@ public class DashboardServiceResource
     extends ServiceEntityResource<
         DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  static final String FIELDS = "owner,domain";
+  static final String FIELDS = "owners,domain";
 
   public DashboardServiceResource(Authorizer authorizer, Limits limits) {
     super(Entity.DASHBOARD_SERVICE, authorizer, limits, ServiceType.DASHBOARD);

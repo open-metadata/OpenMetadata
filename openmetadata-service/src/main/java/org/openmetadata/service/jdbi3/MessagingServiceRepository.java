@@ -23,7 +23,7 @@ import org.openmetadata.service.resources.services.messaging.MessagingServiceRes
 @Slf4j
 public class MessagingServiceRepository
     extends ServiceEntityRepository<MessagingService, MessagingConnection> {
-  private static final String UPDATE_FIELDS = "owner, connection";
+  private static final String UPDATE_FIELDS = "owners, connection";
 
   public MessagingServiceRepository() {
     super(

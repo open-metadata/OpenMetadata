@@ -23,8 +23,8 @@ import {
   performAdminLogin,
   performUserLogin,
   redirectToHomePage,
-  uuid,
   toastNotification,
+  uuid,
 } from '../../utils/common';
 import {
   addAssetToGlossaryTerm,
@@ -62,7 +62,7 @@ test.describe('Glossary tests', () => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const glossary1 = new Glossary();
-    glossary1.data.owner = { name: 'admin', type: 'user' };
+    glossary1.data.owners = [{ name: 'admin', type: 'user' }];
     glossary1.data.mutuallyExclusive = true;
     glossary1.data.reviewers = [{ name: user1.getUserName(), type: 'user' }];
     glossary1.data.terms = [new GlossaryTerm(glossary1)];
@@ -108,7 +108,7 @@ test.describe('Glossary tests', () => {
       await performUserLogin(browser, user2);
 
     const glossary2 = new Glossary();
-    glossary2.data.owner = { name: 'admin', type: 'user' };
+    glossary2.data.owners = [{ name: 'admin', type: 'user' }];
     glossary2.data.reviewers = [{ name: team.data.displayName, type: 'team' }];
     glossary2.data.terms = [new GlossaryTerm(glossary2)];
 
@@ -152,14 +152,12 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
-    glossary1.data.owner = { name: 'admin', type: 'user' };
     glossary1.data.mutuallyExclusive = true;
     glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
 
     const glossary2 = new Glossary();
     const glossaryTerm3 = new GlossaryTerm(glossary2);
     const glossaryTerm4 = new GlossaryTerm(glossary2);
-    glossary2.data.owner = { name: 'admin', type: 'user' };
     glossary2.data.terms = [glossaryTerm3, glossaryTerm4];
 
     await glossary1.create(apiContext);

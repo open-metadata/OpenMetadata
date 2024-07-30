@@ -89,12 +89,12 @@ export type SourceType = (
   entityType?: string;
   service?: EntityReference;
   style?: Style;
-  owner?: Partial<
+  owners?: Partial<
     Pick<
       EntityReference,
       'name' | 'displayName' | 'id' | 'type' | 'fullyQualifiedName' | 'deleted'
     >
-  >;
+  >[];
 };
 
 export interface SearchedDataProps {

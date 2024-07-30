@@ -143,9 +143,9 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(entity.getOwner());
+    TestUtils.assertListNull(entity.getOwners());
 
-    fields = "owner";
+    fields = "owners";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

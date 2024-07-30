@@ -79,7 +79,7 @@ public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
-  public static final String FIELDS = "pipelines,owner,tags";
+  public static final String FIELDS = "pipelines,owners,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -116,7 +116,7 @@ public class MetadataServiceResource
   @Override
   public MetadataService addHref(UriInfo uriInfo, MetadataService service) {
     super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getOwners());
     return service;
   }
 

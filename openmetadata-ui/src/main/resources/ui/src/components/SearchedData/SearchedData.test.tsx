@@ -32,9 +32,11 @@ const mockData: SearchedDataProps['data'] = [
       name: 'name1',
       description: 'description1',
       fullyQualifiedName: 'fullyQualifiedName1',
-      owner: {
-        name: 'Customer_Support',
-      },
+      owners: [
+        {
+          name: 'Customer_Support',
+        },
+      ],
       tags: [
         { ...TAG_CONSTANT, tagFQN: 'tags1' },
         { ...TAG_CONSTANT, tagFQN: 'tags2' },
@@ -61,7 +63,7 @@ const mockData: SearchedDataProps['data'] = [
       name: 'name2',
       description: 'description2',
       fullyQualifiedName: 'fullyQualifiedName2',
-      owner: { name: 'owner2' },
+      owners: [{ name: 'owner2' }],
       tags: [
         { ...TAG_CONSTANT, tagFQN: 'tags1' },
         { ...TAG_CONSTANT, tagFQN: 'tags2' },
@@ -77,7 +79,7 @@ const mockData: SearchedDataProps['data'] = [
       name: 'name3',
       description: 'description3',
       fullyQualifiedName: 'fullyQualifiedName3',
-      owner: { name: 'owner3' },
+      owners: [{ name: 'owner3' }],
       tags: [
         { ...TAG_CONSTANT, tagFQN: 'tags1' },
         { ...TAG_CONSTANT, tagFQN: 'tags2' },

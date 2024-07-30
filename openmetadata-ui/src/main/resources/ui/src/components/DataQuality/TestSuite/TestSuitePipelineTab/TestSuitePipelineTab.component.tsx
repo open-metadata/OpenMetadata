@@ -21,6 +21,7 @@ import { useHistory } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from '../../../../generated/entity/data/table';
@@ -86,7 +87,10 @@ const TestSuitePipelineTab = ({ testSuite }: Props) => {
     try {
       setIsLoading(true);
       const response = await getIngestionPipelines({
-        arrQueryFields: ['owner', 'pipelineStatuses'],
+        arrQueryFields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.PIPELINE_STATUSES,
+        ],
         testSuite: testSuiteFQN,
         pipelineType: [PipelineType.TestSuite],
       });

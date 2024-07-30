@@ -76,7 +76,7 @@ import {
   getEntityName,
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
-import { getServiceIcon } from './TableUtils';
+import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
@@ -482,6 +482,10 @@ class SearchClassBase {
 
   public getServiceIcon(source: SearchSourceAlias) {
     return getServiceIcon(source);
+  }
+
+  public getEntityIcon(indexType: string, iconClass = '', iconStyle = {}) {
+    return getEntityIcon(indexType, iconClass, iconStyle);
   }
 
   public getListOfEntitiesWithoutDomain(): string[] {

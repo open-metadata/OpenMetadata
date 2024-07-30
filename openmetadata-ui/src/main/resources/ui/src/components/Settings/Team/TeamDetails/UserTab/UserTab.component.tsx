@@ -31,7 +31,11 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
-import { EntityAction, EntityType } from '../../../../../enums/entity.enum';
+import {
+  EntityAction,
+  EntityType,
+  TabSpecificField,
+} from '../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
@@ -93,7 +97,7 @@ export const UserTab = ({
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
     setIsLoading(true);
     getUsers({
-      fields: 'teams,roles',
+      fields: `${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`,
       limit: pageSize,
       team: getDecodedFqn(team),
       ...paging,

@@ -19,21 +19,17 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
-import { OwnerType } from '../../../enums/user.enum';
 import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
-import {
-  getEntityPlaceHolder,
-  getOwnerValue,
-} from '../../../utils/CommonUtils';
-import { getEntityId, getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getEntityIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import { getUsagePercentile } from '../../../utils/TableUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { GlossaryStatusBadge } from '../../Glossary/GlossaryStatusBadge/GlossaryStatusBadge.component';
@@ -69,22 +65,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       const tierValue = isString(source.tier)
         ? source.tier
         : getEntityName(source.tier);
-      const profileName =
-        source.owner?.type === OwnerType.USER ? source.owner?.name : undefined;
 
       const _otherDetails: ExtraInfo[] = [
         {
           key: 'Owner',
-          value: getOwnerValue(source.owner as EntityReference),
-          placeholderText: getEntityPlaceHolder(
-            getEntityName(source.owner as EntityReference),
-            source.owner?.deleted
+          value: (
+            <OwnerLabel owners={(source.owners as EntityReference[]) ?? []} />
           ),
-          id: getEntityId(source.owner as EntityReference),
-          isEntityDetails: true,
-          isLink: true,
-          openInNewTab: false,
-          profileName,
         },
       ];
 
@@ -166,13 +153,13 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         return (
           <span className="w-6 h-6 m-r-xs d-inline-flex text-xl align-middle">
-            {getEntityIcon(source.entityType ?? '')}
+            {searchClassBase.getEntityIcon(source.entityType ?? '')}
           </span>
         );
       }
 
       return;
-    }, [source, showEntityIcon, getEntityIcon]);
+    }, [source, showEntityIcon]);
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),

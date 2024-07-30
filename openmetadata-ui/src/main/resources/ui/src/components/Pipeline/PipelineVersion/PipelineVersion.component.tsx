@@ -50,7 +50,7 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -72,11 +72,11 @@ const PipelineVersion: FC<PipelineVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const pipelineVersionTableData = useMemo(

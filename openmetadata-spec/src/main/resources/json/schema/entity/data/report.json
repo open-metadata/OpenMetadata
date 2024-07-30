@@ -43,9 +43,9 @@
       "description": "Link to the resource corresponding to this report.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this pipeline.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this Report.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to service where this report is hosted in.",
