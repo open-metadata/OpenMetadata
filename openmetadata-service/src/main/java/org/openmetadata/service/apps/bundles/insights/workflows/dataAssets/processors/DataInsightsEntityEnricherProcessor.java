@@ -28,7 +28,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
