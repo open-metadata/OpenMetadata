@@ -23,7 +23,6 @@ import React, {
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import AlertBar from '../../components/AlertBar/AlertBar';
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -208,7 +207,6 @@ const MyDataPage = () => {
 
   return (
     <ActivityFeedProvider>
-      <AlertBar message="Warning" type="warning" />
       <PageLayoutV1
         mainContainerClassName="p-t-0"
         pageTitle={t('label.my-data')}>

@@ -10,7 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+type AlertBarType = 'general' | 'info' | 'success' | 'warning' | 'error';
+
 interface AlertBarProps {
-  type: 'general' | 'info' | 'success' | 'warning' | 'error';
+  type: AlertBarType;
   message: string;
 }

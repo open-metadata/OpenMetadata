@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import React, { useState } from 'react';
-import { ReactComponent as CrossIcon } from '../../assets/svg/cross-icon.svg';
+import React, { useMemo, useState } from 'react';
 import { ReactComponent as ErrorCross } from '../../assets/svg/error-cross.svg';
-import { ReactComponent as ErrorIcon } from '../../assets/svg/error-icon.svg';
-import { ReactComponent as GeneralIcon } from '../../assets/svg/general-icon.svg';
+import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
+import { ReactComponent as ErrorIcon } from '../../assets/svg/ic-error.svg';
+import { ReactComponent as GeneralIcon } from '../../assets/svg/ic-general.svg';
+import { ReactComponent as InfoIcon } from '../../assets/svg/ic-info-tag.svg';
+import { ReactComponent as SuccessIcon } from '../../assets/svg/ic-success.svg';
+import { ReactComponent as WarningIcon } from '../../assets/svg/ic-warning-tag.svg';
 import { ReactComponent as InfoCross } from '../../assets/svg/info-cross.svg';
-import { ReactComponent as InfoIcon } from '../../assets/svg/info-icon.svg';
 import { ReactComponent as SuccessCross } from '../../assets/svg/success-cross.svg';
-import { ReactComponent as SuccessIcon } from '../../assets/svg/success-icon.svg';
 import { ReactComponent as WarningCross } from '../../assets/svg/warning-cross.svg';
-import { ReactComponent as WarningIcon } from '../../assets/svg/warning-icon.svg';
 import './alert-bar.style.less';
 
 const AlertBar = ({
@@ -29,78 +29,67 @@ const AlertBar = ({
   message = '',
 }: AlertBarProps): JSX.Element => {
   const [isAlertVisible, setIsAlertVisible] = useState(true);
-  let alertComponent = {
-    icon: GeneralIcon,
-    color: '#292929',
-    bgColor: '#f6f7f9',
-    crossIcon: CrossIcon,
-  };
 
-  switch (type) {
-    case 'general':
-      alertComponent = {
-        icon: GeneralIcon,
-        color: '#292929',
-        bgColor: '#f6f7f9',
-        crossIcon: CrossIcon,
-      };
+  const alertComponent = useMemo(() => {
+    switch (type) {
+      case 'general':
+        return {
+          icon: GeneralIcon,
+          className: 'general',
+          crossIcon: CrossIcon,
+        };
 
-      break;
-    case 'info':
-      alertComponent = {
-        icon: InfoIcon,
-        color: '#0950C5',
-        bgColor: '#f6f8ff',
-        crossIcon: InfoCross,
-      };
+      case 'info':
+        return {
+          icon: InfoIcon,
+          className: 'info',
+          crossIcon: InfoCross,
+        };
 
-      break;
-    case 'success':
-      alertComponent = {
-        icon: SuccessIcon,
-        color: '#1D7C4D',
-        bgColor: '#f5fbf8',
-        crossIcon: SuccessCross,
-      };
+      case 'success':
+        return {
+          icon: SuccessIcon,
+          className: 'success',
+          crossIcon: SuccessCross,
+        };
 
-      break;
-    case 'warning':
-      alertComponent = {
-        icon: WarningIcon,
-        color: '#F59638',
-        bgColor: '#fff5eb',
-        crossIcon: WarningCross,
-      };
+      case 'warning':
+        return {
+          icon: WarningIcon,
+          className: 'warning',
+          crossIcon: WarningCross,
+        };
 
-      break;
-    case 'error':
-      alertComponent = {
-        icon: ErrorIcon,
-        color: '#CB2531',
-        bgColor: '#fcf0f1',
-        crossIcon: ErrorCross,
-      };
+      case 'error':
+        return {
+          icon: ErrorIcon,
+          className: 'error',
+          crossIcon: ErrorCross,
+        };
 
-      break;
-  }
+      default:
+        return {
+          icon: GeneralIcon,
+          className: 'general',
+          crossIcon: CrossIcon,
+        };
+    }
+  }, [type]);
 
   const handleCrossClick = () => setIsAlertVisible(false);
 
   return (
     <>
       <div
-        className="alert-container"
-        style={{
-          backgroundColor: alertComponent.bgColor,
-          display: isAlertVisible ? 'flex' : 'none',
-        }}>
+        className={`alert-container ${alertComponent.className}`}
+        style={{ display: isAlertVisible ? 'flex' : 'none' }}>
         <div className="alert-content">
           <Icon
             className="align-middle"
             component={alertComponent.icon}
             style={{ fontSize: '25px' }}
           />
-          <p style={{ color: alertComponent.color }}>{message}</p>
+          <p>{message}</p>
         </div>
         <button className="cross-icon" onClick={handleCrossClick}>
           <Icon
