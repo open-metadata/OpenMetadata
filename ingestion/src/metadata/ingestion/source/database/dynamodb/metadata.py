@@ -84,8 +84,8 @@ class DynamodbSource(CommonNoSQLSource):
         Method to get actual data available within table
         need to be overridden by sources
         """
+        attributes = []
         try:
-            attributes = []
             scan_kwargs = {}
             done = False
             start_key = None
@@ -103,7 +103,7 @@ class DynamodbSource(CommonNoSQLSource):
             logger.warning(
                 f"Failed to read DynamoDB attributes for [{table_name}]: {err}"
             )
-        return []
+        return attributes
 
     def get_source_url(
         self,
