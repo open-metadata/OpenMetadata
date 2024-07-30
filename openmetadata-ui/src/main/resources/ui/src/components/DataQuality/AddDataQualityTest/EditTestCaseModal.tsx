@@ -218,7 +218,7 @@ const EditTestCaseModal: React.FC<EditTestCaseModalProps> = ({
       fetchTestDefinitionById();
 
       const isContainsColumnName = testCase.parameterValues?.find(
-        (value) => value.name === 'columnName'
+        (value) => value.name === 'columnName' || value.name === 'column'
       );
 
       if (isContainsColumnName) {
