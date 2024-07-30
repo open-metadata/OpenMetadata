@@ -130,7 +130,7 @@ const APIEndpointPage = () => {
     try {
       const res = await getApiEndPointByFQN(apiEndpointFqn, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.DOMAIN,
@@ -249,7 +249,7 @@ const APIEndpointPage = () => {
       await updateApiEndPointVote(id, data);
       const details = await getApiEndPointByFQN(apiEndpointFqn, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.VOTES,

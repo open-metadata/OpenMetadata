@@ -20,7 +20,7 @@ import {
 } from '../../../../generated/entity/feed/thread';
 import FeedCardHeaderV2 from './FeedCardHeaderV2';
 
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockReturnValue('entityIcon'),
 }));
 

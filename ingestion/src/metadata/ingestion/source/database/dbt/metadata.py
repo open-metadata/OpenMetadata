@@ -54,6 +54,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
@@ -139,7 +140,7 @@ class DbtSource(DbtServiceSource):
 
     def get_dbt_owner(
         self, manifest_node: Any, catalog_node: Optional[Any]
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Returns dbt owner
         """
@@ -457,7 +458,7 @@ class DbtSource(DbtServiceSource):
                                 upstream=self.parse_upstream_nodes(
                                     manifest_entities, manifest_node
                                 ),
-                                owner=self.get_dbt_owner(
+                                owners=self.get_dbt_owner(
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
                                 ),
@@ -840,7 +841,7 @@ class DbtSource(DbtServiceSource):
                                 manifest_node
                             ),
                             displayName=None,
-                            owner=None,
+                            owners=None,
                         )
                     )
         except Exception as err:  # pylint: disable=broad-except
@@ -876,7 +877,7 @@ class DbtSource(DbtServiceSource):
                             testSuite=test_suite.fullyQualifiedName,
                             parameterValues=create_test_case_parameter_values(dbt_test),
                             displayName=None,
-                            owner=None,
+                            owners=None,
                         )
                     )
         except Exception as err:  # pylint: disable=broad-except

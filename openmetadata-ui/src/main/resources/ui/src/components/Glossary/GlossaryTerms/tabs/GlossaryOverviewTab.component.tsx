@@ -130,7 +130,7 @@ const GlossaryOverviewTab = ({
                         permissions.EditDescription || permissions.EditAll
                       }
                       isEdit={isDescriptionEditable}
-                      owner={selectedData?.owner}
+                      owner={selectedData?.owners}
                       showActions={!selectedData.deleted}
                       onCancel={() => setIsDescriptionEditable(false)}
                       onDescriptionEdit={() => setIsDescriptionEditable(true)}

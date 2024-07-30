@@ -35,6 +35,7 @@ import { DATA_INSIGHT_GRAPH_COLORS } from '../../../../constants/DataInsight.con
 import { DATA_INSIGHT_DOCS } from '../../../../constants/docs.constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Kpi, KpiResult } from '../../../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
 import { useDataInsightProvider } from '../../../../pages/DataInsightPage/DataInsightProvider';
@@ -179,7 +180,9 @@ const KPIWidget = ({
   const fetchKpiList = async () => {
     try {
       setIsKPIListLoading(true);
-      const response = await getListKPIs({ fields: 'dataInsightChart' });
+      const response = await getListKPIs({
+        fields: TabSpecificField.DATA_INSIGHT_CHART,
+      });
       setKpiList(response.data);
     } catch (_err) {
       setKpiList([]);

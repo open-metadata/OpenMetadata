@@ -191,8 +191,8 @@ public class FeedRepository {
     private String getFields() {
       EntityRepository<?> repository = getEntityRepository();
       List<String> fieldList = new ArrayList<>();
-      if (repository.supportsOwner) {
-        fieldList.add("owner");
+      if (repository.supportsOwners) {
+        fieldList.add("owners");
       }
       if (repository.supportsTags) {
         fieldList.add("tags");
@@ -275,15 +275,17 @@ public class FeedRepository {
 
     // Add the owner also as addressedTo as the entity he owns when addressed, the owner is
     // actually being addressed
-    EntityReference entityOwner = threadContext.getAboutEntity().getOwner();
-    if (entityOwner != null) {
-      dao.relationshipDAO()
-          .insert(
-              thread.getId(),
-              entityOwner.getId(),
-              Entity.THREAD,
-              entityOwner.getType(),
-              ADDRESSED_TO.ordinal());
+    List<EntityReference> entityOwners = threadContext.getAboutEntity().getOwners();
+    if (!nullOrEmpty(entityOwners)) {
+      for (EntityReference entityOwner : entityOwners) {
+        dao.relationshipDAO()
+            .insert(
+                thread.getId(),
+                entityOwner.getId(),
+                Entity.THREAD,
+                entityOwner.getType(),
+                ADDRESSED_TO.ordinal());
+      }
     }
 
     // Add mentions to field relationship table
@@ -854,10 +856,10 @@ public class FeedRepository {
     // Allow if user is an assignee of the resolve/close task
     // Allow if user is the owner of the resource for which task is created to resolve/close task
     // Allow if user created the task to close task (and not resolve task)
-    EntityReference owner = Entity.getOwner(aboutRef);
+    List<EntityReference> owners = Entity.getOwners(aboutRef);
     List<EntityReference> assignees = thread.getTask().getAssignees();
-    if (owner != null
-        && (owner.getName().equals(userName)
+    if (!nullOrEmpty(owners)
+        && (owners.stream().anyMatch(owner -> owner.getName().equals(userName))
             || closeTask && thread.getCreatedBy().equals(userName))) {
       return;
     }
@@ -885,7 +887,8 @@ public class FeedRepository {
     List<EntityReference> teams = user.getTeams();
     List<String> teamNames = teams.stream().map(EntityReference::getName).toList();
     if (assignees.stream().anyMatch(assignee -> teamNames.contains(assignee.getName()))
-        || teamNames.contains(owner.getName())) {
+        || teamNames.stream()
+            .anyMatch(team -> owners.stream().anyMatch(owner -> team.equals(owner.getName())))) {
       return;
     }
 

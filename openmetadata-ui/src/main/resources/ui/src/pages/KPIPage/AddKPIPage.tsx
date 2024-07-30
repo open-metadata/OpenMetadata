@@ -38,6 +38,7 @@ import RichTextEditor from '../../components/common/RichTextEditor/RichTextEdito
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import {
   CreateKpiRequest,
   KpiTargetType,
@@ -89,7 +90,7 @@ const AddKPIPage = () => {
   const fetchKpiList = async () => {
     try {
       const response = await getListKPIs({
-        fields: 'dataInsightChart',
+        fields: TabSpecificField.DATA_INSIGHT_CHART,
       });
 
       setKpiList(response.data);

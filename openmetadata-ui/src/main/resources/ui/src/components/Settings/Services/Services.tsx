@@ -345,10 +345,10 @@ const Services = ({ serviceName }: ServicesProps) => {
     },
     {
       title: t('label.owner'),
-      dataIndex: 'owner',
-      key: 'owner',
+      dataIndex: 'owners',
+      key: 'owners',
       width: 200,
-      render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+      render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
     },
   ];
 

@@ -536,31 +536,31 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String team11 = TEAM11.getName();
 
     // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references"
-    // "tags", "reviewers", "owner", "status"
+    // "tags", "reviewers", "owners", "status"
     // Create two records
     List<String> createRecords =
         listOf(
             String.format(
-                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user;%s,%s",
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user:%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user;%s,%s",
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user:%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s;%s,team:%s,%s",
                 user1, user2, team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user;%s,%s",
+                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user:%s,%s",
                 user1, user2, user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user;%s,%s",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user:%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s;%s,team;%s,%s",
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s;%s,team:%s,%s",
                 user1, user2, team11, "Draft"));
 
     // Add new row to existing rows
@@ -691,9 +691,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getTags());
+    assertListNull(entity.getOwners(), entity.getTags());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

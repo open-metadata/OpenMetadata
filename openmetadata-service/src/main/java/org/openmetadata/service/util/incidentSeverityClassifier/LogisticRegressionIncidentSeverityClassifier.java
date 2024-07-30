@@ -1,5 +1,7 @@
 package org.openmetadata.service.util.incidentSeverityClassifier;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.Arrays;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -92,7 +94,7 @@ public class LogisticRegressionIncidentSeverityClassifier
 
   private double[] getVectorX(EntityInterface entity) {
     // get the input vector for the logistic regression model
-    double hasOwner = entity.getOwner() != null ? 1 : 0;
+    double hasOwner = !nullOrEmpty(entity.getOwners()) ? 1 : 0;
     double followers = entity.getFollowers() != null ? entity.getFollowers().size() : 0;
     double votes = entity.getVotes() != null ? entity.getVotes().getUpVotes() : 0;
     double tier = entity.getTags() != null ? getTier(entity.getTags()) : 0;

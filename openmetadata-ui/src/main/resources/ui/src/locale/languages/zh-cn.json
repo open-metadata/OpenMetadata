@@ -1065,6 +1065,7 @@
     "show": "显示",
     "show-deleted": "显示已删除",
     "show-deleted-entity": "显示已删除{{entity}}",
+    "show-less": "Show Less",
     "show-log-plural": "Show Logs",
     "show-more-entity": "显示更多{{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}}高级配置",

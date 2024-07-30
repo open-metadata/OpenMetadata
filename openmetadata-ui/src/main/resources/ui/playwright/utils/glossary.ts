@@ -30,6 +30,7 @@ import {
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
 } from './common';
+import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const descriptionBox =
@@ -69,13 +70,9 @@ export const selectActiveGlossaryTerm = async (
   page: Page,
   glossaryTermName: string
 ) => {
-  const glossaryTermResponse = page.waitForResponse(
-    '/api/v1/glossaryTerms/name/*?fields=relatedTerms%2Creviewers%2Ctags%2Cowner%2Cchildren%2Cvotes%2Cdomain%2Cextension'
-  );
   await page.getByTestId(glossaryTermName).click();
-  await glossaryTermResponse;
 
-  expect(
+  await expect(
     page.locator('[data-testid="entity-header-display-name"]')
   ).toContainText(glossaryTermName);
 };
@@ -92,65 +89,6 @@ export const goToAssetsTab = async (
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
   ).toContainText(count);
-};
-
-export const addMultiOwner = async (data: {
-  page: Page;
-  ownerNames: string | string[];
-  activatorBtnDataTestId: string;
-  endpoint: EntityTypeEndpoint;
-  resultTestId?: string;
-  isSelectableInsideForm?: boolean;
-}) => {
-  const {
-    page,
-    ownerNames,
-    activatorBtnDataTestId,
-    resultTestId = 'owner-link',
-    isSelectableInsideForm = false,
-    endpoint,
-  } = data;
-  const isMultipleOwners = Array.isArray(ownerNames);
-  const owners = isMultipleOwners ? ownerNames : [ownerNames];
-
-  const getUsers = page.waitForResponse('/api/v1/users?*isBot=false*');
-
-  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
-
-  expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
-
-  await page.click('.ant-tabs [id*=tab-users]');
-  await getUsers;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  if (isMultipleOwners) {
-    await page.click('[data-testid="clear-all-button"]');
-  }
-
-  for (const ownerName of owners) {
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user_search_index*'
-    );
-    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
-    await searchOwner;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await page.getByRole('listitem', { name: ownerName }).click();
-  }
-
-  if (isMultipleOwners) {
-    await page.click('[data-testid="selectable-list-update-btn"]');
-  }
-
-  if (!isSelectableInsideForm) {
-    await page.waitForResponse(`/api/v1/${endpoint}/*`);
-  }
-
-  for (const name of owners) {
-    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
-      name
-    );
-  }
 };
 
 export const removeReviewer = async (
@@ -366,25 +304,25 @@ export const verifyGlossaryDetails = async (
     '[data-testid="viewer-container"]'
   );
 
-  expect(viewerContainerText).toContain(glossaryDetails.description);
+  await expect(viewerContainerText).toContain(glossaryDetails.description);
 
   // Owner
-  const ownerText = await page.textContent(
-    `[data-testid="glossary-right-panel-owner-link"] [data-testid="owner-label"]`
-  );
-
-  expect(ownerText).toContain(
-    glossaryDetails.owner ? glossaryDetails.owner.name : 'No Owner'
-  );
+  if (glossaryDetails.owners.length > 0) {
+    for (const owner of glossaryDetails.owners) {
+      await expect(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('owner-label')
+      ).toContainText(owner.name);
+    }
+  }
 
   // Reviewer
   if (glossaryDetails.reviewers.length > 0) {
     for (const reviewer of glossaryDetails.reviewers) {
-      const reviewerName = await page.textContent(
-        `[data-testid="glossary-reviewer-name"]`
-      );
-
-      expect(reviewerName).toContain(reviewer.name);
+      await expect(
+        page.getByTestId('glossary-reviewer').getByTestId('owner-link')
+      ).toContainText(reviewer.name);
     }
   }
 
@@ -394,7 +332,7 @@ export const verifyGlossaryDetails = async (
       `[data-testid="tag-${glossaryDetails.tags[0]}"]`
     );
 
-    expect(tagVisibility).toBe(true);
+    await expect(tagVisibility).toBe(true);
   }
 };
 

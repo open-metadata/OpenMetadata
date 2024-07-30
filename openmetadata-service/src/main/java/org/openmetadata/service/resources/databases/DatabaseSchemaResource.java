@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class DatabaseSchemaResource
     extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
-  static final String FIELDS = "owner,tables,usageSummary,tags,extension,domain,sourceHash";
+  static final String FIELDS = "owners,tables,usageSummary,tags,extension,domain,sourceHash";
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {

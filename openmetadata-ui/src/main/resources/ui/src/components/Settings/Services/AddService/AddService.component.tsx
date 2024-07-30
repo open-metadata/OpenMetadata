@@ -133,10 +133,12 @@ const AddService = ({
       name: serviceConfig.serviceName,
       serviceType: selectServiceType,
       description: serviceConfig.description,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: 'user',
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: 'user',
+        },
+      ],
     };
     const configData = {
       ...data,
