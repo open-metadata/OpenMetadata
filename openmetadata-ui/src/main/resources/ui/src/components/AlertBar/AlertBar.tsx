@@ -32,13 +32,6 @@ const AlertBar = ({
 
   const alertComponent = useMemo(() => {
     switch (type) {
-      case 'general':
-        return {
-          icon: GeneralIcon,
-          className: 'general',
-          crossIcon: CrossIcon,
-        };
-
       case 'info':
         return {
           icon: InfoIcon,
@@ -79,27 +72,25 @@ const AlertBar = ({
   const handleCrossClick = () => setIsAlertVisible(false);
 
   return (
-    <>
-      <div
-        className={`alert-container ${alertComponent.className}`}
-        style={{ display: isAlertVisible ? 'flex' : 'none' }}>
-        <div className="alert-content">
-          <Icon
-            className="align-middle"
-            component={alertComponent.icon}
-            style={{ fontSize: '25px' }}
-          />
-          <p>{message}</p>
-        </div>
-        <button className="cross-icon" onClick={handleCrossClick}>
-          <Icon
-            className="align-middle"
-            component={alertComponent.crossIcon}
-            style={{ fontSize: '14px' }}
-          />
-        </button>
+    <div
+      className={`alert-container ${alertComponent.className}`}
+      style={{ display: isAlertVisible ? 'flex' : 'none' }}>
+      <div className="alert-content">
+        <Icon
+          className="align-middle"
+          component={alertComponent.icon}
+          style={{ fontSize: '25px' }}
+        />
+        <p>{message}</p>
       </div>
-    </>
+      <button className="cross-icon" onClick={handleCrossClick}>
+        <Icon
+          className="align-middle"
+          component={alertComponent.crossIcon}
+          style={{ fontSize: '14px' }}
+        />
+      </button>
+    </div>
   );
 };
 
