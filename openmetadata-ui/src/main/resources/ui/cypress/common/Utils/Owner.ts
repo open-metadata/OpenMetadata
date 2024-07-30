@@ -119,7 +119,6 @@ export const updateOwner = (ownerName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
   cy.get('.ant-tabs [id*=tab-users]').click();
-
   cy.get('[data-testid="loader"]').should('not.exist');
   interceptURL(
     'GET',

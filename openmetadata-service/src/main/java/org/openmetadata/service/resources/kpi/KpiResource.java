@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -36,6 +37,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
 import org.openmetadata.schema.type.EntityHistory;
@@ -439,31 +441,6 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  @PUT
-  @Path("/{name}/kpiResult")
-  @Operation(
-      operationId = "addKpiResult",
-      summary = "Add KPI result data",
-      description = "Add KPI Result data to the KPI.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully updated the KPI. ",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Kpi.class)))
-      })
-  public Response addKpiResult(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
-      @Valid KpiResult kpiResult) {
-    return repository.addKpiResult(uriInfo, name, kpiResult).toResponse();
-  }
-
   @GET
   @Path("/{name}/kpiResult")
   @Operation(
@@ -482,7 +459,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
                     mediaType = "application/json",
                     schema = @Schema(implementation = KpiResource.KpiResultList.class)))
       })
-  public ResultList<KpiResult> listKpiResults(
+  public DataInsightCustomChartResultList listKpiResults(
       @Context SecurityContext securityContext,
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
           @PathParam("name")
@@ -503,7 +480,8 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @Valid
           @QueryParam("orderBy")
           @DefaultValue("DESC")
-          OrderBy orderBy) {
+          OrderBy orderBy)
+      throws IOException {
     return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 
@@ -530,41 +508,15 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
     return repository.getKpiResult(name);
   }
 
-  @DELETE
-  @Path("/{name}/kpiResult/{timestamp}")
-  @Operation(
-      operationId = "deleteKpiResult",
-      summary = "Delete KPI result",
-      description = "Delete KPI result for a KPI.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "Successfully deleted the KpiResult",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Kpi.class)))
-      })
-  public Response deleteKpiResult(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
-          @PathParam("name")
-          String name,
-      @Parameter(description = "Timestamp of the KPI result", schema = @Schema(type = "long"))
-          @PathParam("timestamp")
-          Long timestamp) {
-    return repository.deleteKpiResult(name, timestamp).toResponse();
-  }
-
   private Kpi getKpi(CreateKpiRequest create, String user) {
     return repository
         .copy(new Kpi(), create, user)
         .withStartDate(create.getStartDate())
         .withEndDate(create.getEndDate())
-        .withTargetDefinition(create.getTargetDefinition())
+        .withTargetValue(create.getTargetValue())
         .withDataInsightChart(
-            getEntityReference(Entity.DATA_INSIGHT_CHART, create.getDataInsightChart()))
+            getEntityReference(
+                Entity.DATA_INSIGHT_CUSTOM_CHART, create.getDataInsightChart().value()))
         .withMetricType(create.getMetricType());
   }
 }
