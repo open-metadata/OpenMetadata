@@ -889,6 +889,32 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   deleted: false,
 };
 
+export const MOCK_TABLE_TEST_WITH_COLUMN = {
+  id: 'id',
+  name: 'tableColumnNameToExist',
+  displayName: 'Table Column Name To Exist',
+  fullyQualifiedName: 'tableColumnNameToExist',
+  description:
+    'This test defines the test TableColumnNameToExist. Test the table columns exists in the table.',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'column',
+      displayName: 'Column Name',
+      dataType: 'STRING',
+      description: 'Expected column of the table to exist',
+      required: true,
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1672236872076,
+  updatedBy: 'admin',
+  href: 'href',
+  deleted: false,
+};
+
 export const MOCK_TEST_CASE_RESULT = [
   {
     timestamp: 1683699927,
