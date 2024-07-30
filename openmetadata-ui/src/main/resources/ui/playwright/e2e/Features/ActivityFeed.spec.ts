@@ -17,11 +17,10 @@ import {
   checkDescriptionInEditModal,
   deleteFeedComments,
 } from '../../utils/activityFeed';
+import { performAdminLogin } from '../../utils/admin';
 import {
   createNewPage,
   descriptionBox,
-  performAdminLogin,
-  performUserLogin,
   redirectToHomePage,
   toastNotification,
   visitUserProfilePage,
@@ -33,6 +32,7 @@ import {
   createTagTask,
   TaskDetails,
 } from '../../utils/task';
+import { performUserLogin } from '../../utils/user';
 
 const entity = new TableClass();
 const entity2 = new TableClass();
@@ -435,7 +435,7 @@ test.describe('Activity feed with Data Steward User', () => {
       //   await toastNotification(page1, 'Task closed successfully.');
       await toastNotification(
         page1,
-        'An exception with message [Cannot invoke "org.openmetadata.schema.type.EntityReference.getName()" because "owner" is null] was thrown while processing request.'
+        'An exception with message [Cannot invoke "java.util.List.stream()" because "owners" is null] was thrown while processing request.'
       );
 
       // TODO: Ashish - Enable them once issue is resolved from Backend https://github.com/open-metadata/OpenMetadata/issues/17059

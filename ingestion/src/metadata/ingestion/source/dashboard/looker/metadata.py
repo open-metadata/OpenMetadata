@@ -83,6 +83,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -638,7 +639,7 @@ class LookerSource(DashboardServiceSource):
 
     def get_owner_ref(
         self, dashboard_details: LookerDashboard
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """Get dashboard owner
 
         Store the visited users in the _owners_ref cache, even if we found them
@@ -692,7 +693,7 @@ class LookerSource(DashboardServiceSource):
                 f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}"
             ),
             service=self.context.get().dashboard_service,
-            owner=self.get_owner_ref(dashboard_details=dashboard_details),
+            owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)

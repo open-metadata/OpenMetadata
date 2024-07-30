@@ -46,7 +46,6 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
-import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -55,7 +54,10 @@ import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
+import es.org.elasticsearch.client.indices.GetMappingsRequest;
+import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
+import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
 import es.org.elasticsearch.common.settings.Settings;
 import es.org.elasticsearch.common.unit.Fuzziness;
@@ -129,6 +131,7 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
@@ -136,22 +139,24 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.util.EntityUtils;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -162,6 +167,8 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorFactory;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
@@ -202,7 +209,7 @@ public class ElasticSearchClient implements SearchClient {
   private final RestHighLevelClient client;
 
   private final boolean isClientAvailable;
-  private static final NamedXContentRegistry xContentRegistry;
+  public static final NamedXContentRegistry xContentRegistry;
 
   private final String clusterAlias;
 
@@ -1615,48 +1622,6 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  @Override
-  public boolean isPluginPresent(IndexMappingLanguage searchIndexMappingLanguage) {
-    if (!isClientAvailable) {
-      return false;
-    }
-
-    String pluginName = getPluginName(searchIndexMappingLanguage);
-    if (pluginName == null) {
-      return false;
-    }
-
-    try {
-      // Check if the plugin is installed
-      Request request = new Request("GET", "/_cat/plugins");
-      es.org.elasticsearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-
-      boolean pluginFound =
-          Arrays.stream(responseBody.split("\n")).anyMatch(line -> line.contains(pluginName));
-
-      if (!pluginFound) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.pluginNotPresent(
-                String.valueOf(ElasticSearchConfiguration.SearchType.ELASTICSEARCH), pluginName));
-      }
-
-      return true;
-    } catch (IOException e) {
-      LOG.error("IOException occurred while checking for plugin: {}", e.getMessage());
-      return false;
-    }
-  }
-
-  private String getPluginName(IndexMappingLanguage searchIndexMappingLanguage) {
-    return switch (String.valueOf(searchIndexMappingLanguage).toUpperCase()) {
-      case "ZH" -> "analysis-ik";
-      case "JP" -> "analysis-kuromoji";
-      default -> null;
-    };
-  }
-
   private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
     if (!references.isEmpty()) {
       // Process entities for reindex
@@ -1771,6 +1736,17 @@ public class ElasticSearchClient implements SearchClient {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
+  }
+
+  @SneakyThrows
+  public void deleteByQuery(String index, String query) throws IOException {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser parser = createXContentParser(query);
+    parser.nextToken();
+    deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
+    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
   }
 
   @SneakyThrows
@@ -1997,6 +1973,67 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
+  }
+
+  @Override
+  public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    GetMappingsRequest request =
+        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+
+    // Execute request
+    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+
+    // Get mappings for the index
+    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+      // Get fields for the index
+      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+      List<Map<String, String>> fields = new ArrayList<>();
+      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+      return fields;
+    }
+    return null;
+  }
+
+  void getFieldNames(
+      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
+    for (Map.Entry<String, Object> entry : fields.entrySet()) {
+      String postfix = "";
+      String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
+      if (type != null && type.equals("text")) {
+        postfix = ".keyword";
+      }
+
+      String fieldName = prefix + entry.getKey() + postfix;
+      String fieldNameOriginal = WordUtils.capitalize((prefix + entry.getKey()).replace(".", " "));
+
+      if (entry.getValue() instanceof Map) {
+        Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
+        if (subFields.containsKey("properties")) {
+          getFieldNames(
+              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+        } else {
+          Map<String, String> map = new HashMap<>();
+          map.put("name", fieldName);
+          map.put("displayName", fieldNameOriginal);
+          map.put("type", type);
+          fieldList.add(map);
+        }
+      }
+    }
+  }
+
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end) throws IOException {
+    ElasticSearchDynamicChartAggregatorInterface aggregator =
+        ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
+    if (aggregator != null) {
+      List<FormulaHolder> formulas = new ArrayList<>();
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+    }
+    return null;
   }
 
   private static AggregationBuilder buildQueryAggregation(
@@ -2297,5 +2334,9 @@ public class ElasticSearchClient implements SearchClient {
       LOG.error("Failed to create XContentParser", e);
       throw e;
     }
+  }
+
+  public Object getLowLevelClient() {
+    return client.getLowLevelClient();
   }
 }

@@ -511,7 +511,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
-      Map<String, Integer> dateMap) {
+      Map<String, Integer> dateMap)
+      throws IOException {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;
@@ -530,9 +531,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     String targetKpi = KPI_NOT_SET;
 
     if (isKpiAvailable) {
-      targetKpi =
-          String.format(
-              "%.2f", Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
+      targetKpi = String.format("%.2f", validKpi.getTargetValue() * 100);
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
         isTargetMet = result.getTargetResult().get(0).getTargetMet();

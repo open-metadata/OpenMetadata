@@ -271,7 +271,7 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

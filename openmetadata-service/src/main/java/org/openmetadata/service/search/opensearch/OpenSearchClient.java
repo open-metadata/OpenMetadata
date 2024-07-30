@@ -53,6 +53,7 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
@@ -60,22 +61,24 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.util.EntityUtils;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -104,6 +107,8 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorFactory;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesDescriptionAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesOwnerAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
@@ -130,7 +135,6 @@ import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -138,7 +142,10 @@ import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.CreateIndexResponse;
 import os.org.opensearch.client.indices.GetIndexRequest;
+import os.org.opensearch.client.indices.GetMappingsRequest;
+import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.unit.Fuzziness;
@@ -197,7 +204,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
   private final RestHighLevelClient client;
-  private static final NamedXContentRegistry X_CONTENT_REGISTRY;
+  public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
 
   private final String clusterAlias;
@@ -1598,48 +1605,6 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  @Override
-  public boolean isPluginPresent(IndexMappingLanguage searchIndexMappingLanguage) {
-    if (!isClientAvailable) {
-      return false;
-    }
-
-    String pluginName = getPluginName(searchIndexMappingLanguage);
-    if (pluginName == null) {
-      return false;
-    }
-
-    try {
-      // Check if the plugin is installed
-      Request request = new Request("GET", "/_cat/plugins");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-
-      boolean pluginFound =
-          Arrays.stream(responseBody.split("\n")).anyMatch(line -> line.contains(pluginName));
-
-      if (!pluginFound) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.pluginNotPresent(
-                String.valueOf(ElasticSearchConfiguration.SearchType.OPENSEARCH), pluginName));
-      }
-
-      return true;
-    } catch (IOException e) {
-      LOG.error("IOException occurred while checking for plugin: {}", e.getMessage());
-      return false;
-    }
-  }
-
-  private String getPluginName(IndexMappingLanguage searchIndexMappingLanguage) {
-    return switch (String.valueOf(searchIndexMappingLanguage).toUpperCase()) {
-      case "ZH" -> "analysis-ik";
-      case "JP" -> "analysis-kuromoji";
-      default -> null;
-    };
-  }
-
   private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
     if (!references.isEmpty()) {
       // Process entities for reindex
@@ -1735,6 +1700,17 @@ public class OpenSearchClient implements SearchClient {
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
     }
+  }
+
+  @SneakyThrows
+  public void deleteByQuery(String index, String query) throws IOException {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser parser = createXContentParser(query);
+    parser.nextToken();
+    deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
+    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
   }
 
   @SneakyThrows
@@ -1974,6 +1950,67 @@ public class OpenSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
+  }
+
+  @Override
+  public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    GetMappingsRequest request =
+        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+
+    // Execute request
+    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+
+    // Get mappings for the index
+    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+      // Get fields for the index
+      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+      List<Map<String, String>> fields = new ArrayList<>();
+      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+      return fields;
+    }
+    return null;
+  }
+
+  void getFieldNames(
+      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
+    for (Map.Entry<String, Object> entry : fields.entrySet()) {
+      String postfix = "";
+      String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
+      if (type != null && type.equals("text")) {
+        postfix = ".keyword";
+      }
+
+      String fieldName = prefix + entry.getKey() + postfix;
+      String fieldNameOriginal = WordUtils.capitalize((prefix + entry.getKey()).replace(".", " "));
+
+      if (entry.getValue() instanceof Map) {
+        Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
+        if (subFields.containsKey("properties")) {
+          getFieldNames(
+              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+        } else {
+          Map<String, String> map = new HashMap<>();
+          map.put("name", fieldName);
+          map.put("displayName", fieldNameOriginal);
+          map.put("type", type);
+          fieldList.add(map);
+        }
+      }
+    }
+  }
+
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end) throws IOException {
+    OpenSearchDynamicChartAggregatorInterface aggregator =
+        OpenSearchDynamicChartAggregatorFactory.getAggregator(diChart);
+    if (aggregator != null) {
+      List<FormulaHolder> formulas = new ArrayList<>();
+      os.org.opensearch.action.search.SearchRequest searchRequest =
+          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+    }
+    return null;
   }
 
   private static AggregationBuilder buildQueryAggregation(
@@ -2267,5 +2304,9 @@ public class OpenSearchClient implements SearchClient {
       LOG.error("Failed to create XContentParser", e);
       throw e;
     }
+  }
+
+  public Object getLowLevelClient() {
+    return client.getLowLevelClient();
   }
 }

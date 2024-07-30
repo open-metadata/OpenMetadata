@@ -131,7 +131,7 @@
         "search_analyzer": "ik_smart",
         "index_options": "docs"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

@@ -17,14 +17,6 @@
             "lowercase",
             "om_stemmer"
           ]
-        },
-        "om_ngram": {
-          "tokenizer": "ngram",
-          "min_gram": 2,
-          "max_gram": 3,
-          "filter": [
-            "lowercase"
-          ]
         }
       },
       "filter": {
@@ -49,10 +41,6 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
           }
         }
       },
@@ -71,18 +59,13 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
         "type": "text",
         "analyzer": "ik_max_word",
-        "search_analyzer": "ik_smart",
-        "index_options": "freqs"
+        "search_analyzer": "ik_smart"
       },
       "storedProcedureCode": {
         "properties": {
@@ -274,7 +257,6 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -294,13 +276,25 @@
         }
       },
       "serviceType": {
-        "type": "keyword",
-        "normalizer": "lowercase_normalizer"
+        "type": "keyword"
       },
       "deleted": {
         "type": "text"
       },
-      "owner": {
+      "entityType": {
+        "type": "keyword"
+      },
+      "suggest": {
+        "type": "completion",
+        "contexts": [
+          {
+            "name": "deleted",
+            "type": "category",
+            "path": "deleted"
+          }
+        ]
+      },
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -328,7 +322,6 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -347,27 +340,110 @@
           }
         }
       },
-      "entityType": {
-        "type": "keyword"
-      },
-      "suggest": {
-        "type": "completion",
-        "contexts": [
-          {
-            "name": "deleted",
-            "type": "category",
-            "path": "deleted"
-          }
-        ]
-      },
       "followers": {
         "type": "keyword"
       },
-      "totalVotes": {
-        "type": "long"
-      },
       "votes" : {
-       "type": "object"
+        "properties": {
+          "upVotes": {
+            "type": "long"
+          },
+          "downVotes": {
+            "type": "long"
+          },
+          "upVoters": {
+            "properties": {
+              "id": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
+              }
+            }
+          },
+          "downVoters": {
+            "properties": {
+              "id": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 36
+                  }
+                }
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
+                    "type": "keyword",
+                    "ignore_above": 256
+                  }
+                }
+              },
+              "fullyQualifiedName": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
+              }
+            }
+          }
+        }
       },
       "code": {
         "type": "keyword"
@@ -394,8 +470,7 @@
       "tags": {
         "properties": {
           "tagFQN": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer"
+            "type": "keyword"
           },
           "labelType": {
             "type": "keyword"
@@ -411,14 +486,14 @@
           }
         }
       },
+      "lifeCycle": {
+        "type": "object"
+      },
       "extension": {
         "type": "object"
       },
       "sourceUrl": {
         "type": "keyword"
-      },
-      "lifeCycle": {
-        "type": "object"
       },
       "domain" : {
         "properties": {
@@ -448,7 +523,6 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
-                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

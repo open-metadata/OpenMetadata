@@ -4,6 +4,52 @@
   "title": "DataInsightsAppConfig",
   "description": "No configuration needed to instantiate the Data Insights Pipeline. The logic is handled in the backend.",
   "type": "object",
-  "properties": {},
+  "definitions": {
+    "dataInsightsAppType": {
+      "description": "Application Type",
+      "type": "string",
+      "enum": ["DataInsights"],
+      "default": "DataInsights"
+    },
+    "backfillConfiguration": {
+      "description": "Backfill Configuration",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "title": "Enabled",
+          "description": "Enable Backfill for the configured dates",
+          "type": "boolean"
+        },
+        "startDate": {
+          "title": "Start Date",
+          "description": "Date from which to start the backfill",
+          "type": "string",
+          "format": "date"
+        },
+        "endDate": {
+          "title": "End Date",
+          "description": "Date for which the backfill will end",
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Application Type",
+      "description": "Application Type",
+      "$ref": "#/definitions/dataInsightsAppType",
+      "default": "DataInsights"
+    },
+    "batchSize": {
+      "description": "Maximum number of events processed at a time (Default 100).",
+      "type": "integer",
+      "default": 100
+    },
+    "backfillConfiguration": {
+      "$ref": "#/definitions/backfillConfiguration"
+    }
+  },
   "additionalProperties": false
 }
