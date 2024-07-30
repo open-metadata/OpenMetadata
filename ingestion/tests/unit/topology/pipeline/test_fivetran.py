@@ -69,6 +69,7 @@ EXPECTED_FIVETRAN_DETAILS = FivetranPipelineDetails(
     source=mock_data.get("source"),
     destination=mock_data.get("destination"),
     group=mock_data.get("group"),
+    connector_id=mock_data.get("source").get("id"),
 )
 
 
@@ -79,6 +80,9 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
+            sourceUrl=SourceUrl(
+                "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
+            ),
         )
     ],
     service=FullyQualifiedEntityName("fivetran_source"),
