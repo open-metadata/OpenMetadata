@@ -39,7 +39,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -141,7 +141,7 @@ class MetabaseSource(DashboardServiceSource):
 
     def get_owner_ref(
         self, dashboard_details: MetabaseDashboardDetails
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Get dashboard owner from email
         """
