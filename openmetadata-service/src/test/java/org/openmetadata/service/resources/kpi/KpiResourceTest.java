@@ -14,6 +14,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;

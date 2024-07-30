@@ -28,6 +28,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.workflows.interfaces.Processor;
@@ -138,9 +139,9 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.put("endTimestamp", endTimestamp);
 
     // Enrich with Team
-    Optional<EntityReference> oEntityOwner = Optional.ofNullable(entity.getOwner());
-    if (oEntityOwner.isPresent()) {
-      EntityReference entityOwner = oEntityOwner.get();
+    Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
+    if (oEntityOwners.isPresent() && !oEntityOwners.isEmpty()) {
+      EntityReference entityOwner = oEntityOwners.get().get(0);
       String ownerType = entityOwner.getType();
       if (ownerType.equals(Entity.TEAM)) {
         entityMap.put("team", entityOwner.getName());
