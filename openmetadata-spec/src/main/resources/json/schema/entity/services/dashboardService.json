@@ -178,9 +178,9 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this dashboard service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this dashboard service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

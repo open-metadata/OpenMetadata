@@ -19,9 +19,11 @@ server:
   rootPath: '/api/*'
   applicationConnectors:
     - type: http
+      bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_PORT:-8585}
   adminConnectors:
     - type: http
+      bindHost: ${SERVER_HOST:-0.0.0.0}
       port: ${SERVER_ADMIN_PORT:-8586}
 
 # Above configuration for running http is fine for dev and testing.

@@ -11,92 +11,75 @@
  *  limitations under the License.
  */
 
-import { PipelineState } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { ServicesType } from '../../../../interface/service.interface';
+import { IngestionProps } from '../components/Settings/Services/Ingestion/ingestion.interface';
+import { ServiceCategory } from '../enums/service.enum';
+import { AuthProvider } from '../generated/entity/services/connections/serviceConnection';
+import {
+  IngestionPipeline,
+  PipelineState,
+  PipelineType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { UseAirflowStatusProps } from '../hooks/useAirflowStatus';
+import { ServicesType } from '../interface/service.interface';
 
-export const mockIngestionWorkFlow = {
-  data: {
-    data: [
-      {
-        id: 'c804ec51-8fcf-4040-b830-5d967c4cbf49',
-        name: 'test3_metadata',
-        deployed: true,
-        enabled: true,
-        displayName: 'test3_metadata',
-        pipelineType: 'metadata',
-        owner: {
-          id: 'fd96fdc7-a159-4802-84be-33c68d8b7e07',
-          type: 'user',
-          name: 'anonymous',
-          fullyQualifiedName: 'anonymous',
-          deleted: false,
-          href: 'http://localhost:8585/api/v1/users/fd96fdc7-a159-4802-84be-33c68d8b7e07',
-        },
-        fullyQualifiedName: 'test3.test3_metadata',
-        source: {
-          type: 'bigquery',
-          serviceName: 'test3',
-          serviceConnection: {
-            config: {
-              type: 'BigQuery',
-              scheme: 'bigquery',
-              hostPort: 'bigquery.googleapis.com',
-              tagCategoryName: 'BigqueryPolicyTags',
-              connectionOptions: {},
-              connectionArguments: {},
-              enablePolicyTagImport: true,
-              supportsUsageExtraction: true,
-              supportsMetadataExtraction: true,
-            },
-          },
-          sourceConfig: {
-            config: {
-              includeViews: false,
-              enableDataProfiler: true,
-              generateSampleData: true,
-            },
-          },
-        },
-        openMetadataServerConnection: {
-          hostPort: 'http://localhost:8585/api',
-          authProvider: 'no-auth',
-          apiVersion: 'v1',
-        },
-        airflowConfig: {
-          pausePipeline: false,
-          concurrency: 1,
-          startDate: '2022-04-14',
-          endDate: '2022-04-14',
-          pipelineTimezone: 'UTC',
-          retries: 3,
-          retryDelay: 300,
-          pipelineCatchup: false,
-          scheduleInterval: '5 * * * *',
-          pipelineTimeout: 60,
-          maxActiveRuns: 1,
-          workflowTimeout: 60,
-          workflowDefaultView: 'tree',
-          workflowDefaultViewOrientation: 'LR',
-        },
-        service: {
-          id: 'c68e904a-4262-4b58-84c1-8a986b4aa47d',
-          type: 'databaseService',
-          name: 'test3',
-          fullyQualifiedName: 'test3',
-          description: '',
-          deleted: false,
-          href: 'http://localhost:8585/api/v1/services/databaseServices/c68e904a-4262-4b58-84c1-8a986b4aa47d',
-        },
-        href: 'http://localhost:8585/api/v1/services/ingestionPipelines/c804ec51-8fcf-4040-b830-5d967c4cbf49',
-        version: 0.1,
-        updatedAt: 1649941364738,
-        updatedBy: 'anonymous',
-        deleted: false,
-      },
-    ],
-    paging: {
-      total: 1,
+export const mockIngestionData: IngestionPipeline = {
+  id: 'c804ec51-8fcf-4040-b830-5d967c4cbf49',
+  name: 'test3_metadata',
+  deployed: true,
+  enabled: true,
+  displayName: 'test3_metadata',
+  pipelineType: PipelineType.Metadata,
+  owners: [
+    {
+      id: 'fd96fdc7-a159-4802-84be-33c68d8b7e07',
+      type: 'user',
+      name: 'anonymous',
+      fullyQualifiedName: 'anonymous',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/users/fd96fdc7-a159-4802-84be-33c68d8b7e07',
     },
+  ],
+  fullyQualifiedName: 'test3.test3_metadata',
+  sourceConfig: {
+    config: {},
+  },
+  openMetadataServerConnection: {
+    hostPort: 'http://localhost:8585/api',
+    authProvider: AuthProvider.Openmetadata,
+    apiVersion: 'v1',
+  },
+  airflowConfig: {
+    pausePipeline: false,
+    concurrency: 1,
+    pipelineTimezone: 'UTC',
+    retries: 3,
+    retryDelay: 300,
+    pipelineCatchup: false,
+    scheduleInterval: '5 * * * *',
+    maxActiveRuns: 1,
+    workflowTimeout: 60,
+    workflowDefaultView: 'tree',
+    workflowDefaultViewOrientation: 'LR',
+  },
+  service: {
+    id: 'c68e904a-4262-4b58-84c1-8a986b4aa47d',
+    type: 'databaseService',
+    name: 'test3',
+    fullyQualifiedName: 'test3',
+    description: '',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/services/databaseServices/c68e904a-4262-4b58-84c1-8a986b4aa47d',
+  },
+  href: 'http://localhost:8585/api/v1/services/ingestionPipelines/c804ec51-8fcf-4040-b830-5d967c4cbf49',
+  version: 0.1,
+  updatedAt: 1649941364738,
+  updatedBy: 'anonymous',
+  deleted: false,
+};
+
+export const mockIngestionWorkFlow: { data: { data: IngestionPipeline[] } } = {
+  data: {
+    data: [mockIngestionData],
   },
 };
 
@@ -220,3 +203,42 @@ export const EXECUTION_RUNS = [
     endDate: 1667297373,
   },
 ];
+
+const mockUpdateWorkflows = jest.fn();
+
+const mockPaging = {
+  after: 'after',
+  before: 'before',
+  total: 1,
+};
+
+const mockCurrentHandleIngestionListUpdate = jest.fn();
+const mockCurrentHandleSearchChange = jest.fn();
+const mockCurrentOnPageChange = jest.fn();
+
+export const ingestionProps: IngestionProps = {
+  ingestionPipelineList: mockIngestionWorkFlow.data
+    .data as unknown as IngestionPipeline[],
+  serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
+  serviceDetails: mockService,
+  serviceName: '',
+  onIngestionWorkflowsUpdate: mockUpdateWorkflows,
+  searchText: '',
+  airflowInformation: {
+    isAirflowAvailable: true,
+    isFetchingStatus: false,
+    platform: 'airflow',
+  } as UseAirflowStatusProps,
+  handleIngestionListUpdate: mockCurrentHandleIngestionListUpdate,
+  handleSearchChange: mockCurrentHandleSearchChange,
+  onPageChange: mockCurrentOnPageChange,
+  ingestionPagingInfo: {
+    paging: mockPaging,
+    handlePagingChange: jest.fn(),
+    currentPage: 1,
+    handlePageChange: jest.fn(),
+    pageSize: 10,
+    handlePageSizeChange: jest.fn(),
+    showPagination: true,
+  },
+};

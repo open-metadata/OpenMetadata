@@ -13,7 +13,6 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { CheckOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -35,7 +34,7 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import {
@@ -200,15 +199,17 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string, currentUser: User) => {
-  if (type === 'user') {
-    return id === currentUser.id;
-  } else {
-    return Boolean(
-      currentUser.teams?.length &&
-        currentUser.teams.some((team) => team.id === id)
-    );
-  }
+export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
+  return owners.some((owner) => {
+    if (owner.type === 'user') {
+      return owner.id === currentUser.id;
+    } else {
+      return Boolean(
+        currentUser.teams?.length &&
+          currentUser.teams.some((team) => team.id === owner.id)
+      );
+    }
+  });
 };
 
 export const getCountBadge = (
@@ -671,17 +672,18 @@ export const getEmptyPlaceholder = () => {
 export const getLoadingStatus = (
   current: CurrentState,
   id: string | undefined,
-  displayText: string
+  children: ReactNode
 ) => {
-  return current.id === id ? (
-    current.state === 'success' ? (
-      <CheckOutlined />
-    ) : (
-      <Loader size="small" type="default" />
-    )
-  ) : (
-    displayText
-  );
+  if (current.id === id) {
+    return (
+      <div>
+        {/* Wrapping with div to apply spacing  */}
+        <Loader size="x-small" type="default" />
+      </div>
+    );
+  }
+
+  return children;
 };
 
 export const refreshPage = () => {

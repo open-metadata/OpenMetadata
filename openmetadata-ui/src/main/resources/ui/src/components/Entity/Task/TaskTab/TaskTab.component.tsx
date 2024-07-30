@@ -115,7 +115,7 @@ import { TaskTabProps } from './TaskTab.interface';
 
 export const TaskTab = ({
   taskThread,
-  owner,
+  owners = [],
   entityType,
   hasGlossaryReviewer,
   ...rest
@@ -258,7 +258,7 @@ export const TaskTab = ({
     return null;
   }, [taskThread.about]);
 
-  const isOwner = isEqual(owner?.id, currentUser?.id);
+  const isOwner = owners?.some((owner) => isEqual(owner.id, currentUser?.id));
   const isCreator = isEqual(taskThread.createdBy, currentUser?.name);
 
   const checkIfUserPartOfTeam = useCallback(
@@ -836,7 +836,7 @@ export const TaskTab = ({
                 }}
                 onSave={() => assigneesForm.submit()}>
                 <Assignees
-                  disabled={Boolean(owner)}
+                  disabled={owners.length > 0}
                   options={options}
                   value={updatedAssignees}
                   onChange={(values) =>
@@ -863,7 +863,9 @@ export const TaskTab = ({
               assignees={taskDetails?.assignees ?? []}
               showUserName={false}
             />
-            {(isCreator || hasEditAccess) && !isTaskClosed && !owner ? (
+            {(isCreator || hasEditAccess) &&
+            !isTaskClosed &&
+            owners.length === 0 ? (
               <Button
                 className="flex-center p-0"
                 data-testid="edit-assignees"
@@ -881,8 +883,7 @@ export const TaskTab = ({
           {t('label.created-by')}:{' '}
         </Typography.Text>
         <OwnerLabel
-          pills
-          owner={{ name: taskThread.createdBy, type: 'user', id: '' }}
+          owners={[{ name: taskThread.createdBy, type: 'user', id: '' }]}
         />
       </div>
     </div>

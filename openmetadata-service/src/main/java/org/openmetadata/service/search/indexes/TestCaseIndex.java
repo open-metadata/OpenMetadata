@@ -49,7 +49,7 @@ public record TestCaseIndex(TestCase testCase) implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_CASE);
-    doc.put("owner", getEntityWithDisplayName(testCase.getOwner()));
+    doc.put("owners", getEntitiesWithDisplayName(testCase.getOwners()));
     doc.put("tags", testCase.getTags());
     doc.put("testPlatforms", testDefinition.getTestPlatforms());
     doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());

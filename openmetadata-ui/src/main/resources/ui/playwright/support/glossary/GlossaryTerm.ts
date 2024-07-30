@@ -12,38 +12,12 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
-import { uuid } from '../../utils/common';
-import { visitGlossaryPage } from '../../utils/glossary';
-import { getRandomLastName } from '../../utils/user';
-import { Glossary, UserTeamRef } from './Glossary';
-
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  reviewers: unknown[];
-  relatedTerms: unknown[];
-  synonyms: unknown[];
-  mutuallyExclusive: boolean;
-  tags: unknown[];
-  glossary: Record<string, string>;
-  id: string;
-  fullyQualifiedName: string;
-};
-
-export type GlossaryTermData = {
-  name: string;
-  displayName: string;
-  description: string;
-  mutuallyExclusive: boolean;
-  glossary: string;
-  synonyms: string;
-  icon?: string;
-  color?: string;
-  owner?: UserTeamRef;
-  fullyQualifiedName: string;
-  reviewers: UserTeamRef[];
-};
+import { getRandomLastName, uuid, visitGlossaryPage } from '../../utils/common';
+import { Glossary } from './Glossary';
+import {
+  GlossaryTermData,
+  GlossaryTermResponseDataType,
+} from './Glossary.interface';
 
 export class GlossaryTerm {
   randomName = getRandomLastName();
@@ -58,7 +32,7 @@ export class GlossaryTerm {
     reviewers: [],
   };
 
-  responseData: ResponseDataType;
+  responseData: GlossaryTermResponseDataType;
 
   constructor(glossary: Glossary, name?: string) {
     this.data.glossary = glossary.data.name;

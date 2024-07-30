@@ -77,7 +77,7 @@ import {
 
 export const ActivityFeedTab = ({
   fqn,
-  owner,
+  owners = [],
   columns,
   entityType,
   refetchFeed,
@@ -455,6 +455,7 @@ export const ActivityFeedTab = ({
           feedList={threads}
           isForFeedTab={isForFeedTab}
           isLoading={false}
+          selectedThread={selectedThread}
           showThread={false}
           onFeedClick={handleFeedClick}
         />
@@ -479,6 +480,7 @@ export const ActivityFeedTab = ({
                   hideCloseIcon
                   className="p-x-md"
                   entityLink={selectedThread.about}
+                  feed={selectedThread}
                   threadType={selectedThread?.type ?? ThreadType.Conversation}
                   onCancel={noop}
                 />
@@ -506,7 +508,7 @@ export const ActivityFeedTab = ({
                   columns={columns}
                   entityType={EntityType.TABLE}
                   isForFeedTab={isForFeedTab}
-                  owner={owner}
+                  owners={owners}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}
@@ -516,7 +518,7 @@ export const ActivityFeedTab = ({
                   entityType={isUserEntity ? entityTypeTask : entityType}
                   hasGlossaryReviewer={hasGlossaryReviewer}
                   isForFeedTab={isForFeedTab}
-                  owner={owner}
+                  owners={owners}
                   taskThread={selectedThread}
                   onAfterClose={handleAfterTaskClose}
                   onUpdateEntityDetails={onUpdateEntityDetails}

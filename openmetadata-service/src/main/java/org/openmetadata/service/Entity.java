@@ -98,7 +98,7 @@ public final class Entity {
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
-  public static final String FIELD_OWNER = "owner";
+  public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_FOLLOWERS = "followers";
@@ -348,9 +348,10 @@ public final class Entity {
     return repository.getReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) {
-    EntityRepository<?> repository = getEntityRepository(reference.getType());
-    return repository.getOwner(reference);
+  public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
+    EntityRepository<? extends EntityInterface> repository =
+        getEntityRepository(reference.getType());
+    return repository.getOwners(reference);
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {

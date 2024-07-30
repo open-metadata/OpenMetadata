@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Domain } from '../../../generated/entity/domains/domain';
 
-export interface DomainExpertsProps {
-  entity: Domain | DataProduct;
-  isVersionsView?: boolean;
-  editPermission?: boolean;
+export interface KillIngestionModalProps {
+  pipelineId: string;
+  pipelineName: string;
+  isModalOpen: boolean;
+  onClose: () => void;
+  onIngestionWorkflowsUpdate?: () => void;
 }

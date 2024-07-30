@@ -32,6 +32,7 @@ import {
   INGESTION_PROGRESS_START_VAL,
 } from '../../constants/constants';
 import { INGESTION_ACTION_TYPE } from '../../constants/Ingestions.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { FormSubmitType } from '../../enums/form.enum';
 import { IngestionActionMessage } from '../../enums/ingestion.enum';
 import { ServiceCategory } from '../../enums/service.enum';
@@ -124,7 +125,9 @@ const EditIngestionPage = () => {
 
   const fetchIngestionDetails = () => {
     return new Promise<void>((resolve, reject) => {
-      getIngestionPipelineByFqn(ingestionFQN, { fields: 'pipelineStatuses' })
+      getIngestionPipelineByFqn(ingestionFQN, {
+        fields: TabSpecificField.PIPELINE_STATUSES,
+      })
         .then((res) => {
           if (res) {
             setIngestionData(res);

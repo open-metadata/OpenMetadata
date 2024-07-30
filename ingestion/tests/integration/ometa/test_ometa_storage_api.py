@@ -37,6 +37,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -62,7 +63,7 @@ class OMetaObjectStoreTest(TestCase):
     user = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateStorageServiceRequest(
         name="test-service-object",
@@ -120,7 +121,7 @@ class OMetaObjectStoreTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.service.id, self.entity.service.id)
-        self.assertEqual(res.owner, None)
+        self.assertIsNone(res.owners)
 
     def test_update(self):
         """
@@ -130,7 +131,7 @@ class OMetaObjectStoreTest(TestCase):
         res_create = self.metadata.create_or_update(data=self.create)
 
         updated = self.create.model_dump(exclude_unset=True)
-        updated["owner"] = self.owner
+        updated["owners"] = self.owners
         updated_entity = CreateContainerRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
@@ -138,7 +139,7 @@ class OMetaObjectStoreTest(TestCase):
         # Same ID, updated algorithm
         self.assertEqual(res.service.fullyQualifiedName, updated_entity.service.root)
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owner.id, self.user.id)
+        self.assertEqual(res.owners.root[0].id, self.user.id)
 
     def test_get_name(self):
         """

@@ -14,6 +14,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -111,7 +112,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         .withStartDate(0L)
         .withEndDate(30L)
         .withDataInsightChart(KpiDataInsightChart.PERCENTAGE_OF_DATA_ASSET_WITH_DESCRIPTION_KPI)
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withMetricType(KpiTargetType.PERCENTAGE)
         .withTargetValue(Double.valueOf(KPI_TARGET.getValue()));
   }
@@ -145,13 +146,13 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getDataInsightChart());
-    fields = "owner,dataInsightChart"; // Not testing for kpiResult field
+    assertListNull(entity.getOwners(), entity.getDataInsightChart());
+    fields = "owners,dataInsightChart"; // Not testing for kpiResult field
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getDataInsightChart());
+    assertListNotNull(entity.getOwners(), entity.getDataInsightChart());
     return entity;
   }
 

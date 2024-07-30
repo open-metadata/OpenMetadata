@@ -169,7 +169,7 @@ If you'd rather have a Python script taking care of the execution, you can use:
 
 ```python
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 # Specify your YAML configuration
 CONFIG = """
@@ -188,7 +188,7 @@ def run():
     workflow = ProfilerWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 

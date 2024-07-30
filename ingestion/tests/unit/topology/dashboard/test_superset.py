@@ -54,6 +54,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
@@ -90,7 +91,9 @@ EXPECTED_DASH_SERVICE = DashboardService(
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Superset,
 )
-EXPECTED_USER = EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")
+EXPECTED_USER = EntityReferenceList(
+    root=[EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")]
+)
 
 MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
@@ -163,7 +166,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     sourceUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
-    owner=EXPECTED_USER,
+    owners=EXPECTED_USER,
 )
 
 
@@ -177,7 +180,7 @@ EXPECTED_API_DASHBOARD = CreateDashboardRequest(
     charts=[],
     dataModels=None,
     tags=None,
-    owner=None,
+    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
     extension=None,
     domain=None,
@@ -201,7 +204,7 @@ EXPECTED_CHART_2 = CreateChartRequest(
     chartType=ChartType.Other.value,
     sourceUrl=SourceUrl("http://localhost:54510/explore/?slice_id=69"),
     tags=None,
-    owner=None,
+    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
     domain=None,
     dataProducts=None,
@@ -517,7 +520,7 @@ class SupersetUnitTest(TestCase):
         EXPECTED_DASH.sourceUrl = SourceUrl(
             f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
         )
-        EXPECTED_DASH.owner = dashboard.owner
+        EXPECTED_DASH.owners = dashboard.owners
         self.assertEqual(dashboard, EXPECTED_DASH)
 
     def test_yield_dashboard_chart(self):
