@@ -17,6 +17,8 @@ import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
@@ -181,6 +183,9 @@ public interface SearchClient {
       String dataReportIndex)
       throws IOException, ParseException;
 
+  // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
+  public void deleteByQuery(String index, String query) throws IOException;
+
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
@@ -238,4 +243,15 @@ public interface SearchClient {
   static String getAggregationKeyValue(JsonObject aggregationJson) {
     return aggregationJson.getString("key");
   }
+
+  default DataInsightCustomChartResultList buildDIChart(
+      DataInsightCustomChart diChart, long start, long end) throws IOException {
+    return null;
+  }
+
+  default List<Map<String, String>> fetchDIChartFields() throws IOException {
+    return null;
+  }
+
+  Object getLowLevelClient();
 }

@@ -53,6 +53,7 @@ jest.mock(
 );
 const mockComponent = () => <div>dataAssetsComponent</div>;
 jest.mock('./DataInsightClassBase', () => ({
+  getLeftPanel: jest.fn().mockReturnValue(<div>LeftPanel</div>),
   getDataInsightTab: jest.fn().mockReturnValue([
     {
       key: 'data-assets',

@@ -1,9 +1,14 @@
 {
   "name": "DataInsightsApplication",
   "displayName": "Data Insights",
-  "appConfiguration": {},
+  "appConfiguration": {
+    "batchSize": 100,
+    "backfillConfiguration": {
+        "enabled": false
+    }
+  },
   "appSchedule": {
     "scheduleTimeline": "Custom",
-    "cronExpression": "0 0 1/1 * *"
+    "cronExpression": "0 3 * * *"
   }
 }

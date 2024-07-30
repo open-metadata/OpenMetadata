@@ -159,6 +159,7 @@ export enum TabSpecificField {
   START_DATE = 'startDate',
   END_DATE = 'endDate',
   TARGET_DEFINITION = 'targetDefinition',
+  TARGET_VALUE = 'targetValue',
   METRIC_TYPE = 'metricType',
   CUSTOM_PROPERTIES = 'customProperties',
   LOCATION = 'location',

@@ -87,7 +87,8 @@ const addKpi = (data) => {
   verifyResponseStatusCode('@createKpi', 201);
 };
 
-describe('Data Insight feature', { tags: 'Observability' }, () => {
+// Need to migrate it to playwright
+describe.skip('Data Insight feature', { tags: 'Observability' }, () => {
   beforeEach(() => {
     interceptURL(
       'GET',

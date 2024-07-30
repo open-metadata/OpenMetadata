@@ -12,6 +12,7 @@
  */
 
 import { FormItemProps, FormRule } from 'antd';
+import { NamePath } from 'antd/lib/form/interface';
 import { ReactNode } from 'react';
 import { FormValidationRulesType } from '../enums/form.enum';
 
@@ -49,7 +50,7 @@ export enum HelperTextType {
 
 export interface FieldProp {
   label: ReactNode;
-  name: string;
+  name: NamePath;
   type: FieldTypes;
   required: boolean;
   id: string;

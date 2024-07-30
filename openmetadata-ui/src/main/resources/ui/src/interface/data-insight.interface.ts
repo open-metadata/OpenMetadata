@@ -41,12 +41,12 @@ export interface ChartFilter {
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   isPercentage?: boolean;
   isTier?: boolean;
-  kpiTooltipRecord?: Record<string, KpiTargetType>;
-  valueFormatter?: (value: number | string) => string;
+  valueFormatter?: (value: number | string, key?: string) => string;
+  timeStampKey?: string;
 }
 
 export interface UIKpiResult extends KpiResult {
-  target: string | undefined;
+  target: number;
   metricType: KpiTargetType;
   startDate: number;
   endDate: number;

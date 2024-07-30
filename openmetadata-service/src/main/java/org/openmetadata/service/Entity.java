@@ -174,6 +174,7 @@ public final class Entity {
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
+  public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
 
   //

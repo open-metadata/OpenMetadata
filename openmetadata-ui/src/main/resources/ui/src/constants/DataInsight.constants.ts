@@ -17,6 +17,7 @@ import { Margin } from 'recharts/types/util/types';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
 import { ChartFilter } from '../interface/data-insight.interface';
+import { SystemChartType } from '../rest/DataInsightAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -62,10 +63,10 @@ export const INITIAL_CHART_FILTER: ChartFilter = {
 };
 
 export const ENTITIES_CHARTS = [
-  DataInsightChartType.TotalEntitiesByType,
-  DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
-  DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
-  DataInsightChartType.TotalEntitiesByTier,
+  SystemChartType.TotalDataAssets,
+  SystemChartType.PercentageOfDataAssetWithDescription,
+  SystemChartType.PercentageOfDataAssetWithOwner,
+  SystemChartType.TotalDataAssetsByTier,
 ];
 
 export const WEB_CHARTS = [
@@ -98,28 +99,32 @@ export const ENTITIES_SUMMARY_LIST = [
       entity: i18n.t('label.data-asset-plural'),
     }),
     latest: 0,
-    id: DataInsightChartType.TotalEntitiesByType,
+    type: SystemChartType.TotalDataAssetsSummaryCard,
+    id: SystemChartType.TotalDataAssets,
   },
   {
     label: i18n.t('label.data-asset-plural-with-field', {
       field: i18n.t('label.description'),
     }),
     latest: 0,
-    id: DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
+    type: SystemChartType.DataAssetsWithDescriptionSummaryCard,
+    id: SystemChartType.PercentageOfDataAssetWithDescription,
   },
   {
     label: i18n.t('label.data-asset-plural-with-field', {
       field: i18n.t('label.owner-plural'),
     }),
     latest: 0,
-    id: DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
+    type: SystemChartType.DataAssetsWithOwnerSummaryCard,
+    id: SystemChartType.PercentageOfDataAssetWithOwner,
   },
   {
     label: i18n.t('label.total-entity', {
       entity: i18n.t('label.data-assets-with-tier-plural'),
     }),
     latest: 0,
-    id: DataInsightChartType.TotalEntitiesByTier,
+    type: SystemChartType.TotalDataAssetsWithTierSummaryCard,
+    id: SystemChartType.TotalDataAssetsByTier,
   },
 ];
 

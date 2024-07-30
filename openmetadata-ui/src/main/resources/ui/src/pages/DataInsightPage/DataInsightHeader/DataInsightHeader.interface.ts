@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { DataInsightChartType } from '../../../generated/dataInsight/dataInsightChartResult';
+import { SystemChartType } from '../../../rest/DataInsightAPI';
 
 export interface DataInsightHeaderProps {
-  onScrollToChart: (chartType: DataInsightChartType) => void;
+  onScrollToChart: (chartType: SystemChartType | DataInsightChartType) => void;
 }

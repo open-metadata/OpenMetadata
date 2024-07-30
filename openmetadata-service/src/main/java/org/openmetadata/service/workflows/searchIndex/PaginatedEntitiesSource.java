@@ -37,11 +37,13 @@ import org.openmetadata.service.workflows.interfaces.Source;
 
 @Slf4j
 public class PaginatedEntitiesSource implements Source<ResultList<? extends EntityInterface>> {
+  @Getter private String name = "PaginatedEntitiesSource";
   @Getter private final int batchSize;
   @Getter private final String entityType;
   @Getter private final List<String> fields;
   @Getter private final List<String> readerErrors = new ArrayList<>();
   @Getter private final StepStats stats = new StepStats();
+  @Getter private ListFilter filter;
   @Getter private String lastFailedCursor = null;
   @Setter private String cursor = RestUtil.encodeCursor("0");
   @Getter private boolean isDone = false;
@@ -50,10 +52,28 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     this.entityType = entityType;
     this.batchSize = batchSize;
     this.fields = fields;
+    this.filter = new ListFilter(Include.ALL);
     this.stats
         .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listTotalCount())
         .withSuccessRecords(0)
         .withFailedRecords(0);
+  }
+
+  public PaginatedEntitiesSource(
+      String entityType, int batchSize, List<String> fields, ListFilter filter) {
+    this.entityType = entityType;
+    this.batchSize = batchSize;
+    this.fields = fields;
+    this.filter = filter;
+    this.stats
+        .withTotalRecords(Entity.getEntityRepository(entityType).getDao().listCount(filter))
+        .withSuccessRecords(0)
+        .withFailedRecords(0);
+  }
+
+  public PaginatedEntitiesSource withName(String name) {
+    this.name = name;
+    return this;
   }
 
   @Override
@@ -77,11 +97,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
     try {
       result =
           entityRepository.listAfterWithSkipFailure(
-              null,
-              Entity.getFields(entityType, fields),
-              new ListFilter(Include.ALL),
-              batchSize,
-              cursor);
+              null, Entity.getFields(entityType, fields), filter, batchSize, cursor);
       if (!result.getErrors().isEmpty()) {
         lastFailedCursor = this.cursor;
         if (result.getPaging().getAfter() == null) {

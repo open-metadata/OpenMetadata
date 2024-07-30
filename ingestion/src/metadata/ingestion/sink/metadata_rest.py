@@ -21,7 +21,6 @@ from pydantic import BaseModel
 from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
-from metadata.data_insight.source.metadata import DataInsightRecord
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
 from metadata.generated.schema.analytics.reportData import ReportData
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -487,14 +486,6 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             record.record,
         )
         return Either(right=record.record)
-
-    @_run_dispatch.register
-    def write_data_insight(self, record: DataInsightRecord) -> Either[ReportData]:
-        """
-        Use the /dataQuality/testCases endpoint to ingest sample test suite
-        """
-        self.metadata.add_data_insight_report_data(record.data)
-        return Either(left=None, right=record.data)
 
     @_run_dispatch.register
     def write_data_insight_kpi(self, record: KpiResult) -> Either[KpiResult]:

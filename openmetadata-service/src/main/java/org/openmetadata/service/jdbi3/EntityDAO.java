@@ -405,7 +405,7 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumnName,
       @Bind("limit") int limit);
 
-  @SqlQuery("SELECT json FROM <table> <cond> AND ORDER BY name LIMIT :limit OFFSET :offset")
+  @SqlQuery("SELECT json FROM <table> <cond> ORDER BY name LIMIT :limit OFFSET :offset")
   List<String> listAfter(
       @Define("table") String table,
       @BindMap Map<String, ?> params,

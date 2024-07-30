@@ -35,10 +35,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { deleteEntity } from '../../../rest/miscAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
-import {
-  getDeleteMessage,
-  prepareEntityType,
-} from '../../../utils/DeleteWidgetModalUtils';
+import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './delete-widget-modal.style.less';
 import {
@@ -82,7 +79,7 @@ const DeleteWidgetModal = ({
     () => [
       {
         title: `${t('label.delete')} ${entityType} "${entityName}"`,
-        description: `${getDeleteMessage(
+        description: `${deleteWidgetClassBase.getDeleteMessage(
           entityName,
           entityType,
           true
@@ -94,7 +91,8 @@ const DeleteWidgetModal = ({
         title: `${t('label.permanently-delete')} ${entityType} "${entityName}"`,
         description: (
           <>
-            {deleteMessage ?? getDeleteMessage(entityName, entityType)}
+            {deleteMessage ??
+              deleteWidgetClassBase.getDeleteMessage(entityName, entityType)}
             {hardDeleteMessagePostFix}
           </>
         ),
@@ -138,7 +136,9 @@ const DeleteWidgetModal = ({
       try {
         setIsLoading(true);
         const response = await deleteEntity(
-          prepareType ? prepareEntityType(entityType) : entityType,
+          prepareType
+            ? deleteWidgetClassBase.prepareEntityType(entityType)
+            : entityType,
           entityId ?? '',
           Boolean(isRecursiveDelete),
           deleteType === DeleteType.HARD_DELETE

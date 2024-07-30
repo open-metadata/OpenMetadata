@@ -9,6 +9,8 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.QueryStatus;
@@ -21,6 +23,7 @@ public class MigrationProcessImpl implements MigrationProcess {
   protected MigrationDAO migrationDAO;
   protected CollectionDAO collectionDAO;
   protected Handle handle;
+  protected PipelineServiceClientInterface pipelineServiceClient;
   private final MigrationFile migrationFile;
 
   public @Getter MigrationContext context;
@@ -34,6 +37,9 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.handle = handle;
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
+    this.pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            this.migrationFile.pipelineServiceClientConfiguration);
   }
 
   @Override

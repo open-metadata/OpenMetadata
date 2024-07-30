@@ -57,7 +57,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
+public class DatabaseSchemaResourceTest
+    extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
   public DatabaseSchemaResourceTest() {
     super(
         Entity.DATABASE_SCHEMA,

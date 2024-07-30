@@ -442,6 +442,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
+            conf.getPipelineServiceClientConfiguration(),
             false);
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();
