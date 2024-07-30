@@ -16,6 +16,7 @@ package org.openmetadata.service.clients.pipeline;
 import java.lang.reflect.InvocationTargetException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
@@ -30,7 +31,7 @@ public final class PipelineServiceClientFactory {
 
   public static PipelineServiceClientInterface createPipelineServiceClient(
       PipelineServiceClientConfiguration config) {
-    if (pipelineServiceClient != null) {
+    if (pipelineServiceClient != null || CommonUtil.nullOrEmpty(config)) {
       return pipelineServiceClient;
     }
 

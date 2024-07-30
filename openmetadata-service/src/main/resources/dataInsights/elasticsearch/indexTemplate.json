@@ -1,0 +1,11 @@
+{
+  "index_patterns": [
+    "di-data-assets"
+  ],
+  "data_stream": {},
+  "composed_of": [
+    "di-data-assets-mapping",
+    "di-data-assets-settings"
+  ],
+  "priority": 500
+}
