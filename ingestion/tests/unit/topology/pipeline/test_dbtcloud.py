@@ -434,7 +434,7 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     startDate=None,
     tasks=None,
     tags=None,
-    owner=None,
+    owners=None,
     service=FullyQualifiedEntityName(root="dbtcloud_pipeline_test"),
     extension=None,
     scheduleInterval="6 */12 * * 0,1,2,3,4,5,6",
@@ -479,7 +479,7 @@ MOCK_PIPELINE = Pipeline(
             startDate="2024-05-27 10:42:20.621788+00:00",
             endDate="2024-05-28 10:42:52.622408+00:00",
             tags=None,
-            owner=None,
+            owners=None,
         ),
         Task(
             name="70403111615088",
@@ -495,11 +495,11 @@ MOCK_PIPELINE = Pipeline(
             startDate="None",
             endDate="None",
             tags=None,
-            owner=None,
+            owners=None,
         ),
     ],
     tags=None,
-    owner=None,
+    owners=None,
     service=EntityReference(
         id="85811038-099a-11ed-861d-0242ac120002", type="pipelineService"
     ),

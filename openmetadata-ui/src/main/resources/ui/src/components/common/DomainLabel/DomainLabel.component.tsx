@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
   getAPIfromSource,
@@ -51,7 +52,7 @@ export const DomainLabel = ({
     async (selectedDomain: EntityReference) => {
       const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
         entityFqn,
-        { fields: 'domain' }
+        { fields: TabSpecificField.DOMAIN }
       );
 
       try {

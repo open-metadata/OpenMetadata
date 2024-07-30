@@ -106,7 +106,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
     charts=[],
     tags=None,
-    owner=None,
+    owners=None,
     service="quicksight_source_test",
     extension=None,
 )
@@ -118,7 +118,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
-        owner=None,
+        owners=None,
         service="quicksight_source_test",
     ),
     CreateChartRequest(
@@ -127,7 +127,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
-        owner=None,
+        owners=None,
         service="quicksight_source_test",
     ),
     CreateChartRequest(
@@ -136,7 +136,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
-        owner=None,
+        owners=None,
         service="quicksight_source_test",
     ),
 ]

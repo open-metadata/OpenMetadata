@@ -434,7 +434,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Method to process the dashboard owners
         """

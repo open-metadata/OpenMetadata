@@ -34,15 +34,17 @@ const mockProps: TableQueryRightPanelProps = {
   onQueryUpdate: mockQueryUpdate,
 };
 
-const mockNewOwner = {
-  id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
-  type: 'user',
-  name: 'new_owner',
-  fullyQualifiedName: 'new_owner',
-  displayName: 'New Owner',
-  deleted: false,
-  href: 'http://localhost:8585/api/v1/users/471353cb-f925-4c4e-be6c-14da2c0b00ce',
-};
+const mockNewOwner = [
+  {
+    id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
+    type: 'user',
+    name: 'new_owner',
+    fullyQualifiedName: 'new_owner',
+    displayName: 'New Owner',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/users/471353cb-f925-4c4e-be6c-14da2c0b00ce',
+  },
+];
 
 const mockNewTag = [
   {
@@ -109,7 +111,7 @@ describe('TableQueryRightPanel component test', () => {
     const owner = await screen.findByTestId('owner-link');
 
     expect(owner).toBeInTheDocument();
-    expect(owner.textContent).toEqual(MOCK_QUERIES[0].owner?.displayName);
+    expect(owner.textContent).toEqual(MOCK_QUERIES[0].owners?.[0].displayName);
     expect(
       await screen.findByText('Description.component')
     ).toBeInTheDocument();
@@ -152,9 +154,9 @@ describe('TableQueryRightPanel component test', () => {
     expect(mockQueryUpdate).toHaveBeenCalledWith(
       {
         ...MOCK_QUERIES[0],
-        owner: mockNewOwner,
+        owners: mockNewOwner,
       },
-      'owner'
+      'owners'
     );
   });
 

@@ -106,7 +106,7 @@ const PipelineDetails = ({
   const userID = currentUser?.id ?? '';
   const {
     deleted,
-    owner,
+    owners,
     description,
     pipelineStatus,
     entityName,
@@ -116,7 +116,7 @@ const PipelineDetails = ({
   } = useMemo(() => {
     return {
       deleted: pipelineDetails.deleted,
-      owner: pipelineDetails.owner,
+      owners: pipelineDetails.owners,
       serviceType: pipelineDetails.serviceType,
       description: pipelineDetails.description,
       version: pipelineDetails.version,
@@ -224,14 +224,14 @@ const PipelineDetails = ({
   };
 
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Pipeline['owner']) => {
+    async (newOwners?: Pipeline['owners']) => {
       const updatedPipelineDetails = {
         ...pipelineDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
       await settingsUpdateHandler(updatedPipelineDetails);
     },
-    [owner]
+    [owners]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -434,8 +434,8 @@ const PipelineDetails = ({
       },
       {
         title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
+        dataIndex: 'owners',
+        key: 'owners',
         width: 120,
         accessor: 'owner',
         filterIcon: (filtered) => (
@@ -446,7 +446,7 @@ const PipelineDetails = ({
             }}
           />
         ),
-        render: (owner) => <OwnerLabel hasPermission={false} owner={owner} />,
+        render: (owner) => <OwnerLabel hasPermission={false} owners={owner} />,
       },
       {
         title: t('label.tag-plural'),
@@ -609,7 +609,7 @@ const PipelineDetails = ({
                             hasEditAccess={editDescriptionPermission}
                             isDescriptionExpanded={isEmpty(tasksInternal)}
                             isEdit={isEdit}
-                            owner={owner}
+                            owner={owners}
                             showActions={!deleted}
                             onCancel={onCancel}
                             onDescriptionEdit={onDescriptionEdit}
@@ -761,7 +761,7 @@ const PipelineDetails = ({
       feedCount.totalCount,
       isEdit,
       deleted,
-      owner,
+      owners,
       entityName,
       pipelineFQN,
       pipelineDetails,

@@ -97,12 +97,12 @@ class RuleEvaluatorTest {
   @Test
   void test_noOwner() {
     // Set no owner to the entity and test noOwner method
-    table.setOwner(null);
+    table.setOwners(null);
     assertTrue(evaluateExpression("noOwner()"));
     assertFalse(evaluateExpression("!noOwner()"));
 
     // Set owner to the entity and test noOwner method
-    table.setOwner(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER));
+    table.setOwners(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     assertFalse(evaluateExpression("noOwner()"));
     assertTrue(evaluateExpression("!noOwner()"));
   }
@@ -110,28 +110,37 @@ class RuleEvaluatorTest {
   @Test
   void test_isOwner() {
     // Table owner is a different user (random ID) and hence isOwner returns false
-    table.setOwner(
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType(Entity.USER)
-            .withName("otherUser"));
+    table.setOwners(
+        List.of(
+            new EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.USER)
+                .withName("otherUser")));
     assertFalse(evaluateExpression("isOwner()"));
     assertTrue(evaluateExpression("!isOwner()"));
 
     // Table owner is same as the user in subjectContext and hence isOwner returns true
-    table.setOwner(
-        new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
+    table.setOwners(
+        List.of(
+            new EntityReference()
+                .withId(user.getId())
+                .withType(Entity.USER)
+                .withName(user.getName())));
     assertTrue(evaluateExpression("isOwner()"));
     assertFalse(evaluateExpression("!isOwner()"));
 
     // noOwner() || isOwner() - with noOwner being true and isOwner false
-    table.setOwner(null);
+    table.setOwners(null);
     assertTrue(evaluateExpression("noOwner() || isOwner()"));
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
 
     // noOwner() || isOwner() - with noOwner is false and isOwner true
-    table.setOwner(
-        new EntityReference().withId(user.getId()).withType(Entity.USER).withName(user.getName()));
+    table.setOwners(
+        List.of(
+            new EntityReference()
+                .withId(user.getId())
+                .withType(Entity.USER)
+                .withName(user.getName())));
     assertTrue(evaluateExpression("noOwner() || isOwner()"));
     assertFalse(evaluateExpression("!noOwner() && !isOwner()"));
   }
@@ -187,7 +196,7 @@ class RuleEvaluatorTest {
     Team team111 = createTeam("team111", "team11");
 
     // Resource belongs to team111 and the Policy executed is coming from team111
-    table.setOwner(team111.getEntityReference());
+    table.setOwners(List.of(team111.getEntityReference()));
     updatePolicyContext("team111");
     for (Team team : listOf(team111)) { // For users in team111 hierarchy matchTeam is true
       user.setTeams(listOf(team.getEntityReference()));

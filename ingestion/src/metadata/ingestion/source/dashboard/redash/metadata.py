@@ -39,7 +39,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
@@ -117,7 +117,7 @@ class RedashSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: dict) -> dict:
         return self.client.get_dashboard(dashboard["slug"])
 
-    def get_owner_ref(self, dashboard_details) -> Optional[EntityReference]:
+    def get_owner_ref(self, dashboard_details) -> Optional[EntityReferenceList]:
         """
         Get owner from email
         """
@@ -182,7 +182,7 @@ class RedashSource(DashboardServiceSource):
                     classification_name=REDASH_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

@@ -1062,6 +1062,7 @@
     "show": "Показать",
     "show-deleted": "Показать удаленные",
     "show-deleted-entity": "Посмотреть удаленные {{entity}}",
+    "show-less": "Show Less",
     "show-log-plural": "Show Logs",
     "show-more-entity": "Показать больше элементов \"{{entity}}\"",
     "show-or-hide-advanced-config": "{{showAdv}} Расширенная конфигурация",

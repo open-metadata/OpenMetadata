@@ -173,7 +173,7 @@ EXPECTED_CREATED_PIPELINES = [
                 href=None,
             )
         ],
-        owner=None,
+        owners=None,
         service="dagster_source_test",
         extension=None,
         sourceUrl=SourceUrl(

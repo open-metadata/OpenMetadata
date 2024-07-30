@@ -43,13 +43,13 @@ public class TestDefinitionResourceTest
     TestDefinitionResourceTest testDefinitionResourceTest = new TestDefinitionResourceTest();
     TEST_DEFINITION1 =
         testDefinitionResourceTest.getEntityByName(
-            "columnValueLengthsToBeBetween", "owner", ADMIN_AUTH_HEADERS);
+            "columnValueLengthsToBeBetween", "owners", ADMIN_AUTH_HEADERS);
     TEST_DEFINITION2 =
         testDefinitionResourceTest.getEntityByName(
-            "columnValuesToBeNotNull", "owner", ADMIN_AUTH_HEADERS);
+            "columnValuesToBeNotNull", "owners", ADMIN_AUTH_HEADERS);
     TEST_DEFINITION3 =
         testDefinitionResourceTest.getEntityByName(
-            "columnValuesMissingCount", "owner", ADMIN_AUTH_HEADERS);
+            "columnValuesMissingCount", "owners", ADMIN_AUTH_HEADERS);
   }
 
   @Test
@@ -159,13 +159,13 @@ public class TestDefinitionResourceTest
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner());
-    fields = "owner";
+    assertListNull(entity.getOwners());
+    fields = "owners";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner());
+    assertListNotNull(entity.getOwners());
     return entity;
   }
 

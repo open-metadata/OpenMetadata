@@ -1,10 +1,10 @@
 package org.openmetadata.service.security.policyevaluator;
 
-import static org.openmetadata.schema.type.Include.NON_DELETED;
-
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
@@ -16,8 +16,10 @@ public record PostResourceContext(String postedBy) implements ResourceContextInt
   }
 
   @Override
-  public EntityReference getOwner() {
-    return Entity.getEntityReferenceByName(Entity.USER, postedBy, NON_DELETED);
+  public List<EntityReference> getOwners() {
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(Entity.getEntityReferenceByName(Entity.USER, postedBy, Include.NON_DELETED));
+    return owners;
   }
 
   @Override

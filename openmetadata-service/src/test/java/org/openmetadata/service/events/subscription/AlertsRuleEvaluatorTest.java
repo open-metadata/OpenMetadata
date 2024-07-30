@@ -61,7 +61,7 @@ class AlertsRuleEvaluatorResourceTest extends OpenMetadataApplicationTest {
         tableResourceTest
             .createRequest(test)
             .withColumns(columns)
-            .withOwner(EntityResourceTest.USER1_REF);
+            .withOwners(List.of(EntityResourceTest.USER1_REF));
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Create a change Event with the Entity Table

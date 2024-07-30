@@ -51,7 +51,7 @@ export const DATA_STEWARD_POLICY = {
         'EditDescription',
         'EditDisplayName',
         'EditLineage',
-        'EditOwner',
+        'EditOwners',
         'EditTags',
         'ViewAll',
       ],

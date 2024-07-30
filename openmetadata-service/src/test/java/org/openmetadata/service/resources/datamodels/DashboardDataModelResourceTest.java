@@ -176,7 +176,7 @@ public class DashboardDataModelResourceTest
     CreateDashboardService createDashboardService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create dashboard data model under it
@@ -197,12 +197,12 @@ public class DashboardDataModelResourceTest
             : getEntity(dashboardDataModel.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(dashboardDataModel.getService(), dashboardDataModel.getServiceType());
     assertListNull(
-        dashboardDataModel.getOwner(),
+        dashboardDataModel.getOwners(),
         dashboardDataModel.getFollowers(),
         dashboardDataModel.getTags());
 
     // .../datamodels?fields=owner
-    fields = "owner,followers,tags";
+    fields = "owners,followers,tags";
     dashboardDataModel =
         byName
             ? getEntityByName(

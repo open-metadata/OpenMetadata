@@ -63,7 +63,7 @@ const TestSummaryCustomTooltip = (
               {t('label.assignee')}
             </span>
             <span className="font-medium cursor-pointer" data-testid={key}>
-              <OwnerLabel owner={value.task.assignees[0]} />
+              <OwnerLabel owners={value.task.assignees} />
             </span>
           </li>
         </Fragment>

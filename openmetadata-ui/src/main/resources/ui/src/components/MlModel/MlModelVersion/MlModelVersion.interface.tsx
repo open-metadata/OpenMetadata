@@ -21,7 +21,7 @@ export interface MlModelVersionProp {
   version: string;
   currentVersionData: Mlmodel;
   isVersionLoading: boolean;
-  owner: Mlmodel['owner'];
+  owners: Mlmodel['owners'];
   domain: Mlmodel['domain'];
   dataProducts: Mlmodel['dataProducts'];
   tier: TagLabel;

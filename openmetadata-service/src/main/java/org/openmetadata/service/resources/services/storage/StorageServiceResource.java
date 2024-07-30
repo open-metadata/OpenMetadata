@@ -64,12 +64,12 @@ import org.openmetadata.service.util.ResultList;
 public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  static final String FIELDS = "pipelines,owner,tags,domain";
+  static final String FIELDS = "pipelines,owners,tags,domain";
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
     super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getOwners());
     return service;
   }
 

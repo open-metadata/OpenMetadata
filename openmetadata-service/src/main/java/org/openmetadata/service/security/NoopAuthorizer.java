@@ -107,7 +107,7 @@ public class NoopAuthorizer implements Authorizer {
   }
 
   @Override
-  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+  public boolean authorizePII(SecurityContext securityContext, List<EntityReference> owners) {
     return true; // Always show PII Sensitive data
   }
 }

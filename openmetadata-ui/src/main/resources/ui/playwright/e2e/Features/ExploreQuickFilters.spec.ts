@@ -77,7 +77,7 @@ test('search dropdown should work properly for quick filters', async ({
 
 test('should search for empty or null filters', async ({ page }) => {
   const items = [
-    { label: 'Owner', key: 'owner.displayName.keyword' },
+    { label: 'Owner', key: 'owners.displayName.keyword' },
     { label: 'Tag', key: 'tags.tagFQN' },
     { label: 'Domain', key: 'domain.displayName.keyword' },
     { label: 'Tier', key: 'tier.tagFQN' },

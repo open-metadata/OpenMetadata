@@ -173,7 +173,7 @@ const DataProductsDetailsPage = ({
     );
 
     const editOwner = checkPermission(
-      Operation.EditOwner,
+      Operation.EditOwners,
       ResourceEntity.DATA_PRODUCT,
       permissions
     );

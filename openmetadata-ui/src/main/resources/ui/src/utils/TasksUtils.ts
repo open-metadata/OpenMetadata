@@ -507,7 +507,7 @@ export const fetchEntityDetail = (
       break;
     case EntityType.TOPIC:
       getTopicByFqn(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res as EntityData);
@@ -602,7 +602,7 @@ export const fetchEntityDetail = (
     case EntityType.GLOSSARY:
       getGlossariesByName(entityFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.TAGS,
           TabSpecificField.REVIEWERS,
         ].join(','),
@@ -616,7 +616,7 @@ export const fetchEntityDetail = (
     case EntityType.GLOSSARY_TERM:
       getGlossaryTermByFQN(entityFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.TAGS,
           TabSpecificField.REVIEWERS,
         ].join(','),
@@ -630,7 +630,7 @@ export const fetchEntityDetail = (
 
     case EntityType.API_COLLECTION: {
       getApiCollectionByFQN(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res as EntityData);
@@ -641,7 +641,7 @@ export const fetchEntityDetail = (
     }
     case EntityType.API_ENDPOINT: {
       getApiEndPointByFQN(entityFQN, {
-        fields: [TabSpecificField.OWNER, TabSpecificField.TAGS].join(','),
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
       })
         .then((res) => {
           setEntityData(res as EntityData);
@@ -880,13 +880,13 @@ export const getTaskMessage = ({
 };
 
 export const getTaskAssignee = (entityData: Glossary): Option[] => {
-  const { owner, reviewers } = entityData;
+  const { owners, reviewers } = entityData;
   let assignee: EntityReference[] = [];
 
   if (!isEmpty(reviewers)) {
     assignee = reviewers as EntityReference[];
-  } else if (owner) {
-    assignee = [owner];
+  } else if (!isEmpty(owners)) {
+    assignee = owners ?? [];
   }
 
   let defaultAssignee: Option[] = [];

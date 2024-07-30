@@ -199,15 +199,17 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string, currentUser: User) => {
-  if (type === 'user') {
-    return id === currentUser.id;
-  } else {
-    return Boolean(
-      currentUser.teams?.length &&
-        currentUser.teams.some((team) => team.id === id)
-    );
-  }
+export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
+  return owners.some((owner) => {
+    if (owner.type === 'user') {
+      return owner.id === currentUser.id;
+    } else {
+      return Boolean(
+        currentUser.teams?.length &&
+          currentUser.teams.some((team) => team.id === owner.id)
+      );
+    }
+  });
 };
 
 export const getCountBadge = (

@@ -204,12 +204,12 @@ const MlModelPage = () => {
     updatedMlModel: Mlmodel
   ): Promise<void> => {
     try {
-      const { displayName, owner, tags, version } =
+      const { displayName, owners, tags, version } =
         await saveUpdatedMlModelData(updatedMlModel);
       setMlModelDetail((preVDetail) => ({
         ...preVDetail,
         displayName,
-        owner,
+        owners,
         tags,
         version,
       }));

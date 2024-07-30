@@ -77,7 +77,7 @@ import org.openmetadata.service.util.ResultList;
 public class APIServiceResource
     extends ServiceEntityResource<APIService, APIServiceRepository, APIServiceConnection> {
   public static final String COLLECTION_PATH = "v1/services/apiServices/";
-  static final String FIELDS = "pipelines,owner,tags,domain";
+  static final String FIELDS = "pipelines,owners,tags,domain";
 
   @Override
   public APIService addHref(UriInfo uriInfo, APIService service) {

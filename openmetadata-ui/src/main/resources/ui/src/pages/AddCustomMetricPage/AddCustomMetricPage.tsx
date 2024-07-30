@@ -27,7 +27,11 @@ import RightPanel from '../../components/DataQuality/AddDataQualityTest/componen
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
 import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
 import { useFqn } from '../../hooks/useFqn';
@@ -137,7 +141,11 @@ const AddCustomMetricPage = () => {
     setIsLoading(true);
     try {
       const table = await getTableDetailsByFQN(fqn, {
-        fields: 'testSuite,customMetrics,columns',
+        fields: [
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.CUSTOM_METRICS,
+          TabSpecificField.COLUMNS,
+        ],
       });
       setTable(table);
     } catch (error) {

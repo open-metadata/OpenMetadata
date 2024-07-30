@@ -54,9 +54,10 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this dashboard",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this dashboard",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "service": {
       "description": "Link to the dashboard service fully qualified name where this dashboard is hosted in",

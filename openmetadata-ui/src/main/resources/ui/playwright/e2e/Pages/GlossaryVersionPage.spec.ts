@@ -20,8 +20,8 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
-import { addOwner } from '../../utils/entity';
-import { addMultiOwner, setupGlossaryAndTerms } from '../../utils/glossary';
+import { addMultiOwner } from '../../utils/entity';
+import { setupGlossaryAndTerms } from '../../utils/glossary';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -75,13 +75,14 @@ test('Glossary', async ({ page }) => {
 
     await expect(page.getByTestId('version-button')).toHaveText(/0.2/);
 
-    await addOwner(
+    await addMultiOwner({
       page,
-      user.getUserName(),
-      'Users',
-      EntityTypeEndpoint.Glossary,
-      'glossary-right-panel-owner-link'
-    );
+      ownerNames: [user.getUserName()],
+      activatorBtnDataTestId: 'edit-owner',
+      resultTestId: 'glossary-right-panel-owner-link',
+      endpoint: EntityTypeEndpoint.Glossary,
+      isSelectableInsideForm: true,
+    });
 
     await page.reload();
     const versionPageResponse = page.waitForResponse(
@@ -169,13 +170,15 @@ test('GlossaryTerm', async ({ page }) => {
 
     await expect(page.getByTestId('version-button')).toHaveText(/0.2/);
 
-    await addOwner(
+    await addMultiOwner({
       page,
-      user.getUserName(),
-      'Users',
-      EntityTypeEndpoint.GlossaryTerm,
-      'glossary-right-panel-owner-link'
-    );
+      ownerNames: [user.getUserName()],
+      activatorBtnDataTestId: 'edit-owner',
+      resultTestId: 'glossary-right-panel-owner-link',
+      endpoint: EntityTypeEndpoint.Glossary,
+      isSelectableInsideForm: true,
+    });
+
     await page.reload();
     const versionPageResponse = page.waitForResponse(
       `/api/v1/glossaryTerms/${term2.responseData.id}/versions/0.2`

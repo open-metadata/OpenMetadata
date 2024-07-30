@@ -56,13 +56,15 @@ export const mockDashboardData: Dashboard = {
       deleted: false,
     },
   ],
-  owner: {
-    id: '067319fd-fa77-4b55-b481-f438489b0931',
-    type: 'user',
-    name: 'aaron_johnson0',
-    displayName: 'Aaron Johnson',
-    deleted: false,
-  },
+  owners: [
+    {
+      id: '067319fd-fa77-4b55-b481-f438489b0931',
+      type: 'user',
+      name: 'aaron_johnson0',
+      displayName: 'Aaron Johnson',
+      deleted: false,
+    },
+  ],
   tags: [],
   service: {
     id: 'b1e14bf6-9078-40d7-abf5-21a5fcb056bd',
@@ -106,7 +108,7 @@ export const dashboardVersionProps: DashboardVersionProp = {
   version: '0.3',
   currentVersionData: mockDashboardData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,
@@ -155,10 +157,12 @@ export const mockTagChangeVersion = {
       deleted: false,
     },
   ],
-  owner: {
-    id: '067319fd-fa77-4b55-b481-f438489b0931',
-    type: 'user',
-  },
+  owners: [
+    {
+      id: '067319fd-fa77-4b55-b481-f438489b0931',
+      type: 'user',
+    },
+  ],
   tags: [
     {
       tagFQN: 'PersonalData.Personal',
@@ -208,10 +212,12 @@ export const mockNoChartData = {
   updatedBy: 'anonymous',
   sourceUrl:
     'http://localhost:808/superset/dashboard/eta_predictions_performance/',
-  owner: {
-    id: '067319fd-fa77-4b55-b481-f438489b0931',
-    type: 'user',
-  },
+  owners: [
+    {
+      id: '067319fd-fa77-4b55-b481-f438489b0931',
+      type: 'user',
+    },
+  ],
   tags: [
     {
       tagFQN: 'PersonalData.Personal',

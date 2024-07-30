@@ -20,7 +20,7 @@ export interface ContainerVersionProp {
   version: string;
   currentVersionData: Container;
   isVersionLoading: boolean;
-  owner: Container['owner'];
+  owners: Container['owners'];
   domain: Container['domain'];
   dataProducts: Container['dataProducts'];
   tier: TagLabel;

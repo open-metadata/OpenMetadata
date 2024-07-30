@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.formatter.field;
 
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.feed.FeedInfo;
@@ -82,13 +82,13 @@ public class OwnerFormatter extends DefaultFieldFormatter {
     OwnerFeedInfo ownerFeedInfo =
         new OwnerFeedInfo()
             .withPreviousOwner(
-                JsonUtils.readOrConvertValue(fieldChange.getOldValue(), EntityReference.class))
+                JsonUtils.readOrConvertValues(fieldChange.getOldValue(), EntityReference.class))
             .withUpdatedOwner(
-                JsonUtils.readOrConvertValue(fieldChange.getNewValue(), EntityReference.class));
+                JsonUtils.readOrConvertValues(fieldChange.getNewValue(), EntityReference.class));
     FeedInfo feedInfo =
         new FeedInfo()
             .withHeaderMessage(getHeaderForOwnerUpdate(operation.value()))
-            .withFieldName(FIELD_OWNER)
+            .withFieldName(FIELD_OWNERS)
             .withEntitySpecificInfo(ownerFeedInfo);
     populateThreadFeedInfo(thread, threadMessage, Thread.CardStyle.OWNER, operation, feedInfo);
   }

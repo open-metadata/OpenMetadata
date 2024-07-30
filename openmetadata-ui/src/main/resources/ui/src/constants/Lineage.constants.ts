@@ -86,7 +86,7 @@ export const ELEMENT_DELETE_STATE = {
 
 export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   EntityFields.DOMAIN,
-  EntityFields.OWNER,
+  EntityFields.OWNERS,
   EntityFields.TAG,
   EntityFields.COLUMN,
 ];
@@ -119,7 +119,7 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'fullyQualifiedName', title: 'Fully Qualified Name' },
   { field: 'entityType', title: 'Entity Type' },
   { field: 'direction', title: 'Direction' },
-  { field: 'owner', title: 'Owner' },
+  { field: 'owners', title: 'Owner' },
   { field: 'domain', title: 'Domain' },
   { field: 'tags', title: 'Tags' },
   { field: 'tier', title: 'Tier' },

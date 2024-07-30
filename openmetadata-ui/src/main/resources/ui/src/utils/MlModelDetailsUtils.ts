@@ -14,4 +14,4 @@
 import { TabSpecificField } from '../enums/entity.enum';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.DOMAIN},${TabSpecificField.OWNER}, ${TabSpecificField.DASHBOARD},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.DOMAIN},${TabSpecificField.OWNERS}, ${TabSpecificField.DASHBOARD},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;

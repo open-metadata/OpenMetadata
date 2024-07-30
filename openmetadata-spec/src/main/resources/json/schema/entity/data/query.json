@@ -47,9 +47,9 @@
       "description": "Change that lead to this version of the entity.",
       "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
     },
-    "owner": {
-      "description": "Owner of this Query.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Query.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "duration": {

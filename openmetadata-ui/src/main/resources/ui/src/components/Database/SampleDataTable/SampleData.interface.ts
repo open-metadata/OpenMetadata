@@ -12,6 +12,7 @@
  */
 import { ColumnsType } from 'antd/lib/table';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityReference } from '../../../generated/tests/testCase';
 
 export type SampleDataType =
   | string
@@ -30,6 +31,6 @@ export interface SampleData {
 export interface SampleDataProps {
   isTableDeleted?: boolean;
   tableId: string;
-  ownerId: string;
+  owners: EntityReference[];
   permissions: OperationPermission;
 }

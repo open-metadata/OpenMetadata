@@ -16,7 +16,7 @@ import { Table } from '../../../generated/entity/data/table';
 
 export interface DescriptionProps {
   entityName?: string;
-  owner?: Table['owner'];
+  owner?: Table['owners'];
   hasEditAccess?: boolean;
   removeBlur?: boolean;
   description?: string;

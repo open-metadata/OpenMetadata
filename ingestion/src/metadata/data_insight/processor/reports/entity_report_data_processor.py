@@ -81,7 +81,9 @@ class EntityReportDataProcessor(DataProcessor):
     def name(self) -> str:
         return "Entity Report Processor"
 
-    def _get_team(self, owner: EntityReference) -> Optional[str]:
+    def _get_team(  # pylint: disable=too-many-return-statements
+        self, owner: EntityReference
+    ) -> Optional[str]:
         """Get the team from an entity. We'll use this info as well to
         add info if an entity has an owner
 
@@ -91,10 +93,12 @@ class EntityReportDataProcessor(DataProcessor):
         Returns:
             Optional[str]
         """
-        if not owner:
+        if not owner or not owner.root:
             return None
 
         if isinstance(owner, EntityReferenceList):
+            if not owner.root:
+                return None
             return owner.root[0].name
 
         if owner.type == "team":
@@ -188,7 +192,7 @@ class EntityReportDataProcessor(DataProcessor):
         data_blob_for_entity = {}
         try:
             team = (
-                self._get_team(entity.owner)
+                self._get_team(entity.owners)
                 if not isinstance(entity, User)
                 else self._get_team(entity.teams)  # type: ignore
             )

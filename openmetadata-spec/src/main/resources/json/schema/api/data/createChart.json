@@ -34,9 +34,10 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this chart",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this chart",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "service": {
       "description": "Link to the chart service where this chart is hosted in",

@@ -48,8 +48,13 @@ public class JsonPatchUtils {
   public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
     // JsonPatch operation example - {"op":"add","path":"/defaultRoles/0","value"..."}
     Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
-    String path = jsonPatchMap.get("path").toString(); // Get "path" node - "/defaultRoles/0"
+    String path =
+        getPath(jsonPatchMap.get("path").toString()); // Get "path" node - "/defaultRoles/0"
     return getMetadataOperation(path);
+  }
+
+  public static String getPath(String path) {
+    return Arrays.stream(path.split("/")).filter(part -> !part.isEmpty()).findFirst().orElse(path);
   }
 
   public static MetadataOperation getMetadataOperation(String path) {

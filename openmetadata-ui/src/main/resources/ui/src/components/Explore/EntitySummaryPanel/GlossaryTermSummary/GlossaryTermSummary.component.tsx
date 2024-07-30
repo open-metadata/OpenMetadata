@@ -15,6 +15,7 @@ import { Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
@@ -58,7 +59,15 @@ function GlossaryTermSummary({
     try {
       const response = await getGlossaryTermByFQN(
         entityDetails.fullyQualifiedName,
-        { fields: 'relatedTerms,reviewers,tags,owner,children' }
+        {
+          fields: [
+            TabSpecificField.RELATED_TERMS,
+            TabSpecificField.OWNERS,
+            TabSpecificField.REVIEWERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.CHILDREN,
+          ],
+        }
       );
       setSelectedData(response);
     } catch (error) {
@@ -84,13 +93,7 @@ function GlossaryTermSummary({
           <Col span={24}>
             {reviewers.length > 0 ? (
               <Space wrap size={[8, 8]}>
-                {reviewers.map((assignee) => (
-                  <OwnerLabel
-                    pills
-                    key={assignee.fullyQualifiedName}
-                    owner={assignee}
-                  />
-                ))}
+                <OwnerLabel owners={reviewers} />
               </Space>
             ) : (
               <Typography.Text

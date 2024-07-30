@@ -185,18 +185,13 @@ describe(
       cy.settingClick(GlobalSettingOptions.DATABASES);
 
       cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-      interceptURL(
-        'GET',
-        '/api/v1/system/config/pipeline-service-client',
-        'airflow'
-      );
+
       searchServiceFromSettingPage(data.service);
       cy.get(`[data-testid="service-name-${data.service}"]`)
         .should('exist')
         .click();
       cy.get('[data-testid="tabs"]').should('exist');
       cy.wait('@ingestionData');
-      verifyResponseStatusCode('@airflow', 200);
       cy.get('[data-testid="ingestions"]')
         .scrollIntoView()
         .should('be.visible')

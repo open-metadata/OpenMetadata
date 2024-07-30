@@ -78,7 +78,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
   public static final String NON_EXECUTABLE_TEST_SUITE_DELETION_ERROR =
       "Cannot delete executable test suite. To delete executable test suite, use DELETE /v1/dataQuality/testSuites/executable/<...>";
 
-  static final String FIELDS = "owner,tests,summary";
+  static final String FIELDS = "owners,tests,summary";
   static final String SEARCH_FIELDS_EXCLUDE = "table,database,databaseSchema,service";
 
   public TestSuiteResource(Authorizer authorizer, Limits limits) {
@@ -291,7 +291,7 @@ public class TestSuiteResource extends EntityResource<TestSuite, TestSuiteReposi
         // If the owner is not a user, then we'll try to geta team
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
       }
-      searchListFilter.addQueryParam("owner", entity.getId().toString());
+      searchListFilter.addQueryParam("owners", entity.getId().toString());
     }
 
     EntityUtil.Fields fields = getFields(fieldsParam);

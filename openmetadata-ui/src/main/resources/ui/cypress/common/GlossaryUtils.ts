@@ -361,7 +361,7 @@ const fillGlossaryTermDetails = (
   }
 
   if (term.owner) {
-    addOwnerInGlossary(term.owner, 'add-owner', 'owner-container', true);
+    addOwnerInGlossary([term.owner], 'add-owner', 'owner-container', true);
   }
 };
 

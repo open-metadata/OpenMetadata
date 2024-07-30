@@ -128,7 +128,7 @@
         "analyzer": "om_analyzer",
         "index_options": "docs"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

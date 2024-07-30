@@ -155,11 +155,11 @@ const IncidentManagerDetailPage = () => {
       showErrorToast(error as AxiosError);
     }
   };
-  const handleOwnerChange = async (owner?: EntityReference) => {
+  const handleOwnerChange = async (owners?: EntityReference[]) => {
     if (testCase) {
       const updatedTestCase = {
         ...testCase,
-        owner,
+        owners,
       };
       const jsonPatch = compare(testCase, updatedTestCase);
 

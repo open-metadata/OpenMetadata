@@ -47,6 +47,10 @@ import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.time.LocalDateTime;
@@ -60,7 +64,6 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -165,7 +168,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     BOT_USER = userResourceTest.createUser("bot_user", true);
 
     CreateTable createTable =
-        TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
+        TABLE_RESOURCE_TEST.createRequest(test).withOwners(List.of(TableResourceTest.USER1_REF));
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
@@ -179,7 +182,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
     EntityReference TEAM2_REF = TEAM2.getEntityReference();
 
     CreateTable createTable2 = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable2.withName("table2").withOwner(TEAM2_REF);
+    createTable2.withName("table2").withOwners(List.of(TEAM2_REF));
     TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     COLUMNS =
@@ -585,7 +588,8 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   @Test
   void put_resolveTaskByUser_description_200(TestInfo testInfo) throws IOException {
     TableResourceTest tableResourceTest = new TableResourceTest();
-    CreateTable createTable = tableResourceTest.createRequest(testInfo).withOwner(USER2_REF);
+    CreateTable createTable =
+        tableResourceTest.createRequest(testInfo).withOwners(List.of(USER2_REF));
     Table table = tableResourceTest.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
     // Create a task from User to User2
     String about =
@@ -1161,7 +1165,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         listThreadsWithFilter(user2, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // create another thread on an entity with team2 as owner
-    String team2 = TABLE2.getOwner().getId().toString();
+    String team2 = TABLE2.getOwners().get(0).getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
         create()
@@ -1204,7 +1208,7 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
         listThreadsWithFilter(user1, FilterType.OWNER, USER_AUTH_HEADERS).getPaging().getTotal();
 
     // create another thread on an entity with team2 as owner
-    String team2 = TABLE2.getOwner().getId().toString();
+    String team2 = TABLE2.getOwners().get(0).getId().toString();
     assertNotEquals(user1, team2);
     createAndCheck(
         create()
@@ -1824,10 +1828,16 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public final Thread patchThread(
       UUID id, String originalJson, Thread updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedThreadJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedThreadJson);
-    return TestUtils.patch(
-        getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+    try {
+      String updatedThreadJson = JsonUtils.pojoToJson(updated);
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedThreadJson));
+      return TestUtils.patch(
+          getResource(String.format("feed/%s", id)), patch, Thread.class, authHeaders);
+    } catch (JsonProcessingException e) {
+    }
+    return null;
   }
 
   protected final Post patchPostAndCheck(
@@ -1848,13 +1858,19 @@ public class FeedResourceTest extends OpenMetadataApplicationTest {
   public final Post patchPost(
       UUID threadId, UUID id, String originalJson, Post updated, Map<String, String> authHeaders)
       throws HttpResponseException {
-    String updatedPostJson = JsonUtils.pojoToJson(updated);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedPostJson);
-    return TestUtils.patch(
-        getResource(String.format("feed/%s/posts/%s", threadId, id)),
-        patch,
-        Post.class,
-        authHeaders);
+    try {
+      String updatedPostJson = JsonUtils.pojoToJson(updated);
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode patch =
+          JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedPostJson));
+      return TestUtils.patch(
+          getResource(String.format("feed/%s/posts/%s", threadId, id)),
+          patch,
+          Post.class,
+          authHeaders);
+    } catch (JsonProcessingException ignored) {
+    }
+    return null;
   }
 
   public void compareEntities(Thread expected, Thread patched, Map<String, String> authHeaders) {

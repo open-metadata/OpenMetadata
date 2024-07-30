@@ -131,7 +131,7 @@ class TestSuiteSource(Source):
                 ),
                 displayName=f"{self.source_config.entityFullyQualifiedName.root} Test Suite",
                 description="Test Suite created from YAML processor config file",
-                owner=None,
+                owners=None,
                 executableEntityReference=self.source_config.entityFullyQualifiedName.root,
             )
             yield Either(

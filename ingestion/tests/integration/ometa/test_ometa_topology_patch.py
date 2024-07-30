@@ -43,6 +43,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -125,17 +126,27 @@ class TopologyPatchTest(TestCase):
                 name="topology-patch-user", email="topologypatchuser@user.com"
             ),
         )
-        cls.owner = EntityReference(
-            id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+        cls.owner = EntityReferenceList(
+            root=[
+                EntityReference(
+                    id=user.id,
+                    type="user",
+                    fullyQualifiedName=user.fullyQualifiedName.root,
+                )
+            ]
         )
 
         override_user: User = cls.metadata.create_or_update(
             data=CreateUserRequest(name="override-user", email="overrideuser@user.com"),
         )
-        cls.override_owner = EntityReference(
-            id=override_user.id,
-            type="user",
-            fullyQualifiedName=override_user.fullyQualifiedName.root,
+        cls.override_owner = EntityReferenceList(
+            root=[
+                EntityReference(
+                    id=override_user.id,
+                    type="user",
+                    fullyQualifiedName=override_user.fullyQualifiedName.root,
+                )
+            ]
         )
 
         cls.service_entity = cls.metadata.create_or_update(data=cls.service)
@@ -192,7 +203,7 @@ class TopologyPatchTest(TestCase):
             displayName="TABLE ONE",
             databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=columns,
-            owner=cls.owner,
+            owners=cls.owner,
             description=Markdown("TABLE ONE DESCRIPTION"),
             tags=[PERSONAL_TAG_LABEL],
         )
@@ -210,7 +221,7 @@ class TopologyPatchTest(TestCase):
             displayName="TABLE THREE",
             databaseSchema=cls.create_schema_entity.fullyQualifiedName,
             columns=columns,
-            owner=cls.owner,
+            owners=cls.owner,
             description=Markdown("TABLE THREE DESCRIPTION"),
             tags=[PERSONAL_TAG_LABEL],
         )
@@ -263,7 +274,7 @@ class TopologyPatchTest(TestCase):
         ]
         updated_table = self.table_entity_one.copy(deep=True)
         updated_table.columns = new_columns_list
-        updated_table.owner = self.override_owner
+        updated_table.owners = self.override_owner
         updated_table.description = Markdown("TABLE ONE DESCRIPTION OVERRIDEN")
         updated_table.displayName = "TABLE ONE OVERRIDEN"
         updated_table.tags = [PII_TAG_LABEL]
@@ -279,7 +290,7 @@ class TopologyPatchTest(TestCase):
             entity=Table, entity_id=self.table_entity_one.id.root, fields=["*"]
         )
         # table tests
-        self.assertEqual(table_entity.owner.id, self.owner.id)
+        self.assertEqual(table_entity.owners.root[0].id, self.owner.root[0].id)
         self.assertEqual(table_entity.description.root, "TABLE ONE DESCRIPTION")
         self.assertEqual(table_entity.displayName, "TABLE ONE")
         self.assertEqual(table_entity.tags[0].tagFQN.root, "PersonalData.Personal")
@@ -383,7 +394,7 @@ class TopologyPatchTest(TestCase):
         ]
         updated_table = self.table_entity_three.copy(deep=True)
         updated_table.columns = new_columns_list
-        updated_table.owner = self.override_owner
+        updated_table.owners = self.override_owner
         updated_table.description = Markdown("TABLE THREE DESCRIPTION OVERRIDEN")
         updated_table.displayName = "TABLE THREE OVERRIDEN"
         updated_table.tags = [PII_TAG_LABEL]
@@ -400,7 +411,7 @@ class TopologyPatchTest(TestCase):
             entity=Table, entity_id=self.table_entity_three.id.root, fields=["*"]
         )
         # table tests
-        self.assertEqual(table_entity.owner.id, self.override_owner.id)
+        self.assertEqual(table_entity.owners.root[0].id, self.override_owner.root[0].id)
         self.assertEqual(
             table_entity.description.root, "TABLE THREE DESCRIPTION OVERRIDEN"
         )

@@ -58,7 +58,7 @@ import {
 const SampleDataTable = ({
   isTableDeleted,
   tableId,
-  ownerId,
+  owners,
   permissions,
 }: SampleDataProps) => {
   const { isTourPage } = useTourProvider();
@@ -69,12 +69,16 @@ const SampleDataTable = ({
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
   const [showActions, setShowActions] = useState(false);
 
+  const isCurrentUserTableOwner = useMemo(() => {
+    return owners?.some((owner) => owner.id === currentUser?.id);
+  }, [owners, currentUser]);
+
   const hasPermission = useMemo(
     () =>
       permissions.EditAll ||
       permissions.EditSampleData ||
-      currentUser?.id === ownerId,
-    [ownerId, permissions, currentUser]
+      isCurrentUserTableOwner,
+    [isCurrentUserTableOwner, permissions]
   );
 
   const handleDeleteModal = useCallback(

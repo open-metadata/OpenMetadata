@@ -118,7 +118,7 @@ EXPECTED_DASHBOARD = [
         sourceUrl="http://tableauHost.com/#/site/hidarsite/workbooks/897790/views",
         charts=[],
         tags=[],
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("tableau_source_test"),
         extension=None,
     )
@@ -132,7 +132,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/Obesity",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("tableau_source_test"),
     ),
     CreateChartRequest(
@@ -142,7 +142,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/College",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("tableau_source_test"),
     ),
     CreateChartRequest(
@@ -152,7 +152,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/GlobalTemperatures",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("tableau_source_test"),
     ),
 ]

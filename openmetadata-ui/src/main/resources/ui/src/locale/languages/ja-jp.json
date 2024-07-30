@@ -1062,6 +1062,7 @@
     "show": "Show",
     "show-deleted": "削除された項目も表示",
     "show-deleted-entity": "Show Deleted {{entity}}",
+    "show-less": "Show Less",
     "show-log-plural": "Show Logs",
     "show-more-entity": "Show More {{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}} 高度な設定",

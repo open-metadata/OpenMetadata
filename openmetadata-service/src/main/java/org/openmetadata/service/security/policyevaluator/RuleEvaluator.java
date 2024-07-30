@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import java.util.Arrays;
@@ -50,7 +51,7 @@ public class RuleEvaluator {
     if (expressionValidation) {
       return false;
     }
-    return resourceContext != null && resourceContext.getOwner() == null;
+    return resourceContext != null && nullOrEmpty(resourceContext.getOwners());
   }
 
   @Function(
@@ -65,7 +66,7 @@ public class RuleEvaluator {
     if (subjectContext == null || resourceContext == null) {
       return false;
     }
-    return subjectContext.isOwner(resourceContext.getOwner());
+    return subjectContext.isOwner(resourceContext.getOwners());
   }
 
   @Function(
@@ -147,13 +148,13 @@ public class RuleEvaluator {
     if (expressionValidation) {
       return false;
     }
-    if (resourceContext == null || resourceContext.getOwner() == null) {
+    if (resourceContext == null || nullOrEmpty(resourceContext.getOwners())) {
       return false; // No ownership information
     }
     if (policyContext == null || !policyContext.getEntityType().equals(Entity.TEAM)) {
       return false; // Policy must be attached to a team for this function to work
     }
-    return subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwner())
+    return subjectContext.isTeamAsset(policyContext.getEntityName(), resourceContext.getOwners())
         && subjectContext.isUserUnderTeam(policyContext.getEntityName());
   }
 

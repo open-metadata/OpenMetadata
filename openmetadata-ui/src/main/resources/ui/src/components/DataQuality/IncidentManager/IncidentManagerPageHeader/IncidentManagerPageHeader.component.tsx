@@ -224,7 +224,7 @@ const IncidentManagerPageHeader = ({
           <span className="text-grey-muted">{`${t('label.assignee')}: `}</span>
 
           <OwnerLabel
-            owner={details?.assignee}
+            owners={details?.assignee ? [details.assignee] : []}
             placeHolder={t('label.no-entity', {
               entity: t('label.assignee'),
             })}
@@ -247,7 +247,7 @@ const IncidentManagerPageHeader = ({
     <Space wrap align="center">
       <OwnerLabel
         hasPermission={hasEditPermission}
-        owner={testCaseData?.owner}
+        owners={testCaseData?.owners}
         onUpdate={onOwnerUpdate}
       />
       {statusDetails}

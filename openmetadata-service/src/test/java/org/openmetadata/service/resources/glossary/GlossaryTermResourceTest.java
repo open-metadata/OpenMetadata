@@ -16,6 +16,7 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static java.util.Collections.emptyList;
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
@@ -113,7 +114,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     // - term1
     //   - term11
     //   - term12
-    Glossary glossary1 = createGlossary("glossãry1", null, null);
+    Glossary glossary1 = createGlossary("glossãry1", null, emptyList());
 
     GlossaryTerm term1 = createTerm(glossary1, null, "term1");
     GlossaryTerm term11 = createTerm(glossary1, term1, "term11");
@@ -178,7 +179,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     //
     // When reviewers are not set for a glossary term, carry it forward from the glossary
     //
-    Glossary glossary = createGlossary(test, listOf(USER1_REF), USER2_REF);
+    Glossary glossary = createGlossary(test, listOf(USER1_REF), List.of(USER2_REF));
 
     // Create term t1 in the glossary without reviewers and owner
     CreateGlossaryTerm create =
@@ -187,7 +188,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("desc");
     GlossaryTerm t1 = assertOwnerInheritance(create, USER2_REF);
-    t1 = getEntity(t1.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
+    t1 = getEntity(t1.getId(), "reviewers,owners", ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t1.getReviewers()); // Reviewers are inherited
 
     // Create term t12 under t1 without reviewers and owner
@@ -197,7 +198,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(glossary.getFullyQualifiedName())
             .withParent(t1.getFullyQualifiedName());
     GlossaryTerm t12 = assertOwnerInheritance(create, USER2_REF);
-    t12 = getEntity(t12.getId(), "reviewers,owner", ADMIN_AUTH_HEADERS);
+    t12 = getEntity(t12.getId(), "reviewers,owners", ADMIN_AUTH_HEADERS);
     assertEntityReferences(glossary.getReviewers(), t12.getReviewers()); // Reviewers are inherited
   }
 
@@ -571,7 +572,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Glossary g has owner dataConsumer
-    Glossary g = createGlossary(getEntityName(test), null, DATA_CONSUMER.getEntityReference());
+    Glossary g =
+        createGlossary(getEntityName(test), null, List.of(DATA_CONSUMER.getEntityReference()));
     // dataConsumer as owner of g can create glossary term t1 under it
     GlossaryTerm t1 =
         createTerm(
@@ -579,11 +581,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             null,
             "t1",
             null,
-            DATA_STEWARD.getEntityReference(),
+            List.of(DATA_STEWARD.getEntityReference()),
             authHeaders(DATA_CONSUMER.getName()));
     // dataSteward who is owner of term t1 can create term t11 under it
     createTerm(
-        g, t1, "t11", null, DATA_STEWARD.getEntityReference(), authHeaders(DATA_STEWARD.getName()));
+        g,
+        t1,
+        "t11",
+        null,
+        List.of(DATA_STEWARD.getEntityReference()),
+        authHeaders(DATA_STEWARD.getName()));
   }
 
   protected Thread assertApprovalTask(GlossaryTerm term, TaskStatus expectedTaskStatus)
@@ -697,7 +704,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
   @Test
   void delete_recursive(TestInfo test) throws IOException {
-    Glossary g1 = createGlossary(test, null, null);
+    Glossary g1 = createGlossary(test, null, emptyList());
 
     // Create glossary term t1 in glossary g1
     GlossaryTerm t1 = createTerm(g1, null, "t1");
@@ -850,7 +857,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   public GlossaryTerm createTerm(
       Glossary glossary, GlossaryTerm parent, String termName, List<EntityReference> reviewers)
       throws IOException {
-    return createTerm(glossary, parent, termName, reviewers, null, ADMIN_AUTH_HEADERS);
+    return createTerm(glossary, parent, termName, reviewers, emptyList(), ADMIN_AUTH_HEADERS);
   }
 
   public GlossaryTerm createTerm(
@@ -858,7 +865,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       GlossaryTerm parent,
       String termName,
       List<EntityReference> reviewers,
-      EntityReference owner,
+      List<EntityReference> owners,
       Map<String, String> createdBy)
       throws IOException {
     CreateGlossaryTerm createGlossaryTerm =
@@ -866,7 +873,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
             .withGlossary(getFqn(glossary))
             .withStyle(new Style().withColor("#FF5733").withIconURL("https://img"))
             .withParent(getFqn(parent))
-            .withOwner(owner)
+            .withOwners(owners)
             .withReviewers(reviewers);
     return createAndCheckEntity(createGlossaryTerm, createdBy);
   }
@@ -957,15 +964,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         term.getChildren(),
         term.getRelatedTerms(),
         term.getReviewers(),
-        term.getOwner(),
+        term.getOwners(),
         term.getTags());
 
-    fields = "children,relatedTerms,reviewers,owner,tags";
+    fields = "children,relatedTerms,reviewers,owners,tags";
     term =
         byName
             ? getEntityByName(term.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(term.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(term.getRelatedTerms(), term.getReviewers(), term.getOwner(), term.getTags());
+    assertListNotNull(
+        term.getRelatedTerms(), term.getReviewers(), term.getOwners(), term.getTags());
     assertListNotEmpty(term.getRelatedTerms(), term.getReviewers());
     // Checks for other owner, tags, and followers is done in the base class
     return term;
@@ -1144,14 +1152,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   public Glossary createGlossary(
-      TestInfo test, List<EntityReference> reviewers, EntityReference owner) throws IOException {
-    return createGlossary(glossaryTest.getEntityName(test), reviewers, owner);
+      TestInfo test, List<EntityReference> reviewers, List<EntityReference> owners)
+      throws IOException {
+    return createGlossary(glossaryTest.getEntityName(test), reviewers, owners);
   }
 
   public Glossary createGlossary(
-      String name, List<EntityReference> reviewers, EntityReference owner) throws IOException {
+      String name, List<EntityReference> reviewers, List<EntityReference> owners)
+      throws IOException {
     CreateGlossary create =
-        glossaryTest.createRequest(name).withReviewers(reviewers).withOwner(owner);
+        glossaryTest.createRequest(name).withReviewers(reviewers).withOwners(owners);
     return glossaryTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
   }
 

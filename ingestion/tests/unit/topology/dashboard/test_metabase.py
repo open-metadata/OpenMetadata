@@ -194,7 +194,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://metabase.com/question/1-chart1",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("mock_metabase"),
     ),
     CreateChartRequest(
@@ -204,7 +204,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://metabase.com/question/2-chart2",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("mock_metabase"),
     ),
     CreateChartRequest(
@@ -214,7 +214,7 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://metabase.com/question/3-chart3",
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("mock_metabase"),
     ),
 ]

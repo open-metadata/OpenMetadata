@@ -32,6 +32,7 @@ import IngestionStepper from '../../components/Settings/Services/Ingestion/Inges
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
 import {
@@ -107,7 +108,7 @@ const AppInstall = () => {
     setIsLoading(true);
     try {
       const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setAppData(data);
 

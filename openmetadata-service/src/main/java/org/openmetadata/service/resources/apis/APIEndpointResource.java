@@ -70,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "apiEndpoints")
 public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpointRepository> {
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
-  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
   public APIEndpoint addHref(UriInfo uriInfo, APIEndpoint apiEndpoint) {

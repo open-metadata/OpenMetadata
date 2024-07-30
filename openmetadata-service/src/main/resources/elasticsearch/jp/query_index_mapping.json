@@ -203,7 +203,7 @@
       "queryDate": {
         "type": "long"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

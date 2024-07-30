@@ -21,9 +21,9 @@
       "description": "Description of the query instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this entity",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this entity",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "tags": {

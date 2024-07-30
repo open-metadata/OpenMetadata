@@ -117,7 +117,7 @@ const StoredProcedurePage = () => {
   const {
     id: storedProcedureId = '',
     followers,
-    owner,
+    owners,
     tags,
     tier,
     version,
@@ -321,17 +321,17 @@ const StoredProcedurePage = () => {
   }, [isFollowing]);
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: StoredProcedure['owner']) => {
+    async (newOwner?: StoredProcedure['owners']) => {
       if (!storedProcedure) {
         return;
       }
       const updatedEntityDetails = {
         ...storedProcedure,
-        owner: newOwner,
+        owners: newOwner,
       };
-      await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
+      await handleStoreProcedureUpdate(updatedEntityDetails, 'owners');
     },
-    [owner, storedProcedure]
+    [owners, storedProcedure]
   );
 
   const handleToggleDelete = (version?: number) => {
@@ -552,7 +552,7 @@ const StoredProcedurePage = () => {
                         hasEditAccess={editDescriptionPermission}
                         isDescriptionExpanded={isEmpty(code)}
                         isEdit={isEdit}
-                        owner={owner}
+                        owner={owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}

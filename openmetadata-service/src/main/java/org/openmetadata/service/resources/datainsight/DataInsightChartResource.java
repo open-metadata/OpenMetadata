@@ -67,7 +67,7 @@ public class DataInsightChartResource
     extends EntityResource<DataInsightChart, DataInsightChartRepository> {
 
   public static final String COLLECTION_PATH = DataInsightChartRepository.COLLECTION_PATH;
-  public static final String FIELDS = "owner";
+  public static final String FIELDS = "owners";
   private final SearchRepository searchRepository;
 
   public DataInsightChartResource(Authorizer authorizer, Limits limits) {

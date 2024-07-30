@@ -41,7 +41,7 @@ export type GlossaryData = {
   tags: string[];
   mutuallyExclusive: boolean;
   terms: GlossaryTerm[];
-  owner: UserTeamRef | undefined;
+  owners: UserTeamRef[];
   fullyQualifiedName: string;
 };
 
@@ -57,7 +57,7 @@ export class Glossary {
     tags: [],
     mutuallyExclusive: false,
     terms: [],
-    owner: undefined,
+    owners: [],
     // eslint-disable-next-line no-useless-escape
     fullyQualifiedName: `\"PW%${this.randomId}.${this.randomName}\"`,
   };
@@ -77,7 +77,7 @@ export class Glossary {
   }
 
   async create(apiContext: APIRequestContext) {
-    const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owner']);
+    const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owners']);
     const response = await apiContext.post('/api/v1/glossaries', {
       data: apiData,
     });

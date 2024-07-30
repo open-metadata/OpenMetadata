@@ -1,6 +1,7 @@
 package org.openmetadata.service.events.subscription;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Function.ParameterType.ALL_INDEX_ELASTIC_SEARCH;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT;
 import static org.openmetadata.schema.type.Function.ParameterType.READ_FROM_PARAM_CONTEXT_PER_ENTITY;
@@ -92,26 +93,28 @@ public class AlertsRuleEvaluator {
     }
 
     EntityInterface entity = getEntity(changeEvent);
-    EntityReference ownerReference = entity.getOwner();
-    if (ownerReference == null) {
+    List<EntityReference> ownerReferences = entity.getOwners();
+    if (nullOrEmpty(ownerReferences)) {
       entity =
           Entity.getEntity(
               changeEvent.getEntityType(), entity.getId(), "owner", Include.NON_DELETED);
-      ownerReference = entity.getOwner();
+      ownerReferences = entity.getOwners();
     }
-    if (ownerReference != null) {
-      if (USER.equals(ownerReference.getType())) {
-        User user = Entity.getEntity(Entity.USER, ownerReference.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (user.getName().equals(name)) {
-            return true;
+    if (!nullOrEmpty(ownerReferences)) {
+      for (EntityReference owner : ownerReferences) {
+        if (USER.equals(owner.getType())) {
+          User user = Entity.getEntity(Entity.USER, owner.getId(), "", Include.NON_DELETED);
+          for (String name : ownerNameList) {
+            if (user.getName().equals(name)) {
+              return true;
+            }
           }
-        }
-      } else if (TEAM.equals(ownerReference.getType())) {
-        Team team = Entity.getEntity(Entity.TEAM, ownerReference.getId(), "", Include.NON_DELETED);
-        for (String name : ownerNameList) {
-          if (team.getName().equals(name)) {
-            return true;
+        } else if (TEAM.equals(owner.getType())) {
+          Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
+          for (String name : ownerNameList) {
+            if (team.getName().equals(name)) {
+              return true;
+            }
           }
         }
       }

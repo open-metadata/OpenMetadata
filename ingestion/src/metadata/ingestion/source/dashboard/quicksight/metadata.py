@@ -164,7 +164,7 @@ class QuicksightSource(DashboardServiceSource):
                 for chart in self.context.get().charts or []
             ],
             service=self.context.get().dashboard_service,
-            owner=self.get_owner_ref(dashboard_details=dashboard_details),
+            owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)

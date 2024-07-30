@@ -192,6 +192,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="owner-select-users-search-bar"]').type(DATA.owner);
     verifyResponseStatusCode('@searchOwner', 200);
     cy.get(`.ant-popover [title="${DATA.owner}"]`).click();
+    cy.get('[data-testid="selectable-list-update-btn"]').click();
     verifyResponseStatusCode('@patchQuery', 200);
     cy.get('[data-testid="owner-link"]').should('contain', DATA.owner);
 

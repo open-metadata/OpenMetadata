@@ -20,6 +20,7 @@ import {
 } from '../../utils/customProperty';
 import { assignDomain, removeDomain, updateDomain } from '../../utils/domain';
 import {
+  addMultiOwner,
   addOwner,
   assignGlossaryTerm,
   assignTag,
@@ -117,13 +118,55 @@ export class EntityClass {
 
   async owner(
     page: Page,
-    owner1: string,
-    owner2: string,
+    owner1: string[],
+    owner2: string[],
     type: 'Teams' | 'Users' = 'Users'
   ) {
-    await addOwner(page, owner1, type, this.endpoint, 'data-assets-header');
-    await updateOwner(page, owner2, type, this.endpoint, 'data-assets-header');
-    await removeOwner(page, this.endpoint, owner2, 'data-assets-header');
+    if (type === 'Teams') {
+      await addOwner(
+        page,
+        owner1[0],
+        type,
+        this.endpoint,
+        'data-assets-header'
+      );
+      await updateOwner(
+        page,
+        owner2[0],
+        type,
+        this.endpoint,
+        'data-assets-header'
+      );
+      await removeOwner(
+        page,
+        this.endpoint,
+        owner2[0],
+        type,
+        'data-assets-header'
+      );
+    } else {
+      await addMultiOwner({
+        page,
+        ownerNames: owner1,
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: this.endpoint,
+      });
+      await addMultiOwner({
+        page,
+        ownerNames: owner2,
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: this.endpoint,
+      });
+      await removeOwner(
+        page,
+        this.endpoint,
+        owner2[0],
+        type,
+        'data-assets-header'
+      );
+    }
   }
 
   async tier(page: Page, tier1: string, tier2: string) {

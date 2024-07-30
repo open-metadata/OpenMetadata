@@ -49,7 +49,7 @@ export enum EntityFields {
   SCHEMA_FIELD = 'messageSchema.schemaFields.name.keyword',
   FEATURE = 'mlFeatures.name',
   FIELD = 'fields.name.keyword',
-  OWNER = 'owner.displayName.keyword',
+  OWNERS = 'owners.displayName.keyword',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
   SERVICE = 'service.displayName.keyword',

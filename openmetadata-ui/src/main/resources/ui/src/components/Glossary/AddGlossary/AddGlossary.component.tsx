@@ -48,10 +48,13 @@ const AddGlossary = ({
   const [form] = useForm();
   const { currentUser } = useApplicationStore();
 
-  const selectedOwner = Form.useWatch<EntityReference | undefined>(
-    'owner',
-    form
-  );
+  const selectedOwners =
+    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
+
+  const ownersList = Array.isArray(selectedOwners)
+    ? selectedOwners
+    : [selectedOwners];
+
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
 
@@ -65,19 +68,25 @@ const AddGlossary = ({
   );
 
   const handleSave: FormProps['onFinish'] = (formData) => {
-    const { name, displayName, description, tags, mutuallyExclusive, owner } =
+    const { name, displayName, description, tags, mutuallyExclusive } =
       formData;
 
-    const selectedOwner = owner ?? {
-      id: currentUser?.id,
-      type: 'user',
-    };
+    const selectedOwners =
+      ownersList.length > 0
+        ? ownersList
+        : [
+            {
+              id: currentUser?.id ?? '',
+              type: 'user',
+            },
+          ];
+
     const data: CreateGlossary = {
       name: name.trim(),
       displayName: displayName?.trim(),
       description: description,
       reviewers: reviewersList.filter(Boolean),
-      owner: selectedOwner,
+      owners: selectedOwners,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
     };
@@ -174,7 +183,7 @@ const AddGlossary = ({
   ];
 
   const ownerField: FieldProp = {
-    name: 'owner',
+    name: 'owners',
     id: 'root/owner',
     required: false,
     label: t('label.owner'),
@@ -189,10 +198,11 @@ const AddGlossary = ({
           type="primary"
         />
       ),
+      multiple: { user: true, team: false },
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
-      valuePropName: 'owner',
+      valuePropName: 'owners',
       trigger: 'onUpdate',
     },
   };
@@ -245,19 +255,17 @@ const AddGlossary = ({
                 {generateFormFields(formFields)}
                 <div className="m-y-xs">
                   {getField(ownerField)}
-                  {selectedOwner && (
-                    <div className="m-y-xs" data-testid="owner-container">
-                      <OwnerLabel pills owner={selectedOwner} />
-                    </div>
+                  {Boolean(ownersList.length) && (
+                    <Space wrap data-testid="owner-container" size={[8, 8]}>
+                      <OwnerLabel owners={ownersList} />
+                    </Space>
                   )}
                 </div>
                 <div className="m-y-xs">
                   {getField(reviewersField)}
                   {Boolean(reviewersList.length) && (
                     <Space wrap data-testid="reviewers-container" size={[8, 8]}>
-                      {reviewersList.map((d) => (
-                        <OwnerLabel pills key={d.id} owner={d} />
-                      ))}
+                      <OwnerLabel owners={reviewersList} />
                     </Space>
                   )}
                 </div>

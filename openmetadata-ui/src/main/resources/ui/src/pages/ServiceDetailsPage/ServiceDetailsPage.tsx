@@ -295,7 +295,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
       try {
         setIsIngestionPipelineLoading(true);
         const response = await getIngestionPipelines({
-          arrQueryFields: ['owner', 'pipelineStatuses'],
+          arrQueryFields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.PIPELINE_STATUSES,
+          ],
           serviceFilter: decodedServiceFQN,
           serviceType: getEntityTypeFromServiceCategory(serviceCategory),
           paging,
@@ -355,7 +358,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDatabases(
         decodedServiceFQN,
-        'owner,tags,usageSummary',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -370,7 +373,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getTopics(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging,
         include
       );
@@ -384,7 +387,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getDashboards(
         decodedServiceFQN,
-        'owner,usageSummary,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.USAGE_SUMMARY}`,
         paging,
         include
       );
@@ -401,7 +404,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsServiceLoading(true);
         const { paging: resPaging } = await getDataModels({
           service: decodedServiceFQN,
-          fields: 'owner,tags,followers',
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.FOLLOWERS,
+          ].join(','),
           include,
           ...params,
         });
@@ -418,7 +425,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getPipelines(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging,
         include
       );
@@ -432,7 +439,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const { data, paging: resPaging } = await getMlModels(
         decodedServiceFQN,
-        'owner,tags',
+        `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging,
         include
       );
@@ -446,7 +453,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getContainers({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
         paging,
         root: true,
         include,
@@ -462,7 +469,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getSearchIndexes({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS].join(','),
         paging,
         root: true,
         include,
@@ -477,7 +484,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       const response = await getApiCollections({
         service: decodedServiceFQN,
-        fields: 'owner,tags',
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS}`,
         paging,
         include,
       });
@@ -563,7 +570,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         serviceCategory,
         decodedServiceFQN,
         {
-          fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${
             isMetadataService ? '' : TabSpecificField.DATA_PRODUCTS
           },${isMetadataService ? '' : 'domain'}`,
           include: Include.All,
@@ -638,10 +645,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const handleUpdateOwner = useCallback(
-    async (owner: ServicesType['owner']) => {
+    async (owners: ServicesType['owners']) => {
       const updatedData = {
         ...serviceDetails,
-        owner,
+        owners,
       } as ServicesUpdateRequest;
 
       const jsonPatch = compare(serviceDetails, updatedData);
@@ -968,10 +975,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const tabs: TabsProps['items'] = useMemo(() => {
     const tabs = [];
-    const userOwnsService = currentUser?.id === serviceDetails?.owner?.id;
-
+    const ownerIds = serviceDetails?.owners?.map((owner) => owner.id) ?? [];
+    const userOwnsService = ownerIds.includes(currentUser?.id ?? '');
     const userInOwnerTeam = Boolean(
-      currentUser?.teams?.some((team) => team.id === serviceDetails?.owner?.id)
+      currentUser?.teams?.some((team) => ownerIds.includes(team.id))
     );
 
     const showIngestionTab = userInOwnerTeam || userOwnsService || isAdminUser;

@@ -45,7 +45,7 @@ import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
@@ -114,7 +114,11 @@ const UserListPageV1 = () => {
     try {
       const { data, paging: userPaging } = await getUsers({
         isBot: false,
-        fields: 'profile,teams,roles',
+        fields: [
+          TabSpecificField.PROFILE,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES,
+        ].join(','),
         limit: pageSize,
         ...params,
       });

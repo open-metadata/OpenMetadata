@@ -70,11 +70,7 @@ export const UserTeamSelectableList = ({
 
   const ownerType = useMemo(() => {
     if (owner) {
-      if (Array.isArray(owner)) {
-        return owner?.[0]?.type ?? EntityType.TEAM;
-      } else {
-        return owner.type;
-      }
+      return owner?.[0]?.type ?? EntityType.TEAM;
     }
 
     return EntityType.TEAM;
@@ -180,24 +176,25 @@ export const UserTeamSelectableList = ({
   };
 
   const handleUpdate = async (updateItems: EntityReference[]) => {
-    const isMulti =
-      (activeTab === 'teams' && isMultiTeam) ||
-      (activeTab === 'users' && isMultiUser);
+    // const isMulti =
+    //   (activeTab === 'teams' && isMultiTeam) ||
+    //   (activeTab === 'users' && isMultiUser);
 
-    let updateData;
-    if (isEmpty(updateItems)) {
-      updateData = undefined;
-    } else if (isMulti) {
+    let updateData: EntityReference[] = [];
+    if (!isEmpty(updateItems)) {
       updateData = updateItems;
-    } else {
-      updateData = {
-        id: updateItems[0].id,
-        type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
-        name: updateItems[0].name,
-        fullyQualifiedName: updateItems[0].fullyQualifiedName,
-        displayName: updateItems[0].displayName,
-      };
     }
+    // else if (isMulti) {
+    //   updateData = updateItems;
+    // } else {
+    //   updateData = {
+    //     id: updateItems[0].id,
+    //     type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
+    //     name: updateItems[0].name,
+    //     fullyQualifiedName: updateItems[0].fullyQualifiedName,
+    //     displayName: updateItems[0].displayName,
+    //   };
+    // }
 
     await onUpdate(updateData);
     setPopupVisible(false);

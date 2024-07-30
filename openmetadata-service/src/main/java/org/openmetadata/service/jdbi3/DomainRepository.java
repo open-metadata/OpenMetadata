@@ -85,11 +85,11 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void setInheritedFields(Domain domain, Fields fields) {
-    // If subdomain does not have owner and experts, then inherit it from parent domain
+    // If subdomain does not have owners and experts, then inherit it from parent domain
     EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
     if (parentRef != null) {
-      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owner,experts", ALL);
-      inheritOwner(domain, fields, parent);
+      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
+      inheritOwners(domain, fields, parent);
       inheritExperts(domain, fields, parent);
     }
   }

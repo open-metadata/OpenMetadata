@@ -42,7 +42,7 @@ public class SearchServiceResourceTest
         SearchService.class,
         SearchServiceResource.SearchServiceList.class,
         "services/searchServices",
-        "owner");
+        "owners");
     this.supportsPatch = false;
   }
 
@@ -181,14 +181,14 @@ public class SearchServiceResourceTest
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(service.getOwner());
+    TestUtils.assertListNull(service.getOwners());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return service;
   }
 

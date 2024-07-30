@@ -174,7 +174,7 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     CreateDashboardService createDashboardService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create dashboard under it
@@ -194,13 +194,13 @@ public class DashboardResourceTest extends EntityResourceTest<Dashboard, CreateD
     // We always return the service
     assertListNotNull(dashboard.getService(), dashboard.getServiceType());
     assertListNull(
-        dashboard.getOwner(),
+        dashboard.getOwners(),
         dashboard.getCharts(),
         dashboard.getFollowers(),
         dashboard.getTags(),
         dashboard.getUsageSummary());
 
-    fields = "owner,charts,followers,tags,usageSummary";
+    fields = "owners,charts,followers,tags,usageSummary";
     dashboard =
         byName
             ? getEntityByName(dashboard.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

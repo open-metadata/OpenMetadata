@@ -8,7 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -77,9 +77,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String INCIDENTS_FIELD = "incidentId";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS =
-      "owner,entityLink,testSuite,testSuites,testDefinition";
+      "owners,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
-      "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
+      "owners,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
@@ -112,8 +112,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner,domain,tags,columns", ALL);
-    inheritOwner(testCase, fields, table);
+    Table table = Entity.getEntity(entityLink, "owners,domain,tags,columns", ALL);
+    inheritOwners(testCase, fields, table);
     inheritDomain(testCase, fields, table);
     inheritTags(testCase, fields, table);
   }
@@ -315,7 +315,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields =
         new ArrayList<>(
-            List.of("testDefinition", FIELD_OWNER, FIELD_TAGS, TEST_SUITE_FIELD, "testSuites"));
+            List.of("testDefinition", FIELD_OWNERS, FIELD_TAGS, TEST_SUITE_FIELD, "testSuites"));
 
     // set the test case resolution status reference if test failed, by either
     // creating a new incident or returning the stateId of an unresolved incident
@@ -767,7 +767,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public TestCase addFailedRowsSample(
       TestCase testCase, TableData tableData, boolean validateColumns) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner", ALL);
+    Table table = Entity.getEntity(entityLink, FIELD_OWNERS, ALL);
     // Validate all the columns
     if (validateColumns) {
       for (String columnName : tableData.getColumns()) {
@@ -984,7 +984,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public TableData getSampleData(TestCase testCase, boolean authorizePII) {
-    Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), "owner", ALL);
+    Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), FIELD_OWNERS, ALL);
     // Validate the request content
     TableData sampleData =
         JsonUtils.readValue(

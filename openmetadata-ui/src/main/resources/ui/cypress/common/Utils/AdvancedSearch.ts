@@ -620,11 +620,13 @@ export const advanceSearchPreRequests = (testData, token: string) => {
         body: [
           {
             op: 'add',
-            path: '/owner',
-            value: {
-              id: testData.user_1.id,
-              type: 'user',
-            },
+            path: '/owners',
+            value: [
+              {
+                id: testData.user_1.id,
+                type: 'user',
+              },
+            ],
           },
         ],
       });

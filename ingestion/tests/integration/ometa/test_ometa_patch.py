@@ -37,6 +37,7 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -93,10 +94,10 @@ class OMetaTableTest(TestCase):
     user_2: User = None
     team_1: Team = None
     team_2: Team = None
-    owner_user_1: EntityReference = None
-    owner_user_2: EntityReference = None
-    owner_team_1: EntityReference = None
-    owner_team_2: EntityReference = None
+    owner_user_1: EntityReferenceList = None
+    owner_user_2: EntityReferenceList = None
+    owner_team_1: EntityReferenceList = None
+    owner_team_2: EntityReferenceList = None
 
     metadata = int_admin_ometa()
     service_name = generate_name()
@@ -191,10 +192,18 @@ class OMetaTableTest(TestCase):
             data=get_create_team_entity(name="Team 2", users=[cls.user_2.id])
         )
 
-        cls.owner_user_1 = EntityReference(id=cls.user_1.id, type="user")
-        cls.owner_user_2 = EntityReference(id=cls.user_2.id, type="user")
-        cls.owner_team_1 = EntityReference(id=cls.team_1.id, type="team")
-        cls.owner_team_2 = EntityReference(id=cls.team_2.id, type="team")
+        cls.owner_user_1 = EntityReferenceList(
+            root=[EntityReference(id=cls.user_1.id, type="user")]
+        )
+        cls.owner_user_2 = EntityReferenceList(
+            root=[EntityReference(id=cls.user_2.id, type="user")]
+        )
+        cls.owner_team_1 = EntityReferenceList(
+            root=[EntityReference(id=cls.team_1.id, type="team")]
+        )
+        cls.owner_team_2 = EntityReferenceList(
+            root=[EntityReference(id=cls.team_2.id, type="team")]
+        )
 
         # Leave some time for indexes to get updated, otherwise this happens too fast
         cls.check_es_index()
@@ -260,7 +269,7 @@ class OMetaTableTest(TestCase):
         new_patched_table.columns[0].tags = [PII_TAG_LABEL]
 
         # Test if table owners are getting patched (user and team)
-        new_patched_table.owner = self.owner_user_1
+        new_patched_table.owners = self.owner_user_1
 
         patched_table = self.metadata.patch(
             entity=type(self.patch_test_table),
@@ -277,7 +286,7 @@ class OMetaTableTest(TestCase):
         )
         assert patched_table.tags[0].tagFQN == PII_TAG_LABEL.tagFQN
         assert patched_table.columns[0].tags[0].tagFQN == PII_TAG_LABEL.tagFQN
-        assert patched_table.owner.id == self.owner_user_1.id
+        assert patched_table.owners.root[0].id == self.owner_user_1.root[0].id
 
         # After this we'll again update the descriptions, tags and owner
         new_patched_table = patched_table.copy(deep=True)
@@ -293,7 +302,7 @@ class OMetaTableTest(TestCase):
         new_patched_table.columns[0].tags = None
 
         # Already existing owner should not get patched
-        new_patched_table.owner = self.owner_user_2
+        new_patched_table.owners = self.owner_user_2
 
         patched_table = self.metadata.patch(
             entity=type(patched_table),
@@ -311,7 +320,7 @@ class OMetaTableTest(TestCase):
         assert patched_table.tags[0].tagFQN == PII_TAG_LABEL.tagFQN
         assert patched_table.tags[1].tagFQN == TIER_TAG_LABEL.tagFQN
         assert patched_table.columns[0].tags[0].tagFQN == PII_TAG_LABEL.tagFQN
-        assert patched_table.owner.id == self.owner_user_1.id
+        assert patched_table.owners.root[0].id == self.owner_user_1.root[0].id
 
     def test_patch_description(self):
         """
@@ -452,16 +461,16 @@ class OMetaTableTest(TestCase):
         updated: Database = self.metadata.patch_owner(
             entity=Database,
             source=self.db_entity,
-            owner=self.owner_user_1,
+            owners=self.owner_user_1,
         )
         assert updated is not None
-        assert updated.owner.id == self.owner_user_1.id
+        assert updated.owners.root[0].id == self.owner_user_1.root[0].id
 
         # Database, existing owner, owner is a User, no force -> Unmodified
         updated: Database = self.metadata.patch_owner(
             entity=Database,
             source=self.db_entity,
-            owner=self.owner_user_2,
+            owners=self.owner_user_2,
         )
         assert updated is None
 
@@ -469,11 +478,11 @@ class OMetaTableTest(TestCase):
         updated: Database = self.metadata.patch_owner(
             entity=Database,
             source=self.db_entity,
-            owner=self.owner_user_2,
+            owners=self.owner_user_2,
             force=True,
         )
         assert updated is not None
-        assert updated.owner.id == self.owner_user_2.id
+        assert updated.owners.root[0].id == self.owner_user_2.root[0].id
 
         # Database, existing owner, no owner, no force -> Unmodified
         updated: Database = self.metadata.patch_owner(
@@ -489,22 +498,22 @@ class OMetaTableTest(TestCase):
             force=True,
         )
         assert updated is not None
-        assert updated.owner is None
+        assert updated.owners == EntityReferenceList(root=[])
 
         # DatabaseSchema, no existing owner, owner is Team -> Modified
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
             source=self.db_schema_entity,
-            owner=self.owner_team_1,
+            owners=self.owner_team_1,
         )
         assert updated is not None
-        assert updated.owner.id == self.owner_team_1.id
+        assert updated.owners.root[0].id == self.owner_team_1.root[0].id
 
         # DatabaseSchema, existing owner, owner is Team, no force -> Unmodified
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
             source=self.db_schema_entity,
-            owner=self.owner_team_2,
+            owners=self.owner_team_2,
         )
         assert updated is None
 
@@ -512,11 +521,11 @@ class OMetaTableTest(TestCase):
         updated: DatabaseSchema = self.metadata.patch_owner(
             entity=DatabaseSchema,
             source=self.db_schema_entity,
-            owner=self.owner_team_2,
+            owners=self.owner_team_2,
             force=True,
         )
         assert updated is not None
-        assert updated.owner.id == self.owner_team_2.id
+        assert updated.owners.root[0].id == self.owner_team_2.root[0].id
 
         # DatabaseSchema, existing owner, no owner, no force -> Unmodified
         updated: DatabaseSchema = self.metadata.patch_owner(
@@ -532,22 +541,22 @@ class OMetaTableTest(TestCase):
             force=True,
         )
         assert updated is not None
-        assert updated.owner is None
+        assert updated.owners == EntityReferenceList(root=[])
 
         # Table, no existing owner, owner is a Team -> Modified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
             source=self.table,
-            owner=self.owner_team_1,
+            owners=self.owner_team_1,
         )
         assert updated is not None
-        assert updated.owner.id == self.owner_team_1.id
+        assert updated.owners.root[0].id == self.owner_team_1.root[0].id
 
         # Table, existing owner, owner is a Team, no force -> Unmodified
         updated: Table = self.metadata.patch_owner(
             entity=Table,
             source=self.table,
-            owner=self.owner_team_2,
+            owners=self.owner_team_2,
         )
         assert updated is None
 
@@ -555,11 +564,11 @@ class OMetaTableTest(TestCase):
         updated: Table = self.metadata.patch_owner(
             entity=Table,
             source=self.table,
-            owner=self.owner_team_2,
+            owners=self.owner_team_2,
             force=True,
         )
         assert updated is not None
-        assert updated.owner.id == self.owner_team_2.id
+        assert updated.owners.root[0].id == self.owner_team_2.root[0].id
 
         # Table, existing owner, no owner, no force -> Unmodified
         updated: Table = self.metadata.patch_owner(
@@ -575,7 +584,7 @@ class OMetaTableTest(TestCase):
             force=True,
         )
         assert updated is not None
-        assert updated.owner is None
+        assert updated.owners == EntityReferenceList(root=[])
 
         # Table with non-existent id, force -> Unmodified
         non_existent_table = self.table.copy(deep=True)

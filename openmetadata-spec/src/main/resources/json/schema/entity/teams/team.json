@@ -93,9 +93,9 @@
       "description": "List of entities owned by the team.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this team. ",
-      "$ref": "../../type/entityReference.json",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "isJoinable": {

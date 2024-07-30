@@ -43,6 +43,7 @@ import {
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import {
   EntityReference,
   GlossaryTerm,
@@ -163,10 +164,10 @@ const GlossaryTermTab = ({
       },
       {
         title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
+        dataIndex: 'owners',
+        key: 'owners',
         width: '17%',
-        render: (owner: EntityReference) => <OwnerLabel pills owner={owner} />,
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
       {
         title: t('label.status'),
@@ -392,7 +393,11 @@ const GlossaryTermTab = ({
     const { data } = await getGlossaryTerms({
       glossary: activeGlossary?.id || '',
       limit: API_RES_MAX_SIZE,
-      fields: 'children,owner,parent',
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
     });
     setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
     const keys = data.reduce((prev, curr) => {

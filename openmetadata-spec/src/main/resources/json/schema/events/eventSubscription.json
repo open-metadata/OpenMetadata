@@ -273,9 +273,9 @@
       "description": "A short description of the Event Subscription, comprehensible to regular users.",
       "$ref": "../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Event Subscription.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Event Subscription.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "href": {

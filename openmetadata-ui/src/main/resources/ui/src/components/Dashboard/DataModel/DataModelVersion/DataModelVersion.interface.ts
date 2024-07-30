@@ -22,7 +22,7 @@ export interface DataModelVersionProp {
   version: string;
   currentVersionData: VersionData;
   isVersionLoading: boolean;
-  owner: DashboardDataModel['owner'];
+  owners: DashboardDataModel['owners'];
   domain: DashboardDataModel['domain'];
   dataProducts: DashboardDataModel['dataProducts'];
   tier: TagLabel;

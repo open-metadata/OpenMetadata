@@ -35,6 +35,7 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
 import {
@@ -92,17 +93,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         // Fetch profile images in case of user listing
         const promises = matches.map(async (item, index) => {
           if (item.type === 'user') {
-            return getUserByName(item.name, { fields: 'profile' }).then(
-              (res) => {
-                newMatches[index] = {
-                  ...item,
-                  avatarEle: userMentionItemWithAvatar(
-                    item,
-                    userProfilePics[item.name] ?? res
-                  ),
-                };
-              }
-            );
+            return getUserByName(item.name, {
+              fields: TabSpecificField.PROFILE,
+            }).then((res) => {
+              newMatches[index] = {
+                ...item,
+                avatarEle: userMentionItemWithAvatar(
+                  item,
+                  userProfilePics[item.name] ?? res
+                ),
+              };
+            });
           } else if (item.type === 'team') {
             newMatches[index] = {
               ...item,

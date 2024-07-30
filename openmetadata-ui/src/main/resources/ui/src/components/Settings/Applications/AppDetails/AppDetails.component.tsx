@@ -44,6 +44,7 @@ import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg'
 import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
@@ -101,7 +102,7 @@ const AppDetails = () => {
     setLoadingState((prev) => ({ ...prev, isFetchLoading: true }));
     try {
       const data = await getApplicationByName(fqn, {
-        fields: 'owner,pipelines',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINES],
         include: Include.All,
       });
       setAppData(data);

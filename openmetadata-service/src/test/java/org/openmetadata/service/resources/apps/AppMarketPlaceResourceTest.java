@@ -41,7 +41,7 @@ public class AppMarketPlaceResourceTest
     try {
       return new CreateAppMarketPlaceDefinitionReq()
           .withName(name)
-          .withOwner(USER1_REF)
+          .withOwners(List.of(USER1_REF))
           .withDeveloper("OM")
           .withDeveloperUrl("https://test.com")
           .withSupportEmail("test@openmetadata.org")
@@ -98,9 +98,9 @@ public class AppMarketPlaceResourceTest
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(entity.getOwner());
+    TestUtils.assertListNull(entity.getOwners());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

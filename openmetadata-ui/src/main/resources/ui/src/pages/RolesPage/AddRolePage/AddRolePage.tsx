@@ -23,6 +23,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -61,7 +62,12 @@ const AddRolePage = () => {
   const fetchPolicies = async () => {
     try {
       const data = await getPolicies(
-        'owner,location,roles,teams',
+        `${
+          (TabSpecificField.OWNERS,
+          TabSpecificField.LOCATION,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES)
+        }`,
         undefined,
         undefined,
         100

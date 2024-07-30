@@ -32,6 +32,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
 import {
@@ -162,7 +163,7 @@ const LogsViewerPage = () => {
     try {
       setIsLoading(true);
       const res = await getIngestionPipelineByFqn(ingestionName, {
-        fields: 'owner,pipelineStatuses',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINE_STATUSES],
       });
       if (res) {
         setIngestionDetails(res);
@@ -180,7 +181,7 @@ const LogsViewerPage = () => {
     setIsLoading(true);
     try {
       const data = await getApplicationByName(ingestionName, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
         include: Include.All,
       });
       setAppData(data);

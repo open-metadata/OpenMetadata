@@ -18,7 +18,7 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.formatter.field.TestCaseResultFormatter.TEST_RESULT_FIELD;
 
@@ -67,7 +67,7 @@ public final class ParserFactory {
     return switch (fieldChangeName) {
       case FIELD_TAGS -> new TagFormatter(decorator, thread, fieldChange);
       case FIELD_FOLLOWERS -> new FollowersFormatter(decorator, thread, fieldChange);
-      case FIELD_OWNER -> new OwnerFormatter(decorator, thread, fieldChange);
+      case FIELD_OWNERS -> new OwnerFormatter(decorator, thread, fieldChange);
       case FIELD_DESCRIPTION -> new DescriptionFormatter(decorator, thread, fieldChange);
       case FIELD_DOMAIN -> new DomainFormatter(decorator, thread, fieldChange);
       case FIELD_EXTENSION -> new CustomPropertiesFormatter(decorator, thread, fieldChange);

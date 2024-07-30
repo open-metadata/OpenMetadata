@@ -46,7 +46,7 @@ export const POLICY_DETAILS = {
       operations: [
         'EditDescription',
         'EditDisplayName',
-        'EditOwner',
+        'EditOwners',
         'EditLineage',
         'EditTags',
         'ViewAll',

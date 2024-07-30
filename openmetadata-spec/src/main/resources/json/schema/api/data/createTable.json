@@ -47,9 +47,9 @@
     "tableProfilerConfig": {
       "$ref": "../../entity/data/table.json#/definitions/tableProfilerConfig"
     },
-    "owner": {
-      "description": "Owner of this entity",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this entity",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "databaseSchema": {

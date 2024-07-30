@@ -144,10 +144,12 @@ const AddQueryPage = () => {
     const updatedValues: CreateQuery = {
       ...values,
       description: isEmpty(description) ? undefined : description,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: OwnerType.USER,
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: OwnerType.USER,
+        },
+      ],
       queryUsedIn: [
         {
           id: table?.id ?? '',

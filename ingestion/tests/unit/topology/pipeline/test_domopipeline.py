@@ -168,7 +168,7 @@ EXPECTED_PIPELINE = [
             )
         ],
         tags=None,
-        owner=None,
+        owners=None,
         service="domopipeline_source_test",
         extension=None,
     )

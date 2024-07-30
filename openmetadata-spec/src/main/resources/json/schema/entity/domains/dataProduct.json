@@ -46,9 +46,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this Data Product.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this Data Product.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "experts": {
       "description": "List of users who are experts for this Data Product.",

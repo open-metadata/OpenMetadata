@@ -26,6 +26,7 @@ import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { EntityReference } from '../generated/entity/type';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getEntityName } from './EntityUtils';
 import { getLinkForFqn } from './ServiceUtils';
@@ -89,18 +90,21 @@ export const getServiceMainTabColumns = (
     : []),
   {
     title: t('label.owner'),
-    dataIndex: 'owner',
-    key: 'owner',
-    render: (owner: ServicePageData['owner']) =>
-      !isUndefined(owner) ? (
-        <UserPopOverCard
-          showUserName
-          data-testid="owner-data"
-          displayName={owner.displayName}
-          profileWidth={20}
-          type={owner.type as UserTeam}
-          userName={owner.name ?? ''}
-        />
+    dataIndex: 'owners',
+    key: 'owners',
+    render: (owners: ServicePageData['owners']) =>
+      !isUndefined(owners) && owners.length > 0 ? (
+        owners.map((owner: EntityReference) => (
+          <UserPopOverCard
+            showUserName
+            data-testid="owner-data"
+            displayName={owner.displayName}
+            key={owner.id}
+            profileWidth={20}
+            type={owner.type as UserTeam}
+            userName={owner.name ?? ''}
+          />
+        ))
       ) : (
         <Typography.Text data-testid="no-owner-text">--</Typography.Text>
       ),

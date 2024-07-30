@@ -58,9 +58,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this database.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this database.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the database cluster/service where this database is hosted in.",

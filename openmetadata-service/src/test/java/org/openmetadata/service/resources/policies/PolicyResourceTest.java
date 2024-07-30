@@ -41,6 +41,7 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -106,8 +107,8 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
   public void setupPolicies() throws IOException {
     CREATE_ACCESS_PERMISSION_POLICY =
         createEntity(createAccessControlPolicyWithCreateRule(), ADMIN_AUTH_HEADERS);
-    POLICY1 = createEntity(createRequest("policy1").withOwner(null), ADMIN_AUTH_HEADERS);
-    POLICY2 = createEntity(createRequest("policy2").withOwner(null), ADMIN_AUTH_HEADERS);
+    POLICY1 = createEntity(createRequest("policy1").withOwners(null), ADMIN_AUTH_HEADERS);
+    POLICY2 = createEntity(createRequest("policy2").withOwners(null), ADMIN_AUTH_HEADERS);
     TEAM_ONLY_POLICY = getEntityByName("TeamOnlyPolicy", "", ADMIN_AUTH_HEADERS);
     TEAM_ONLY_POLICY_RULES = TEAM_ONLY_POLICY.getRules();
   }
@@ -572,13 +573,15 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
     CreateTable createTable =
         TABLE_TEST
             .createRequest("rolesAndPoliciesTable11")
-            .withOwner(team11.getEntityReference())
+            .withOwners(List.of(team11.getEntityReference()))
             .withTags(listOf(PII_SENSITIVE_TAG_LABEL));
     Table table11 = TABLE_TEST.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
     // table12 does not have PII
     createTable =
-        TABLE_TEST.createRequest("rolesAndPoliciesTable12").withOwner(team12.getEntityReference());
+        TABLE_TEST
+            .createRequest("rolesAndPoliciesTable12")
+            .withOwners(List.of(team12.getEntityReference()));
     createTable.getColumns().forEach(c -> c.withTags(null)); // Clear all the tag labels
     Table table12 = TABLE_TEST.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
@@ -749,16 +752,16 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         byName
             ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(policy.getOwner(), policy.getLocation());
+    assertListNull(policy.getOwners(), policy.getLocation());
 
     // .../policies?fields=owner,displayName,policyUrl
-    fields = "owner,location";
+    fields = "owners,location";
     policy =
         byName
             ? getEntityByName(policy.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(policy.getId(), fields, ADMIN_AUTH_HEADERS);
     // Field location is set during creation - tested elsewhere
-    assertListNotNull(policy.getOwner() /*, policy.getLocation()*/);
+    assertListNotNull(policy.getOwners() /*, policy.getLocation()*/);
     // Checks for other owner, tags, and followers is done in the base class
     return policy;
   }
@@ -768,7 +771,7 @@ public class PolicyResourceTest extends EntityResourceTest<Policy, CreatePolicy>
         .withName(name)
         .withDescription("description")
         .withRules(rules)
-        .withOwner(USER1_REF);
+        .withOwners(Lists.newArrayList(USER1_REF));
   }
 
   private CreatePolicy createAccessControlPolicyWithCreateRule() {

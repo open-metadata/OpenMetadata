@@ -16,7 +16,7 @@ package org.openmetadata.service.resources.services.ingestionpipelines;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.CREATE;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
@@ -102,7 +102,7 @@ public class IngestionPipelineResource
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  static final String FIELDS = FIELD_OWNER;
+  static final String FIELDS = FIELD_OWNERS;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -632,7 +632,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
     // IngestionPipeline
@@ -961,7 +961,7 @@ public class IngestionPipelineResource
 
   private PipelineServiceClientResponse deployPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
         new CreateResourceContext<>(entityType, ingestionPipeline);
@@ -980,7 +980,7 @@ public class IngestionPipelineResource
 
   public PipelineServiceClientResponse triggerPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
-    Fields fields = getFields(FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
         new CreateResourceContext<>(entityType, ingestionPipeline);

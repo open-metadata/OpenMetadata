@@ -105,7 +105,7 @@ EXPECTED_PIPELINE = [
         startDate=None,
         tasks=[],
         tags=None,
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName(root="flink_test"),
         extension=None,
         scheduleInterval=None,

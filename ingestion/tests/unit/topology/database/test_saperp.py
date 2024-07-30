@@ -196,7 +196,7 @@ EXPECTED_TABLES_AND_COLUMNS = [
         ],
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
             root="saperp_source_test.saperp_database.saperp_database_schema"
         ),
@@ -287,7 +287,7 @@ EXPECTED_TABLES_AND_COLUMNS = [
         ],
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
             root="saperp_source_test.saperp_database.saperp_database_schema"
         ),

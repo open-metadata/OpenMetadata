@@ -71,7 +71,7 @@ public class AppMarketPlaceResource
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
   private PipelineServiceClientInterface pipelineServiceClient;
 
-  static final String FIELDS = "owner,tags";
+  static final String FIELDS = "owners,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {

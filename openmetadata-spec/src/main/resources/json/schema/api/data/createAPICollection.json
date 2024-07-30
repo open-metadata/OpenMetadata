@@ -41,9 +41,10 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this API Collection",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this API Collection",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "service": {
       "description": "Link to the API service fully qualified name where this API collection is hosted in",

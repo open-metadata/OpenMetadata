@@ -15,6 +15,7 @@ import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import IconTeams from '../../assets/svg/teams-grey.svg';
 import { ClientErrors } from '../../enums/Axios.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
 import { getUserByName } from '../../rest/userAPI';
 import {
@@ -71,7 +72,9 @@ export const useUserProfile = ({
     userProfilePicsLoading = [...userProfilePicsLoading, name];
 
     try {
-      let user = await getUserByName(name, { fields: 'profile' });
+      let user = await getUserByName(name, {
+        fields: TabSpecificField.PROFILE,
+      });
       user = getUserWithImage(user);
 
       updateUserProfilePics({

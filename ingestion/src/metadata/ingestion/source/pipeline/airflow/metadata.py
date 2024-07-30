@@ -53,6 +53,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_session
@@ -394,12 +395,12 @@ class AirflowSource(PipelineServiceSource):
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
-                owner=self.get_owner(task.owner),
+                owners=self.get_owner(task.owner),
             )
             for task in cast(Iterable[BaseOperator], dag.tasks)
         ]
 
-    def get_owner(self, owner) -> Optional[EntityReference]:
+    def get_owner(self, owner) -> Optional[EntityReferenceList]:
         """
         Fetching users by name via ES to keep things as fast as possible.
 
@@ -444,7 +445,7 @@ class AirflowSource(PipelineServiceSource):
                     pipeline_details, self.service_connection.hostPort
                 ),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
-                owner=self.get_owner(pipeline_details.owner),
+                owners=self.get_owner(pipeline_details.owner),
                 scheduleInterval=pipeline_details.schedule_interval,
             )
             yield Either(right=pipeline_request)

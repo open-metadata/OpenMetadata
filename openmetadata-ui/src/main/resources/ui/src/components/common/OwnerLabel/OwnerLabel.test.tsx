@@ -15,16 +15,20 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OwnerLabel } from './OwnerLabel.component';
 
-const mockOwner = {
-  id: 'id',
-  type: 'user',
-  name: 'Test Name',
-};
-const mockTeamOwner = {
-  id: 'id',
-  type: 'team',
-  name: 'Team Name',
-};
+const mockOwner = [
+  {
+    id: 'id',
+    type: 'user',
+    name: 'Test Name',
+  },
+];
+const mockTeamOwner = [
+  {
+    id: 'id',
+    type: 'team',
+    name: 'Team Name',
+  },
+];
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
   return jest.fn().mockReturnValue(<div>ProfilePicture.component</div>);
@@ -39,18 +43,18 @@ jest.mock('../UserTeamSelectableList/UserTeamSelectableList.component', () => {
 
 describe('OwnerLabel component', () => {
   it('owner name with profile picture should render', async () => {
-    render(<OwnerLabel owner={mockOwner} />, { wrapper: MemoryRouter });
+    render(<OwnerLabel owners={mockOwner} />, { wrapper: MemoryRouter });
 
     expect(
       await screen.findByText('ProfilePicture.component')
     ).toBeInTheDocument();
-    expect(await screen.findByText(mockOwner.name)).toBeInTheDocument();
+    expect(await screen.findByText(mockOwner[0].name)).toBeInTheDocument();
   });
 
   it('should render displayName if provided', async () => {
     render(
       <OwnerLabel
-        owner={{ id: 'id', type: 'user', displayName: 'displayName' }}
+        owners={[{ id: 'id', type: 'user', displayName: 'displayName' }]}
       />,
       { wrapper: MemoryRouter }
     );
@@ -63,7 +67,7 @@ describe('OwnerLabel component', () => {
 
   it('should render ownerDisplayName if provided', async () => {
     render(
-      <OwnerLabel owner={mockOwner} ownerDisplayName="ownerDisplayName" />,
+      <OwnerLabel ownerDisplayName={['ownerDisplayName']} owners={mockOwner} />,
       { wrapper: MemoryRouter }
     );
 
@@ -71,7 +75,7 @@ describe('OwnerLabel component', () => {
       await screen.findByText('ProfilePicture.component')
     ).toBeInTheDocument();
     expect(await screen.findByText('ownerDisplayName')).toBeInTheDocument();
-    expect(screen.queryByText(mockOwner.name)).not.toBeInTheDocument();
+    expect(screen.queryByText(mockOwner[0].name)).not.toBeInTheDocument();
   });
 
   it('should render no owner if owner is undefined', async () => {
@@ -82,14 +86,14 @@ describe('OwnerLabel component', () => {
   });
 
   it('should render team icon and team name if owner is team', async () => {
-    render(<OwnerLabel owner={mockTeamOwner} />, { wrapper: MemoryRouter });
+    render(<OwnerLabel owners={mockTeamOwner} />, { wrapper: MemoryRouter });
 
-    expect(await screen.findByText(mockTeamOwner.name)).toBeInTheDocument();
+    expect(await screen.findByText(mockTeamOwner[0].name)).toBeInTheDocument();
     expect(await screen.findByTestId('team-owner-icon')).toBeInTheDocument();
   });
 
   it('should render UserTeamSelectableList if onUpdate function is provided', async () => {
-    render(<OwnerLabel owner={mockTeamOwner} onUpdate={jest.fn()} />, {
+    render(<OwnerLabel owners={mockTeamOwner} onUpdate={jest.fn()} />, {
       wrapper: MemoryRouter,
     });
 

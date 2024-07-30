@@ -71,7 +71,7 @@ describe('TestSuite Pipeline component', () => {
     });
 
     expect(mockGetIngestionPipelines).toHaveBeenCalledWith({
-      arrQueryFields: ['owner', 'pipelineStatuses'],
+      arrQueryFields: ['owners', 'pipelineStatuses'],
       pipelineType: ['TestSuite'],
       testSuite: mockTestSuite?.fullyQualifiedName,
     });

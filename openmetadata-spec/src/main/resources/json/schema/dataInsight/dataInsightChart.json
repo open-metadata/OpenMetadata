@@ -97,9 +97,9 @@
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"
     },
-    "owner": {
-      "description": "Owner of this Pipeline.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Pipeline.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {

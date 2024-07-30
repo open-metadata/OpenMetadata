@@ -23,6 +23,7 @@ import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useDomainStore } from '../../hooks/useDomainStore';
@@ -109,7 +110,12 @@ const DomainPage = () => {
     setIsMainContentLoading(true);
     try {
       const data = await getDomainByName(domainFqn, {
-        fields: 'children,owner,parent,experts',
+        fields: [
+          TabSpecificField.CHILDREN,
+          TabSpecificField.OWNERS,
+          TabSpecificField.PARENT,
+          TabSpecificField.EXPERTS,
+        ],
       });
       setActiveDomain(data);
     } catch (error) {

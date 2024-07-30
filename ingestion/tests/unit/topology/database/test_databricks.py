@@ -181,7 +181,7 @@ EXPTECTED_DATABASE_SCHEMA = [
         name="do_it_all_with_default_schema",
         displayName=None,
         description=None,
-        owner=None,
+        owners=None,
         database="local_databricks.hive_metastore",
     )
 ]
@@ -274,7 +274,7 @@ EXPTECTED_TABLE = [
         tableConstraints=None,
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
             "local_databricks.hive_metastore.do_it_all_with_default_schema"
         ),

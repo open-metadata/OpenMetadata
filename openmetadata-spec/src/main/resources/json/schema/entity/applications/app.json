@@ -118,9 +118,9 @@
       "description": "FullyQualifiedName same as `name`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "owner": {
-      "description": "Owner of this workflow.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this workflow.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "version": {

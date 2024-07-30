@@ -64,7 +64,7 @@ import org.openmetadata.service.util.ResultList;
 public class TestDefinitionResource
     extends EntityResource<TestDefinition, TestDefinitionRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testDefinitions";
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
 
   public TestDefinitionResource(Authorizer authorizer, Limits limits) {
     super(Entity.TEST_DEFINITION, authorizer, limits);

@@ -427,7 +427,7 @@ class AdvancedSearchClassBase {
         defaultValue: true,
       },
 
-      'owner.displayName.keyword': {
+      'owners.displayName.keyword': {
         label: t('label.owner'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,

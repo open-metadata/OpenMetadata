@@ -77,7 +77,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         tableResourceTest
             .createRequest(test)
             .withName(TEST_SUITE_TABLE_NAME1)
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withColumns(
                 List.of(
                     new Column()
@@ -85,14 +85,14 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     TEST_SUITE_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     tableReq =
         tableResourceTest
             .createRequest(test)
             .withName(TEST_SUITE_TABLE_NAME2)
             .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withColumns(
                 List.of(
                     new Column()
@@ -100,7 +100,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     TEST_SUITE_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CREATE_TEST_SUITE1 =
         createRequest(DATABASE_SCHEMA.getFullyQualifiedName() + "." + TEST_SUITE_TABLE_NAME1);
@@ -262,21 +262,21 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
     TestSuite executableTestSuite =
         createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     TestSuite testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(testSuite.getOwner().getId(), table.getOwner().getId());
+    assertOwners(testSuite.getOwners(), table.getOwners());
     Table updateTableOwner = table;
-    updateTableOwner.setOwner(TEAM11_REF);
+    updateTableOwner.setOwners(List.of(TEAM11_REF));
     tableResourceTest.patchEntity(
         table.getId(), JsonUtils.pojoToJson(table), updateTableOwner, ADMIN_AUTH_HEADERS);
     table = tableResourceTest.getEntity(table.getId(), "*", ADMIN_AUTH_HEADERS);
     testSuite = getEntity(executableTestSuite.getId(), "*", ADMIN_AUTH_HEADERS);
-    assertEquals(table.getOwner().getId(), testSuite.getOwner().getId());
+    assertOwners(table.getOwners(), testSuite.getOwners());
   }
 
   @Test
@@ -295,7 +295,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                         .withDataLength(10)));
     Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite = createRequest(table.getFullyQualifiedName());
-    createExecutableTestSuite.withOwner(USER1_REF);
+    createExecutableTestSuite.withOwners(List.of(USER1_REF));
     TestSuite executableTestSuite =
         createExecutableTestSuite(createExecutableTestSuite, ADMIN_AUTH_HEADERS);
     List<EntityReference> testCases1 = new ArrayList<>();
@@ -313,7 +313,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
     // We'll create a logical test suite and associate the test cases to it
     CreateTestSuite createTestSuite = createRequest(test);
-    createTestSuite.withOwner(TEAM11_REF);
+    createTestSuite.withOwners(List.of(TEAM11_REF));
     TestSuite testSuite = createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
     addTestCasesToLogicalTestSuite(
         testSuite, testCases1.stream().map(EntityReference::getId).collect(Collectors.toList()));
@@ -403,22 +403,22 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
     // 8.1 Team owner
     queryParams.clear();
     queryParams.put("owner", TEAM11_REF.getFullyQualifiedName());
-    queryParams.put("fields", "owner");
+    queryParams.put("fields", "owners");
     ResultList<TestSuite> teamOwnerTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     Assertions.assertTrue(
         teamOwnerTestSuites.getData().stream()
-            .allMatch(ts -> ts.getOwner().getId().equals(TEAM11_REF.getId())));
+            .allMatch(ts -> ts.getOwners().get(0).getId().equals(TEAM11_REF.getId())));
 
     // 8.2 User owner
     queryParams.clear();
     queryParams.put("owner", USER1_REF.getFullyQualifiedName());
-    queryParams.put("fields", "owner");
+    queryParams.put("fields", "owners");
     ResultList<TestSuite> userOwnerTestSuites =
         listEntitiesFromSearch(queryParams, 100, 0, ADMIN_AUTH_HEADERS);
     Assertions.assertTrue(
         userOwnerTestSuites.getData().stream()
-            .allMatch(ts -> ts.getOwner().getId().equals(USER1_REF.getId())));
+            .allMatch(ts -> ts.getOwners().get(0).getId().equals(USER1_REF.getId())));
   }
 
   @Test
@@ -865,7 +865,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
                             .withDisplayName("c1")
                             .withDataType(ColumnDataType.VARCHAR)
                             .withDataLength(10)))
-                .withOwner(USER1_REF);
+                .withOwners(List.of(USER1_REF));
         Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
         tables.add(table);
         CreateTestSuite createTestSuite =
@@ -989,13 +989,13 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getTests());
-    fields = "owner,tests,tags";
+    assertListNull(entity.getOwners(), entity.getTests());
+    fields = "owners,tests,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getTests());
+    assertListNotNull(entity.getOwners(), entity.getTests());
     return entity;
   }
 

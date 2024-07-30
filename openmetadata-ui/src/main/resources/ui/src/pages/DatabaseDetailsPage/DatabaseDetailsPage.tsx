@@ -201,7 +201,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -301,15 +301,15 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (owner: Database['owner']) => {
+    async (owners: Database['owners']) => {
       const updatedData = {
         ...database,
-        owner: owner,
+        owners,
       };
 
       await settingsUpdateHandler(updatedData as Database);
     },
-    [database, database?.owner, settingsUpdateHandler]
+    [database, database?.owners, settingsUpdateHandler]
   );
 
   const createThread = async (data: CreateThread) => {
@@ -645,7 +645,11 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       await updateDatabaseVotes(id, data);
       const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-        fields: 'owner,tags,votes',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.VOTES,
+        ],
         include: Include.All,
       });
       setDatabase(details);

@@ -59,6 +59,7 @@ import {
 } from '../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -159,7 +160,11 @@ export const TestCases = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
           : params?.testCaseStatus,
         limit: pageSize,
         includeAllTests: true,
-        fields: 'testCaseResult,testSuite,incidentId',
+        fields: [
+          TabSpecificField.TEST_CASE_RESULT,
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.INCIDENT_ID,
+        ],
         q: searchValue ? `*${searchValue}*` : undefined,
         offset: (currentPage - 1) * pageSize,
         sortType: SORT_ORDER.DESC,

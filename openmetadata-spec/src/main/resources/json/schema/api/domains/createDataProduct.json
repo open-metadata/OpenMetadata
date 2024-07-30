@@ -28,9 +28,9 @@
     "style": {
       "$ref": "../../type/basic.json#/definitions/style"
     },
-    "owner": {
-      "description": "Owner of this DataProduct.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this DataProduct.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "domain": {

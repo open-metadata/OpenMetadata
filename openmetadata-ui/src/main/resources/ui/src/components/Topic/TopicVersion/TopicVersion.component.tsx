@@ -47,7 +47,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   tier,
   slashedTopicName,
   versionList,
@@ -70,11 +70,11 @@ const TopicVersion: FC<TopicVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const messageSchemaDiff = useMemo(

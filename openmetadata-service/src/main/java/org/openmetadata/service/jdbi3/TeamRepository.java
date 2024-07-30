@@ -17,7 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
-import static org.openmetadata.csv.CsvUtil.addUserOwner;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
@@ -632,7 +632,7 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDisplayName(csvRecord.get(1))
               .withDescription(csvRecord.get(2))
               .withTeamType(TeamType.fromValue(csvRecord.get(3)))
-              .withOwner(getOwnerAsUser(printer, csvRecord, 5))
+              .withOwners(getOwners(printer, csvRecord, 5))
               .withIsJoinable(getBoolean(printer, csvRecord, 6))
               .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
               .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
@@ -652,7 +652,7 @@ public class TeamRepository extends EntityRepository<Team> {
       addField(recordList, entity.getDescription());
       addField(recordList, entity.getTeamType().value());
       addEntityReferences(recordList, entity.getParents());
-      addUserOwner(recordList, entity.getOwner());
+      addOwners(recordList, entity.getOwners());
       addField(recordList, entity.getIsJoinable());
       addEntityReferences(recordList, entity.getDefaultRoles());
       addEntityReferences(recordList, entity.getPolicies());
@@ -716,7 +716,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     public String exportCsv() throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
-      final Fields fields = repository.getFields("owner,defaultRoles,parents,policies");
+      final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
       return exportCsv(listTeams(repository, team.getName(), new ArrayList<>(), fields));
     }
   }

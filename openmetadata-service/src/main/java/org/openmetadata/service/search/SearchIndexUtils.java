@@ -28,6 +28,13 @@ public final class SearchIndexUtils {
     return followersRef.stream().map(item -> item.getId().toString()).toList();
   }
 
+  public static List<String> parseOwners(List<EntityReference> ownersRef) {
+    if (ownersRef == null) {
+      return Collections.emptyList();
+    }
+    return ownersRef.stream().map(item -> item.getId().toString()).toList();
+  }
+
   public static void removeNonIndexableFields(Map<String, Object> doc, Set<String> fields) {
     for (String key : fields) {
       if (key.contains(".")) {

@@ -148,3 +148,41 @@ JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpC
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.externalType') OR 
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path')
 ) is NULL AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig') is not null;
+
+-- Update Owner Field to Owners
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
+
+-- Update thread_entity to move previousOwner and updatedOwner to array
+UPDATE thread_entity
+SET json = JSON_SET(
+    json,
+    '$.feedInfo.entitySpecificInfo.previousOwner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.previousOwner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.previousOwner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.previousOwner')) <> 'ARRAY';
+
+UPDATE thread_entity
+SET json = JSON_SET(
+    json,
+    '$.feedInfo.entitySpecificInfo.updatedOwner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.updatedOwner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')) <> 'ARRAY';
+
+-- Update entity_extension to move owner to array
+UPDATE entity_extension
+SET json = JSON_SET(
+    json,
+    '$.owner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.owner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';

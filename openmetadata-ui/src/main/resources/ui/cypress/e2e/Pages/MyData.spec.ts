@@ -218,7 +218,7 @@ const prepareData = () => {
           method: 'POST',
           url: `/api/v1/tables`,
           headers: { Authorization: `Bearer ${token}` },
-          body: { ...table, owner: { id: response.body.id, type: 'user' } },
+          body: { ...table, owners: [{ id: response.body.id, type: 'user' }] },
         }).then((tableResponse) => {
           cy.request({
             method: 'PUT',

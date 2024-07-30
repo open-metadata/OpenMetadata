@@ -117,13 +117,13 @@
       "type": "boolean",
       "default": false
     },
-    "owner": {
-      "description": "Owner of this Query.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Stored Procedure.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "followers": {
-      "description": "Followers of this Query.",
+      "description": "Followers of this Stored Procedure.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "votes" : {

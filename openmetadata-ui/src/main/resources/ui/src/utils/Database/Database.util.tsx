@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
-import { toLower } from 'lodash';
+import { isUndefined, toLower } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -50,7 +51,7 @@ export const getQueryFilterForDatabase = (
     },
   });
 
-export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+export const DatabaseFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
 
 export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   {
@@ -91,11 +92,18 @@ export const schemaTableColumns: ColumnsType<DatabaseSchema> = [
   },
   {
     title: t('label.owner'),
-    dataIndex: 'owner',
-    key: 'owner',
+    dataIndex: 'owners',
+    key: 'owners',
     width: 120,
-    render: (text: EntityReference) =>
-      getEntityName(text) || NO_DATA_PLACEHOLDER,
+
+    render: (owners: EntityReference[]) =>
+      !isUndefined(owners) && owners.length > 0 ? (
+        owners.map((owner: EntityReference) => getEntityName(owner))
+      ) : (
+        <Typography.Text data-testid="no-owner-text">
+          {NO_DATA_PLACEHOLDER}
+        </Typography.Text>
+      ),
   },
   {
     title: t('label.usage'),

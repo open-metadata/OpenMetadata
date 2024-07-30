@@ -128,7 +128,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     try {
       const res = await getTopicByFqn(topicFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.DOMAIN,
@@ -243,7 +243,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       await updateTopicVotes(id, data);
       const details = await getTopicByFqn(topicFQN, {
         fields: [
-          TabSpecificField.OWNER,
+          TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
           TabSpecificField.TAGS,
           TabSpecificField.VOTES,

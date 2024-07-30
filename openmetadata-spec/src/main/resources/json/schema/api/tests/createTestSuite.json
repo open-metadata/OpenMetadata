@@ -27,9 +27,9 @@
       "description": "Description of the test suite.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this test suite",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this test suite",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "executableEntityReference": {
       "description": "FQN of the entity the test suite is executed against. Only applicable for executable test suites.",

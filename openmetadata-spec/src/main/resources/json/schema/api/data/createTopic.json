@@ -64,9 +64,10 @@
       "description": "Contains key/value pair of topic configuration.",
       "$ref": "../../entity/data/topic.json#/definitions/topicConfig"
     },
-    "owner": {
-      "description": "Owner of this topic",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this topic",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this topic",

@@ -46,7 +46,7 @@ export const createQueryFilter = ({
         {
           bool: {
             should: owners.map((data) => ({
-              term: { 'owner.fullyQualifiedName': data.key },
+              term: { 'owners.displayName.keyword': data.key },
             })),
           },
         },

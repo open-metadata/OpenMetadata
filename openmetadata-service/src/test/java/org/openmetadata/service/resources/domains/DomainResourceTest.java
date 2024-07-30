@@ -113,7 +113,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a domain with owner data consumer
     CreateDomain create =
-        createRequest(getEntityName(test)).withOwner(DATA_CONSUMER.getEntityReference());
+        createRequest(getEntityName(test)).withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     Domain d = createEntity(create, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of domain can create subdomain under it
@@ -190,9 +190,9 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertListNull(
         getDomain.getParent(),
         getDomain.getChildren(),
-        getDomain.getOwner(),
+        getDomain.getOwners(),
         getDomain.getExperts());
-    String fields = "children,owner,parent,experts";
+    String fields = "children,owners,parent,experts";
     getDomain =
         byName
             ? getEntityByName(getDomain.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

@@ -41,13 +41,11 @@ const TeamsHeadingLabel = ({
   );
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
-  const { owner } = useMemo(() => currentTeam, [currentTeam]);
+  const { owners } = useMemo(() => currentTeam, [currentTeam]);
 
   const isCurrentTeamOwner = useMemo(
-    () =>
-      currentUser &&
-      hasEditAccess(owner?.type ?? '', owner?.id ?? '', currentUser),
-    [owner]
+    () => currentUser && hasEditAccess(owners ?? [], currentUser),
+    [owners, currentUser]
   );
 
   const { hasEditDisplayNamePermission, hasAccess } = useMemo(
