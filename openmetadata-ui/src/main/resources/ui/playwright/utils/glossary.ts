@@ -18,11 +18,12 @@ import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { Glossary, GlossaryData } from '../support/glossary/Glossary';
+import { Glossary } from '../support/glossary/Glossary';
 import {
-  GlossaryTerm,
+  GlossaryData,
   GlossaryTermData,
-} from '../support/glossary/GlossaryTerm';
+} from '../support/glossary/Glossary.interface';
+import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
   getApiContext,
   INVALID_NAMES,
@@ -35,14 +36,6 @@ import { sidebarClick } from './sidebar';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
-
-export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
-  await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
-  await sidebarClick(page, SidebarItem.GLOSSARY);
-  await glossaryResponse;
-  await page.getByRole('menuitem', { name: glossaryName }).click();
-};
 
 export const checkDisplayName = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
