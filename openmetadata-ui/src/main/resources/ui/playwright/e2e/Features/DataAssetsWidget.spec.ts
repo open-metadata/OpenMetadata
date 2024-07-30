@@ -20,13 +20,13 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   getEntityTypeSearchIndexMapping,
-  performAdminLogin,
-  performUserLogin,
   redirectToHomePage,
 } from '../../utils/common';
 import { checkDataAssetWidget } from '../../utils/entity';
+import { performUserLogin } from '../../utils/user';
 
 const entities = [
   TableClass,
