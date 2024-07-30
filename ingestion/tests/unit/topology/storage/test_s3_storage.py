@@ -274,8 +274,6 @@ class StorageUnitTest(TestCase):
             S3ContainerDetails(
                 name="transactions",
                 prefix="/transactions",
-                number_of_objects=100,
-                size=100,
                 file_formats=[FileFormat.csv],
                 data_model=ContainerDataModel(isPartitioned=False, columns=columns),
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
