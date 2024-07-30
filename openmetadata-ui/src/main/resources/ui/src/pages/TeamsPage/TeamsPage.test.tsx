@@ -226,7 +226,7 @@ describe('Test Teams Page', () => {
       '',
       0,
       0,
-      'owner.id:f9578f16-363a-4788-80fb-d05816c9e169',
+      'owners.id:f9578f16-363a-4788-80fb-d05816c9e169',
       '',
       '',
       'all'
