@@ -17,8 +17,6 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 31;
-
 export const COOKIE_VERSION = 'VERSION_1_4_6'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
