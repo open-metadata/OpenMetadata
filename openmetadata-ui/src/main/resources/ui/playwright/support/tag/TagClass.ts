@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { getRandomLastName } from '../../utils/common';
 import { visitClassificationPage } from '../../utils/tag';
-import { getRandomLastName } from '../../utils/user';
 
 type ResponseDataType = {
   style?: {
