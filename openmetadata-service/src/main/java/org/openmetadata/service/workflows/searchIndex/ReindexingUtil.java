@@ -46,6 +46,7 @@ public class ReindexingUtil {
 
   public static final String ENTITY_TYPE_KEY = "entityType";
   public static final String ENTITY_NAME_LIST_KEY = "entityNameList";
+  public static final String TIMESTAMP_KEY = "@timestamp";
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
