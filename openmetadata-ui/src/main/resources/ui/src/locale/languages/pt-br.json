@@ -1062,6 +1062,7 @@
     "show": "Mostrar",
     "show-deleted": "Mostrar Excluídos",
     "show-deleted-entity": "Mostrar {{entity}} Excluído",
+    "show-less": "Show Less",
     "show-log-plural": "Show Logs",
     "show-more-entity": "Mostrar Mais {{entity}}",
     "show-or-hide-advanced-config": "{{showAdv}} Configuração Avançada",

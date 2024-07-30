@@ -60,7 +60,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "kpi")
 public class KpiResource extends EntityResource<Kpi, KpiRepository> {
   public static final String COLLECTION_PATH = "/v1/kpi";
-  static final String FIELDS = "owner,dataInsightChart,kpiResult";
+  static final String FIELDS = "owners,dataInsightChart,kpiResult";
 
   @Override
   public Kpi addHref(UriInfo uriInfo, Kpi kpi) {

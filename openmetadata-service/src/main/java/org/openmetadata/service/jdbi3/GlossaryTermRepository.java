@@ -141,8 +141,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void setInheritedFields(GlossaryTerm glossaryTerm, Fields fields) {
-    EntityInterface parent = getParentEntity(glossaryTerm, "owner,domain,reviewers");
-    inheritOwner(glossaryTerm, fields, parent);
+    EntityInterface parent = getParentEntity(glossaryTerm, "owners,domain,reviewers");
+    inheritOwners(glossaryTerm, fields, parent);
     inheritDomain(glossaryTerm, fields, parent);
     inheritReviewers(glossaryTerm, fields, parent);
   }
@@ -171,7 +171,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     GlossaryTerm parentTerm =
         entity.getParent() != null
             ? Entity.getEntity(
-                entity.getParent().withType(GLOSSARY_TERM), "owner,reviewers", Include.NON_DELETED)
+                entity.getParent().withType(GLOSSARY_TERM), "owners,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
       parentReviewers = parentTerm.getReviewers();

@@ -22,7 +22,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: EntityFields.OWNER,
+    key: EntityFields.OWNERS,
   },
   {
     label: t('label.tag'),
@@ -53,7 +53,7 @@ export const DATA_ASSET_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: EntityFields.OWNER,
+    key: EntityFields.OWNERS,
   },
   {
     label: t('label.tag'),
@@ -174,7 +174,7 @@ export const GLOSSARY_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: EntityFields.OWNER,
+    key: EntityFields.OWNERS,
   },
   {
     label: t('label.tag'),
@@ -208,7 +208,7 @@ export const DATA_PRODUCT_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: EntityFields.OWNER,
+    key: EntityFields.OWNERS,
   },
 ];
 
@@ -221,7 +221,7 @@ export const DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: EntityFields.OWNER,
+    key: EntityFields.OWNERS,
   },
   {
     label: t('label.tag'),
@@ -254,7 +254,7 @@ export const GLOSSARY_ASSETS_DROPDOWN_ITEMS = [
   },
   {
     label: t('label.owner'),
-    key: EntityFields.OWNER,
+    key: EntityFields.OWNERS,
   },
   {
     label: t('label.tag'),
@@ -304,7 +304,7 @@ export const emptyJsonTree: JsonTree = {
           type: 'rule',
           properties: {
             // owner is common field , so setting owner as default field here
-            field: EntityFields.OWNER,
+            field: EntityFields.OWNERS,
             operator: null,
             value: [],
             valueSrc: ['value'],

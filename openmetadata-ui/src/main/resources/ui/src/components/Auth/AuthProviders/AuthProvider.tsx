@@ -45,6 +45,7 @@ import {
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   AuthenticationConfiguration,
@@ -93,7 +94,13 @@ interface AuthProviderProps {
 
 const cookieStorage = new CookieStorage();
 
-const userAPIQueryFields = 'profile,teams,roles,personas,defaultPersona';
+const userAPIQueryFields = [
+  TabSpecificField.PROFILE,
+  TabSpecificField.TEAMS,
+  TabSpecificField.ROLES,
+  TabSpecificField.PERSONAS,
+  TabSpecificField.DEFAULT_PERSONA,
+];
 
 const isEmailVerifyField = 'isEmailVerified';
 

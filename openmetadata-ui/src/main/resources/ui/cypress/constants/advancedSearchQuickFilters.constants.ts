@@ -34,7 +34,7 @@ export const COMMON_DROPDOWN_ITEMS = [
   },
   {
     label: 'Owner',
-    key: 'owner.displayName.keyword',
+    key: 'owners.displayName.keyword',
     aggregateKey: 'displayName.keyword',
     filterSearchIndex: 'user_search_index%2Cteam_search_index',
     selectOption1: 'Aaron Johnson',
@@ -127,7 +127,7 @@ export const CONTAINER_DROPDOWN_ITEMS = [
 export const GLOSSARY_DROPDOWN_ITEMS = [
   {
     label: 'Owner',
-    key: 'owner.displayName.keyword',
+    key: 'owners.displayName.keyword',
   },
   {
     label: 'Tag',
@@ -152,7 +152,7 @@ export const TAG_DROPDOWN_ITEMS = [
 
 export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   'domain.displayName.keyword',
-  'owner.displayName.keyword',
+  'owners.displayName.keyword',
   'tags.tagFQN',
   'tier.tagFQN',
 ];

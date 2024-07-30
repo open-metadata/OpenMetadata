@@ -145,7 +145,7 @@ function SearchIndexDetailsPage() {
   const {
     tier,
     searchIndexTags,
-    owner,
+    owners,
     version,
     followers = [],
     description,
@@ -283,17 +283,17 @@ function SearchIndexDetailsPage() {
   };
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: SearchIndex['owner']) => {
+    async (newOwners?: SearchIndex['owners']) => {
       if (!searchIndexDetails) {
         return;
       }
       const updatedSearchIndexDetails = {
         ...searchIndexDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
-      await onSearchIndexUpdate(updatedSearchIndexDetails, 'owner');
+      await onSearchIndexUpdate(updatedSearchIndexDetails, 'owners');
     },
-    [owner, searchIndexDetails]
+    [owners, searchIndexDetails]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
@@ -395,7 +395,7 @@ function SearchIndexDetailsPage() {
                           searchIndexDetails?.fields
                         )}
                         isEdit={isEdit}
-                        owner={searchIndexDetails?.owner}
+                        owner={searchIndexDetails?.owners}
                         showActions={!searchIndexDetails?.deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
@@ -465,7 +465,7 @@ function SearchIndexDetailsPage() {
               entityFeedTotalCount={feedCount.totalCount}
               entityType={EntityType.SEARCH_INDEX}
               fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
-              owner={searchIndexDetails?.owner}
+              owners={searchIndexDetails?.owners}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchSearchIndexDetails}
               onUpdateFeedCount={handleFeedCount}

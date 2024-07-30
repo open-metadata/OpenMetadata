@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Row, Typography } from 'antd';
-import { get, isEmpty } from 'lodash';
+import { Col, Divider, Row } from 'antd';
+import { get } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { APICollection } from '../../../../generated/entity/data/apiCollection';
 import { getApiCollectionByFQN } from '../../../../rest/apiCollectionsAPI';
@@ -56,12 +55,10 @@ const APICollectionSummary = ({
   );
 
   const ownerDetails = useMemo(() => {
-    const owner = entityDetails.owner;
+    const owners = entityDetails.owners;
 
     return {
-      value: <OwnerLabel hasPermission={false} owner={owner} />,
-      url: getTeamAndUserDetailsPath(owner?.name ?? ''),
-      isLink: !isEmpty(owner?.name),
+      value: <OwnerLabel hasPermission={false} owners={owners} />,
     };
   }, [entityDetails, apiCollectionDetails]);
 
@@ -70,7 +67,7 @@ const APICollectionSummary = ({
       const res = await getApiCollectionByFQN(
         entityDetails.fullyQualifiedName ?? '',
         {
-          fields: 'tags,owner',
+          fields: [TabSpecificField.TAGS, TabSpecificField.OWNERS],
         }
       );
 
@@ -92,17 +89,7 @@ const APICollectionSummary = ({
         <Row className="m-md m-t-0" gutter={[0, 4]}>
           {!isExplore ? (
             <Col className="p-b-md" span={24}>
-              {ownerDetails.isLink ? (
-                <Link
-                  component={Typography.Link}
-                  to={{ pathname: ownerDetails.url }}>
-                  {ownerDetails.value}
-                </Link>
-              ) : (
-                <Typography.Text className="text-grey-muted">
-                  {ownerDetails.value}
-                </Typography.Text>
-              )}
+              {ownerDetails.value}
             </Col>
           ) : null}
           <Col span={24}>

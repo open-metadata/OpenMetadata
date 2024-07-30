@@ -28,7 +28,7 @@ export const searchFilterQS = 'searchFilter';
 export const MAX_RESULT_HITS = 10000;
 
 export const SUPPORTED_EMPTY_FILTER_FIELDS = [
-  EntityFields.OWNER,
+  EntityFields.OWNERS,
   EntityFields.DOMAIN,
   EntityFields.TIER,
   EntityFields.TAG,
@@ -152,7 +152,7 @@ export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
         ownerID2: {
           type: 'rule',
           properties: {
-            field: 'owner.displayName.keyword',
+            field: 'owners.displayName.keyword',
             operator: 'is_null',
             value: [],
             valueSrc: [],
