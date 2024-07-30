@@ -17,7 +17,7 @@ import threading
 from copy import deepcopy
 from functools import wraps
 from time import perf_counter
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -81,7 +81,7 @@ class ExecutionTimeTrackerState(metaclass=Singleton):
 
     def __init__(self):
         """Initializes the state and the lock."""
-        self.state = {}
+        self.state: Dict[str, float] = {}
         self.lock = threading.Lock()
 
     def add(self, context: ExecutionTimeTrackerContext, elapsed: float):

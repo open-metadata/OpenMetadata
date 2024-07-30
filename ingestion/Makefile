@@ -11,23 +11,23 @@ endif
 
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
-	python -m pip install $(INGESTION_DIR)/
+	PIP_CONSTRAINT=$(INGESTION_DIR)/constraints.txt python -m pip install $(INGESTION_DIR)/
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
-	python -m pip install "$(INGESTION_DIR)[dev]/"
+	PIP_CONSTRAINT=$(INGESTION_DIR)/constraints.txt python -m pip install "$(INGESTION_DIR)[dev]/"
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install "$(INGESTION_DIR)[test]/"
+	PIP_CONSTRAINT=$(INGESTION_DIR)/constraints.txt python -m pip install "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install "$(INGESTION_DIR)[all]/"
+	PIP_CONSTRAINT=$(INGESTION_DIR)/constraints.txt python -m pip install "$(INGESTION_DIR)[all]/"
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools==69.0.2
+	PIP_CONSTRAINT=$(ROOT_DIR)/openmetadata-airflow-apis/constraints.txt python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
 
 .PHONY: lint
 lint:  ## Run pylint on the Python sources to analyze the codebase

@@ -14,9 +14,9 @@ process is the same for Pipelines, Dashboard or Messaging services.
 
 {% note %}
 
-#### This guide is based on a working example in the OpenMetadata Demos repository: [link](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector).
+This guide is based on a working example in the OpenMetadata Demos repository: [link](https://github.com/open-metadata/openmetadata-demo/tree/main/custom-connector).
 
-#### We'd recommend to go through the example to better understand how all the pieces should look like.
+We'd recommend to go through the example to better understand how all the pieces should look like.
 
 {% /note %}
 

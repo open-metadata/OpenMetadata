@@ -475,3 +475,11 @@ export const SERVICE_TYPES = [
   EntityType.SEARCH_SERVICE,
   EntityType.API_SERVICE,
 ];
+
+export const SERVICE_INGESTION_PIPELINE_TYPES = [
+  PipelineType.Metadata,
+  PipelineType.Usage,
+  PipelineType.Lineage,
+  PipelineType.Profiler,
+  PipelineType.Dbt,
+];
