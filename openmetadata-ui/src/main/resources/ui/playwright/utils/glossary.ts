@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { DashboardClass } from '../support/entity/DashboardClass';
@@ -442,10 +442,10 @@ export const fillGlossaryTermDetails = async (
     await page.locator('[data-testid="color-color-input"]').fill(term.color);
   }
 
-  if (term.owner) {
+  if (!isUndefined(term.owners)) {
     await addMultiOwner({
       page,
-      ownerNames: term.owner.name,
+      ownerNames: term.owners.map((owner) => owner.name),
       activatorBtnDataTestId: 'add-owner',
       resultTestId: 'owner-container',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
