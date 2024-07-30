@@ -139,7 +139,7 @@ public class DataInsightsEntityEnricherProcessor
 
     // Enrich with Team
     Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
-    if (oEntityOwners.isPresent() && !oEntityOwners.isEmpty()) {
+    if (oEntityOwners.isPresent() && !oEntityOwners.get().isEmpty()) {
       EntityReference entityOwner = oEntityOwners.get().get(0);
       String ownerType = entityOwner.getType();
       if (ownerType.equals(Entity.TEAM)) {

@@ -158,7 +158,7 @@ public class MigrationUtil {
         "percentage_of_data_asset_with_owner",
         new LineChart()
             .withFormula(
-                "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100")
+                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
             .withGroupBy("entityType.keyword"));
 
     // Percentage of Service with Description
@@ -173,7 +173,7 @@ public class MigrationUtil {
         "percentage_of_service_with_owner",
         new LineChart()
             .withFormula(
-                "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100")
+                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
             .withGroupBy("service.name.keyword"));
 
     // total data assets by tier
@@ -197,7 +197,7 @@ public class MigrationUtil {
         "data_assets_with_owner_summary_card",
         new SummaryCard()
             .withFormula(
-                "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100"));
+                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100"));
 
     // total data assets with tier summary card
     createChart(
@@ -217,7 +217,7 @@ public class MigrationUtil {
         "percentage_of_data_asset_with_owner_kpi",
         new LineChart()
             .withFormula(
-                "(count(k='id.keyword',q='owner.name.keyword: *')/count(k='id.keyword'))*100"));
+                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100"));
 
     // number of Data Asset with Description KPI
     createChart(
@@ -227,6 +227,6 @@ public class MigrationUtil {
     // Number of Data Asset with Owner KPI
     createChart(
         "number_of_data_asset_with_owner_kpi",
-        new LineChart().withFormula("count(k='id.keyword',q='owner.name.keyword: *')"));
+        new LineChart().withFormula("count(k='id.keyword',q='owners.name.keyword: *')"));
   }
 }

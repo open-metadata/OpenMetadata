@@ -104,7 +104,7 @@ public class WebAnalyticsEntityViewProcessor
           Optional<List<EntityReference>> oEntityOwners = Optional.ofNullable(entity.getOwners());
 
           // Fill Owner.
-          if (oEntityOwners.isPresent() && !oEntityOwners.isEmpty()) {
+          if (oEntityOwners.isPresent() && !oEntityOwners.get().isEmpty()) {
             EntityReference entityOwner = oEntityOwners.get().get(0);
 
             // Skip the Event if Entity Owner is the same as the User from the Event since we are
