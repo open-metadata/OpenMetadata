@@ -12,8 +12,9 @@
  */
 import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
-import { AdminClass } from '../support/user/AdminClass';
-import { UserClass } from '../support/user/UserClass';
+import { SidebarItem } from '../constant/sidebar';
+import { adjectives, nouns } from '../constant/user';
+import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
 
@@ -102,34 +103,6 @@ export const getEntityTypeSearchIndexMapping = (entityType: string) => {
   return entityMapping[entityType];
 };
 
-export const performAdminLogin = async (browser) => {
-  const admin = new AdminClass();
-  const page = await browser.newPage();
-  await admin.login(page);
-  await redirectToHomePage(page);
-  const token = await getToken(page);
-  const apiContext = await getAuthContext(token);
-  const afterAction = async () => {
-    await apiContext.dispose();
-    await page.close();
-  };
-
-  return { page, apiContext, afterAction };
-};
-
-export const performUserLogin = async (browser, user: UserClass) => {
-  const page = await browser.newPage();
-  await user.login(page);
-  const token = await getToken(page);
-  const apiContext = await getAuthContext(token);
-  const afterAction = async () => {
-    await apiContext.dispose();
-    await page.close();
-  };
-
-  return { page, apiContext, afterAction };
-};
-
 export const toastNotification = async (
   page: Page,
   message: string | RegExp
@@ -160,4 +133,85 @@ export const visitUserProfilePage = async (page: Page) => {
   await page.getByTestId('user-name').click({ force: true });
   await userResponse;
   await clickOutside(page);
+};
+
+export const assignDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string }
+) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page
+    .getByTestId('selectable-list')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await expect(page.getByTestId('domain-link')).toContainText(
+    domain.displayName
+  );
+};
+
+export const updateDomain = async (
+  page: Page,
+  domain: { name: string; displayName: string }
+) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
+  await page
+    .getByTestId('selectable-list')
+    .getByTestId('searchbar')
+    .fill(domain.name);
+  await page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
+  await page.getByRole('listitem', { name: domain.displayName }).click();
+
+  await expect(page.getByTestId('domain-link')).toContainText(
+    domain.displayName
+  );
+};
+
+export const removeDomain = async (page: Page) => {
+  await page.getByTestId('add-domain').click();
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
+
+  await page.getByTestId('remove-owner').locator('svg').click();
+
+  await expect(page.getByTestId('no-domain-text')).toContainText('No Domain');
+};
+
+export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
+  await redirectToHomePage(page);
+  const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
+  await sidebarClick(page, SidebarItem.GLOSSARY);
+  await glossaryResponse;
+  await page.getByRole('menuitem', { name: glossaryName }).click();
+};
+
+export const getRandomFirstName = () => {
+  return `${
+    adjectives[Math.floor(Math.random() * adjectives.length)]
+  }${uuid()}`;
+};
+export const getRandomLastName = () => {
+  return `${nouns[Math.floor(Math.random() * nouns.length)]}${uuid()}`;
+};
+
+export const generateRandomUsername = () => {
+  const firstName = getRandomFirstName();
+  const lastName = getRandomLastName();
+
+  return {
+    firstName,
+    lastName,
+    email: `${firstName}.${lastName}@example.com`,
+    password: 'User@OMD123',
+  };
 };

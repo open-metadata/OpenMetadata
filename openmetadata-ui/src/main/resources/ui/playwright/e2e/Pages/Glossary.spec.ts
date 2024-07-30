@@ -19,9 +19,9 @@ import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
-  performAdminLogin,
-  performUserLogin,
+  getRandomLastName,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -39,7 +39,7 @@ import {
   verifyGlossaryTermAssets,
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
-import { getRandomLastName } from '../../utils/user';
+import { performUserLogin } from '../../utils/user';
 
 const user1 = new UserClass();
 const user2 = new UserClass();

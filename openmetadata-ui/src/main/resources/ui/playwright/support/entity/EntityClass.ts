@@ -12,13 +12,13 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { assignDomain, removeDomain, updateDomain } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
-import { assignDomain, removeDomain, updateDomain } from '../../utils/domain';
 import {
   addMultiOwner,
   addOwner,
