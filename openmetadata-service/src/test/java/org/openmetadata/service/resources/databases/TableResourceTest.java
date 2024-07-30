@@ -2709,7 +2709,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
           schemaTest
               .createRequest("schema_" + (i + 1))
               .withDatabase(database.getFullyQualifiedName())
-              .withOwner(USER1.getEntityReference());
+              .withOwners(List.of(USER1.getEntityReference()));
       DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
 
       CreateTable createTable =
@@ -2734,7 +2734,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         schemaTest
             .createRequest("schema_0")
             .withDatabase(database.getFullyQualifiedName())
-            .withOwner(USER1.getEntityReference());
+            .withOwners(List.of(USER1.getEntityReference()));
     DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
 
     // Step 3: Create a new table under the created database
