@@ -677,8 +677,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     int currentOffset = beforeOffset;
     int total = dao.listCount(filter);
     if (limitParam > 0) {
-      // forward scrolling, if after == null then first page is being asked
-      List<String> jsons = dao.listAfterWithOffset(limitParam, currentOffset);
+      List<String> jsons = dao.listAfter(filter, limitParam, currentOffset);
 
       for (String json : jsons) {
         T parsedEntity = JsonUtils.readValue(json, entityClass);

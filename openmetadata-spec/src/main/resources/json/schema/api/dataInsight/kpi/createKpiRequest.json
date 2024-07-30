@@ -20,13 +20,20 @@
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
     "owners": {
-      "description": "Owners of this Kpi",
+      "description": "Owner of this Kpi",
       "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },
     "dataInsightChart": {
       "description": "Fully qualified name of the Chart this kpi refers to",
-      "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      "type": "string",
+      "javaType": "org.openmetadata.schema.api.dataInsight.kpi.KpiDataInsightChart",
+      "enum": [
+        "percentage_of_data_asset_with_description_kpi",
+        "percentage_of_data_asset_with_owner_kpi",
+        "number_of_data_asset_with_description_kpi",
+        "number_of_data_asset_with_owner_kpi"
+      ]
     },
     "startDate": {
       "description": "Start Date for the KPIs",
@@ -36,21 +43,26 @@
       "description": "End Date for the KPIs",
       "$ref": "../../../type/basic.json#/definitions/timestamp"
     },
-    "targetDefinition": {
+    "targetValue": {
       "description": "Metrics from the chart and the target to achieve the result.",
-      "type": "array",
-      "items": {
-        "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTarget"
-      }
+      "type": "number"
     },
     "metricType": {
       "$ref": "../../../dataInsight/kpi/basic.json#/definitions/kpiTargetType"
     },
-    "domain" : {
+    "domain": {
       "description": "Fully qualified name of the domain the Table belongs to.",
       "type": "string"
     }
   },
-  "required": ["name", "description", "dataInsightChart", "startDate", "endDate", "targetDefinition", "metricType"],
+  "required": [
+    "name",
+    "description",
+    "dataInsightChart",
+    "startDate",
+    "endDate",
+    "targetValue",
+    "metricType"
+  ],
   "additionalProperties": false
 }
