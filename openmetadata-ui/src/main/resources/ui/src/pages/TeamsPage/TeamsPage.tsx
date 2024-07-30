@@ -246,8 +246,7 @@ const TeamsPage = () => {
           TabSpecificField.DEFAULT_ROLES,
           TabSpecificField.POLICIES,
           TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.DOMAIN,
-          TabSpecificField.TEAM_DOMAIN,
+          TabSpecificField.TEAM_DOMAINS,
         ],
         include: Include.All,
       });
