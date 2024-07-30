@@ -56,6 +56,7 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -769,6 +770,11 @@ public class SearchRepository {
   public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
       throws IOException {
     return searchClient.aggregate(query, index, aggregationJson);
+  }
+
+  public DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
   public Response suggest(SearchRequest request) throws IOException {

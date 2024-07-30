@@ -70,6 +70,8 @@ import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import { Classification } from '../generated/entity/classification/classification';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Chart } from '../generated/entity/data/chart';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -940,6 +942,85 @@ const getEntityServiceOverview = (serviceDetails: EntityServiceUnion) => {
   return overview;
 };
 
+const getApiCollectionOverview = (apiCollection: APICollection) => {
+  if (isNil(apiCollection) || isEmpty(apiCollection)) {
+    return [];
+  }
+
+  const { service } = apiCollection;
+
+  const overview = [
+    {
+      name: i18next.t('label.endpoint-url'),
+      value: apiCollection.endpointURL || NO_DATA,
+      url: apiCollection.endpointURL,
+      isLink: true,
+      isExternal: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service.fullyQualifiedName ?? NO_DATA,
+      url: getServiceDetailsPath(
+        service.fullyQualifiedName ?? '',
+        ServiceCategory.API_SERVICES
+      ),
+      isLink: true,
+      visible: [DRAWER_NAVIGATION_OPTIONS.explore],
+    },
+  ];
+
+  return overview;
+};
+const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
+  if (isNil(apiEndpoint) || isEmpty(apiEndpoint)) {
+    return [];
+  }
+  const { service, apiCollection } = apiEndpoint;
+
+  const overview = [
+    {
+      name: i18next.t('label.endpoint-url'),
+      value: apiEndpoint.endpointURL || NO_DATA,
+      url: apiEndpoint.endpointURL,
+      isLink: true,
+      isExternal: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.api-collection'),
+      value: apiEndpoint.apiCollection?.fullyQualifiedName ?? '',
+      url: getEntityDetailsPath(
+        EntityType.API_COLLECTION,
+        apiCollection?.fullyQualifiedName ?? ''
+      ),
+      isLink: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+    {
+      name: i18next.t('label.service'),
+      value: service.fullyQualifiedName ?? '',
+      url: getServiceDetailsPath(
+        service.fullyQualifiedName ?? '',
+        ServiceCategory.API_SERVICES
+      ),
+      isLink: true,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
+  ];
+
+  return overview;
+};
+
 export const getEntityOverview = (
   type: string,
   entityDetail: EntityUnion
@@ -987,12 +1068,21 @@ export const getEntityOverview = (
       return getDatabaseSchemaOverview(entityDetail as DatabaseSchema);
     }
 
+    case ExplorePageTabs.API_COLLECTION: {
+      return getApiCollectionOverview(entityDetail as APICollection);
+    }
+
+    case ExplorePageTabs.API_ENDPOINT: {
+      return getApiEndpointOverview(entityDetail as APIEndpoint);
+    }
+
     case ExplorePageTabs.DATABASE_SERVICE:
     case ExplorePageTabs.MESSAGING_SERVICE:
     case ExplorePageTabs.DASHBOARD_SERVICE:
     case ExplorePageTabs.ML_MODEL_SERVICE:
     case ExplorePageTabs.PIPELINE_SERVICE:
-    case ExplorePageTabs.SEARCH_INDEX_SERVICE: {
+    case ExplorePageTabs.SEARCH_INDEX_SERVICE:
+    case ExplorePageTabs.API_SERVICE: {
       return getEntityServiceOverview(entityDetail as EntityServiceUnion);
     }
 
@@ -1386,6 +1476,8 @@ export const getEntityLinkFromType = (
     case EntityType.DASHBOARD_DATA_MODEL:
     case EntityType.STORED_PROCEDURE:
     case EntityType.SEARCH_INDEX:
+    case EntityType.API_COLLECTION:
+    case EntityType.API_ENDPOINT:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
@@ -1433,6 +1525,11 @@ export const getEntityLinkFromType = (
       return getServiceDetailsPath(
         fullyQualifiedName,
         ServiceCategory.METADATA_SERVICES
+      );
+    case EntityType.API_SERVICE:
+      return getServiceDetailsPath(
+        fullyQualifiedName,
+        ServiceCategory.API_SERVICES
       );
     case EntityType.BOT:
       return getBotsPath(fullyQualifiedName);
@@ -1507,6 +1604,63 @@ export const getBreadcrumbForTable = (
           },
         ]
       : []),
+  ];
+};
+
+export const getBreadCrumbForAPICollection = (entity: APICollection) => {
+  const { service } = entity;
+
+  return [
+    {
+      name: startCase(ServiceCategory.API_SERVICES),
+      url: getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      ),
+    },
+    {
+      name: getEntityName(service),
+      url: service?.name
+        ? getServiceDetailsPath(
+            service?.name ?? '',
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+    },
+  ];
+};
+
+export const getBreadCrumbForAPIEndpoint = (entity: APIEndpoint) => {
+  const { service, apiCollection } = entity;
+
+  return [
+    {
+      name: startCase(ServiceCategory.API_SERVICES),
+      url: getSettingPath(
+        GlobalSettingsMenuCategory.SERVICES,
+        getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+      ),
+    },
+    {
+      name: getEntityName(service),
+      url: service?.name
+        ? getServiceDetailsPath(
+            service?.name ?? '',
+            ServiceCategoryPlural[
+              service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+    },
+    {
+      name: getEntityName(apiCollection),
+      url: getEntityDetailsPath(
+        EntityType.API_COLLECTION,
+        apiCollection?.fullyQualifiedName ?? ''
+      ),
+    },
   ];
 };
 
@@ -1587,10 +1741,9 @@ export const getBreadcrumbForContainer = (data: {
 
 export const getBreadcrumbForTestCase = (entity: TestCase) => [
   {
-    name: i18next.t('label.incident-manager'),
-    url: ROUTES.INCIDENT_MANAGER,
+    name: i18next.t('label.data-quality'),
+    url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
   },
-
   {
     name: entity.name,
     url: getEntityLinkFromType(
@@ -1635,7 +1788,9 @@ export const getEntityBreadcrumbs = (
     | Database
     | DatabaseSchema
     | SearchIndexAsset
-    | DataAssetsWithoutServiceField,
+    | DataAssetsWithoutServiceField
+    | APICollection
+    | APIEndpoint,
   entityType?: EntityType,
   includeCurrent = false
 ) => {
@@ -1821,6 +1976,16 @@ export const getEntityBreadcrumbs = (
           ),
         },
       ];
+    case EntityType.API_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.API_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.API_SERVICES)
+          ),
+        },
+      ];
 
     case EntityType.CONTAINER: {
       const data = entity as Container;
@@ -1969,6 +2134,12 @@ export const getEntityBreadcrumbs = (
         },
       ];
     }
+
+    case EntityType.API_COLLECTION:
+      return getBreadCrumbForAPICollection(entity as APICollection);
+
+    case EntityType.API_ENDPOINT:
+      return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
 
     case EntityType.TOPIC:
     case EntityType.DASHBOARD:

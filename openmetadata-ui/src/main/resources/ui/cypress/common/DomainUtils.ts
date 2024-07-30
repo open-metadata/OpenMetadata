@@ -227,7 +227,7 @@ const fillForm = (formObj, type) => {
   cy.get('[data-testid="add-experts"]').scrollIntoView().click();
   verifyResponseStatusCode('@getUsers', 200);
   cy.get('[data-testid="loader"]').should('not.exist');
-  
+
   interceptURL(
     'GET',
     `api/v1/search/query?q=*${encodeURI(formObj.experts)}*`,

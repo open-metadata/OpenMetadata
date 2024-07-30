@@ -149,6 +149,16 @@ export const TOPIC_DROPDOWN_ITEMS = [
     key: EntityFields.SCHEMA_FIELD,
   },
 ];
+export const API_ENDPOINT_DROPDOWN_ITEMS = [
+  {
+    label: t('label.request-schema-field'),
+    key: EntityFields.REQUEST_SCHEMA_FIELD,
+  },
+  {
+    label: t('label.response-schema-field'),
+    key: EntityFields.RESPONSE_SCHEMA_FIELD,
+  },
+];
 
 export const CONTAINER_DROPDOWN_ITEMS = [
   {

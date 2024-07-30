@@ -36,6 +36,7 @@ export const prepareChartData = ({
   const yValues = params.reduce((acc, curr, i) => {
     return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
   }, {});
+  let showAILearningBanner = false;
   testCaseResults.forEach((result) => {
     const values = result.testResultValue?.reduce((acc, curr) => {
       const value = round(parseFloat(curr.value ?? ''), 2) || 0;
@@ -59,6 +60,10 @@ export const prepareChartData = ({
     const y2 = result?.maxBound ?? yValues.y2;
     const boundArea = isUndefined(y1) || isUndefined(y2) ? undefined : [y1, y2];
 
+    if (isUndefined(boundArea)) {
+      showAILearningBanner = true;
+    }
+
     dataPoints.push({
       name: result.timestamp,
       status: result.testCaseStatus,
@@ -81,5 +86,6 @@ export const prepareChartData = ({
         color: COLORS[i],
       })) ?? [],
     data: dataPoints,
+    showAILearningBanner,
   };
 };
