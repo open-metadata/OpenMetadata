@@ -19,6 +19,20 @@ from typing_extensions import Annotated
 MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
 
 
+class MetabaseUser(BaseModel):
+    """
+    Metabase user model
+    """
+
+    id: MetabaseStrId
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    common_name: Optional[str] = None
+    email: Optional[str] = None
+    is_superuser: Optional[bool] = False
+    last_edit_timestamp: Optional[str] = Field(None, alias="timestamp")
+
+
 class MetabaseDashboard(BaseModel):
     """
     Metabase dashboard model
@@ -83,6 +97,7 @@ class MetabaseDashboardDetails(BaseModel):
     dashcards: List[DashCard]
     name: Optional[str] = None
     id: MetabaseStrId
+    creator_id: Optional[MetabaseStrId] = None
     collection_id: Optional[MetabaseStrId] = None
 
 
