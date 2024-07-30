@@ -73,7 +73,7 @@ const SubDomainsTable = ({
         title: t('label.owner'),
         dataIndex: 'owner',
         key: 'owner',
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
     ];
 
