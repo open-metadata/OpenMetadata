@@ -23,8 +23,8 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
-import { EntityField } from '../constants/Feeds.constants';
-import { EntityType } from '../enums/entity.enum';
+import { TabSpecificField } from '../enums/entity.enum';
+import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
@@ -43,13 +43,11 @@ import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
   hasPermission: boolean,
-  ownerDisplayName: ReactNode,
-  owner?: EntityReference
+  owners: EntityReference[],
+  ownerDisplayNames: ReactNode[]
 ) => {
-  if (owner) {
-    return (
-      <OwnerLabel pills owner={owner} ownerDisplayName={ownerDisplayName} />
-    );
+  if (!isEmpty(owners)) {
+    return <OwnerLabel ownerDisplayName={ownerDisplayNames} owners={owners} />;
   }
   if (!hasPermission) {
     return <div>{NO_DATA_PLACEHOLDER}</div>;
@@ -65,12 +63,16 @@ export const getUserNames = (
 ) => {
   if (isVersionsView) {
     const ownerDiff = getDiffByFieldName(
-      EntityField.OWNER,
+      TabSpecificField.OWNERS,
       entity.changeDescription as ChangeDescription
     );
 
-    const oldOwner = JSON.parse(getChangedEntityOldValue(ownerDiff) ?? '{}');
-    const newOwner = JSON.parse(getChangedEntityNewValue(ownerDiff) ?? '{}');
+    const oldOwners: EntityReference[] = JSON.parse(
+      getChangedEntityOldValue(ownerDiff) ?? '[]'
+    );
+    const newOwners: EntityReference[] = JSON.parse(
+      getChangedEntityNewValue(ownerDiff) ?? '[]'
+    );
 
     const shouldShowDiff =
       !isEmpty(ownerDiff.added) ||
@@ -78,30 +80,34 @@ export const getUserNames = (
       !isEmpty(ownerDiff.updated);
 
     if (shouldShowDiff) {
-      if (!isEmpty(ownerDiff.added)) {
-        const ownerName = getDiffValue('', getEntityName(newOwner));
+      const ownersWithOperations = [
+        { owners: newOwners, operation: EntityChangeOperations.ADDED },
+        { owners: oldOwners, operation: EntityChangeOperations.DELETED },
+      ];
 
-        return getOwner(hasPermission, ownerName, newOwner);
-      }
+      const owners = ownersWithOperations.flatMap(({ owners }) => owners);
+      const ownerDisplayNames = ownersWithOperations.flatMap(
+        ({ owners, operation }) =>
+          owners.map((owner) =>
+            getDiffValue(
+              operation === EntityChangeOperations.ADDED
+                ? ''
+                : getEntityName(owner),
+              operation === EntityChangeOperations.ADDED
+                ? getEntityName(owner)
+                : ''
+            )
+          )
+      );
 
-      if (!isEmpty(ownerDiff.deleted)) {
-        const ownerName = getDiffValue(getEntityName(oldOwner), '');
-
-        return getOwner(hasPermission, ownerName, oldOwner);
-      }
-
-      if (!isEmpty(ownerDiff.updated)) {
-        const ownerName = getDiffValue(
-          getEntityName(oldOwner),
-          getEntityName(newOwner)
-        );
-
-        return getOwner(hasPermission, ownerName, newOwner);
-      }
+      return getOwner(hasPermission, owners, ownerDisplayNames);
     }
   }
 
-  return getOwner(hasPermission, getEntityName(entity.owner), entity.owner);
+  const owners = entity.owners || [];
+  const ownerDisplayNames = owners.map((owner) => getEntityName(owner));
+
+  return getOwner(hasPermission, owners, ownerDisplayNames);
 };
 
 export const getQueryFilterToIncludeDomain = (

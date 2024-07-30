@@ -15,7 +15,7 @@ package org.openmetadata.service.resources;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
@@ -133,7 +133,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     // Simulate adding owner to a table
     EntityReference entityReference = new EntityReference();
     entityReference.withId(UUID.randomUUID()).withName("user1").withDisplayName("User One");
-    fieldAdded(changeDescription, FIELD_OWNER, JsonUtils.pojoToJson(entityReference));
+    fieldAdded(changeDescription, FIELD_OWNERS, JsonUtils.pojoToJson(List.of(entityReference)));
 
     ChangeEvent changeEvent = getChangeEvent(EventType.ENTITY_UPDATED, changeDescription, 1.0, 1.1);
 
@@ -141,7 +141,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
     assertEquals(1, threadWithMessages.size());
 
     assertEquals(
-        "Added **owner**: <span class=\"diff-added\">User One</span>",
+        "Added **owners**: <span class=\"diff-added\">User One</span>",
         threadWithMessages.get(0).getMessage());
   }
 

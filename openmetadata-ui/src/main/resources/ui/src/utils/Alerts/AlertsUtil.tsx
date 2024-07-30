@@ -50,7 +50,6 @@ import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { getEntityIcon } from '../TableUtils';
 import { showSuccessToast } from '../ToastUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -782,7 +781,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -796,7 +795,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -880,7 +879,7 @@ export const getSourceOptionsFromResourceList = (
   selectedResource?: string[]
 ) =>
   resources.map((resource) => {
-    const sourceIcon = getEntityIcon(resource ?? '');
+    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
 
     return {
       label: (

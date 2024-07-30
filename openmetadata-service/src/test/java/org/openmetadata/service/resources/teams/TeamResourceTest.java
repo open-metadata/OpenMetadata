@@ -822,7 +822,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertRows(result, expectedRows);
 
     // Invalid owner
-    record = getRecord(1, GROUP, team.getName(), "invalidOwner", false, "", "");
+    record = getRecord(1, GROUP, team.getName(), "user:invalidOwner", false, "", "");
     csv = createCsv(TeamCsv.HEADERS, listOf(record), null);
     result = importCsv(team.getName(), csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
@@ -976,7 +976,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         updatedBy);
     assertNull(getTeam.getOwns());
 
-    fields = "users,owns,profile,defaultRoles,owner";
+    fields = "users,owns,profile,defaultRoles,owners";
     getTeam =
         byName
             ? getEntityByName(expectedTeam.getName(), fields, ADMIN_AUTH_HEADERS)
@@ -1183,7 +1183,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
         index,
         teamType,
         parent != null ? parent : "",
-        owner != null ? owner.getName() : "",
+        owner != null ? "user:" + owner.getName() : "",
         isJoinable,
         defaultRoles != null
             ? defaultRoles.stream()
@@ -1206,7 +1206,7 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       String defaultRoles,
       String policies) {
     // CSV Header
-    // "name", "displayName", "description", "teamType", "parents", "owner", "isJoinable",
+    // "name", "displayName", "description", "teamType", "parents", "owners", "isJoinable",
     // "defaultRoles", & "policies"
     return String.format(
         "x%s,displayName%s,description%s,%s,%s,%s,%s,%s,%s",

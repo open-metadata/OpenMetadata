@@ -90,9 +90,9 @@
       ],
       "default": "TestSuite"
     },
-    "owner": {
-      "description": "Owner of this TestCase definition.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this TestCase definition.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "version": {

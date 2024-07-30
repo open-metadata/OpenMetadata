@@ -24,6 +24,10 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.SEPARATOR;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flipkart.zjsonpatch.JsonDiff;
 import io.github.resilience4j.core.functions.CheckedRunnable;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
@@ -42,7 +46,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.json.JsonObject;
-import javax.json.JsonPatch;
 import javax.validation.constraints.Size;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
@@ -331,14 +334,13 @@ public final class TestUtils {
   }
 
   public static <T> T patch(
-      WebTarget target, JsonPatch patch, Class<T> clz, Map<String, String> headers)
+      WebTarget target, JsonNode patch, Class<T> clz, Map<String, String> headers)
       throws HttpResponseException {
     Response response =
         SecurityUtil.addHeaders(target, headers)
             .method(
                 "PATCH",
-                Entity.entity(
-                    patch.toJsonArray().toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
+                Entity.entity(patch.toString(), MediaType.APPLICATION_JSON_PATCH_JSON_TYPE));
     return readResponse(response, clz, Status.OK.getStatusCode());
   }
 
@@ -692,5 +694,14 @@ public final class TestUtils {
     } catch (Throwable e) {
       throw new AssertionFailedError("Unexpected error while running retry: " + e.getMessage(), e);
     }
+  }
+
+  public static JsonNode getJsonPatch(String originalJson, String updatedJson) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      return JsonDiff.asJson(mapper.readTree(originalJson), mapper.readTree(updatedJson));
+    } catch (JsonProcessingException ignored) {
+    }
+    return null;
   }
 }

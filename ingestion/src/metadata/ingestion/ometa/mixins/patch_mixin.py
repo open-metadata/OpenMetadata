@@ -32,6 +32,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Entity
@@ -323,7 +324,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         self,
         entity: Type[T],
         source: T,
-        owner: EntityReference = None,
+        owners: EntityReferenceList = None,
         force: bool = False,
     ) -> Optional[T]:
         """
@@ -340,20 +341,20 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id, fields=["owner"]
+            entity=entity, entity_id=source.id, fields=["owners"]
         )
 
         if not instance:
             return None
 
         # Don't change existing data without force
-        if instance.owner and not force:
+        if instance.owners and instance.owners.root and not force:
             # If a owner is already present and force is not passed,
             # owner will not be overridden
             return None
 
         destination = deepcopy(instance)
-        destination.owner = owner
+        destination.owners = owners
 
         return self.patch(entity=entity, source=instance, destination=destination)
 

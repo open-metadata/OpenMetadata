@@ -53,14 +53,14 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   @Override
-  public EntityReference getOwner() {
+  public List<EntityReference> getOwners() {
     resolveEntity();
     if (entity == null) {
       return null;
     } else if (Entity.USER.equals(entityRepository.getEntityType())) {
-      return entity.getEntityReference(); // Owner for a user is same as the user
+      return List.of(entity.getEntityReference()); // Owner for a user is same as the user
     }
-    return entity.getOwner();
+    return entity.getOwners();
   }
 
   @Override
@@ -88,8 +88,8 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   private EntityInterface resolveEntity() {
     if (entity == null) {
       String fields = "";
-      if (entityRepository.isSupportsOwner()) {
-        fields = EntityUtil.addField(fields, Entity.FIELD_OWNER);
+      if (entityRepository.isSupportsOwners()) {
+        fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
       }
       if (entityRepository.isSupportsTags()) {
         fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);

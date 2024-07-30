@@ -42,6 +42,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -174,11 +175,13 @@ export const AssetSelectionModal = ({
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
       const data = await getDataProductByName(entityFqn, {
-        fields: 'domain,assets',
+        fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
       });
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.GLOSSARY) {
-      const data = await getGlossaryTermByFQN(entityFqn, { fields: 'tags' });
+      const data = await getGlossaryTermByFQN(entityFqn, {
+        fields: TabSpecificField.TAGS,
+      });
       setActiveEntity(data);
     }
   }, [type, entityFqn]);

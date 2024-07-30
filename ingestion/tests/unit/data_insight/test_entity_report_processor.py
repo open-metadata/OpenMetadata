@@ -54,8 +54,8 @@ class EntityReportProcessorTest(unittest.TestCase):
             id=uuid.uuid4(),
             name="my_chart",
             service=EntityReference(id=uuid.uuid4(), type="dashboad"),  # type: ignore
-            owner=EntityReference(
-                id=TEAM.id.root, type="team", name="marketing"
+            owners=EntityReferenceList(
+                root=[EntityReference(id=TEAM.id.root, type="team", name="marketing")]
             ),  # type: ignore
         )  # type: ignore
 
@@ -67,14 +67,16 @@ class EntityReportProcessorTest(unittest.TestCase):
             ReportDataType.entityReportData.value, mocked_ometa
         )
         mocked_ometa.get_by_name.return_value = USER
-        owner = processor._get_team(self.chart.owner)
-        assert owner == "marketing"
-        self.chart.owner = EntityReference(id=USER.id.root, type="user")  # type: ignore
-        owner = processor._get_team(self.chart.owner)
-        assert owner == "sales"
-        self.chart.owner = None
-        owner = processor._get_team(self.chart.owner)
-        assert owner is None
+        owners = processor._get_team(self.chart.owners)
+        assert owners == "marketing"
+        self.chart.owners = EntityReferenceList(
+            root=[EntityReference(id=TEAM.id.root, type="team", name="sales")]
+        )
+        owners = processor._get_team(self.chart.owners)
+        assert owners == "sales"
+        self.chart.owners = None
+        owners = processor._get_team(self.chart.owners)
+        assert owners is None
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata", return_value=MagicMock())
     def test__flatten_results(self, mocked_om):

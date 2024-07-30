@@ -68,6 +68,7 @@ import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
@@ -99,6 +100,7 @@ import {
   sortTagsCaseInsensitive,
 } from './CommonUtils';
 import EntityLink from './EntityLink';
+import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
@@ -265,6 +267,7 @@ export const getEntityIcon = (
     [EntityType.INGESTION_PIPELINE]: PipelineIcon,
     [SearchIndex.INGESTION_PIPELINE]: PipelineIcon,
     [EntityType.ALERT]: AlertIcon,
+    [EntityType.KPI]: KPIIcon,
     ['tagCategory']: ClassificationIcon,
     ['announcement']: AnnouncementIcon,
     ['conversation']: ConversationIcon,
@@ -308,9 +311,13 @@ export const getServiceIcon = (source: SourceType) => {
   );
 
   if (isDataAsset) {
-    return getEntityIcon(source.entityType ?? '', 'service-icon w-7 h-7', {
-      color: DE_ACTIVE_COLOR,
-    });
+    return searchClassBase.getEntityIcon(
+      source.entityType ?? '',
+      'service-icon w-7 h-7',
+      {
+        color: DE_ACTIVE_COLOR,
+      }
+    );
   } else {
     return (
       <img

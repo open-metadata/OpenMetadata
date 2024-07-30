@@ -32,8 +32,8 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
   }
 
   @Override
-  public EntityReference getOwner() {
-    return parentEntity == null ? null : parentEntity.getOwner();
+  public List<EntityReference> getOwners() {
+    return parentEntity == null ? null : parentEntity.getOwners();
   }
 
   @Override
@@ -55,8 +55,8 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
 
   private void setParent(T entity) {
     String fields = "";
-    if (entityRepository.isSupportsOwner()) {
-      fields = EntityUtil.addField(fields, Entity.FIELD_OWNER);
+    if (entityRepository.isSupportsOwners()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_OWNERS);
     }
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);

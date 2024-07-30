@@ -36,9 +36,10 @@
       "description": "Link to the service for which ingestion pipeline is ingesting the metadata.",
       "$ref": "../../../type/entityReference.json"
     },
-    "owner": {
-      "description": "Owner of this Pipeline.",
-      "$ref": "../../../type/entityReference.json"
+    "owners": {
+      "description": "Owner of this Ingestion Pipeline.",
+      "$ref": "../../../type/entityReferenceList.json",
+      "default": null
     },
     "domain" : {
       "description": "Fully qualified name of the domain the Table belongs to.",

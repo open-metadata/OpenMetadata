@@ -28,6 +28,7 @@ import { useHistory } from 'react-router-dom';
 import Loader from '../../components/common/Loader/Loader';
 import Users from '../../components/Settings/Users/Users.component';
 import { ROUTES } from '../../constants/constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -48,7 +49,14 @@ const UserPage = () => {
   const fetchUserData = async () => {
     try {
       const res = await getUserByName(username, {
-        fields: 'profile,roles,teams,personas,defaultPersona,userDomains',
+        fields: [
+          TabSpecificField.PROFILE,
+          TabSpecificField.ROLES,
+          TabSpecificField.TEAMS,
+          TabSpecificField.PERSONAS,
+          TabSpecificField.DEFAULT_PERSONA,
+          TabSpecificField.USER_DOMAINS,
+        ],
         include: Include.All,
       });
       setUserData(res);

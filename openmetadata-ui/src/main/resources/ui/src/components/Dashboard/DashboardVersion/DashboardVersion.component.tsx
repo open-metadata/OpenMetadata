@@ -51,7 +51,7 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   tier,
   slashedDashboardName,
   versionList,
@@ -74,11 +74,11 @@ const DashboardVersion: FC<DashboardVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const handleTabChange = (activeKey: string) => {

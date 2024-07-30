@@ -50,7 +50,7 @@ const TeamsInfo = ({
 
   const { currentUser } = useApplicationStore();
 
-  const { email, owner, teamType, id, fullyQualifiedName } = useMemo(
+  const { email, owners, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,
     [currentTeam]
   );
@@ -64,12 +64,14 @@ const TeamsInfo = ({
     [entityPermissions, isTeamDeleted]
   );
 
+  const isUserPartOfCurrentTeam = useMemo<boolean>(() => {
+    return owners?.some((owner) => owner.id === currentUser?.id) ?? false;
+  }, [owners, currentUser]);
+
   const hasEditSubscriptionPermission = useMemo(
     () =>
-      (entityPermissions.EditAll ||
-        currentTeam.owner?.id === currentUser?.id) &&
-      !isTeamDeleted,
-    [entityPermissions, currentTeam, currentUser, isTeamDeleted]
+      (entityPermissions.EditAll || isUserPartOfCurrentTeam) && !isTeamDeleted,
+    [entityPermissions, isUserPartOfCurrentTeam, isTeamDeleted]
   );
 
   const onEmailSave = async (data: { email: string }) => {
@@ -88,11 +90,11 @@ const TeamsInfo = ({
   };
 
   const updateOwner = useCallback(
-    async (owner?: EntityReference) => {
+    async (owners?: EntityReference[]) => {
       if (currentTeam) {
         const updatedData: Team = {
           ...currentTeam,
-          owner,
+          owners,
         };
 
         await updateTeamHandler(updatedData);
@@ -306,7 +308,7 @@ const TeamsInfo = ({
       <OwnerLabel
         className="text-sm"
         hasPermission={hasAccess}
-        owner={owner}
+        owners={owners}
         onUpdate={updateOwner}
       />
       <Divider type="vertical" />
