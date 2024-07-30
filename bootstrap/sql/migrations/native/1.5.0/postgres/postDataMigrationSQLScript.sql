@@ -23,6 +23,60 @@ WHERE name IN (
     'tableRowCountToBeBetween'
 );
 
+
+-- KPI Migrations
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'percentage_of_data_asset_with_owner_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithOwnerByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE json ->> 'metricType' = 'PERCENTAGE')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+
+
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'number_of_data_asset_with_owner_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithOwnerByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE json ->> 'metricType' = 'NUMBER')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+
+
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'percentage_of_data_asset_with_description_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithDescriptionByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE json ->> 'metricType' = 'PERCENTAGE')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+
+
+UPDATE entity_relationship
+SET    toid = (SELECT id
+               FROM   di_chart_entity
+               WHERE  NAME = 'number_of_data_asset_with_description_kpi'),
+       toentity = 'dataInsightCustomChart'
+WHERE  toid = (SELECT id
+               FROM   data_insight_chart dic
+               WHERE  NAME = 'PercentageOfEntitiesWithDescriptionByType')
+       AND fromId IN (SELECT id from kpi_entity WHERE json ->> 'metricType' = 'NUMBER')
+       AND toentity = 'dataInsightChart'
+       AND fromentity = 'kpi';
+-- KPI MIgrations end
+
 -- Update schedule type for applications
 UPDATE installed_apps
 SET json = json || '{"scheduleType": "ScheduledOrManual"}'
@@ -50,4 +104,3 @@ WHERE jsonb_exists(json, 'entityId') OR jsonb_exists(json, 'entityType');
 -- Add entityId and type column to thread_entity table
 ALTER TABLE thread_entity ADD COLUMN entityId VARCHAR(36) GENERATED ALWAYS AS (json->'entityRef'->>'id') STORED;
 ALTER TABLE thread_entity ADD COLUMN entityType VARCHAR(36) GENERATED ALWAYS AS (json->'entityRef'->>'type') STORED;
-
