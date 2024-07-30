@@ -25,7 +25,7 @@ type ResponseDataType = {
   domainType: string;
   id?: string;
   fullyQualifiedName?: string;
-  owner?: UserTeamRef;
+  owners?: UserTeamRef[];
   experts?: UserTeamRef[];
 };
 

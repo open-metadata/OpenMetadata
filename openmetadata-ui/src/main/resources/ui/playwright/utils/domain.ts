@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -115,11 +115,11 @@ const fillDomainForm = async (page: Page, entity: Domain['data']) => {
   await page.fill(descriptionBox, entity.description);
   await page.click('[data-testid="add-owner"]');
 
-  if (entity.owner) {
+  if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner(
       page,
-      entity.owner.name,
-      entity.owner.type as 'Users' | 'Teams',
+      entity.owners[0].name,
+      entity.owners[0].type as 'Users' | 'Teams',
       EntityTypeEndpoint.Domain,
       'owner-container',
       'add-owner'
@@ -160,10 +160,10 @@ export const verifyDomain = async (page: Page, domain: Domain['data']) => {
 
   await expect(viewerContainerText).toContain(domain.description);
 
-  if (domain.owner) {
+  if (!isEmpty(domain.owners) && !isUndefined(domain.owners)) {
     await expect(
       page.getByTestId('domain-owner-name').getByTestId('owner-link')
-    ).toContainText(domain.owner.name);
+    ).toContainText(domain.owners[0].name);
   }
 
   await expect(
