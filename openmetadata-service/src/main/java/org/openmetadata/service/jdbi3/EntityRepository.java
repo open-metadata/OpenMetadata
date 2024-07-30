@@ -655,11 +655,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      beforeCursor = after == null ? null : entities.get(0).getName();
+      beforeCursor = after == null ? null : getCursorValue(entities.get(0));
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
-        afterCursor = entities.get(limitParam - 1).getName();
+        afterCursor = getCursorValue(entities.get(limitParam - 1));
       }
       return getResultList(entities, beforeCursor, afterCursor, total);
     } else {
@@ -722,10 +722,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entities.size()
         > limitParam) { // If extra result exists, then previous page exists - return before cursor
       entities.remove(0);
-      beforeCursor = entities.get(0).getName();
+      beforeCursor = getCursorValue(entities.get(0));
     }
-    afterCursor = entities.get(entities.size() - 1).getName();
+    afterCursor = getCursorValue(entities.get(entities.size() - 1));
     return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  /**
+   * This method returns the cursor value for pagination.
+   * By default, it uses the entity's name. However, in cases where the name can be the same for different entities,
+   * it is recommended to override this method to use the (name,id) key  instead.
+   * The id is always unique, which helps to avoid pagination issues caused by duplicate names and have unique ordering.
+   */
+  public String getCursorValue(T entity) {
+    return entity.getName();
   }
 
   public final T getVersion(UUID id, String version) {
