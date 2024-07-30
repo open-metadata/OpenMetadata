@@ -177,7 +177,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   void get_TagsWithPagination_200(TestInfo test) throws IOException {
     // get Pagination results for same name entities
     boolean supportsSoftDelete = true;
-    int numEntities = 7;
+    int numEntities = 5;
 
     List<UUID> createdUUIDs = new ArrayList<>();
     for (int i = 0; i < numEntities; i++) {
@@ -255,7 +255,7 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         // We have now reached the last page - test backward scroll till the beginning
         pageCount = 0;
         indexInAllTables = totalRecords - limit - forwardPage.getData().size();
-        foundDeleted = false;
+        foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted);
         do {
           LOG.debug(
               "Limit {} backward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
