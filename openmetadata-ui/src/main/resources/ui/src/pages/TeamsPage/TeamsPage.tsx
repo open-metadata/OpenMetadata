@@ -200,7 +200,7 @@ const TeamsPage = () => {
           ``,
           0,
           0,
-          `owner.id:${selectedTeam.id}`,
+          `owners.id:${selectedTeam.id}`,
           '',
           '',
           SearchIndex.ALL
