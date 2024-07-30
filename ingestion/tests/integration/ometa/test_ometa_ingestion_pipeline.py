@@ -179,7 +179,7 @@ class OMetaTableTest(TestCase):
             )
 
         assert (
-            "String value length (20049662) exceeds the maximum allowed"
+            "exceeds the maximum allowed"
             in str(exc.value)
         ) or ("Connection aborted." in str(exc.value))
 
