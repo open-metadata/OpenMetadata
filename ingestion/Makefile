@@ -27,7 +27,7 @@ install_all:  ## Install the ingestion module with all dependencies
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	PIP_CONSTRAINT=$(ROOT_DIR)/openmetadata-airflow-apis/constraints.txt python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools==69.0.2
+	PIP_CONSTRAINT=$(ROOT_DIR)/openmetadata-airflow-apis/constraints.txt python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
 
 .PHONY: lint
 lint:  ## Run pylint on the Python sources to analyze the codebase

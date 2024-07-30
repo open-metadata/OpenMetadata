@@ -70,7 +70,7 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 
-RUN pip install --upgrade pip setuptools==69.0.2
+RUN pip install --upgrade pip setuptools~=70.3.0
 
 ARG INGESTION_DEPENDENCY="all"
 RUN pip install ".[airflow]"
