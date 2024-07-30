@@ -111,6 +111,12 @@
       "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
       "type": "string"
     },
+    "useDBADictionary": {
+      "title": "Use DBA Dictionary",
+      "description": "Enable this option to use the DBA dictionary for extracting metadata from Oracle. This is required for accessing detailed metadata.",
+      "type": "boolean",
+      "default": false
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

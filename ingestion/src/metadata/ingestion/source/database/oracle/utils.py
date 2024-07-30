@@ -21,10 +21,10 @@ from sqlalchemy.sql import sqltypes
 
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
-    ORACLE_ALL_TABLE_COMMENTS,
-    ORACLE_ALL_VIEW_DEFINITIONS,
-    ORACLE_GET_COLUMNS,
     ORACLE_GET_TABLE_NAMES,
+    ORACLE_TABLE_COMMENTS,
+    ORACLE_VIEW_DEFINITIONS,
+    ORACLE_GET_COLUMNS,
     ORACLE_IDENTITY_TYPE,
 )
 from metadata.utils.sqlalchemy_utils import (
@@ -48,7 +48,7 @@ def get_table_comment(
         connection,
         table_name=table_name.lower(),
         schema=schema.lower() if schema else None,
-        query=ORACLE_ALL_TABLE_COMMENTS,
+        query=ORACLE_TABLE_COMMENTS.format(oracle_table_prefix=self.oracle_table_prefix),
     )
 
 
@@ -67,7 +67,7 @@ def get_view_definition(
         connection,
         table_name=view_name.lower(),
         schema=schema.lower() if schema else None,
-        query=ORACLE_ALL_VIEW_DEFINITIONS,
+        query=ORACLE_VIEW_DEFINITIONS.format(oracle_table_prefix=self.oracle_table_prefix),
     )
 
 
@@ -141,12 +141,12 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 
     identity_cols = "NULL as default_on_null, NULL as identity_options"
     if self.server_version_info >= (12,):
-        identity_cols = ORACLE_IDENTITY_TYPE.format(dblink=dblink)
+        identity_cols = ORACLE_IDENTITY_TYPE.format(oracle_table_prefix=self.oracle_table_prefix, dblink=dblink)
 
     params = {"table_name": table_name}
 
     text = ORACLE_GET_COLUMNS.format(
-        dblink=dblink, char_length_col=char_length_col, identity_cols=identity_cols
+        oracle_table_prefix=self.oracle_table_prefix, dblink=dblink, char_length_col=char_length_col, identity_cols=identity_cols
     )
     if schema is not None:
         params["owner"] = schema
@@ -197,13 +197,42 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         columns.append(cdict)
     return columns
 
+def get_table_names(self, schema=None, **kwargs):
+    """Return all table names in referred to within a particular schema.
+
+    The names are expected to be real tables only, not views.
+    Views are instead returned using the
+    :meth:`_reflection.Inspector.get_view_names`
+    method.
+
+
+    :param schema: Schema name. If ``schema`` is left at ``None``, the
+        database's default schema is
+        used, else the named schema is searched.  If the database does not
+        support named schemas, behavior is undefined if ``schema`` is not
+        passed as ``None``.  For special quoting, use :class:`.quoted_name`.
+
+    .. seealso::
+
+        :meth:`_reflection.Inspector.get_sorted_table_and_fkc_names`
+
+        :attr:`_schema.MetaData.sorted_tables`
+
+    """
+
+    with self._operation_context() as conn:
+        return self.dialect.get_table_names(
+            conn, schema, info_cache=self.info_cache, **kwargs
+        )
+
 
 @reflection.cache
-def get_table_names(self, connection, schema=None, **kw):
+def get_table_names_dialect(self, connection, schema=None, **kw):
     """
     Exclude the materialized views from regular table names
     """
     schema = self.denormalize_name(schema or self.default_schema_name)
+    oracle_table_prefix = kw.get('oracle_table_prefix', 'ALL')
 
     # note that table_names() isn't loading DBLINKed or synonym'ed tables
     if schema is None:
@@ -217,7 +246,7 @@ def get_table_names(self, connection, schema=None, **kw):
             "nvl(tablespace_name, 'no tablespace') "
             f"NOT IN ({exclude_tablespace}) AND "
         )
-    sql_str = ORACLE_GET_TABLE_NAMES.format(tablespace=tablespace)
+    sql_str = ORACLE_GET_TABLE_NAMES.format(oracle_table_prefix=oracle_table_prefix,tablespace=tablespace)
     cursor = connection.execute(sql.text(sql_str), {"owner": schema})
     return [row[0] for row in cursor]
 
@@ -237,7 +266,7 @@ def get_mview_names(self, schema=None):
 @reflection.cache
 def get_mview_names_dialect(self, connection, schema=None, **kw):
     schema = self.denormalize_name(schema or self.default_schema_name)
-    sql_query = sql.text(GET_MATERIALIZED_VIEW_NAMES)
+    sql_query = sql.text(GET_MATERIALIZED_VIEW_NAMES.format(oracle_table_prefix=self.oracle_table_prefix))
     cursor = connection.execute(sql_query, {"owner": self.denormalize_name(schema)})
     return [self.normalize_name(row[0]) for row in cursor]
 
