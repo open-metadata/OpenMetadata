@@ -370,9 +370,9 @@ public interface EntityDAO<T extends EntityInterface> {
   @SqlQuery(
       "SELECT json FROM ("
           + "SELECT id,name, json FROM <table> <cond> AND "
-          + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
+          + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
           + // Pagination by entity id or name (when entity have same name)
-          "ORDER BY name DESC,id DESC "
+          "ORDER BY name DESC, id DESC "
           + // Pagination by entity id or name (when entity have same name)
           "LIMIT :limit"
           + ") last_rows_subquery ORDER BY name,id")
@@ -527,12 +527,14 @@ public interface EntityDAO<T extends EntityInterface> {
   }
 
   @SuppressWarnings("unchecked")
-  default Map<String, String> parseCursorMap(String before) {
+  default Map<String, String> parseCursorMap(String param) {
     Map<String, String> cursorMap;
-    if (nullOrEmpty(before)) {
+    if (param == null) {
+      cursorMap = Map.of("name", null, "id", null);
+    } else if (nullOrEmpty(param)) {
       cursorMap = Map.of("name", "", "id", "");
     } else {
-      cursorMap = JsonUtils.readValue(before, Map.class);
+      cursorMap = JsonUtils.readValue(param, Map.class);
     }
     return cursorMap;
   }

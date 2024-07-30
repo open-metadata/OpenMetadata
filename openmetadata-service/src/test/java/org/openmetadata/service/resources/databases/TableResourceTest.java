@@ -81,6 +81,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -103,6 +104,7 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -129,6 +131,7 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
@@ -2660,6 +2663,175 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);
     deleteEntityByName(table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void get_TablesWithPagination_200(TestInfo test) throws IOException {
+    // get Pagination results for same name entities
+    boolean supportsSoftDelete = true;
+    int numEntities = 7; // fixed value for consistency
+
+    List<UUID> createdUUIDs = new ArrayList<>();
+    for (int i = 0; i < numEntities; i++) {
+      // Create Table with different parent container/schemas
+      CreateDatabaseService createDatabaseService =
+          new CreateDatabaseService()
+              .withName("service_" + (i + 1))
+              .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+      DatabaseService service =
+          dbServiceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+
+      String databaseName = "database_" + (i + 1);
+      CreateDatabase createDatabase =
+          new CreateDatabase().withName(databaseName).withService(service.getFullyQualifiedName());
+      Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+      CreateDatabaseSchema createDatabaseSchema =
+          schemaTest
+              .createRequest("schema_" + (i + 1))
+              .withDatabase(database.getFullyQualifiedName())
+              .withOwner(USER1.getEntityReference());
+      DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
+
+      CreateTable createTable =
+          createRequest("common").withDatabaseSchema(schema.getFullyQualifiedName());
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      createdUUIDs.add(table.getId());
+    }
+
+    CreateDatabaseService createDatabaseService =
+        new CreateDatabaseService()
+            .withName("service_0")
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+    DatabaseService service = dbServiceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+
+    // Step 2: Create a new database under the created service
+    String databaseName = "database_0";
+    CreateDatabase createDatabase =
+        new CreateDatabase().withName(databaseName).withService(service.getFullyQualifiedName());
+    Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaTest
+            .createRequest("schema_0")
+            .withDatabase(database.getFullyQualifiedName())
+            .withOwner(USER1.getEntityReference());
+    DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
+
+    // Step 3: Create a new table under the created database
+    CreateTable createTable =
+        createRequest("common").withDatabaseSchema(schema.getFullyQualifiedName());
+    Table entity = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    deleteEntityByName(entity.getFullyQualifiedName(), true, false, ADMIN_AUTH_HEADERS);
+    Predicate<Table> matchDeleted = e -> e.getId().equals(entity.getId());
+
+    // Test listing entities that include deleted, non-deleted, and all the entities
+    for (Include include : List.of(Include.NON_DELETED, Include.ALL, Include.DELETED)) {
+      if (!supportsSoftDelete && include.equals(Include.DELETED)) {
+        continue;
+      }
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", include.value());
+
+      // List all entities and use it for checking pagination
+      ResultList<Table> allEntities =
+          listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
+      int totalRecords = allEntities.getData().size();
+
+      // List entity with "limit" set from 1 to numEntities size with fixed steps
+      for (int limit = 1; limit < numEntities; limit += 2) { // fixed step for consistency
+        String after = null;
+        String before;
+        int pageCount = 0;
+        int indexInAllTables = 0;
+        ResultList<Table> forwardPage;
+        ResultList<Table> backwardPage;
+        boolean foundDeleted = false;
+        do { // For each limit (or page size) - forward scroll till the end
+          LOG.debug(
+              "Limit {} forward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
+          forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
+          after = forwardPage.getPaging().getAfter();
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+          if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
+            assertNull(before);
+          } else {
+            // Make sure scrolling back based on before cursor returns the correct result
+            backwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
+            assertEntityPagination(
+                allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+          }
+
+          indexInAllTables += forwardPage.getData().size();
+          pageCount++;
+        } while (after != null);
+
+        boolean includeAllOrDeleted =
+            Include.ALL.equals(include) || Include.DELETED.equals(include);
+        if (includeAllOrDeleted) {
+          assertTrue(!supportsSoftDelete || foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+
+        // We have now reached the last page - test backward scroll till the beginning
+        pageCount = 0;
+        indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+        foundDeleted = false;
+        do {
+          LOG.debug(
+              "Limit {} backward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
+          forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+          pageCount++;
+          indexInAllTables -= forwardPage.getData().size();
+        } while (before != null);
+
+        if (includeAllOrDeleted) {
+          assertTrue(!supportsSoftDelete || foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+      }
+
+      // Before running "deleted" delete all created entries otherwise the test doesn't work with
+      // just one element.
+      if (Include.ALL.equals(include)) {
+        for (Table toBeDeleted : allEntities.getData()) {
+          if (createdUUIDs.contains(toBeDeleted.getId())
+              && Boolean.FALSE.equals(toBeDeleted.getDeleted())) {
+            deleteEntityByName(
+                toBeDeleted.getFullyQualifiedName(), true, false, ADMIN_AUTH_HEADERS);
+          }
+        }
+      }
+    }
+
+    //  Restore the soft-deleted tables present in other containers
+    for (UUID id : createdUUIDs) {
+      restoreEntity(
+          new RestoreEntity().withId(id), javax.ws.rs.core.Response.Status.OK, ADMIN_AUTH_HEADERS);
+    }
+    restoreEntity(
+        new RestoreEntity().withId(entity.getId()),
+        javax.ws.rs.core.Response.Status.OK,
+        ADMIN_AUTH_HEADERS);
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {

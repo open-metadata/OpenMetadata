@@ -17,23 +17,24 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CREATED;
 import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.Predicate;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -59,6 +61,7 @@ import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
@@ -166,6 +169,125 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         CatalogExceptionMessage.systemEntityDeleteNotAllowed(tag.getName(), Entity.TAG));
   }
 
+  @Test
+  void get_TagsWithPagination_200(TestInfo test) throws IOException {
+    // get Pagination results for same name entities
+    boolean supportsSoftDelete = true;
+    int numEntities = 7;
+
+    List<UUID> createdUUIDs = new ArrayList<>();
+    for (int i = 0; i < numEntities; i++) {
+      // Create Tags with same name and different parent classifications
+      Classification classification = createClassification("Classification" + (i + 1));
+      CreateTag createTag = createRequest("commonTag", classification.getName());
+      Tag tag = createEntity(createTag, ADMIN_AUTH_HEADERS);
+      createdUUIDs.add(tag.getId());
+    }
+
+    Classification classification = createClassification("Classification0");
+    Tag entity =
+        createEntity(createRequest("commonTag", classification.getName()), ADMIN_AUTH_HEADERS);
+    deleteAndCheckEntity(entity, ADMIN_AUTH_HEADERS);
+
+    Predicate<Tag> matchDeleted = e -> e.getId().equals(entity.getId());
+
+    // Test listing entities that include deleted, non-deleted, and all the entities
+    for (Include include : List.of(Include.NON_DELETED, Include.ALL, Include.DELETED)) {
+      if (!supportsSoftDelete && include.equals(Include.DELETED)) {
+        continue;
+      }
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", include.value());
+
+      // List all entities and use it for checking pagination
+      ResultList<Tag> allEntities =
+          listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
+      int totalRecords = allEntities.getData().size();
+
+      // List entity with "limit" set from 1 to numEntities size with fixed steps
+      for (int limit = 1; limit < numEntities; limit += 2) { // fixed step for consistency
+        String after = null;
+        String before;
+        int pageCount = 0;
+        int indexInAllTables = 0;
+        ResultList<Tag> forwardPage;
+        ResultList<Tag> backwardPage;
+        boolean foundDeleted = false;
+        do { // For each limit (or page size) - forward scroll till the end
+          LOG.debug(
+              "Limit {} forward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
+          forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
+          after = forwardPage.getPaging().getAfter();
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+          if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
+            assertNull(before);
+          } else {
+            // Make sure scrolling back based on before cursor returns the correct result
+            backwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
+            assertEntityPagination(
+                allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+          }
+
+          indexInAllTables += forwardPage.getData().size();
+          pageCount++;
+        } while (after != null);
+
+        boolean includeAllOrDeleted =
+            Include.ALL.equals(include) || Include.DELETED.equals(include);
+        if (includeAllOrDeleted) {
+          assertTrue(!supportsSoftDelete || foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+
+        // We have now reached the last page - test backward scroll till the beginning
+        pageCount = 0;
+        indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+        foundDeleted = false;
+        do {
+          LOG.debug(
+              "Limit {} backward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
+          forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+          pageCount++;
+          indexInAllTables -= forwardPage.getData().size();
+        } while (before != null);
+
+        if (includeAllOrDeleted) {
+          assertTrue(!supportsSoftDelete || foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+      }
+
+      // Before running "deleted" delete all created entries otherwise the test doesn't work with
+      // just one element.
+      if (Include.ALL.equals(include)) {
+        for (Tag toBeDeleted : allEntities.getData()) {
+          if (createdUUIDs.contains(toBeDeleted.getId())
+              && Boolean.FALSE.equals(toBeDeleted.getDeleted())) {
+            deleteAndCheckEntity(toBeDeleted, ADMIN_AUTH_HEADERS);
+          }
+        }
+      }
+    }
+  }
+
   private Tag createOrUpdate(String classificationName, Tag parent, String name, Status status)
       throws IOException {
     String parentFqn = parent != null ? parent.getFullyQualifiedName() : null;
@@ -206,6 +328,13 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         .withName(name)
         .withDescription("description")
         .withClassification(USER_CLASSIFICATION.getName());
+  }
+
+  public CreateTag createRequest(String name, String classificationName) {
+    return new CreateTag()
+        .withName(name)
+        .withDescription("description")
+        .withClassification(classificationName);
   }
 
   @Override
