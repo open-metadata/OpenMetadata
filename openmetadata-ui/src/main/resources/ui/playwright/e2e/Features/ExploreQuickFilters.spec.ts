@@ -14,8 +14,11 @@ import test from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { assignDomain } from '../../utils/domain';
+import {
+  assignDomain,
+  createNewPage,
+  redirectToHomePage,
+} from '../../utils/common';
 import { assignTag } from '../../utils/entity';
 import { searchAndClickOnOption, selectNullOption } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
