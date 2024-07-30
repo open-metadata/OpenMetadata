@@ -102,6 +102,30 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      SlackMessage slackMessage =
+          slackMessageFormatter.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+
+      if (target != null) {
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(
+                      webhook.getSecretKey(), JsonUtils.pojoToJson(slackMessage));
+          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), slackMessage);
+        } else {
+          postWebhookMessage(this, target, slackMessage);
+        }
+      }
+    } catch (Exception e) {
+      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
   public EventSubscription getEventSubscriptionForDestination() {
     return eventSubscription;
   }

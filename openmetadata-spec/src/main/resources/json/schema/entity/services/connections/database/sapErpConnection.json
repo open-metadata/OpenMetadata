@@ -49,6 +49,13 @@
       "type": "integer",
       "default": 10
     },
+    "verifySSL": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+      "default": "no-ssl"
+    },
+    "sslConfig": {
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+    },
     "connectionOptions": {
       "title": "Connection Options",
       "$ref": "../connectionBasicType.json#/definitions/connectionOptions"

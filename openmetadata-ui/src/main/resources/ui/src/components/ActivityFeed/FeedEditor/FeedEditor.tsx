@@ -45,7 +45,7 @@ import {
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
@@ -140,7 +140,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = getEntityIcon(item.type as string);
+        const icon = searchClassBase.getEntityIcon(item.type ?? '');
 
         const iconString = ReactDOMServer.renderToString(icon ?? <></>);
 

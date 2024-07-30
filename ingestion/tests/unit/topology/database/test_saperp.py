@@ -111,16 +111,14 @@ EXPECTED_TABLES_AND_COLUMNS = [
         columns=[
             Column(
                 name=ColumnName(root="BUKRS"),
-                displayName="BUKRS",
+                displayName="Pstng period variant",
                 dataType="CHAR",
                 arrayDataType=None,
-                dataLength=1,
+                dataLength=4,
                 precision=None,
                 scale=None,
-                dataTypeDisplay="CHAR",
-                description=Markdown(
-                    root="**Pstng period variant**\nPosting Period Variant"
-                ),
+                dataTypeDisplay="CHAR(4)",
+                description=Markdown(root="Posting Period Variant"),
                 fullyQualifiedName=None,
                 tags=None,
                 constraint=None,
@@ -132,16 +130,14 @@ EXPECTED_TABLES_AND_COLUMNS = [
             ),
             Column(
                 name=ColumnName(root="FIELD"),
-                displayName="FIELD",
+                displayName="GL Field Name",
                 dataType="CHAR",
                 arrayDataType=None,
-                dataLength=1,
+                dataLength=30,
                 precision=None,
                 scale=None,
-                dataTypeDisplay="CHAR",
-                description=Markdown(
-                    root="**GL Field Name**\nGeneral Ledger Field Name"
-                ),
+                dataTypeDisplay="CHAR(30)",
+                description=Markdown(root="General Ledger Field Name"),
                 fullyQualifiedName=None,
                 tags=None,
                 constraint=None,
@@ -153,14 +149,14 @@ EXPECTED_TABLES_AND_COLUMNS = [
             ),
             Column(
                 name=ColumnName(root="MANDT"),
-                displayName="MANDT",
+                displayName="Client",
                 dataType="INT",
                 arrayDataType=None,
-                dataLength=None,
+                dataLength=1,
                 precision=None,
                 scale=None,
                 dataTypeDisplay="INT",
-                description=Markdown(root="**Client**"),
+                description=Markdown(root="Client"),
                 fullyQualifiedName=None,
                 tags=None,
                 constraint=None,
@@ -172,14 +168,14 @@ EXPECTED_TABLES_AND_COLUMNS = [
             ),
             Column(
                 name=ColumnName(root="RRCTY"),
-                displayName="RRCTY",
+                displayName="Record Type",
                 dataType="CHAR",
                 arrayDataType=None,
                 dataLength=1,
                 precision=None,
                 scale=None,
-                dataTypeDisplay="CHAR",
-                description=Markdown(root="**Record Type**"),
+                dataTypeDisplay="CHAR(1)",
+                description=Markdown(root="Record Type"),
                 fullyQualifiedName=None,
                 tags=None,
                 constraint=None,
@@ -225,16 +221,14 @@ EXPECTED_TABLES_AND_COLUMNS = [
         columns=[
             Column(
                 name=ColumnName(root="BKONT"),
-                displayName="BKONT",
+                displayName="To Account Assmnt",
                 dataType="CHAR",
                 arrayDataType=None,
-                dataLength=1,
+                dataLength=30,
                 precision=None,
                 scale=None,
-                dataTypeDisplay="CHAR",
-                description=Markdown(
-                    root="**To Account Assmnt**\nTo Account Assignment"
-                ),
+                dataTypeDisplay="CHAR(30)",
+                description=Markdown(root="To Account Assignment"),
                 fullyQualifiedName=None,
                 tags=None,
                 constraint=None,
@@ -246,14 +240,14 @@ EXPECTED_TABLES_AND_COLUMNS = [
             ),
             Column(
                 name=ColumnName(root="BRGRU"),
-                displayName="BRGRU",
+                displayName="Authorization Group",
                 dataType="CHAR",
                 arrayDataType=None,
-                dataLength=1,
+                dataLength=4,
                 precision=None,
                 scale=None,
-                dataTypeDisplay="CHAR",
-                description=Markdown(root="**Authorization Group**"),
+                dataTypeDisplay="CHAR(4)",
+                description=Markdown(root="Authorization Group"),
                 fullyQualifiedName=None,
                 tags=None,
                 constraint="NOT_NULL",
@@ -265,16 +259,14 @@ EXPECTED_TABLES_AND_COLUMNS = [
             ),
             Column(
                 name=ColumnName(root="BUKRS"),
-                displayName="BUKRS",
+                displayName="Pstng period variant",
                 dataType="CHAR",
                 arrayDataType=None,
-                dataLength=1,
+                dataLength=4,
                 precision=None,
                 scale=None,
-                dataTypeDisplay="CHAR",
-                description=Markdown(
-                    root="**Pstng period variant**\nPosting Period Variant"
-                ),
+                dataTypeDisplay="CHAR(4)",
+                description=Markdown(root="Posting Period Variant"),
                 fullyQualifiedName=None,
                 tags=None,
                 constraint=None,
@@ -370,7 +362,6 @@ class SapErpUnitTest(TestCase):
             returned_tables.extend(
                 [either.right for either in self.saperp.yield_table(table)]
             )
-        print(returned_tables)
         for _, (expected, original) in enumerate(
             zip(EXPECTED_TABLES_AND_COLUMNS, returned_tables)
         ):
