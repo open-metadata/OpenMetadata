@@ -18,7 +18,8 @@ import {
 import { SidebarItem } from '../../constant/sidebar';
 import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
-import { performAdminLogin, redirectToHomePage } from '../../utils/common';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
 
 const user = new UserClass();

@@ -17,11 +17,10 @@ import {
   checkDescriptionInEditModal,
   deleteFeedComments,
 } from '../../utils/activityFeed';
+import { performAdminLogin } from '../../utils/admin';
 import {
   createNewPage,
   descriptionBox,
-  performAdminLogin,
-  performUserLogin,
   redirectToHomePage,
   toastNotification,
   visitUserProfilePage,
@@ -33,6 +32,7 @@ import {
   createTagTask,
   TaskDetails,
 } from '../../utils/task';
+import { performUserLogin } from '../../utils/user';
 
 const entity = new TableClass();
 const entity2 = new TableClass();

@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { generateRandomUsername } from '../../utils/user';
+import { generateRandomUsername } from '../../utils/common';
 
 type ResponseDataType = {
   name: string;
