@@ -5,6 +5,8 @@ import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -17,6 +19,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
@@ -228,6 +231,24 @@ public class AppRepository extends EntityRepository<App> {
   @Override
   public EntityUpdater getUpdater(App original, App updated, Operation operation) {
     return new AppRepository.AppUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void postUpdate(App original, App updated) {
+    super.postUpdate(original, updated);
+
+    if ("SearchIndexingApplication".equalsIgnoreCase(updated.getFullyQualifiedName())) {
+      Optional.ofNullable(updated.getAppConfiguration())
+          .filter(appConfig -> appConfig instanceof Map)
+          .map(appConfig -> (Map<String, Object>) appConfig)
+          .map(configMap -> (String) configMap.get("searchIndexMappingLanguage"))
+          .ifPresent(
+              language -> {
+                searchRepository
+                    .getSearchClient()
+                    .isPluginPresent(IndexMappingLanguage.valueOf(language));
+              });
+    }
   }
 
   public class AppUpdater extends EntityUpdater {

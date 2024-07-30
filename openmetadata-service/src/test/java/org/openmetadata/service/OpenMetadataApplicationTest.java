@@ -74,7 +74,7 @@ public abstract class OpenMetadataApplicationTest {
   public static final Integer ELASTIC_KEEP_ALIVE_TIMEOUT = 600;
   public static final Integer ELASTIC_BATCH_SIZE = 10;
   public static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
-      IndexMappingLanguage.ZH;
+      IndexMappingLanguage.EN;
   public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
       ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
@@ -171,10 +171,6 @@ public abstract class OpenMetadataApplicationTest {
     ELASTIC_SEARCH_CONTAINER.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
     ELASTIC_SEARCH_CONTAINER.withReuse(false);
     ELASTIC_SEARCH_CONTAINER.withStartupAttempts(3);
-    ELASTIC_SEARCH_CONTAINER.withCommand(
-        "sh",
-        "-c",
-        "bin/elasticsearch-plugin install --batch https://get.infini.cloud/elasticsearch/analysis-ik/8.10.2 && exec bin/elasticsearch");
     ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
         new LogMessageWaitStrategy()
             .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")

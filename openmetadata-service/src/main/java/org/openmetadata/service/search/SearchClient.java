@@ -20,6 +20,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.SSLUtil;
@@ -136,6 +137,8 @@ public interface SearchClient {
 
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
+
+  boolean isPluginPresent(IndexMappingLanguage searchIndexMappingLanguage);
 
   void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
 
