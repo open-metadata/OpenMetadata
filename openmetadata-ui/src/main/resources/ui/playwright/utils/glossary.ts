@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { Glossary, GlossaryData } from '../support/glossary/Glossary';
+import { Glossary } from '../support/glossary/Glossary';
 import {
-  GlossaryTerm,
+  GlossaryData,
   GlossaryTermData,
-} from '../support/glossary/GlossaryTerm';
+} from '../support/glossary/Glossary.interface';
+import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
   getApiContext,
   INVALID_NAMES,
@@ -35,14 +36,6 @@ import { sidebarClick } from './sidebar';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
-
-export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
-  await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
-  await sidebarClick(page, SidebarItem.GLOSSARY);
-  await glossaryResponse;
-  await page.getByRole('menuitem', { name: glossaryName }).click();
-};
 
 export const checkDisplayName = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
@@ -449,10 +442,10 @@ export const fillGlossaryTermDetails = async (
     await page.locator('[data-testid="color-color-input"]').fill(term.color);
   }
 
-  if (term.owner) {
+  if (!isUndefined(term.owners)) {
     await addMultiOwner({
       page,
-      ownerNames: term.owner.name,
+      ownerNames: term.owners.map((owner) => owner.name),
       activatorBtnDataTestId: 'add-owner',
       resultTestId: 'owner-container',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
