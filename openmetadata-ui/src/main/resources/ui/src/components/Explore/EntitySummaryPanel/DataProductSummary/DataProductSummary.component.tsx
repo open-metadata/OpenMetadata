@@ -86,21 +86,7 @@ const DataProductSummary = ({
             </Typography.Text>
           </Col>
           <Col span={24}>
-            {entityDetails.owner ? (
-              <OwnerLabel
-                pills
-                key={entityDetails.owner.fullyQualifiedName}
-                owner={entityDetails.owner}
-              />
-            ) : (
-              <Typography.Text
-                className="text-grey-body"
-                data-testid="no-owner-header">
-                {t('label.no-entity', {
-                  entity: t('label.owner-lowercase'),
-                })}
-              </Typography.Text>
-            )}
+            <OwnerLabel owners={entityDetails.owners ?? []} />
           </Col>
         </Row>
 
@@ -117,13 +103,7 @@ const DataProductSummary = ({
           <Col span={24}>
             {experts.length > 0 ? (
               <Space wrap size={[8, 8]}>
-                {experts.map((assignee) => (
-                  <OwnerLabel
-                    pills
-                    key={assignee.fullyQualifiedName}
-                    owner={assignee}
-                  />
-                ))}
+                <OwnerLabel owners={experts} />
               </Space>
             ) : (
               <Typography.Text

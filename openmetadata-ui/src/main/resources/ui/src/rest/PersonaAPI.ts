@@ -14,6 +14,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import axiosClient from '.';
+import { TabSpecificField } from '../enums/entity.enum';
 import { CreatePersona } from '../generated/api/teams/createPersona';
 import { Persona } from '../generated/entity/teams/persona';
 import { getEncodedFqn } from '../utils/StringsUtils';
@@ -40,7 +41,7 @@ export const getPersonaByName = async (fqn: string) => {
     `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
-        fields: 'users',
+        fields: TabSpecificField.USERS,
       },
     }
   );

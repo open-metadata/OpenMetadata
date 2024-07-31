@@ -146,7 +146,7 @@
       "column_suggest": {
         "type": "completion"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

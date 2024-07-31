@@ -41,6 +41,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import {
   CreateTag,
@@ -141,7 +142,7 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: 'termCount',
+        fields: TabSpecificField.TERM_COUNT,
         limit: 1000,
       });
       setClassifications(response.data);
@@ -169,7 +170,7 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentClassification = await getClassificationByName(fqn, {
-          fields: 'usageCount,termCount',
+          fields: [TabSpecificField.USAGE_COUNT, TabSpecificField.TERM_COUNT],
         });
         if (currentClassification) {
           setClassifications((prevClassifications) =>

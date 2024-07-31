@@ -22,7 +22,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -91,7 +91,7 @@ export const PopoverContent: React.FC<{
     }, [cachedEntityData, entityFQN]);
 
   const getData = useCallback(async () => {
-    const fields = 'tags,owner';
+    const fields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS}`;
     setLoading(true);
     let promise: Promise<EntityUnion> | null = null;
 
@@ -102,7 +102,7 @@ export const PopoverContent: React.FC<{
         break;
       case EntityType.TEST_CASE:
         promise = getTestCaseByFqn(entityFQN, {
-          fields: ['owner'],
+          fields: [TabSpecificField.OWNERS],
         });
 
         break;
@@ -125,31 +125,33 @@ export const PopoverContent: React.FC<{
         break;
       case EntityType.DATABASE:
         promise = getDatabaseDetailsByFQN(entityFQN, {
-          fields: 'owner',
+          fields: TabSpecificField.OWNERS,
         });
 
         break;
       case EntityType.DATABASE_SCHEMA:
         promise = getDatabaseSchemaDetailsByFQN(entityFQN, {
-          fields: 'owner',
+          fields: TabSpecificField.OWNERS,
           include: Include.All,
         });
 
         break;
       case EntityType.GLOSSARY_TERM:
         promise = getGlossaryTermByFQN(entityFQN, {
-          fields: 'owner',
+          fields: TabSpecificField.OWNERS,
         });
 
         break;
       case EntityType.GLOSSARY:
-        promise = getGlossariesByName(entityFQN, { fields: 'owner' });
+        promise = getGlossariesByName(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+        });
 
         break;
 
       case EntityType.CONTAINER:
         promise = getContainerByFQN(entityFQN, {
-          fields: 'owner',
+          fields: TabSpecificField.OWNERS,
           include: Include.All,
         });
 
@@ -165,12 +167,16 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.DOMAIN:
-        promise = getDomainByName(entityFQN, { fields: 'owner' });
+        promise = getDomainByName(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+        });
 
         break;
 
       case EntityType.DATA_PRODUCT:
-        promise = getDataProductByName(entityFQN, { fields: 'owner,domain' });
+        promise = getDataProductByName(entityFQN, {
+          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+        });
 
         break;
 

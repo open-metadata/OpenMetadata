@@ -243,7 +243,6 @@ const TableDetailsPageV1: React.FC = () => {
   const {
     tier,
     tableTags,
-    owner,
     deleted,
     version,
     followers = [],
@@ -404,17 +403,17 @@ const TableDetailsPageV1: React.FC = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: Table['owner']) => {
+    async (newOwners?: Table['owners']) => {
       if (!tableDetails) {
         return;
       }
       const updatedTableDetails = {
         ...tableDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
-      await onTableUpdate(updatedTableDetails, 'owner');
+      await onTableUpdate(updatedTableDetails, 'owners');
     },
-    [owner, tableDetails]
+    [tableDetails]
   );
 
   const handleUpdateRetentionPeriod = useCallback(
@@ -563,7 +562,7 @@ const TableDetailsPageV1: React.FC = () => {
                     hasEditAccess={editDescriptionPermission}
                     isDescriptionExpanded={isEmpty(tableDetails?.columns)}
                     isEdit={isEdit}
-                    owner={tableDetails?.owner}
+                    owner={tableDetails?.owners}
                     showActions={!deleted}
                     onCancel={onCancel}
                     onDescriptionEdit={onDescriptionEdit}
@@ -667,7 +666,7 @@ const TableDetailsPageV1: React.FC = () => {
             entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
-            owner={tableDetails?.owner}
+            owners={tableDetails?.owners}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTableDetails}
             onUpdateFeedCount={handleFeedCount}
@@ -689,7 +688,7 @@ const TableDetailsPageV1: React.FC = () => {
           ) : (
             <SampleDataTableComponent
               isTableDeleted={deleted}
-              ownerId={tableDetails?.owner?.id ?? ''}
+              owners={tableDetails?.owners ?? []}
               permissions={tablePermissions}
               tableId={tableDetails?.id ?? ''}
             />

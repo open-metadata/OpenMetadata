@@ -74,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class WebAnalyticEventResource
     extends EntityResource<WebAnalyticEvent, WebAnalyticEventRepository> {
   public static final String COLLECTION_PATH = WebAnalyticEventRepository.COLLECTION_PATH;
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
   private static final Pattern HTML_PATTERN = Pattern.compile(".*\\<[^>]+>.*", Pattern.DOTALL);
 
   public WebAnalyticEventResource(Authorizer authorizer, Limits limits) {

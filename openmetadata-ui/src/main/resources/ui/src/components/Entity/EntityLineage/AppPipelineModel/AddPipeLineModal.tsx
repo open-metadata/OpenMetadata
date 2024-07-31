@@ -29,7 +29,7 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../../utils/EntityUtils';
 import Fqn from '../../../../utils/Fqn';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import '../../../ActivityFeed/FeedEditor/feed-editor.less';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -157,7 +157,7 @@ const AddPipeLineModal = ({
 
       <div className="edge-option-container">
         {edgeOptions.map((item) => {
-          const icon = getEntityIcon(item.type);
+          const icon = searchClassBase.getEntityIcon(item.type);
           const breadcrumb = Fqn.split(item.fullyQualifiedName ?? '').join('/');
 
           return (
