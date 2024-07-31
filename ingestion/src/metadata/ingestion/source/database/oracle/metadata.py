@@ -12,7 +12,7 @@
 # pylint: disable=protected-access
 """Oracle source module"""
 import traceback
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, cast
 
 from sqlalchemy.dialects.oracle.base import INTERVAL, OracleDialect, ischema_names
 from sqlalchemy.engine import Inspector
@@ -44,6 +44,7 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
+from metadata.ingestion.source.database.oracle.enums import ORACLE_TABLE_PREFIX
 from metadata.ingestion.source.database.oracle.models import (
     FetchProcedureList,
     OracleStoredProcedure,
@@ -60,6 +61,7 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_mview_names_dialect,
     get_table_comment,
     get_table_names,
+    get_table_names_dialect,
     get_view_definition,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
@@ -87,19 +89,25 @@ ischema_names.update(
     }
 )
 
+# Add the custom methods to the Oracle Inspector
+Inspector.get_table_names = get_table_names
+Inspector.get_mview_names = get_mview_names
+Inspector.get_mview_definition = get_mview_definition
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
+
+# Add the custom methods to the Oracle Dialect
 OracleDialect.get_table_comment = get_table_comment
+OracleDialect.get_mview_names = get_mview_names_dialect
 OracleDialect.get_columns = get_columns
 OracleDialect._get_col_type = _get_col_type
 OracleDialect.get_view_definition = get_view_definition
 OracleDialect.get_all_view_definitions = get_all_view_definitions
 OracleDialect.get_all_table_comments = get_all_table_comments
-OracleDialect.get_table_names = get_table_names
-Inspector.get_mview_names = get_mview_names
-Inspector.get_mview_definition = get_mview_definition
-OracleDialect.get_mview_names = get_mview_names_dialect
+OracleDialect.get_table_names = get_table_names_dialect
 
-Inspector.get_all_table_ddls = get_all_table_ddls
-Inspector.get_table_ddl = get_table_ddl
+
+
 
 
 class OracleSource(StoredProcedureMixin, CommonDbSourceService):
@@ -107,6 +115,18 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from Oracle Source
     """
+
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
+        super().__init__(config, metadata)
+        self.service_connection: OracleConnection = cast(
+            OracleConnection, self.service_connection
+        )
+
+        self.oracle_table_prefix = (
+            ORACLE_TABLE_PREFIX.DBA.value
+            if self.service_connection.useDBADictionary
+            else ORACLE_TABLE_PREFIX.ALL.value
+        )
 
     @classmethod
     def create(
@@ -134,11 +154,17 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
 
         regular_tables = [
             TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema_name) or []
+            for table_name in self.inspector.get_table_names(
+                schema=schema_name, **{"oracle_table_prefix": self.oracle_table_prefix}
+            )
+            or []
         ]
         material_tables = [
             TableNameAndType(name=table_name, type_=TableType.MaterializedView)
-            for table_name in self.inspector.get_mview_names(schema_name) or []
+            for table_name in self.inspector.get_mview_names(
+                schema_name, **{"oracle_table_prefix": self.oracle_table_prefix}
+            )
+            or []
         ]
 
         return regular_tables + material_tables
@@ -200,7 +226,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
         if self.source_config.includeStoredProcedures:
             results: FetchProcedureList = self.engine.execute(
                 ORACLE_GET_STORED_PROCEDURES.format(
-                    schema=self.context.get().database_schema.upper()
+                    oracle_table_prefix=self.oracle_table_prefix,
+                    schema=self.context.get().database_schema.upper(),
                 )
             ).all()
             results = self.process_result(data=results)
@@ -251,6 +278,7 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = ORACLE_GET_STORED_PROCEDURE_QUERIES.format(
+            oracle_table_prefix=self.oracle_table_prefix,
             start_date=start,
         )
         queries_dict = self.procedure_queries_dict(

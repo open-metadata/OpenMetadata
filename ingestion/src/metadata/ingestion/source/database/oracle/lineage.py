@@ -30,6 +30,8 @@ workflowConfig:
       jwtToken: "token"
 """
 
+from datetime import datetime
+
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_QUERY_HISTORY_STATEMENT,
@@ -48,5 +50,17 @@ class OracleLineageSource(OracleQueryParserSource, LineageSource):
             OR lower(SQL_FULLTEXT) LIKE '%%merge%%'
         )
         """
-
     sql_stmt = ORACLE_QUERY_HISTORY_STATEMENT
+
+    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+        """
+        returns sql statement to fetch query logs.
+
+        Override if we have specific parameters
+        """
+        return self.sql_stmt.format(
+            start_time=start_time,
+            end_time=end_time,
+            filters=self.get_filters(),
+            result_limit=self.source_config.resultLimit,
+        )
