@@ -82,13 +82,17 @@ import {
 export const ExtraInfoLabel = ({
   label,
   value,
+  dataTestId,
 }: {
   label: string;
   value: string | number;
+  dataTestId?: string;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
-    <Typography.Text className="self-center text-xs whitespace-nowrap">
+    <Typography.Text
+      className="self-center text-xs whitespace-nowrap"
+      data-testid={dataTestId}>
       {!isEmpty(label) && (
         <span className="text-grey-muted">{`${label}: `}</span>
       )}

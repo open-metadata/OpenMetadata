@@ -32,7 +32,7 @@ public class TimestampUtils {
     String inputString = Instant.ofEpochMilli(timestamp).toString();
     DateTimeFormatter inputFormatter = DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.of("UTC"));
     ZonedDateTime zonedDateTime = ZonedDateTime.parse(inputString, inputFormatter);
-    DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    DateTimeFormatter outputFormatter = DateTimeFormatter.ofPattern(pattern);
     return zonedDateTime.format(outputFormatter);
   }
 

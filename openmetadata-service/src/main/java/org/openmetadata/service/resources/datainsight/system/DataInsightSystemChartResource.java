@@ -8,8 +8,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -95,10 +95,17 @@ public class DataInsightSystemChartResource
               required = true,
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("end")
-          long end)
+          long end,
+      @Parameter(
+              description = "Any additional filter to fetch the data",
+              required = true,
+              schema = @Schema(type = "string", example = "{\"query\":{...}}"))
+          @QueryParam("filter")
+          String filter)
       throws IOException {
     DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
-    DataInsightCustomChartResultList resultList = repository.getPreviewData(diChart, start, end);
+    DataInsightCustomChartResultList resultList =
+        repository.getPreviewData(diChart, start, end, filter);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 
@@ -140,7 +147,7 @@ public class DataInsightSystemChartResource
           @QueryParam("end")
           long end)
       throws IOException {
-    HashMap<String, DataInsightCustomChartResultList> resultList =
+    Map<String, DataInsightCustomChartResultList> resultList =
         repository.listChartData(chartNames, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
