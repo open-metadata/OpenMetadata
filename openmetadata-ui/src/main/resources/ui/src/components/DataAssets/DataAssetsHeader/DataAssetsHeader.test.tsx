@@ -13,6 +13,10 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import {
+  APIEndpoint,
+  APIRequestMethod,
+} from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getContainerByName } from '../../../rest/storageAPI';
@@ -139,5 +143,26 @@ describe('DataAssetsHeader component', () => {
     render(<DataAssetsHeader {...mockProps} dataAsset={mockProps.dataAsset} />);
 
     expect(screen.getByTestId('Tier')).toContainHTML('label.no-entity');
+  });
+
+  it('should render the request method if entityType is apiEndpoint', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={
+          {
+            name: 'testAPIEndpoint',
+            id: 'testAPIEndpointId',
+            endpointURL: 'testAPIEndpointURL',
+            requestMethod: APIRequestMethod.Get,
+          } as APIEndpoint
+        }
+        entityType={EntityType.API_ENDPOINT}
+      />
+    );
+
+    expect(
+      screen.getByTestId('api-endpoint-request-method')
+    ).toBeInTheDocument();
   });
 });
