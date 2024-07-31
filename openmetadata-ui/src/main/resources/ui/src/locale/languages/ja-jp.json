@@ -944,6 +944,7 @@
     "reply-lowercase": "返信",
     "reply-lowercase-plural": "返信",
     "request": "Request",
+    "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "タグをリクエスト",
     "requirement-plural": "Requirements",

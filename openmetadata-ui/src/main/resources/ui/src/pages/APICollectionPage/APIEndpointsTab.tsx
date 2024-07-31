@@ -24,7 +24,7 @@ import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TableAntd from '../../components/common/Table/Table';
-import { PAGE_SIZE } from '../../constants/constants';
+import { NO_DATA, PAGE_SIZE } from '../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
@@ -75,7 +75,7 @@ function APIEndpointsTab({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 500,
+        width: 400,
         render: (_, record: APIEndpoint) => {
           return (
             <div className="d-inline-flex w-max-90">
@@ -90,6 +90,15 @@ function APIEndpointsTab({
               </Link>
             </div>
           );
+        },
+      },
+      {
+        title: t('label.request-method'),
+        dataIndex: 'requestMethod',
+        key: 'requestMethod',
+
+        render: (requestMethod: APIEndpoint['requestMethod']) => {
+          return <Typography.Text>{requestMethod || NO_DATA}</Typography.Text>;
         },
       },
       {

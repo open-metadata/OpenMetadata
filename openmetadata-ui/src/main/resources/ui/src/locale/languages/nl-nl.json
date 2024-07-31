@@ -944,6 +944,7 @@
     "reply-lowercase": "antwoord",
     "reply-lowercase-plural": "antwoorden",
     "request": "Request",
+    "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Aanvraagtags",
     "requirement-plural": "Vereisten",

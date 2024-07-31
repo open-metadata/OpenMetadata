@@ -441,6 +441,13 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.extraInfo = (
         <>
+          {apiEndpoint.requestMethod && (
+            <ExtraInfoLabel
+              dataTestId="api-endpoint-request-method"
+              label={t('label.request-method')}
+              value={apiEndpoint.requestMethod}
+            />
+          )}
           {apiEndpoint.endpointURL && (
             <ExtraInfoLink
               href={apiEndpoint.endpointURL}
