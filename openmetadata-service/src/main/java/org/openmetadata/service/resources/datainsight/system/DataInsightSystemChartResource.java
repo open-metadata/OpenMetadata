@@ -8,8 +8,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -140,7 +140,7 @@ public class DataInsightSystemChartResource
           @QueryParam("end")
           long end)
       throws IOException {
-    HashMap<String, DataInsightCustomChartResultList> resultList =
+    Map<String, DataInsightCustomChartResultList> resultList =
         repository.listChartData(chartNames, start, end);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
