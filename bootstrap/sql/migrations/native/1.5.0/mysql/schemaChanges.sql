@@ -220,3 +220,5 @@ SET json = JSON_SET(
 )
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
 AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
+
+ALTER TABLE test_case MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;

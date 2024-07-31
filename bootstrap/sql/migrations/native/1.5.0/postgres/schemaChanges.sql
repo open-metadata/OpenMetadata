@@ -201,3 +201,5 @@ SET json = jsonb_set(
 WHERE jsonb_path_exists(json, '$.owner')
   AND jsonb_path_query_first(json, '$.owner ? (@ != null)') IS NOT null
   AND jsonb_typeof(json->'owner') <> 'array';
+
+ALTER TABLE test_case ALTER COLUMN name TYPE VARCHAR(512);

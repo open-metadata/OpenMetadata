@@ -92,6 +92,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.entity_link import get_table_or_column_fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
@@ -868,18 +869,28 @@ class DbtSource(DbtServiceSource):
                     test_suite = check_or_create_test_suite(
                         self.metadata, entity_link_str
                     )
-                    yield Either(
-                        right=CreateTestCaseRequest(
-                            name=manifest_node.name,
-                            description=manifest_node.description,
-                            testDefinition=FullyQualifiedEntityName(manifest_node.name),
-                            entityLink=entity_link_str,
-                            testSuite=test_suite.fullyQualifiedName,
-                            parameterValues=create_test_case_parameter_values(dbt_test),
-                            displayName=None,
-                            owners=None,
-                        )
+                    test_case_fqn = f"{get_table_or_column_fqn(entity_link_str)}.{manifest_node.name}"
+                    test_case = self.metadata.get_by_name(
+                        TestCase, test_case_fqn, fields=["testDefinition,testSuite"]
                     )
+                    if test_case is None:
+                        # Create the test case only if it does not exist
+                        yield Either(
+                            right=CreateTestCaseRequest(
+                                name=manifest_node.name,
+                                description=manifest_node.description,
+                                testDefinition=FullyQualifiedEntityName(
+                                    manifest_node.name
+                                ),
+                                entityLink=entity_link_str,
+                                testSuite=test_suite.fullyQualifiedName,
+                                parameterValues=create_test_case_parameter_values(
+                                    dbt_test
+                                ),
+                                displayName=None,
+                                owners=None,
+                            )
+                        )
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(
