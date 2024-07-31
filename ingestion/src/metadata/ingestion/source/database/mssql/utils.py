@@ -12,6 +12,8 @@
 MSSQL SQLAlchemy Helper Methods
 """
 
+from typing import Optional
+
 from sqlalchemy import Column, Integer, MetaData, String, Table, alias, sql, text
 from sqlalchemy import types as sqltypes
 from sqlalchemy import util
@@ -29,12 +31,13 @@ from sqlalchemy.dialects.mssql.base import (
     _switch_db,
     update_wrapper,
 )
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 from sqlalchemy.util import compat
 
 from metadata.ingestion.source.database.mssql.queries import (
+    GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
     MSSQL_GET_TABLE_COMMENTS,
@@ -488,3 +491,14 @@ def get_view_names(
     )
     view_names = [r[0] for r in connection.execute(query_)]
     return view_names
+
+
+def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
+    """
+    returns sqlaclhemdy engine date format by running config query
+    """
+    result = engine.execute(GET_DB_CONFIGS)
+    for row in result:
+        if row["Set Option"] == "dateformat":
+            return row["Value"]
+    return
