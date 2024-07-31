@@ -944,6 +944,7 @@
     "reply-lowercase": "ответить",
     "reply-lowercase-plural": "ответы",
     "request": "Request",
+    "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Теги запроса",
     "requirement-plural": "Требования",
