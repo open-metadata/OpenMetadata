@@ -92,7 +92,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
-from metadata.utils.entity_link import get_table_or_column_fqn
+from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
@@ -869,7 +869,21 @@ class DbtSource(DbtServiceSource):
                     test_suite = check_or_create_test_suite(
                         self.metadata, entity_link_str
                     )
-                    test_case_fqn = f"{get_table_or_column_fqn(entity_link_str)}.{manifest_node.name}"
+                    table_fqn = get_table_fqn(entity_link_str)
+                    source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
+                    test_case_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=TestCase,
+                        service_name=source_elements[0],
+                        database_name=source_elements[1],
+                        schema_name=source_elements[2],
+                        table_name=source_elements[3],
+                        column_name=manifest_node.column_name
+                        if hasattr(manifest_node, "column_name")
+                        else None,
+                        test_case_name=manifest_node.name,
+                    )
+
                     test_case = self.metadata.get_by_name(
                         TestCase, test_case_fqn, fields=["testDefinition,testSuite"]
                     )
