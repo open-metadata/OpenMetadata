@@ -95,10 +95,17 @@ public class DataInsightSystemChartResource
               required = true,
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("end")
-          long end)
+          long end,
+      @Parameter(
+              description = "Any additional filter to fetch the data",
+              required = true,
+              schema = @Schema(type = "string", example = "{\"query\":{...}}"))
+          @QueryParam("filter")
+          String filter)
       throws IOException {
     DataInsightCustomChart diChart = getByNameInternal(uriInfo, securityContext, fqn, null, null);
-    DataInsightCustomChartResultList resultList = repository.getPreviewData(diChart, start, end);
+    DataInsightCustomChartResultList resultList =
+        repository.getPreviewData(diChart, start, end, filter);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 

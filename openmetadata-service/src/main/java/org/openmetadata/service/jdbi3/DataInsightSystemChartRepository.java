@@ -4,6 +4,7 @@ import static org.openmetadata.service.Entity.DATA_INSIGHT_CUSTOM_CHART;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -57,6 +58,15 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   @Override
   public void storeRelationships(DataInsightCustomChart entity) {
     // No relationships to store beyond what is stored in the super class
+  }
+
+  public DataInsightCustomChartResultList getPreviewData(
+      DataInsightCustomChart chart, long startTimestamp, long endTimestamp, String filter)
+      throws IOException {
+    if (chart.getChartDetails() != null && filter != null) {
+      ((LinkedHashMap<String, Object>) chart.getChartDetails()).put("filter", filter);
+    }
+    return getPreviewData(chart, startTimestamp, endTimestamp);
   }
 
   public DataInsightCustomChartResultList getPreviewData(
