@@ -944,6 +944,7 @@
     "reply-lowercase": "resposta",
     "reply-lowercase-plural": "respostas",
     "request": "Request",
+    "request-method": "Request Method",
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Solicitar Tags",
     "requirement-plural": "Requisitos",

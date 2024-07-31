@@ -996,6 +996,15 @@ const getApiEndpointOverview = (apiEndpoint: APIEndpoint) => {
         DRAWER_NAVIGATION_OPTIONS.lineage,
       ],
     },
+    {
+      name: i18next.t('label.request-method'),
+      value: apiEndpoint.requestMethod || NO_DATA,
+      isLink: false,
+      visible: [
+        DRAWER_NAVIGATION_OPTIONS.explore,
+        DRAWER_NAVIGATION_OPTIONS.lineage,
+      ],
+    },
   ];
 
   return overview;
