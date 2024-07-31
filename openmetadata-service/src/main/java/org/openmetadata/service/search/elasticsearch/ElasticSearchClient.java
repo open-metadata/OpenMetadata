@@ -46,6 +46,7 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -139,6 +140,7 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
@@ -151,10 +153,12 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
@@ -1620,6 +1624,48 @@ public class ElasticSearchClient implements SearchClient {
                 }
               });
     }
+  }
+
+  @Override
+  public boolean isPluginPresent(IndexMappingLanguage searchIndexMappingLanguage) {
+    if (!isClientAvailable) {
+      return false;
+    }
+
+    String pluginName = getPluginName(searchIndexMappingLanguage);
+    if (pluginName == null) {
+      return false;
+    }
+
+    try {
+      // Check if the plugin is installed
+      Request request = new Request("GET", "/_cat/plugins");
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+
+      boolean pluginFound =
+          Arrays.stream(responseBody.split("\n")).anyMatch(line -> line.contains(pluginName));
+
+      if (!pluginFound) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.pluginNotPresent(
+                String.valueOf(ElasticSearchConfiguration.SearchType.ELASTICSEARCH), pluginName));
+      }
+
+      return true;
+    } catch (IOException e) {
+      LOG.error("IOException occurred while checking for plugin: {}", e.getMessage());
+      return false;
+    }
+  }
+
+  private String getPluginName(IndexMappingLanguage searchIndexMappingLanguage) {
+    return switch (String.valueOf(searchIndexMappingLanguage).toUpperCase()) {
+      case "ZH" -> "analysis-ik";
+      case "JP" -> "analysis-kuromoji";
+      default -> null;
+    };
   }
 
   private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
