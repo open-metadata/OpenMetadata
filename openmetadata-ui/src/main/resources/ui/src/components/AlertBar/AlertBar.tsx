@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Alert } from 'antd';
+import classNames from 'classnames';
 import React, { useMemo, useState } from 'react';
 import { ReactComponent as ErrorCross } from '../../assets/svg/error-cross.svg';
 import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
@@ -30,7 +32,11 @@ const AlertBar = ({
 }: AlertBarProps): JSX.Element => {
   const [isAlertVisible, setIsAlertVisible] = useState(true);
 
-  const alertComponent = useMemo(() => {
+  const {
+    icon: AlertIcon,
+    className,
+    crossIcon: CloseIcon,
+  } = useMemo(() => {
     switch (type) {
       case 'info':
         return {
@@ -72,24 +78,38 @@ const AlertBar = ({
   const handleCrossClick = () => setIsAlertVisible(false);
 
   return (
-    <div
-      className={`alert-container ${alertComponent.className}`}
-      style={{ display: isAlertVisible ? 'flex' : 'none' }}>
-      <div className="alert-content">
-        <Icon
-          className="align-middle"
-          component={alertComponent.icon}
-          style={{ fontSize: '25px' }}
+    <div>
+      {type === 'general' ? (
+        <div
+          className={`alert-container ${className}`}
+          style={{ display: isAlertVisible ? 'flex' : 'none' }}>
+          <div className="alert-content">
+            <Icon
+              className="align-middle"
+              component={AlertIcon}
+              style={{ fontSize: '25px' }}
+            />
+            <p>{message}</p>
+          </div>
+          <button className="cross-icon" onClick={handleCrossClick}>
+            <Icon
+              className="align-middle"
+              component={CloseIcon}
+              style={{ fontSize: '14px' }}
+            />
+          </button>
+        </div>
+      ) : (
+        <Alert
+          closable
+          showIcon
+          className={classNames(className, 'alert-container')}
+          closeIcon={<CloseIcon />}
+          description={message}
+          icon={<AlertIcon />}
+          type={type}
         />
-        <p>{message}</p>
-      </div>
-      <button className="cross-icon" onClick={handleCrossClick}>
-        <Icon
-          className="align-middle"
-          component={alertComponent.crossIcon}
-          style={{ fontSize: '14px' }}
-        />
-      </button>
+      )}
     </div>
   );
 };
