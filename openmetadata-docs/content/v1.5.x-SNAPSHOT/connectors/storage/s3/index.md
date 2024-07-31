@@ -7,7 +7,7 @@ slug: /connectors/storage/s3
 name="S3"
 stage="PROD"
 platform="OpenMetadata"
-availableFeatures=["Metadata"]
+availableFeatures=["Metadata", "Structured Containers", "Unstructured Containers"]
 unavailableFeatures=[]
 / %}
 

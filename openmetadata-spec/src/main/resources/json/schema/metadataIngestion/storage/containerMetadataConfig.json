@@ -22,6 +22,15 @@
           "type": "string",
           "default": null
         },
+        "unstructuredFormats": {
+          "title": "Unstructured format",
+          "description": "What the unstructured formats you want to ingest, eg. png, pdf, jpg.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null
+        },
         "separator": {
           "title": "Separator",
           "description": "For delimited files such as CSV, what is the separator being used?",
