@@ -85,7 +85,7 @@ const AlertBar = ({
             <Icon className="align-middle alert-icon" component={AlertIcon} />
             <p>{message}</p>
           </div>
-          <button className="cross-icon" onClick={() => reset()}>
+          <button className="cross-icon" onClick={reset}>
             <Icon className="align-middle" component={CloseIcon} />
           </button>
         </div>
@@ -98,7 +98,7 @@ const AlertBar = ({
           description={message}
           icon={<AlertIcon />}
           type={type}
-          onClose={() => reset()}
+          onClose={reset}
         />
       )}
     </>
