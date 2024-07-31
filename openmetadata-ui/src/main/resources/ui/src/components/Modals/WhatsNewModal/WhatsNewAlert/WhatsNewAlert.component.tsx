@@ -21,7 +21,7 @@ import { ReactComponent as PlayIcon } from '../../../../assets/svg/ic-play-butto
 import { BLACK_COLOR, ROUTES } from '../../../../constants/constants';
 import { useAuth } from '../../../../hooks/authHooks';
 import { getReleaseVersionExpiry } from '../../../../utils/WhatsNewModal.util';
-import { COOKIE_VERSION, LATEST_VERSION_ID, WHATS_NEW } from '../whatsNewData';
+import { COOKIE_VERSION, WHATS_NEW } from '../whatsNewData';
 import WhatsNewModal from '../WhatsNewModal';
 
 const cookieStorage = new CookieStorage();
@@ -36,8 +36,8 @@ const WhatsNewAlert = () => {
   });
 
   const latestVersion = useMemo(
-    () => WHATS_NEW[LATEST_VERSION_ID],
-    [WHATS_NEW, LATEST_VERSION_ID]
+    () => WHATS_NEW[WHATS_NEW.length - 1], // latest version will be last in the array
+    [WHATS_NEW]
   );
   const isHomePage = useMemo(
     () => location.pathname.includes(ROUTES.MY_DATA),
