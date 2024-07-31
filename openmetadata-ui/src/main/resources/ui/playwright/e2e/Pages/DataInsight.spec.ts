@@ -10,52 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect, Page } from '@playwright/test';
+import test, { expect } from '@playwright/test';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { EXPLORE_PAGE_TABS } from '../../support/entity/Entity.interface';
 import {
   createNewPage,
-  descriptionBox,
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
-import { deleteKpiRequest } from '../../utils/dataInsight';
+import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-const addKpi = async (page: Page, data) => {
-  const currentDate = new Date();
-  const month =
-    currentDate.getMonth() + 1 < 10
-      ? `0${currentDate.getMonth() + 1}`
-      : currentDate.getMonth() + 1;
-  const startDate = `${currentDate.getFullYear()}-${month}-${currentDate.getDate()}`;
-  currentDate.setDate(currentDate.getDate() + 1);
-  const endDate = `${currentDate.getFullYear()}-${month}-${currentDate.getDate()}`;
-
-  await page.click('#chartType');
-  await page.click(`.ant-select-dropdown [title="${data.dataInsightChart}"]`);
-  await page.getByTestId('displayName').fill(data.displayName);
-  await page.getByTestId('metricType').click();
-  await page.click(`.ant-select-dropdown [title="${data.metricType}"]`);
-  await page.locator('.ant-slider-mark-text', { hasText: '100%' }).click();
-
-  await page.getByTestId('start-date').click();
-  await page.getByTestId('start-date').fill(startDate);
-  await page.getByTestId('start-date').press('Enter');
-  await page.getByTestId('end-date').click();
-  await page.getByTestId('end-date').fill(endDate);
-  await page.getByTestId('end-date').press('Enter');
-
-  await page.locator(descriptionBox).fill('Playwright KPI test description');
-
-  await page.getByTestId('submit-btn').click();
-  await page.waitForURL('**/data-insights/kpi');
-};
 
 test.describe.configure({ mode: 'serial' });
 
@@ -72,8 +40,6 @@ test.describe('Data Insight Page', () => {
   });
 
   test('Create description and owner KPI', async ({ page }) => {
-    // await page.getByTestId('loader').waitFor({ state: 'detached' });
-
     await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
     for (const data of KPI_DATA) {
@@ -135,61 +101,54 @@ test.describe('Data Insight Page', () => {
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
 
-    await page
-      .getByTestId('search-dropdown-Team')
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('search-dropdown-Tier')
-      .waitFor({ state: 'visible' });
-    await page.getByTestId('summary-card').waitFor({ state: 'visible' });
-    await page.getByTestId('kpi-card').waitFor({ state: 'visible' });
-    await page
-      .getByTestId('total_data_assets-graph')
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('percentage_of_data_asset_with_description-graph')
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('percentage_of_data_asset_with_owner-graph')
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('percentage_of_service_with_description-graph')
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('percentage_of_service_with_owner-graph')
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('total_data_assets_by_tier-graph')
-      .waitFor({ state: 'visible' });
+    await expect(page.getByTestId('search-dropdown-Team')).toBeVisible();
+
+    await expect(page.getByTestId('search-dropdown-Tier')).toBeVisible();
+    await expect(page.getByTestId('summary-card')).toBeVisible();
+    await expect(page.getByTestId('kpi-card')).toBeVisible();
+    await expect(page.getByTestId('total_data_assets-graph')).toBeVisible();
+    await expect(
+      page.getByTestId('percentage_of_data_asset_with_description-graph')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('percentage_of_data_asset_with_owner-graph')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('percentage_of_service_with_description-graph')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('percentage_of_service_with_owner-graph')
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('total_data_assets_by_tier-graph')
+    ).toBeVisible();
   });
 
   test('Verify No owner and description redirection to explore page', async ({
     page,
   }) => {
     await page.waitForResponse(
-      '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
+      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
     );
     await page.getByTestId('explore-asset-with-no-description').click();
 
-    for (const tab of Object.values(EXPLORE_PAGE_TABS)) {
-      await page.getByTestId(`${tab}-tab`).click();
+    await page.waitForURL('**/explore?**');
 
-      await expect(
-        page.getByTestId('advance-search-filter-text')
-      ).toContainText("descriptionStatus = 'INCOMPLETE'");
-    }
+    await expect(page.getByTestId('advance-search-filter-text')).toContainText(
+      "descriptionStatus = 'INCOMPLETE'"
+    );
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+    await page.waitForResponse(
+      '/api/v1/analytics/dataInsights/system/charts/name/percentage_of_service_with_description/data?**'
+    );
 
     await page.getByTestId('explore-asset-with-no-owner').click();
+    await page.waitForURL('**/explore?**');
 
-    for (const tab of Object.values(EXPLORE_PAGE_TABS)) {
-      await page.getByTestId(`${tab}-tab`).click();
-
-      await expect(
-        page.getByTestId('advance-search-filter-text')
-      ).toContainText('owner.displayName.keyword IS NULL');
-    }
+    await expect(page.getByTestId('advance-search-filter-text')).toContainText(
+      'owners.displayName.keyword IS NULL'
+    );
   });
 
   test('Verifying App analytics tab', async ({ page }) => {
@@ -199,27 +158,21 @@ test.describe('Data Insight Page', () => {
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
 
-    await page.getByTestId('app-analytics').click();
+    await page.getByRole('menuitem', { name: 'App Analytics' }).click();
 
-    await page
-      .getByTestId('summary-card-content')
-      .waitFor({ state: 'visible' });
-    await page
-      .locator('[data-testid="entity-summary-card-percentage"]', {
+    await expect(page.getByTestId('summary-card-content')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="entity-summary-card-percentage"]', {
         hasText: 'Most Viewed Data Assets',
       })
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('entity-page-views-card')
-      .waitFor({ state: 'visible' });
-    await page
-      .getByTestId('entity-active-user-card')
-      .waitFor({ state: 'visible' });
-    await page
-      .locator('[data-testid="entity-summary-card-percentage"]', {
-        hasText: 'Most Viewed Services',
+    ).toBeVisible();
+    await expect(page.getByTestId('entity-page-views-card')).toBeVisible();
+    await expect(page.getByTestId('entity-active-user-card')).toBeVisible();
+    await expect(
+      page.locator('[data-testid="entity-summary-card-percentage"]', {
+        hasText: 'Most Active Users',
       })
-      .waitFor({ state: 'visible' });
+    ).toBeVisible();
   });
 
   test('Verifying KPI tab', async ({ page }) => {
@@ -229,32 +182,31 @@ test.describe('Data Insight Page', () => {
 
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
-    await page.getByTestId('kpi').click();
+    await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
-    await page.getByTestId('kpi-card').waitFor({ state: 'visible' });
-    await page
-      .locator(
+    await expect(page.getByTestId('kpi-card')).toBeVisible();
+    await expect(
+      page.locator(
         '[data-row-key="playwright-description-with-percentage-percentage"]'
       )
-      .waitFor({ state: 'visible' });
-    await page
-      .locator('[data-row-key="playwright-owner-with-percentage-percentage"]')
-      .waitFor({ state: 'visible' });
+    ).toBeVisible();
+    await expect(
+      page.locator(
+        '[data-row-key="playwright-owner-with-percentage-percentage"]'
+      )
+    ).toBeVisible();
   });
 
   test('Update KPI', async ({ page }) => {
     await page.waitForResponse(
       '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
     );
-    await page.getByTestId('kpi').click();
+    await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
     for (const data of KPI_DATA) {
       await page.getByTestId(`edit-action-${data.displayName}`).click();
 
-      await page
-        .getByTestId('metric-percentage-input')
-        .getByRole('spinbutton')
-        .fill('50');
+      await page.getByRole('spinbutton').fill('50');
       await page.getByTestId('submit-btn').click();
     }
   });
@@ -263,7 +215,7 @@ test.describe('Data Insight Page', () => {
     await page.waitForResponse(
       '/api/v1/kpi/playwright-owner-with-percentage-percentage/latestKpiResult'
     );
-    await page.getByTestId('kpi').click();
+    await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
     for (const data of KPI_DATA) {
       await page.getByTestId(`delete-action-${data.displayName}`).click();

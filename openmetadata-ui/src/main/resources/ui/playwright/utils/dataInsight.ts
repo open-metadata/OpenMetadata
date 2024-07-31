@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
+import { descriptionBox } from './common';
 
 export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
   const kpis = await apiRequest.get('/api/v1/kpi').then((res) => res.json());
@@ -27,4 +28,47 @@ export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
       );
     }
   }
+};
+
+export const addKpi = async (page: Page, data) => {
+  const currentDate = new Date();
+  const month =
+    currentDate.getMonth() + 1 < 10
+      ? `0${currentDate.getMonth() + 1}`
+      : currentDate.getMonth() + 1;
+  const date =
+    currentDate.getDate() < 10
+      ? `0${currentDate.getDate()}`
+      : currentDate.getDate();
+
+  const startDate = `${currentDate.getFullYear()}-${month}-${date}`;
+  currentDate.setDate(currentDate.getDate() + 1);
+  const nextMonth =
+    currentDate.getMonth() + 1 < 10
+      ? `0${currentDate.getMonth() + 1}`
+      : currentDate.getMonth() + 1;
+  const nextDate =
+    currentDate.getDate() < 10
+      ? `0${currentDate.getDate()}`
+      : currentDate.getDate();
+  const endDate = `${currentDate.getFullYear()}-${nextMonth}-${nextDate}`;
+
+  await page.click('#chartType');
+  await page.click(`.ant-select-dropdown [title="${data.dataInsightChart}"]`);
+  await page.getByTestId('displayName').fill(data.displayName);
+  await page.getByTestId('metricType').click();
+  await page.click(`.ant-select-dropdown [title="${data.metricType}"]`);
+  await page.locator('.ant-slider-mark-text', { hasText: '100%' }).click();
+
+  await page.getByTestId('start-date').click();
+  await page.getByTestId('start-date').fill(startDate);
+  await page.getByTestId('start-date').press('Enter');
+  await page.getByTestId('end-date').click();
+  await page.getByTestId('end-date').fill(endDate);
+  await page.getByTestId('end-date').press('Enter');
+
+  await page.locator(descriptionBox).fill('Playwright KPI test description');
+
+  await page.getByTestId('submit-btn').click();
+  await page.waitForURL('**/data-insights/kpi');
 };

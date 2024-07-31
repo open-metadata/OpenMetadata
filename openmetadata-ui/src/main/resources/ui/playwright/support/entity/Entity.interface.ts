@@ -63,37 +63,3 @@ export enum ENTITY_PATH {
   'apiCollections' = 'apiCollection',
   'apiEndpoints' = 'apiEndpoint',
 }
-
-export const EXPLORE_PAGE_TABS: Record<
-  Exclude<
-    EntityTypeEndpoint,
-    | EntityTypeEndpoint.DashboardService
-    | EntityTypeEndpoint.DatabaseService
-    | EntityTypeEndpoint.MessagingService
-    | EntityTypeEndpoint.SearchService
-    | EntityTypeEndpoint.MlModelService
-    | EntityTypeEndpoint.StorageService
-    | EntityTypeEndpoint.PipelineService
-    | EntityTypeEndpoint.Database
-    | EntityTypeEndpoint.GlossaryTerm
-    | EntityTypeEndpoint.Domain
-    | EntityTypeEndpoint.MetadataService
-    | EntityTypeEndpoint.User
-  >,
-  string
-> = {
-  [EntityTypeEndpoint.DatabaseSchema]: 'database schemas',
-  [EntityTypeEndpoint.Dashboard]: 'dashboards',
-  [EntityTypeEndpoint.DataModel]: 'dashboard data models',
-  [EntityTypeEndpoint.Pipeline]: 'pipelines',
-  [EntityTypeEndpoint.Topic]: 'topics',
-  [EntityTypeEndpoint.MlModel]: 'ml models',
-  [EntityTypeEndpoint.Container]: 'containers',
-  [EntityTypeEndpoint.SearchIndex]: 'search indexes',
-  [EntityTypeEndpoint.Table]: 'tables',
-  [EntityTypeEndpoint.StoreProcedure]: 'stored procedures',
-  [EntityTypeEndpoint.Glossary]: 'glossary terms',
-  [EntityTypeEndpoint.API_COLLECTION]: 'api collections',
-  [EntityTypeEndpoint.API_ENDPOINT]: 'api endpoints',
-  [EntityTypeEndpoint.ApiService]: 'api services',
-} as const;
