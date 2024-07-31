@@ -6,7 +6,7 @@ slug: /connectors/storage/gcs
 {% connectorDetailsHeader
 name="GCS"
 stage="PROD"
-platform="Collate"
+platform="OpenMetadata"
 availableFeatures=["Metadata", "Structured Containers"]
 unavailableFeatures=["Unstructured Containers"]
 / %}
