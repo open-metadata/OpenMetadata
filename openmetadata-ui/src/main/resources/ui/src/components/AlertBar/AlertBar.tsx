@@ -78,25 +78,18 @@ const AlertBar = ({
   const handleCrossClick = () => setIsAlertVisible(false);
 
   return (
-    <div>
+    <>
       {type === 'general' ? (
         <div
-          className={`alert-container ${className}`}
-          style={{ display: isAlertVisible ? 'flex' : 'none' }}>
+          className={`${
+            isAlertVisible ? 'alert-container' : 'hidden'
+          } ${className}`}>
           <div className="alert-content">
-            <Icon
-              className="align-middle"
-              component={AlertIcon}
-              style={{ fontSize: '25px' }}
-            />
+            <Icon className="align-middle alert-icon" component={AlertIcon} />
             <p>{message}</p>
           </div>
           <button className="cross-icon" onClick={handleCrossClick}>
-            <Icon
-              className="align-middle"
-              component={CloseIcon}
-              style={{ fontSize: '14px' }}
-            />
+            <Icon className="align-middle" component={CloseIcon} />
           </button>
         </div>
       ) : (
@@ -110,7 +103,7 @@ const AlertBar = ({
           type={type}
         />
       )}
-    </div>
+    </>
   );
 };
 
