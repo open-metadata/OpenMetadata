@@ -418,9 +418,6 @@ class ColumnTypeParser:
     def _parse_primitive_datatype_string(  # pylint: disable=too-many-return-statements
         dtype: str,
     ) -> Dict[str, object]:
-        empty_brackets = "()"
-        if empty_brackets in dtype:
-            dtype = dtype.replace(empty_brackets, "")
         if dtype.upper() in ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE:
             return {
                 "dataType": ColumnTypeParser._SOURCE_TYPE_TO_OM_TYPE[dtype.upper()],
