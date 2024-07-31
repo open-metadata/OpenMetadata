@@ -85,6 +85,13 @@ JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
 WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
 """
 
+POSTGRES_SCHEMA_COMMENTS = """
+    SELECT n.nspname AS schema_name, 
+            d.description AS comment
+    FROM pg_catalog.pg_namespace n
+    LEFT JOIN pg_catalog.pg_description d ON d.objoid = n.oid AND d.objsubid = 0;
+"""
+
 POSTGRES_TABLE_COMMENTS = """
     SELECT n.nspname as schema,
             c.relname as table_name,
