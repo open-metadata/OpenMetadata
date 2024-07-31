@@ -25,6 +25,7 @@ import { ReactComponent as InfoCross } from '../../assets/svg/info-cross.svg';
 import { ReactComponent as SuccessCross } from '../../assets/svg/success-cross.svg';
 import { ReactComponent as WarningCross } from '../../assets/svg/warning-cross.svg';
 import './alert-bar.style.less';
+import { AlertBarProps } from './AlertBar.interface';
 
 const AlertBar = ({
   type = 'general',

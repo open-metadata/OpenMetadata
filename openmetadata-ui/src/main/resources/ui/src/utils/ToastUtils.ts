@@ -14,8 +14,8 @@
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
-import { toast } from 'react-toastify';
 import { ClientErrors } from '../enums/Axios.enum';
+import { useAlertStore } from '../hooks/useAlertBar';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
@@ -69,10 +69,7 @@ export const showErrorToast = (
     }
   }
   callback && callback(errorMessage);
-  toast.error(errorMessage, {
-    toastId: hashCode(errorMessage),
-    autoClose: autoCloseTimer,
-  });
+  useAlertStore.getState().addAlert({ type: 'error', message: errorMessage });
 };
 
 /**
@@ -81,9 +78,7 @@ export const showErrorToast = (
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
-  toast.success(message, {
-    autoClose: autoCloseTimer,
-  });
+  useAlertStore.getState().addAlert({ type: 'success', message });
 };
 
 /**
@@ -92,15 +87,5 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
-  toast.info(message, {
-    autoClose: autoCloseTimer,
-  });
-};
-
-/**
- * Clear all the toast messages.
- */
-export const clearAllToasts = () => {
-  toast.clearWaitingQueue();
-  toast.dismiss();
+  useAlertStore.getState().addAlert({ type: 'info', message });
 };

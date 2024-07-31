@@ -10,9 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type AlertBarType = 'general' | 'info' | 'success' | 'warning' | 'error';
+import { create } from 'zustand';
+import { AlertBarType } from '../components/AlertBar/AlertBar.interface';
 
-export interface AlertBarProps {
+type AlertType = {
   type: AlertBarType;
   message: string;
+};
+
+interface AlertStore {
+  alert: AlertType | undefined;
+  addAlert: (alert: AlertType) => void;
+  reset: () => void;
 }
+
+export const useAlertStore = create<AlertStore>()((set) => ({
+  alert: undefined,
+  addAlert: (alert: AlertType) => {
+    set({ alert });
+  },
+  reset: () => {
+    set({ alert: undefined });
+  },
+}));
