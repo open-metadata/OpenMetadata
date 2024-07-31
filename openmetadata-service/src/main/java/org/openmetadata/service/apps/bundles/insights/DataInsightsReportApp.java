@@ -88,7 +88,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsReportAppConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
-        // sendToAdmins(searchRepository.getSearchClient(), timeConfig);
+        sendToAdmins(searchRepository.getSearchClient(), timeConfig);
       }
 
       // Send to Teams
