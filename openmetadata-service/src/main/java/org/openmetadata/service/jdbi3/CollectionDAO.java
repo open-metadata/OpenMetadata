@@ -64,6 +64,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
@@ -315,6 +316,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   WebAnalyticEventDAO webAnalyticEventDAO();
+
+  @CreateSqlObject
+  DataInsightCustomChartDAO dataInsightCustomChartDAO();
 
   @CreateSqlObject
   DataInsightChartDAO dataInsightChartDAO();
@@ -2090,6 +2094,9 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
+      Map<String, String> cursorMap = parseCursorMap(before);
+      String beforeName = cursorMap.get("name");
+      String beforeId = cursorMap.get("id");
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
@@ -2102,11 +2109,15 @@ public interface CollectionDAO {
                 condition);
       }
 
-      return listBefore(getTableName(), filter.getQueryParams(), condition, limit, before);
+      return listBeforePagination(
+          getTableName(), filter.getQueryParams(), condition, limit, beforeName, beforeId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
+      Map<String, String> cursorMap = parseCursorMap(after);
+      String afterName = cursorMap.get("name");
+      String afterId = cursorMap.get("id");
       String condition = filter.getCondition();
       String directChildrenOf = filter.getQueryParam("directChildrenOf");
 
@@ -2118,8 +2129,8 @@ public interface CollectionDAO {
                 " %s AND fqnHash = CONCAT(:directChildrenOfHash, '.', MD5(CASE WHEN name LIKE '%%.%%' THEN CONCAT('\"', name, '\"') ELSE name END))  ",
                 condition);
       }
-
-      return listAfter(getTableName(), filter.getQueryParams(), condition, limit, after);
+      return listAfterPagination(
+          getTableName(), filter.getQueryParams(), condition, limit, afterName, afterId);
     }
 
     @SqlQuery("select json FROM glossary_term_entity where fqnhash LIKE CONCAT(:fqnhash, '.%')")
@@ -2390,6 +2401,9 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
+      Map<String, String> cursorMap = parseCursorMap(before);
+      String beforeName = cursorMap.get("name");
+      String beforeId = cursorMap.get("id");
       String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
       if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
         String condition =
@@ -2403,21 +2417,31 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listBefore(
+        return listBeforePagination(
             getTableName(),
             filter.getQueryParams(),
             mySqlCondition,
             postgresCondition,
             limit,
-            before);
+            beforeName,
+            beforeId);
       }
       String condition = filter.getCondition(getTableName());
-      return listBefore(
-          getTableName(), filter.getQueryParams(), condition, condition, limit, before);
+      return listBeforePagination(
+          getTableName(),
+          filter.getQueryParams(),
+          condition,
+          condition,
+          limit,
+          beforeName,
+          beforeId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
+      Map<String, String> cursorMap = parseCursorMap(after);
+      String afterName = cursorMap.get("name");
+      String afterId = cursorMap.get("id");
       String includeEmptyTestSuite = filter.getQueryParam("includeEmptyTestSuite");
       if (includeEmptyTestSuite != null && !Boolean.parseBoolean(includeEmptyTestSuite)) {
         String condition =
@@ -2431,16 +2455,18 @@ public interface CollectionDAO {
             String.format("%s %s", mySqlCondition, filter.getCondition(getTableName()));
         postgresCondition =
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
-        return listAfter(
+        return listAfterPagination(
             getTableName(),
             filter.getQueryParams(),
             mySqlCondition,
             postgresCondition,
             limit,
-            after);
+            afterName,
+            afterId);
       }
       String condition = filter.getCondition(getTableName());
-      return listAfter(getTableName(), filter.getQueryParams(), condition, condition, limit, after);
+      return listAfterPagination(
+          getTableName(), filter.getQueryParams(), condition, condition, limit, afterName, afterId);
     }
   }
 
@@ -2650,6 +2676,9 @@ public interface CollectionDAO {
 
     @Override
     default List<String> listBefore(ListFilter filter, int limit, String before) {
+      Map<String, String> cursorMap = parseCursorMap(before);
+      String beforeName = cursorMap.get("name");
+      String beforeId = cursorMap.get("id");
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -2683,17 +2712,21 @@ public interface CollectionDAO {
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
 
-      return listBefore(
+      return listBeforePagination(
           getTableName(),
           filter.getQueryParams(),
           mySqlCondition,
           postgresCondition,
           limit,
-          before);
+          beforeName,
+          beforeId);
     }
 
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String after) {
+      Map<String, String> cursorMap = parseCursorMap(after);
+      String afterName = cursorMap.get("name");
+      String afterId = cursorMap.get("id");
       boolean disabled = Boolean.parseBoolean(filter.getQueryParam("classification.disabled"));
       String condition =
           String.format(
@@ -2726,8 +2759,14 @@ public interface CollectionDAO {
 
       mySqlCondition = String.format("%s %s", mySqlCondition, filter.getCondition("tag"));
       postgresCondition = String.format("%s %s", postgresCondition, filter.getCondition("tag"));
-      return listAfter(
-          getTableName(), filter.getQueryParams(), mySqlCondition, postgresCondition, limit, after);
+      return listAfterPagination(
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          afterName,
+          afterId);
     }
 
     @SqlQuery("select json FROM tag where fqnhash LIKE CONCAT(:fqnhash, '.%')")
@@ -4078,6 +4117,23 @@ public interface CollectionDAO {
     }
   }
 
+  interface DataInsightCustomChartDAO extends EntityDAO<DataInsightCustomChart> {
+    @Override
+    default String getTableName() {
+      return "di_chart_entity";
+    }
+
+    @Override
+    default Class<DataInsightCustomChart> getEntityClass() {
+      return DataInsightCustomChart.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface DataInsightChartDAO extends EntityDAO<DataInsightChart> {
     @Override
     default String getTableName() {
@@ -4834,6 +4890,30 @@ public interface CollectionDAO {
         @Define("psqlCond") String psqlCond,
         @Bind("limit") int limit,
         @Bind("after") String after);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE name = :name AND entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    String fetchEmailTemplateByName(@Bind("name") String name);
+
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT json FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    List<String> fetchAllEmailTemplates();
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM doc_store WHERE entityType = 'EmailTemplate'",
+        connectionType = POSTGRES)
+    void deleteEmailTemplates();
   }
 
   interface SuggestionDAO {

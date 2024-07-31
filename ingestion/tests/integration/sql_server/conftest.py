@@ -5,7 +5,7 @@ import pytest
 from sqlalchemy import create_engine, text
 from testcontainers.mssql import SqlServerContainer
 
-from _openmetadata_testutils.postgres.conftest import try_bind
+from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -42,9 +42,9 @@ GO
         """
         )
 
-    container.volumes = {str(data_dir): {"bind": "/data"}}
     with try_bind(container, 1433, 1433) as container:
         docker_container = container.get_wrapped_container()
+        copy_dir_to_container(str(data_dir), docker_container, "/data")
         res = docker_container.exec_run(
             [
                 "/opt/mssql-tools/bin/sqlcmd",

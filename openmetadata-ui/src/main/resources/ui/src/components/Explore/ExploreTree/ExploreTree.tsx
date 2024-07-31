@@ -33,7 +33,6 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { UrlParams } from '../ExplorePage.interface';
 import {
@@ -136,7 +135,10 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
 
           let logo = undefined;
           if (isEntityType) {
-            logo = getEntityIcon(bucket.key, 'service-icon w-4 h-4');
+            logo = searchClassBase.getEntityIcon(
+              bucket.key,
+              'service-icon w-4 h-4'
+            ) ?? <></>;
           } else if (isServiceType) {
             const serviceIcon = serviceUtilClassBase.getServiceLogo(bucket.key);
             logo = (

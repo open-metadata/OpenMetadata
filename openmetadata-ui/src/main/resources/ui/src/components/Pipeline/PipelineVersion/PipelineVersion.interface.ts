@@ -21,7 +21,7 @@ export interface PipelineVersionProp {
   version: string;
   currentVersionData: Pipeline;
   isVersionLoading: boolean;
-  owner: Pipeline['owner'];
+  owners: Pipeline['owners'];
   domain: Pipeline['domain'];
   dataProducts: Pipeline['dataProducts'];
   tier: TagLabel;

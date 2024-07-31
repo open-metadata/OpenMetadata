@@ -31,23 +31,22 @@ import {
   CHART_WIDGET_DAYS_DURATION,
   GRAPH_BACKGROUND_COLOR,
 } from '../../../../constants/constants';
-import { KPI_WIDGET_GRAPH_COLORS } from '../../../../constants/DataInsight.constants';
+import { DATA_INSIGHT_GRAPH_COLORS } from '../../../../constants/DataInsight.constants';
 import { DATA_INSIGHT_DOCS } from '../../../../constants/docs.constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Kpi, KpiResult } from '../../../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
+import { useDataInsightProvider } from '../../../../pages/DataInsightPage/DataInsightProvider';
+import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
 import {
   getLatestKpiResult,
   getListKpiResult,
   getListKPIs,
 } from '../../../../rest/KpiAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import { getKpiGraphData } from '../../../../utils/DataInsightUtils';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../../../utils/date-time/DateTimeUtils';
+import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import KPILatestResultsV1 from '../../../DataInsight/KPILatestResultsV1';
 import './kpi-widget.less';
@@ -93,35 +92,46 @@ const KPIWidget = ({
   const { t } = useTranslation();
   const [kpiList, setKpiList] = useState<Array<Kpi>>([]);
   const [isKPIListLoading, setIsKPIListLoading] = useState<boolean>(false);
-  const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
+  const [kpiResults, setKpiResults] = useState<
+    Record<string, DataInsightCustomChartResult['results']>
+  >({});
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { chartFilter } = useDataInsightProvider();
 
-  const fetchKpiResults = useCallback(async () => {
+  const getKPIResult = async (kpi: Kpi) => {
+    const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
+      startTs: chartFilter.startTs,
+      endTs: chartFilter.endTs,
+    });
+
+    return { name: kpi.name, data: response.results };
+  };
+
+  const fetchKpiResults = async () => {
     setIsLoading(true);
     try {
-      const promises = kpiList.map((kpi) =>
-        getListKpiResult(kpi.fullyQualifiedName ?? '', {
-          startTs: getEpochMillisForPastDays(selectedDays),
-          endTs: getCurrentMillis(),
-        })
-      );
+      const promises = kpiList.map(getKPIResult);
       const responses = await Promise.allSettled(promises);
-      const kpiResultsList: KpiResult[] = [];
+      const kpiResultsList: Record<
+        string,
+        DataInsightCustomChartResult['results']
+      > = {};
 
       responses.forEach((response) => {
         if (response.status === 'fulfilled') {
-          kpiResultsList.push(...response.value.data);
+          kpiResultsList[response.value.name] = response.value.data;
         }
       });
+
       setKpiResults(kpiResultsList);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [kpiList, selectedDays]);
+  };
 
   const fetchKpiLatestResults = async () => {
     setIsLoading(true);
@@ -140,14 +150,14 @@ const KPIWidget = ({
           const kpi = kpiList.find((k) => k.fullyQualifiedName === kpiName);
 
           // get the kpiTarget
-          const kpiTarget = kpi?.targetDefinition?.[0];
+          const kpiTarget = kpi?.targetValue;
 
           if (!isUndefined(kpi) && !isUndefined(kpiTarget)) {
             return {
               ...previous,
               [kpiName]: {
                 ...resultValue,
-                target: kpiTarget?.value,
+                target: kpiTarget,
                 metricType: kpi?.metricType,
                 startDate: kpi?.startDate,
                 endDate: kpi?.endDate,
@@ -167,14 +177,12 @@ const KPIWidget = ({
     }
   };
 
-  const { kpis, graphData } = useMemo(() => {
-    return { ...getKpiGraphData(kpiResults, kpiList) };
-  }, [kpiResults, kpiList]);
-
   const fetchKpiList = async () => {
     try {
       setIsKPIListLoading(true);
-      const response = await getListKPIs({ fields: 'dataInsightChart' });
+      const response = await getListKPIs({
+        fields: TabSpecificField.DATA_INSIGHT_CHART,
+      });
       setKpiList(response.data);
     } catch (_err) {
       setKpiList([]);
@@ -193,6 +201,8 @@ const KPIWidget = ({
     [selectedGridSize]
   );
 
+  const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
+
   useEffect(() => {
     fetchKpiList().catch(() => {
       // catch handled in parent function
@@ -200,7 +210,7 @@ const KPIWidget = ({
   }, []);
 
   useEffect(() => {
-    setKpiResults([]);
+    setKpiResults({});
     setKpiLatestResults(undefined);
   }, [selectedDays]);
 
@@ -242,14 +252,13 @@ const KPIWidget = ({
           </Typography.Text>
         </Col>
       </Row>
-      {isEmpty(kpiList) || isEmpty(graphData) ? (
+      {isEmpty(kpiList) || isEmpty(kpiResults) ? (
         <EmptyPlaceholder />
       ) : (
         <Row className="p-t-md">
           <Col span={isWidgetSizeMedium ? 14 : 24}>
             <ResponsiveContainer debounce={1} height={250} width="100%">
               <LineChart
-                data={graphData}
                 margin={{
                   top: 10,
                   right: isWidgetSizeMedium ? 50 : 20,
@@ -260,13 +269,23 @@ const KPIWidget = ({
                   stroke={GRAPH_BACKGROUND_COLOR}
                   vertical={false}
                 />
-                <XAxis dataKey="timestamp" />
-                <YAxis />
-                {kpis.map((kpi, i) => (
+                <XAxis
+                  allowDuplicatedCategory={false}
+                  dataKey="day"
+                  tickFormatter={(value: number) =>
+                    customFormatDateTime(value, 'MMM DD')
+                  }
+                  type="category"
+                />
+                <YAxis dataKey="count" />
+
+                {kpiNames.map((key, i) => (
                   <Line
-                    dataKey={kpi}
-                    key={kpi}
-                    stroke={KPI_WIDGET_GRAPH_COLORS[i]}
+                    data={kpiResults[key]}
+                    dataKey="count"
+                    key={key}
+                    name={key}
+                    stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
                     type="monotone"
                   />
                 ))}

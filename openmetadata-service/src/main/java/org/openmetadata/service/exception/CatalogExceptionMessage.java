@@ -99,7 +99,7 @@ public final class CatalogExceptionMessage {
   public static final String TOKEN_EXPIRY_ERROR =
       "Email Verification Token %s is expired. Please issue a new request for email verification.";
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
-  public static final String LIVE_APP_SCHEDULE_ERR = "Live Application cannot scheduled.";
+  public static final String NO_MANUAL_TRIGGER_ERR = "App does not support manual trigger.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
 
   private CatalogExceptionMessage() {}
@@ -318,6 +318,11 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Failed to publish event %s to %s due to %s ",
         JsonUtils.pojoToJson(event), type.value(), message);
+  }
+
+  public static String eventPublisherFailedToPublish(
+      SubscriptionDestination.SubscriptionType type, String message) {
+    return String.format("Failed to publish event %s due to %s ", type.value(), message);
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {

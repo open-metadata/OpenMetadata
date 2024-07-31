@@ -55,7 +55,7 @@ describe('Database Util', () => {
 
   describe('Database Util - DatabaseFields', () => {
     it('should have the correct fields', () => {
-      const expectedFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNER}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
+      const expectedFields = `${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS}`;
 
       expect(DatabaseFields).toEqual(expectedFields);
     });
@@ -67,10 +67,14 @@ describe('Database Util', () => {
         name: 'schema1',
         fullyQualifiedName: 'database.schema1',
         description: 'Schema 1 description',
-        owner: { id: '1', type: 'user', name: 'John Doe' },
+        owners: [{ id: '1', type: 'user', name: 'John Doe' }],
         usageSummary: {
-          weeklyStats: { percentileRank: 80 },
+          weeklyStats: { percentileRank: 80, count: 10 },
+          dailyStats: { count: 10 },
+          date: new Date(),
         },
+        database: { name: 'database', id: 'database', type: 'database' },
+        service: { name: 'service1', id: 'service1', type: 'service' },
       } as DatabaseSchema;
 
       const expectedColumns = [
@@ -89,8 +93,8 @@ describe('Database Util', () => {
         },
         {
           title: 'label.owner',
-          dataIndex: 'owner',
-          key: 'owner',
+          dataIndex: 'owners',
+          key: 'owners',
           width: 120,
           render: expect.any(Function),
         },
@@ -129,7 +133,7 @@ describe('Database Util', () => {
       // Test render function for owner column
       const ownerRender = ownerColumn.render;
       const ownerRenderResult =
-        ownerRender && ownerRender(record.owner, record, 0);
+        ownerRender && ownerRender(record.owners, record, 0);
 
       expect(ownerRenderResult).toMatchSnapshot();
 

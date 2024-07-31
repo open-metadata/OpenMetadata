@@ -34,7 +34,6 @@ from metadata.generated.schema.metadataIngestion.applicationPipeline import (
     ApplicationPipeline,
 )
 from metadata.workflow.application import ApplicationWorkflow
-from metadata.workflow.application_output_handler import print_status
 
 
 def application_workflow(workflow_config: OpenMetadataApplicationConfig):
@@ -54,7 +53,7 @@ def application_workflow(workflow_config: OpenMetadataApplicationConfig):
 
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 

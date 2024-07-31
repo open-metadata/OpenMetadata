@@ -121,7 +121,7 @@ describe('TestCases component', () => {
     render(<TestCases {...mockProps} />);
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
-      fields: 'testCaseResult,testSuite,incidentId',
+      fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
       limit: 10,
       offset: 0,
@@ -139,7 +139,7 @@ describe('TestCases component', () => {
     render(<TestCases {...mockProps} />);
 
     expect(mockSearchQuery).toHaveBeenCalledWith({
-      fields: 'testCaseResult,testSuite,incidentId',
+      fields: ['testCaseResult', 'testSuite', 'incidentId'],
       includeAllTests: true,
       limit: 10,
       offset: 0,

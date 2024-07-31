@@ -29,6 +29,7 @@ import { PAGE_SIZE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
@@ -189,7 +190,7 @@ export const TableProfilerProvider = ({
     try {
       const profiler = await getLatestTableProfileByFqn(datasetFQN);
       const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: 'customMetrics,columns',
+        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
       });
 
       setTableProfiler(profiler);
@@ -206,7 +207,11 @@ export const TableProfilerProvider = ({
     try {
       const { data, paging } = await getListTestCase({
         ...params,
-        fields: 'testCaseResult, incidentId',
+        fields: [
+          TabSpecificField.TEST_CASE_RESULT,
+          TabSpecificField.INCIDENT_ID,
+        ],
+
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
         limit: testCasePaging.pageSize,

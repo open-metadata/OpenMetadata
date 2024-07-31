@@ -34,12 +34,9 @@
       "description": "Data Insight Chart Referred by this Kpi Objective.",
       "$ref": "../../type/entityReference.json"
     },
-    "targetDefinition": {
+    "targetValue": {
       "description": "Metrics from the chart and the target to achieve the result.",
-      "type": "array",
-      "items": {
-        "$ref": "./basic.json#/definitions/kpiTarget"
-      }
+      "type": "number"
     },
     "kpiResult": {
       "description": "Result of the Kpi",
@@ -53,9 +50,9 @@
       "description": "End Date for the KPIs",
       "$ref": "../../type/basic.json#/definitions/timestamp"
     },
-    "owner": {
-      "description": "Owner of this KPI definition.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this KPI definition.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "version": {
@@ -90,7 +87,7 @@
     "dataInsightChart",
     "startDate",
     "endDate",
-    "targetDefinition",
+    "targetValue",
     "metricType"
   ],
   "additionalProperties": false

@@ -21,6 +21,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import APIEndpointVersion from '../../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ContainerVersion from '../../components/Container/ContainerVersion/ContainerVersion.component';
@@ -45,6 +46,7 @@ import {
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -58,6 +60,11 @@ import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import {
+  getApiEndPointByFQN,
+  getApiEndPointVersion,
+  getApiEndPointVersions,
+} from '../../rest/apiEndpointsAPI';
 import {
   getDashboardByFqn,
   getDashboardVersion,
@@ -107,6 +114,7 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTierTags } from '../../utils/TableUtils';
+import APICollectionVersionPage from '../APICollectionPage/APICollectionVersionPage';
 import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
 import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
 import './EntityVersionPage.less';
@@ -120,7 +128,8 @@ export type VersionData =
   | Container
   | SearchIndex
   | StoredProcedure
-  | DashboardDataModel;
+  | DashboardDataModel
+  | APIEndpoint;
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -186,7 +195,7 @@ const EntityVersionPage: FunctionComponent = () => {
   const fetchEntityPermissions = useCallback(async () => {
     setIsLoading(true);
     try {
-      fetchResourcePermission(
+      await fetchResourcePermission(
         entityUtilClassBase.getResourceEntityFromEntityType(
           entityType
         ) as ResourceEntity
@@ -330,6 +339,19 @@ const EntityVersionPage: FunctionComponent = () => {
 
           break;
         }
+        case EntityType.API_ENDPOINT: {
+          const { id } = await getApiEndPointByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
+
+          setEntityId(id ?? '');
+
+          const versions = await getApiEndPointVersions(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
 
         default:
           break;
@@ -415,6 +437,13 @@ const EntityVersionPage: FunctionComponent = () => {
 
               break;
             }
+            case EntityType.API_ENDPOINT: {
+              const currentVersion = await getApiEndPointVersion(id, version);
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
 
             default:
               break;
@@ -427,9 +456,9 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityType, version, viewVersionPermission]
   );
 
-  const { owner, domain, tier, slashedEntityName } = useMemo(() => {
+  const { owners, domain, tier, slashedEntityName } = useMemo(() => {
     return {
-      owner: currentVersionData.owner,
+      owners: currentVersionData.owners,
       tier: getTierTags(currentVersionData.tags ?? []),
       domain: currentVersionData.domain,
       slashedEntityName: getEntityBreadcrumbs(currentVersionData, entityType),
@@ -458,7 +487,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -477,7 +506,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTopicName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -497,7 +526,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedDashboardName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -517,7 +546,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedPipelineName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -537,7 +566,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedMlModelName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -557,7 +586,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -576,7 +605,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -595,7 +624,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedDataModelName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -615,8 +644,26 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTableName={slashedEntityName}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+
+      case EntityType.API_ENDPOINT: {
+        return (
+          <APIEndpointVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData as APIEndpoint}
+            domain={domain}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            slashedApiEndpointName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -635,6 +682,10 @@ const EntityVersionPage: FunctionComponent = () => {
 
       case EntityType.DATA_PRODUCT: {
         return <DataProductsPage />;
+      }
+
+      case EntityType.API_COLLECTION: {
+        return <APICollectionVersionPage />;
       }
 
       default:

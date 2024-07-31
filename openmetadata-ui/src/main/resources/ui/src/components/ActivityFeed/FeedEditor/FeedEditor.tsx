@@ -36,6 +36,7 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
 import {
@@ -46,7 +47,7 @@ import {
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
@@ -93,17 +94,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         // Fetch profile images in case of user listing
         const promises = matches.map(async (item, index) => {
           if (item.type === 'user') {
-            return getUserByName(item.name, { fields: 'profile' }).then(
-              (res) => {
-                newMatches[index] = {
-                  ...item,
-                  avatarEle: userMentionItemWithAvatar(
-                    item,
-                    userProfilePics[item.name] ?? res
-                  ),
-                };
-              }
-            );
+            return getUserByName(item.name, {
+              fields: TabSpecificField.PROFILE,
+            }).then((res) => {
+              newMatches[index] = {
+                ...item,
+                avatarEle: userMentionItemWithAvatar(
+                  item,
+                  userProfilePics[item.name] ?? res
+                ),
+              };
+            });
           } else if (item.type === 'team') {
             newMatches[index] = {
               ...item,
@@ -141,16 +142,16 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = ReactDOMServer.renderToString(
-          getEntityIcon(item.type as string)
-        );
+        const icon = searchClassBase.getEntityIcon(item.type ?? '');
+
+        const iconString = ReactDOMServer.renderToString(icon ?? <></>);
 
         const typeSpan = !breadcrumbEle
           ? `<span class="text-grey-muted text-xs">${item.type}</span>`
           : '';
 
         const result = `<div class="d-flex items-center gap-2">
-          <div class="flex-center mention-icon-image">${icon}</div>
+          <div class="flex-center mention-icon-image">${iconString}</div>
           <div>
             ${breadcrumbEle}
             <div class="d-flex flex-col">

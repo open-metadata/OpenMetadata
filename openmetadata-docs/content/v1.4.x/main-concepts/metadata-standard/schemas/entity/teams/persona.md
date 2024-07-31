@@ -3,7 +3,7 @@ title: persona
 slug: /main-concepts/metadata-standard/schemas/entity/teams/persona
 ---
 
-# Team
+# Persona
 
 *This schema defines the Persona entity. A `Persona` is a job function associated with a user. An Example, Data Engineer or Data Consumer is a Persona of a user in Metadata world.*
 

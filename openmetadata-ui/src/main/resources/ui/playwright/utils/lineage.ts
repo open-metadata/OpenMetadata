@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
+import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../support/entity/ContainerClass';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityClass } from '../support/entity/EntityClass';
@@ -156,6 +157,7 @@ export const setupEntitiesForLineage = async (
     | MlModelClass
     | ContainerClass
     | SearchIndexClass
+    | ApiEndpointClass
 ) => {
   const entities = [
     new TableClass(),
@@ -164,6 +166,7 @@ export const setupEntitiesForLineage = async (
     new MlModelClass(),
     new ContainerClass(),
     new SearchIndexClass(),
+    new ApiEndpointClass(),
   ] as const;
 
   const { apiContext, afterAction } = await getApiContext(page);

@@ -36,7 +36,11 @@ import {
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
@@ -169,6 +173,7 @@ export const DataAssetsHeader = ({
       [
         EntityType.DATABASE,
         EntityType.DATABASE_SCHEMA,
+        EntityType.API_COLLECTION,
         ...SERVICE_TYPES,
       ].includes(entityType),
     [entityType]
@@ -230,7 +235,7 @@ export const DataAssetsHeader = ({
     setIsBreadcrumbLoading(true);
     try {
       const response = await getContainerByName(parentName, {
-        fields: 'parent',
+        fields: TabSpecificField.PARENT,
       });
       const updatedParent = [response, ...parents];
       if (response?.parent?.fullyQualifiedName) {
@@ -329,7 +334,7 @@ export const DataAssetsHeader = ({
       () => ({
         editDomainPermission: permissions.EditAll && !dataAsset.deleted,
         editOwnerPermission:
-          (permissions.EditAll || permissions.EditOwner) && !dataAsset.deleted,
+          (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
         editTierPermission:
           (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
       }),
@@ -374,7 +379,7 @@ export const DataAssetsHeader = ({
                 )}
                 <OwnerLabel
                   hasPermission={editOwnerPermission}
-                  owner={dataAsset?.owner}
+                  owners={dataAsset?.owners}
                   onUpdate={onOwnerUpdate}
                 />
                 <Divider className="self-center" type="vertical" />

@@ -49,7 +49,7 @@ export enum EntityFields {
   SCHEMA_FIELD = 'messageSchema.schemaFields.name.keyword',
   FEATURE = 'mlFeatures.name',
   FIELD = 'fields.name.keyword',
-  OWNER = 'owner.displayName.keyword',
+  OWNERS = 'owners.displayName.keyword',
   TAG = 'tags.tagFQN',
   TIER = 'tier.tagFQN',
   SERVICE = 'service.displayName.keyword',
@@ -59,4 +59,6 @@ export enum EntityFields {
   CHART = 'charts.displayName.keyword',
   TASK = 'tasks.displayName.keyword',
   GLOSSARY_TERM_STATUS = 'status',
+  REQUEST_SCHEMA_FIELD = 'requestSchema.schemaFields.name.keyword',
+  RESPONSE_SCHEMA_FIELD = 'responseSchema.schemaFields.name.keyword',
 }
