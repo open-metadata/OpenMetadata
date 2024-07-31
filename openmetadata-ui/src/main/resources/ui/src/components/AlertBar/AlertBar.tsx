@@ -13,7 +13,7 @@
 import Icon from '@ant-design/icons';
 import { Alert } from 'antd';
 import classNames from 'classnames';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ReactComponent as ErrorCross } from '../../assets/svg/error-cross.svg';
 import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
 import { ReactComponent as ErrorIcon } from '../../assets/svg/ic-error.svg';
@@ -24,6 +24,7 @@ import { ReactComponent as WarningIcon } from '../../assets/svg/ic-warning-tag.s
 import { ReactComponent as InfoCross } from '../../assets/svg/info-cross.svg';
 import { ReactComponent as SuccessCross } from '../../assets/svg/success-cross.svg';
 import { ReactComponent as WarningCross } from '../../assets/svg/warning-cross.svg';
+import { useAlertStore } from '../../hooks/useAlertBar';
 import './alert-bar.style.less';
 import { AlertBarProps } from './AlertBar.interface';
 
@@ -31,7 +32,7 @@ const AlertBar = ({
   type = 'general',
   message = '',
 }: AlertBarProps): JSX.Element => {
-  const [isAlertVisible, setIsAlertVisible] = useState(true);
+  const { alert, reset } = useAlertStore();
 
   const {
     icon: AlertIcon,
@@ -76,20 +77,15 @@ const AlertBar = ({
     }
   }, [type]);
 
-  const handleCrossClick = () => setIsAlertVisible(false);
-
   return (
     <>
       {type === 'general' ? (
-        <div
-          className={`${
-            isAlertVisible ? 'alert-container' : 'hidden'
-          } ${className}`}>
+        <div className={`${alert ? 'alert-container' : 'hidden'} ${className}`}>
           <div className="alert-content">
             <Icon className="align-middle alert-icon" component={AlertIcon} />
             <p>{message}</p>
           </div>
-          <button className="cross-icon" onClick={handleCrossClick}>
+          <button className="cross-icon" onClick={() => reset()}>
             <Icon className="align-middle" component={CloseIcon} />
           </button>
         </div>
@@ -102,6 +98,7 @@ const AlertBar = ({
           description={message}
           icon={<AlertIcon />}
           type={type}
+          onClose={() => reset()}
         />
       )}
     </>
