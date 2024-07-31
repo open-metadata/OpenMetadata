@@ -129,7 +129,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       enableDebugLog: ingestionPipeline?.loggerLevel === LogLevels.Debug,
       testCases,
       name: ingestionPipeline?.displayName,
-      selectAllTestCases: ingestionPipeline && isUndefined(testCases),
+      selectAllTestCases: !isEmpty(ingestionPipeline) && isUndefined(testCases),
     };
   }, [ingestionPipeline]);
 
