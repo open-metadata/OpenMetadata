@@ -60,6 +60,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
 
   static void getDateHistogramByFormula(
       String formula,
+      QueryBuilder filter,
       DateHistogramAggregationBuilder dateHistogramAggregationBuilder,
       List<FormulaHolder> formulas) {
     Pattern pattern = Pattern.compile(DataInsightSystemChartRepository.FORMULA_FUNC_REGEX);
@@ -74,7 +75,15 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
           getSubAggregationsByFunction(
               Function.valueOf(matcher.group(1).toUpperCase()), matcher.group(2), index);
       if (matcher.group(4) != null) {
-        QueryBuilder queryBuilder = QueryBuilders.queryStringQuery(matcher.group(4));
+        QueryBuilder queryBuilder;
+        if (filter != null) {
+          queryBuilder =
+              QueryBuilders.boolQuery()
+                  .must(QueryBuilders.queryStringQuery(matcher.group(4)))
+                  .must(filter);
+        } else {
+          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(4));
+        }
         dateHistogramAggregationBuilder.subAggregation(
             AggregationBuilders.filter("filer" + index, queryBuilder).subAggregation(subAgg));
         holder.setQuery(matcher.group(4));
@@ -132,7 +141,17 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<FormulaHolder> formulas)
       throws IOException {
     if (formula != null) {
-      getDateHistogramByFormula(formula, dateHistogramAggregationBuilder, formulas);
+
+      if (filter != null) {
+        XContentParser filterParser =
+            XContentType.JSON
+                .xContent()
+                .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, filter);
+        QueryBuilder queryFilter = SearchSourceBuilder.fromXContent(filterParser).query();
+        getDateHistogramByFormula(formula, queryFilter, dateHistogramAggregationBuilder, formulas);
+      } else {
+        getDateHistogramByFormula(formula, null, dateHistogramAggregationBuilder, formulas);
+      }
       return;
     }
 
