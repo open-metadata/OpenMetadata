@@ -16,7 +16,11 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border: none;
+  font-size: 16px;
+
+  &.ant-alert-with-description {
+    padding: 20px;
+  }
 
   &.general {
     background-color: #f6f7f9;
@@ -26,21 +30,29 @@
   &.info {
     background-color: #f6f8ff;
     color: #0950c5;
+    border: none;
+    border-radius: 0px;
   }
 
   &.success {
     background-color: #f5fbf8;
     color: #1d7c4d;
+    border: none;
+    border-radius: 0px;
   }
 
   &.warning {
     background-color: #fff5eb;
     color: #f59638;
+    border: none;
+    border-radius: 0px;
   }
 
   &.error {
     background-color: #fcf0f1;
     color: #cb2531;
+    border: none;
+    border-radius: 0px;
   }
 
   .alert-content {
@@ -58,5 +70,9 @@
     background-color: transparent;
     border: none;
     font-size: 14px;
+  }
+
+  .ant-alert-description {
+    font-size: 16px;
   }
 }
