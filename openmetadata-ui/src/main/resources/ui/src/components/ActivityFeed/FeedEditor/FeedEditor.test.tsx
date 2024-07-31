@@ -12,7 +12,7 @@
  */
 
 import { findByTestId, fireEvent, render } from '@testing-library/react';
-import React from 'react';
+import React, { KeyboardEvent } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { FeedEditor } from './FeedEditor';
 
@@ -20,8 +20,13 @@ const onSave = jest.fn();
 const onChangeHandler = jest.fn();
 
 const onKeyDownHandler = jest.fn().mockImplementation((e: KeyboardEvent) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    onSave();
+  if (e.key === 'Enter') {
+    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+      return;
+    }
+    if (!e.shiftKey) {
+      onSave();
+    }
   }
 });
 
@@ -115,6 +120,38 @@ describe('Test FeedEditor Component', () => {
     fireEvent.keyDown(reactQuill, {
       key: 'Enter',
       shiftKey: true,
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("Should not call onSave method on 'Enter' keydown with isComposing=true (IME operation)", async () => {
+    const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    const reactQuill = await findByTestId(container, 'react-quill');
+
+    expect(reactQuill).toBeInTheDocument();
+
+    fireEvent.keyDown(reactQuill, {
+      key: 'Enter',
+      isComposing: true,
+    });
+
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("Should not call onSave method on 'Enter' keydown with keyCode=229 (IME operation, legacy)", async () => {
+    const { container } = render(<FeedEditor {...mockFeedEditorProp} />, {
+      wrapper: MemoryRouter,
+    });
+    const reactQuill = await findByTestId(container, 'react-quill');
+
+    expect(reactQuill).toBeInTheDocument();
+
+    fireEvent.keyDown(reactQuill, {
+      key: 'Enter',
+      keyCode: 229,
     });
 
     expect(onSave).not.toHaveBeenCalled();
