@@ -123,14 +123,14 @@ export const clickOutside = async (page: Page) => {
 };
 
 export const visitUserProfilePage = async (page: Page) => {
-  await page.getByTestId('dropdown-profile').click();
+  await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.waitForSelector('[role="menu"].profile-dropdown', {
     state: 'visible',
   });
   const userResponse = page.waitForResponse(
     '/api/v1/users/name/*?fields=*&include=all'
   );
-  await page.getByTestId('user-name').click({ force: true });
+  await page.getByTestId('user-name').click();
   await userResponse;
   await clickOutside(page);
 };

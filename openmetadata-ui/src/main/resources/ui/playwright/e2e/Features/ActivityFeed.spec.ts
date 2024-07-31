@@ -174,7 +174,7 @@ test.describe('Activity feed', () => {
         `Reply message ${i}`
       );
       const sendReply = page.waitForResponse('/api/v1/feed/*/posts');
-      await page.getByTestId('send-button').click();
+      await page.getByTestId('send-button').click({ force: true });
       await sendReply;
     }
 
@@ -321,7 +321,7 @@ test.describe('Activity feed', () => {
       'Test comment added'
     );
     const addComment = page.waitForResponse('/api/v1/feed/*/posts');
-    await page.getByTestId('comment-button').click();
+    await page.getByTestId('comment-button').click({ force: true });
     await addComment;
 
     // Close the task from the Button.Group, should throw error when no comment is added.

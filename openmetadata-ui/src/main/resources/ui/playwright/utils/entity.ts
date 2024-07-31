@@ -72,9 +72,18 @@ export const addOwner = async (
   await page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByRole('listitem', { name: owner }).click();
-  await patchRequest;
+
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
@@ -98,9 +107,17 @@ export const updateOwner = async (
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByRole('listitem', { name: owner }).click();
-  await patchRequest;
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
@@ -175,7 +192,8 @@ export const addMultiOwner = async (data: {
     await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
     await searchOwner;
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await page.getByRole('listitem', { name: ownerName }).click();
+
+    await page.getByRole('listitem', { name: ownerName, exact: true }).click();
   }
 
   if (isMultipleOwners) {
