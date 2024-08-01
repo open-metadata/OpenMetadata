@@ -57,8 +57,6 @@ const mockThread = [
   },
 ];
 
-// const mockGetFeedData = jest.fn().mockImplementation(() => Promise.resolve());
-
 const mockUseActivityFeedProviderValue = {
   entityPaging: { total: 4 },
   entityThread: mockThread,
