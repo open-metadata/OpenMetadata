@@ -81,7 +81,7 @@
       },
       "default": null
     },
-    "teamDomains" : {
+    "domains" : {
       "description": "Domains the team belongs to.",
       "type": "array",
       "items": {

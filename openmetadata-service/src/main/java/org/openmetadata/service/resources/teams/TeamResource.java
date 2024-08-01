@@ -91,7 +91,7 @@ import org.openmetadata.service.util.ResultList;
 public class TeamResource extends EntityResource<Team, TeamRepository> {
   public static final String COLLECTION_PATH = "/v1/teams/";
   static final String FIELDS =
-      "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,teamDomains";
+      "owners,profile,users,owns,defaultRoles,parents,children,policies,userCount,childrenCount,domains";
 
   @Override
   public Team addHref(UriInfo uriInfo, Team team) {
@@ -662,6 +662,6 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
         .withChildren(EntityUtil.toEntityReferences(ct.getChildren(), Entity.TEAM))
         .withPolicies(EntityUtil.toEntityReferences(ct.getPolicies(), Entity.POLICY))
         .withEmail(ct.getEmail())
-        .withTeamDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getTeamDomains()));
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, ct.getDomains()));
   }
 }

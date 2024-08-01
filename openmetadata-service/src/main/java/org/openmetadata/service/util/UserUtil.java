@@ -344,6 +344,6 @@ public final class UserUtil {
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
-        .withUserDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getUserDomains()));
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()));
   }
 }

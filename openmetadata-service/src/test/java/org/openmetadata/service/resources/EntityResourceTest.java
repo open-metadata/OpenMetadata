@@ -3388,7 +3388,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
               assertEquals(domainReference.getId(), actual.getId());
               assertEquals(domainReference.getType(), actual.getType());
-            } else if (keyword.equals("userDomains") || keyword.equals("teamDomains")) {
+            } else if (keyword.equals(FIELD_DOMAINS)) {
               List<EntityReference> domainReference =
                   JsonUtils.convertObjects(source.get(keyword), EntityReference.class);
 

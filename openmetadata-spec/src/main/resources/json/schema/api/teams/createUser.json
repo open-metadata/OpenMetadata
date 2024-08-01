@@ -88,7 +88,7 @@
       "description": "Confirm Password for User",
       "type": "string"
     },
-    "userDomains" : {
+    "domains" : {
       "description": "Domains the User belongs to.",
       "type": "array",
       "items": {

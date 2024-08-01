@@ -824,7 +824,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setOwners(fields.contains(FIELD_OWNERS) ? entity.getOwners() : null);
     entity.setTags(fields.contains(FIELD_TAGS) ? entity.getTags() : null);
     entity.setExtension(fields.contains(FIELD_EXTENSION) ? entity.getExtension() : null);
-    // entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
+    entity.setDomain(fields.contains(FIELD_DOMAIN) ? entity.getDomain() : null);
     entity.setDataProducts(fields.contains(FIELD_DATA_PRODUCTS) ? entity.getDataProducts() : null);
     entity.setFollowers(fields.contains(FIELD_FOLLOWERS) ? entity.getFollowers() : null);
     entity.setChildren(fields.contains(FIELD_CHILDREN) ? entity.getChildren() : null);
