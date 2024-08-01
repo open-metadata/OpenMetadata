@@ -52,6 +52,11 @@
     },
     "templatePath": {
       "type": "string"
+    },
+    "templates": {
+      "type": "string",
+      "enum": ["openmetadata", "collate"],
+      "default": "openmetadata"
     }
   },
   "additionalProperties": false,

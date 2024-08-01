@@ -220,3 +220,8 @@ SET json = JSON_SET(
 )
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
 AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
+
+-- set templates to fetch emailTemplates
+UPDATE openmetadata_settings
+SET json = JSON_SET(json, '$.templates', 'openmetadata')
+WHERE configType = 'emailConfiguration';
