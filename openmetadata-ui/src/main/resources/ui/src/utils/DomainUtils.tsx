@@ -259,10 +259,8 @@ export const initializeDomainEntityRef = (
 export const getDomainFieldFromEntityType = (
   entityType: EntityType
 ): string => {
-  if (entityType === EntityType.TEAM) {
-    return 'teamDomains';
-  } else if (entityType === EntityType.USER) {
-    return 'userDomains';
+  if (entityType === EntityType.TEAM || entityType === EntityType.USER) {
+    return 'domains';
   } else {
     return 'domain';
   }

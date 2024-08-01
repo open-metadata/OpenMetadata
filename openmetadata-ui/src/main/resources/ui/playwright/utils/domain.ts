@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
+import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -96,10 +97,27 @@ export const validateDomainForm = async (page) => {
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
 
-const selectDomain = async (page: Page, domain: Domain['data']) => {
+export const selectDomain = async (page: Page, domain: Domain['data']) => {
   await page
     .getByRole('menuitem', { name: domain.displayName })
     .locator('span')
+    .click();
+};
+
+export const selectDataProduct = async (
+  page: Page,
+  domain: Domain['data'],
+  dataProduct: DataProduct['data']
+) => {
+  await page
+    .getByRole('menuitem', { name: domain.displayName })
+    .locator('span')
+    .click();
+
+  await page.getByText('Data Products').click();
+  await page
+    .getByTestId(`explore-card-${dataProduct.name}`)
+    .getByTestId('entity-link')
     .click();
 };
 
@@ -109,7 +127,10 @@ const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('assets').click();
 };
 
-const fillDomainForm = async (page: Page, entity: Domain['data']) => {
+const fillCommonFormItems = async (
+  page: Page,
+  entity: Domain['data'] | DataProduct['data']
+) => {
   await page.locator('[data-testid="name"]').fill(entity.name);
   await page.locator('[data-testid="display-name"]').fill(entity.displayName);
   await page.fill(descriptionBox, entity.description);
@@ -125,7 +146,10 @@ const fillDomainForm = async (page: Page, entity: Domain['data']) => {
       'add-owner'
     );
   }
+};
 
+const fillDomainForm = async (page: Page, entity: Domain['data']) => {
+  await fillCommonFormItems(page, entity);
   await page.click('[data-testid="domainType"]');
   await page.getByTitle(entity.domainType).locator('div').click();
 };
@@ -238,6 +262,65 @@ export const addAssetsToDomain = async (
   await checkAssetsCount(page, assets.length);
 };
 
+export const addAssetsToDataProduct = async (
+  page: Page,
+  dataProduct: DataProduct['data'],
+  assets: EntityClass[]
+) => {
+  await page.getByTestId('assets').click();
+  await checkAssetsCount(page, 0);
+
+  await expect(page.getByTestId('no-data-placeholder')).toContainText(
+    'Adding a new Asset is easy, just give it a spin!'
+  );
+
+  await page.getByTestId('data-product-details-add-button').click();
+
+  for (const asset of assets) {
+    const name = get(asset, 'entityResponseData.name');
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
+    );
+    await page.getByTestId('searchbar').fill(name);
+    await searchRes;
+
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsAddRes = page.waitForResponse(
+    `/api/v1/dataProducts/${encodeURIComponent(
+      dataProduct.fullyQualifiedName ?? ''
+    )}/assets/add`
+  );
+  await page.getByTestId('save-btn').click();
+  await assetsAddRes;
+
+  await checkAssetsCount(page, assets.length);
+};
+
+export const removeAssetsFromDataProduct = async (
+  page: Page,
+  dataProduct: DataProduct['data'],
+  assets: EntityClass[]
+) => {
+  await page.getByTestId('assets').click();
+  for (const asset of assets) {
+    const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+  }
+
+  const assetsRemoveRes = page.waitForResponse(
+    `/api/v1/dataProducts/${encodeURIComponent(
+      dataProduct.fullyQualifiedName ?? ''
+    )}/assets/remove`
+  );
+
+  await page.getByTestId('delete-all-button').click();
+  await assetsRemoveRes;
+};
+
 export const setupAssetsForDomain = async (page: Page) => {
   const { afterAction, apiContext } = await getApiContext(page);
   const table = new TableClass();
@@ -258,4 +341,19 @@ export const setupAssetsForDomain = async (page: Page) => {
     assets: [table, topic, dashboard],
     assetCleanup,
   };
+};
+
+export const createDataProduct = async (
+  page: Page,
+  dataProduct: DataProduct['data']
+) => {
+  await page.getByTestId('domain-details-add-button').click();
+  await page.getByRole('menuitem', { name: 'Data Products' }).click();
+
+  await expect(page.getByText('Add Data Product')).toBeVisible();
+
+  await fillCommonFormItems(page, dataProduct);
+  const saveRes = page.waitForResponse('/api/v1/dataProducts');
+  await page.getByTestId('save-data-product').click();
+  await saveRes;
 };

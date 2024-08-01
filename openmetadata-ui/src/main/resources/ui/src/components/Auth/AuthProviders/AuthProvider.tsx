@@ -100,7 +100,7 @@ const userAPIQueryFields = [
   TabSpecificField.ROLES,
   TabSpecificField.PERSONAS,
   TabSpecificField.DEFAULT_PERSONA,
-  TabSpecificField.USER_DOMAINS,
+  TabSpecificField.DOMAINS,
 ];
 
 const isEmailVerifyField = 'isEmailVerified';

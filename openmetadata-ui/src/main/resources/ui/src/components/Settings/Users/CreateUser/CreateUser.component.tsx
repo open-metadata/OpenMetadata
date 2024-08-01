@@ -83,11 +83,11 @@ const CreateUser = ({
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
-    Form.useWatch<EntityReference[]>('userDomains', form) ?? [];
+    Form.useWatch<EntityReference[]>('domains', form) ?? [];
 
   const domainsField: FieldProp = {
-    name: 'userDomains',
-    id: 'root/userDomains',
+    name: 'domains',
+    id: 'root/domains',
     required: false,
     label: t('label.domain'),
     type: FieldTypes.DOMAIN_SELECT,
@@ -166,9 +166,7 @@ const CreateUser = ({
       teams: validTeam.length ? validTeam : undefined,
       email: email,
       isAdmin: isAdmin,
-      userDomains: selectedDomain.map(
-        (domain) => domain.fullyQualifiedName ?? ''
-      ),
+      domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
       isBot: isBot,
       ...(forceBot
         ? {

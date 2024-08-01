@@ -242,7 +242,7 @@ const DocumentationTab = ({
                 )}
               </Space>
 
-              {!domain.owners && editOwnerPermission && (
+              {domain.owners?.length === 0 && editOwnerPermission && (
                 <UserTeamSelectableList
                   hasPermission
                   multiple={{ team: false, user: true }}

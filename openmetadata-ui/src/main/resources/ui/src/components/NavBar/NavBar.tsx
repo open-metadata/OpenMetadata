@@ -23,6 +23,7 @@ import {
   Select,
   Space,
   Tooltip,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -60,7 +61,7 @@ import {
   hasNotificationPermission,
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
-import { getNameFromFQN, refreshPage } from '../../utils/CommonUtils';
+import { refreshPage } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   getEntityFQN,
@@ -108,7 +109,12 @@ const NavBar = ({
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
 
   const history = useHistory();
-  const { domainOptions, activeDomain, updateActiveDomain } = useDomainStore();
+  const {
+    domainOptions,
+    activeDomain,
+    activeDomainEntityRef,
+    updateActiveDomain,
+  } = useDomainStore();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -478,7 +484,11 @@ const NavBar = ({
                   width={24}
                 />
               </Col>
-              <Col className="flex-center">{getNameFromFQN(activeDomain)}</Col>
+              <Col className="flex-center">
+                <Typography.Text>
+                  {activeDomainEntityRef?.displayName ?? activeDomain}
+                </Typography.Text>
+              </Col>
               <Col className="flex-center">
                 <DropDownIcon height={14} width={14} />
               </Col>

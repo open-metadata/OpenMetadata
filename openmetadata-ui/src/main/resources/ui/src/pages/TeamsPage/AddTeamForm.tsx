@@ -55,7 +55,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const markdownRef = useRef<EditorContentRef>();
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
-    Form.useWatch<EntityReference[]>('teamDomains', form) ?? [];
+    Form.useWatch<EntityReference[]>('domains', form) ?? [];
 
   const teamTypeOptions = useMemo(() => {
     return getTeamOptionsFromType(parentTeamType).map((type) => ({
@@ -85,8 +85,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   };
 
   const domainsField: FieldProp = {
-    name: 'teamDomains',
-    id: 'root/teamDomains',
+    name: 'domains',
+    id: 'root/domains',
     required: false,
     label: t('label.domain'),
     type: FieldTypes.DOMAIN_SELECT,

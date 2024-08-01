@@ -168,7 +168,7 @@ describe('Test Teams Page', () => {
           'defaultRoles',
           'policies',
           'childrenCount',
-          'teamDomains',
+          'domains',
         ],
         include: 'all',
       },

@@ -40,8 +40,8 @@ export const useDomainStore = create<DomainStore>()(
       domainOptions: [],
       fetchDomainList: async () => {
         const currentUser = useApplicationStore.getState().currentUser;
-        const { isAdmin = false, userDomains = [] } = currentUser ?? {};
-        const userDomainsObj = isAdmin ? [] : userDomains;
+        const { isAdmin = false, domains = [] } = currentUser ?? {};
+        const userDomainsObj = isAdmin ? [] : domains;
         const userDomainFqn =
           userDomainsObj.map((item) => item.fullyQualifiedName) ?? [];
 
@@ -54,7 +54,7 @@ export const useDomainStore = create<DomainStore>()(
           });
 
           let filteredDomains = data;
-          if (userDomains.length > 0) {
+          if (domains.length > 0) {
             filteredDomains = data.filter((domain) =>
               userDomainFqn.includes(domain.fullyQualifiedName)
             );
@@ -68,7 +68,7 @@ export const useDomainStore = create<DomainStore>()(
             ),
           });
 
-          if (!isAdmin && userDomainsObj.length > 0) {
+          if (!isAdmin && userDomainsObj.length > 0 && !get().activeDomain) {
             set({ activeDomain: userDomainsObj[0].fullyQualifiedName });
           }
         } catch (error) {
