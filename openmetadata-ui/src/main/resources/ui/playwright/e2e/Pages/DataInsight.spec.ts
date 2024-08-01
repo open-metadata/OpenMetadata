@@ -83,15 +83,19 @@ test.describe('Data Insight Page', () => {
   test('Run DataInsight Application', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.APPLICATIONS);
 
+    const appDetails = page.waitForResponse(
+      '**/api/v1/apps/name/DataInsightsApplication?*'
+    );
     await page.click(
       '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
     );
-    await page.waitForResponse('**/api/v1/apps/name/DataInsightsApplication?*');
+    await appDetails;
 
-    await page.click('[data-testid="run-now-button"]');
-    await page.waitForResponse(
+    const triggerResponse = page.waitForResponse(
       '**/api/v1/apps/trigger/DataInsightsApplication'
     );
+    await page.getByTestId('run-now-button').click();
+    await triggerResponse;
 
     const { apiContext } = await getApiContext(page);
 
