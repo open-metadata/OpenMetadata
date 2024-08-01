@@ -696,14 +696,14 @@ public class EventSubscriptionResourceTest
     CreateTable createTable1 =
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
-            .withOwner(USER2.getEntityReference());
+            .withOwners(List.of(USER2.getEntityReference()));
     tableResourceTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
     assertNull(details);
 
     // Create another table with the owner that matches the filter (USER_TEAM21), expect an alert
     CreateTable createTable =
-        tableResourceTest.createRequest(test).withOwner(USER_TEAM21.getEntityReference());
+        tableResourceTest.createRequest(test).withOwners(List.of(USER_TEAM21.getEntityReference()));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
     assertEquals(1, details.getEvents().size());
@@ -835,7 +835,7 @@ public class EventSubscriptionResourceTest
 
     TableResourceTest tableResourceTest = new TableResourceTest();
     CreateTable createTable =
-        tableResourceTest.createRequest(test).withOwner(USER_TEAM21.getEntityReference());
+        tableResourceTest.createRequest(test).withOwners(List.of(USER_TEAM21.getEntityReference()));
 
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
 
@@ -892,7 +892,7 @@ public class EventSubscriptionResourceTest
     CreateTable createTable =
         tableResourceTest
             .createRequest(test)
-            .withOwner(USER1.getEntityReference())
+            .withOwners(List.of(USER1.getEntityReference()))
             .withDomain(domain.getName());
     tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
@@ -906,7 +906,7 @@ public class EventSubscriptionResourceTest
     CreateTable createTable2 =
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
-            .withOwner(USER1.getEntityReference())
+            .withOwners(List.of(USER1.getEntityReference()))
             .withDomain(domain2.getName());
     tableResourceTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
     details = waitForFirstSlackEvent(alert.getId(), webhookName, 25);
@@ -916,7 +916,7 @@ public class EventSubscriptionResourceTest
     CreateTable createTable3 =
         tableResourceTest
             .createRequest(test.getClass().getName() + generateUniqueNumberAsString())
-            .withOwner(USER_TEAM21.getEntityReference())
+            .withOwners(List.of(USER_TEAM21.getEntityReference()))
             .withDomain(domain.getName());
 
     Table table = tableResourceTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
@@ -1108,7 +1108,7 @@ public class EventSubscriptionResourceTest
     CreateTopic topicRequest =
         topicResourceTest
             .createRequest(test)
-            .withOwner(USER_TEAM21.getEntityReference())
+            .withOwners(List.of(USER_TEAM21.getEntityReference()))
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
 
@@ -1160,7 +1160,7 @@ public class EventSubscriptionResourceTest
     CreateTopic topicRequest =
         topicResourceTest
             .createRequest(test)
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withDomain(domain.getName())
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest, ADMIN_AUTH_HEADERS);
@@ -1175,7 +1175,7 @@ public class EventSubscriptionResourceTest
     CreateTopic topicRequest2 =
         topicResourceTest
             .createRequest(test.getClass().getName() + "2")
-            .withOwner(USER_TEAM21.getEntityReference())
+            .withOwners(List.of(USER_TEAM21.getEntityReference()))
             .withDomain(domain2.getName())
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest2, ADMIN_AUTH_HEADERS);
@@ -1186,7 +1186,7 @@ public class EventSubscriptionResourceTest
     CreateTopic topicRequest3 =
         topicResourceTest
             .createRequest(test.getClass().getName() + "3")
-            .withOwner(USER_TEAM21.getEntityReference())
+            .withOwners(List.of(USER_TEAM21.getEntityReference()))
             .withDomain(domain.getName())
             .withMessageSchema(TopicResourceTest.SCHEMA.withSchemaFields(TopicResourceTest.fields));
     topicResourceTest.createEntity(topicRequest3, ADMIN_AUTH_HEADERS);
@@ -1281,7 +1281,7 @@ public class EventSubscriptionResourceTest
                 new FilterPattern().withIncludes(List.of("sales.*", "users.*")));
 
     SourceConfig sourceConfig = new SourceConfig().withConfig(databaseServiceMetadataPipeline);
-    request.withSourceConfig(sourceConfig).withOwner(USER_TEAM21.getEntityReference());
+    request.withSourceConfig(sourceConfig).withOwners(List.of(USER_TEAM21.getEntityReference()));
 
     ingestionPipelineResourceTest.createEntity(request, ADMIN_AUTH_HEADERS);
 
@@ -1644,7 +1644,11 @@ public class EventSubscriptionResourceTest
   private String buildExpectedTextFormatSlack(EventSubscription alert) {
     String updatedBy = alert.getUpdatedBy();
     return String.format(
-        "%s posted on " + Entity.EVENT_SUBSCRIPTION + " %s", updatedBy, getEntityUrlSlack(alert));
+        "[%s] %s posted on %s %s",
+        alert.getFullyQualifiedName(),
+        updatedBy,
+        Entity.EVENT_SUBSCRIPTION,
+        getEntityUrlSlack(alert));
   }
 
   private String getEntityUrlSlack(EventSubscription alert) {
@@ -1692,8 +1696,12 @@ public class EventSubscriptionResourceTest
   private String buildExpectedActivityTitleTextFormatMSTeams(EventSubscription alert) {
     String updatedBy = alert.getUpdatedBy();
     return String.format(
-        "%s posted on %s [\"%s\"](/%s)",
-        updatedBy, Entity.EVENT_SUBSCRIPTION, alert.getName(), getEntityUrlMSTeams());
+        "[%s] %s posted on %s [\"%s\"](/%s)",
+        alert.getFullyQualifiedName(),
+        updatedBy,
+        Entity.EVENT_SUBSCRIPTION,
+        alert.getName(),
+        getEntityUrlMSTeams());
   }
 
   private String getEntityUrlMSTeams() {

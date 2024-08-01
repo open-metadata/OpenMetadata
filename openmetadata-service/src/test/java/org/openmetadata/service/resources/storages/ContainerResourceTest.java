@@ -160,7 +160,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
   @Test
   void put_ContainerUpdateWithNoChange_200(TestInfo test) throws IOException {
     // Create a Model with POST
-    CreateContainer request = createRequest(test).withOwner(USER1_REF);
+    CreateContainer request = createRequest(test).withOwners(List.of(USER1_REF));
     Container container = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(container, NO_CHANGE);
 
@@ -395,7 +395,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("0_root")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0);
     Container rootContainer = createAndCheckEntity(createRootContainer, ADMIN_AUTH_HEADERS);
 
@@ -499,7 +499,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0)
             .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
     // Apply mutually exclusive tags to a table
@@ -518,7 +518,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0)
             .withDataModel(dataModel);
 
@@ -537,7 +537,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0)
             .withDataModel(dataModel1);
     assertResponse(
@@ -579,7 +579,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("test")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0)
             .withDataModel(dataModel);
     Container container1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
@@ -590,7 +590,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
             .withName("put_complexColumnType")
             .withService(S3_OBJECT_STORE_SERVICE_REFERENCE.getName())
             .withNumberOfObjects(0.0)
-            .withOwner(DATA_CONSUMER.getEntityReference())
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()))
             .withSize(0.0)
             .withDataModel(dataModel);
     Container container2 =
@@ -707,7 +707,7 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
     CreateStorageService createStorageService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     StorageService service = serviceTest.createEntity(createStorageService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create container under it
@@ -796,14 +796,14 @@ public class ContainerResourceTest extends EntityResourceTest<Container, CreateC
         container.getParent(),
         container.getChildren(),
         container.getDataModel(),
-        container.getOwner(),
+        container.getOwners(),
         container.getTags(),
         container.getFollowers(),
         container.getExtension());
 
     // .../models?fields=dataModel - parent,children are not set in createEntity - these are tested
     // separately
-    String fields = "dataModel,owner,tags,followers,extension";
+    String fields = "dataModel,owners,tags,followers,extension";
     container =
         byName
             ? getEntityByName(container.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

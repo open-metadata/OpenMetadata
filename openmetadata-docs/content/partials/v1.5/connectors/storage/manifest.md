@@ -57,6 +57,19 @@ Again, this information will be added on top of the inferred schema from the dat
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=6 %}
+
+**Unstructured Container**: OpenMetadata supports ingesting unstructured files like images, pdf's etc. We support fetching the file names, size and tags associates to such files.
+
+In case you want to ingest a single unstructured file, then just specifying the full path of the unstructured file in `datapath` would be enough for ingestion.
+
+In case you want to ingest all unstructured files with a specific extension for example `pdf` & `png` then you can provide the folder name containing such files in `dataPath` and list of extensions in the `unstructuredFormats` field.
+
+In case you want to ingest all unstructured files with irrespective of their file type or extension then you can provide the folder name containing such files in `dataPath` and `["*"]` in the `unstructuredFormats` field.
+
+{% /codeInfo %}
+
+
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="openmetadata.json" %}
@@ -109,6 +122,19 @@ Again, this information will be added on top of the inferred schema from the dat
                     "dataType": "STRING"
                 }
             ]
+        }
+```
+```json {% srNumber=6 %}
+        {
+            "dataPath": "path/to/solution.pdf",
+        },
+        {
+            "dataPath": "path/to/unstructured_folder_png_pdf",
+            "unstructuredFormats": ["png","pdf"]
+        },
+        {
+            "dataPath": "path/to/unstructured_folder_all",
+            "unstructuredFormats": ["*"]
         }
     ]
 }

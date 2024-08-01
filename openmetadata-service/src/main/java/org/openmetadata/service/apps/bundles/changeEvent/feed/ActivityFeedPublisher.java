@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -38,10 +39,13 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   FeedRepository feedRepository = new FeedRepository();
 
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public ActivityFeedPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == ACTIVITY_FEED) {
-      this.subscriptionDestination = subscription;
+  public ActivityFeedPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == ACTIVITY_FEED) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
     } else {
       throw new IllegalArgumentException("Activity Alert Invoked with Illegal Type and Settings.");
     }
@@ -71,6 +75,14 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
       throw new EventPublisherException(
           message, Pair.of(subscriptionDestination.getId(), changeEvent));
     }
+  }
+
+  @Override
+  public void sendTestMessage() throws EventPublisherException {}
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override

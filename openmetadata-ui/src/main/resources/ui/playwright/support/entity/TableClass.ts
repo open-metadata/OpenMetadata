@@ -194,8 +194,11 @@ export class TableClass extends EntityClass {
     const pipelineData = await apiContext
       .post(`/api/v1/services/ingestionPipelines`, {
         data: {
-          airflowConfig: {},
+          airflowConfig: {
+            scheduleInterval: '0 * * * *',
+          },
           name: `pw-test-suite-pipeline-${uuid()}`,
+          loggerLevel: 'INFO',
           pipelineType: 'TestSuite',
           service: {
             id: this.testSuiteResponseData?.['id'],

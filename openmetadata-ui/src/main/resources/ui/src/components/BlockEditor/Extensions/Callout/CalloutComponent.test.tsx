@@ -32,6 +32,9 @@ const mockNodeViewProps = {
   node: mockNode,
   extension: mockExtension,
   updateAttributes: mockUpdateAttributes,
+  editor: {
+    isEditable: true,
+  },
 } as unknown as NodeViewProps;
 
 describe('CalloutComponent', () => {
@@ -69,5 +72,30 @@ describe('CalloutComponent', () => {
     expect(screen.getByTestId('callout-warning')).toBeInTheDocument();
     expect(screen.getByTestId('callout-note')).toBeInTheDocument();
     expect(screen.getByTestId('callout-danger')).toBeInTheDocument();
+  });
+
+  it('should not render the popover when callout button is clicked and editor is not editable', async () => {
+    const nodeViewProps = {
+      node: mockNode,
+      extension: mockExtension,
+      updateAttributes: mockUpdateAttributes,
+      editor: {
+        isEditable: false,
+      },
+    } as unknown as NodeViewProps;
+
+    await act(async () => {
+      render(<CalloutComponent {...nodeViewProps} />);
+    });
+
+    const calloutButton = screen.getByTestId('callout-info-btn');
+
+    await act(async () => {
+      userEvent.click(calloutButton);
+    });
+
+    const popover = screen.queryByRole('tooltip');
+
+    expect(popover).not.toBeInTheDocument();
   });
 });

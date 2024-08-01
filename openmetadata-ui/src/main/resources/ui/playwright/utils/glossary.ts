@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { get, isUndefined } from 'lodash';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
-import { Glossary, GlossaryData } from '../support/glossary/Glossary';
+import { Glossary } from '../support/glossary/Glossary';
 import {
-  GlossaryTerm,
+  GlossaryData,
   GlossaryTermData,
-} from '../support/glossary/GlossaryTerm';
+} from '../support/glossary/Glossary.interface';
+import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
   getApiContext,
   INVALID_NAMES,
@@ -30,18 +31,11 @@ import {
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
 } from './common';
+import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
-
-export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
-  await redirectToHomePage(page);
-  const glossaryResponse = page.waitForResponse('/api/v1/glossaries?fields=*');
-  await sidebarClick(page, SidebarItem.GLOSSARY);
-  await glossaryResponse;
-  await page.getByRole('menuitem', { name: glossaryName }).click();
-};
 
 export const checkDisplayName = async (page: Page, displayName: string) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
@@ -69,13 +63,9 @@ export const selectActiveGlossaryTerm = async (
   page: Page,
   glossaryTermName: string
 ) => {
-  const glossaryTermResponse = page.waitForResponse(
-    '/api/v1/glossaryTerms/name/*?fields=relatedTerms%2Creviewers%2Ctags%2Cowner%2Cchildren%2Cvotes%2Cdomain%2Cextension'
-  );
   await page.getByTestId(glossaryTermName).click();
-  await glossaryTermResponse;
 
-  expect(
+  await expect(
     page.locator('[data-testid="entity-header-display-name"]')
   ).toContainText(glossaryTermName);
 };
@@ -92,65 +82,6 @@ export const goToAssetsTab = async (
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
   ).toContainText(count);
-};
-
-export const addMultiOwner = async (data: {
-  page: Page;
-  ownerNames: string | string[];
-  activatorBtnDataTestId: string;
-  endpoint: EntityTypeEndpoint;
-  resultTestId?: string;
-  isSelectableInsideForm?: boolean;
-}) => {
-  const {
-    page,
-    ownerNames,
-    activatorBtnDataTestId,
-    resultTestId = 'owner-link',
-    isSelectableInsideForm = false,
-    endpoint,
-  } = data;
-  const isMultipleOwners = Array.isArray(ownerNames);
-  const owners = isMultipleOwners ? ownerNames : [ownerNames];
-
-  const getUsers = page.waitForResponse('/api/v1/users?*isBot=false*');
-
-  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
-
-  expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
-
-  await page.click('.ant-tabs [id*=tab-users]');
-  await getUsers;
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
-  if (isMultipleOwners) {
-    await page.click('[data-testid="clear-all-button"]');
-  }
-
-  for (const ownerName of owners) {
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user_search_index*'
-    );
-    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
-    await searchOwner;
-    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-    await page.getByRole('listitem', { name: ownerName }).click();
-  }
-
-  if (isMultipleOwners) {
-    await page.click('[data-testid="selectable-list-update-btn"]');
-  }
-
-  if (!isSelectableInsideForm) {
-    await page.waitForResponse(`/api/v1/${endpoint}/*`);
-  }
-
-  for (const name of owners) {
-    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
-      name
-    );
-  }
 };
 
 export const removeReviewer = async (
@@ -366,25 +297,25 @@ export const verifyGlossaryDetails = async (
     '[data-testid="viewer-container"]'
   );
 
-  expect(viewerContainerText).toContain(glossaryDetails.description);
+  await expect(viewerContainerText).toContain(glossaryDetails.description);
 
   // Owner
-  const ownerText = await page.textContent(
-    `[data-testid="glossary-right-panel-owner-link"] [data-testid="owner-label"]`
-  );
-
-  expect(ownerText).toContain(
-    glossaryDetails.owner ? glossaryDetails.owner.name : 'No Owner'
-  );
+  if (glossaryDetails.owners.length > 0) {
+    for (const owner of glossaryDetails.owners) {
+      await expect(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('owner-label')
+      ).toContainText(owner.name);
+    }
+  }
 
   // Reviewer
   if (glossaryDetails.reviewers.length > 0) {
     for (const reviewer of glossaryDetails.reviewers) {
-      const reviewerName = await page.textContent(
-        `[data-testid="glossary-reviewer-name"]`
-      );
-
-      expect(reviewerName).toContain(reviewer.name);
+      await expect(
+        page.getByTestId('glossary-reviewer').getByTestId('owner-link')
+      ).toContainText(reviewer.name);
     }
   }
 
@@ -394,7 +325,7 @@ export const verifyGlossaryDetails = async (
       `[data-testid="tag-${glossaryDetails.tags[0]}"]`
     );
 
-    expect(tagVisibility).toBe(true);
+    await expect(tagVisibility).toBe(true);
   }
 };
 
@@ -511,10 +442,10 @@ export const fillGlossaryTermDetails = async (
     await page.locator('[data-testid="color-color-input"]').fill(term.color);
   }
 
-  if (term.owner) {
+  if (!isUndefined(term.owners)) {
     await addMultiOwner({
       page,
-      ownerNames: term.owner.name,
+      ownerNames: term.owners.map((owner) => owner.name),
       activatorBtnDataTestId: 'add-owner',
       resultTestId: 'owner-container',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
@@ -553,7 +484,7 @@ export const approveGlossaryTermTask = async (
 ) => {
   await validateGlossaryTermTask(page, term);
   const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
-  await page.click('[data-testid="approve-task"]');
+  await page.getByRole('button', { name: 'Approve' }).click();
   await taskResolve;
 
   // Display toast notification

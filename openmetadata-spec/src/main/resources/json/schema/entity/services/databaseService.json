@@ -56,7 +56,8 @@
         "SAS",
         "Iceberg",
         "Teradata",
-        "SapErp"
+        "SapErp",
+        "Synapse"
       ],
       "javaEnums": [
         {
@@ -184,6 +185,9 @@
         },
         {
           "name": "SapErp"
+        },
+        {
+          "name": "Synapse"
         }
       ]
     },
@@ -316,6 +320,9 @@
             },
             {
               "$ref": "./connections/database/sapErpConnection.json"
+            },
+            {
+              "$ref": "./connections/database/synapseConnection.json"
             }
           ]
         }
@@ -379,9 +386,9 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "owner": {
-      "description": "Owner of this database service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this database service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this database service.",

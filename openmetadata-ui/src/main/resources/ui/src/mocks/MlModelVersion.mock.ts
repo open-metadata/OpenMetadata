@@ -186,7 +186,7 @@ export const mlModelVersionMockProps: MlModelVersionProp = {
   version: '0.3',
   currentVersionData: mockMlModelDetails,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

@@ -44,11 +44,13 @@ const mockTableData = {
   description:
     'This dimension table contains online shop information. This table contains one shop per row.',
   tableType: 'Regular',
-  owner: {
-    id: 'id1',
-    name: 'sample_data',
-    type: 'User',
-  },
+  owners: [
+    {
+      id: 'id1',
+      name: 'sample_data',
+      type: 'User',
+    },
+  ],
   columns: [
     {
       name: 'shop_id',

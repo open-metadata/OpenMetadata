@@ -27,11 +27,13 @@ import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
-import { compact, startCase } from 'lodash';
+import { compact, startCase, toString } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
+import CronEditor from '../components/common/CronEditor/CronEditor';
+import { CronEditorProp } from '../components/common/CronEditor/CronEditor.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
@@ -89,7 +91,9 @@ export const getField = (field: FieldProp) => {
       ...fieldRules,
       {
         required,
-        message: i18n.t('label.field-required', { field: startCase(name) }),
+        message: i18n.t('label.field-required', {
+          field: startCase(toString(name)),
+        }),
       },
     ];
   }
@@ -200,6 +204,10 @@ export const getField = (field: FieldProp) => {
       fieldElement = <ColorPicker {...props} />;
 
       break;
+    case FieldTypes.CRON_EDITOR:
+      fieldElement = <CronEditor {...(props as unknown as CronEditorProp)} />;
+
+      break;
 
     default:
       break;
@@ -287,6 +295,18 @@ export const transformErrors: ErrorTransformer = (errors) => {
   return compact(errorRet);
 };
 
+export const setInlineErrorValue = (
+  description: string,
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void
+) => {
+  setInlineAlertDetails({
+    type: 'error',
+    heading: t('label.error'),
+    description,
+    onClose: () => setInlineAlertDetails(undefined),
+  });
+};
+
 export const handleEntityCreationError = ({
   error,
   setInlineAlertDetails,
@@ -336,16 +356,4 @@ export const handleEntityCreationError = ({
       : getErrorText(error, t('server.unexpected-error')),
     setInlineAlertDetails
   );
-};
-
-export const setInlineErrorValue = (
-  description: string,
-  setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void
-) => {
-  setInlineAlertDetails({
-    type: 'error',
-    heading: t('label.error'),
-    description,
-    onClose: () => setInlineAlertDetails(undefined),
-  });
 };

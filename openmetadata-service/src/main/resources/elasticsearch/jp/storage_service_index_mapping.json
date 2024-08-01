@@ -145,7 +145,7 @@
       "href": {
         "type": "text"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

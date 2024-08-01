@@ -12,6 +12,7 @@
  */
 import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -403,7 +404,9 @@ const TestConnection: FC<TestConnectionProps> = ({
             </div>
           </Space>
           <Button
-            className="text-primary"
+            className={classNames({
+              'text-primary': !isTestConnectionDisabled,
+            })}
             data-testid="test-connection-btn"
             disabled={isTestConnectionDisabled}
             loading={isTestingConnection}

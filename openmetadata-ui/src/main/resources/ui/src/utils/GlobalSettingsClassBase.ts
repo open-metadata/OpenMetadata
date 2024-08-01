@@ -23,6 +23,9 @@ import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.s
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.svg';
+import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection.svg';
+import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
+import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
@@ -192,6 +195,17 @@ class GlobalSettingsClassBase {
             icon: OpenMetadataIcon,
           },
           {
+            label: t('label.api-uppercase-plural'),
+            description: t('message.page-sub-header-for-apis'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.API_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.APIS}`,
+            icon: IconAPI,
+            isBeta: true,
+          },
+          {
             label: t('label.data-observability'),
             description: t('message.page-sub-header-for-data-observability'),
             isProtected: true,
@@ -346,6 +360,24 @@ class GlobalSettingsClassBase {
         icon: CustomProperties,
         description: t('message.custom-properties-description'),
         items: [
+          {
+            label: t('label.api-collection'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.api-collection'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_COLLECTIONS}`,
+            icon: APICollectionIcon,
+          },
+          {
+            label: t('label.api-endpoint'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.api-endpoint'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
+            icon: APIEndpointIcon,
+          },
           {
             label: t('label.database'),
             description: t('message.define-custom-property-for-entity', {

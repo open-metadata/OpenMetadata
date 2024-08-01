@@ -91,7 +91,7 @@ public class DataInsightChartResourceTest
             .withName("denyDataInsightViewPolicy")
             .withDescription("denyDataInsightViewPolicy")
             .withRules(rules)
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     Policy policy = policyResourceTest.createEntity(createPolicy, ADMIN_AUTH_HEADERS);
     CreateRole createRole =
         roleResourceTest
@@ -177,13 +177,13 @@ public class DataInsightChartResourceTest
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner());
-    fields = "owner";
+    assertListNull(entity.getOwners());
+    fields = "owners";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner());
+    assertListNotNull(entity.getOwners());
     return entity;
   }
 

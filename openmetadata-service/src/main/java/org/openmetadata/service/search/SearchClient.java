@@ -17,7 +17,10 @@ import javax.ws.rs.core.Response;
 import lombok.Getter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -122,6 +125,9 @@ public interface SearchClient {
 
   JsonObject aggregate(String query, String index, JsonObject aggregationJson) throws IOException;
 
+  DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException;
+
   Response suggest(SearchRequest request) throws IOException;
 
   void createEntity(String indexName, String docId, String doc);
@@ -176,6 +182,9 @@ public interface SearchClient {
       String queryFilter,
       String dataReportIndex)
       throws IOException, ParseException;
+
+  // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
+  public void deleteByQuery(String index, String query) throws IOException;
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
@@ -234,4 +243,15 @@ public interface SearchClient {
   static String getAggregationKeyValue(JsonObject aggregationJson) {
     return aggregationJson.getString("key");
   }
+
+  default DataInsightCustomChartResultList buildDIChart(
+      DataInsightCustomChart diChart, long start, long end) throws IOException {
+    return null;
+  }
+
+  default List<Map<String, String>> fetchDIChartFields() throws IOException {
+    return null;
+  }
+
+  Object getLowLevelClient();
 }

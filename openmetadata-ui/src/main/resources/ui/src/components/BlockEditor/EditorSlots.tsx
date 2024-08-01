@@ -78,6 +78,11 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
     const handleLinkPopup = (
       e: React.MouseEvent<HTMLDivElement, MouseEvent>
     ) => {
+      // if editor is not editable, do not show the link popup
+      if (!editor?.isEditable) {
+        return;
+      }
+
       let popup: Instance<Props>[] = [];
       let component: ReactRenderer;
       const target = e.target as HTMLElement;
