@@ -103,7 +103,7 @@ export const fetchFilterOptions = async (
     searchIndex,
   });
   const options = response.hits.hits.map((hit) => ({
-    key: hit._source.fullyQualifiedName ?? hit._source.name,
+    key: getEntityName(hit._source),
     label: getEntityName(hit._source),
   }));
 
