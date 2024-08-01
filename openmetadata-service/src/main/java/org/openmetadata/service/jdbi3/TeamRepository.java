@@ -812,6 +812,7 @@ public class TeamRepository extends EntityRepository<Team> {
           false);
     }
 
+    @Override
     protected void updateDomain() {
       if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
         // Revert change to non-empty domain if it is being updated by a bot
