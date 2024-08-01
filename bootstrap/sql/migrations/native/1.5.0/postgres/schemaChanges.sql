@@ -201,4 +201,10 @@ WHERE jsonb_path_exists(json, '$.owner')
   AND jsonb_path_query_first(json, '$.owner ? (@ != null)') IS NOT null
   AND jsonb_typeof(json->'owner') <> 'array';
 
+-- set templates to fetch emailTemplates
+UPDATE openmetadata_settings
+SET json = jsonb_set(json, '{templates}', '"openmetadata"')
+WHERE configType = 'emailConfiguration';
+
 ALTER TABLE thread_entity ADD COLUMN entityDomain VARCHAR(256) GENERATED ALWAYS AS (json ->> 'entityDomain') STORED;
+

@@ -52,6 +52,7 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
+    POSTGRES_SCHEMA_COMMENTS,
 )
 from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
@@ -70,6 +71,7 @@ from metadata.utils.sqlalchemy_utils import (
     get_all_table_ddls,
     get_all_table_owners,
     get_all_view_definitions,
+    get_schema_descriptions,
     get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -140,6 +142,10 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     Database metadata from Postgres Source
     """
 
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.schema_desc_map = {}
+
     @classmethod
     def create(
         cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
@@ -151,6 +157,17 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 f"Expected PostgresConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get(schema_name)
+
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map = get_schema_descriptions(
+            self.engine, POSTGRES_SCHEMA_COMMENTS
+        )
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -183,6 +200,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         if not self.config.serviceConnection.root.config.ingestAllDatabases:
             configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
+            self.set_schema_description_map()
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
@@ -206,6 +224,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
 
                 try:
                     self.set_inspector(database_name=new_database)
+                    self.set_schema_description_map()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())

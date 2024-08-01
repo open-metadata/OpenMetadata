@@ -33,13 +33,13 @@ const AddTestSuitePipeline = ({
   onSubmit,
   onCancel,
   includePeriodOptions,
-  showAddTestCase = false,
+  testSuiteFQN,
 }: AddTestSuitePipelineProps) => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn: testSuiteFQN } = useFqn();
+  const { fqn } = useFqn();
   const [form] = Form.useForm();
-  const selectTestCase = Form.useWatch('selectTestCase', form);
+  const selectAllTestCases = Form.useWatch('selectAllTestCases', form);
 
   const formFields: FieldProp[] = [
     {
@@ -83,16 +83,16 @@ const AddTestSuitePipeline = ({
 
   const testCaseFormFields: FieldProp[] = [
     {
-      name: 'selectTestCase',
-      label: t('label.select-entity', {
-        entity: t('label.test-case'),
+      name: 'selectAllTestCases',
+      label: t('label.select-all-entity', {
+        entity: t('label.test-case-plural'),
       }),
       type: FieldTypes.SWITCH,
       required: false,
       props: {
-        'data-testid': 'select-test-case',
+        'data-testid': 'select-all-test-cases',
       },
-      id: 'root/selectTestCase',
+      id: 'root/selectAllTestCases',
       formItemLayout: FormItemLayout.HORIZONTAL,
     },
   ];
@@ -112,7 +112,7 @@ const AddTestSuitePipeline = ({
   };
 
   const onValuesChange: FormProps['onValuesChange'] = (changedValues) => {
-    if (changedValues?.selectTestCase === false) {
+    if (changedValues?.selectAllTestCases) {
       form.setFieldsValue({ testCases: undefined });
     }
   };
@@ -125,24 +125,30 @@ const AddTestSuitePipeline = ({
       onFinish={onFinish}
       onValuesChange={onValuesChange}>
       {generateFormFields(formFields)}
-      {showAddTestCase && (
-        <Row className="add-test-case-container" gutter={[0, 16]}>
-          <Col span={24}>{generateFormFields(testCaseFormFields)}</Col>
-          {selectTestCase && (
-            <Col span={24}>
-              <Form.Item
-                label={t('label.test-case')}
-                name="testCases"
-                valuePropName="selectedTest">
-                <AddTestCaseList
-                  filters={`testSuite.fullyQualifiedName:${testSuiteFQN}`}
-                  showButton={false}
-                />
-              </Form.Item>
-            </Col>
-          )}
-        </Row>
-      )}
+      <Row className="add-test-case-container" gutter={[0, 16]}>
+        <Col span={24}>{generateFormFields(testCaseFormFields)}</Col>
+        {!selectAllTestCases && (
+          <Col span={24}>
+            <Form.Item
+              label={t('label.test-case')}
+              name="testCases"
+              rules={[
+                {
+                  required: true,
+                  message: t('label.field-required', {
+                    field: t('label.test-case'),
+                  }),
+                },
+              ]}
+              valuePropName="selectedTest">
+              <AddTestCaseList
+                filters={`testSuite.fullyQualifiedName:${testSuiteFQN ?? fqn}`}
+                showButton={false}
+              />
+            </Form.Item>
+          </Col>
+        )}
+      </Row>
       <Form.Item>
         <Space className="w-full justify-end m-t-md" size={16}>
           <Button
