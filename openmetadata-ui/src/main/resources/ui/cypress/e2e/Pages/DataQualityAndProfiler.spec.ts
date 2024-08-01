@@ -272,6 +272,7 @@ describe(
       cy.get('[data-testid="add-ingestion-button"]')
         .should('be.visible')
         .click();
+      cy.get('[data-testid="select-all-test-cases"]').click();
       scheduleIngestion(false);
 
       cy.get('[data-testid="success-line"]')
