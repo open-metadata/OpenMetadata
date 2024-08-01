@@ -145,7 +145,7 @@ public final class FeedUtils {
         .withUpdatedAt(System.currentTimeMillis())
         .withGeneratedBy(Thread.GeneratedBy.SYSTEM)
         .withEntityUrlLink(decorator.buildEntityUrl(entityType, entityInterface))
-        .withEntityDomain(
+        .withDomain(
             nullOrEmpty(entityInterface.getDomain()) ? null : entityInterface.getDomain().getId());
   }
 }

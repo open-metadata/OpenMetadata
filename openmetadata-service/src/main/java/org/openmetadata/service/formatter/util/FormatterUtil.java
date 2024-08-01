@@ -277,7 +277,7 @@ public class FormatterUtil {
         .withEventType(eventType)
         .withEntityId(entityInterface.getId())
         .withEntityType(entityType)
-        .withEntityDomain(
+        .withDomain(
             nullOrEmpty(entityInterface.getDomain()) ? null : entityInterface.getDomain().getId())
         .withUserName(updateBy)
         .withTimestamp(entityInterface.getUpdatedAt())
@@ -291,7 +291,7 @@ public class FormatterUtil {
         .withId(UUID.randomUUID())
         .withEventType(eventType)
         .withEntityId(thread.getId())
-        .withEntityDomain(thread.getEntityDomain())
+        .withDomain(thread.getDomain())
         .withEntityType(entityType)
         .withUserName(updateBy)
         .withTimestamp(thread.getUpdatedAt());

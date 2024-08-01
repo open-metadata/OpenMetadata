@@ -225,5 +225,5 @@ UPDATE openmetadata_settings
 SET json = JSON_SET(json, '$.templates', 'openmetadata')
 WHERE configType = 'emailConfiguration';
 
-ALTER TABLE thread_entity ADD COLUMN entityDomain VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.entityDomain');
+ALTER TABLE thread_entity ADD COLUMN entityDomain VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.domain');
 
