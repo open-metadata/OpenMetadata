@@ -191,7 +191,6 @@ public abstract class EntityCsv<T extends EntityInterface> {
         refs.add(ownerRef);
       }
     }
-    refs.sort(Comparator.comparing(EntityReference::getName));
     return refs.isEmpty() ? null : refs;
   }
 
@@ -281,6 +280,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         refs.add(ref);
       }
     }
+    refs.sort(Comparator.comparing(EntityReference::getName));
     return refs.isEmpty() ? null : refs;
   }
 
