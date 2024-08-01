@@ -36,25 +36,23 @@ test.describe('Data Insight Page', () => {
 
     await table.create(apiContext);
 
-    apiContext.patch(
-      `api/v1/v1/tables/name/${
-        table.entityResponseData?.fullyQualifiedName ?? ''
-      }`,
-      {
-        data: [
-          {
-            op: 'add',
-            path: '/tags/0',
-            value: {
-              name: 'Tier2',
-              tagFQN: 'Tier.Tier2',
-              labelType: 'Manual',
-              state: 'Confirmed',
-            },
+    apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id ?? ''}`, {
+      data: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: 'Tier2',
+            tagFQN: 'Tier.Tier2',
+            labelType: 'Manual',
+            state: 'Confirmed',
           },
-        ],
-      }
-    );
+        },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
 
     await deleteKpiRequest(apiContext);
   });
@@ -62,7 +60,7 @@ test.describe('Data Insight Page', () => {
   test.afterAll(async ({ browser }) => {
     const { apiContext } = await createNewPage(browser);
 
-    await table.delete(apiContext);
+    // await table.delete(apiContext);
   });
 
   test.beforeEach('Visit Data Insight Page', async ({ page }) => {
