@@ -26,6 +26,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -190,6 +191,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         refs.add(ownerRef);
       }
     }
+    refs.sort(Comparator.comparing(EntityReference::getName));
     return refs.isEmpty() ? null : refs;
   }
 
