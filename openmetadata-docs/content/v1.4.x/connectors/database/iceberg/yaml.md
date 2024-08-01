@@ -514,3 +514,15 @@ source:
 {% /codePreview %}
 
 {% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
+
+## Securing Rest Catalog Connection with SSL in OpenMetadata
+
+When using `SSL` to establish secure connections between OpenMetadata and Rest Catalog, you can specify the `caCertificate` to provide the CA certificate used for SSL validation. Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
+
+
+```yaml
+      sslConfig:
+            caCertificate: "/path/to/ca_certificate"
+            sslCertificate: "/path/to/your/ssl_cert"
+            sslKey: "/path/to/your/ssl_key"
+```

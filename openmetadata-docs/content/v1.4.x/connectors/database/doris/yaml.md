@@ -160,7 +160,7 @@ source:
 
 ## Securing Doris Connection with SSL in OpenMetadata
 
-To establish secure connections between OpenMetadata and Doris, navigate to the Advanced Config section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`. Alternatively, you can use the `SSL Certificate` and `SSL Key options`. If you choose the latter, you will need to provide the certificate used for client authentication and the private key associated with the SSL certificate.
+To establish secure connections between OpenMetadata and Doris, navigate to the Advanced Config section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`.  Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl_key`, `ssl_cert`, and `ssl_ca`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
 
 ```yaml
       sslConfig:
