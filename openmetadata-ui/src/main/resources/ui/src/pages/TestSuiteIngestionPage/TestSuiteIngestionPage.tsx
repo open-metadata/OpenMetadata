@@ -132,7 +132,6 @@ const TestSuiteIngestionPage = () => {
             <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
             <div className="m-t-md">
               <TestSuiteIngestion
-                showAddTestCase
                 ingestionPipeline={ingestionPipeline}
                 testSuite={testSuite}
               />

@@ -32,7 +32,6 @@ jest.mock('react-router-dom', () => ({
 const mockProps: AddTestSuitePipelineProps = {
   isLoading: false,
   onSubmit: jest.fn(),
-  showAddTestCase: true,
 };
 
 describe('AddTestSuitePipeline', () => {
@@ -43,7 +42,7 @@ describe('AddTestSuitePipeline', () => {
     expect(screen.getByTestId('pipeline-name')).toBeInTheDocument();
     expect(screen.getByTestId('enable-debug-log')).toBeInTheDocument();
     expect(screen.getByTestId('cron-container')).toBeInTheDocument();
-    expect(screen.getByTestId('select-test-case')).toBeInTheDocument();
+    expect(screen.getByTestId('select-all-test-cases')).toBeInTheDocument();
     expect(screen.getByTestId('deploy-button')).toBeInTheDocument();
     expect(screen.getByTestId('cancel')).toBeInTheDocument();
   });
@@ -58,6 +57,9 @@ describe('AddTestSuitePipeline', () => {
       await fireEvent.click(screen.getByTestId('enable-debug-log'));
     });
     await act(async () => {
+      await fireEvent.click(screen.getByTestId('select-all-test-cases'));
+    });
+    await act(async () => {
       await fireEvent.click(screen.getByTestId('deploy-button'));
     });
 
@@ -67,7 +69,7 @@ describe('AddTestSuitePipeline', () => {
       name: 'Test Suite pipeline',
       period: '',
       repeatFrequency: undefined,
-      selectTestCase: undefined,
+      selectAllTestCases: true,
       testCases: undefined,
     });
   });
@@ -93,19 +95,19 @@ describe('AddTestSuitePipeline', () => {
     expect(mockUseHistory.goBack).toHaveBeenCalled();
   });
 
-  it('displays AddTestCaseList after clicking on select-test-case switch', async () => {
+  it('Hide AddTestCaseList after clicking on select-all-test-cases switch', async () => {
     render(<AddTestSuitePipeline {...mockProps} />);
-
-    // Assert that AddTestCaseList.component is not initially visible
-    expect(screen.queryByText('AddTestCaseList.component')).toBeNull();
-
-    // Click on the select-test-case switch
-    await act(async () => {
-      await fireEvent.click(screen.getByTestId('select-test-case'));
-    });
 
     // Assert that AddTestCaseList.component is now visible
     expect(screen.getByText('AddTestCaseList.component')).toBeInTheDocument();
+
+    // Click on the select-all-test-cases switch
+    await act(async () => {
+      await fireEvent.click(screen.getByTestId('select-all-test-cases'));
+    });
+
+    // Assert that AddTestCaseList.component is not initially visible
+    expect(screen.queryByText('AddTestCaseList.component')).toBeNull();
   });
 
   it('renders with initial data', () => {
@@ -113,7 +115,7 @@ describe('AddTestSuitePipeline', () => {
       enableDebugLog: true,
       name: 'Initial Test Suite',
       repeatFrequency: '* 0 0 0',
-      selectTestCase: true,
+      selectAllTestCases: true,
       testCases: ['test-case-1', 'test-case-2'],
     };
 
@@ -122,7 +124,7 @@ describe('AddTestSuitePipeline', () => {
     // Assert that the form fields are rendered with the initial data
     expect(screen.getByTestId('pipeline-name')).toHaveValue(initialData.name);
     expect(screen.getByTestId('enable-debug-log')).toBeChecked();
-    expect(screen.getByTestId('select-test-case')).toBeChecked();
+    expect(screen.getByTestId('select-all-test-cases')).toBeChecked();
     expect(screen.getByTestId('deploy-button')).toBeInTheDocument();
     expect(screen.getByTestId('cancel')).toBeInTheDocument();
   });
@@ -132,14 +134,14 @@ describe('AddTestSuitePipeline', () => {
       enableDebugLog: true,
       name: 'Initial Test Suite',
       repeatFrequency: '* 0 0 0',
-      selectTestCase: true,
+      selectAllTestCases: false,
       testCases: ['test-case-1', 'test-case-2'],
     };
 
     render(<AddTestSuitePipeline {...mockProps} initialData={initialData} />);
 
     await act(async () => {
-      await fireEvent.click(screen.getByTestId('select-test-case'));
+      await fireEvent.click(screen.getByTestId('select-all-test-cases'));
     });
 
     expect(screen.queryByText('AddTestCaseList.component')).toBeNull();
@@ -152,15 +154,8 @@ describe('AddTestSuitePipeline', () => {
     expect(mockProps.onSubmit).toHaveBeenCalledWith({
       ...initialData,
       period: '',
-      selectTestCase: false,
+      selectAllTestCases: true,
       testCases: undefined,
     });
-  });
-
-  it('does not render add test case container if showAddTestCase is false', () => {
-    render(<AddTestSuitePipeline {...mockProps} showAddTestCase={false} />);
-
-    // Assert that add-test-case-container is not rendered
-    expect(screen.queryByTestId('add-test-case-container')).toBeNull();
   });
 });

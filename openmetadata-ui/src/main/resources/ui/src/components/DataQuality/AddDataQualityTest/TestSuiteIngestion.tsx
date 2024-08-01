@@ -64,7 +64,6 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   ingestionPipeline,
   testSuite,
   onCancel,
-  showAddTestCase = false,
   onViewServiceClick,
 }) => {
   const { ingestionFQN } = useFqn();
@@ -130,7 +129,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
       enableDebugLog: ingestionPipeline?.loggerLevel === LogLevels.Debug,
       testCases,
       name: ingestionPipeline?.displayName,
-      selectTestCase: !isUndefined(testCases),
+      selectAllTestCases: !isEmpty(ingestionPipeline) && isUndefined(testCases),
     };
   }, [ingestionPipeline]);
 
@@ -301,7 +300,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             includePeriodOptions={schedulerOptions}
             initialData={initialFormData}
             isLoading={isLoading}
-            showAddTestCase={showAddTestCase}
+            testSuiteFQN={testSuite?.fullyQualifiedName}
             onCancel={onCancel}
             onSubmit={handleIngestionSubmit}
           />

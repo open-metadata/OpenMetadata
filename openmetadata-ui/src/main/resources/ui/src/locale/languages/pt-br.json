@@ -1031,6 +1031,7 @@
     "select-a-metric-type": "Selecionar um Tipo de Métrica",
     "select-a-policy": "Selecionar uma Política",
     "select-add-test-suite": "Selecionar/Adicionar Conjunto de Testes",
+    "select-all-entity": "Select All {{entity}}",
     "select-column-plural-to-exclude": "Selecionar Colunas para Excluir",
     "select-column-plural-to-include": "Selecionar Colunas para Incluir",
     "select-entity": "Select {{entity}}",

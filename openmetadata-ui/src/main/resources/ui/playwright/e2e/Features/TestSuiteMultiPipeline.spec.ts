@@ -45,6 +45,7 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     );
 
     await page.getByTestId('add-ingestion-button').click();
+    await page.getByTestId('select-all-test-cases').click();
     await page.getByTestId('cron-type').getByText('Hour').click();
     await page.getByTitle('Day').click();
     await page.getByTestId('deploy-button').click();
@@ -65,7 +66,7 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     await page.getByTestId('add-pipeline-button').click();
 
     await page.fill('[data-testid="pipeline-name"]', pipelineName);
-    await page.getByTestId('select-test-case').click();
+
     await page.getByTestId(testCaseName).click();
 
     await page.getByTestId('cron-type').locator('div').click();

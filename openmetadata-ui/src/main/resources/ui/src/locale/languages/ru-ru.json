@@ -1031,6 +1031,7 @@
     "select-a-metric-type": "Выбрать тип показателя",
     "select-a-policy": "Выбрать политику",
     "select-add-test-suite": "Выбрать/добавить набор тестов",
+    "select-all-entity": "Select All {{entity}}",
     "select-column-plural-to-exclude": "Выберите столбцы для исключения",
     "select-column-plural-to-include": "Выберите столбцы для исключения",
     "select-entity": "Select {{entity}}",

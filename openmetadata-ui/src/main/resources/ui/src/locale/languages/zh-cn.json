@@ -1031,6 +1031,7 @@
     "select-a-metric-type": "选择指标类型",
     "select-a-policy": "选择策略",
     "select-add-test-suite": "选择/添加质控测试",
+    "select-all-entity": "Select All {{entity}}",
     "select-column-plural-to-exclude": "选择要排除的列",
     "select-column-plural-to-include": "选择要包含的列",
     "select-entity": "Select {{entity}}",
