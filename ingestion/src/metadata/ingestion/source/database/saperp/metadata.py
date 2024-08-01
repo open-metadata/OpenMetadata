@@ -12,7 +12,7 @@
 SAP ERP source module
 """
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -127,23 +127,20 @@ class SaperpSource(CommonDbSourceService):
                 )
 
     def _check_col_length(  # pylint: disable=arguments-differ
-        self, datatype: str, col_length: Optional[str]
-    ) -> Optional[int]:
+        self, datatype: str, col_length: Optional[str], col_decimals: Optional[str]
+    ) -> Tuple[Optional[int], Optional[int]]:
         """
         return the column length for the dataLength attribute
         """
         try:
-            if datatype and datatype.upper() in {
-                "CHAR",
-                "VARCHAR",
-                "BINARY",
-                "VARBINARY",
-            }:
-                return int(col_length) if col_length else None
+            return (
+                int(col_length) if col_length else None,
+                int(col_decimals) if col_decimals else None,
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch column length: {exc}")
-        return None
+        return None, None
 
     def _get_table_constraints(
         self, columns: Optional[List[Column]]
@@ -190,14 +187,21 @@ class SaperpSource(CommonDbSourceService):
         return Constraint.NOT_NULL if column.notnull == "X" else Constraint.NULL
 
     def _get_display_datatype(  # pylint: disable=arguments-differ
-        self, column_type: str, col_data_length: Optional[int]
+        self,
+        column_type: str,
+        col_data_length: Optional[int],
+        decimals: Optional[int],
+        sap_column_type: Optional[str],
     ) -> str:
         """
         Method to get the display datatype
         """
+        column_type_name = sap_column_type if sap_column_type else column_type
+        if col_data_length and decimals:
+            return f"{column_type_name}({str(col_data_length)},{str(decimals)})"
         if col_data_length:
-            return f"{column_type}({str(col_data_length)})"
-        return column_type
+            return f"{column_type_name}({str(col_data_length)})"
+        return column_type_name
 
     def get_columns_and_constraints(  # pylint: disable=arguments-differ
         self, table_name: str
@@ -211,8 +215,10 @@ class SaperpSource(CommonDbSourceService):
         for sap_column in sap_columns or []:
             try:
                 column_type = ColumnTypeParser.get_column_type(sap_column.datatype)
-                col_data_length = self._check_col_length(
-                    datatype=column_type, col_length=sap_column.leng
+                col_data_length, col_decimal_length = self._check_col_length(
+                    datatype=column_type,
+                    col_length=sap_column.leng,
+                    col_decimals=sap_column.decimals,
                 )
                 column_name = (
                     f"{sap_column.fieldname}({sap_column.precfield})"
@@ -226,7 +232,10 @@ class SaperpSource(CommonDbSourceService):
                         f"Unknown type {repr(sap_column.datatype)}: {sap_column.fieldname}"
                     )
                 data_type_display = self._get_display_datatype(
-                    column_type, col_data_length
+                    column_type,
+                    col_data_length,
+                    col_decimal_length,
+                    sap_column.datatype,
                 )
                 col_data_length = 1 if col_data_length is None else col_data_length
                 om_column = Column(
@@ -251,6 +260,9 @@ class SaperpSource(CommonDbSourceService):
                 )
                 if column_type == DataType.ARRAY.value:
                     om_column.arrayDataType = DataType.UNKNOWN
+                if col_data_length and col_decimal_length:
+                    om_column.precision = col_data_length
+                    om_column.scale = col_decimal_length
                 om_columns.append(om_column)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
