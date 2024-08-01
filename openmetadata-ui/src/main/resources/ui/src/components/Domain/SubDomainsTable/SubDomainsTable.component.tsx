@@ -23,6 +23,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
@@ -71,14 +72,18 @@ const SubDomainsTable = ({
       },
       {
         title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
+        dataIndex: 'owners',
+        key: 'owners',
         render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
     ];
 
     return data;
   }, [subDomains, permissions]);
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   if (subDomains.length === 0) {
     return <ErrorPlaceHolder />;
@@ -89,7 +94,6 @@ const SubDomainsTable = ({
       bordered
       columns={columns}
       dataSource={subDomains}
-      loading={isLoading}
       pagination={false}
       rowKey="fullyQualifiedName"
       size="small"

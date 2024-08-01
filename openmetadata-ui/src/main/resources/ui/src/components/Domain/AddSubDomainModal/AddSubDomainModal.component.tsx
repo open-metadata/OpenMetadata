@@ -30,6 +30,7 @@ const AddSubDomainModal = ({
   return (
     <Modal
       cancelText={t('label.cancel')}
+      className="add-subdomain-modal"
       closable={false}
       footer={[
         <Button key="cancel-btn" type="link" onClick={onCancel}>
