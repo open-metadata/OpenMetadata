@@ -14,7 +14,7 @@ along with many examples.
 
 {% note %}
 
-When both include and exclude filters are present, the include filter takes precedence and will be applied exclusively. The exclude filter will be ignored in this scenario.
+In OpenMetadata v1.5.x, when both include and exclude filters are applied, the system first processes the include filter, followed by the exclude filter.
 
 {% /note %}
 
