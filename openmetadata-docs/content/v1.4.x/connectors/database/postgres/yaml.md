@@ -293,6 +293,24 @@ source:
 
 {% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
 
+## Securing Postgres Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and a PostgreSQL database, PostgreSQL offers various SSL modes, each providing different levels of connection security.
+
+When running the ingestion process externally, specify the SSL mode to be used for the PostgreSQL connection, such as `prefer`, `verify-ca`, `allow`, and others. Once you've chosen the SSL mode, provide the CA certificate for SSL validation (`caCertificate`). Only the CA certificate is required for SSL validation in PostgreSQL.
+
+{% note %}
+
+For IAM authentication, it is recommended to select the `allow` mode or another SSL mode that aligns with your specific needs.
+
+{% /note %}
+
+```yaml
+      sslMode: disable #allow prefer require verify-ca verify-full
+      sslConfig:
+            caCertificate: "path/to/ca/certificate" 
+```
+
 ## dbt Integration
 
 You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

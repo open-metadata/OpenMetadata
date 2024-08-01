@@ -137,6 +137,24 @@ In order to integrate SSL in the Metadata Ingestion Config, the user will have t
 
 {% /stepsContainer %}
 
+## Securing Greenplum Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and a Greenplum database, you can configure SSL using different SSL modes provided by Greenplum, each offering varying levels of security.
+
+Under `Advanced Config`, specify the SSL mode appropriate for your connection, such as `prefer`, `verify-ca`, `allow`, and others. After selecting the SSL mode, provide the CA certificate used for SSL validation (`caCertificate`). Note that Greenplum requires only the CA certificate for SSL validation.
+
+{% note %}
+
+For IAM authentication, it is recommended to choose the `allow` mode or another SSL mode that fits your specific requirements.
+
+{% /note %}
+
+{% image
+  src="/images/v1.4/connectors/ssl_connection.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
+
 {% partial file="/v1.5/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.5/connectors/database/related.md" /%}

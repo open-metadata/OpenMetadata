@@ -208,6 +208,18 @@ source:
 
 {% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
 
+## Securing Redshift Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and a Redshift database, Redshift offers various SSL modes, each providing different levels of connection security.
+
+When running the ingestion process externally, specify the SSL mode to be used for the Redshift connection, such as `prefer`, `verify-ca`, `allow`, and others. Once you've chosen the SSL mode, provide the CA certificate for SSL validation (`caCertificate`). Only the CA certificate is required for SSL validation in Redshift.
+
+```yaml
+      sslMode: disable #allow prefer require verify-ca verify-full
+      sslConfig:
+            caCertificate: "path/to/ca/certificate" 
+```
+
 ## dbt Integration
 
 You can learn more about how to ingest dbt models' definitions and their lineage [here](/connectors/ingestion/workflows/dbt).

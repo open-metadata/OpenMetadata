@@ -104,6 +104,18 @@ For more information, you can visit [Redshift SSL documentation](https://docs.aw
 
 {% /stepsContainer %}
 
+## Securing Redshift Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and a Redshift database, you can configure SSL using different SSL modes provided by Redshift, each offering varying levels of security.
+
+Under `Advanced Config`, specify the SSL mode appropriate for your connection, such as `prefer`, `verify-ca`, `allow`, and others. After selecting the SSL mode, provide the CA certificate used for SSL validation (`caCertificate`). Note that Redshift requires only the CA certificate for SSL validation.
+
+{% image
+  src="/images/v1.4/connectors/ssl_connection.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
+
 {% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.4/connectors/database/related.md" /%}
