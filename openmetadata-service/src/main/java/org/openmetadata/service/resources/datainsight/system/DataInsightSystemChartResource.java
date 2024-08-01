@@ -98,7 +98,6 @@ public class DataInsightSystemChartResource
           long end,
       @Parameter(
               description = "Any additional filter to fetch the data",
-              required = true,
               schema = @Schema(type = "string", example = "{\"query\":{...}}"))
           @QueryParam("filter")
           String filter)
@@ -145,10 +144,15 @@ public class DataInsightSystemChartResource
               required = true,
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("end")
-          long end)
+          long end,
+      @Parameter(
+              description = "Any additional filter to fetch the data",
+              schema = @Schema(type = "string", example = "{\"query\":{...}}"))
+          @QueryParam("filter")
+          String filter)
       throws IOException {
     Map<String, DataInsightCustomChartResultList> resultList =
-        repository.listChartData(chartNames, start, end);
+        repository.listChartData(chartNames, start, end, filter);
     return Response.status(Response.Status.OK).entity(resultList).build();
   }
 }
