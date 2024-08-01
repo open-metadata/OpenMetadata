@@ -250,6 +250,6 @@
     "prosemirror-view": "1.28.2",
     "axios": "1.6.4",
     "ws": "8.17.1",
-    "braces": "3.0.3"
+    "micromatch": "4.0.7"
   }
 }
