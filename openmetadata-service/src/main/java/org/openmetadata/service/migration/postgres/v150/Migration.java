@@ -4,6 +4,7 @@ import static org.openmetadata.service.migration.utils.v150.MigrationUtil.create
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.deleteLegacyDataInsightPipelines;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migrateAutomatorOwner;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migrateTestCaseDimension;
+import static org.openmetadata.service.migration.utils.v150.MigrationUtil.updateDataInsightsApplication;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -21,6 +22,7 @@ public class Migration extends MigrationProcessImpl {
     migrateTestCaseDimension(handle, collectionDAO);
     createSystemDICharts();
     deleteLegacyDataInsightPipelines(pipelineServiceClient);
+    updateDataInsightsApplication();
     migrateAutomatorOwner(handle, collectionDAO);
   }
 }
