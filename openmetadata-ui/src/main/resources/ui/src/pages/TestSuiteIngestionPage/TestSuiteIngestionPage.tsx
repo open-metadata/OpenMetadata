@@ -23,7 +23,11 @@ import RightPanel from '../../components/DataQuality/AddDataQualityTest/componen
 import { TEST_SUITE_INGESTION_PAGE_DATA } from '../../components/DataQuality/AddDataQualityTest/rightPanelData';
 import TestSuiteIngestion from '../../components/DataQuality/AddDataQualityTest/TestSuiteIngestion';
 import { getEntityDetailsPath } from '../../constants/constants';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { IngestionPipeline } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../generated/tests/testSuite';
 import { useFqn } from '../../hooks/useFqn';
@@ -66,7 +70,7 @@ const TestSuiteIngestionPage = () => {
     setIsLoading(true);
     try {
       const response = await getTestSuiteByName(testSuiteFQN, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setSlashedBreadCrumb([
         {
@@ -128,7 +132,6 @@ const TestSuiteIngestionPage = () => {
             <TitleBreadcrumb titleLinks={slashedBreadCrumb} />
             <div className="m-t-md">
               <TestSuiteIngestion
-                showAddTestCase
                 ingestionPipeline={ingestionPipeline}
                 testSuite={testSuite}
               />

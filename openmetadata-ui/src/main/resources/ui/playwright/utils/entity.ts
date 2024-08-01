@@ -72,9 +72,18 @@ export const addOwner = async (
   await page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByRole('listitem', { name: owner }).click();
-  await patchRequest;
+
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
@@ -98,9 +107,17 @@ export const updateOwner = async (
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByRole('listitem', { name: owner }).click();
-  await patchRequest;
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
@@ -111,20 +128,87 @@ export const removeOwner = async (
   page: Page,
   endpoint: EntityTypeEndpoint,
   ownerName: string,
+  type: 'Teams' | 'Users' = 'Users',
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
-
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByTestId('remove-owner').locator('svg').click();
+  if (type === 'Teams') {
+    await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
+
+    await page.getByTestId('remove-owner').locator('svg').click();
+  } else {
+    await page.click('[data-testid="clear-all-button"]');
+    await page.click('[data-testid="selectable-list-update-btn"]');
+  }
+
   await patchRequest;
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
     ownerName
   );
+};
+
+export const addMultiOwner = async (data: {
+  page: Page;
+  ownerNames: string | string[];
+  activatorBtnDataTestId: string;
+  endpoint: EntityTypeEndpoint;
+  resultTestId?: string;
+  isSelectableInsideForm?: boolean;
+}) => {
+  const {
+    page,
+    ownerNames,
+    activatorBtnDataTestId,
+    resultTestId = 'owner-link',
+    isSelectableInsideForm = false,
+    endpoint,
+  } = data;
+  const isMultipleOwners = Array.isArray(ownerNames);
+  const owners = isMultipleOwners ? ownerNames : [ownerNames];
+
+  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
+
+  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page.getByRole('tab', { name: 'Users' }).click();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  if (isMultipleOwners) {
+    await page.click('[data-testid="clear-all-button"]');
+  }
+
+  for (const ownerName of owners) {
+    const searchOwner = page.waitForResponse(
+      'api/v1/search/query?q=*&index=user_search_index*'
+    );
+    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
+    await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
+    await searchOwner;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    await page.getByRole('listitem', { name: ownerName, exact: true }).click();
+  }
+
+  if (isMultipleOwners) {
+    await page.click('[data-testid="selectable-list-update-btn"]');
+  }
+
+  if (!isSelectableInsideForm) {
+    await page.waitForResponse(`/api/v1/${endpoint}/*`);
+  }
+
+  for (const name of owners) {
+    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
+      name
+    );
+  }
 };
 
 export const assignTier = async (page: Page, tier: string) => {

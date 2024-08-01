@@ -36,9 +36,10 @@
       "description": "Contains key/value pair of searchIndex settings.",
       "$ref": "../../entity/data/searchIndex.json#/definitions/searchIndexSettings"
     },
-    "owner": {
-      "description": "Owner of this SearchIndex",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this SearchIndex",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "tags": {
       "description": "Tags for this SearchIndex",

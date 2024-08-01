@@ -47,7 +47,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -176,7 +176,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 )
             )
 
-    def get_owners(self, owner: Owner) -> Optional[EntityReference]:
+    def get_owners(self, owner: Owner) -> Optional[EntityReferenceList]:
         try:
             owner_details = User(**self.domo_client.users_get(owner.id))
             if owner_details.email:
@@ -199,7 +199,7 @@ class DomodatabaseSource(DatabaseServiceSource):
                 tableType=table_type,
                 description=table_object.description,
                 columns=columns,
-                owner=self.get_owners(owner=table_object.owner),
+                owners=self.get_owners(owner=table_object.owner),
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
                     fqn.build(

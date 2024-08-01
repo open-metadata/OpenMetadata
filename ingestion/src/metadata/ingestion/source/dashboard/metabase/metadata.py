@@ -39,6 +39,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
@@ -108,7 +109,9 @@ class MetabaseSource(DashboardServiceSource):
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: MetabaseDashboard) -> dict:
+    def get_dashboard_details(
+        self, dashboard: MetabaseDashboard
+    ) -> Optional[MetabaseDashboardDetails]:
         """
         Get Dashboard Details
         """
@@ -134,6 +137,24 @@ class MetabaseSource(DashboardServiceSource):
             logger.warning(
                 f"Error fetching the collection details for [{dashboard_details.collection_id}]: {exc}"
             )
+        return None
+
+    def get_owner_ref(
+        self, dashboard_details: MetabaseDashboardDetails
+    ) -> Optional[EntityReferenceList]:
+        """
+        Get dashboard owner from email
+        """
+        try:
+            if dashboard_details.creator_id:
+                owner_details = self.client.get_user_details(
+                    dashboard_details.creator_id
+                )
+                if owner_details and owner_details.email:
+                    return self.metadata.get_reference_by_email(owner_details.email)
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def yield_dashboard(
@@ -167,7 +188,7 @@ class MetabaseSource(DashboardServiceSource):
                     for chart in self.context.get().charts or []
                 ],
                 service=self.context.get().dashboard_service,
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

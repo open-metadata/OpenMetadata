@@ -47,7 +47,6 @@ from metadata.utils.time_utils import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
 
 TESTS_ROOT_DIR = pathlib.Path(__file__).parent.parent.parent.parent
 REDSHIFT_CONFIG_FILE = "cli_e2e/database/redshift/redshift.yaml"
@@ -110,7 +109,7 @@ class TestRedshiftSystem(TestCase):
         ingestion_workflow = MetadataWorkflow.create(cls.config)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        print_status(ingestion_workflow)
+        ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
         # get table fqn
@@ -135,7 +134,7 @@ class TestRedshiftSystem(TestCase):
         profiler_workflow = ProfilerWorkflow.create(config)
         profiler_workflow.execute()
         profiler_workflow.raise_from_status()
-        print_status(profiler_workflow)
+        profiler_workflow.print_status()
         profiler_workflow.stop()
 
         # get latest profile metrics

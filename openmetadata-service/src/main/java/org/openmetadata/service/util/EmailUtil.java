@@ -13,12 +13,10 @@
 
 package org.openmetadata.service.util;
 
-import static freemarker.template.Configuration.VERSION_2_3_28;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTPS;
 import static org.simplejavamail.api.mailer.config.TransportStrategy.SMTP_TLS;
 
-import freemarker.template.Configuration;
 import freemarker.template.Template;
 import freemarker.template.TemplateException;
 import java.io.IOException;
@@ -51,12 +49,11 @@ public class EmailUtil {
   public static final String USERNAME = "userName";
   public static final String ENTITY = "entity";
   public static final String SUPPORT_URL = "supportUrl";
-  public static final String EMAIL_TEMPLATE_BASEPATH = "/emailTemplates";
   // Email Verification
   private static final String EMAIL_VERIFICATION_SUBJECT =
       "%s: Verify your Email Address (Action Required)";
   public static final String EMAIL_VERIFICATION_LINKKEY = "userEmailTokenVerificationLink";
-  public static final String EMAIL_VERIFICATION_TEMPLATE_PATH = "email-verification.ftl";
+  public static final String EMAIL_VERIFICATION_TEMPLATE = "email-verification";
   // Password Reset Link
   private static final String PASSWORD_RESET_SUBJECT = "%s: Reset your Password";
   public static final String PASSWORD_RESET_LINKKEY = "userResetPasswordLink";
@@ -64,39 +61,47 @@ public class EmailUtil {
   public static final String DEFAULT_EXPIRATION_TIME = "60";
   public static final String PASSWORD = "password";
   public static final String APPLICATION_LOGIN_LINK = "applicationLoginLink";
-  public static final String PASSWORD_RESET_TEMPLATE_FILE = "reset-link.ftl";
+  public static final String PASSWORD_RESET_TEMPLATE_FILE = "reset-link";
   // Account Change Status
   private static final String ACCOUNT_STATUS_SUBJECT = "%s: Change in Account Status";
   public static final String ACTION_KEY = "action";
   public static final String ACTION_STATUS_KEY = "actionStatus";
-  public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change.ftl";
+  public static final String ACCOUNT_STATUS_TEMPLATE_FILE = "account-activity-change";
   private static final String INVITE_SUBJECT = "Welcome to %s";
   private static final String CHANGE_EVENT_UPDATE = "[%s] - Change Event Update from %s";
 
   private static final String TASK_SUBJECT = "%s : Task Assignment Notification";
-  public static final String INVITE_RANDOM_PWD = "invite-randompwd.ftl";
+  public static final String INVITE_RANDOM_PWD = "invite-randompwd";
 
-  public static final String CHANGE_EVENT_TEMPLATE = "changeEvent.ftl";
-  public static final String INVITE_CREATE_PWD = "invite-createPassword.ftl";
-  public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment.ftl";
+  public static final String CHANGE_EVENT_TEMPLATE = "changeEvent";
+  public static final String INVITE_CREATE_PWD = "invite-createPassword";
+  public static final String TASK_NOTIFICATION_TEMPLATE = "taskAssignment";
   private static final String REPORT_SUBJECT = "%s: Data Insights Weekly - %s";
-  public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport.ftl";
-  public static final String TEST_EMAIL_TEMPLATE = "testMail.ftl";
+  public static final String DATA_INSIGHT_REPORT_TEMPLATE = "dataInsightReport";
+  public static final String TEST_EMAIL_TEMPLATE = "testMail";
   public static final String TEST_EMAIL_SUBJECT = "%s : Test Email";
   private static SmtpSettings storedSmtpSettings;
   private static Mailer mailer;
-  private static final Configuration templateConfiguration = new Configuration(VERSION_2_3_28);
 
   private static final String EMAIL_IGNORE_MSG =
       "Email was not sent to {} as SMTP setting is not enabled";
 
+  private static TemplateProvider templateProvider;
+
   static {
     getSmtpSettings();
+    initializeTemplateProvider();
+  }
+
+  // initialize template provider
+  private static void initializeTemplateProvider() {
+    templateProvider = new DefaultTemplateProvider();
   }
 
   private EmailUtil() {
     try {
       getSmtpSettings();
+      initializeTemplateProvider();
       LOG.info("Email Util cache is initialized");
     } catch (Exception ex) {
       LOG.warn("[MAILER] Smtp Configurations are missing : Reason {} ", ex.getMessage(), ex);
@@ -143,7 +148,6 @@ public class EmailUtil {
           getAccountStatusChangeSubject(),
           templatePopulator,
           user.getEmail(),
-          EMAIL_TEMPLATE_BASEPATH,
           ACCOUNT_STATUS_TEMPLATE_FILE,
           true);
     } else {
@@ -164,8 +168,7 @@ public class EmailUtil {
           getEmailVerificationSubject(),
           templatePopulator,
           user.getEmail(),
-          EMAIL_TEMPLATE_BASEPATH,
-          EMAIL_VERIFICATION_TEMPLATE_PATH,
+          EMAIL_VERIFICATION_TEMPLATE,
           true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
@@ -183,13 +186,7 @@ public class EmailUtil {
       templatePopulator.put(PASSWORD_RESET_LINKKEY, passwordResetLink);
       templatePopulator.put(EXPIRATION_TIME_KEY, DEFAULT_EXPIRATION_TIME);
 
-      sendMail(
-          subject,
-          templatePopulator,
-          user.getEmail(),
-          EMAIL_TEMPLATE_BASEPATH,
-          templateFilePath,
-          true);
+      sendMail(subject, templatePopulator, user.getEmail(), templateFilePath, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
     }
@@ -214,19 +211,14 @@ public class EmailUtil {
       templatePopulator.put("fieldNewValue", thread.getTask().getSuggestion());
       templatePopulator.put("taskLink", taskLink);
 
-      sendMail(subject, templatePopulator, email, EMAIL_TEMPLATE_BASEPATH, templateFilePath, true);
+      sendMail(subject, templatePopulator, email, templateFilePath, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, email);
     }
   }
 
   public static void sendMail(
-      String subject,
-      Map<String, Object> model,
-      String to,
-      String baseTemplatePackage,
-      String templatePath,
-      boolean async)
+      String subject, Map<String, Object> model, String to, String templateName, boolean async)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
@@ -234,8 +226,7 @@ public class EmailUtil {
       emailBuilder.to(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      templateConfiguration.setClassForTemplateLoading(EmailUtil.class, baseTemplatePackage);
-      Template template = templateConfiguration.getTemplate(templatePath);
+      Template template = templateProvider.getTemplate(templateName);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -249,11 +240,7 @@ public class EmailUtil {
   }
 
   public static void sendMailToMultiple(
-      String subject,
-      Map<String, Object> model,
-      Set<String> to,
-      String baseTemplatePackage,
-      String templatePath)
+      String subject, Map<String, Object> model, Set<String> to, String templateName)
       throws IOException, TemplateException {
     if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
       EmailPopulatingBuilder emailBuilder = EmailBuilder.startingBlank();
@@ -261,8 +248,7 @@ public class EmailUtil {
       emailBuilder.toMultiple(to);
       emailBuilder.from(getSmtpSettings().getSenderMail());
 
-      templateConfiguration.setClassForTemplateLoading(EmailUtil.class, baseTemplatePackage);
-      Template template = templateConfiguration.getTemplate(templatePath);
+      Template template = templateProvider.getTemplate(templateName);
 
       // write the freemarker output to a StringWriter
       StringWriter stringWriter = new StringWriter();
@@ -294,7 +280,6 @@ public class EmailUtil {
             EmailUtil.getEmailInviteSubject(),
             templatePopulator,
             user.getEmail(),
-            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
             EmailUtil.INVITE_RANDOM_PWD,
             true);
       } catch (Exception ex) {
@@ -324,7 +309,6 @@ public class EmailUtil {
             EmailUtil.getChangeEventTemplate(publisherName),
             templatePopulator,
             receiverMail,
-            EmailUtil.EMAIL_TEMPLATE_BASEPATH,
             EmailUtil.CHANGE_EVENT_TEMPLATE,
             true);
       } catch (Exception ex) {
@@ -358,8 +342,7 @@ public class EmailUtil {
       templatePopulator.put(
           "viewReportUrl",
           String.format("%s/data-insights/data-assets", getSmtpSettings().getOpenMetadataUrl()));
-      sendMailToMultiple(
-          subject, templatePopulator, emails, EMAIL_TEMPLATE_BASEPATH, templateFilePath);
+      sendMailToMultiple(subject, templatePopulator, emails, templateFilePath);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, emails.toString());
     }
@@ -372,13 +355,7 @@ public class EmailUtil {
       templatePopulator.put("userName", email.split("@")[0]);
       templatePopulator.put("entity", getSmtpSettings().getEmailingEntity());
       templatePopulator.put("supportUrl", getSmtpSettings().getSupportUrl());
-      sendMail(
-          getTestEmailSubject(),
-          templatePopulator,
-          email,
-          EMAIL_TEMPLATE_BASEPATH,
-          TEST_EMAIL_TEMPLATE,
-          async);
+      sendMail(getTestEmailSubject(), templatePopulator, email, TEST_EMAIL_TEMPLATE, async);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, email);
     }

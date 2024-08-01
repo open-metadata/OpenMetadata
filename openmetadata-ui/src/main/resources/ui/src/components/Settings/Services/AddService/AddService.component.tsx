@@ -133,10 +133,12 @@ const AddService = ({
       name: serviceConfig.serviceName,
       serviceType: selectServiceType,
       description: serviceConfig.description,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: 'user',
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: 'user',
+        },
+      ],
     };
     const configData = {
       ...data,
@@ -241,10 +243,13 @@ const AddService = ({
 
         {activeServiceStep > 3 && (
           <SuccessScreen
-            showIngestionButton
             handleIngestionClick={() => handleAddIngestion(true)}
             handleViewServiceClick={handleViewServiceClick}
             name={serviceConfig.serviceName}
+            // API Service does not support ingestion workflows
+            showIngestionButton={
+              serviceCategory !== ServiceCategory.API_SERVICES
+            }
             state={FormSubmitType.ADD}
             suffix={getServiceCreatedLabel(serviceCategory)}
           />

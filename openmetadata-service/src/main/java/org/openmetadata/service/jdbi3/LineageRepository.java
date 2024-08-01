@@ -200,10 +200,11 @@ public class LineageRepository {
       if (pipelineRef.getType().equals(PIPELINE)) {
         pipelineMap =
             JsonUtils.getMap(
-                Entity.getEntity(pipelineRef, "pipelineStatus,tags,owner", Include.ALL));
+                Entity.getEntity(pipelineRef, "pipelineStatus,tags,owners", Include.ALL));
       } else {
-        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owner", Include.ALL));
+        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
       }
+      pipelineMap.remove("changeDescription");
       relationshipDetails.put("pipelineEntityType", pipelineRef.getType());
       relationshipDetails.put(PIPELINE, pipelineMap);
     }

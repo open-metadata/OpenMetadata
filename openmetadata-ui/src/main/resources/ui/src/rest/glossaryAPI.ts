@@ -16,6 +16,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
 import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
@@ -333,7 +334,7 @@ export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
   >(apiUrl, {
     params: {
       directChildrenOf: parentFQN,
-      fields: 'childrenCount,owner',
+      fields: [TabSpecificField.CHILDREN_COUNT, TabSpecificField.OWNERS],
       limit: 100000,
     },
   });

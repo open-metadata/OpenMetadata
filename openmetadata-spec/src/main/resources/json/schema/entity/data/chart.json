@@ -101,9 +101,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this chart.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this chart.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this chart.",

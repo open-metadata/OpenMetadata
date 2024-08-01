@@ -21,6 +21,11 @@ import lombok.Getter;
 public abstract class WebServiceException extends RuntimeException {
   private final transient Response response;
 
+  protected WebServiceException(Response response, String msg) {
+    super(msg);
+    this.response = response;
+  }
+
   protected WebServiceException(Response.Status status, String errorType, String msg) {
     super(msg);
     response =

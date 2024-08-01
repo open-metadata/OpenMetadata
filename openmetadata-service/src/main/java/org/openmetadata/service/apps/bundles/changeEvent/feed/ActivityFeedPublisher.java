@@ -78,6 +78,9 @@ public class ActivityFeedPublisher implements Destination<ChangeEvent> {
   }
 
   @Override
+  public void sendTestMessage() throws EventPublisherException {}
+
+  @Override
   public EventSubscription getEventSubscriptionForDestination() {
     return eventSubscription;
   }

@@ -44,7 +44,7 @@ import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TAG;
@@ -66,6 +66,7 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.REVERT;
 
+import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
@@ -81,6 +82,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response.Status;
@@ -103,6 +105,7 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -129,6 +132,7 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
@@ -587,7 +591,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create table without table constraints
     CreateTable request =
         createRequest(test)
-            .withOwner(USER1_REF)
+            .withOwners(Lists.newArrayList(USER1_REF))
             .withDescription("description")
             .withTableConstraints(null);
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
@@ -1050,7 +1054,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   void put_tableSampleData_200(TestInfo test) throws IOException {
     Table table =
-        createAndCheckEntity(createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test).withOwners(Lists.newArrayList(USER1_REF)), ADMIN_AUTH_HEADERS);
     List<String> columns = Arrays.asList(C1, C2, C3);
 
     // Add 3 rows of sample data for 3 columns
@@ -1141,7 +1146,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void put_profileConfig_200(TestInfo test) throws IOException {
-    CreateTable request = createRequest(test).withOwner(USER1_REF);
+    CreateTable request = createRequest(test).withOwners(Lists.newArrayList(USER1_REF));
     Table table = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Admin can PUT profile configuration
@@ -1204,15 +1209,23 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void put_tableProfile_200(TestInfo test) throws IOException, ParseException {
-    Table table = createEntity(createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
-    Table table1 = createEntity(createRequest(test, 1).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+    Table table =
+        createEntity(
+            createRequest(test).withOwners(Lists.newArrayList(USER1_REF)), ADMIN_AUTH_HEADERS);
+    Table table1 =
+        createEntity(
+            createRequest(test, 1).withOwners(Lists.newArrayList(USER1_REF)), ADMIN_AUTH_HEADERS);
 
     // Admin can PUT table profile
     putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
 
     // Owner can PUT table profile
-    Table table3 = createEntity(createRequest(test, 2).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
-    Table table4 = createEntity(createRequest(test, 3).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+    Table table3 =
+        createEntity(
+            createRequest(test, 2).withOwners(Lists.newArrayList(USER1_REF)), ADMIN_AUTH_HEADERS);
+    Table table4 =
+        createEntity(
+            createRequest(test, 3).withOwners(Lists.newArrayList(USER1_REF)), ADMIN_AUTH_HEADERS);
     putTableProfile(table3, table4, authHeaders(USER1.getName()));
 
     // Others can't PUT table profile data
@@ -1506,7 +1519,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
             .withSql(query)
             .withGeneratedAt(new Date())
             .withColumns(columns)
-            .withOwner(reduceEntityReference(user));
+            .withOwners(reduceEntityReferences(Lists.newArrayList(user.getEntityReference())));
     Table putResponse = putTableDataModel(table.getId(), dataModel, ADMIN_AUTH_HEADERS);
     assertDataModel(dataModel, putResponse.getDataModel());
 
@@ -1532,12 +1545,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void createUpdateDelete_tableCustomMetrics_200(TestInfo test) throws IOException {
     // Creating custom metric is allowed for the admin
     Table table =
-        createAndCheckEntity(createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test).withOwners(Lists.newArrayList(USER1_REF)), ADMIN_AUTH_HEADERS);
     createUpdateDeleteCustomMetrics(table, ADMIN_AUTH_HEADERS);
 
     // Creating custom metric is allowed for the owner
     Table table1 =
-        createAndCheckEntity(createRequest(test, 1).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(
+            createRequest(test, 1).withOwners(Lists.newArrayList(USER1_REF)), ADMIN_AUTH_HEADERS);
     createUpdateDeleteCustomMetrics(table1, authHeaders(USER1.getName()));
 
     // Creating custom metric is not allowed for other users
@@ -1646,7 +1661,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create a table test1 with 1 table tag and 3 column tags
     CreateTable create =
         createRequest(test, 1)
-            .withOwner(USER1_REF)
+            .withOwners(Lists.newArrayList(USER1_REF))
             .withTags(
                 List.of(
                     USER_ADDRESS_TAG_LABEL,
@@ -1676,7 +1691,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateTable create1 =
         createRequest(test, 2)
             .withDescription("description")
-            .withOwner(USER1_REF)
+            .withOwners(Lists.newArrayList(USER1_REF))
             .withColumns(COLUMNS); // 3 column tags - 2 USER_ADDRESS and 1 USER_BANK_ACCOUNT
     createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
 
@@ -1724,14 +1739,14 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertFields(tableList1.getData(), fields);
 
     // GET .../tables?fields=usageSummary,owner
-    final String fields1 = "usageSummary,owner";
+    final String fields1 = "usageSummary,owners";
     queryParams = new HashMap<>();
     queryParams.put("fields", fields1);
     tableList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
     assertEquals(initialTableCount + 2, tableList.getData().size());
     assertFields(tableList.getData(), fields1);
     for (Table table : tableList.getData()) {
-      assertEquals(USER1_REF, table.getOwner());
+      assertOwners(Lists.newArrayList(USER1_REF), table.getOwners());
       assertReference(DATABASE.getFullyQualifiedName(), table.getDatabase());
     }
 
@@ -2151,7 +2166,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     Database db =
-        dbTest.createEntity(dbTest.createRequest(test).withOwner(USER1_REF), ADMIN_AUTH_HEADERS);
+        dbTest.createEntity(
+            dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF)),
+            ADMIN_AUTH_HEADERS);
 
     // Ensure databaseSchema owner is inherited from database
     CreateDatabaseSchema createSchema =
@@ -2165,11 +2182,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Change the ownership of table and ensure further ingestion updates don't overwrite the
     // ownership
-    assertOwnershipInheritanceOverride(table, createTable.withOwner(null), USER2_REF);
+    assertOwnershipInheritanceOverride(table, createTable.withOwners(null), USER2_REF);
 
     // Change the ownership of schema and ensure further ingestion updates don't overwrite the
     // ownership
-    schemaTest.assertOwnershipInheritanceOverride(schema, createSchema.withOwner(null), USER2_REF);
+    schemaTest.assertOwnershipInheritanceOverride(schema, createSchema.withOwners(null), USER2_REF);
   }
 
   @Test
@@ -2447,7 +2464,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Create table with owner and a column tagged with PII.Sensitive
     Table table =
         createAndCheckEntity(
-            createRequest(test).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test).withOwners(Lists.newArrayList(USER_TEAM21.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
     List<String> columns = Arrays.asList(C1, C2, C3);
     // Add 3 rows of sample data for 3 columns
     List<List<Object>> rows =
@@ -2483,10 +2501,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // C3 has the PII.Sensitive tag
     Table table =
         createEntity(
-            createRequest(test).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test).withOwners(Lists.newArrayList(USER_TEAM21.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
     Table table1 =
         createEntity(
-            createRequest(test, 1).withOwner(USER_TEAM21.getEntityReference()), ADMIN_AUTH_HEADERS);
+            createRequest(test, 1).withOwners(List.of(USER_TEAM21.getEntityReference())),
+            ADMIN_AUTH_HEADERS);
     putTableProfile(table, table1, ADMIN_AUTH_HEADERS);
 
     Column c3 = table.getColumns().stream().filter(c -> c.getName().equals(C3)).findFirst().get();
@@ -2527,7 +2547,9 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // DatabaseService has owner dataConsumer
     CreateDatabaseService createDatabaseService =
-        dbServiceTest.createRequest(test).withOwner(DATA_CONSUMER.getEntityReference());
+        dbServiceTest
+            .createRequest(test)
+            .withOwners(Lists.newArrayList(DATA_CONSUMER.getEntityReference()));
     DatabaseService service = dbServiceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
 
     // dataConsumer as owner of service can create database under it
@@ -2535,7 +2557,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         dbTest
             .createRequest("db")
             .withService(service.getFullyQualifiedName())
-            .withOwner(DATA_STEWARD.getEntityReference());
+            .withOwners(Lists.newArrayList(DATA_STEWARD.getEntityReference()));
     Database db = dbTest.createEntity(createDatabase, authHeaders(DATA_CONSUMER.getName()));
 
     // dataSteward as owner of database can create database schema under it
@@ -2543,7 +2565,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         schemaTest
             .createRequest("schema")
             .withDatabase(db.getFullyQualifiedName())
-            .withOwner(USER1.getEntityReference());
+            .withOwners(Lists.newArrayList(USER1.getEntityReference()));
     DatabaseSchema schema =
         schemaTest.createEntity(createDatabaseSchema, authHeaders(DATA_STEWARD.getName()));
 
@@ -2655,7 +2677,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user;%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
+                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s,c1,"
                     + "dsp1-new,desc1,type,STRUCT,,,PII.Sensitive,",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())),
             ",,,,,,,,,,c1.c11,dsp11-new,desc11,type1,INT,,,PII.Sensitive,",
@@ -2665,6 +2687,175 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     // Update created entity with changes
     importCsvAndValidate(table.getFullyQualifiedName(), TableCsv.HEADERS, null, updateRecords);
     deleteEntityByName(table.getFullyQualifiedName(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void get_TablesWithPagination_200(TestInfo test) throws IOException {
+    // get Pagination results for same name entities
+    boolean supportsSoftDelete = true;
+    int numEntities = 4; // fixed value for consistency
+
+    List<UUID> createdUUIDs = new ArrayList<>();
+    for (int i = 0; i < numEntities; i++) {
+      // Create Table with different parent container/schemas
+      CreateDatabaseService createDatabaseService =
+          new CreateDatabaseService()
+              .withName("service_" + (i + 1))
+              .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+      DatabaseService service =
+          dbServiceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+
+      String databaseName = "database_" + (i + 1);
+      CreateDatabase createDatabase =
+          new CreateDatabase().withName(databaseName).withService(service.getFullyQualifiedName());
+      Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+      CreateDatabaseSchema createDatabaseSchema =
+          schemaTest
+              .createRequest("schema_" + (i + 1))
+              .withDatabase(database.getFullyQualifiedName())
+              .withOwners(List.of(USER1.getEntityReference()));
+      DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
+
+      CreateTable createTable =
+          createRequest("common").withDatabaseSchema(schema.getFullyQualifiedName());
+      Table table = createEntity(createTable, ADMIN_AUTH_HEADERS);
+      createdUUIDs.add(table.getId());
+    }
+
+    CreateDatabaseService createDatabaseService =
+        new CreateDatabaseService()
+            .withName("service_0")
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+    DatabaseService service = dbServiceTest.createEntity(createDatabaseService, ADMIN_AUTH_HEADERS);
+
+    // Step 2: Create a new database under the created service
+    String databaseName = "database_0";
+    CreateDatabase createDatabase =
+        new CreateDatabase().withName(databaseName).withService(service.getFullyQualifiedName());
+    Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    CreateDatabaseSchema createDatabaseSchema =
+        schemaTest
+            .createRequest("schema_0")
+            .withDatabase(database.getFullyQualifiedName())
+            .withOwners(List.of(USER1.getEntityReference()));
+    DatabaseSchema schema = schemaTest.createEntity(createDatabaseSchema, ADMIN_AUTH_HEADERS);
+
+    // Step 3: Create a new table under the created database
+    CreateTable createTable =
+        createRequest("common").withDatabaseSchema(schema.getFullyQualifiedName());
+    Table entity = createEntity(createTable, ADMIN_AUTH_HEADERS);
+
+    deleteEntityByName(entity.getFullyQualifiedName(), true, false, ADMIN_AUTH_HEADERS);
+    Predicate<Table> matchDeleted = e -> e.getId().equals(entity.getId());
+
+    // Test listing entities that include deleted, non-deleted, and all the entities
+    for (Include include : List.of(Include.NON_DELETED, Include.ALL, Include.DELETED)) {
+      if (!supportsSoftDelete && include.equals(Include.DELETED)) {
+        continue;
+      }
+      Map<String, String> queryParams = new HashMap<>();
+      queryParams.put("include", include.value());
+
+      // List all entities and use it for checking pagination
+      ResultList<Table> allEntities =
+          listEntities(queryParams, 1000000, null, null, ADMIN_AUTH_HEADERS);
+      int totalRecords = allEntities.getData().size();
+
+      // List entity with "limit" set from 1 to numEntities size with fixed steps
+      for (int limit = 1; limit < numEntities; limit += 2) { // fixed step for consistency
+        String after = null;
+        String before;
+        int pageCount = 0;
+        int indexInAllTables = 0;
+        ResultList<Table> forwardPage;
+        ResultList<Table> backwardPage;
+        boolean foundDeleted = false;
+        do { // For each limit (or page size) - forward scroll till the end
+          LOG.debug(
+              "Limit {} forward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
+          forwardPage = listEntities(queryParams, limit, null, after, ADMIN_AUTH_HEADERS);
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
+          after = forwardPage.getPaging().getAfter();
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+
+          if (pageCount == 0) { // CASE 0 - First page is being returned. There is no before-cursor
+            assertNull(before);
+          } else {
+            // Make sure scrolling back based on before cursor returns the correct result
+            backwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
+            assertEntityPagination(
+                allEntities.getData(), backwardPage, limit, (indexInAllTables - limit));
+          }
+
+          indexInAllTables += forwardPage.getData().size();
+          pageCount++;
+        } while (after != null);
+
+        boolean includeAllOrDeleted =
+            Include.ALL.equals(include) || Include.DELETED.equals(include);
+        if (includeAllOrDeleted) {
+          assertTrue(!supportsSoftDelete || foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+
+        // We have now reached the last page - test backward scroll till the beginning
+        pageCount = 0;
+        indexInAllTables = totalRecords - limit - forwardPage.getData().size();
+        foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted);
+        do {
+          LOG.debug(
+              "Limit {} backward pageCount {} indexInAllTables {} totalRecords {} afterCursor {}",
+              limit,
+              pageCount,
+              indexInAllTables,
+              totalRecords,
+              after);
+          forwardPage = listEntities(queryParams, limit, before, null, ADMIN_AUTH_HEADERS);
+          foundDeleted = forwardPage.getData().stream().anyMatch(matchDeleted) || foundDeleted;
+          before = forwardPage.getPaging().getBefore();
+          assertEntityPagination(allEntities.getData(), forwardPage, limit, indexInAllTables);
+          pageCount++;
+          indexInAllTables -= forwardPage.getData().size();
+        } while (before != null);
+
+        if (includeAllOrDeleted) {
+          assertTrue(!supportsSoftDelete || foundDeleted);
+        } else { // non-delete
+          assertFalse(foundDeleted);
+        }
+      }
+
+      // Before running "deleted" delete all created entries otherwise the test doesn't work with
+      // just one element.
+      if (Include.ALL.equals(include)) {
+        for (Table toBeDeleted : allEntities.getData()) {
+          if (createdUUIDs.contains(toBeDeleted.getId())
+              && Boolean.FALSE.equals(toBeDeleted.getDeleted())) {
+            deleteEntityByName(
+                toBeDeleted.getFullyQualifiedName(), true, false, ADMIN_AUTH_HEADERS);
+          }
+        }
+      }
+    }
+
+    //  Restore the soft-deleted tables present in other containers
+    for (UUID id : createdUUIDs) {
+      restoreEntity(
+          new RestoreEntity().withId(id), javax.ws.rs.core.Response.Status.OK, ADMIN_AUTH_HEADERS);
+    }
+    restoreEntity(
+        new RestoreEntity().withId(entity.getId()),
+        javax.ws.rs.core.Response.Status.OK,
+        ADMIN_AUTH_HEADERS);
   }
 
   void assertFields(List<Table> tableList, String fieldsParam) {
@@ -2678,10 +2869,10 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     } else {
       assertNull(table.getUsageSummary());
     }
-    if (fields.contains(FIELD_OWNER)) {
-      assertNotNull(table.getOwner());
+    if (fields.contains(FIELD_OWNERS)) {
+      assertNotNull(table.getOwners());
     } else {
-      assertNull(table.getOwner());
+      assertNull(table.getOwners());
     }
     if (fields.contains("columns")) {
       assertNotNull(table.getColumns());
@@ -2718,7 +2909,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertListNull(
         table.getTableConstraints(),
         table.getUsageSummary(),
-        table.getOwner(),
+        table.getOwners(),
         table.getTags(),
         table.getFollowers(),
         table.getJoins(),
@@ -2729,7 +2920,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         table.getDataModel());
 
     String fields =
-        "tableConstraints,usageSummary,owner,"
+        "tableConstraints,usageSummary,owners,"
             + "tags,followers,joins,sampleData,schemaDefinition,profile,location,dataModel";
     table =
         byName
@@ -3009,7 +3200,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       CustomMetric storedMetric = columnMetricMap.get(metric.getName());
       assertNotNull(storedMetric);
       assertEquals(metric.getDescription(), storedMetric.getDescription());
-      assertEquals(metric.getOwner(), storedMetric.getOwner());
+      assertEquals(metric.getOwners(), storedMetric.getOwners());
       assertEquals(metric.getExpression(), storedMetric.getExpression());
     }
   }
@@ -3144,6 +3335,15 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       TableType expectedTableType = TableType.fromValue(expected.toString());
       TableType actualTableType = TableType.fromValue(actual.toString());
       assertEquals(expectedTableType, actualTableType);
+    } else if (fieldName.endsWith("owners")) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedOwners =
+          expected instanceof List
+              ? (List<EntityReference>) expected
+              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
+      List<EntityReference> actualOwners =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertOwners(expectedOwners, actualOwners);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

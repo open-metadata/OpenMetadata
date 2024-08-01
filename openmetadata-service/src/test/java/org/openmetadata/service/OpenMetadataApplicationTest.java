@@ -204,6 +204,7 @@ public abstract class OpenMetadataApplicationTest {
         ConnectionType.from(sqlContainer.getDriverClassName()),
         nativeMigrationScriptsLocation,
         extensionMigrationScripsLocation,
+        null,
         false);
     createIndices();
     APP.before();
