@@ -14,6 +14,7 @@ import test, { expect } from '@playwright/test';
 import { KPI_DATA } from '../../constant/dataInsight';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
+import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
   getApiContext,
@@ -28,10 +29,40 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Data Insight Page', () => {
+  const table = new TableClass();
+
   test.beforeAll(async ({ browser }) => {
     const { apiContext } = await createNewPage(browser);
 
+    await table.create(apiContext);
+
+    apiContext.patch(
+      `api/v1/v1/tables/name/${
+        table.entityResponseData?.fullyQualifiedName ?? ''
+      }`,
+      {
+        data: [
+          {
+            op: 'add',
+            path: '/tags/0',
+            value: {
+              name: 'Tier2',
+              tagFQN: 'Tier.Tier2',
+              labelType: 'Manual',
+              state: 'Confirmed',
+            },
+          },
+        ],
+      }
+    );
+
     await deleteKpiRequest(apiContext);
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext } = await createNewPage(browser);
+
+    await table.delete(apiContext);
   });
 
   test.beforeEach('Visit Data Insight Page', async ({ page }) => {
