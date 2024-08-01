@@ -1,5 +1,6 @@
 package org.openmetadata.service.migration.utils.v150;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -10,6 +11,8 @@ import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.DataQualityDimensions;
@@ -31,7 +34,17 @@ public class MigrationUtil {
     AppRepository appRepository = new AppRepository();
 
     App dataInsightsApp = appRepository.getByName(null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*")));
-    dataInsightsApp.getAppConfiguration();
+    App updatedDataInsightsApp = appRepository.getByName(null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*")));
+
+    updatedDataInsightsApp.setAppType(AppType.Internal);
+    updatedDataInsightsApp.setScheduleType(ScheduleType.ScheduledOrManual);
+    Map<String, Object> appConfig = new HashMap<>();
+    appConfig.put("type", "DataInsights");
+    appConfig.put("batchSize", 100);
+    updatedDataInsightsApp.setAppConfiguration(appConfig);
+    updatedDataInsightsApp.setAllowConfiguration(true);
+
+    appRepository.update(null, dataInsightsApp, updatedDataInsightsApp);
   }
   public static void deleteLegacyDataInsightPipelines(
       PipelineServiceClientInterface pipelineServiceClient) {
