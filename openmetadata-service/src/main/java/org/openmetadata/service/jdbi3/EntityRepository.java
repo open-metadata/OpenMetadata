@@ -84,7 +84,6 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -1883,19 +1882,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<EntityReference> getOwners(T entity) {
-    if (supportsOwners) {
-      List<EntityReference> refs = getFromEntityRefs(entity.getId(), Relationship.OWNS, null);
-      if (refs != null) {
-        return refs.stream()
-            .sorted(Comparator.comparing(EntityReference::getName))
-            .collect(Collectors.toList());
-      } else {
-        return null;
-      }
-
-    } else {
-      return Collections.emptyList();
-    }
+    return supportsOwners
+        ? findFrom(entity.getId(), entityType, Relationship.OWNS, null)
+        : Collections.emptyList();
   }
 
   public final List<EntityReference> getOwners(EntityReference ref) {
