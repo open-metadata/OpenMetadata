@@ -166,7 +166,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
-      taskStatus?: ThreadTaskStatus
+      taskStatus?: ThreadTaskStatus,
+      limit?: number
     ) => {
       try {
         setLoading(true);
@@ -187,7 +188,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           type,
           feedFilterType,
           taskStatus,
-          userId
+          userId,
+          limit
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);

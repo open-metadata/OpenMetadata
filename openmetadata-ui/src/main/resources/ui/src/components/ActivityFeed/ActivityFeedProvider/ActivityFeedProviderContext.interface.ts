@@ -55,7 +55,8 @@ export interface ActivityFeedProviderContextType {
     type?: ThreadType,
     entityType?: EntityType,
     fqn?: string,
-    taskStatus?: ThreadTaskStatus
+    taskStatus?: ThreadTaskStatus,
+    limit?: number
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;

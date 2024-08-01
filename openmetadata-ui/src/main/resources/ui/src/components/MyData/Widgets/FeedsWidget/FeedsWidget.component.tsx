@@ -17,7 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE_LARGE, ROUTES } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { mockFeedData } from '../../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
@@ -63,7 +63,15 @@ const FeedsWidget = ({
 
   useEffect(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
-      getFeedData(defaultFilter, undefined, ThreadType.Conversation);
+      getFeedData(
+        defaultFilter,
+        undefined,
+        ThreadType.Conversation,
+        undefined,
+        undefined,
+        undefined,
+        PAGE_SIZE_LARGE
+      );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
