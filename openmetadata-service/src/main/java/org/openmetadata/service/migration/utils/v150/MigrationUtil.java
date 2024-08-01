@@ -1,13 +1,23 @@
 package org.openmetadata.service.migration.utils.v150;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonArrayBuilder;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.DataQualityDimensions;
@@ -15,14 +25,87 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
+  private static final String QUERY_AUTOMATOR =
+      "SELECT json FROM ingestion_pipeline_entity where appType = 'Automator'";
+  private static final String ADD_OWNER_ACTION = "AddOwnerAction";
+
+  /**
+   * We need to update the `AddOwnerAction` action in the automator to have a list of owners
+   */
+  public static void migrateAutomatorOwner(Handle handle, CollectionDAO collectionDAO) {
+    try {
+
+      handle
+          .createQuery(QUERY_AUTOMATOR)
+          .mapToMap()
+          .forEach(
+              row -> {
+                try {
+                  // Prepare the current json objects
+                  JsonObject json = JsonUtils.readJson((String) row.get("json")).asJsonObject();
+                  JsonObject sourceConfig = json.getJsonObject("sourceConfig");
+                  JsonObject config = sourceConfig.getJsonObject("config");
+                  JsonObject appConfig = config.getJsonObject("appConfig");
+                  JsonArray actions = appConfig.getJsonArray("actions");
+
+                  JsonArrayBuilder updatedActions = Json.createArrayBuilder();
+
+                  // update the AddOwnerAction payloads to have a list of owners
+                  actions.forEach(
+                      action -> {
+                        JsonObject actionObj = (JsonObject) action;
+                        if (ADD_OWNER_ACTION.equals(actionObj.getString("type"))) {
+                          JsonObject owner = actionObj.getJsonObject("owner");
+                          JsonArrayBuilder owners = Json.createArrayBuilder();
+                          owners.add(owner);
+                          actionObj =
+                              Json.createObjectBuilder(actionObj)
+                                  .add("owners", owners)
+                                  .remove("owner")
+                                  .build();
+                        }
+                        updatedActions.add(actionObj);
+                      });
+
+                  // Recreate the json object
+                  JsonObjectBuilder updatedAppConfig =
+                      Json.createObjectBuilder(appConfig).add("actions", updatedActions);
+
+                  JsonObjectBuilder updatedConfig =
+                      Json.createObjectBuilder(config).add("appConfig", updatedAppConfig);
+
+                  JsonObjectBuilder updatedSourceConfig =
+                      Json.createObjectBuilder(sourceConfig).add("config", updatedConfig);
+
+                  JsonObject finalJsonObject =
+                      Json.createObjectBuilder(json)
+                          .add("sourceConfig", updatedSourceConfig)
+                          .build();
+
+                  // Update the Ingestion Pipeline
+                  IngestionPipeline ingestionPipeline =
+                      JsonUtils.readValue(finalJsonObject.toString(), IngestionPipeline.class);
+                  collectionDAO.ingestionPipelineDAO().update(ingestionPipeline);
+
+                } catch (Exception ex) {
+                  LOG.warn(String.format("Error updating automator [%s] due to [%s]", row, ex));
+                }
+              });
+    } catch (Exception ex) {
+      LOG.warn("Error running the automator migration ", ex);
+    }
+  }
+
   public static void deleteLegacyDataInsightPipelines(
       PipelineServiceClientInterface pipelineServiceClient) {
     // Delete Data Insights Pipeline
@@ -48,6 +131,38 @@ public class MigrationUtil {
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       entityRepository.setPipelineServiceClient(pipelineServiceClient);
       entityRepository.delete("admin", dataInsightsPipeline.getId(), true, true);
+    }
+  }
+
+  public static void updateDataInsightsApplication() {
+    AppRepository appRepository = new AppRepository();
+
+    Optional<App> oDataInsightsApp = Optional.empty();
+
+    try {
+      oDataInsightsApp =
+          Optional.ofNullable(
+              appRepository.getByName(
+                  null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*"))));
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Pipeline not found.");
+    }
+
+    if (oDataInsightsApp.isPresent()) {
+      App dataInsightsApp = oDataInsightsApp.get();
+      App updatedDataInsightsApp =
+          appRepository.getByName(
+              null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*")));
+
+      updatedDataInsightsApp.setAppType(AppType.Internal);
+      updatedDataInsightsApp.setScheduleType(ScheduleType.ScheduledOrManual);
+      Map<String, Object> appConfig = new HashMap<>();
+      appConfig.put("type", "DataInsights");
+      appConfig.put("batchSize", 100);
+      updatedDataInsightsApp.setAppConfiguration(appConfig);
+      updatedDataInsightsApp.setAllowConfiguration(true);
+
+      appRepository.update(null, dataInsightsApp, updatedDataInsightsApp);
     }
   }
 
