@@ -178,7 +178,7 @@ To establish secure connections between OpenMetadata and Salesforce, navigate to
 
 ```yaml
       sslConfig:
-            caCertificate: "path/to/ca/certificate"
-            sslCertificate: "path/to/ssl/certificate"
-            sslKey: "Private Key"
+            caCertificate: "/path/to/ca_certificate"
+            sslCertificate: "/path/to/your/ssl_cert"
+            sslKey: "/path/to/your/ssl_key"
 ```

@@ -234,6 +234,17 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
+## Securing MySQL Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and MySQL, navigate to the Advanced Config section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`. Alternatively, you can use the `SSL Certificate` and `SSL Key options`. If you choose the latter, you will need to provide the certificate used for client authentication and the private key associated with the SSL certificate.
+
+```yaml
+      sslConfig:
+            caCertificate: "/path/to/ca_certificate"
+            sslCertificate: "/path/to/your/ssl_cert"
+            sslKey: "/path/to/your/ssl_key"
+```
+
 ## dbt Integration
 
 {% tilesContainer %}

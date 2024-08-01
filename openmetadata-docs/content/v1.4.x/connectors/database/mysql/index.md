@@ -146,6 +146,16 @@ Executing the profiler workflow or data quality tests, will require the user to 
 
 {% /stepsContainer %}
 
+## Securing MySQL Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and MySQL, navigate to the `Advanced Config` section. Here, you can provide the CA certificate used for SSL validation by specifying the `caCertificate`. Alternatively, you can use the `SSL Certificate` and `SSL Key options`. If you choose the latter, you will need to provide the certificate used for client authentication and the private key associated with the SSL certificate.
+
+{% image
+  src="/images/v1.4/connectors/ssl_connection.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
+
 {% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.4/connectors/database/related.md" /%}

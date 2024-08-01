@@ -306,9 +306,9 @@ For IAM authentication, it is recommended to select the `allow` mode or another 
 {% /note %}
 
 ```yaml
-      sslConfig:
-            caCertificate: "path/to/ca/certificate"
       sslMode: disable #allow prefer require verify-ca verify-full
+      sslConfig:
+            caCertificate: "/path/to/ca/certificate"
 ```
 
 ## dbt Integration

@@ -217,7 +217,7 @@ When running the ingestion process externally, specify the SSL mode to be used f
 ```yaml
       sslMode: disable #allow prefer require verify-ca verify-full
       sslConfig:
-            caCertificate: "path/to/ca/certificate" 
+            caCertificate: "/path/to/ca/certificate" 
 ```
 
 ## dbt Integration
