@@ -35,6 +35,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.mssql.constants import (
+    DEFAULT_DATETIME_FORMAT,
+    MSSQL_DATEFORMAT_DATETIME_MAP,
+)
 from metadata.ingestion.source.database.mssql.models import (
     STORED_PROC_LANGUAGE_MAP,
     MssqlStoredProcedure,
@@ -48,6 +52,7 @@ from metadata.ingestion.source.database.mssql.utils import (
     get_columns,
     get_foreign_keys,
     get_pk_constraint,
+    get_sqlalchemy_engine_dateformat,
     get_table_comment,
     get_table_names,
     get_unique_constraints,
@@ -215,8 +220,13 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         queries they triggered
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
+        server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
+        current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
+            server_date_format, DEFAULT_DATETIME_FORMAT
+        )
+        start = start.replace(tzinfo=None).strftime(current_datetime_format)
         query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start.replace(tzinfo=None),
+            start_date=start,
         )
         try:
             queries_dict = self.procedure_queries_dict(

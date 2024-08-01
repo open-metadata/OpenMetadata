@@ -4,7 +4,6 @@ import pytest
 from freezegun import freeze_time
 from sqlalchemy import create_engine
 
-from _openmetadata_testutils.helpers.markers import xfail_param
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.workflow.metadata import MetadataWorkflow
@@ -14,13 +13,7 @@ if not sys.version_info >= (3, 9):
 
 
 @pytest.fixture(
-    params=[
-        "english",
-        xfail_param(
-            "german",
-            "failes due to date format handling (https://github.com/open-metadata/OpenMetadata/issues/16434)",
-        ),
-    ],
+    params=["german", "english"],  # test for both languages
 )
 def language_config(mssql_container, request):
     language = request.param
