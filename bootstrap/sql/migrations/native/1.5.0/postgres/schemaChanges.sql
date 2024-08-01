@@ -206,3 +206,7 @@ WHERE jsonb_path_exists(json, '$.owner')
 UPDATE openmetadata_settings
 SET json = jsonb_set(json, '{templates}', '"openmetadata"')
 WHERE configType = 'emailConfiguration';
+
+-- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{owner}' #- '{service}';
