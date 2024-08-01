@@ -499,6 +499,7 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
     """
     result = engine.execute(GET_DB_CONFIGS)
     for row in result:
-        if row.get("Set Option") == "dateformat":
-            return row.get("Value")
+        row_dict = dict(row)
+        if row_dict.get("Set Option") == "dateformat":
+            return row_dict.get("Value")
     return
