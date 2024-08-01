@@ -1,0 +1,20 @@
+source:
+  type: preset
+  serviceName: preset
+  serviceConnection:
+    config:
+      hostPort: https://{{WorkspaceSlug}}.{{WorkspaceRegion}}.app.preset.io
+      api_token: ********
+      api_secret: *******
+      type: Preset
+  sourceConfig:
+    config:
+      chartFilterPattern: {}
+      dashboardFilterPattern: {}
+sink:
+  type: metadata-rest
+  config: {}
+workflowConfig:
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: no-auth

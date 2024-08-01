@@ -1,0 +1,44 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/presetApiConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "presetApiConnection",
+    "description": "preset API Connection Config",
+    "type": "object",
+    "definitions": {
+        "apiProvider": {
+            "title": "Provider",
+            "description": "Authentication provider for preset (managed superset service). The api_token and api_secret are used to authenticate. This parameter is used internally to connect to Preset's REST API.",
+            "type": "string",
+            "enum": ["db","ldap"],
+            "default": "db"
+        }
+    },
+    "properties": {
+        "provider": {
+            "title": "Provider",
+            "description": "Authentication provider for preset (managed superset service). The api_token and api_secret are used to authenticate. This parameter is used internally to connect to Preset's REST API.",
+            "$ref": "#/definitions/apiProvider",
+            "default": "db"
+        },
+        "api_token": {
+            "title": "api_token",
+            "description": "API Token for Preset.",
+            "type": "string"
+        },
+        "api_secret": {
+            "title": "api_secret",
+            "description": "API Secret for Preset.",
+            "type": "string",
+            "format": "password"
+        },
+        "verifySSL": {
+            "$ref": "../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+            "default": "no-ssl"
+        },
+        "sslConfig": {
+            "$ref": "../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+        }
+    },
+    "additionalProperties": false,
+    "required": ["provider","api_secret","api_token"]
+}
