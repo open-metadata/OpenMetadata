@@ -1,18 +1,12 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE;
-import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE;
-import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TIER;
-import static org.openmetadata.schema.dataInsight.DataInsightChartResult.DataInsightChartType.TOTAL_ENTITIES_BY_TYPE;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
-import static org.openmetadata.schema.type.DataReportIndex.ENTITY_REPORT_DATA_INDEX;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
@@ -21,20 +15,15 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiResult;
-import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithDescriptionByType;
-import org.openmetadata.schema.dataInsight.type.PercentageOfEntitiesWithOwnerByType;
-import org.openmetadata.schema.dataInsight.type.TotalEntitiesByTier;
-import org.openmetadata.schema.dataInsight.type.TotalEntitiesByType;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsReportAppConfig;
 import org.openmetadata.schema.entity.teams.Team;
@@ -43,11 +32,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
 import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.KpiRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.SearchClient;
@@ -63,6 +54,13 @@ import org.quartz.JobExecutionContext;
 @SuppressWarnings("unused")
 public class DataInsightsReportApp extends AbstractNativeApplication {
   private static final String KPI_NOT_SET = "No Kpi Set";
+  private static final String PREVIOUS_TOTAL_ASSET_COUNT = "PreviousTotalAssetCount";
+  private static final String CURRENT_TOTAL_ASSET_COUNT = "CurrentTotalAssetCount";
+  private final DataInsightSystemChartRepository systemChartRepository =
+      new DataInsightSystemChartRepository();
+
+  private record TimeConfig(
+      Long startTime, Long endTime, String startDay, String endDay, int numberOfDaysChange) {}
 
   public DataInsightsReportApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -72,23 +70,30 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   public void execute(JobExecutionContext jobExecutionContext) {
     String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
     App app = collectionDAO.applicationDAO().findEntityByName(appName);
-    // Calculate time diff
+
+    // Calculate time config
     long currentTime = Instant.now().toEpochMilli();
-    long scheduleTime = currentTime - 604800000L;
-    int numberOfDaysChange = 7;
+    long startTime = TimestampUtils.subtractDays(currentTime, 7);
+    long endTime = TimestampUtils.subtractDays(currentTime, 1);
+    TimeConfig timeConfig =
+        new TimeConfig(
+            startTime,
+            endTime,
+            TimestampUtils.timestampToString(startTime, "dd"),
+            TimestampUtils.timestampToString(endTime, "dd"),
+            7);
+
     try {
       DataInsightsReportAppConfig insightAlertConfig =
           JsonUtils.convertValue(app.getAppConfiguration(), DataInsightsReportAppConfig.class);
       // Send to Admins
       if (Boolean.TRUE.equals(insightAlertConfig.getSendToAdmins())) {
-        sendToAdmins(
-            searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
+        sendToAdmins(searchRepository.getSearchClient(), timeConfig);
       }
 
       // Send to Teams
-      if (Boolean.FALSE.equals(insightAlertConfig.getSendToTeams())) {
-        sendReportsToTeams(
-            searchRepository.getSearchClient(), scheduleTime, currentTime, numberOfDaysChange);
+      if (Boolean.TRUE.equals(insightAlertConfig.getSendToTeams())) {
+        sendReportsToTeams(searchRepository.getSearchClient(), timeConfig);
       }
     } catch (Exception e) {
       LOG.error("[DIReport] Failed in sending report due to", e);
@@ -96,8 +101,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     }
   }
 
-  private void sendReportsToTeams(
-      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange)
+  private void sendReportsToTeams(SearchClient searchClient, TimeConfig timeConfig)
       throws SearchIndexException {
     PaginatedEntitiesSource teamReader =
         new PaginatedEntitiesSource(TEAM, 10, List.of("name", "email", "users"));
@@ -115,23 +119,21 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
           }
         }
 
+        Map<String, Object> contextData = new HashMap<>();
+
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
-              createTotalAssetTemplate(
-                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createTotalAssetTemplate(searchClient, team.getName(), timeConfig, contextData);
           DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-              createDescriptionTemplate(
-                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createDescriptionTemplate(searchClient, team.getName(), timeConfig, contextData);
           DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-              createOwnershipTemplate(
-                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createOwnershipTemplate(searchClient, team.getName(), timeConfig, contextData);
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
-              createTierTemplate(
-                  searchClient, team.getName(), scheduleTime, currentTime, numberOfDaysChange);
+              createTierTemplate(searchClient, team.getName(), timeConfig, contextData);
           EmailUtil.sendDataInsightEmailNotificationToUser(
               emails,
-              getMonthAndDateFromEpoch(scheduleTime),
-              getMonthAndDateFromEpoch(currentTime),
+              getMonthAndDateFromEpoch(timeConfig.startTime()),
+              getMonthAndDateFromEpoch(timeConfig.endTime()),
               totalAssetTemplate,
               descriptionTemplate,
               ownershipTemplate,
@@ -148,27 +150,25 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     }
   }
 
-  private void sendToAdmins(
-      SearchClient searchClient, Long scheduleTime, Long currentTime, int numberOfDaysChange) {
+  private void sendToAdmins(SearchClient searchClient, TimeConfig timeConfig) {
     // Get Admins
     Set<String> emailList = getAdminsData(EMAIL);
+    Map<String, Object> contextData = new HashMap<>();
+
     try {
       // Build Insights Report
       DataInsightTotalAssetTemplate totalAssetTemplate =
-          createTotalAssetTemplate(
-              searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+          createTotalAssetTemplate(searchClient, null, timeConfig, contextData);
       DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
-          createDescriptionTemplate(
-              searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+          createDescriptionTemplate(searchClient, null, timeConfig, contextData);
       DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
-          createOwnershipTemplate(
-              searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+          createOwnershipTemplate(searchClient, null, timeConfig, contextData);
       DataInsightDescriptionAndOwnerTemplate tierTemplate =
-          createTierTemplate(searchClient, null, scheduleTime, currentTime, numberOfDaysChange);
+          createTierTemplate(searchClient, null, timeConfig, contextData);
       EmailUtil.sendDataInsightEmailNotificationToUser(
           emailList,
-          getMonthAndDateFromEpoch(scheduleTime),
-          getMonthAndDateFromEpoch(currentTime),
+          getMonthAndDateFromEpoch(timeConfig.startTime()),
+          getMonthAndDateFromEpoch(timeConfig.endTime()),
           totalAssetTemplate,
           descriptionTemplate,
           ownershipTemplate,
@@ -192,332 +192,250 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
   }
 
   private DataInsightTotalAssetTemplate createTotalAssetTemplate(
-      SearchClient searchClient, String team, Long scheduleTime, Long currentTime, int numberOfDays)
-      throws ParseException, IOException {
+      SearchClient searchClient,
+      String team,
+      TimeConfig timeConfig,
+      Map<String, Object> contextData)
+      throws IOException {
     // Create A Date Map
     Map<String, Integer> dateMap = new LinkedHashMap<>();
-    Utilities.getLastSevenDays(currentTime).forEach(day -> dateMap.put(day, 0));
+    Utilities.getLastSevenDays(timeConfig.endTime()).forEach(day -> dateMap.put(day, 0));
     // Get total Assets Data
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team,
-            scheduleTime,
-            currentTime,
-            TOTAL_ENTITIES_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.value());
-    if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
-      List<TotalEntitiesByType> first =
-          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-      List<TotalEntitiesByType> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
-      Double previousCount = getCountOfEntitiesFromList(first);
-      Double currentCount = getCountOfEntitiesFromList(last);
+    Map<String, Double> dateWithCount =
+        getDateMapWithCountFromChart(
+            "total_data_assets", timeConfig.startTime(), timeConfig.endTime(), team);
 
-      dateWithDataMap.forEach(
-          (key, value) -> {
-            List<TotalEntitiesByType> list =
-                JsonUtils.convertValue(value, new TypeReference<>() {});
-            Double count = getCountOfEntitiesFromList(list);
-            dateMap.put(Utilities.getDateFromEpoch(key), count.intValue());
-          });
+    Double previousCount = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
+    Double currentCount = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
 
-      processDateMapToNormalize(dateMap);
+    contextData.put(PREVIOUS_TOTAL_ASSET_COUNT, previousCount);
+    contextData.put(CURRENT_TOTAL_ASSET_COUNT, currentCount);
 
-      if (previousCount == 0D) {
-        // it should be undefined
-        return new DataInsightTotalAssetTemplate(currentCount, 0D, numberOfDays, dateMap);
-      } else {
-        return new DataInsightTotalAssetTemplate(
-            currentCount,
-            ((currentCount - previousCount) / previousCount) * 100,
-            numberOfDays,
-            dateMap);
-      }
+    dateWithCount.forEach(
+        (key, value) -> {
+          dateMap.put(key, value.intValue());
+        });
+    processDateMapToNormalize(dateMap);
+
+    if (previousCount == 0D) {
+      // it should be undefined
+      return new DataInsightTotalAssetTemplate(
+          currentCount, 0D, timeConfig.numberOfDaysChange(), dateMap);
+    } else {
+      return new DataInsightTotalAssetTemplate(
+          currentCount,
+          ((currentCount - previousCount) / previousCount) * 100,
+          timeConfig.numberOfDaysChange(),
+          dateMap);
     }
-
-    return new DataInsightTotalAssetTemplate(0D, 0D, numberOfDays, dateMap);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createDescriptionTemplate(
       SearchClient searchClient,
       String team,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange)
+      TimeConfig timeConfig,
+      Map<String, Object> contextData)
       throws ParseException, IOException {
     // Create A Date Map
     Map<String, Integer> dateMap = new LinkedHashMap<>();
-    Utilities.getLastSevenDays(currentTime).forEach(day -> dateMap.put(day, 0));
+    Utilities.getLastSevenDays(timeConfig.endTime()).forEach(day -> dateMap.put(day, 0));
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team,
-            scheduleTime,
-            currentTime,
-            PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.value());
-    if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
-      List<PercentageOfEntitiesWithDescriptionByType> first =
-          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-      List<PercentageOfEntitiesWithDescriptionByType> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+    Map<String, Double> dateWithCount =
+        getDateMapWithCountFromChart(
+            "number_of_data_asset_with_description_kpi",
+            timeConfig.startTime(),
+            timeConfig.endTime(),
+            team);
 
-      double previousCompletedDescription = getCompletedDescriptionCount(first);
-      double previousTotalCount = getTotalEntityFromDescriptionList(first);
-      double currentCompletedDescription = getCompletedDescriptionCount(last);
-      double currentTotalCount = getTotalEntityFromDescriptionList(last);
+    Double previousCompletedDescription = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
+    Double currentCompletedDescription = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
 
-      dateWithDataMap.forEach(
-          (key, value) -> {
-            List<PercentageOfEntitiesWithDescriptionByType> list =
-                JsonUtils.convertValue(value, new TypeReference<>() {});
-            Double count = getCompletedDescriptionCount(list);
-            dateMap.put(Utilities.getDateFromEpoch(key), count.intValue());
-          });
+    Double previousTotalAssetCount = (double) contextData.get(PREVIOUS_TOTAL_ASSET_COUNT);
+    Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
-      processDateMapToNormalize(dateMap);
+    dateWithCount.forEach(
+        (key, value) -> {
+          dateMap.put(key, value.intValue());
+        });
+    processDateMapToNormalize(dateMap);
 
-      // Previous Percent
-      double previousPercentCompleted = 0D;
-      if (previousTotalCount != 0) {
-        previousPercentCompleted = (previousCompletedDescription / previousTotalCount) * 100;
-      }
-      // Current Percent
-      double currentPercentCompleted = 0;
-      if (currentTotalCount != 0) {
-        currentPercentCompleted = (currentCompletedDescription / currentTotalCount) * 100;
-      }
-
-      return getTemplate(
-          DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
-          PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-          currentPercentCompleted,
-          currentPercentCompleted - previousPercentCompleted,
-          (int) currentCompletedDescription,
-          numberOfDaysChange,
-          dateMap);
+    // Previous Percent
+    double previousPercentCompleted = 0D;
+    if (previousTotalAssetCount != 0D) {
+      previousPercentCompleted = (previousCompletedDescription / previousTotalAssetCount) * 100;
+    }
+    // Current Percent
+    double currentPercentCompleted = 0D;
+    if (currentTotalAssetCount != 0D) {
+      currentPercentCompleted = (currentCompletedDescription / currentTotalAssetCount) * 100;
     }
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
-        PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE,
-        0D,
-        0D,
-        0,
-        numberOfDaysChange,
+        "percentage_of_data_asset_with_description_kpi",
+        currentPercentCompleted,
+        currentPercentCompleted - previousPercentCompleted,
+        currentCompletedDescription.intValue(),
+        timeConfig.numberOfDaysChange(),
         dateMap);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createOwnershipTemplate(
       SearchClient searchClient,
       String team,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange)
-      throws ParseException, IOException {
+      TimeConfig timeConfig,
+      Map<String, Object> contextData)
+      throws IOException {
     // Create A Date Map
     Map<String, Integer> dateMap = new LinkedHashMap<>();
-    Utilities.getLastSevenDays(currentTime).forEach(day -> dateMap.put(day, 0));
+    Utilities.getLastSevenDays(timeConfig.endTime()).forEach(day -> dateMap.put(day, 0));
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team,
-            scheduleTime,
-            currentTime,
-            PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-            ENTITY_REPORT_DATA_INDEX.value());
-    if (dateWithDataMap.firstEntry() != null && dateWithDataMap.lastEntry() != null) {
-      List<PercentageOfEntitiesWithOwnerByType> first =
-          JsonUtils.convertValue(dateWithDataMap.firstEntry().getValue(), new TypeReference<>() {});
-      List<PercentageOfEntitiesWithOwnerByType> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
+    Map<String, Double> dateWithCount =
+        getDateMapWithCountFromChart(
+            "number_of_data_asset_with_owner_kpi",
+            timeConfig.startTime(),
+            timeConfig.endTime(),
+            team);
 
-      double previousHasOwner = getCompletedOwnershipCount(first);
-      double previousTotalCount = getTotalEntityFromOwnerList(first);
-      double currentHasOwner = getCompletedOwnershipCount(last);
-      double currentTotalCount = getTotalEntityFromOwnerList(last);
+    Double previousHasOwner = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
+    Double currentHasOwner = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
 
-      // Previous Percent
-      double previousPercentCompleted = 0D;
-      if (previousTotalCount != 0) {
-        previousPercentCompleted = (previousHasOwner / previousTotalCount) * 100;
-      }
-      // Current Percent
-      double currentPercentCompleted = 0;
-      if (currentTotalCount != 0) {
-        currentPercentCompleted = (currentHasOwner / currentTotalCount) * 100;
-      }
-      dateWithDataMap.forEach(
-          (key, value) -> {
-            List<PercentageOfEntitiesWithOwnerByType> list =
-                JsonUtils.convertValue(value, new TypeReference<>() {});
-            Double count = getCompletedOwnershipCount(list);
-            dateMap.put(Utilities.getDateFromEpoch(key), count.intValue());
-          });
+    Double previousTotalAssetCount = (double) contextData.get(PREVIOUS_TOTAL_ASSET_COUNT);
+    Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
-      processDateMapToNormalize(dateMap);
+    dateWithCount.forEach(
+        (key, value) -> {
+          dateMap.put(key, value.intValue());
+        });
+    processDateMapToNormalize(dateMap);
 
-      return getTemplate(
-          DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
-          PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-          currentPercentCompleted,
-          currentPercentCompleted - previousPercentCompleted,
-          (int) currentHasOwner,
-          numberOfDaysChange,
-          dateMap);
+    // Previous Percent
+    double previousPercentCompleted = 0D;
+    if (previousTotalAssetCount != 0) {
+      previousPercentCompleted = (previousHasOwner / previousTotalAssetCount) * 100;
     }
+    // Current Percent
+    double currentPercentCompleted = 0;
+    if (currentTotalAssetCount != 0) {
+      currentPercentCompleted = (currentHasOwner / currentTotalAssetCount) * 100;
+    }
+
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
-        PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE,
-        0D,
-        0D,
-        0,
-        numberOfDaysChange,
+        "percentage_of_data_asset_with_owner_kpi",
+        currentPercentCompleted,
+        currentPercentCompleted - previousPercentCompleted,
+        currentHasOwner.intValue(),
+        timeConfig.numberOfDaysChange(),
         dateMap);
   }
 
   private DataInsightDescriptionAndOwnerTemplate createTierTemplate(
       SearchClient searchClient,
       String team,
-      Long scheduleTime,
-      Long currentTime,
-      int numberOfDaysChange)
+      TimeConfig timeConfig,
+      Map<String, Object> contextData)
       throws ParseException, IOException {
     // Create A Date Map
     Map<String, Integer> dateMap = new LinkedHashMap<>();
-    Utilities.getLastSevenDays(currentTime).forEach(day -> dateMap.put(day, 0));
+    Utilities.getLastSevenDays(timeConfig.endTime()).forEach(day -> dateMap.put(day, 0));
+
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
-    TreeMap<Long, List<Object>> dateWithDataMap =
-        searchClient.getSortedDate(
-            team,
-            scheduleTime,
-            currentTime,
-            TOTAL_ENTITIES_BY_TIER,
-            ENTITY_REPORT_DATA_INDEX.value());
-    if (dateWithDataMap.lastEntry() != null) {
-      List<TotalEntitiesByTier> last =
-          JsonUtils.convertValue(dateWithDataMap.lastEntry().getValue(), new TypeReference<>() {});
-      dateWithDataMap.forEach(
-          (key, value) -> {
-            List<TotalEntitiesByTier> list =
-                JsonUtils.convertValue(value, new TypeReference<>() {});
-            Double count = getCountOfTieredEntities(list);
-            dateMap.put(Utilities.getDateFromEpoch(key), count.intValue());
-          });
-      processDateMapToNormalize(dateMap);
-      Map<String, Double> tierData = getTierData(last);
-      return new DataInsightDescriptionAndOwnerTemplate(
-          DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
-          null,
-          "0",
-          0D,
-          KPI_NOT_SET,
-          0D,
-          false,
-          "",
-          numberOfDaysChange,
-          tierData,
-          dateMap);
+    Map<String, Double> dateWithCount =
+        getDateMapWithCountFromChart(
+            "total_data_assets_by_tier", timeConfig.startTime(), timeConfig.endTime(), team);
+
+    Double previousHasTier = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
+    Double currentHasTier = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
+
+    Double previousTotalAssetCount = (double) contextData.get(PREVIOUS_TOTAL_ASSET_COUNT);
+    Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
+
+    dateWithCount.forEach(
+        (key, value) -> {
+          dateMap.put(key, value.intValue());
+        });
+    processDateMapToNormalize(dateMap);
+
+    // Previous Percent
+    double previousPercentCompleted = 0D;
+    if (previousTotalAssetCount != 0) {
+      previousPercentCompleted = (previousHasTier / previousTotalAssetCount) * 100;
     }
+    // Current Percent
+    double currentPercentCompleted = 0;
+    if (currentTotalAssetCount != 0) {
+      currentPercentCompleted = (currentHasTier / currentTotalAssetCount) * 100;
+    }
+
+    // TODO: Understand if we actually use this tierData for anything.
+    Map<String, Double> tierData = new HashMap<>();
 
     return new DataInsightDescriptionAndOwnerTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.TIER,
         null,
-        "0",
-        0D,
+        String.valueOf(currentHasTier.intValue()),
+        currentPercentCompleted,
         KPI_NOT_SET,
-        0D,
+        currentPercentCompleted - previousPercentCompleted,
         false,
         "",
-        numberOfDaysChange,
-        new HashMap<>(),
+        timeConfig.numberOfDaysChange(),
+        tierData,
         dateMap);
   }
 
-  private Double getCountOfEntitiesFromList(List<TotalEntitiesByType> entitiesByTypeList) {
-    // If there are multiple entries for same entities then this can yield invalid results
-    Double totalCount = 0D;
-    for (TotalEntitiesByType obj : entitiesByTypeList) {
-      totalCount += obj.getEntityCount();
-    }
-    return totalCount;
+  private Map<String, Double> getDateMapWithCountFromChart(
+      String chartName, Long startTime, Long endTime, String team) throws IOException {
+    String filter = prepareTeamFilter(team);
+    Map<String, DataInsightCustomChartResultList> systemChartMap =
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+    return systemChartMap.get(chartName).getResults().stream()
+        .map(
+            result -> {
+              Map<String, Double> dayCount = new HashMap<>();
+              dayCount.put(
+                  TimestampUtils.timestampToString(result.getDay().longValue(), "dd"),
+                  result.getCount());
+              return dayCount;
+            })
+        .flatMap(map -> map.entrySet().stream())
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.summingDouble(Map.Entry::getValue)));
   }
 
-  private Double getCountOfTieredEntities(List<TotalEntitiesByTier> entitiesByTierList) {
-    // If there are multiple entries for same entities then this can yield invalid results
-    double totalCount = 0D;
-    for (TotalEntitiesByTier obj : entitiesByTierList) {
-      totalCount += obj.getEntityCountFraction() * 100;
-    }
-    return totalCount;
-  }
+  private String prepareTeamFilter(String team) {
+    String filter = null;
 
-  private Map<String, Double> getTierData(List<TotalEntitiesByTier> entitiesByTypeList) {
-    // If there are multiple entries for same entities then this can yield invalid results
-    Map<String, Double> data = new TreeMap<>();
-    for (TotalEntitiesByTier obj : entitiesByTypeList) {
-      data.put(obj.getEntityTier(), obj.getEntityCountFraction() * 100);
+    if (!CommonUtil.nullOrEmpty(team)) {
+      filter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":\"%s\"}}]}}]}}}",
+              team);
     }
-    return data;
-  }
 
-  private Double getTotalEntityFromDescriptionList(
-      List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
-    // If there are multiple entries for same entities then this can yield invalid results
-    Double totalCount = 0D;
-    for (PercentageOfEntitiesWithDescriptionByType obj : entitiesByTypeList) {
-      totalCount += obj.getEntityCount();
-    }
-    return totalCount;
-  }
-
-  private Double getCompletedDescriptionCount(
-      List<PercentageOfEntitiesWithDescriptionByType> entitiesByTypeList) {
-    // If there are multiple entries for same entities then this can yield invalid results
-    Double completedDescriptions = 0D;
-    for (PercentageOfEntitiesWithDescriptionByType obj : entitiesByTypeList) {
-      completedDescriptions += obj.getCompletedDescription();
-    }
-    return completedDescriptions;
-  }
-
-  private Double getTotalEntityFromOwnerList(
-      List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
-    // If there are multiple entries for same entities then this can yield invalid results
-    Double totalCount = 0D;
-    for (PercentageOfEntitiesWithOwnerByType obj : entitiesByTypeList) {
-      totalCount += obj.getEntityCount();
-    }
-    return totalCount;
-  }
-
-  private Double getCompletedOwnershipCount(
-      List<PercentageOfEntitiesWithOwnerByType> entitiesByTypeList) {
-    // If there are multiple entries for same entities then this can yield invalid results
-    Double hasOwner = 0D;
-    for (PercentageOfEntitiesWithOwnerByType obj : entitiesByTypeList) {
-      hasOwner += obj.getHasOwner();
-    }
-    return hasOwner;
+    return filter;
   }
 
   private DataInsightDescriptionAndOwnerTemplate getTemplate(
       DataInsightDescriptionAndOwnerTemplate.MetricType metricType,
-      DataInsightChartResult.DataInsightChartType chartType,
+      String chartKpiName,
       Double percentCompleted,
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
-      Map<String, Integer> dateMap) {
+      Map<String, Integer> dateMap)
+      throws IOException {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;
     boolean isKpiAvailable = false;
     for (Kpi kpiObj : kpiList) {
-      if (Objects.equals(kpiObj.getDataInsightChart().getName(), chartType.value())) {
+      if (kpiObj.getDataInsightChart().getName().equals(chartKpiName)) {
         validKpi = kpiObj;
         isKpiAvailable = true;
         break;
@@ -530,9 +448,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     String targetKpi = KPI_NOT_SET;
 
     if (isKpiAvailable) {
-      targetKpi =
-          String.format(
-              "%.2f", Double.parseDouble(validKpi.getTargetDefinition().get(0).getValue()) * 100);
+      targetKpi = String.format("%.2f", validKpi.getTargetValue());
       KpiResult result = getKpiResult(validKpi.getName());
       if (result != null) {
         isTargetMet = result.getTargetResult().get(0).getTargetMet();

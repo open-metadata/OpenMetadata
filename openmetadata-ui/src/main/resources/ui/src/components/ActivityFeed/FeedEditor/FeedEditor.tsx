@@ -19,6 +19,7 @@ import 'quill-mention';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
+  KeyboardEvent,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -237,14 +238,27 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
      */
     const handleKeyDown = (e: KeyboardEvent) => {
       // This logic will handle Enter key binding
-      if (e.key === 'Enter' && !e.shiftKey && !isMentionListOpen) {
-        e.preventDefault();
-        onSaveHandle();
-      }
-      // handle enter keybinding for mention popup
-      // set mention list state to false when mention item is selected
-      else if (e.key === 'Enter') {
-        toggleMentionList(false);
+      if (e.key === 'Enter') {
+        // Ignore Enter keydown events caused by IME operations during CJK text input.
+        // https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event#keydown_events_with_ime
+        // Note: `compositionstart` may fire after keydown when typing the first character that opens up the IME,
+        // and compositionend may fire before keydown when typing the last character that closes the IME.
+        // In these cases, isComposing is false even when the event is part of composition.
+        // However, KeyboardEvent.keyCode is still 229 in these cases,
+        // so it's still advisable to check keyCode as well, although it's deprecated.
+        if (e.nativeEvent.isComposing || e.keyCode === 229) {
+          return;
+        }
+        // handle enter keybinding for save
+        if (!e.shiftKey && !isMentionListOpen) {
+          e.preventDefault();
+          onSaveHandle();
+        }
+        // handle enter keybinding for mention popup
+        // set mention list state to false when mention item is selected
+        else {
+          toggleMentionList(false);
+        }
       }
     };
 

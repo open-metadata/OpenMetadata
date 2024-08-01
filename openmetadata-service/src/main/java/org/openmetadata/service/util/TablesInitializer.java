@@ -41,6 +41,7 @@ import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -329,6 +330,7 @@ public final class TablesInitializer {
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
             extensionSQLScriptRootPath,
+            config.getPipelineServiceClientConfiguration(),
             forceMigrations);
         break;
       case MIGRATE:
@@ -340,6 +342,7 @@ public final class TablesInitializer {
             ConnectionType.from(config.getDataSourceFactory().getDriverClass()),
             nativeSQLRootPath,
             extensionSQLScriptRootPath,
+            config.getPipelineServiceClientConfiguration(),
             forceMigrations);
         break;
       case INFO:
@@ -389,11 +392,17 @@ public final class TablesInitializer {
       ConnectionType connType,
       String nativeMigrationSQLPath,
       String extensionSQLScriptRootPath,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
       boolean forceMigrations) {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeMigrationSQLPath, connType, extensionSQLScriptRootPath, forceMigrations);
+            jdbi,
+            nativeMigrationSQLPath,
+            connType,
+            extensionSQLScriptRootPath,
+            pipelineServiceClientConfiguration,
+            forceMigrations);
     // Initialize search repository
     new SearchRepository(config.getElasticSearchConfiguration());
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
