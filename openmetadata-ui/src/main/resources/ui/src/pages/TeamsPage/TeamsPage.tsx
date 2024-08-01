@@ -111,7 +111,7 @@ const TeamsPage = () => {
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
     try {
       const { data } = await getTeams({
-        parentTeam: parentTeam ?? '' ?? 'organization',
+        parentTeam: parentTeam ?? 'organization',
         include: Include.All,
       });
 
@@ -137,7 +137,7 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams({
-        parentTeam: parentTeam ?? '' ?? 'organization',
+        parentTeam: parentTeam ?? 'organization',
         include: Include.All,
         fields: [
           TabSpecificField.USER_COUNT,
