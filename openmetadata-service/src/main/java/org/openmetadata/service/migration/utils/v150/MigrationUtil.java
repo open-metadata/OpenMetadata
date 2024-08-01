@@ -12,6 +12,7 @@ import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
@@ -137,18 +138,28 @@ public class MigrationUtil {
   public static void updateDataInsightsApplication() {
     AppRepository appRepository = new AppRepository();
 
-    App dataInsightsApp = appRepository.getByName(null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*")));
-    App updatedDataInsightsApp = appRepository.getByName(null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*")));
+    Optional<App> oDataInsightsApp = Optional.empty();
 
-    updatedDataInsightsApp.setAppType(AppType.Internal);
-    updatedDataInsightsApp.setScheduleType(ScheduleType.ScheduledOrManual);
-    Map<String, Object> appConfig = new HashMap<>();
-    appConfig.put("type", "DataInsights");
-    appConfig.put("batchSize", 100);
-    updatedDataInsightsApp.setAppConfiguration(appConfig);
-    updatedDataInsightsApp.setAllowConfiguration(true);
+    try {
+      oDataInsightsApp = Optional.ofNullable(appRepository.getByName(null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*"))));
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Pipeline not found.");
+    }
 
-    appRepository.update(null, dataInsightsApp, updatedDataInsightsApp);
+    if (oDataInsightsApp.isPresent()) {
+      App dataInsightsApp = oDataInsightsApp.get();
+      App updatedDataInsightsApp = appRepository.getByName(null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*")));
+
+      updatedDataInsightsApp.setAppType(AppType.Internal);
+      updatedDataInsightsApp.setScheduleType(ScheduleType.ScheduledOrManual);
+      Map<String, Object> appConfig = new HashMap<>();
+      appConfig.put("type", "DataInsights");
+      appConfig.put("batchSize", 100);
+      updatedDataInsightsApp.setAppConfiguration(appConfig);
+      updatedDataInsightsApp.setAllowConfiguration(true);
+
+      appRepository.update(null, dataInsightsApp, updatedDataInsightsApp);
+    }
   }
 
   public static void migrateTestCaseDimension(Handle handle, CollectionDAO collectionDAO) {
