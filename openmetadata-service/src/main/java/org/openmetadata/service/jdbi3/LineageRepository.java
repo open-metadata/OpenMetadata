@@ -204,6 +204,7 @@ public class LineageRepository {
       } else {
         pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
       }
+      pipelineMap.remove("changeDescription");
       relationshipDetails.put("pipelineEntityType", pipelineRef.getType());
       relationshipDetails.put(PIPELINE, pipelineMap);
     }
