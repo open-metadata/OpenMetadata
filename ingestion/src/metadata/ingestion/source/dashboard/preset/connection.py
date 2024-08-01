@@ -18,8 +18,8 @@ from typing import Optional
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
-from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.presetConnection import (
+    PresetConnection,
 )
 from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
@@ -34,7 +34,7 @@ from metadata.ingestion.source.dashboard.superset.queries import (
 )
 
 
-def get_connection(connection: SupersetConnection) -> PresetAPIClient:
+def get_connection(connection: PresetConnection) -> PresetAPIClient:
     """
     Create connection
     """
@@ -46,7 +46,7 @@ def get_connection(connection: SupersetConnection) -> PresetAPIClient:
 def test_connection(
     metadata: OpenMetadata,
     client: PresetAPIClient,
-    service_connection: SupersetConnection,
+    service_connection: PresetConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
 ) -> None:
     """

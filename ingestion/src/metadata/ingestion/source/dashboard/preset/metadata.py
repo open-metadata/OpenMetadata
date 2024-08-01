@@ -13,11 +13,11 @@ Superset source module
 """
 from typing import Optional
 
-from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.presetConnection import (
+    PresetConnection,
 )
-from metadata.generated.schema.entity.utils.supersetApiConnection import (
-    SupersetApiConnection,
+from metadata.generated.schema.entity.utils.presetApiConnection import (
+    PresetApiConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -28,9 +28,9 @@ from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPIS
 from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSource
 
 
-class SupersetSource:
+class PresetSource:
     """
-    Superset Source Class
+    Preset Source Class
     """
 
     @classmethod
@@ -41,11 +41,11 @@ class SupersetSource:
         pipeline_name: Optional[str] = None,
     ):
         config = WorkflowSource.model_validate(config_dict)
-        connection: SupersetConnection = config.serviceConnection.root.config
-        if not isinstance(connection, SupersetConnection):
+        connection: PresetConnection = config.serviceConnection.root.config
+        if not isinstance(connection, PresetConnection):
             raise InvalidSourceException(
-                f"Expected SupersetConnection, but got {connection}"
+                f"Expected PresetConnection, but got {connection}"
             )
-        if isinstance(connection.connection, SupersetApiConnection):
+        if isinstance(connection.connection, PresetApiConnection):
             return SupersetAPISource(config, metadata)
         return SupersetDBSource(config, metadata)
