@@ -119,7 +119,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         .withEventType(eventType)
         .withEntityId(TABLE.getId())
         .withEntityType(Entity.TABLE)
-        .withEntityDomain(nullOrEmpty(TABLE.getDomain()) ? null : TABLE.getDomain().getId())
+        .withDomain(nullOrEmpty(TABLE.getDomain()) ? null : TABLE.getDomain().getId())
         .withEntityFullyQualifiedName(TABLE.getFullyQualifiedName())
         .withChangeDescription(changeDescription)
         .withPreviousVersion(previousVersion)
