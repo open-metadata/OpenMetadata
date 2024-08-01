@@ -59,8 +59,8 @@ class CliDBTBase(TestCase):
                 self.assertIsNotNone(data_model.upstream)
                 self.assertIsNotNone(data_model.description)
                 self.assertIsNotNone(table.description)
-                self.assertIsNotNone(data_model.owner)
-                self.assertIsNotNone(table.owner)
+                self.assertIsNotNone(data_model.owners)
+                self.assertIsNotNone(table.owners)
                 self.assertTrue(len(data_model.tags) > 0)
                 self.assertTrue(len(table.tags) > 0)
 
