@@ -206,14 +206,15 @@ export const getDomainOptions = (
   domains: Domain[] | EntityReference[],
   isAdmin = true
 ) => {
-  const domainOptions: ItemType[] = isAdmin
-    ? [
-        {
-          label: t('label.all-domain-plural'),
-          key: DEFAULT_DOMAIN_VALUE,
-        },
-      ]
-    : [];
+  const domainOptions: ItemType[] =
+    isAdmin || domains.length === 0
+      ? [
+          {
+            label: t('label.all-domain-plural'),
+            key: DEFAULT_DOMAIN_VALUE,
+          },
+        ]
+      : [];
   domains.forEach((domain) => {
     domainOptions.push({
       label: getEntityName(domain),

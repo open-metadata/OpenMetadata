@@ -14,12 +14,12 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ROUTES } from '../../constants/constants';
+import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -28,7 +28,11 @@ import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { useFqn } from '../../hooks/useFqn';
-import { getDomainByName, patchDomains } from '../../rest/domainAPI';
+import {
+  getDomainByName,
+  getDomainList,
+  patchDomains,
+} from '../../rest/domainAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -42,14 +46,29 @@ const DomainPage = () => {
   const { fqn: domainFqn } = useFqn();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
-  const { domains, refreshDomains, updateDomains, domainLoading } =
+  const { domains, updateDomains, domainLoading, updateDomainLoading } =
     useDomainStore();
-  const [isMainContentLoading, setIsMainContentLoading] = useState(true);
+  const [isMainContentLoading, setIsMainContentLoading] = useState(false);
   const [activeDomain, setActiveDomain] = useState<Domain>();
 
   const rootDomains = useMemo(() => {
     return domains.filter((domain) => domain.parent == null);
   }, [domains]);
+
+  const refreshDomains = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
 
   const [
     createDomainPermission,
@@ -83,7 +102,7 @@ const DomainPage = () => {
           }
         });
 
-        updateDomains(updatedDomains);
+        updateDomains(updatedDomains, false);
 
         if (activeDomain?.name !== updatedData.name) {
           history.push(getDomainPath(response.fullyQualifiedName));
@@ -146,10 +165,10 @@ const DomainPage = () => {
   ]);
 
   useEffect(() => {
-    if (domainFqn && rootDomains.length > 0) {
+    if (domainFqn) {
       fetchDomainByName(domainFqn);
     }
-  }, [domainFqn, rootDomains]);
+  }, [domainFqn]);
 
   useEffect(() => {
     if (rootDomains.length > 0 && !domainFqn && !domainLoading) {
