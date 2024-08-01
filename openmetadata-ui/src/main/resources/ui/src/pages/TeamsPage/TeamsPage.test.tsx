@@ -68,10 +68,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
-  getDecodedFqn: jest.fn(),
-}));
-
 jest.mock('../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
