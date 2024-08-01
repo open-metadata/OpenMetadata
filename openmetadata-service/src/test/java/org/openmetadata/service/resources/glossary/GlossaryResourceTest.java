@@ -181,8 +181,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<UUID> glossaryTermReviewerIds =
         GLOSSARY_TERM1.getReviewers().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
-    assertEquals(glossaryTermReviewerIds, listOf(USER1_REF.getId(), USER2_REF.getId()));
+    assertEquals(
+        glossaryTermReviewerIds,
+        listOf(USER1_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the term reviewers
     Thread approvalTask =
@@ -194,6 +197,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<UUID> taskAssigneeIds =
         approvalTask.getTask().getAssignees().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
     assertEquals(glossaryTermReviewerIds, taskAssigneeIds);
 
@@ -235,8 +239,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<UUID> childTermReviewerIds =
         CHILD_TERM1.getReviewers().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
-    assertEquals(childTermReviewerIds, listOf(DATA_CONSUMER_REF.getId(), USER2_REF.getId()));
+    assertEquals(
+        childTermReviewerIds,
+        listOf(DATA_CONSUMER_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the child term reviewers
     approvalTask = glossaryTermResourceTest.assertApprovalTask(CHILD_TERM1, TaskStatus.Open);
@@ -246,6 +253,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     taskAssigneeIds =
         approvalTask.getTask().getAssignees().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
     assertEquals(childTermReviewerIds, taskAssigneeIds);
   }
