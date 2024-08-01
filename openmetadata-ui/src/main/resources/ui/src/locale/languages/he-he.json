@@ -1031,6 +1031,7 @@
     "select-a-metric-type": "בחר סוג מטריקה",
     "select-a-policy": "בחר מדיניות",
     "select-add-test-suite": "בחר/הוסף יחידת בדיקה",
+    "select-all-entity": "Select All {{entity}}",
     "select-column-plural-to-exclude": "בחר עמודות לא לכלול",
     "select-column-plural-to-include": "בחר עמודות לכלול",
     "select-entity": "Select {{entity}}",

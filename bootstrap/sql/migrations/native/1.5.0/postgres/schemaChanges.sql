@@ -203,3 +203,8 @@ WHERE jsonb_path_exists(json, '$.owner')
   AND jsonb_typeof(json->'owner') <> 'array';
 
 ALTER TABLE test_case ALTER COLUMN name TYPE VARCHAR(512);
+
+-- set templates to fetch emailTemplates
+UPDATE openmetadata_settings
+SET json = jsonb_set(json, '{templates}', '"openmetadata"')
+WHERE configType = 'emailConfiguration';
