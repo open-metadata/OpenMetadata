@@ -813,7 +813,7 @@ public class TeamRepository extends EntityRepository<Team> {
     }
 
     protected void updateDomain() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomain()) && updatedByBot()) {
+      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
         // Revert change to non-empty domain if it is being updated by a bot
         // This is to prevent bots from overwriting the domain. Domain need to be
         // updated with a PATCH request
