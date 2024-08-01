@@ -10,23 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   DEFAULT_DOMAIN_VALUE,
   DOMAIN_STORAGE_KEY,
-  ES_MAX_PAGE_SIZE,
 } from '../constants/constants';
 import { Domain } from '../generated/entity/domains/domain';
 import { EntityReference } from '../generated/entity/type';
 import { DomainStore } from '../interface/store.interface';
-import { getDomainList } from '../rest/domainAPI';
 import {
   getDomainOptions,
   initializeDomainEntityRef,
 } from '../utils/DomainUtils';
-import { showErrorToast } from '../utils/ToastUtils';
 import { useApplicationStore } from './useApplicationStore';
 
 export const useDomainStore = create<DomainStore>()(
@@ -38,47 +34,37 @@ export const useDomainStore = create<DomainStore>()(
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       activeDomainEntityRef: undefined,
       domainOptions: [],
-      fetchDomainList: async () => {
+      updateDomains: (data: Domain[], selectDefault = true) => {
         const currentUser = useApplicationStore.getState().currentUser;
         const { isAdmin = false, domains = [] } = currentUser ?? {};
         const userDomainsObj = isAdmin ? [] : domains;
         const userDomainFqn =
           userDomainsObj.map((item) => item.fullyQualifiedName) ?? [];
 
-        set({ domainLoading: true, userDomains: userDomainsObj });
+        let filteredDomains: Domain[] = data;
+        if (domains.length > 0) {
+          filteredDomains = data.filter((domain) =>
+            userDomainFqn.includes(domain.fullyQualifiedName)
+          );
+        }
 
-        try {
-          const { data } = await getDomainList({
-            limit: ES_MAX_PAGE_SIZE,
-            fields: 'parent',
-          });
+        set({
+          domains: filteredDomains,
+          domainOptions: getDomainOptions(
+            isAdmin ? filteredDomains : userDomainsObj,
+            isAdmin
+          ),
+        });
 
-          let filteredDomains = data;
-          if (domains.length > 0) {
-            filteredDomains = data.filter((domain) =>
-              userDomainFqn.includes(domain.fullyQualifiedName)
-            );
-          }
-
-          set({
-            domains: filteredDomains,
-            domainOptions: getDomainOptions(
-              isAdmin ? filteredDomains : userDomainsObj,
-              isAdmin
-            ),
-          });
-
-          if (!isAdmin && userDomainsObj.length > 0 && !get().activeDomain) {
-            set({ activeDomain: userDomainsObj[0].fullyQualifiedName });
-          }
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          set({ domainLoading: false });
+        if (
+          selectDefault &&
+          !isAdmin &&
+          userDomainsObj.length > 0 &&
+          !get().activeDomain
+        ) {
+          set({ activeDomain: userDomainsObj[0].fullyQualifiedName });
         }
       },
-      updateDomains: (domainsArr: Domain[]) => set({ domains: domainsArr }),
-      refreshDomains: () => get().fetchDomainList(),
       updateActiveDomain: (activeDomainKey: string) => {
         const activeDomainEntityRef = initializeDomainEntityRef(
           get().domains,
@@ -88,7 +74,9 @@ export const useDomainStore = create<DomainStore>()(
           activeDomain: activeDomainKey,
           activeDomainEntityRef,
         });
-        get().refreshDomains();
+      },
+      updateDomainLoading: (loading: boolean) => {
+        set({ domainLoading: loading });
       },
       setDomains: (domainsArr: Domain[]) => {
         set({
