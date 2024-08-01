@@ -12,6 +12,9 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import FeedsWidget from './FeedsWidget.component';
 
 const mockHandleRemoveWidget = jest.fn();
@@ -53,6 +56,8 @@ const mockThread = [
     },
   },
 ];
+
+// const mockGetFeedData = jest.fn().mockImplementation(() => Promise.resolve());
 
 const mockUseActivityFeedProviderValue = {
   entityPaging: { total: 4 },
@@ -114,7 +119,47 @@ jest.mock(
   })
 );
 
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
+    currentUser: mockUserData,
+  })),
+}));
+
 describe('FeedsWidget', () => {
+  it('should call getFeedData for owner conversation on load for non admin user', () => {
+    render(<FeedsWidget {...widgetProps} />);
+
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      'OWNER_OR_FOLLOWS',
+      undefined,
+      'Conversation',
+      undefined,
+      undefined,
+      undefined,
+      PAGE_SIZE_LARGE
+    );
+  });
+
+  it('should call getFeedData for ALL conversation on load for admin user', () => {
+    (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
+      () => ({
+        currentUser: { ...mockUserData, isAdmin: true },
+      })
+    );
+
+    render(<FeedsWidget {...widgetProps} />);
+
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      'ALL',
+      undefined,
+      'Conversation',
+      undefined,
+      undefined,
+      undefined,
+      PAGE_SIZE_LARGE
+    );
+  });
+
   it('should render FeedsWidget', async () => {
     await act(async () => {
       render(<FeedsWidget {...widgetProps} />);
