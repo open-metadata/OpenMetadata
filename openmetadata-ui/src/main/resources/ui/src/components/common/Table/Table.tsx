@@ -10,13 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SpinProps, Table as AntdTable, TableProps } from 'antd';
-import React, { useMemo } from 'react';
+import {
+  SpinProps,
+  Table as AntdTable,
+  TableColumnsType,
+  TableProps,
+} from 'antd';
+import { ColumnsType } from 'antd/lib/table';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ResizeCallbackData } from 'react-resizable';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
+import ResizableTableColumn from './ResizableTableColumn';
+
+interface TableComponentProps<T> extends TableProps<T> {
+  resizeColumn?: boolean;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
-const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
+const Table = <T extends object = any>({
+  loading,
+  ...rest
+}: TableComponentProps<T>) => {
+  const [columns, setColumns] = useState<ColumnsType<T>>([]);
+
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
     [loading]
@@ -56,6 +73,45 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
   //     );
   //   }
 
+  const handleResize =
+    (index: number) =>
+    (_: React.SyntheticEvent<Element>, { size }: ResizeCallbackData) => {
+      const newColumns = [...columns];
+      newColumns[index] = {
+        ...newColumns[index],
+        width: size.width,
+      };
+
+      setColumns(newColumns);
+    };
+
+  const mergedColumns = columns.map<TableColumnsType<T>[number]>(
+    (col, index) => {
+      return {
+        ...col,
+        onHeaderCell: (column: TableColumnsType<T>[number]) => ({
+          width: column.width,
+          onResize: handleResize(index),
+        }),
+      };
+    }
+  );
+
+  const resizingTableProps = rest.resizeColumn
+    ? {
+        components: {
+          header: {
+            cell: ResizableTableColumn,
+          },
+        },
+        columns: mergedColumns,
+      }
+    : {};
+
+  useEffect(() => {
+    setColumns(rest.columns ?? []);
+  }, [rest.columns]);
+
   return (
     <AntdTable
       {...rest}
@@ -68,6 +124,7 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
         ...rest.locale,
         emptyText: isLoading ? null : rest.locale?.emptyText,
       }}
+      {...resizingTableProps}
     />
   );
 };

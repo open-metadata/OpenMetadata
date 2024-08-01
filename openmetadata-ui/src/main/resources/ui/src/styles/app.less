@@ -796,3 +796,27 @@ a[href].link-text-grey,
     font-size: 18px;
   }
 }
+
+.react-resizable {
+  position: relative;
+  background-clip: padding-box;
+
+  -webkit-user-select: none; /* Safari */
+  -ms-user-select: none; /* IE 10 and IE 11 */
+  user-select: none; /* Standard syntax */
+}
+
+.react-resizable-handle {
+  position: absolute;
+  inset-inline-end: 0px;
+  bottom: 0;
+  z-index: 1;
+  width: 0px !important;
+  height: 50% !important;
+  cursor: col-resize;
+  background-image: none !important;
+  background-color: @border-color;
+  border: 1px solid @border-color;
+  top: 50%;
+  transform: translateY(-50%);
+}
