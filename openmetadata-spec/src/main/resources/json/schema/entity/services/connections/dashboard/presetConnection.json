@@ -1,0 +1,51 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/dashboard/presetConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PresetConnection",
+  "description": "Preset Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.dashboard.PresetConnection",
+  "definitions": {
+    "presetType": {
+      "description": "Preset service type",
+      "type": "string",
+      "enum": ["Preset"],
+      "default": "Preset"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/presetType",
+      "default": "Preset"
+    },
+    "hostPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL for the preset instance.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://api.app.preset.io"
+    },
+    "managerPort": {
+      "expose": true,
+      "title": "Host and Port",
+      "description": "URL for the preset managed instance.",
+      "type": "string",
+      "format": "uri",
+      "default": "https://api.app.preset.io"
+    },
+    "connection":{
+      "title": "Preset Connection",
+      "description": "Choose between API or database connection fetch metadata from preset.",
+      "$ref": "../../../utils/presetApiConnection.json"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort","connection"]
+}

@@ -16,6 +16,7 @@
       "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
       "enum": [
         "Superset",
+        "Preset",
         "Looker",
         "Tableau",
         "Redash",
@@ -33,6 +34,9 @@
       "javaEnums": [
         {
           "name": "Superset"
+        },
+        {
+          "name": "Preset"
         },
         {
           "name": "Looker"
@@ -100,6 +104,9 @@
             },
             {
               "$ref": "./connections/dashboard/supersetConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/presetConnection.json"
             },
             {
               "$ref": "./connections/dashboard/tableauConnection.json"

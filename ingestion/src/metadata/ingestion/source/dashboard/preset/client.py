@@ -14,8 +14,8 @@ REST Auth & Client for Preset (Managed Superset) instance
 import json
 import traceback
 
-from metadata.generated.schema.entity.services.connections.dashboard.supersetConnection import (
-    SupersetConnection,
+from metadata.generated.schema.entity.services.connections.dashboard.presetConnection import (
+    PresetConnection,
 )
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
@@ -34,10 +34,10 @@ logger = ometa_logger()
 
 class PresetAuthenticationProvider(AuthenticationProvider):
     """
-    Handle SuperSet Auth
+    Handle Preset Auth
     """
 
-    def __init__(self, config: SupersetConnection):
+    def __init__(self, config: PresetConnection):
         self.config = config
         self.service_connection = self.config
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
@@ -55,7 +55,7 @@ class PresetAuthenticationProvider(AuthenticationProvider):
         super().__init__()
 
     @classmethod
-    def create(cls, config: SupersetConnection):
+    def create(cls, config: PresetConnection):
         return cls(config)
 
     def auth_token(self) -> None:
@@ -86,7 +86,7 @@ class PresetAPIClient(SupersetAPIClient):
     client: REST
     _auth_provider: AuthenticationProvider
 
-    def __init__(self, config: SupersetConnection):
+    def __init__(self, config: PresetConnection):
         self.config = config
         self._auth_provider = PresetAuthenticationProvider.create(config)
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)

@@ -1,20 +1,31 @@
 source:
   type: preset
-  serviceName: preset
+  serviceName: local_preset_12
   serviceConnection:
     config:
-      hostPort: https://{{WorkspaceSlug}}.{{WorkspaceRegion}}.app.preset.io
-      api_token: ********
-      api_secret: *******
+      hostPort: https://api.app.preset.io
+      managerPort: https://api.app.preset.io
+      connection:
+        api_token: preset_token
+        api_secret: preset_secret
+        provider: db
+        # provider: db
+        # verifySSL: no-ssl / ignore / validate
+        # sslConfig:
+        #   certificatePath: CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `validate`.
       type: Preset
   sourceConfig:
     config:
+      type: DashboardMetadata
       chartFilterPattern: {}
       dashboardFilterPattern: {}
 sink:
   type: metadata-rest
   config: {}
 workflowConfig:
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
-    authProvider: no-auth
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "jwt_token"
