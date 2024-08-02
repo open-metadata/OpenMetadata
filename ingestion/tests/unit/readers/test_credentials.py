@@ -20,6 +20,9 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
+from metadata.generated.schema.security.credentials.gitlabCredentials import (
+    GitlabCredentials,
+)
 from metadata.readers.file.credentials import (
     get_credentials_from_url,
     update_repository_name,
@@ -65,6 +68,22 @@ class TestCreds(TestCase):
         )
         self.assertEqual(bb_updated.token.root, bb_original.token.root)
         self.assertEqual(bb_updated.branch, bb_original.branch)
+
+        gl_original = BitBucketCredentials(
+            repositoryOwner="owner",
+            repositoryName="name",
+            token="token",
+        )
+
+        gl_updated = update_repository_name(original=gl_original, name="new_name")
+
+        self.assertEqual(gl_original.repositoryName.root, "name")
+        self.assertEqual(gl_updated.repositoryName.root, "new_name")
+        self.assertEqual(
+            gl_updated.repositoryOwner.root, gl_original.repositoryOwner.root
+        )
+        self.assertEqual(gl_updated.token.root, gl_original.token.root)
+        self.assertEqual(gl_updated.branch, gl_original.branch)
 
     def test_get_credentials_from_url(self):
         """
@@ -115,3 +134,25 @@ class TestCreds(TestCase):
             original=bb_original_not_owner, url=bb_url
         )
         self.assertEqual(bb_updated_not_owner, bb_original_not_owner)
+
+        gl_url = "git@gitlab.com:owner/repo.git"
+
+        gl_original = GitlabCredentials(
+            repositoryOwner="owner",
+            repositoryName="name",
+            token="token",
+        )
+
+        gl_updated = get_credentials_from_url(original=gl_original, url=gl_url)
+        self.assertEqual(gl_updated.repositoryName.root, "repo")
+
+        gl_original_not_owner = GitlabCredentials(
+            repositoryOwner="not_owner",
+            repositoryName="name",
+            token="token",
+        )
+
+        gl_updated_not_owner = get_credentials_from_url(
+            original=bb_original_not_owner, url=gl_url
+        )
+        self.assertEqual(gl_updated_not_owner, gl_original_not_owner)

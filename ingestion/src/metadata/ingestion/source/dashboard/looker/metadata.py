@@ -73,6 +73,9 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
+from metadata.generated.schema.security.credentials.gitlabCredentials import (
+    GitlabCredentials,
+)
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
@@ -203,6 +206,7 @@ class LookerSource(DashboardServiceSource):
                 NoGitCredentials,
                 GitHubCredentials,
                 BitBucketCredentials,
+                GitlabCredentials,
             ]
         ]
     ) -> "LookMLRepo":
@@ -225,6 +229,7 @@ class LookerSource(DashboardServiceSource):
                 NoGitCredentials,
                 GitHubCredentials,
                 BitBucketCredentials,
+                GitlabCredentials,
             ]
         ],
         path="manifest.lkml",
@@ -305,7 +310,7 @@ class LookerSource(DashboardServiceSource):
         Depending on the type of the credentials we'll need a different reader
         """
         if not self._reader_class and self.service_connection.gitCredentials:
-            # Both credentials from Github & Bitbucket will process by LocalReader
+            # Credentials from Github/Gitlab/Bitbucket will process by LocalReader
             self._reader_class = LocalReader
 
         return self._reader_class
