@@ -209,7 +209,7 @@ class TableauSource(DashboardServiceSource):
                 serviceType=DashboardServiceType.Tableau.value,
                 columns=self.get_column_info(data_model),
                 sql=self._get_datamodel_sql_query(data_model=data_model),
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=data_model_request)
             self.register_record_datamodel(datamodel_request=data_model_request)
