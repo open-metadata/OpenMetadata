@@ -81,9 +81,13 @@
       },
       "default": null
     },
-    "domain" : {
-      "description": "Fully qualified name of the domain the Team belongs to.",
-      "type": "string"
+    "domains" : {
+      "description": "Domains the team belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
     }
   },
   "required": ["name", "teamType"],
