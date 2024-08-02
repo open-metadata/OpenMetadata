@@ -56,11 +56,11 @@ public class JsonPatchUtils {
     return Arrays.stream(path.split("/")).filter(part -> !part.isEmpty()).findFirst().orElse(path);
   }
 
-  //Its important that we parse the path from starting down to end
+  // Its important that we parse the path from starting down to end
   // In case of /owners/0/displayName we should see if the user has permission to EDIT_OWNERS
   // If not, we will end up returning user does not have permission to edit the displayName
   public static MetadataOperation getMetadataOperation(String path) {
-    String[] paths =  path.contains("/") ? path.split("/"): new String[]{path};
+    String[] paths = path.contains("/") ? path.split("/") : new String[] {path};
     for (String p : paths) {
       if (ResourceRegistry.hasEditOperation(p)) {
         return ResourceRegistry.getEditOperation(p);
