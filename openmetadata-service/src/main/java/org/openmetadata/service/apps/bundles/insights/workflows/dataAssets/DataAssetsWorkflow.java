@@ -97,9 +97,9 @@ public class DataAssetsWorkflow {
             oldestPossibleTimestamp);
       }
     } else {
-      this.endTimestamp =
-          TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
-      this.startTimestamp = TimestampUtils.getStartOfDayTimestamp(endTimestamp);
+      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(TimestampUtils.addDays(timestamp, 1));
+      this.startTimestamp =
+          TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
     }
 
     this.batchSize = batchSize;
