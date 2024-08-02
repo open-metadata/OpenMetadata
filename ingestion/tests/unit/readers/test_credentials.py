@@ -69,7 +69,7 @@ class TestCreds(TestCase):
         self.assertEqual(bb_updated.token.root, bb_original.token.root)
         self.assertEqual(bb_updated.branch, bb_original.branch)
 
-        gl_original = BitBucketCredentials(
+        gl_original = GitlabCredentials(
             repositoryOwner="owner",
             repositoryName="name",
             token="token",
