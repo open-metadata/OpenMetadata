@@ -19,6 +19,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
+import { NOT_INCLUDE_AGGREGATION_EXPLORE_TREE } from '../../../constants/explore.constants';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -122,7 +123,9 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         });
 
         const aggregations = getAggregations(res.aggregations);
-        const buckets = aggregations[bucketToFind].buckets;
+        const buckets = aggregations[bucketToFind].buckets.filter(
+          (item) => !NOT_INCLUDE_AGGREGATION_EXPLORE_TREE.includes(item.key)
+        );
         const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
         const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
 
