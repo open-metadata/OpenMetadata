@@ -10,98 +10,71 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
-import { ReactComponent as ErrorCross } from '../../assets/svg/error-cross.svg';
-import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
 import { ReactComponent as ErrorIcon } from '../../assets/svg/ic-error.svg';
-import { ReactComponent as GeneralIcon } from '../../assets/svg/ic-general.svg';
 import { ReactComponent as InfoIcon } from '../../assets/svg/ic-info-tag.svg';
 import { ReactComponent as SuccessIcon } from '../../assets/svg/ic-success.svg';
 import { ReactComponent as WarningIcon } from '../../assets/svg/ic-warning-tag.svg';
-import { ReactComponent as InfoCross } from '../../assets/svg/info-cross.svg';
-import { ReactComponent as SuccessCross } from '../../assets/svg/success-cross.svg';
-import { ReactComponent as WarningCross } from '../../assets/svg/warning-cross.svg';
 import { useAlertStore } from '../../hooks/useAlertBar';
 import './alert-bar.style.less';
 import { AlertBarProps } from './AlertBar.interface';
+import CrossIcon from './CrossIcon';
 
-const AlertBar = ({
-  type = 'general',
-  message = '',
-}: AlertBarProps): JSX.Element => {
+const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
   const { resetAlert } = useAlertStore();
 
-  const {
-    icon: AlertIcon,
-    className,
-    crossIcon: CloseIcon,
-  } = useMemo(() => {
+  const { icon, className, crossIcon } = useMemo(() => {
     switch (type) {
       case 'info':
         return {
-          icon: InfoIcon,
+          icon: <InfoIcon />,
           className: 'info',
-          crossIcon: InfoCross,
+          crossIcon: <CrossIcon iconColor="#0950C5" />,
         };
 
       case 'success':
         return {
-          icon: SuccessIcon,
+          icon: <SuccessIcon />,
           className: 'success',
-          crossIcon: SuccessCross,
+          crossIcon: <CrossIcon iconColor="#1D7C4D" />,
         };
 
       case 'warning':
         return {
-          icon: WarningIcon,
+          icon: <WarningIcon />,
           className: 'warning',
-          crossIcon: WarningCross,
+          crossIcon: <CrossIcon iconColor="#F59638" />,
         };
 
       case 'error':
         return {
-          icon: ErrorIcon,
+          icon: <ErrorIcon />,
           className: 'error',
-          crossIcon: ErrorCross,
+          crossIcon: <CrossIcon iconColor="#CB2531" />,
         };
 
       default:
         return {
-          icon: GeneralIcon,
-          className: 'general',
-          crossIcon: CrossIcon,
+          icon: null,
+          className: '',
+          crossIcon: null,
         };
     }
   }, [type]);
 
   return (
-    <>
-      {type === 'general' ? (
-        <div className={`alert-container ${className}`}>
-          <div className="alert-content">
-            <Icon className="align-middle alert-icon" component={AlertIcon} />
-            <p>{message}</p>
-          </div>
-          <button className="cross-icon" onClick={resetAlert}>
-            <Icon className="align-middle" component={CloseIcon} />
-          </button>
-        </div>
-      ) : (
-        <Alert
-          closable
-          showIcon
-          className={classNames(className, 'alert-container')}
-          closeIcon={<CloseIcon />}
-          description={message}
-          icon={<AlertIcon />}
-          type={type}
-          onClose={resetAlert}
-        />
-      )}
-    </>
+    <Alert
+      closable
+      showIcon
+      className={classNames(className, 'alert-container')}
+      closeIcon={crossIcon}
+      description={message}
+      icon={icon}
+      type={type}
+      onClose={resetAlert}
+    />
   );
 };
 
