@@ -69,7 +69,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     selectedOptions: [],
     options: [],
   });
-  const [entitiesChartsSummary, setEntitiesChartSummary] = useState<
+  const [entitiesChartsSummary, setEntitiesChartsSummary] = useState<
     Record<SystemChartType, DataInsightCustomChartResult>
   >({} as Record<SystemChartType, DataInsightCustomChartResult>);
 
@@ -280,7 +280,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
       },
       tierTag: tier,
       entitiesSummary: entitiesChartsSummary,
-      updateEntitySummary: setEntitiesChartSummary,
+      updateEntitySummary: setEntitiesChartsSummary,
     }),
     [
       handleTeamSearch,
@@ -297,7 +297,7 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
       teamsOptions,
       isTeamLoading,
       entitiesChartsSummary,
-      setEntitiesChartSummary,
+      setEntitiesChartsSummary,
     ]
   );
 
