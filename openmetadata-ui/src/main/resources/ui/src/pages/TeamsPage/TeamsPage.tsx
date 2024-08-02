@@ -48,7 +48,6 @@ import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -112,7 +111,7 @@ const TeamsPage = () => {
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
     try {
       const { data } = await getTeams({
-        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        parentTeam: parentTeam ?? 'organization',
         include: Include.All,
       });
 
@@ -138,7 +137,7 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams({
-        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        parentTeam: parentTeam ?? 'organization',
         include: Include.All,
         fields: [
           TabSpecificField.USER_COUNT,

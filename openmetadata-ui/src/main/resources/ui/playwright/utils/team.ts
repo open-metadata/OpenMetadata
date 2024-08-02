@@ -15,7 +15,7 @@ import { uuid } from './common';
 
 export const createTeam = async (page: Page, isPublic?: boolean) => {
   const teamData = {
-    name: `pwteam-${uuid()}`,
+    name: `pw%team-${uuid()}`,
     displayName: `PW ${uuid()}`,
     email: `pwteam${uuid()}@example.com`,
     description: 'This is a PW team',
