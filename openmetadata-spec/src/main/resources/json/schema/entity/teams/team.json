@@ -124,9 +124,9 @@
       "description": "Policies that is attached to this team.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "domain" : {
+    "domains" : {
       "description": "Domain the Team belongs to.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "required": ["id", "name"],

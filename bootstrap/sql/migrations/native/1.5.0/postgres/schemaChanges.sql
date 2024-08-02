@@ -98,7 +98,6 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     UNIQUE (fqnHash)
 );
 
-
 -- Clean dangling workflows not removed after test connection
 truncate automations_workflow;
 
@@ -206,3 +205,15 @@ WHERE jsonb_path_exists(json, '$.owner')
 UPDATE openmetadata_settings
 SET json = jsonb_set(json, '{templates}', '"openmetadata"')
 WHERE configType = 'emailConfiguration';
+
+
+-- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{owner}'
+WHERE json #> '{owner}' IS NOT NULL;
+
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{service}'
+WHERE json #> '{service}' IS NOT NULL;
+
+ALTER TABLE thread_entity ADD COLUMN domain VARCHAR(256) GENERATED ALWAYS AS (json ->> 'domain') STORED;

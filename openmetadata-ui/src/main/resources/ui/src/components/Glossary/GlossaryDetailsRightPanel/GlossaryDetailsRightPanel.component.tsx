@@ -151,7 +151,8 @@ const GlossaryDetailsRightPanel = ({
           entityType={
             isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
           }
-          hasPermission={permissions.EditAll}
+          // Only allow domain selection at glossary level. Glossary Term will inherit
+          hasPermission={isGlossary ? permissions.EditAll : false}
         />
       </Col>
       <Col data-testid="glossary-right-panel-owner-link" span="24">

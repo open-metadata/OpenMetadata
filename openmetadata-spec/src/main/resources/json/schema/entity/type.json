@@ -86,6 +86,14 @@
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../type/entityReferenceList.json"
     }
   },
   "required": ["name", "description"],

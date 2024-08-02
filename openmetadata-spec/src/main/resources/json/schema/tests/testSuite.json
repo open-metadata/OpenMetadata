@@ -81,9 +81,13 @@
     },
     "serviceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
       "type": "string",
-      "enum": ["TestSuite"],
+      "enum": [
+        "TestSuite"
+      ],
       "default": "TestSuite"
     },
     "owners": {
@@ -133,10 +137,10 @@
       "description": "Summary of test case execution",
       "type": "array",
       "items": {
-          "$ref": "#/definitions/testSuiteConnection/resultSummary"
+        "$ref": "#/definitions/testSuiteConnection/resultSummary"
       }
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the test Suite belongs to. When not set, the test Suite inherits the domain from the table it belongs to.",
       "$ref": "../type/entityReference.json"
     },
@@ -149,6 +153,8 @@
       "default": null
     }
   },
-  "required": ["name"],
+  "required": [
+    "name"
+  ],
   "additionalProperties": false
 }
