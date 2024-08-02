@@ -245,7 +245,7 @@ const TeamsPage = () => {
           TabSpecificField.DEFAULT_ROLES,
           TabSpecificField.POLICIES,
           TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
         ],
         include: Include.All,
       });
@@ -271,6 +271,8 @@ const TeamsPage = () => {
   const createNewTeam = async (data: Team) => {
     try {
       setIsLoading(true);
+      const domains =
+        data?.domains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
       const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
@@ -278,8 +280,10 @@ const TeamsPage = () => {
         teamType: data.teamType as TeamType,
         parents: fqn ? [selectedTeam.id] : undefined,
         email: data.email || undefined,
+        domains,
         isJoinable: data.isJoinable,
       };
+
       const res = await createTeam(teamData);
       if (res) {
         fetchTeamBasicDetails(selectedTeam.name, true);

@@ -55,7 +55,7 @@ const UserPage = () => {
           TabSpecificField.TEAMS,
           TabSpecificField.PERSONAS,
           TabSpecificField.DEFAULT_PERSONA,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
         ],
         include: Include.All,
       });
