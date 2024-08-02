@@ -163,6 +163,16 @@ source:
 
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
 
+## Securing Impala Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and an Impala database, add the key `use_ssl` with a value of `true` to the `connectionArguments` to enable SSL. Additionally, include the key `ca_cert` with the path to the CA certificate file as its value. Ensure that the certificate file is accessible by the server, and if deploying via Docker or Kubernetes, update the CA certificate in the OpenMetadata server to reflect these changes.
+
+```yaml
+    connectionArguments:
+        use_ssl: "true"
+        ssl_cert: /path/to/ca/cert
+```
+
 ## dbt Integration
 
 {% tilesContainer %}

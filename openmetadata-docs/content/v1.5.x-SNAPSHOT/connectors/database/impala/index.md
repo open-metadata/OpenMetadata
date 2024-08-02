@@ -61,6 +61,16 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 
 {% /stepsContainer %}
 
+## Securing Impala Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and an Impala database, add the key `use_ssl` with a value of `true` to the `connectionArguments` to enable SSL. Additionally, include the key `ca_cert` with the path to the CA certificate file as its value. Ensure that the certificate file is accessible by the server, and if deploying via Docker or Kubernetes, update the CA certificate in the OpenMetadata server to reflect these changes.
+
+{% image
+  src="/images/v1.4/connectors/ssl_Impala.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
+
 {% partial file="/v1.5/connectors/troubleshooting.md" /%}
 
 {% partial file="/v1.5/connectors/database/related.md" /%}
