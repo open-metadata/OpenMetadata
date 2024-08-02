@@ -125,7 +125,8 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     Long timestamp = System.currentTimeMillis();
 
     Long endTimestamp = TimestampUtils.getEndOfDayTimestamp(timestamp);
-    Long startTimestamp = TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
+    Long startTimestamp =
+        TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
 
     // Create User
     // -------------------------------------------------
@@ -299,7 +300,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
     Request request = new Request("GET", "di-data-assets/_search");
-    String payload = String.format("{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName.keyword\":\"%s\"}}}}}", table.getFullyQualifiedName());
+    String payload =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName.keyword\":\"%s\"}}}}}",
+            table.getFullyQualifiedName());
     request.setJsonEntity(payload);
     response = searchClient.performRequest(request);
     searchClient.close();
@@ -316,6 +320,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
         .get("fullyQualifiedName")
         .equals(table.getFullyQualifiedName());
   }
+
   @Test
   void delete_systemApp_400() throws IOException {
     CreateApp systemAppRequest = createRequest(SYSTEM_APP_NAME);
