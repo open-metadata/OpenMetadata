@@ -220,11 +220,12 @@ SET json = JSON_SET(
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
 AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
 
+ALTER TABLE test_case MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
+
 -- set templates to fetch emailTemplates
 UPDATE openmetadata_settings
 SET json = JSON_SET(json, '$.templates', 'openmetadata')
 WHERE configType = 'emailConfiguration';
-
 
 -- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
 UPDATE ingestion_pipeline_entity
