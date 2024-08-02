@@ -172,7 +172,7 @@ For IAM authentication, it is recommended to choose the `allow` mode or another 
 {% /note %}
 
 {% image
-  src="/images/v1.4/connectors/ssl_connection.png"
+  src="/images/v1.5/connectors/ssl_connection.png"
   alt="SSL Configuration"
   height="450px"
   caption="SSL Configuration" /%}
