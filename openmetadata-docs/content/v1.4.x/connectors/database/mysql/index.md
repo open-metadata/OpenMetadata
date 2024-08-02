@@ -20,6 +20,7 @@ Configure and schedule MySQL metadata and profiler workflows from the OpenMetada
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Enable Security](#securing-mysql-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mysql/yaml"} /%}
 

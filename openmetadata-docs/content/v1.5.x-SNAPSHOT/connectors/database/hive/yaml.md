@@ -19,6 +19,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+- [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
 

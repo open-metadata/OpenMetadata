@@ -22,6 +22,7 @@ Configure and schedule PostgreSQL metadata and profiler workflows from the OpenM
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [Lineage](/connectors/ingestion/lineage)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/postgres/yaml"} /%}
 

@@ -20,6 +20,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
 - [Data Quality](/how-to-guides/data-quality-observability/quality/configure)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
+- [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/hive/yaml"} /%}
 

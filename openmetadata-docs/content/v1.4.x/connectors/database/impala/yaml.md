@@ -19,6 +19,7 @@ Configure and schedule Impala metadata and profiler workflows from the OpenMetad
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+- [Enable Security](#securing-impala-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 

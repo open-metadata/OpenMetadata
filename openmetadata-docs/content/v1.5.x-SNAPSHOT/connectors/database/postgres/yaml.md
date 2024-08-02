@@ -22,6 +22,7 @@ Configure and schedule Postgres metadata and profiler workflows from the OpenMet
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+- [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
 
