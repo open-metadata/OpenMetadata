@@ -166,7 +166,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
-      taskStatus?: ThreadTaskStatus
+      taskStatus?: ThreadTaskStatus,
+      limit?: number
     ) => {
       try {
         setLoading(true);
@@ -187,7 +188,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           type,
           feedFilterType,
           taskStatus,
-          userId
+          userId,
+          limit
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
@@ -219,6 +221,16 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     try {
       const res = await postFeedById(id, data);
       setActiveThread(res);
+      const { id: responseId, posts } = res;
+      setEntityThread((pre) => {
+        return pre.map((thread) => {
+          if (thread.id === responseId) {
+            return { ...res, posts: posts?.slice(-3) };
+          } else {
+            return thread;
+          }
+        });
+      });
     } catch (error) {
       showErrorToast(
         error as AxiosError,

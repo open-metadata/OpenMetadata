@@ -65,7 +65,7 @@ For the usage and lineage workflow, the user will need `SELECT` privilege on `ST
 
 - **Username**: Specify the User to connect to Redshift. It should have enough privileges to read all the metadata.
 - **Password**: Password to connect to Redshift.
-- **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+- **Database**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
 
 {% note %}
 During the metadata ingestion for redshift, the tables in which the distribution style i.e, `DISTSTYLE` is not `AUTO` will be marked as partitioned tables

@@ -27,6 +27,7 @@ export class EntityDataClass {
   static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2);
   static readonly user1 = new UserClass();
   static readonly user2 = new UserClass();
+  static readonly user3 = new UserClass();
   static readonly team1 = new TeamClass();
   static readonly team2 = new TeamClass();
   static readonly tierTag1 = new TagClass({ classification: 'Tier' });
@@ -41,6 +42,7 @@ export class EntityDataClass {
     await this.glossaryTerm2.create(apiContext);
     await this.user1.create(apiContext);
     await this.user2.create(apiContext);
+    await this.user3.create(apiContext);
     await this.team1.create(apiContext);
     await this.team2.create(apiContext);
     await this.tierTag1.create(apiContext);
@@ -55,6 +57,7 @@ export class EntityDataClass {
     await this.glossary2.delete(apiContext);
     await this.user1.delete(apiContext);
     await this.user2.delete(apiContext);
+    await this.user3.delete(apiContext);
     await this.team1.delete(apiContext);
     await this.team2.delete(apiContext);
     await this.tierTag1.delete(apiContext);

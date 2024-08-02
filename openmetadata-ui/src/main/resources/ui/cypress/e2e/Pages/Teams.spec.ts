@@ -18,6 +18,7 @@ import {
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
+import { addOwner } from '../../common/Utils/Owner';
 import { addTeam, deleteTeamPermanently } from '../../common/Utils/Teams';
 import { SidebarItem } from '../../constants/Entity.interface';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
@@ -83,20 +84,7 @@ describe('Teams flow should work properly', { tags: 'Settings' }, () => {
       .should('exist')
       .invoke('text')
       .then((text) => {
-        interceptURL('GET', '/api/v1/users?limit=*', 'getUsers');
-        // Clicking on edit owner button
-        cy.get('[data-testid="edit-owner"]').click();
-
-        cy.get('.user-team-select-popover').contains('Users').click();
-        cy.wait('@getUsers');
-        cy.get('[data-testid="owner-select-users-search-bar"]').type(text);
-        cy.get('[data-testid="selectable-list"]')
-          .eq(1)
-          .find(`[title="${text.trim()}"]`)
-          .click();
-
-        // Asserting the added name
-        cy.get('[data-testid="owner-link"]').should('contain', text.trim());
+        addOwner(text);
       });
   });
 

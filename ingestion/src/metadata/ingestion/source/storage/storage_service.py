@@ -41,6 +41,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -100,13 +101,20 @@ class StorageServiceTopology(ServiceTopology):
         producer="get_containers",
         stages=[
             NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
+            NodeStage(
                 type_=Container,
                 context="container",
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
                 use_cache=True,
-            )
+            ),
         ],
     )
 
@@ -187,6 +195,22 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def prepare(self):
         """By default, nothing needs to be taken care of when loading the source"""
+
+    def yield_container_tags(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+
+    def yield_tag_details(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_container_tags(container_details) or []
 
     def register_record(self, container_request: CreateContainerRequest) -> None:
         """

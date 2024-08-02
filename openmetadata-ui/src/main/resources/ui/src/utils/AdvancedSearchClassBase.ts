@@ -148,6 +148,36 @@ class AdvancedSearchClassBase {
   };
 
   /**
+   * Fields specific to API endpoints
+   */
+  apiEndpointQueryBuilderFields: Fields = {
+    'requestSchema.schemaFields.name.keyword': {
+      label: t('label.request-schema-field'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          entityField: EntityFields.REQUEST_SCHEMA_FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    'responseSchema.schemaFields.name.keyword': {
+      label: t('label.response-schema-field'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          entityField: EntityFields.RESPONSE_SCHEMA_FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
    * Fields specific to dashboard
    */
   dashboardQueryBuilderFields: Fields = {
@@ -397,7 +427,7 @@ class AdvancedSearchClassBase {
         defaultValue: true,
       },
 
-      'owner.displayName.keyword': {
+      'owners.displayName.keyword': {
         label: t('label.owner'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
@@ -506,6 +536,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.CONTAINER]: this.containerQueryBuilderFields,
       [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
       [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
+      [SearchIndex.API_ENDPOINT_INDEX]: this.apiEndpointQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
@@ -515,6 +546,7 @@ class AdvancedSearchClassBase {
         ...this.containerQueryBuilderFields,
         ...this.searchIndexQueryBuilderFields,
         ...this.dataModelQueryBuilderFields,
+        ...this.apiEndpointQueryBuilderFields,
       },
     };
 
@@ -589,6 +621,9 @@ class AdvancedSearchClassBase {
       SearchIndex.ML_MODEL_SERVICE,
       SearchIndex.SEARCH_SERVICE,
       SearchIndex.STORAGE_SERVICE,
+      SearchIndex.API_SERVICE_INDEX,
+      SearchIndex.API_ENDPOINT_INDEX,
+      SearchIndex.API_COLLECTION_INDEX,
     ];
 
     const shouldAddServiceField =

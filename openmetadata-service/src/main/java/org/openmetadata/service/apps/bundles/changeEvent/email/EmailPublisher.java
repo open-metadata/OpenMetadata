@@ -21,6 +21,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.Entity;
@@ -40,12 +41,15 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   private final CollectionDAO daoCollection;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public EmailPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == EMAIL) {
-      this.subscriptionDestination = subscription;
+  public EmailPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == EMAIL) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
       this.emailAlertConfig =
-          JsonUtils.convertValue(subscription.getConfig(), EmailAlertConfig.class);
+          JsonUtils.convertValue(subscriptionDestination.getConfig(), EmailAlertConfig.class);
       this.daoCollection = Entity.getCollectionDAO();
     } else {
       throw new IllegalArgumentException("Email Alert Invoked with Illegal Type and Settings.");
@@ -57,9 +61,11 @@ public class EmailPublisher implements Destination<ChangeEvent> {
     try {
       Set<String> receivers =
           getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
-      EmailMessage emailMessage = emailDecorator.buildOutgoingMessage(event);
+      EmailMessage emailMessage =
+          emailDecorator.buildOutgoingMessage(eventSubscription.getFullyQualifiedName(), event);
       for (String email : receivers) {
-        EmailUtil.sendChangeEventMail(email, emailMessage);
+        EmailUtil.sendChangeEventMail(
+            eventSubscription.getFullyQualifiedName(), email, emailMessage);
       }
       setSuccessStatus(System.currentTimeMillis());
     } catch (Exception e) {
@@ -69,6 +75,30 @@ public class EmailPublisher implements Destination<ChangeEvent> {
       LOG.error(message);
       throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      Set<String> receivers = emailAlertConfig.getReceivers();
+      EmailMessage emailMessage =
+          emailDecorator.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+      for (String email : receivers) {
+        EmailUtil.sendChangeEventMail(
+            eventSubscription.getFullyQualifiedName(), email, emailMessage);
+      }
+      setSuccessStatus(System.currentTimeMillis());
+    } catch (Exception e) {
+      setErrorStatus(System.currentTimeMillis(), 500, e.getMessage());
+      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(EMAIL, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override

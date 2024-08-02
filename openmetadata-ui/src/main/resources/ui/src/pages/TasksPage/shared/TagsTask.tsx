@@ -29,10 +29,12 @@ interface TagsTaskProps {
   task: Thread['task'];
   isTaskActionEdit: boolean;
   hasEditAccess: boolean;
+  value?: TagLabel[];
   onChange: (newTags: TagLabel[]) => void;
 }
 
 const TagsTask: FC<TagsTaskProps> = ({
+  value,
   isTaskActionEdit,
   hasEditAccess,
   task,
@@ -76,7 +78,9 @@ const TagsTask: FC<TagsTaskProps> = ({
   const suggestedTagsDiff = useMemo(() => {
     if (!suggestion && !oldValue) {
       return (
-        <Typography.Text className="text-grey-muted p-xs">
+        <Typography.Text
+          className="text-grey-muted p-xs"
+          data-testid="no-suggestion">
           {t('label.no-entity', { entity: t('label.suggestion') })}
         </Typography.Text>
       );
@@ -102,10 +106,7 @@ const TagsTask: FC<TagsTaskProps> = ({
             {isRequestTag && (
               <div data-testid="request-tags">
                 {isTaskActionEdit && hasEditAccess ? (
-                  <TagSuggestion
-                    value={JSON.parse(suggestion ?? '[]')}
-                    onChange={onChange}
-                  />
+                  <TagSuggestion value={value} onChange={onChange} />
                 ) : (
                   suggestedTagsDiff
                 )}
@@ -116,7 +117,7 @@ const TagsTask: FC<TagsTaskProps> = ({
                 {isTaskActionEdit && hasEditAccess ? (
                   <TagsTabs
                     tags={JSON.parse(oldValue ?? '[]')}
-                    value={JSON.parse(suggestion ?? '[]')}
+                    value={value ?? []}
                     onChange={onChange}
                   />
                 ) : (

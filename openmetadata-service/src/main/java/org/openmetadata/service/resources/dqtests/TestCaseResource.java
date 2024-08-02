@@ -89,9 +89,9 @@ import org.openmetadata.service.util.ResultList;
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
 
-  static final String FIELDS = "owner,testSuite,testDefinition,testSuites,incidentId,domain,tags";
+  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domain,tags";
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -408,9 +408,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("serviceName", serviceName);
     if (!nullOrEmpty(owner)) {
       EntityInterface entity;
-      StringBuffer owners = new StringBuffer();
+      StringBuilder owners = new StringBuilder();
       try {
-        User user = (User) Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
+        User user = Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
         owners.append(user.getId().toString());
         if (!nullOrEmpty(user.getTeams())) {
           owners
@@ -425,7 +425,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
         owners.append(entity.getId().toString());
       }
-      searchListFilter.addQueryParam("owner", owners.toString());
+      searchListFilter.addQueryParam("owners", owners.toString());
     }
 
     if (startTimestamp != null) {
@@ -1084,7 +1084,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     ResourceContext<?> resourceContext = getResourceContextById(id);
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
     return repository.getSampleData(testCase, authorizePII);
   }
 

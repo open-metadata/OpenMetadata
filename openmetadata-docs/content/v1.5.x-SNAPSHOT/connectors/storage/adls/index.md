@@ -7,8 +7,8 @@ slug: /connectors/storage/adls
 name="ADLS"
 stage="PROD"
 platform="Collate"
-availableFeatures=["Metadata"]
-unavailableFeatures=[]
+availableFeatures=["Metadata", "Structured Containers"]
+unavailableFeatures=["Unstructured Containers"]
 / %}
 
 This page contains the setup guide and reference information for the ADLS connector.

@@ -76,6 +76,8 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   isLoading: false,
   setIsLoading: jest.fn(),
   reset: jest.fn(),
+  showAILearningBanner: false,
+  setShowAILearningBanner: jest.fn(),
 };
 jest.mock('./useTestCase.store', () => ({
   useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),

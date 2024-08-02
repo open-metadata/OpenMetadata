@@ -165,9 +165,9 @@
     "dataQualityDimension": {
       "$ref": "#/definitions/dataQualityDimensions"
     },
-    "owner": {
-      "description": "Owner of this TestCase definition.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this TestCase definition.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "provider" : {
@@ -202,6 +202,10 @@
       "description": "When `true` indicates the test case supports row level passed/failed.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
     },
     "supportsDynamicAssertion": {
       "description": "When `true` indicates the test case supports dynamic assertions.",

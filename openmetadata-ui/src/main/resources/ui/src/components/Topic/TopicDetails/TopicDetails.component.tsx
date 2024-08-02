@@ -92,7 +92,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
   );
 
   const {
-    owner,
+    owners,
     deleted,
     description,
     followers = [],
@@ -208,14 +208,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
     }
   };
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Topic['owner']) => {
+    async (newOwners?: Topic['owners']) => {
       const updatedTopicDetails = {
         ...topicDetails,
-        owner: newOwner,
+        owners: newOwners,
       };
-      await onTopicUpdate(updatedTopicDetails, 'owner');
+      await onTopicUpdate(updatedTopicDetails, 'owners');
     },
-    [owner]
+    [owners]
   );
 
   const onTierUpdate = (newTier?: Tag) => {
@@ -319,7 +319,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
                           topicDetails.messageSchema?.schemaFields
                         )}
                         isEdit={isEdit}
-                        owner={topicDetails.owner}
+                        owner={topicDetails.owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}

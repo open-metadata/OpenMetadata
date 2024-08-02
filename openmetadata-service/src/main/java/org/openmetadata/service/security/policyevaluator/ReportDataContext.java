@@ -15,7 +15,7 @@ public class ReportDataContext implements ResourceContextInterface {
   }
 
   @Override
-  public EntityReference getOwner() {
+  public List<EntityReference> getOwners() {
     return null;
   }
 
@@ -26,6 +26,11 @@ public class ReportDataContext implements ResourceContextInterface {
 
   @Override
   public EntityInterface getEntity() {
+    return null;
+  }
+
+  @Override
+  public EntityReference getDomain() {
     return null;
   }
 }

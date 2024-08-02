@@ -37,16 +37,16 @@ public class ResourceRegistry {
               MetadataOperation.EDIT_DISPLAY_NAME));
 
   static {
-    mapFieldOperation(MetadataOperation.EDIT_DESCRIPTION, Entity.FIELD_DESCRIPTION);
-    mapFieldOperation(MetadataOperation.EDIT_DISPLAY_NAME, Entity.FIELD_DISPLAY_NAME);
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
-    mapFieldOperation(MetadataOperation.EDIT_OWNER, Entity.FIELD_OWNER);
+    mapFieldOperation(MetadataOperation.EDIT_OWNERS, Entity.FIELD_OWNERS);
     mapFieldOperation(MetadataOperation.EDIT_CUSTOM_FIELDS, "extension");
     mapFieldOperation(MetadataOperation.EDIT_USERS, "users");
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "defaultRoles");
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "roles");
     mapFieldOperation(MetadataOperation.EDIT_POLICY, "policies");
     mapFieldOperation(MetadataOperation.EDIT_TEAMS, "teams");
+    mapFieldOperation(MetadataOperation.EDIT_DESCRIPTION, Entity.FIELD_DESCRIPTION);
+    mapFieldOperation(MetadataOperation.EDIT_DISPLAY_NAME, Entity.FIELD_DISPLAY_NAME);
 
     // Set up "all" resource descriptor that includes operations for all entities
     List<MetadataOperation> allOperations = Arrays.asList(MetadataOperation.values());
@@ -83,8 +83,8 @@ public class ResourceRegistry {
     if (entityFields.contains(Entity.FIELD_TAGS)) {
       operations.add(MetadataOperation.EDIT_TAGS);
     }
-    if (entityFields.contains(Entity.FIELD_OWNER)) {
-      operations.add(MetadataOperation.EDIT_OWNER);
+    if (entityFields.contains(Entity.FIELD_OWNERS)) {
+      operations.add(MetadataOperation.EDIT_OWNERS);
     }
     if (entityFields.contains(Entity.FIELD_EXTENSION)) {
       operations.add(MetadataOperation.EDIT_CUSTOM_FIELDS);
@@ -118,6 +118,10 @@ public class ResourceRegistry {
   /** Given an entity field name get the corresponding entity edit operation */
   public static MetadataOperation getEditOperation(String field) {
     return FIELD_TO_EDIT_OPERATION_MAP.get(field);
+  }
+
+  public static boolean hasEditOperation(String field) {
+    return FIELD_TO_EDIT_OPERATION_MAP.containsKey(field);
   }
 
   /** Given an edit operation get the corresponding entity field */

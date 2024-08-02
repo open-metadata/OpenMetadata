@@ -26,6 +26,6 @@
         ]
       }
     },
-  "required": ["eventType"],
+  "required": ["eventType", "timestamp"],
   "additionalProperties": false
 }

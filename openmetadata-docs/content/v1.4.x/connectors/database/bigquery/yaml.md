@@ -71,7 +71,7 @@ If the user has `External Tables`, please attach relevant permissions needed for
 icon="manage_accounts"
 title="Create Custom GCP Role"
 description="Checkout this documentation on how to create a custom role and assign it to the service account."
-link="/connectors/database/bigquery/roles"
+link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 

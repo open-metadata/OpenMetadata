@@ -183,6 +183,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     // Update owner
     cy.get(':nth-child(2) > [data-testid="edit-owner"]').click();
     verifyResponseStatusCode('@getUsers', 200);
+    cy.get('[data-testid="loader"]').should('not.exist');
     interceptURL(
       'GET',
       `api/v1/search/query?q=*${encodeURI(DATA.owner)}*`,
@@ -191,6 +192,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('[data-testid="owner-select-users-search-bar"]').type(DATA.owner);
     verifyResponseStatusCode('@searchOwner', 200);
     cy.get(`.ant-popover [title="${DATA.owner}"]`).click();
+    cy.get('[data-testid="selectable-list-update-btn"]').click();
     verifyResponseStatusCode('@patchQuery', 200);
     cy.get('[data-testid="owner-link"]').should('contain', DATA.owner);
 

@@ -105,7 +105,14 @@ describe('Test the User Page', () => {
     render(<UserPage />, { wrapper: MemoryRouter });
 
     expect(getUserByName).toHaveBeenCalledWith('xyz', {
-      fields: 'profile,roles,teams,personas,defaultPersona,domain',
+      fields: [
+        'profile',
+        'roles',
+        'teams',
+        'personas',
+        'defaultPersona',
+        'domains',
+      ],
       include: 'all',
     });
   });
