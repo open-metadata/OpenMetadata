@@ -32,7 +32,7 @@ const AlertBar = ({
   type = 'general',
   message = '',
 }: AlertBarProps): JSX.Element => {
-  const { alert, reset } = useAlertStore();
+  const { resetAlert } = useAlertStore();
 
   const {
     icon: AlertIcon,
@@ -80,12 +80,12 @@ const AlertBar = ({
   return (
     <>
       {type === 'general' ? (
-        <div className={`${alert ? 'alert-container' : 'hidden'} ${className}`}>
+        <div className={`alert-container ${className}`}>
           <div className="alert-content">
             <Icon className="align-middle alert-icon" component={AlertIcon} />
             <p>{message}</p>
           </div>
-          <button className="cross-icon" onClick={reset}>
+          <button className="cross-icon" onClick={resetAlert}>
             <Icon className="align-middle" component={CloseIcon} />
           </button>
         </div>
@@ -98,7 +98,7 @@ const AlertBar = ({
           description={message}
           icon={<AlertIcon />}
           type={type}
-          onClose={reset}
+          onClose={resetAlert}
         />
       )}
     </>

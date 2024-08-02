@@ -21,7 +21,7 @@ type AlertType = {
 interface AlertStore {
   alert: AlertType | undefined;
   addAlert: (alert: AlertType) => void;
-  reset: () => void;
+  resetAlert: () => void;
 }
 
 export const useAlertStore = create<AlertStore>()((set) => ({
@@ -29,7 +29,7 @@ export const useAlertStore = create<AlertStore>()((set) => ({
   addAlert: (alert: AlertType) => {
     set({ alert });
   },
-  reset: () => {
+  resetAlert: () => {
     set({ alert: undefined });
   },
 }));
