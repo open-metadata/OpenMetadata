@@ -114,7 +114,10 @@ export const CustomizablePage = () => {
 
         response = await updateDocument(page.id ?? '', jsonPatch);
       } else {
-        response = await createDocument(editedPage);
+        response = await createDocument({
+          ...editedPage,
+          domain: editedPage.domain?.fullyQualifiedName,
+        });
       }
       setPage(response);
       setEditedPage(response);
