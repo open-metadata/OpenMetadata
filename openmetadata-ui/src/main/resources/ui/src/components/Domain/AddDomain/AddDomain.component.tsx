@@ -15,11 +15,11 @@ import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { ERROR_MESSAGE } from '../../../constants/constants';
+import { ERROR_MESSAGE, ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import { useDomainStore } from '../../../hooks/useDomainStore';
-import { addDomains } from '../../../rest/domainAPI';
+import { addDomains, getDomainList } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -33,7 +33,22 @@ const AddDomain = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { refreshDomains } = useDomainStore();
+  const { updateDomainLoading, updateDomains } = useDomainStore();
+
+  const refreshDomains = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
 
   const goToDomain = (name = '') => {
     history.push(getDomainPath(name));

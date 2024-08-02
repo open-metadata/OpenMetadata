@@ -67,15 +67,17 @@ export const USER_DATA: User = {
     previousVersion: 3.2,
   },
   deleted: false,
-  domain: {
-    id: '303ca53b-5050-4caa-9c4e-d4fdada76a53',
-    type: EntityType.DOMAIN,
-    name: 'Engineering',
-    fullyQualifiedName: 'Engineering',
-    description: 'description',
-    inherited: true,
-    href: 'http://localhost:8585/api/v1/domains/303ca53b-5050-4caa-9c4e-d4fdada76a53',
-  },
+  domains: [
+    {
+      id: '303ca53b-5050-4caa-9c4e-d4fdada76a53',
+      type: EntityType.DOMAIN,
+      name: 'Engineering',
+      fullyQualifiedName: 'Engineering',
+      description: 'description',
+      inherited: true,
+      href: 'http://localhost:8585/api/v1/domains/303ca53b-5050-4caa-9c4e-d4fdada76a53',
+    },
+  ],
   roles: [
     {
       id: 'ed94fd7c-0974-4b87-9295-02b36c4c6bcd',
@@ -250,15 +252,17 @@ export const UPDATED_USER_DATA = {
   deleted: false,
   description: '',
   displayName: '',
-  domain: {
-    description: 'description',
-    fullyQualifiedName: 'Engineering',
-    href: 'http://localhost:8585/api/v1/domains/303ca53b-5050-4caa-9c4e-d4fdada76a53',
-    id: '303ca53b-5050-4caa-9c4e-d4fdada76a53',
-    inherited: true,
-    name: 'Engineering',
-    type: 'domain',
-  },
+  domains: [
+    {
+      description: 'description',
+      fullyQualifiedName: 'Engineering',
+      href: 'http://localhost:8585/api/v1/domains/303ca53b-5050-4caa-9c4e-d4fdada76a53',
+      id: '303ca53b-5050-4caa-9c4e-d4fdada76a53',
+      inherited: true,
+      name: 'Engineering',
+      type: 'domain',
+    },
+  ],
   email: 'admin@openmetadata.org',
   fullyQualifiedName: 'admin',
   href: 'http://localhost:8585/api/v1/users/7f196a28-c4fa-4579-b420-f828985e7861',
