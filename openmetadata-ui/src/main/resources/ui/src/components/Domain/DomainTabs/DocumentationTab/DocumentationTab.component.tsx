@@ -46,6 +46,7 @@ import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import '../../domain.less';
+import SubDomainsTable from '../../SubDomainsTable/SubDomainsTable.component';
 import {
   DocumentationEntity,
   DocumentationTabProps,
@@ -56,6 +57,8 @@ const DocumentationTab = ({
   onUpdate,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
+  subDomains,
+  isSubDomainsLoading,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -66,6 +69,8 @@ const DocumentationTab = ({
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
+
+  const isSubDomain = Boolean((domain as Domain).parent);
 
   const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
     useMemo(() => {
@@ -184,6 +189,15 @@ const DocumentationTab = ({
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
             />
+
+            {!isSubDomain && (
+              <div className="p-t-lg">
+                <SubDomainsTable
+                  isLoading={isSubDomainsLoading}
+                  subDomains={subDomains}
+                />
+              </div>
+            )}
           </div>
         ),
         minWidth: 800,
@@ -228,7 +242,7 @@ const DocumentationTab = ({
                 )}
               </Space>
 
-              {!domain.owners && editOwnerPermission && (
+              {domain.owners?.length === 0 && editOwnerPermission && (
                 <UserTeamSelectableList
                   hasPermission
                   multiple={{ team: false, user: true }}

@@ -31,4 +31,9 @@ public record PostResourceContext(String postedBy) implements ResourceContextInt
   public EntityInterface getEntity() {
     return null;
   }
+
+  @Override
+  public EntityReference getDomain() {
+    return null;
+  }
 }

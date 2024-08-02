@@ -102,6 +102,10 @@
     "disabled" : {
       "description": "System policy can't be deleted. Use this flag to disable them.",
       "type": "boolean"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "rules"],

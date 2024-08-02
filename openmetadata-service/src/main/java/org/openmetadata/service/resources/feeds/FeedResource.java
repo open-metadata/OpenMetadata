@@ -15,6 +15,8 @@ package org.openmetadata.service.resources.feeds;
 
 import static org.openmetadata.schema.type.EventType.POST_CREATED;
 import static org.openmetadata.schema.type.EventType.THREAD_CREATED;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.util.RestUtil.CHANGE_CUSTOM_HEADER;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -73,6 +75,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PostResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.ThreadResourceContext;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -136,6 +139,7 @@ public class FeedResource {
       })
   public ResultList<Thread> list(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description =
                   "Limit the number of posts sorted by chronological order (1 to 1000000, default = 3)",
@@ -204,6 +208,7 @@ public class FeedResource {
               schema = @Schema(type = "boolean"))
           @QueryParam("activeAnnouncement")
           Boolean activeAnnouncement) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
     RestUtil.validateCursors(before, after);
     FeedFilter filter =
         FeedFilter.builder()
@@ -215,6 +220,12 @@ public class FeedResource {
             .paginationType(before != null ? PaginationType.BEFORE : PaginationType.AFTER)
             .before(before)
             .after(after)
+            .applyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .domains(
+                getSubjectContext(securityContext).getUserDomains().stream()
+                    .map(EntityReference::getId)
+                    .toList())
             .build();
 
     ResultList<Thread> threads = dao.list(filter, entityLink, limitPosts, userId, limitParam);

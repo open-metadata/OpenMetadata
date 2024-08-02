@@ -34,6 +34,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Slf4j
 public class RoleRepository extends EntityRepository<Role> {
+  public static final String DOMAIN_ONLY_ACCESS_ROLE = "DomainOnlyAccessRole";
+
   public RoleRepository() {
     super(
         RoleResource.COLLECTION_PATH,

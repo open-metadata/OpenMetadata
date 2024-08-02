@@ -85,6 +85,10 @@
     "service": {
       "description": "Link to the database service fully qualified name where this query has been run",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["query", "service"],

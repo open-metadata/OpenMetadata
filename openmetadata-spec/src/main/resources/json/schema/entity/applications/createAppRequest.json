@@ -34,6 +34,10 @@
     },
     "appSchedule": {
       "$ref": "./app.json#/definitions/appSchedule"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "additionalProperties": false

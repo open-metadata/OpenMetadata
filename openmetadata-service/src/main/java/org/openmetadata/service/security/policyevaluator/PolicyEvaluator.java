@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -71,6 +73,24 @@ public class PolicyEvaluator {
       throw new AuthorizationException(
           CatalogExceptionMessage.permissionNotAllowed(
               subjectContext.user().getName(), operationContext.getOperations()));
+    }
+  }
+
+  /** Checks if the subjectContext has the domain permissions for the resourceContext. */
+  public static void hasDomainPermission(
+      @NonNull SubjectContext subjectContext,
+      @NonNull ResourceContextInterface resourceContext,
+      OperationContext operationContext) {
+    // If the Resource Does not belong to any Domain, then evaluate via other permissions
+    if (!nullOrEmpty(resourceContext.getDomain())) {
+      EntityReference domain = resourceContext.getDomain();
+      if (!subjectContext.hasDomain(domain)) {
+        throw new AuthorizationException(
+            CatalogExceptionMessage.domainPermissionNotAllowed(
+                subjectContext.user().getName(),
+                domain.getName(),
+                operationContext.getOperations()));
+      }
     }
   }
 

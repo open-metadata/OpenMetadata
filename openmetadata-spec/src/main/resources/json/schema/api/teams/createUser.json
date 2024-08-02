@@ -87,6 +87,14 @@
     "confirmPassword": {
       "description": "Confirm Password for User",
       "type": "string"
+    },
+    "domains" : {
+      "description": "Domains the User belongs to.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/entityName"
+      },
+      "default": null
     }
   },
   "required": ["name", "email"],

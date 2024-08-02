@@ -119,7 +119,7 @@ const AddDomainForm = ({
     },
   ];
 
-  if (type === DomainFormType.DOMAIN) {
+  if (type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN) {
     const domainTypeField: FieldProp = {
       name: 'domainType',
       required: true,

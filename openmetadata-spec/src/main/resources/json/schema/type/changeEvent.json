@@ -21,6 +21,10 @@
       "description": "Identifier of entity that was modified by the operation.",
       "$ref": "basic.json#/definitions/uuid"
     },
+    "domain": {
+      "description": "Domain of the entity that was modified by the operation.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
     "entityFullyQualifiedName": {
       "description": "Fully Qualified Name of entity that was modified by the operation.",
       "type": "string"

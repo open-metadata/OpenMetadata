@@ -178,10 +178,9 @@ class OMetaTableTest(TestCase):
                 ingestion_pipeline.fullyQualifiedName.root, pipeline_status
             )
 
-        assert (
-            "String value length (20049662) exceeds the maximum allowed"
-            in str(exc.value)
-        ) or ("Connection aborted." in str(exc.value))
+        assert ("exceeds the maximum allowed" in str(exc.value)) or (
+            "Connection aborted." in str(exc.value)
+        )
 
         # If we truncate the status it all runs good
         truncated_long_status = IngestionStatus(

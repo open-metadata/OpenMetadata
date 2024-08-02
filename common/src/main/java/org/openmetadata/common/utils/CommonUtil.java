@@ -178,6 +178,10 @@ public final class CommonUtil {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
   }
 
+  public static <T> List<T> listOrEmptyMutable(List<T> list) {
+    return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
+  }
+
   public static boolean nullOrEmpty(String string) {
     return string == null || string.isEmpty();
   }

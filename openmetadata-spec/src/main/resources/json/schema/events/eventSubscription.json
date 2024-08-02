@@ -343,7 +343,10 @@
     "input": {
       "description": "Input for the Filters.",
       "$ref": "#/definitions/alertFilteringInput"
-
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["id", "name", "alertType", "destinations"],

@@ -63,6 +63,12 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     return resolveEntity();
   }
 
+  @Override
+  public EntityReference getDomain() {
+    resolveEntity();
+    return entity == null ? null : entity.getDomain();
+  }
+
   private EntityInterface resolveEntity() {
     if (entity == null) {
       if (entityLink != null) {

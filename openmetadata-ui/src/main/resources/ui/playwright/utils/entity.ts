@@ -46,9 +46,10 @@ export const addOwner = async (
   owner: string,
   type: 'Teams' | 'Users' = 'Users',
   endpoint: EntityTypeEndpoint,
-  dataTestId?: string
+  dataTestId?: string,
+  initiatorId = 'edit-owner'
 ) => {
-  await page.getByTestId('edit-owner').click();
+  await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
       '/api/v1/users?limit=*&isBot=false*'

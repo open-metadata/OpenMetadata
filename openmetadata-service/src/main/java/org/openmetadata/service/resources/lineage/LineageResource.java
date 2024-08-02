@@ -503,5 +503,10 @@ public class LineageResource {
     public EntityInterface getEntity() {
       return null;
     }
+
+    @Override
+    public EntityReference getDomain() {
+      return null;
+    }
   }
 }

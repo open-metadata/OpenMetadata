@@ -219,6 +219,13 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String domainPermissionNotAllowed(
+      String user, String domainName, List<MetadataOperation> operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} does not belong to domain %s. to perform the %s ",
+        user, domainName, operations);
+  }
+
   public static String taskOperationNotAllowed(String user, String operations) {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);

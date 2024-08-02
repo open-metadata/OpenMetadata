@@ -29,7 +29,10 @@ import {
 import { generateFormFields, getField } from '../../../utils/formUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -47,6 +50,7 @@ const AddGlossary = ({
   const { t } = useTranslation();
   const [form] = useForm();
   const { currentUser } = useApplicationStore();
+  const { activeDomainEntityRef } = useDomainStore();
 
   const selectedOwners =
     Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
@@ -57,6 +61,11 @@ const AddGlossary = ({
 
   const reviewersData =
     Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
+
+  const selectedDomain = Form.useWatch<EntityReference | undefined>(
+    'domain',
+    form
+  );
 
   const reviewersList = Array.isArray(reviewersData)
     ? reviewersData
@@ -89,6 +98,7 @@ const AddGlossary = ({
       owners: selectedOwners,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
+      domain: selectedDomain?.fullyQualifiedName,
     };
     onSave(data);
   };
@@ -232,7 +242,31 @@ const AddGlossary = ({
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
-      initialValue: [],
+    },
+  };
+
+  const domainsField: FieldProp = {
+    name: 'domain',
+    id: 'root/domain',
+    required: false,
+    label: t('label.domain'),
+    type: FieldTypes.DOMAIN_SELECT,
+    props: {
+      selectedDomain: activeDomainEntityRef,
+      children: (
+        <Button
+          data-testid="add-domain"
+          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          size="small"
+          type="primary"
+        />
+      ),
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    formItemProps: {
+      valuePropName: 'selectedDomain',
+      trigger: 'onUpdate',
+      initialValue: activeDomainEntityRef,
     },
   };
 
@@ -267,6 +301,18 @@ const AddGlossary = ({
                     <Space wrap data-testid="reviewers-container" size={[8, 8]}>
                       <OwnerLabel owners={reviewersList} />
                     </Space>
+                  )}
+                </div>
+                <div className="m-t-xss">
+                  {getField(domainsField)}
+                  {selectedDomain && (
+                    <DomainLabel
+                      domain={selectedDomain}
+                      entityFqn=""
+                      entityId=""
+                      entityType={EntityType.GLOSSARY}
+                      hasPermission={false}
+                    />
                   )}
                 </div>
 

@@ -57,6 +57,7 @@ jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
 jest.mock('../../../hooks/useDomainStore', () => ({
   useDomainStore: jest.fn().mockImplementation(() => ({
     refreshDomains: jest.fn(),
+    updateDomainLoading: jest.fn(),
   })),
 }));
 

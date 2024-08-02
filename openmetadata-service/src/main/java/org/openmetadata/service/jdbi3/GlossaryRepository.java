@@ -283,6 +283,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
           ? null
           : reviewers.stream()
               .map(EntityReference::getName)
+              .sorted()
               .collect(Collectors.joining(FIELD_SEPARATOR));
     }
 

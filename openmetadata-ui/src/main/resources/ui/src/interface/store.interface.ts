@@ -86,11 +86,14 @@ export interface ApplicationStore
 
 export interface DomainStore {
   domains: Domain[];
+  userDomains: EntityReference[];
   domainLoading: boolean;
   activeDomain: string;
+  activeDomainEntityRef?: EntityReference;
   domainOptions: ItemType[];
-  fetchDomainList: () => Promise<void>;
-  updateDomains: (domainsArr: Domain[]) => void;
-  refreshDomains: () => Promise<void>;
+  updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
   updateActiveDomain: (activeDomainKey: string) => void;
+  setDomains: (domains: Domain[]) => void;
+  setUserDomains: (userDomainsArr: EntityReference[]) => void;
+  updateDomainLoading: (loading: boolean) => void;
 }

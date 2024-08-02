@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
 
@@ -143,6 +144,8 @@ public final class FeedUtils {
         .withUpdatedBy(loggedInUserName)
         .withUpdatedAt(System.currentTimeMillis())
         .withGeneratedBy(Thread.GeneratedBy.SYSTEM)
-        .withEntityUrlLink(decorator.buildEntityUrl(entityType, entityInterface));
+        .withEntityUrlLink(decorator.buildEntityUrl(entityType, entityInterface))
+        .withDomain(
+            nullOrEmpty(entityInterface.getDomain()) ? null : entityInterface.getDomain().getId());
   }
 }

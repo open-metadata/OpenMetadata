@@ -40,6 +40,10 @@
       "description": "Owner of this Ingestion Pipeline.",
       "$ref": "../../../type/entityReferenceList.json",
       "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": [

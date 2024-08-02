@@ -98,7 +98,6 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     UNIQUE (fqnHash)
 );
 
-
 -- Clean dangling workflows not removed after test connection
 truncate automations_workflow;
 
@@ -206,3 +205,6 @@ WHERE jsonb_path_exists(json, '$.owner')
 UPDATE openmetadata_settings
 SET json = jsonb_set(json, '{templates}', '"openmetadata"')
 WHERE configType = 'emailConfiguration';
+
+ALTER TABLE thread_entity ADD COLUMN domain VARCHAR(256) GENERATED ALWAYS AS (json ->> 'domain') STORED;
+

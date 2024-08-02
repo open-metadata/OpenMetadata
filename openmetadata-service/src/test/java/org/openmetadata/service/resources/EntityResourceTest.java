@@ -3353,7 +3353,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
   }
 
-  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual)
+  protected void assertEntityReferenceFromSearch(T entity, EntityReference actual, String keyword)
       throws IOException {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
@@ -3382,11 +3382,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             LinkedHashMap<String, Object> source =
                 (LinkedHashMap<String, Object>) doc.get("_source");
 
-            EntityReference domainReference =
-                JsonUtils.readOrConvertValue(source.get("domain"), EntityReference.class);
+            if (keyword.equals(FIELD_DOMAIN)) {
+              EntityReference domainReference =
+                  JsonUtils.readOrConvertValue(source.get(keyword), EntityReference.class);
 
-            assertEquals(domainReference.getId(), actual.getId());
-            assertEquals(domainReference.getType(), actual.getType());
+              assertEquals(domainReference.getId(), actual.getId());
+              assertEquals(domainReference.getType(), actual.getType());
+            } else if (keyword.equals(FIELD_DOMAINS)) {
+              List<EntityReference> domainReference =
+                  JsonUtils.convertObjects(source.get(keyword), EntityReference.class);
+
+              assertEquals(domainReference.get(0).getId(), actual.getId());
+              assertEquals(domainReference.get(0).getType(), actual.getType());
+            }
           });
     } finally {
       searchClient.close();
@@ -3815,7 +3823,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     assertTrue(entity.getDomain().getInherited());
-    assertEntityReferenceFromSearch(entity, expectedDomain);
+    assertEntityReferenceFromSearch(entity, expectedDomain, FIELD_DOMAIN);
     return entity;
   }
 

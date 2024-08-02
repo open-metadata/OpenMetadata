@@ -68,6 +68,7 @@ import {
 import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
 import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
+import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../ToastUtils';
 
@@ -106,6 +107,8 @@ export const getAPIfromSource = (
       return patchDatabaseDetails;
     case EntityType.TEAM:
       return patchTeamDetail;
+    case EntityType.USER:
+      return updateUserDetail;
     case EntityType.API_COLLECTION:
       return patchApiCollection;
     case EntityType.API_ENDPOINT:
@@ -161,6 +164,8 @@ export const getEntityAPIfromSource = (
       return getSearchIndexDetailsByFQN;
     case EntityType.TEAM:
       return getTeamByName;
+    case EntityType.USER:
+      return getUserByName;
     case EntityType.API_COLLECTION:
       return getApiCollectionByFQN;
     case EntityType.API_ENDPOINT:

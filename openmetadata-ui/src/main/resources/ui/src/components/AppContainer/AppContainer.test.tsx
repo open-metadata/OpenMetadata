@@ -13,7 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { useDomainStore } from '../../hooks/useDomainStore';
+import { getDomainList } from '../../rest/domainAPI';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppContainer from './AppContainer';
@@ -40,9 +40,17 @@ jest.mock('../../components/AppRouter/AuthenticatedAppRouter', () =>
 
 jest.mock('../../rest/limitsAPI');
 
+jest.mock('../../rest/domainAPI', () => ({
+  getDomainList: jest.fn().mockResolvedValue({
+    data: [{ id: 'test', name: 'testing' }],
+    paging: { total: 10 },
+  }),
+}));
+
 jest.mock('../../hooks/useDomainStore', () => ({
   useDomainStore: jest.fn().mockReturnValue({
-    fetchDomainList: jest.fn(),
+    updateDomainLoading: jest.fn(),
+    updateDomains: jest.fn(),
   }),
 }));
 
@@ -85,6 +93,6 @@ describe('AppContainer', () => {
       </MemoryRouter>
     );
 
-    expect(useDomainStore().fetchDomainList).toHaveBeenCalled();
+    expect(getDomainList).toHaveBeenCalled();
   });
 });

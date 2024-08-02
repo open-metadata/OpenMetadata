@@ -42,6 +42,11 @@ jest.mock('../../../../../hooks/useApplicationStore', () => ({
     currentUser: {
       name: 'test',
     },
+    searchCriteria: '',
+    theme: {
+      primaryColor: '#000000',
+      errorColor: '#000000',
+    },
   })),
 }));
 

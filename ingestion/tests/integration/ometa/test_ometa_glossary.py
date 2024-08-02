@@ -473,7 +473,12 @@ class OMetaGlossaryTest(TestCase):
 
         self.assertIsNotNone(res_glossary_term)
         self.assertEqual(2, len(res_glossary_term.reviewers.root))
-        self.assertEqual(self.user_1.id, res_glossary_term.reviewers.root[0].id)
+        self.assertTrue(
+            any(
+                reviewer.id == self.user_1.id
+                for reviewer in res_glossary_term.reviewers.root
+            )
+        )
         dest_glossary_term_1 = deepcopy(res_glossary_term)
         dest_glossary_term_1.reviewers.root.pop(0)
         res_glossary_term = self.metadata.patch(

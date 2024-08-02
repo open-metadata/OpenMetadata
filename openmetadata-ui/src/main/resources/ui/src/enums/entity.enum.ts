@@ -126,6 +126,7 @@ export enum TabSpecificField {
   FIELDS = 'fields',
   VOTES = 'votes',
   DOMAIN = 'domain',
+  DOMAINS = 'domains',
   DATA_PRODUCTS = 'dataProducts',
   REVIEWERS = 'reviewers',
   PIPELINES = 'pipelines',
