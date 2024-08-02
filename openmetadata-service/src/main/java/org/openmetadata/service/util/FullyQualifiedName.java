@@ -181,7 +181,11 @@ public class FullyQualifiedName {
   public static String getTableFQN(String columnFQN) {
     // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
     String[] split = split(columnFQN);
-    if (split.length != 5) {
+    // column FQN for struct columns are of format
+    // service.database.schema.table.column.child1.child2
+    // and not service.database.schema.table."column.child1.child2" so split length should be 5 or
+    // more
+    if (split.length < 5) {
       throw new IllegalArgumentException("Invalid fully qualified column name " + columnFQN);
     }
     // Return table FQN of format databaseService.tableName

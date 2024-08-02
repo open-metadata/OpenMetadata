@@ -64,7 +64,9 @@ def check_if_should_quote_column_name(table_service_type) -> Optional[bool]:
     return None
 
 
-def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Column:
+def build_orm_col(
+    idx: int, col: Column, table_service_type, *, _quote=None
+) -> sqlalchemy.Column:
     """
     Cook the ORM column from our metadata instance
     information.
@@ -76,14 +78,20 @@ def build_orm_col(idx: int, col: Column, table_service_type) -> sqlalchemy.Colum
     As this is only used for INSERT/UPDATE/DELETE,
     there is no impact for our read-only purposes.
     """
+    if _quote is not None:
+        quote = _quote
+    else:
+        quote = check_if_should_quote_column_name(
+            table_service_type
+        ) or check_snowflake_case_sensitive(table_service_type, col.name.root)
+
     return sqlalchemy.Column(
         name=str(col.name.root),
         type_=converter_registry[table_service_type]().map_types(
             col, table_service_type
         ),
         primary_key=not bool(idx),  # The first col seen is used as PK
-        quote=check_if_should_quote_column_name(table_service_type)
-        or check_snowflake_case_sensitive(table_service_type, col.name.root),
+        quote=quote,
         key=str(
             col.name.root
         ).lower(),  # Add lowercase column name as key for snowflake case sensitive columns
