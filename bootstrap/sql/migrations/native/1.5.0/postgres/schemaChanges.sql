@@ -201,11 +201,12 @@ WHERE jsonb_path_exists(json, '$.owner')
   AND jsonb_path_query_first(json, '$.owner ? (@ != null)') IS NOT null
   AND jsonb_typeof(json->'owner') <> 'array';
 
+ALTER TABLE test_case ALTER COLUMN name TYPE VARCHAR(512);
+
 -- set templates to fetch emailTemplates
 UPDATE openmetadata_settings
 SET json = jsonb_set(json, '{templates}', '"openmetadata"')
 WHERE configType = 'emailConfiguration';
-
 
 -- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
 UPDATE ingestion_pipeline_entity
