@@ -25,41 +25,41 @@ import CrossIcon from './CrossIcon';
 const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
   const { resetAlert } = useAlertStore();
 
-  const { icon, className, crossIcon } = useMemo(() => {
+  const { icon, className, crossIconColor } = useMemo(() => {
     switch (type) {
       case 'info':
         return {
           icon: <InfoIcon />,
           className: 'info',
-          crossIcon: <CrossIcon iconColor="#0950C5" />,
+          crossIconColor: '#0950c5',
         };
 
       case 'success':
         return {
           icon: <SuccessIcon />,
           className: 'success',
-          crossIcon: <CrossIcon iconColor="#1D7C4D" />,
+          crossIconColor: '#1D7C4D',
         };
 
       case 'warning':
         return {
           icon: <WarningIcon />,
           className: 'warning',
-          crossIcon: <CrossIcon iconColor="#F59638" />,
+          crossIconColor: '#F59638',
         };
 
       case 'error':
         return {
           icon: <ErrorIcon />,
           className: 'error',
-          crossIcon: <CrossIcon iconColor="#CB2531" />,
+          crossIconColor: '#CB2531',
         };
 
       default:
         return {
           icon: null,
           className: '',
-          crossIcon: null,
+          crossIconColor: null,
         };
     }
   }, [type]);
@@ -69,7 +69,7 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
       closable
       showIcon
       className={classNames(className, 'alert-container')}
-      closeIcon={crossIcon}
+      closeIcon={crossIconColor && <CrossIcon iconColor={crossIconColor} />}
       description={message}
       icon={icon}
       type={type}
