@@ -89,7 +89,7 @@ public class DataInsightsEntityEnricherProcessor
       EntityInterface versionEntity =
           JsonUtils.readOrConvertValue(
               version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-      Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
+      Long versionTimestamp = TimestampUtils.getEndOfDayTimestamp(versionEntity.getUpdatedAt());
       if (versionTimestamp > pointerTimestamp) {
         continue;
       } else if (versionTimestamp < startTimestamp) {
