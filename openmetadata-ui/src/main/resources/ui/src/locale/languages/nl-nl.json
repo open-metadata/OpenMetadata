@@ -1031,6 +1031,7 @@
     "select-a-metric-type": "Selecteer een type metriek",
     "select-a-policy": "Selecteer een beleidsregel",
     "select-add-test-suite": "Selecteer/voeg testsuite toe",
+    "select-all-entity": "Select All {{entity}}",
     "select-column-plural-to-exclude": "Selecteer kolommen om uit te sluiten",
     "select-column-plural-to-include": "Selecteer kolommen om op te nemen",
     "select-entity": "Select {{entity}}",

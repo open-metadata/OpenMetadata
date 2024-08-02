@@ -60,6 +60,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.getColumnField;
 import static org.openmetadata.service.util.EntityUtil.getEntityReferences;
 import static org.openmetadata.service.util.EntityUtil.getExtensionField;
+import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 import static org.openmetadata.service.util.EntityUtil.nextMajorVersion;
 import static org.openmetadata.service.util.EntityUtil.nextVersion;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
@@ -115,10 +116,12 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -153,6 +156,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
@@ -440,6 +444,31 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final List<T> getEntitiesFromSeedData() throws IOException {
+    List<T> entitiesFromSeedData = new ArrayList<>();
+
+    if (entityType.equals(Entity.DOCUMENT)) {
+      SmtpSettings emailConfig =
+          SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
+
+      switch (emailConfig.getTemplates()) {
+        case COLLATE -> {
+          entitiesFromSeedData.addAll(
+              getEntitiesFromSeedData(
+                  String.format(".*json/data/%s/emailTemplates/collate/.*\\.json$", entityType)));
+        }
+        default -> {
+          entitiesFromSeedData.addAll(
+              getEntitiesFromSeedData(
+                  String.format(
+                      ".*json/data/%s/emailTemplates/openmetadata/.*\\.json$", entityType)));
+        }
+      }
+
+      entitiesFromSeedData.addAll(
+          getEntitiesFromSeedData(String.format(".*json/data/%s/docs/.*\\.json$", entityType)));
+      return entitiesFromSeedData;
+    }
+
     return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
   }
 
@@ -803,7 +832,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
     entity.setExtension(
         fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-    entity.setDomain(fields.contains(FIELD_DOMAIN) ? getDomain(entity) : entity.getDomain());
+    // Always return domains of entity
+    entity.setDomain(getDomain(entity));
     entity.setDataProducts(
         fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
     entity.setFollowers(
@@ -1861,7 +1891,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return supportsOwners ? getFromEntityRefs(ref.getId(), Relationship.OWNS, null) : null;
   }
 
-  public final EntityReference getDomain(T entity) {
+  protected EntityReference getDomain(T entity) {
     return supportsDomain
         ? getFromEntityRef(entity.getId(), Relationship.HAS, DOMAIN, false)
         : null;
@@ -1920,23 +1950,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final void inheritReviewers(T entity, Fields fields, EntityInterface parent) {
     if (fields.contains(FIELD_REVIEWERS) && parent != null) {
-      List<EntityReference> combinedReviewers = new ArrayList<>(listOrEmpty(entity.getReviewers()));
-      // Fetch Unique Reviewers from parent as inherited
-      List<EntityReference> uniqueEntityReviewers =
-          listOrEmpty(parent.getReviewers()).stream()
-              .filter(
-                  parentReviewer ->
-                      combinedReviewers.stream()
-                          .noneMatch(
-                              entityReviewer ->
-                                  parentReviewer.getId().equals(entityReviewer.getId())
-                                      && parentReviewer.getType().equals(entityReviewer.getType())))
-              .toList();
-      uniqueEntityReviewers.forEach(reviewer -> reviewer.withInherited(true));
-
-      combinedReviewers.addAll(uniqueEntityReviewers);
-      combinedReviewers.sort(EntityUtil.compareEntityReference);
-      entity.setReviewers(combinedReviewers);
+      entity.setReviewers(mergedInheritedEntityRefs(entity.getReviewers(), parent.getReviewers()));
     }
   }
 
@@ -2582,7 +2596,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       storeExtension(updated);
     }
 
-    private void updateDomain() {
+    protected void updateDomain() {
       EntityReference origDomain = getEntityReference(original.getDomain());
       EntityReference updatedDomain = getEntityReference(updated.getDomain());
       if (origDomain == updatedDomain) {

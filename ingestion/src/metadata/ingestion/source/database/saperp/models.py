@@ -45,6 +45,7 @@ class SapErpColumn(BaseModel):
     i_ddtext: Optional[str] = None
     dd_text: Optional[str] = None
     leng: Optional[str] = None
+    decimals: Optional[str] = None
 
 
 class SapErpTableList(BaseModel):
