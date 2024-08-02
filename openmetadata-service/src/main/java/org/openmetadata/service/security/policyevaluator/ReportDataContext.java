@@ -28,4 +28,9 @@ public class ReportDataContext implements ResourceContextInterface {
   public EntityInterface getEntity() {
     return null;
   }
+
+  @Override
+  public EntityReference getDomain() {
+    return null;
+  }
 }

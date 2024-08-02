@@ -48,6 +48,11 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     return entity;
   }
 
+  @Override
+  public EntityReference getDomain() {
+    return parentEntity == null ? null : parentEntity.getDomain();
+  }
+
   private void setParent(T entity) {
     String fields = "";
     if (entityRepository.isSupportsOwners()) {
@@ -61,6 +66,9 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
     }
     if (entityRepository.isSupportsReviewers()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_REVIEWERS);
+    }
+    if (entityRepository.isSupportsDomain()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAIN);
     }
     try {
       parentEntity = entityRepository.getParentEntity(entity, fields);

@@ -111,7 +111,7 @@ describe('Test the User Page', () => {
         'teams',
         'personas',
         'defaultPersona',
-        'domain',
+        'domains',
       ],
       include: 'all',
     });
