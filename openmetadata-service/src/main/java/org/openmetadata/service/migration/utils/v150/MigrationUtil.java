@@ -1,9 +1,7 @@
 package org.openmetadata.service.migration.utils.v150;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -15,9 +13,6 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
-import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppType;
-import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.DataQualityDimensions;
@@ -25,12 +20,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
@@ -135,34 +130,23 @@ public class MigrationUtil {
   }
 
   public static void updateDataInsightsApplication() {
-    AppRepository appRepository = new AppRepository();
-
-    Optional<App> oDataInsightsApp = Optional.empty();
+    // Delete DataInsightsApplication - It will be recreated on AppStart
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
     try {
-      oDataInsightsApp =
-          Optional.ofNullable(
-              appRepository.getByName(
-                  null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*"))));
+      appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
     } catch (EntityNotFoundException ex) {
-      LOG.debug("DataInsights Pipeline not found.");
+      LOG.debug("DataInsights Application not found.");
     }
 
-    if (oDataInsightsApp.isPresent()) {
-      App dataInsightsApp = oDataInsightsApp.get();
-      App updatedDataInsightsApp =
-          appRepository.getByName(
-              null, "DataInsightsApplication", new EntityUtil.Fields(Set.of("*")));
+    // Update DataInsightsApplication MarketplaceDefinition - It will be recreated on AppStart
+    AppMarketPlaceRepository marketPlaceRepository =
+        (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
 
-      updatedDataInsightsApp.setAppType(AppType.Internal);
-      updatedDataInsightsApp.setScheduleType(ScheduleType.ScheduledOrManual);
-      Map<String, Object> appConfig = new HashMap<>();
-      appConfig.put("type", "DataInsights");
-      appConfig.put("batchSize", 100);
-      updatedDataInsightsApp.setAppConfiguration(appConfig);
-      updatedDataInsightsApp.setAllowConfiguration(true);
-
-      appRepository.update(null, dataInsightsApp, updatedDataInsightsApp);
+    try {
+      marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Application Marketplace Definition not found.");
     }
   }
 

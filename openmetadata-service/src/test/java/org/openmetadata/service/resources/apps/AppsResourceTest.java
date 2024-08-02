@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ReportDataRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -120,11 +121,12 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   void validate_data_insights_workflow_is_correct_for_a_simple_case()
       throws IOException, InterruptedException {
     Long MILLISECONDS_IN_AN_HOUR = (long) 1000 * 60 * 60;
-    Long MILLISECONDS_IN_A_DAY = (long) 1000 * 60 * 60 * 24;
 
-    Long endTimestamp =
-        (int) (System.currentTimeMillis() / MILLISECONDS_IN_A_DAY) * MILLISECONDS_IN_A_DAY - 1;
-    Long startTimestamp = (int) (endTimestamp / MILLISECONDS_IN_A_DAY) * MILLISECONDS_IN_A_DAY;
+    Long timestamp = System.currentTimeMillis();
+
+    Long endTimestamp = TimestampUtils.getEndOfDayTimestamp(timestamp);
+    Long startTimestamp =
+        TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
 
     // Create User
     // -------------------------------------------------
@@ -162,10 +164,10 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
 
     // Table CreatedAt and UpdatedAt - Needed so that it will be processed in the DataAssets
     // Workflow
-    Long tableCreatedAt = startTimestamp - MILLISECONDS_IN_AN_HOUR * 10;
+    Long tableCreatedAt = endTimestamp - MILLISECONDS_IN_AN_HOUR * 10;
 
     // Table AccessedAt - Needed so that it will be processed in the CostAnalysis Workflow
-    Long tableAccessedAt = startTimestamp + MILLISECONDS_IN_AN_HOUR * 15;
+    Long tableAccessedAt = endTimestamp - MILLISECONDS_IN_AN_HOUR * 15;
 
     TableResourceTest tableResourceTest = new TableResourceTest();
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
@@ -298,6 +300,11 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
     Request request = new Request("GET", "di-data-assets/_search");
+    String payload =
+        String.format(
+            "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName.keyword\":\"%s\"}}}}}",
+            table.getFullyQualifiedName());
+    request.setJsonEntity(payload);
     response = searchClient.performRequest(request);
     searchClient.close();
 
