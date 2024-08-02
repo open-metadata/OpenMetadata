@@ -46,11 +46,13 @@ class GitlabReader(ApiReader):
     """
 
     credentials: GitlabCredentials
-    encoded_project_path: str
 
-    encoded_project_path = quote_plus(
-        "/".join([credentials.repositoryOwner.root, credentials.repositoryName.root])
-    )
+    @staticmethod
+    def _encode_project_path(project_owner: str, project_name: str) -> str:
+        """
+        Generated a URL-encoded project path argument for the Gitlab API
+        """
+        return quote_plus("/".join([project_owner, project_name]))
 
     @staticmethod
     def _decode_content(json_response: Dict[str, Any]) -> str:
@@ -73,7 +75,10 @@ class GitlabReader(ApiReader):
                 self._build_url(
                     HOST,
                     UrlParts.PROJECTS.value,
-                    self.encoded_project_path,
+                    self._encode_project_path(
+                        self.credentials.repositoryOwner.root,
+                        self.credentials.repositoryName.root,
+                    ),
                     UrlParts.REPOSITORY.value,
                     UrlParts.FILES.value,
                     encoded_file_path,
@@ -109,7 +114,7 @@ class GitlabReader(ApiReader):
         res.raise_for_status()
         raise RuntimeError("Could not fetch the default branch")
 
-    def _get_tree(self, page: int = 1, per_page: int = 100) -> Optional[List[str]]:
+    def _get_tree(self, page: int = 1, per_page: int = 500) -> Optional[List[str]]:
         """
         Use the Gitlab Repository Tree API to iterate over tree pages
         """
@@ -117,7 +122,10 @@ class GitlabReader(ApiReader):
             self._build_url(
                 HOST,
                 UrlParts.PROJECTS.value,
-                self.encoded_project_path,
+                self._encode_project_path(
+                    self.credentials.repositoryOwner.root,
+                    self.credentials.repositoryName.root,
+                ),
                 UrlParts.REPOSITORY.value,
                 UrlParts.TREE.value,
                 f"?recursive=true&per_page={per_page}&page={page}",

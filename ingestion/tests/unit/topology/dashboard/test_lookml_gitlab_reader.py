@@ -39,21 +39,21 @@ class TestLookMLGitlabReader(TestCase):
 
     def x_test_lookml_read_and_parse(self):
         """
-        To test the Gitlab reader, update these files with files in your test LookML repository
+        To test the Gitlab reader, update these files with files in your test LookML repository and enable the test
         """
 
-        explore_file = "programs_and_enrollments.model.lkml"
+        explore_file = "test_explore.model.lkml"
         self.parser.parse_file(Includes(explore_file))
 
         contents = self.parser.parsed_files.get(Includes(explore_file))
 
         # Check file contents
-        self.assertIn("explore: programs_and_enrollments", contents)
+        self.assertIn("explore: test-explore", contents)
 
         view = self.parser.find_view(
-            view_name=ViewName("appointments"), path=Includes(explore_file)
+            view_name=ViewName("test-view"), path=Includes(explore_file)
         )
 
         # We can get views that are resolved even if the include does not contain `.lkml`
         self.assertIsNotNone(view)
-        self.assertEqual(view.name, "appointments")
+        self.assertEqual(view.name, "test-view")
