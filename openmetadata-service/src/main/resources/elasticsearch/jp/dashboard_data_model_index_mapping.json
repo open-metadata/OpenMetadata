@@ -290,7 +290,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "dataModelType": {
         "type": "keyword"
