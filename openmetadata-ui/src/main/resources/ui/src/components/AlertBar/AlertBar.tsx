@@ -59,7 +59,7 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
         return {
           icon: null,
           className: '',
-          crossIconColor: null,
+          crossIconColor: '',
         };
     }
   }, [type]);
@@ -69,7 +69,7 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
       closable
       showIcon
       className={classNames(className, 'alert-container')}
-      closeIcon={crossIconColor && <CrossIcon iconColor={crossIconColor} />}
+      closeIcon={<CrossIcon iconColor={crossIconColor} />}
       description={message}
       icon={icon}
       type={type}
