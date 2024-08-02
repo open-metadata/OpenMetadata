@@ -21,6 +21,9 @@ from metadata.generated.schema.entity.automations.workflow import (
 from metadata.generated.schema.entity.services.connections.dashboard.presetConnection import (
     PresetConnection,
 )
+from metadata.generated.schema.entity.utils.presetApiConnection import (
+    PresetApiConnection,
+)
 from metadata.ingestion.connections.test_connections import (
     test_connection_engine_step,
     test_connection_steps,
@@ -38,7 +41,10 @@ def get_connection(connection: PresetConnection) -> PresetAPIClient:
     """
     Create connection
     """
-    if isinstance(connection.connection, PresetAPIClient):
+    import pdb
+
+    pdb.set_trace()
+    if isinstance(connection.connection, PresetApiConnection):
         return PresetAPIClient(connection)
     return None
 
@@ -64,7 +70,6 @@ def test_connection(
         test_fn["CheckAccess"] = partial(test_connection_engine_step, client)
         test_fn["GetDashboards"] = partial(test_query, client, FETCH_DASHBOARDS_TEST)
         test_fn["GetCharts"] = partial(test_query, client, FETCH_ALL_CHARTS_TEST)
-
     test_connection_steps(
         metadata=metadata,
         test_fn=test_fn,
