@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -50,6 +51,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
+    DATABRICKS_TABLE_DESCRIBE,
     DATABRICKS_VIEW_DEFINITIONS,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
@@ -661,3 +663,38 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
         return description
+
+    def _filter_owner_name(self, owner_name: str) -> str:
+        """remove unnecessary keyword from name"""
+        pattern = r"\(Unknown\)"
+        filtered_name = re.sub(pattern, "", owner_name).strip()
+        return filtered_name
+
+    def _check_if_email(self, email_id: str) -> bool:
+        """check if email string is valid"""
+        email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        return re.match(email_pattern, email_id)
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+        """
+        query = DATABRICKS_TABLE_DESCRIBE.format(
+            catalog_name=self.context.get().database,
+            schema_name=self.context.get().database_schema,
+            table_name=table_name,
+        )
+        result = self.connection.engine.execute(query)
+        for row in result:
+            row_dict = dict(row)
+            if row_dict.get("col_name") == "Owner":
+                owner = row_dict.get("data_type")
+                if not owner:
+                    return
+                owner = self._filter_owner_name(owner)
+                if self._check_if_email(owner):
+                    owner_ref = self.metadata.get_reference_by_email(email=owner)
+                else:
+                    owner_ref = self.metadata.get_reference_by_name(name=owner)
+                return owner_ref
+        return
