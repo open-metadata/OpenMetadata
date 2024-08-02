@@ -114,6 +114,7 @@ public final class Entity {
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_EXPERTS = "experts";
   public static final String FIELD_DOMAIN = "domain";
+  public static final String FIELD_DOMAINS = "domains";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
 

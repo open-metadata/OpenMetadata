@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
@@ -118,6 +119,7 @@ class ChangeEventParserResourceTest extends OpenMetadataApplicationTest {
         .withEventType(eventType)
         .withEntityId(TABLE.getId())
         .withEntityType(Entity.TABLE)
+        .withDomain(nullOrEmpty(TABLE.getDomain()) ? null : TABLE.getDomain().getId())
         .withEntityFullyQualifiedName(TABLE.getFullyQualifiedName())
         .withChangeDescription(changeDescription)
         .withPreviousVersion(previousVersion)

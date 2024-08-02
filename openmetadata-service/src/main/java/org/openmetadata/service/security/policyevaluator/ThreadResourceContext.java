@@ -31,4 +31,10 @@ public record ThreadResourceContext(String createdBy) implements ResourceContext
   public EntityInterface getEntity() {
     return null;
   }
+
+  // TODO: Fix this this should be thread.getEntity().getDomain()
+  @Override
+  public EntityReference getDomain() {
+    return null;
+  }
 }

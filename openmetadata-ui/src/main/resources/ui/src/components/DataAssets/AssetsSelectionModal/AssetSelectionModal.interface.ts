@@ -35,6 +35,7 @@ import { PipelineService } from '../../../generated/entity/services/pipelineServ
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { Team } from '../../../generated/entity/teams/team';
+import { User } from '../../../generated/entity/teams/user';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
@@ -94,6 +95,7 @@ export type MapPatchAPIResponse = {
   [EntityType.DATABASE_SERVICE]: DatabaseService;
   [EntityType.SEARCH_SERVICE]: SearchService;
   [EntityType.TEAM]: Team;
+  [EntityType.USER]: User;
   [EntityType.API_SERVICE]: APIService;
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;

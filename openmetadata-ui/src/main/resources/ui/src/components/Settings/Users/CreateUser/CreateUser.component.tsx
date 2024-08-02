@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
@@ -32,6 +33,7 @@ import {
   EMAIL_REG_EX,
   passwordRegex,
 } from '../../../../constants/regex.constants';
+import { EntityType } from '../../../../enums/entity.enum';
 import { CreatePasswordGenerator } from '../../../../enums/user.enum';
 import {
   AuthType,
@@ -41,12 +43,20 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { AuthProvider } from '../../../../generated/settings/settings';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../../hooks/useDomainStore';
+import {
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
+} from '../../../../interface/FormUtils.interface';
 import { checkEmailInUse, generateRandomPwd } from '../../../../rest/auth-API';
 import { getJWTTokenExpiryOptions } from '../../../../utils/BotsUtils';
 import { handleSearchFilterOption } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
+import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
 import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
@@ -71,6 +81,37 @@ const CreateUser = ({
     Array<EntityReference | undefined>
   >([]);
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
+  const { activeDomainEntityRef } = useDomainStore();
+  const selectedDomain =
+    Form.useWatch<EntityReference[]>('domains', form) ?? [];
+
+  const domainsField: FieldProp = {
+    name: 'domains',
+    id: 'root/domains',
+    required: false,
+    label: t('label.domain'),
+    type: FieldTypes.DOMAIN_SELECT,
+    props: {
+      selectedDomain: activeDomainEntityRef
+        ? [activeDomainEntityRef]
+        : undefined,
+      multiple: true,
+      children: (
+        <Button
+          data-testid="add-domain"
+          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          size="small"
+          type="primary"
+        />
+      ),
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    formItemProps: {
+      valuePropName: 'selectedDomain',
+      trigger: 'onUpdate',
+      initialValue: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
+    },
+  };
 
   const isAuthProviderBasic = useMemo(
     () =>
@@ -125,6 +166,7 @@ const CreateUser = ({
       teams: validTeam.length ? validTeam : undefined,
       email: email,
       isAdmin: isAdmin,
+      domains: selectedDomain.map((domain) => domain.fullyQualifiedName ?? ''),
       isBot: isBot,
       ...(forceBot
         ? {
@@ -377,6 +419,19 @@ const CreateUser = ({
         </>
       )}
 
+      <div className="m-t-xs">
+        {getField(domainsField)}
+        {selectedDomain && selectedDomain.length > 0 && (
+          <DomainLabel
+            multiple
+            domain={selectedDomain}
+            entityFqn=""
+            entityId=""
+            entityType={EntityType.USER}
+            hasPermission={false}
+          />
+        )}
+      </div>
       {!isUndefined(inlineAlertDetails) && (
         <InlineAlert alertClassName="m-b-xs" {...inlineAlertDetails} />
       )}
