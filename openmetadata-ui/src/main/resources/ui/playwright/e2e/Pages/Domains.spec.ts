@@ -181,6 +181,7 @@ test.describe('Domains', () => {
 
     await checkAssetsCount(page, assets.length);
     await domain.delete(apiContext);
+    await assetCleanup();
     await afterAction();
   });
 });
@@ -264,6 +265,16 @@ test.describe('Domains Rbac', () => {
           .getByRole('menuitem', { name: domain3.data.displayName })
           .locator('span')
       ).toBeVisible();
+
+      for (const asset of domainAssset2) {
+        await asset.visitEntityPage(userPage);
+
+        await expect(
+          userPage.getByText(
+            "You don't have access, please check with the admin to get permissions"
+          )
+        ).toBeVisible();
+      }
 
       await afterActionUser1();
     });

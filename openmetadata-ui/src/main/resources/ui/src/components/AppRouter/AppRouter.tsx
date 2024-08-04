@@ -81,6 +81,7 @@ const AppRouter = () => {
 
   return (
     <Switch>
+      <Route exact component={PageNotFound} path={ROUTES.FORBIDDEN} />
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
