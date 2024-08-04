@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -42,6 +43,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -187,9 +189,12 @@ public class SearchRepository {
   }
 
   public String getIndexOrAliasName(String name) {
-    return clusterAlias != null && !clusterAlias.isEmpty()
-        ? clusterAlias + indexNameSeparator + name
-        : name;
+    if (clusterAlias == null || clusterAlias.isEmpty()) {
+      return name;
+    }
+    return Arrays.stream(name.split(","))
+        .map(index -> clusterAlias + indexNameSeparator + index.trim())
+        .collect(Collectors.joining(","));
   }
 
   public String getIndexNameWithoutAlias(String fullIndexName) {
