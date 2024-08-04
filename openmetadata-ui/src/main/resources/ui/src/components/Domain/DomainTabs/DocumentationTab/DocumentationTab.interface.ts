@@ -18,6 +18,8 @@ export interface DocumentationTabProps {
   onUpdate: (value: Domain | DataProduct) => Promise<void>;
   isVersionsView?: boolean;
   type?: DocumentationEntity;
+  subDomains?: Domain[];
+  isSubDomainsLoading?: boolean;
 }
 
 export enum DocumentationEntity {

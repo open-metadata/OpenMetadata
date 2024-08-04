@@ -49,7 +49,6 @@ import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../../../utils/StringsUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -99,7 +98,7 @@ export const UserTab = ({
     getUsers({
       fields: `${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`,
       limit: pageSize,
-      team: getDecodedFqn(team),
+      team,
       ...paging,
     })
       .then((res) => {

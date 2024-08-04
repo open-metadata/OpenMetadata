@@ -34,6 +34,7 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.CREATE_GROUP;
@@ -906,12 +907,28 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
     // When domain is not set for a user term, carry it forward from the parent team
     CreateTeam createTeam =
-        createRequest(test).withDomain(DOMAIN.getFullyQualifiedName()).withTeamType(DEPARTMENT);
+        createRequest(test)
+            .withDomains(List.of(DOMAIN.getFullyQualifiedName()))
+            .withTeamType(DEPARTMENT);
     Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create a children team without domain and ensure it inherits domain from the parent
     createTeam = createRequest("team1").withParents(listOf(team.getId()));
     assertDomainInheritance(createTeam, DOMAIN.getEntityReference());
+  }
+
+  public Team assertDomainInheritance(CreateTeam createRequest, EntityReference expectedDomain)
+      throws IOException, InterruptedException {
+    Team entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
+    entity = getEntityByName(entity.getFullyQualifiedName(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain, FIELD_DOMAINS);
+    return entity;
   }
 
   private static void validateTeam(

@@ -20,6 +20,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -28,7 +30,6 @@ import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class MigrationUtil {
-
   private static final String QUERY_AUTOMATOR =
       "SELECT json FROM ingestion_pipeline_entity where appType = 'Automator'";
   private static final String ADD_OWNER_ACTION = "AddOwnerAction";
@@ -125,6 +126,27 @@ public class MigrationUtil {
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       entityRepository.setPipelineServiceClient(pipelineServiceClient);
       entityRepository.delete("admin", dataInsightsPipeline.getId(), true, true);
+    }
+  }
+
+  public static void updateDataInsightsApplication() {
+    // Delete DataInsightsApplication - It will be recreated on AppStart
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+
+    try {
+      appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Application not found.");
+    }
+
+    // Update DataInsightsApplication MarketplaceDefinition - It will be recreated on AppStart
+    AppMarketPlaceRepository marketPlaceRepository =
+        (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
+
+    try {
+      marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+    } catch (EntityNotFoundException ex) {
+      LOG.debug("DataInsights Application Marketplace Definition not found.");
     }
   }
 
