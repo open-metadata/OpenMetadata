@@ -55,7 +55,7 @@ const UserPage = () => {
           TabSpecificField.TEAMS,
           TabSpecificField.PERSONAS,
           TabSpecificField.DEFAULT_PERSONA,
-          TabSpecificField.DOMAIN,
+          TabSpecificField.DOMAINS,
         ],
         include: Include.All,
       });
@@ -78,8 +78,8 @@ const UserPage = () => {
   const myDataQueryFilter = useMemo(() => {
     const teamsIds = (userData.teams ?? []).map((team) => team.id);
     const mergedIds = [
-      ...teamsIds.map((id) => `owner.id:${id}`),
-      `owner.id:${userData.id}`,
+      ...teamsIds.map((id) => `owners.id:${id}`),
+      `owners.id:${userData.id}`,
     ].join(' OR ');
 
     return `(${mergedIds})`;

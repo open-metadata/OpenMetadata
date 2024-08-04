@@ -207,7 +207,6 @@ const TeamsInfo = ({
                   className="toolbar-button align-middle"
                   component={EditIcon}
                   data-testid="edit-email"
-                  style={{ fontSize: '16px' }}
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
@@ -252,21 +251,18 @@ const TeamsInfo = ({
 
             {hasEditPermission && (
               <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.team-type'),
-                })}>
+                title={
+                  isGroupType
+                    ? t('message.group-team-type-change-message')
+                    : t('label.edit-entity', {
+                        entity: t('label.team-type'),
+                      })
+                }>
                 <Icon
-                  className={classNames('vertical-middle m-l-xs', {
-                    'opacity-50': isGroupType,
+                  className={classNames('align-middle m-l-xss', {
+                    'opacity-30': isGroupType,
                   })}
                   data-testid="edit-team-type-icon"
-                  title={
-                    isGroupType
-                      ? t('message.group-team-type-change-message')
-                      : t('label.edit-entity', {
-                          entity: t('label.team-type'),
-                        })
-                  }
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
@@ -297,7 +293,8 @@ const TeamsInfo = ({
   return (
     <Space size={0}>
       <DomainLabel
-        domain={currentTeam.domain}
+        multiple
+        domain={currentTeam.domains}
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}

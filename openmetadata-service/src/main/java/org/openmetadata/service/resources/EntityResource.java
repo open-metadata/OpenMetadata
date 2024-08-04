@@ -128,6 +128,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
+
     return listInternal(
         uriInfo,
         securityContext,
@@ -153,6 +154,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     RestUtil.validateCursors(before, after);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
+    // Add Domain Filter
+    EntityUtil.addDomainQueryParam(securityContext, filter);
+
+    // List
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
       resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);

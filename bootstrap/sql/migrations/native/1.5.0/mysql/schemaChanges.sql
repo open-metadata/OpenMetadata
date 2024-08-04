@@ -110,7 +110,6 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     INDEX (name)
 );
 
-
 -- Clean dangling workflows not removed after test connection
 truncate automations_workflow;
 
@@ -220,3 +219,16 @@ SET json = JSON_SET(
 )
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
 AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
+
+ALTER TABLE test_case MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
+
+-- set templates to fetch emailTemplates
+UPDATE openmetadata_settings
+SET json = JSON_SET(json, '$.templates', 'openmetadata')
+WHERE configType = 'emailConfiguration';
+
+-- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.owner', '$.service');
+
+ALTER TABLE thread_entity ADD COLUMN domain VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.domain');

@@ -68,10 +68,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
-  getDecodedFqn: jest.fn(),
-}));
-
 jest.mock('../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
@@ -168,7 +164,7 @@ describe('Test Teams Page', () => {
           'defaultRoles',
           'policies',
           'childrenCount',
-          'domain',
+          'domains',
         ],
         include: 'all',
       },
@@ -226,7 +222,7 @@ describe('Test Teams Page', () => {
       '',
       0,
       0,
-      'owner.id:f9578f16-363a-4788-80fb-d05816c9e169',
+      'owners.id:f9578f16-363a-4788-80fb-d05816c9e169',
       '',
       '',
       'all'
