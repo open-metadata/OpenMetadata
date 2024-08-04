@@ -90,7 +90,9 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/users/password/reset",
           "v1/users/checkEmailInUse",
           "v1/users/login",
-          "v1/users/refresh");
+          "v1/users/refresh",
+          "v1/collate/apps/slack/callback",
+           "v1/collate/apps/slack/events");
 
   @SuppressWarnings("unused")
   private JwtFilter() {}
