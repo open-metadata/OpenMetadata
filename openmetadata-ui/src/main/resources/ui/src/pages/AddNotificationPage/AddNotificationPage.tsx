@@ -55,7 +55,7 @@ import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityF
 
 const AddNotificationPage = () => {
   const { t } = useTranslation();
-  const [form] = useForm<EventSubscription>();
+  const [form] = useForm<CreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
