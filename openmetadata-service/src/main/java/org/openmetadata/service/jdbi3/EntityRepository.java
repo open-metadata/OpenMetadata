@@ -1958,8 +1958,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return;
     }
+    // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
-    owners = new ArrayList<>(refs);
+    for (int i = 0; i < owners.size(); i++) {
+      EntityUtil.copy(refs.get(i), owners.get(i));
+    }
   }
 
   @Transaction
