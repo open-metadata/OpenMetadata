@@ -234,13 +234,15 @@ public class AppRepository extends EntityRepository<App> {
   }
 
   @Override
-  protected void postUpdate(App original, App updated) {
-    super.postUpdate(original, updated);
+  public void restorePatchAttributes(App original, App updated) {
+    super.restorePatchAttributes(original, updated);
 
+    // Check app configuration for search indexing application
+    // if searchIndexMappingLanguage is updated, check if plugin is present
     if ("SearchIndexingApplication".equalsIgnoreCase(updated.getFullyQualifiedName())) {
       Optional.ofNullable(updated.getAppConfiguration())
-          .filter(appConfig -> appConfig instanceof Map)
-          .map(appConfig -> (Map<String, Object>) appConfig)
+          .filter(Map.class::isInstance)
+          .map(Map.class::cast)
           .map(configMap -> (String) configMap.get("searchIndexMappingLanguage"))
           .ifPresent(
               language -> {

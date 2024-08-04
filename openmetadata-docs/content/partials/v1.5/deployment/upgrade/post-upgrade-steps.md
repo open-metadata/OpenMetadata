@@ -6,6 +6,10 @@
 
 Since this is required after the upgrade, we want to reindex `All` the entities.
 
+### Language-Specific Plugin Installation
+
+{% partial file="/v1.5/deployment/plugin-installation.md" /%}
+
 ### (Optional) Update your OpenMetadata Ingestion Client
 
 If you are running the ingestion workflows **externally** or using a custom Airflow installation, you need to make sure that the Python Client you use is aligned
