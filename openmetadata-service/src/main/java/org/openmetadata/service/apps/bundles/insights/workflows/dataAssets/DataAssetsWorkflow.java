@@ -150,7 +150,6 @@ public class DataAssetsWorkflow {
           String errorMessage =
               String.format("Failed processing Data from %s: %s", source.getName(), ex);
           workflowStats.addFailure(errorMessage);
-          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }

@@ -174,7 +174,6 @@ public class CostAnalysisWorkflow {
               String.format("Failed processing Data from %s: ", source.getName(), ex);
           initialProcessorError = Optional.of(errorMessage);
           workflowStats.addFailure(errorMessage);
-          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }

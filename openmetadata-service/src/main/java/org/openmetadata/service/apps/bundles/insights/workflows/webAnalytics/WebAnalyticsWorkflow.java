@@ -182,7 +182,6 @@ public class WebAnalyticsWorkflow {
             Optional.of(
                 String.format("Failed processing events from %s: %s", source.getName(), ex));
         workflowStats.addFailure(error.get());
-        break;
       } finally {
         updateWorkflowStats(source.getName(), source.getStats());
       }
