@@ -71,10 +71,12 @@ $$
 
 $$section
 ### Connection Options $(id="connectionOptions")
-Additional connection options to build the URL that can be sent to service during the connection. The connectionOptions parameter is specific to the connection method being used. For example, if you are using SSL encryption, you might set the connectionOptions parameter to {'ssl': 'true', 'sslTrustStore': '/path/to/truststore'}.
+Additional connection options to build the URL that can be sent to service during the connection. The connectionOptions parameter is specific to the connection method being used.
 $$
 
 $$section
 ### Connection Arguments $(id="connectionArguments")
-Additional connection arguments such as security or protocol configs that can be sent to service during connection.
+Additional connection arguments such as security or protocol configs that can be sent to service during connection.For example, if you are using SSL encryption, update the parameters to {'use_ssl': 'true', 'ssl_cert': '/path/to/ca/cert'}.
+
+Ensure that the certificate is accessible by the server. If you use a Docker or Kubernetes deployment, update the CA certificate in the Open Metadata server.
 $$
