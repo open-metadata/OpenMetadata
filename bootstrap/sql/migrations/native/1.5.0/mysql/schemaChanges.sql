@@ -277,4 +277,10 @@ update topic_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.own
 update type_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
 update user_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
 
-update table_entity set json = JSON_REMOVE(json, '$.dataModel.owner') where json -> '$.dataModel.owner' is not null;
+update table_entity set json = JSON_SET(
+    JSON_REMOVE(json, '$.dataModel.owner'),
+    '$.dataModel.owners',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.dataModel.owner')
+    )
+) where json -> '$.dataModel.owner' is not null;

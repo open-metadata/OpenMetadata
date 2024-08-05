@@ -264,4 +264,5 @@ update topic_entity set json = json#-'{owner}' where json #>> '{owner}' is not n
 update type_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
 update user_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
 
-update table_entity set json = json#-'{dataModel,owner}' where json #>> '{dataModel,owner}' is not null;
+update table_entity set json = jsonb_set(json#-'{dataModel,owner}', '{dataModel,owners}', 
+jsonb_build_array(json#>'{dataModel,owner}')) where json #>> '{dataModel,owner}' is not null;
