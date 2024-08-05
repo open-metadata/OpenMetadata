@@ -47,12 +47,43 @@ class GitlabReader(ApiReader):
 
     credentials: GitlabCredentials
 
-    @staticmethod
-    def _encode_project_path(project_owner: str, project_name: str) -> str:
+    def __init__(self, credentials):
+        super().__init__(credentials)
+        self._encoded_project_path = None
+
+    @property
+    def auth_headers(self) -> Dict[str, str]:
         """
-        Generated a URL-encoded project path argument for the Gitlab API
+        Build the headers to authenticate
+        to the API
         """
-        return quote_plus("/".join([project_owner, project_name]))
+        if self._auth_headers is None and self.credentials.token:
+            self._auth_headers = {
+                "PRIVATE-TOKEN": self.credentials.token.root.get_secret_value()
+            }
+
+        return self._auth_headers
+
+    @property
+    def encoded_project_path(self) -> str:
+        """
+        Build the URL-encoded project path for the Gitlab API
+        """
+        if (
+            self._encoded_project_path is None
+            and self.credentials.repositoryOwner.root
+            and self.credentials.repositoryName.root
+        ):
+            self._encoded_project_path = quote_plus(
+                "/".join(
+                    [
+                        self.credentials.repositoryOwner.root,
+                        self.credentials.repositoryName.root,
+                    ]
+                )
+            )
+
+        return self._encoded_project_path
 
     @staticmethod
     def _decode_content(json_response: Dict[str, Any]) -> str:
@@ -70,18 +101,16 @@ class GitlabReader(ApiReader):
         https://docs.gitlab.com/ee/api/repository_files.html
         """
         encoded_file_path = quote_plus(path)
+        branch = self._get_default_branch()
         try:
             res = requests.get(
                 self._build_url(
                     HOST,
                     UrlParts.PROJECTS.value,
-                    self._encode_project_path(
-                        self.credentials.repositoryOwner.root,
-                        self.credentials.repositoryName.root,
-                    ),
+                    self.encoded_project_path,
                     UrlParts.REPOSITORY.value,
                     UrlParts.FILES.value,
-                    encoded_file_path,
+                    f"{encoded_file_path}?ref={branch}",
                 ),
                 headers=self.auth_headers,
                 timeout=30,
@@ -114,29 +143,27 @@ class GitlabReader(ApiReader):
         res.raise_for_status()
         raise RuntimeError("Could not fetch the default branch")
 
-    def _get_tree(self, page: int = 1, per_page: int = 500) -> Optional[List[str]]:
+    def _get_tree(self, url: str = None) -> Optional[List[str]]:
         """
-        Use the Gitlab Repository Tree API to iterate over tree pages
+        Use the Gitlab Repository Tree API to iterate over tree pages recursively
         """
-        res = requests.get(
-            self._build_url(
+        if url is None:
+            url = self._build_url(
                 HOST,
                 UrlParts.PROJECTS.value,
-                self._encode_project_path(
-                    self.credentials.repositoryOwner.root,
-                    self.credentials.repositoryName.root,
-                ),
+                self.encoded_project_path,
                 UrlParts.REPOSITORY.value,
-                UrlParts.TREE.value,
-                f"?recursive=true&per_page={per_page}&page={page}",
-            ),
+                f"{UrlParts.TREE.value}?recursive=true&pagination=keyset&per_page=100&order_by=path&sort=desc",
+            )
+        res = requests.get(
+            url,
             headers=self.auth_headers,
             timeout=30,
         )
         if res.status_code == 200:
             paths = [elem.get("path") for elem in res.json()]
-            if len(paths) == per_page:
-                paths.append(self._get_tree(page + 1, per_page))
+            if res.links.get("next"):
+                paths.extend(self._get_tree(res.links["next"]["url"]))
             return paths
 
         # If we don't get a 200, raise
