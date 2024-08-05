@@ -198,7 +198,9 @@ export const addMultiOwner = async (data: {
   }
 
   if (isMultipleOwners) {
-    await page.click('[data-testid="selectable-list-update-btn"]');
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
   }
 
   if (!isSelectableInsideForm) {
