@@ -64,8 +64,10 @@ public class MigrationUtil {
                   actions.forEach(
                       action -> {
                         JsonObject actionObj = (JsonObject) action;
-                        // Only process the automations with AddOwnerAction that still have the `owner` key present
-                        if (ADD_OWNER_ACTION.equals(actionObj.getString("type")) && actionObj.containsKey(OWNER_KEY)) {
+                        // Only process the automations with AddOwnerAction that still have the
+                        // `owner` key present
+                        if (ADD_OWNER_ACTION.equals(actionObj.getString("type"))
+                            && actionObj.containsKey(OWNER_KEY)) {
                           JsonObject owner = actionObj.getJsonObject(OWNER_KEY);
                           JsonArrayBuilder owners = Json.createArrayBuilder();
                           owners.add(owner);
