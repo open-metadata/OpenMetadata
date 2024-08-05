@@ -17,13 +17,13 @@ import { ReactComponent as ErrorIcon } from '../../assets/svg/ic-error.svg';
 import { ReactComponent as InfoIcon } from '../../assets/svg/ic-info-tag.svg';
 import { ReactComponent as SuccessIcon } from '../../assets/svg/ic-success.svg';
 import { ReactComponent as WarningIcon } from '../../assets/svg/ic-warning-tag.svg';
-import { useAlertStore } from '../../hooks/useAlertBar';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import './alert-bar.style.less';
 import { AlertBarProps } from './AlertBar.interface';
 import CrossIcon from './CrossIcon';
 
 const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
-  const { resetAlert } = useAlertStore();
+  const { resetAlert, animationClass } = useAlertStore();
 
   const { icon, className, crossIconColor } = useMemo(() => {
     switch (type) {
@@ -68,7 +68,7 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
     <Alert
       closable
       showIcon
-      className={classNames(className, 'alert-container')}
+      className={classNames(className, 'alert-container', animationClass)}
       closeIcon={<CrossIcon iconColor={crossIconColor} />}
       description={message}
       icon={icon}

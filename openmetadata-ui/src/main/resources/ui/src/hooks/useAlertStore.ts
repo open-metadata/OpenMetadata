@@ -20,14 +20,28 @@ type AlertType = {
 
 interface AlertStore {
   alert: AlertType | undefined;
-  addAlert: (alert: AlertType) => void;
+  animationClass: string;
+  addAlert: (alert: AlertType, timer?: number) => void;
   resetAlert: () => void;
 }
 
 export const useAlertStore = create<AlertStore>()((set) => ({
   alert: undefined,
-  addAlert: (alert: AlertType) => {
-    set({ alert });
+  animationClass: '',
+  addAlert: (alert: AlertType, timer?: number) => {
+    set({ alert, animationClass: 'show-alert' });
+
+    const autoCloseTimer =
+      timer !== undefined ? timer : alert.type === 'error' ? Infinity : 5000;
+
+    if (autoCloseTimer !== Infinity) {
+      setTimeout(() => {
+        set({ animationClass: 'hide-alert' });
+        setTimeout(() => {
+          set({ alert: undefined });
+        }, 1000);
+      }, autoCloseTimer);
+    }
   },
   resetAlert: () => {
     setTimeout(() => {

@@ -17,7 +17,7 @@ import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { useAlertStore } from '../../hooks/useAlertBar';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
 import { getDomainList } from '../../rest/domainAPI';

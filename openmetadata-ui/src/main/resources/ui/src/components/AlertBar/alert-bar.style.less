@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-@keyframes resize-alert-animation {
+@keyframes resize-show-animation {
   from {
     height: 0;
     padding: 0 20px;
@@ -22,17 +22,30 @@
   }
 }
 
+@keyframes resize-hide-animation {
+  from {
+    height: auto;
+    padding: 20px;
+  }
+  to {
+    height: 0;
+    padding: 0 20px;
+  }
+}
+
 .alert-container {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 16px;
-  height: 0;
-  animation: resize-alert-animation 0.3s ease-in-out forwards;
 
-  &.ant-alert-with-description {
-    padding: 0;
+  &.show-alert {
+    animation: resize-show-animation 0.3s ease-in-out forwards;
+  }
+
+  &.hide-alert {
+    animation: resize-hide-animation 0.3s ease-in-out forwards;
   }
 
   &.general {

@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { ClientErrors } from '../enums/Axios.enum';
-import { useAlertStore } from '../hooks/useAlertBar';
+import { useAlertStore } from '../hooks/useAlertStore';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
@@ -69,7 +69,9 @@ export const showErrorToast = (
     }
   }
   callback && callback(errorMessage);
-  useAlertStore.getState().addAlert({ type: 'error', message: errorMessage });
+  useAlertStore
+    .getState()
+    .addAlert({ type: 'error', message: errorMessage }, autoCloseTimer);
 };
 
 /**
@@ -78,7 +80,9 @@ export const showErrorToast = (
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore.getState().addAlert({ type: 'success', message });
+  useAlertStore
+    .getState()
+    .addAlert({ type: 'success', message }, autoCloseTimer);
 };
 
 /**
@@ -87,5 +91,5 @@ export const showSuccessToast = (message: string, autoCloseTimer = 5000) => {
  * @param autoCloseTimer Set the delay in ms to close the toast automatically. `Default: 5000`
  */
 export const showInfoToast = (message: string, autoCloseTimer = 5000) => {
-  useAlertStore.getState().addAlert({ type: 'info', message });
+  useAlertStore.getState().addAlert({ type: 'info', message }, autoCloseTimer);
 };

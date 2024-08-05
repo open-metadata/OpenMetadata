@@ -21,7 +21,7 @@ import React, {
   ReactNode,
   useMemo,
 } from 'react';
-import { useAlertStore } from '../../hooks/useAlertBar';
+import { useAlertStore } from '../../hooks/useAlertStore';
 import AlertBar from '../AlertBar/AlertBar';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
 import './../../styles/layout/page-layout.less';
