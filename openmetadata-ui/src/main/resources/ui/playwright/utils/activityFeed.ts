@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import { descriptionBox } from './common';
 import { TaskDetails } from './task';
 
@@ -45,4 +45,17 @@ export const checkDescriptionInEditModal = async (
   await expect(page.getByTestId('markdown-parser')).toContainText(
     taskValue.oldDescription ?? ''
   );
+};
+
+export const deleteFeedComments = async (page: Page, feed: Locator) => {
+  await feed.click();
+  await page.locator('[data-testid="delete-message"]').click();
+
+  await page.waitForSelector('[role="dialog"].ant-modal');
+
+  const deleteResponse = page.waitForResponse('/api/v1/feed/*/posts/*');
+
+  await page.getByTestId('save-button').click();
+
+  await deleteResponse;
 };

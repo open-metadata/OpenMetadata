@@ -1,3 +1,37 @@
+-- Add a new table di_chart_entity
+CREATE TABLE IF NOT EXISTS di_chart_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.id') NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.fullyQualifiedName') NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json ->> '$.updatedAt') NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.updatedBy') NOT NULL,
+    fqnHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS (json -> '$.deleted'),
+    UNIQUE(name),
+    INDEX name_index (name)
+);
+
+-- Update the KPI entity to remove the targetDefinition and set the targetValue to the value of the targetDefinition
+UPDATE kpi_entity
+SET json = JSON_REMOVE(
+                    JSON_SET(json, 
+                             '$.targetValue', 
+                             CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.targetDefinition[0].value')) AS DECIMAL) * 100 
+                            ),
+                    '$.targetDefinition'
+                )
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.metricType')) = 'PERCENTAGE';
+
+UPDATE kpi_entity
+SET json = JSON_REMOVE(
+                    JSON_SET(json, 
+                             '$.targetValue', 
+                             CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.targetDefinition[0].value')) AS DECIMAL) 
+                            ),
+                    '$.targetDefinition'
+                )
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.metricType')) = 'NUMBER';
 -- Update DeltaLake service due to connection schema changes to enable DeltaLake ingestion from Storage
 UPDATE dbservice_entity dbse
 SET
@@ -76,7 +110,6 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     INDEX (name)
 );
 
-
 -- Clean dangling workflows not removed after test connection
 truncate automations_workflow;
 
@@ -148,3 +181,54 @@ JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpC
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.externalType') OR 
 JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig.path')
 ) is NULL AND JSON_EXTRACT(json, '$.sourceConfig.config.dbtConfigSource.dbtSecurityConfig.gcpConfig') is not null;
+
+-- Update Owner Field to Owners
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
+
+-- Update thread_entity to move previousOwner and updatedOwner to array
+UPDATE thread_entity
+SET json = JSON_SET(
+    json,
+    '$.feedInfo.entitySpecificInfo.previousOwner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.previousOwner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.previousOwner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.previousOwner')) <> 'ARRAY';
+
+UPDATE thread_entity
+SET json = JSON_SET(
+    json,
+    '$.feedInfo.entitySpecificInfo.updatedOwner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.updatedOwner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')) <> 'ARRAY';
+
+-- Update entity_extension to move owner to array
+UPDATE entity_extension
+SET json = JSON_SET(
+    json,
+    '$.owner',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.owner')
+    )
+)
+WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
+AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
+
+ALTER TABLE test_case MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
+
+-- set templates to fetch emailTemplates
+UPDATE openmetadata_settings
+SET json = JSON_SET(json, '$.templates', 'openmetadata')
+WHERE configType = 'emailConfiguration';
+
+-- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
+UPDATE ingestion_pipeline_entity
+SET json = JSON_REMOVE(json, '$.owner', '$.service');
+
+ALTER TABLE thread_entity ADD COLUMN domain VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.domain');

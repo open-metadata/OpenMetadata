@@ -21,10 +21,8 @@ type MultipleUserTeam = {
 
 export interface UserSelectDropdownProps {
   hasPermission: boolean;
-  owner?: EntityReference | EntityReference[];
-  onUpdate: (
-    updatedUser?: EntityReference | EntityReference[]
-  ) => void | Promise<void>;
+  owner?: EntityReference[];
+  onUpdate: (updatedUser?: EntityReference[]) => void | Promise<void>;
   children?: ReactNode;
   popoverProps?: PopoverProps;
   multiple?: MultipleUserTeam;

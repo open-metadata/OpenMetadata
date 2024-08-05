@@ -123,9 +123,9 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "owner": {
-      "description": "Owner of this messaging service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this messaging service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this messaging service.",

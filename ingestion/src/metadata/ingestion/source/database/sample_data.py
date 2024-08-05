@@ -1145,10 +1145,10 @@ class SampleDataSource(
 
     def ingest_pipelines(self) -> Iterable[Either[Pipeline]]:
         for pipeline in self.pipelines["pipelines"]:
-            owner = None
+            owners = None
             if pipeline.get("owner"):
-                owner = self.metadata.get_reference_by_email(
-                    email=pipeline.get("owner")
+                owners = self.metadata.get_reference_by_email(
+                    email=pipeline.get("owners")
                 )
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
@@ -1157,7 +1157,7 @@ class SampleDataSource(
                 sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
-                owner=owner,
+                owners=owners,
                 scheduleInterval=pipeline.get("scheduleInterval"),
             )
             yield Either(right=pipeline_ev)
@@ -1500,6 +1500,7 @@ class SampleDataSource(
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
                         ],
+                        useDynamicAssertion=test_case.get("useDynamicAssertion", False),
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)

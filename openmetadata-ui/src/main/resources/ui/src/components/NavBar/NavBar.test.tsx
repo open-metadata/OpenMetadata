@@ -56,6 +56,7 @@ jest.mock('../../utils/BrowserNotificationUtils', () => ({
 jest.mock('../../utils/CommonUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
+  getNameFromFQN: jest.fn().mockImplementation((value) => value),
 }));
 jest.mock('../../utils/FeedUtils', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),

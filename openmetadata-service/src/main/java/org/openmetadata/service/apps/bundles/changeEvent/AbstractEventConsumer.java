@@ -122,8 +122,9 @@ public abstract class AbstractEventConsumer
             context.getJobDetail().getJobDataMap().get(DESTINATION_MAP_KEY);
     if (dMap == null) {
       dMap = new HashMap<>();
-      for (SubscriptionDestination subscription : eventSubscription.getDestinations()) {
-        dMap.put(subscription.getId(), AlertFactory.getAlert(subscription));
+      for (SubscriptionDestination subscriptionDest : eventSubscription.getDestinations()) {
+        dMap.put(
+            subscriptionDest.getId(), AlertFactory.getAlert(eventSubscription, subscriptionDest));
       }
       context.getJobDetail().getJobDataMap().put(DESTINATION_MAP_KEY, dMap);
     }

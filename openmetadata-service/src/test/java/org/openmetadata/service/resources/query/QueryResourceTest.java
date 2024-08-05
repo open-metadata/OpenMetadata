@@ -67,7 +67,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
             .createRequest(test)
             .withName(getEntityName(test))
             .withColumns(columns)
-            .withOwner(EntityResourceTest.USER1_REF);
+            .withOwners(List.of(EntityResourceTest.USER1_REF));
     Table createdTable = tableResourceTest.createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     TABLE_REF = createdTable.getEntityReference();
     QUERY = "select * from %s";
@@ -78,7 +78,7 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
   public CreateQuery createRequest(String type) {
     return new CreateQuery()
         .withName(type)
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withUsers(List.of(USER2.getName()))
         .withQueryUsedIn(List.of(TABLE_REF))
         .withQuery(String.format(QUERY, RandomStringUtils.random(10, true, false)))
@@ -106,13 +106,13 @@ public class QueryResourceTest extends EntityResourceTest<Query, CreateQuery> {
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
-    fields = "owner,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
+    assertListNull(entity.getOwners(), entity.getUsers(), entity.getQueryUsedIn());
+    fields = "owners,tags,followers,users,queryUsedIn"; // Not testing for kpiResult field
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getUsers(), entity.getQueryUsedIn());
+    assertListNotNull(entity.getOwners(), entity.getUsers(), entity.getQueryUsedIn());
     return entity;
   }
 

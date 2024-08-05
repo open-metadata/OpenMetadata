@@ -28,6 +28,8 @@ import {
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { APICollection } from '../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
@@ -42,6 +44,7 @@ import {
 } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
 import { MessagingService } from '../generated/entity/services/messagingService';
@@ -291,6 +294,15 @@ export const getDataAssetsHeaderInfo = (
       );
 
       break;
+    case EntityType.API_SERVICE:
+      const apiServiceDetails = dataAsset as APIService;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        apiServiceDetails,
+        EntityType.API_SERVICE
+      );
+
+      break;
 
     case EntityType.DASHBOARD_SERVICE:
       const dashboardServiceDetails = dataAsset as DashboardService;
@@ -396,6 +408,58 @@ export const getDataAssetsHeaderInfo = (
       returnData.breadcrumbs = getBreadcrumbForTable(dataAsset as Table);
 
       break;
+
+    case EntityType.API_COLLECTION: {
+      const apiCollection = dataAsset as APICollection;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        apiCollection,
+        EntityType.API_COLLECTION
+      );
+
+      returnData.extraInfo = (
+        <>
+          {apiCollection.endpointURL && (
+            <ExtraInfoLink
+              href={apiCollection.endpointURL}
+              label={t('label.endpoint-url')}
+              value={apiCollection.endpointURL}
+            />
+          )}
+        </>
+      );
+
+      break;
+    }
+    case EntityType.API_ENDPOINT: {
+      const apiEndpoint = dataAsset as APIEndpoint;
+
+      returnData.breadcrumbs = getEntityBreadcrumbs(
+        apiEndpoint,
+        EntityType.API_ENDPOINT
+      );
+
+      returnData.extraInfo = (
+        <>
+          {apiEndpoint.requestMethod && (
+            <ExtraInfoLabel
+              dataTestId="api-endpoint-request-method"
+              label={t('label.request-method')}
+              value={apiEndpoint.requestMethod}
+            />
+          )}
+          {apiEndpoint.endpointURL && (
+            <ExtraInfoLink
+              href={apiEndpoint.endpointURL}
+              label={t('label.endpoint-url')}
+              value={apiEndpoint.endpointURL}
+            />
+          )}
+        </>
+      );
+
+      break;
+    }
 
     case EntityType.TABLE:
     default:

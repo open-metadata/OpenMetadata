@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { Popover, Skeleton, Space, Tag } from 'antd';
+import { Popover, Skeleton, Space, Tag, Typography } from 'antd';
 import classNamesFunc from 'classnames';
-import { isEmpty, isUndefined, startCase } from 'lodash';
+import { isEmpty, isUndefined, upperCase } from 'lodash';
 import React, {
   FunctionComponent,
   useCallback,
@@ -21,6 +21,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { PIPELINE_INGESTION_RUN_STATUS } from '../../../../../constants/pipeline.constants';
 import {
   IngestionPipeline,
@@ -110,9 +111,11 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
   }
 
   return (
-    <Space className={classNames} size={2}>
+    <Space className={classNames} size={5}>
       {isEmpty(recentRunStatus) ? (
-        <p data-testid="pipeline-status">--</p>
+        <Typography.Text data-testid="pipeline-status">
+          {NO_DATA_PLACEHOLDER}
+        </Typography.Text>
       ) : (
         recentRunStatus.map((r, i) => {
           const status = (
@@ -127,7 +130,7 @@ export const IngestionRecentRuns: FunctionComponent<Props> = ({
               key={`${r.runId}-status`}
               onClick={() => handleRunStatusClick(r)}>
               {i === recentRunStatus.length - 1
-                ? startCase(r?.pipelineState)
+                ? upperCase(r?.pipelineState)
                 : ''}
             </Tag>
           );

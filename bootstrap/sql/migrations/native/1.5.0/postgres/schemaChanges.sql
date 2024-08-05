@@ -1,4 +1,32 @@
--- Update DeltaLake service due to connection schema changes to enable DeltaLake ingestion from Storage
+-- Add a new table di_chart_entity
+CREATE TABLE IF NOT EXISTS di_chart_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    fullyQualifiedName VARCHAR(256) GENERATED ALWAYS AS (json ->> 'fullyQualifiedName') STORED NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    fqnHash VARCHAR(768) DEFAULT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::bool) STORED,
+    UNIQUE(name)
+);
+
+UPDATE kpi_entity
+SET json = jsonb_set(
+        json,
+        '{targetValue}',
+        to_jsonb((json->'targetDefinition'->0->>'value')::numeric * 100)
+       ) #- '{targetDefinition}'
+WHERE json->>'metricType' = 'PERCENTAGE';
+
+UPDATE kpi_entity
+SET json = jsonb_set(
+        json,
+        '{targetValue}',
+        to_jsonb((json->'targetDefinition'->0->>'value')::numeric)
+       ) #- '{targetDefinition}'
+WHERE json->>'metricType' = 'NUMBER';
+
 UPDATE dbservice_entity
 SET json = JSONB_SET(
   JSONB_SET(
@@ -70,7 +98,6 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     UNIQUE (fqnHash)
 );
 
-
 -- Clean dangling workflows not removed after test connection
 truncate automations_workflow;
 
@@ -138,3 +165,56 @@ SET json = jsonb_set(
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,type}' IS NULL 
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,externalType}' IS NULL 
   AND json#>>'{sourceConfig,config,dbtConfigSource,dbtSecurityConfig,gcpConfig,path}' IS NULL;
+
+-- Update Owner Field to Owners
+DELETE from event_subscription_entity where name = 'ActivityFeedAlert';
+
+-- Update thread_entity to move previousOwner and updatedOwner to array
+UPDATE thread_entity
+SET json = jsonb_set(
+    json,
+    '{feedInfo,entitySpecificInfo,previousOwner}',
+    to_jsonb(ARRAY[json->'feedInfo'->'entitySpecificInfo'->'previousOwner'])
+)
+WHERE jsonb_path_exists(json, '$.feedInfo.entitySpecificInfo.previousOwner')
+  AND jsonb_path_query_first(json, '$.feedInfo.entitySpecificInfo.previousOwner ? (@ != null)') IS NOT null
+  AND jsonb_typeof(json->'feedInfo'->'entitySpecificInfo'->'updatedOwner') <> 'array';
+
+UPDATE thread_entity
+SET json = jsonb_set(
+    json,
+    '{feedInfo,entitySpecificInfo,updatedOwner}',
+    to_jsonb(ARRAY[json->'feedInfo'->'entitySpecificInfo'->'updatedOwner'])
+)
+WHERE jsonb_path_exists(json, '$.feedInfo.entitySpecificInfo.updatedOwner')
+  AND jsonb_path_query_first(json, '$.feedInfo.entitySpecificInfo.updatedOwner ? (@ != null)') IS NOT null
+  AND jsonb_typeof(json->'feedInfo'->'entitySpecificInfo'->'updatedOwner') <> 'array';
+
+-- Update entity_extension to move owner to array
+UPDATE entity_extension
+SET json = jsonb_set(
+    json,
+    '{owner}',
+    to_jsonb(ARRAY[jsonb_path_query_first(json, '$.owner')])
+)
+WHERE jsonb_path_exists(json, '$.owner')
+  AND jsonb_path_query_first(json, '$.owner ? (@ != null)') IS NOT null
+  AND jsonb_typeof(json->'owner') <> 'array';
+
+ALTER TABLE test_case ALTER COLUMN name TYPE VARCHAR(512);
+
+-- set templates to fetch emailTemplates
+UPDATE openmetadata_settings
+SET json = jsonb_set(json, '{templates}', '"openmetadata"')
+WHERE configType = 'emailConfiguration';
+
+-- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{owner}'
+WHERE json #> '{owner}' IS NOT NULL;
+
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{service}'
+WHERE json #> '{service}' IS NOT NULL;
+
+ALTER TABLE thread_entity ADD COLUMN domain VARCHAR(256) GENERATED ALWAYS AS (json ->> 'domain') STORED;

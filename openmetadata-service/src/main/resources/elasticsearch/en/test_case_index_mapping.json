@@ -152,19 +152,13 @@
           "description": {
             "type": "text"
           },
-          "entityType": {
+          "type": {
             "type": "keyword"
-          },
-          "testPlatforms": {
-            "type": "text",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
           }
         }
+      },
+      "testCaseType": {
+        "type": "keyword"
       },
       "entityType": {
         "type": "keyword"
@@ -182,7 +176,7 @@
           }
         ]
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

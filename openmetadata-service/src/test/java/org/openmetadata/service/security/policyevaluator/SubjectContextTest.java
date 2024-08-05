@@ -175,7 +175,7 @@ public class SubjectContextTest {
 
     // Check iteration order of policies with team13 as the resource owner
     subjectContext = SubjectContext.getSubjectContext(user.getName());
-    policyContextIterator = subjectContext.getPolicies(team13.getEntityReference());
+    policyContextIterator = subjectContext.getPolicies(List.of(team13.getEntityReference()));
     List<String> expectedUserAndTeam13PolicyOrder = new ArrayList<>();
     expectedUserAndTeam13PolicyOrder.addAll(expectedUserPolicyOrder);
     expectedUserAndTeam13PolicyOrder.addAll(getAllTeamPolicies(null, team13Policies));
@@ -183,7 +183,7 @@ public class SubjectContextTest {
 
     // Check iteration order of policies with team131 as the resource owner
     subjectContext = SubjectContext.getSubjectContext(user.getName());
-    policyContextIterator = subjectContext.getPolicies(team131.getEntityReference());
+    policyContextIterator = subjectContext.getPolicies(List.of(team131.getEntityReference()));
     // Roles & policies are inherited from resource owner team131
     List<String> expectedUserAndTeam131PolicyOrder = new ArrayList<>();
     expectedUserAndTeam131PolicyOrder.addAll(expectedUserPolicyOrder);
@@ -214,20 +214,20 @@ public class SubjectContextTest {
     // Given entity owner "user", ensure isTeamAsset is true for teams 111, 11, 12, 1 and not for 13
     //
     EntityReference userOwner = new EntityReference().withName("user").withType(Entity.USER);
-    assertTrue(subjectContext.isTeamAsset("team111", userOwner));
-    assertTrue(subjectContext.isTeamAsset("team11", userOwner));
-    assertTrue(subjectContext.isTeamAsset("team12", userOwner));
-    assertTrue(subjectContext.isTeamAsset("team1", userOwner));
-    assertFalse(subjectContext.isTeamAsset("team13", userOwner));
+    assertTrue(subjectContext.isTeamAsset("team111", List.of(userOwner)));
+    assertTrue(subjectContext.isTeamAsset("team11", List.of(userOwner)));
+    assertTrue(subjectContext.isTeamAsset("team12", List.of(userOwner)));
+    assertTrue(subjectContext.isTeamAsset("team1", List.of(userOwner)));
+    assertFalse(subjectContext.isTeamAsset("team13", List.of(userOwner)));
 
     //
     // Given entity owner "team111", ensure isTeamAsset is true for 11, 12, 1 and not for 13
     //
     EntityReference teamOwner = new EntityReference().withId(team111.getId()).withType(Entity.TEAM);
-    assertTrue(subjectContext.isTeamAsset("team11", teamOwner));
-    assertTrue(subjectContext.isTeamAsset("team12", teamOwner));
-    assertTrue(subjectContext.isTeamAsset("team1", teamOwner));
-    assertFalse(subjectContext.isTeamAsset("team13", teamOwner));
+    assertTrue(subjectContext.isTeamAsset("team11", List.of(teamOwner)));
+    assertTrue(subjectContext.isTeamAsset("team12", List.of(teamOwner)));
+    assertTrue(subjectContext.isTeamAsset("team1", List.of(teamOwner)));
+    assertFalse(subjectContext.isTeamAsset("team13", List.of(teamOwner)));
   }
 
   private static List<Role> getRoles(String prefix) {

@@ -64,7 +64,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "reports")
 public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/reports/";
-  static final String FIELDS = "owner,usageSummary";
+  static final String FIELDS = "owners,usageSummary";
 
   public ReportResource(Authorizer authorizer, Limits limits) {
     super(Entity.REPORT, authorizer, limits);

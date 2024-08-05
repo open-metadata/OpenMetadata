@@ -184,14 +184,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   };
 
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Mlmodel['owner']) => {
+    async (newOwners?: Mlmodel['owners']) => {
       const updatedMlModelDetails = {
         ...mlModelDetail,
-        owner: newOwner,
+        owners: newOwners,
       };
       await settingsUpdateHandler(updatedMlModelDetails);
     },
-    [mlModelDetail, mlModelDetail.owner]
+    [mlModelDetail, mlModelDetail.owners]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -409,7 +409,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                           mlModelDetail.mlFeatures
                         )}
                         isEdit={isEdit}
-                        owner={mlModelDetail.owner}
+                        owner={mlModelDetail.owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}

@@ -12,6 +12,12 @@ One can configure the metadata ingestion filter for database source using four c
 `Schema Filter Pattern`, `Table Filter Pattern` & `Use FQN For Filtering`. In this document  we will learn about each field in detail
 along with many examples.
 
+{% note %}
+
+When both include and exclude filters are present, the include filter takes precedence and will be applied exclusively. The exclude filter will be ignored in this scenario.
+
+{% /note %}
+
 ### Configuring Filters via UI
 
 Filters can be configured in UI while adding an ingestion pipeline through `Add Metadata Ingestion` page.

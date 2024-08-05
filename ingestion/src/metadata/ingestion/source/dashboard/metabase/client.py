@@ -30,6 +30,7 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     MetabaseDashboardList,
     MetabaseDatabase,
     MetabaseTable,
+    MetabaseUser,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.logger import ingestion_logger
@@ -193,4 +194,19 @@ class MetabaseClient:
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch the table with id: {table_id}")
+        return None
+
+    def get_user_details(self, user_id: str) -> Optional[MetabaseUser]:
+        """
+        Get User using user ID
+        """
+        if not user_id:
+            return None  # don't call api if table_id is None
+        try:
+            resp_table = self.client.get(f"/user/{user_id}")
+            if resp_table:
+                return MetabaseUser(**resp_table)
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch the user with id: {user_id}")
         return None

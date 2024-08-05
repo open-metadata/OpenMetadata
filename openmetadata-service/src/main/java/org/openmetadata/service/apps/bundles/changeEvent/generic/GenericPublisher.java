@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
@@ -43,14 +44,18 @@ public class GenericPublisher implements Destination<ChangeEvent> {
   private final Webhook webhook;
 
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public GenericPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == WEBHOOK) {
-      this.subscriptionDestination = subscription;
-      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
+  public GenericPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
+    if (subscriptionDestination.getType() == WEBHOOK) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDestination;
+      this.webhook = JsonUtils.convertValue(subscriptionDestination.getConfig(), Webhook.class);
 
       // Build Client
-      this.client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
+      this.client =
+          getClient(subscriptionDestination.getTimeout(), subscriptionDestination.getReadTimeout());
     } else {
       throw new IllegalArgumentException(
           "GenericWebhook Alert Invoked with Illegal Type and Settings.");
@@ -99,9 +104,47 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    long attemptTime = System.currentTimeMillis();
+    try {
+      // Post Message to default
+      String json =
+          "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
+      if (webhook.getEndpoint() != null) {
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
+        } else {
+          postWebhookMessage(this, getTarget(), json);
+        }
+      }
+    } catch (Exception ex) {
+      Throwable cause = ex.getCause();
+      String message = "";
+      if (cause != null && cause.getClass() == UnknownHostException.class) {
+        message =
+            String.format(
+                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
+                subscriptionDestination.getId(), webhook.getEndpoint());
+        LOG.warn(message);
+        setErrorStatus(attemptTime, 400, "UnknownHostException");
+      } else {
+        message = CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+        LOG.error(message);
+      }
+      throw new EventPublisherException(message);
+    }
+  }
+
   private Invocation.Builder getTarget() {
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     return SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override

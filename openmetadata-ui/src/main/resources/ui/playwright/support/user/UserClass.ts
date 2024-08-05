@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
-import { generateRandomUsername } from '../../utils/user';
+import { Operation } from 'fast-json-patch';
+import { generateRandomUsername } from '../../utils/common';
 
 type ResponseDataType = {
   name: string;
@@ -34,6 +35,30 @@ export class UserClass {
     this.responseData = await response.json();
 
     return response.body;
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/users/${this.responseData.id}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.responseData = await response.json();
+
+    return {
+      entity: response.body,
+    };
   }
 
   async delete(apiContext: APIRequestContext) {
