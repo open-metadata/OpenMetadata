@@ -34,7 +34,6 @@ export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   EntityFields.TAG,
 ];
 
-export const NOT_INCLUDE_AGGREGATION_EXPLORE_TREE = ['chart'];
 export const NOT_INCLUDE_AGGREGATION_QUICK_FILTER = ['ingestionPipeline'];
 
 // as it is used only in unit tests it's not needed for translation

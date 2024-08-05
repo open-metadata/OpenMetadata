@@ -570,6 +570,10 @@ class SearchClassBase {
         };
     }
   }
+
+  public notIncludeAggregationExploreTree() {
+    return ['chart'];
+  }
 }
 
 const searchClassBase = new SearchClassBase();
