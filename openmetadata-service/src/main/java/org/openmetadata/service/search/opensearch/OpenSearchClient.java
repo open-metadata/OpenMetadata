@@ -277,7 +277,7 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      List<String> aliases = indexMapping.getParentAliases(clusterAlias);
+      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
       // Get the child aliases
       List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
