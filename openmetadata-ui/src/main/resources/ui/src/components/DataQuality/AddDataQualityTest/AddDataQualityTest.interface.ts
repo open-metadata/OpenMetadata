@@ -39,7 +39,6 @@ export interface TestSuiteIngestionProps {
   testSuite: TestSuite;
   ingestionPipeline?: IngestionPipeline;
   onCancel?: () => void;
-  showAddTestCase?: boolean;
   onViewServiceClick?: () => void;
 }
 
@@ -48,7 +47,7 @@ export type TestSuiteIngestionDataType = {
   enableDebugLog?: boolean;
   testCases?: string[];
   name?: string;
-  selectTestCase?: boolean;
+  selectAllTestCases?: boolean;
 };
 
 export interface TestSuiteSchedulerProps {
@@ -67,10 +66,10 @@ export interface TestSuiteSchedulerProps {
 export interface AddTestSuitePipelineProps {
   initialData?: Partial<TestSuiteIngestionDataType>;
   isLoading: boolean;
+  testSuiteFQN?: string;
   onSubmit: (data: TestSuiteIngestionDataType) => void;
   includePeriodOptions?: string[];
   onCancel?: () => void;
-  showAddTestCase?: boolean;
 }
 
 export interface RightPanelProps {

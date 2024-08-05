@@ -22,6 +22,10 @@ jest.mock('../../constants/constants', () => ({
   VALIDATION_MESSAGES: [],
 }));
 
+jest.mock('../../utils/RouterUtils', () => ({
+  getDomainPath: jest.fn(),
+}));
+
 describe('AddTeamForm component', () => {
   it('should render form with required fields', () => {
     const { getByTestId } = render(

@@ -98,7 +98,6 @@ CREATE TABLE IF NOT EXISTS api_endpoint_entity (
     UNIQUE (fqnHash)
 );
 
-
 -- Clean dangling workflows not removed after test connection
 truncate automations_workflow;
 
@@ -201,3 +200,69 @@ SET json = jsonb_set(
 WHERE jsonb_path_exists(json, '$.owner')
   AND jsonb_path_query_first(json, '$.owner ? (@ != null)') IS NOT null
   AND jsonb_typeof(json->'owner') <> 'array';
+
+ALTER TABLE test_case ALTER COLUMN name TYPE VARCHAR(512);
+
+-- set templates to fetch emailTemplates
+UPDATE openmetadata_settings
+SET json = jsonb_set(json, '{templates}', '"openmetadata"')
+WHERE configType = 'emailConfiguration';
+
+-- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{owner}'
+WHERE json #> '{owner}' IS NOT NULL;
+
+UPDATE ingestion_pipeline_entity
+SET json = json::jsonb #- '{service}'
+WHERE json #> '{service}' IS NOT NULL;
+
+ALTER TABLE thread_entity ADD COLUMN domain VARCHAR(256) GENERATED ALWAYS AS (json ->> 'domain') STORED;
+
+-- Remove owner from json from all entities
+
+update api_collection_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update api_endpoint_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update api_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update bot_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update chart_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update dashboard_data_model_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update dashboard_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update dashboard_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update data_product_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update database_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update database_schema_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update dbservice_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update di_chart_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update domain_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update event_subscription_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update glossary_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update glossary_term_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update ingestion_pipeline_entity set json = json::jsonb#-'{owner}' where json::jsonb #>> '{owner}' is not null;
+update kpi_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update messaging_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update metadata_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update metric_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update ml_model_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update mlmodel_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update persona_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update pipeline_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update pipeline_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update policy_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update query_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update report_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update role_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update search_index_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update search_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update storage_container_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update storage_service_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update stored_procedure_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update table_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update team_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update thread_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update topic_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update type_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update user_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+
+update table_entity set json = jsonb_set(json#-'{dataModel,owner}', '{dataModel,owners}', 
+jsonb_build_array(json#>'{dataModel,owner}')) where json #>> '{dataModel,owner}' is not null;

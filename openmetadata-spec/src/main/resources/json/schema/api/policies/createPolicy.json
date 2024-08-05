@@ -37,6 +37,10 @@
       "description": "UUID of Location where this policy is applied",
       "$ref": "../../type/basic.json#/definitions/uuid",
       "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name", "rules"],

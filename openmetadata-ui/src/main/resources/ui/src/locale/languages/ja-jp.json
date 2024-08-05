@@ -1031,6 +1031,7 @@
     "select-a-metric-type": "メトリックのタイプを選択",
     "select-a-policy": "ポリシーを選択",
     "select-add-test-suite": "Select/Add Test Suite",
+    "select-all-entity": "Select All {{entity}}",
     "select-column-plural-to-exclude": "除外するカラムを選択",
     "select-column-plural-to-include": "含めるカラムを選択",
     "select-entity": "Select {{entity}}",

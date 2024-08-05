@@ -75,7 +75,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
         searchInterface.createDataAssetsDataStream();
       }
     } catch (IOException ex) {
-      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.");
+      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
     }
   }
 

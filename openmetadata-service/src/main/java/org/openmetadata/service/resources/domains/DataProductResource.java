@@ -141,7 +141,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     if (!nullOrEmpty(domain)) {
       EntityReference domainReference =
           Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
-      filter.addQueryParam("domainId", domainReference.getId().toString());
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
