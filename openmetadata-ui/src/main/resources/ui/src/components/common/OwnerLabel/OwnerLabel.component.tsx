@@ -134,8 +134,9 @@ export const OwnerLabel = ({
             })}
             {remainingOwnersCount > 0 && (
               <Button
-                className="more-owners-button"
+                className="more-owners-button text-xs"
                 size="small"
+                type="link"
                 onClick={() => setShowAllOwners(!showAllOwners)}>
                 {showAllOwners ? t('label.show-less') : remainingCountLabel}
               </Button>
