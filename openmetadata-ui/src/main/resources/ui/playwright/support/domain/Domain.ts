@@ -13,6 +13,11 @@
 import { APIRequestContext } from '@playwright/test';
 import { uuid } from '../../utils/common';
 
+type UserTeamRef = {
+  name: string;
+  type: string;
+};
+
 type ResponseDataType = {
   name: string;
   displayName: string;
@@ -20,6 +25,8 @@ type ResponseDataType = {
   domainType: string;
   id?: string;
   fullyQualifiedName?: string;
+  owners?: UserTeamRef[];
+  experts?: UserTeamRef[];
 };
 
 export class Domain {
@@ -35,6 +42,8 @@ export class Domain {
       displayName: `PW Domain ${this.id}`,
       description: 'playwright domain description',
       domainType: 'Aggregate',
+      // eslint-disable-next-line no-useless-escape
+      fullyQualifiedName: `\"PW%domain.${this.id}\"`,
     };
   }
 
