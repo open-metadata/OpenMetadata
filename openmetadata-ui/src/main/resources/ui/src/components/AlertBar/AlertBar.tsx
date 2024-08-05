@@ -13,6 +13,7 @@
 import { Alert } from 'antd';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
+import { ReactComponent as CrossIcon } from '../../assets/svg/ic-cross.svg';
 import { ReactComponent as ErrorIcon } from '../../assets/svg/ic-error.svg';
 import { ReactComponent as InfoIcon } from '../../assets/svg/ic-info-tag.svg';
 import { ReactComponent as SuccessIcon } from '../../assets/svg/ic-success.svg';
@@ -20,7 +21,6 @@ import { ReactComponent as WarningIcon } from '../../assets/svg/ic-warning-tag.s
 import { useAlertStore } from '../../hooks/useAlertStore';
 import './alert-bar.style.less';
 import { AlertBarProps } from './AlertBar.interface';
-import CrossIcon from './CrossIcon';
 
 const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
   const { resetAlert, animationClass } = useAlertStore();
@@ -69,7 +69,7 @@ const AlertBar = ({ type, message }: AlertBarProps): JSX.Element => {
       closable
       showIcon
       className={classNames(className, 'alert-container', animationClass)}
-      closeIcon={<CrossIcon iconColor={crossIconColor} />}
+      closeIcon={<CrossIcon color={crossIconColor} />}
       description={message}
       icon={icon}
       type={type}
