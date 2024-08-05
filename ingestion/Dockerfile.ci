@@ -76,13 +76,13 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 WORKDIR /home/airflow/openmetadata-airflow-apis
-RUN PIP_CONSTRAINT=/home/airflow/openmetadata-airflow-apis/constraints.txt pip install "."
+RUN pip install "." --constraint "${AIRFLOW_CONSTRAINTS_LOCATION}"
 
 WORKDIR /home/airflow/ingestion
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
-RUN  PIP_CONSTRAINT=/home/airflow/ingestion/constraints.txt pip install ".[${INGESTION_DEPENDENCY}]"
+RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
 RUN echo "Image built for $(uname -m)"
