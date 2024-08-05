@@ -11,17 +11,28 @@
  *  limitations under the License.
  */
 
+@keyframes resize-alert-animation {
+  from {
+    height: 0;
+    padding: 0 20px;
+  }
+  to {
+    height: auto;
+    padding: 20px;
+  }
+}
+
 .alert-container {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px;
   font-size: 16px;
-  height: 64px;
+  height: 0;
+  animation: resize-alert-animation 0.3s ease-in-out forwards;
 
   &.ant-alert-with-description {
-    padding: 20px;
+    padding: 0;
   }
 
   &.general {
