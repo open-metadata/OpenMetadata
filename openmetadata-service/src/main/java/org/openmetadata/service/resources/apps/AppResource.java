@@ -762,11 +762,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
 
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)
-        && app.getName().equals(SLACK_APPLICATION)) {
-      ApplicationHandler.getInstance()
-          .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
-    }
+    ApplicationHandler.getInstance()
+        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
 
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
