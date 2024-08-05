@@ -91,6 +91,15 @@ export const getAccessTokenOnExpiry = async (payload: TokenRefreshRequest) => {
   return response.data;
 };
 
+export const refreshSAMLToken = async (payload: TokenRefreshRequest) => {
+  const response = await axiosClient.post<
+    TokenRefreshRequest,
+    AxiosResponse<AccessTokenResponse>
+  >(`/saml/refresh`, payload);
+
+  return response.data;
+};
+
 export const changePassword = async (payload: ChangePasswordRequest) => {
   const response = await axiosClient.put(`${apiPath}/changePassword`, payload);
 

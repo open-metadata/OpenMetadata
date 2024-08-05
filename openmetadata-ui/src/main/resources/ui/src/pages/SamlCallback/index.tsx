@@ -11,15 +11,20 @@
  *  limitations under the License.
  */
 
+import { CookieStorage } from 'cookie-storage';
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
 import Loader from '../../components/common/Loader/Loader';
+import { REFRESH_TOKEN_KEY } from '../../constants/constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 
+const cookieStorage = new CookieStorage();
+
 const SamlCallback = () => {
-  const { handleSuccessfulLogin, setOidcToken } = useApplicationStore();
+  const { handleSuccessfulLogin, setOidcToken, setRefreshToken } =
+    useApplicationStore();
   const location = useLocation();
   const { t } = useTranslation();
 
@@ -42,6 +47,14 @@ const SamlCallback = () => {
           sub: '',
         },
       };
+
+      const refreshToken = cookieStorage.getItem(REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        setRefreshToken(refreshToken);
+        // Remove refresh token from cookie storage, don't want to keep it in the browser
+        cookieStorage.removeItem(REFRESH_TOKEN_KEY);
+      }
+
       handleSuccessfulLogin(oidcUser);
     }
   }, [location]);
