@@ -220,14 +220,67 @@ SET json = JSON_SET(
 WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
 AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
 
+ALTER TABLE test_case MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
+
 -- set templates to fetch emailTemplates
 UPDATE openmetadata_settings
 SET json = JSON_SET(json, '$.templates', 'openmetadata')
 WHERE configType = 'emailConfiguration';
-
 
 -- remove dangling owner and service from ingestion pipelines. This info is in entity_relationship
 UPDATE ingestion_pipeline_entity
 SET json = JSON_REMOVE(json, '$.owner', '$.service');
 
 ALTER TABLE thread_entity ADD COLUMN domain VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.domain');
+
+-- Remove owner from json from all entities
+update api_collection_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update api_endpoint_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update api_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update bot_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update chart_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update dashboard_data_model_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update dashboard_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update dashboard_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update data_product_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update database_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update database_schema_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update dbservice_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update di_chart_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update domain_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update event_subscription_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update glossary_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update glossary_term_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update ingestion_pipeline_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update kpi_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update messaging_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update metadata_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update metric_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update ml_model_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update mlmodel_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update persona_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update pipeline_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update pipeline_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update policy_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update query_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update report_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update role_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update search_index_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update search_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update storage_container_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update storage_service_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update stored_procedure_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update table_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update team_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update thread_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update topic_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update type_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update user_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+
+update table_entity set json = JSON_SET(
+    JSON_REMOVE(json, '$.dataModel.owner'),
+    '$.dataModel.owners',
+    JSON_ARRAY(
+        JSON_EXTRACT(json, '$.dataModel.owner')
+    )
+) where json -> '$.dataModel.owner' is not null;
