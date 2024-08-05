@@ -3,6 +3,7 @@ package org.openmetadata.service.migration.mysql.v150;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.createSystemDICharts;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.deleteLegacyDataInsightPipelines;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migrateAutomatorOwner;
+import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migratePolicies;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migrateTestCaseDimension;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.updateDataInsightsApplication;
 
@@ -19,6 +20,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
+    migratePolicies(handle, collectionDAO);
     migrateTestCaseDimension(handle, collectionDAO);
     createSystemDICharts();
     deleteLegacyDataInsightPipelines(pipelineServiceClient);
