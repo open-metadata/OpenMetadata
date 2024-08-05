@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -35,7 +36,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
-import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
 
@@ -119,15 +119,10 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                     ServiceTokenType.OM_USER);
       }
 
-      // Add to json response
-      resp.setContentType("application/json");
-      resp.setCharacterEncoding("UTF-8");
-      resp.getOutputStream()
-          .print(JsonUtils.pojoToJson(getJwtResponseWithRefresh(user, jwtAuthMechanism)));
-      // response.getOutputStream().flush();
-      // response.setStatus(HttpServletResponse.SC_OK);
-      // writeJsonResponse(
-      //     resp, JsonUtils.pojoToJson(getJwtResponseWithRefresh(user, jwtAuthMechanism)));
+      // Add to json response cookie
+      JwtResponse jwtResponse = getJwtResponseWithRefresh(user, jwtAuthMechanism);
+      Cookie refreshTokenCookie = new Cookie("refreshToken", jwtResponse.getRefreshToken());
+      resp.addCookie(refreshTokenCookie);
 
       // Redirect with JWT Token
       String url =
