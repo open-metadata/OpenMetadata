@@ -419,7 +419,7 @@ with DAG(
 To configure SSL for secure connections between OpenMetadata and a Mongo database, add the `ssl_certfile` key with the path to the certificate file as its value, and include the `ssl_keyfile` key with the path to the key file as its value in the Connection Options. Ensure that both the certificate and key files are accessible by the server. If deploying via Docker or Kubernetes, make sure to update the OpenMetadata server to reflect these changes, ensuring that the files are correctly referenced.
 
 ```yaml
-    connectionArguments:
+    connectionOptions:
         ssl_certfile: /path/to/ssl_cert.pem
         ssl_keyfile: /path/to/ssl_key.pem
 ```
