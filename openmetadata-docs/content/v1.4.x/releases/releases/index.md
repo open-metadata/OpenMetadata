@@ -39,11 +39,11 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 
 ## Improvements
 
-- Introduced SSL for Salesforce
-- Fixed the claim mappings and usernames
-- Fixed issues in Salesforce connector
-- FIxed issues in Alation connector
-- Verified for changes in new env for claim mapping
+- Introduced SSL for Salesforce.
+- Fixed the claim mappings and usernames.
+- Fixed issues in Salesforce connector.
+- FIxed issues in Alation connector.
+- Verified for changes in new env for claim mapping.
 
 # 1.4.3 Release
 
