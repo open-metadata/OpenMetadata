@@ -170,7 +170,8 @@ public class CostAnalysisWorkflow {
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage = String.format("Failed processing Data from %s", source.getName());
+          String errorMessage =
+              String.format("Failed processing Data from %s: ", source.getName(), ex);
           initialProcessorError = Optional.of(errorMessage);
           workflowStats.addFailure(errorMessage);
           break;
