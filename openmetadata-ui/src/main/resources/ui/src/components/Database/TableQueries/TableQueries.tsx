@@ -61,6 +61,7 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   createQueryFilter,
@@ -288,11 +289,16 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchTags = async (searchText = WILD_CARD_CHAR) => {
-    return fetchFilterOptions(
+    const data = await fetchFilterOptions(
       searchText,
       'disabled:false AND !classification.name:Tier',
       SearchIndex.TAG
     );
+
+    return data.hits.hits.map((hit) => ({
+      key: hit._source.fullyQualifiedName ?? hit._source.name,
+      label: getEntityName(hit._source),
+    }));
   };
 
   const setTagsDefaultOption = () => {
@@ -343,10 +349,15 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchOwner = async (searchText = WILD_CARD_CHAR) => {
-    return fetchFilterOptions(searchText, 'isBot:false', [
+    const data = await fetchFilterOptions(searchText, 'isBot:false', [
       SearchIndex.USER,
       SearchIndex.TEAM,
     ]);
+
+    return data.hits.hits.map((hit) => ({
+      key: hit._source.name,
+      label: getEntityName(hit._source),
+    }));
   };
 
   const setOwnerDefaultOption = () => {
