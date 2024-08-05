@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.oracle.queries import (
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
+    _get_constraint_data,
     get_columns,
     get_mview_definition,
     get_mview_names,
@@ -63,7 +64,6 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_view_definition,
     get_view_names,
     get_view_names_dialect,
-    _get_constraint_data
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,

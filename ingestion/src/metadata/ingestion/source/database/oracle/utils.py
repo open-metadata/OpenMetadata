@@ -22,12 +22,12 @@ from sqlalchemy.sql import sqltypes
 from metadata.ingestion.source.database.oracle.queries import (
     GET_MATERIALIZED_VIEW_NAMES,
     GET_VIEW_NAMES,
+    ORACLE_ALL_CONSTRAINTS,
     ORACLE_ALL_TABLE_COMMENTS,
     ORACLE_ALL_VIEW_DEFINITIONS,
     ORACLE_GET_COLUMNS,
     ORACLE_GET_TABLE_NAMES,
     ORACLE_IDENTITY_TYPE,
-    ORACLE_ALL_CONSTRAINTS
 )
 from metadata.utils.sqlalchemy_utils import (
     get_table_comment_wrapper,
@@ -277,15 +277,11 @@ def get_mview_definition(self, mview_name, schema=None):
             conn, mview_name, schema, info_cache=self.info_cache
         )
 
-@reflection.cache
-def _get_constraint_data(
-    self, connection, table_name, schema=None, dblink="", **kw
-):
 
-    params = {
-        "table_name": table_name,
-        "owner": schema
-    }
+@reflection.cache
+def _get_constraint_data(self, connection, table_name, schema=None, dblink="", **kw):
+
+    params = {"table_name": table_name, "owner": schema}
     text = ORACLE_ALL_CONSTRAINTS.format(dblink=dblink)
 
     rp = connection.execute(sql.text(text), params)
