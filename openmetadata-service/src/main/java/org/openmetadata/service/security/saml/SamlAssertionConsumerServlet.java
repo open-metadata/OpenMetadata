@@ -122,7 +122,8 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
       // Add to json response cookie
       JwtResponse jwtResponse = getJwtResponseWithRefresh(user, jwtAuthMechanism);
       Cookie refreshTokenCookie = new Cookie("refreshToken", jwtResponse.getRefreshToken());
-      refreshTokenCookie.setMaxAge(24 * 60 * 60); // 1 day
+      refreshTokenCookie.setMaxAge(60 * 60); // 1hr
+      refreshTokenCookie.setPath("/"); // 30 days
       resp.addCookie(refreshTokenCookie);
 
       // Redirect with JWT Token
