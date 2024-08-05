@@ -17,14 +17,14 @@
     padding: 0 20px;
   }
   to {
-    height: auto;
+    height: 64px;
     padding: 20px;
   }
 }
 
 @keyframes resize-hide-animation {
   from {
-    height: auto;
+    height: 64px;
     padding: 20px;
   }
   to {
@@ -39,6 +39,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 16px;
+  overflow-y: scroll;
 
   &.show-alert {
     animation: resize-show-animation 0.3s ease-in-out forwards;
@@ -46,11 +47,6 @@
 
   &.hide-alert {
     animation: resize-hide-animation 0.3s ease-in-out forwards;
-  }
-
-  &.general {
-    background-color: #f6f7f9;
-    color: #292929;
   }
 
   &.info {
