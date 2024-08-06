@@ -14,6 +14,7 @@ import { Button, Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
+  get,
   groupBy,
   includes,
   last,
@@ -40,7 +41,10 @@ import {
   GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
-import { INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER } from '../../constants/explore.constants';
+import {
+  INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER,
+  NO_OWNER_ADVANCE_SEARCH_FILTER,
+} from '../../constants/explore.constants';
 
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
@@ -157,32 +161,32 @@ export const DataInsightChartCard = ({
   }, [kpi.data, type]);
 
   const totalValue = useMemo(() => {
+    let data = { results: [{ count: 0 }] };
     switch (type) {
       case SystemChartType.TotalDataAssets:
-        return (
-          entitiesSummary[SystemChartType.TotalDataAssetsSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data = entitiesSummary[SystemChartType.TotalDataAssetsSummaryCard];
+
+        break;
+
       case SystemChartType.PercentageOfDataAssetWithDescription:
       case SystemChartType.PercentageOfServiceWithDescription:
-        return (
-          entitiesSummary[SystemChartType.DataAssetsWithDescriptionSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data =
+          entitiesSummary[SystemChartType.DataAssetsWithDescriptionSummaryCard];
+
+        break;
       case SystemChartType.PercentageOfDataAssetWithOwner:
       case SystemChartType.PercentageOfServiceWithOwner:
-        return (
-          entitiesSummary[SystemChartType.DataAssetsWithOwnerSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data = entitiesSummary[SystemChartType.DataAssetsWithOwnerSummaryCard];
+
+        break;
       case SystemChartType.TotalDataAssetsByTier:
-        return (
-          entitiesSummary[SystemChartType.TotalDataAssetsWithTierSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data =
+          entitiesSummary[SystemChartType.TotalDataAssetsWithTierSummaryCard];
+
+        break;
     }
 
-    return 0;
+    return get(data, 'results.0.count', 0);
   }, [type, entitiesSummary]);
 
   const { t } = useTranslation();
@@ -247,10 +251,7 @@ export const DataInsightChartCard = ({
   }
 
   return (
-    <Card
-      className="data-insight-card"
-      data-testid="entity-description-percentage-card"
-      id={type}>
+    <Card className="data-insight-card" data-testid={`${type}-graph`} id={type}>
       <Row gutter={DI_STRUCTURE.rowContainerGutter}>
         <Col span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
@@ -340,13 +341,20 @@ export const DataInsightChartCard = ({
         {listAssets && (
           <Col className="d-flex justify-end" span={24}>
             <Link
-              data-testid="explore-asset-with-no-description"
+              data-testid={`explore-asset-with-no-${
+                type === SystemChartType.PercentageOfDataAssetWithDescription
+                  ? 'description'
+                  : 'owner'
+              }`}
               to={getExplorePath({
                 tab: tabsInfo[SearchIndex.TABLE].path,
                 isPersistFilters: true,
                 extraParameters: {
                   queryFilter: JSON.stringify(
-                    INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER
+                    type ===
+                      SystemChartType.PercentageOfDataAssetWithDescription
+                      ? INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER
+                      : NO_OWNER_ADVANCE_SEARCH_FILTER
                   ),
                 },
               })}>

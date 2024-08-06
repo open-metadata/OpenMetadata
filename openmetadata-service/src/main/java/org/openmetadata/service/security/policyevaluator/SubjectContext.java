@@ -39,8 +39,8 @@ import org.openmetadata.service.Entity;
 /** Subject context used for Access Control Policies */
 @Slf4j
 public record SubjectContext(User user) {
-  private static final String USER_FIELDS = "roles,teams,isAdmin,profile";
-  public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile";
+  private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
+  public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
@@ -72,6 +72,11 @@ public record SubjectContext(User user) {
       }
     }
     return false;
+  }
+
+  public boolean hasDomain(EntityReference domain) {
+    return listOrEmpty(user.getDomains()).stream()
+        .anyMatch(userDomain -> userDomain.getId().equals(domain.getId()));
   }
 
   /** Returns true if the user of this SubjectContext is under the team hierarchy of parentTeam */
@@ -134,6 +139,10 @@ public record SubjectContext(User user) {
       }
     }
     return roles.stream().distinct().collect(Collectors.toList());
+  }
+
+  public List<EntityReference> getUserDomains() {
+    return listOrEmpty(user.getDomains());
   }
 
   // Iterate over all the policies of the team hierarchy the user belongs to

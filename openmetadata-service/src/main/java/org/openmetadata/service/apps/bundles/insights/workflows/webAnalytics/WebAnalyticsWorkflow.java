@@ -178,9 +178,10 @@ public class WebAnalyticsWorkflow {
       } catch (SearchIndexException ex) {
         source.updateStats(
             ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-        error = Optional.of(String.format("Failed processing events from %s", source.getName()));
+        error =
+            Optional.of(
+                String.format("Failed processing events from %s: %s", source.getName(), ex));
         workflowStats.addFailure(error.get());
-        break;
       } finally {
         updateWorkflowStats(source.getName(), source.getStats());
       }

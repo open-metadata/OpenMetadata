@@ -8,7 +8,7 @@ source:
       apiKey: api_key
       databaseName: databaseName
       databaseSchema: databaseSchema
-      paginationLimit: 10
+      paginationLimit: 100
   sourceConfig:
     config:
       type: DatabaseMetadata
