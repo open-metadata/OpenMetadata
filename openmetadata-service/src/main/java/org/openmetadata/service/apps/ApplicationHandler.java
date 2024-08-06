@@ -94,6 +94,11 @@ public class ApplicationHandler {
     runMethodFromApplication(app, daoCollection, searchRepository, "configure");
   }
 
+  public void performCleanup(
+      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
+    runMethodFromApplication(app, daoCollection, searchRepository, "cleanup");
+  }
+
   public Object runAppInit(App app, CollectionDAO daoCollection, SearchRepository searchRepository)
       throws ClassNotFoundException,
           NoSuchMethodException,

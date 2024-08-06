@@ -28,6 +28,7 @@
         "slackAppConfiguration",
         "slackBot",
         "slackInstaller",
+        "slackState",
         "profilerConfiguration"
       ]
     }

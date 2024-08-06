@@ -103,6 +103,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private SearchRepository searchRepository;
   public static List<ScheduleType> SCHEDULED_TYPES =
       List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
+  public static final String SLACK_APPLICATION = "SlackApplication";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -723,6 +724,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+
+    ApplicationHandler.getInstance()
+        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+
     limits.invalidateCache(entityType);
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
@@ -756,6 +761,10 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+
+    ApplicationHandler.getInstance()
+        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     // Remove from repository
