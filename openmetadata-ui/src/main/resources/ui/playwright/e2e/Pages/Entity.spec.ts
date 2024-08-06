@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
@@ -112,6 +113,42 @@ entities.forEach((EntityClass) => {
         EntityDataClass.glossaryTerm2.responseData
       );
     });
+
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test('Tag Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.tagChildren({
+          page: page,
+          tag1: 'PersonalData.Personal',
+          tag2: 'PII.None',
+          rowId: entity.childrenSelectorId ?? '',
+          rowSelector:
+            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+        });
+      });
+    }
+
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test('Glossary Term Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.glossaryTermChildren({
+          page: page,
+          glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+          glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+          rowId: entity.childrenSelectorId ?? '',
+          rowSelector:
+            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+        });
+      });
+    }
 
     test(`Announcement create & delete`, async ({ page }) => {
       await entity.announcement(
