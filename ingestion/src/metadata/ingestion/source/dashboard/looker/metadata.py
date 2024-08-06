@@ -289,7 +289,7 @@ class LookerSource(DashboardServiceSource):
             }
             logger.info(f"We found the following parsers:\n {self._project_parsers}")
 
-    def get_lookml_project_credentials(self, project_name: str) -> GitHubCredentials:
+    def get_lookml_project_credentials(self, project_name: str) -> ReadersCredentials:
         """
         Given a lookml project, get its git URL and build the credentials
         """
@@ -324,7 +324,7 @@ class LookerSource(DashboardServiceSource):
         """
         if not self._repo_credentials:
             if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, GitHubCredentials
+                self.service_connection.gitCredentials, ReadersCredentials
             ):
                 self._repo_credentials = self.service_connection.gitCredentials
 
