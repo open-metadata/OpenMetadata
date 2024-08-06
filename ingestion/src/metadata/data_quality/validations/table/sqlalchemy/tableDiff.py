@@ -63,7 +63,15 @@ class UnsupportedDialectError(Exception):
 def masked(s: str, mask: bool = True) -> str:
     """Mask a string if masked is True otherwise return the string.
     Only for development purposes, do not use in production.
-    Change it False if you want to see the data in the logs."""
+    Change it False if you want to see the data in the logs.
+
+    Args:
+        s: string to mask
+        mask: boolean to mask the string
+
+    Returns:
+        masked string if mask is True otherwise return the string
+    """
     return "***" if mask else s
 
 
