@@ -229,6 +229,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 ",".join(f"{k}={v}" for k, v in data_diff_kwargs.items()),
             )
         )
+        # this might produce an error message like:
+        # Exception ignored in Exception ignored in: <generator object TableDiffer._diff_tables_wrapper at 0x00000000>
+        # this needs to be handled in the data_diff library
         return data_diff.diff_tables(table1, table2, **data_diff_kwargs)  # type: ignore
 
     def get_where(self) -> Optional[str]:
