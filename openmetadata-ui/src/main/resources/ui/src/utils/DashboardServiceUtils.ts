@@ -30,6 +30,7 @@ import qliksenseConnection from '../jsons/connectionSchemas/connections/dashboar
 import quicksightConnection from '../jsons/connectionSchemas/connections/dashboard/quickSightConnection.json';
 import redashConnection from '../jsons/connectionSchemas/connections/dashboard/redashConnection.json';
 import tableauConnection from '../jsons/connectionSchemas/connections/dashboard/tableauConnection.json';
+import presetConnection from './ConnectionSchemas/PresetConnection.json';
 import supersetConnection from './ConnectionSchemas/SupersetConnection.json';
 
 export const getDashboardURL = (config: DashboardConnection['config']) => {
@@ -69,6 +70,11 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
     }
     case DashboardServiceType.Superset: {
       schema = supersetConnection;
+
+      break;
+    }
+    case DashboardServiceType.Preset: {
+      schema = presetConnection;
 
       break;
     }
