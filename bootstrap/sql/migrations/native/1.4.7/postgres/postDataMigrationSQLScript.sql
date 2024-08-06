@@ -19,3 +19,5 @@ SET json = jsonb_set(
     '{fullyQualifiedName}',
     to_jsonb(LOWER(json->>'fullyQualifiedName'))
 );
+
+UPDATE user_entity SET nameHash = MD5(json ->> 'fullyQualifiedName');

@@ -568,14 +568,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
-    if (Boolean.TRUE.equals(create.getIsBot())) {
+    if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
 
     //
     try {
       // Email Validation
-      validateEmailAlreadyExists(create.getEmail());
+      validateEmailAlreadyExists(user.getEmail());
       addUserAuthForBasic(user, create);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
@@ -594,8 +594,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
-        if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
-          // User is creating himself on signup ?! :(
+        if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
           User created = addHref(uriInfo, repository.create(uriInfo, user));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
