@@ -147,9 +147,9 @@ public class DataAssetsWorkflow {
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage = String.format("Failed processing Data from %s", source.getName());
+          String errorMessage =
+              String.format("Failed processing Data from %s: %s", source.getName(), ex);
           workflowStats.addFailure(errorMessage);
-          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }
