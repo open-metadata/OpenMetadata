@@ -14,6 +14,50 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.4/releases/latest.md" /%}
 
+# 1.4.5 Release
+
+{% note noteType="Tip" %} 
+**July 19th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.5-release).
+
+## Improvements
+
+- Improve query filtering with prepared statements.
+- Bug fix in regex to match test case when using sampled data.
+- Bug fix in global profiler config for Snowflake, Redshift, and BigQuery.
+- Bug fix for Arg mismatch for DataModels in QlikSense.
+
+# 1.4.4 Release
+
+{% note noteType="Tip" %} 
+**July 4th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.4-release).
+
+## Improvements
+
+- Introduced SSL for Salesforce
+- Fixed the claim mappings and usernames
+- Fixed issues in Salesforce connector
+- FIxed issues in Alation connector
+- Verified for changes in new env for claim mapping
+
+# 1.4.3 Release
+
+{% note noteType="Tip" %} 
+**June 15th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.3-release).
+
+## Improvements
+
+- Fixed User Signup Flow Issue missing authorize.
+- Fixed vulnerabilities for azure-identity and msal4j.
+
 # 1.4.2 Release
 
 {% note noteType="Tip" %}
