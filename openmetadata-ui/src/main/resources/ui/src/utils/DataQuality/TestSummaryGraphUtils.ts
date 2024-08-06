@@ -34,7 +34,9 @@ export const prepareChartData = ({
     testCaseParameterValue.length === 2 ? testCaseParameterValue : [];
   const dataPoints: TestCaseChartDataType['data'] = [];
   const yValues = params.reduce((acc, curr, i) => {
-    return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
+    const value = parseInt(curr.value ?? '');
+
+    return { ...acc, [`y${i + 1}`]: isNaN(value) ? undefined : value };
   }, {});
   let showAILearningBanner = false;
   testCaseResults.forEach((result) => {
