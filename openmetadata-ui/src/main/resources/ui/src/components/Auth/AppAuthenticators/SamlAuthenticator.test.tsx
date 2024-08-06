@@ -22,7 +22,21 @@ jest.mock('../../../hooks/useApplicationStore', () => {
       authConfig: {},
       getOidcToken: jest.fn().mockReturnValue({ isExpired: false }),
       setOidcToken: jest.fn(),
+      getRefreshToken: jest.fn().mockReturnValue('refresh'),
+      setRefreshToken: jest.fn(),
     })),
+  };
+});
+
+jest.mock('../../../rest/auth-API', () => {
+  return {
+    refreshSAMLToken: jest.fn().mockResolvedValue({
+      accessToken: 'test_token',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiryDuration: 1000,
+      email: 'test@test.com',
+    }),
   };
 });
 
@@ -56,8 +70,12 @@ describe('Test SamlAuthenticator component', () => {
       }
     );
 
-    await expect(authenticatorRef.current?.renewIdToken()).rejects.toEqual(
-      'SAML authenticator does not support token renewal'
-    );
+    await expect(authenticatorRef.current?.renewIdToken()).resolves.toEqual({
+      accessToken: 'test_token',
+      refreshToken: 'refresh',
+      tokenType: 'Bearer',
+      expiryDuration: 1000,
+      email: 'test@test.com',
+    });
   });
 });
