@@ -21,9 +21,9 @@ import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 31;
+export const LATEST_VERSION_ID = 32;
 
-export const COOKIE_VERSION = 'VERSION_1_4_6'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_4_7'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1812,6 +1812,15 @@ API:
 -   Fixed an issue handling users with capital letters
 -   Centralize OIDC flow handling
 -   Fixed Ingestion Pipeline alert URL`,
+    },
+  },
+  {
+    id: 32,
+    version: 'v1.4.7',
+    description: `Released on 7th August 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Resolved issue with Azure login related to email principal claims.`,
     },
   },
 ];
