@@ -19,3 +19,5 @@ SET json = JSON_SET(
     '$.fullyQualifiedName',
     LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')))
 );
+
+UPDATE user_entity SET nameHash = MD5(JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')));
