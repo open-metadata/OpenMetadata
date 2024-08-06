@@ -131,7 +131,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 # so we only log the sample in debug mode. data can be sensitive
                 # so it is masked by default
                 for s in islice(
-                    self.safe_iterator(gen), 10 if logger.level <= logging.DEBUG else 0
+                    self.safe_table_diff_iterator(),
+                    10 if logger.level <= logging.DEBUG else 0,
                 ):
                     logger.debug("%s", str([s[0]] + [masked(st) for st in s[1]]))
             test_case_result = self.get_row_diff_test_case_result(
@@ -417,11 +418,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 len(key_set)
         return len(key_set)
 
-    @staticmethod
-    def safe_iterator(gen: DiffResultWrapper) -> DiffResultWrapper:
+    def safe_table_diff_iterator(self) -> DiffResultWrapper:
         """A safe iterator object which properly closes the diff object when the generator is exhausted.
         Otherwise the data_diff library will continue to hold the connection open and eventually
-        raise a KeyError."""
+        raise a KeyError.
+        """
+        gen = self.get_table_diff()
         try:
             yield from gen
         finally:
