@@ -18,7 +18,6 @@ import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
 import AppContainer from '../AppContainer/AppContainer';
@@ -82,7 +81,6 @@ const AppRouter = () => {
 
   return (
     <Switch>
-      <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
       <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
       <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
         {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
