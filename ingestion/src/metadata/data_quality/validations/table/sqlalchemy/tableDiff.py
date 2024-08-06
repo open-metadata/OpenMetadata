@@ -60,11 +60,11 @@ class UnsupportedDialectError(Exception):
         super().__init__(f"Unsupported dialect in param {param}: {dialect}")
 
 
-def masked(s: str, masked: bool = True) -> str:
+def masked(s: str, mask: bool = True) -> str:
     """Mask a string if masked is True otherwise return the string.
     Only for development purposes, do not use in production.
     Change it False if you want to see the data in the logs."""
-    return "***" if masked else s
+    return "***" if mask else s
 
 
 class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
