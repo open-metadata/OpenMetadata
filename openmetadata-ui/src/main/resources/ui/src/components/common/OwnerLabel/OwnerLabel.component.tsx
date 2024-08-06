@@ -138,7 +138,7 @@ export const OwnerLabel = ({
                 size="small"
                 type="link"
                 onClick={() => setShowAllOwners(!showAllOwners)}>
-                {showAllOwners ? t('label.show-less') : remainingCountLabel}
+                {showAllOwners ? t('label.less') : remainingCountLabel}
               </Button>
             )}
           </div>

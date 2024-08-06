@@ -159,6 +159,7 @@ export const addMultiOwner = async (data: {
   endpoint: EntityTypeEndpoint;
   resultTestId?: string;
   isSelectableInsideForm?: boolean;
+  type: 'Teams' | 'Users';
 }) => {
   const {
     page,
@@ -167,6 +168,7 @@ export const addMultiOwner = async (data: {
     resultTestId = 'owner-link',
     isSelectableInsideForm = false,
     endpoint,
+    type,
   } = data;
   const isMultipleOwners = Array.isArray(ownerNames);
   const owners = isMultipleOwners ? ownerNames : [ownerNames];
@@ -194,17 +196,34 @@ export const addMultiOwner = async (data: {
     await searchOwner;
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-    await page.getByRole('listitem', { name: ownerName, exact: true }).click();
+    const ownerItem = page.getByRole('listitem', {
+      name: ownerName,
+      exact: true,
+    });
+
+    if (type === 'Teams') {
+      if (isSelectableInsideForm) {
+        await ownerItem.click();
+      } else {
+        const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+        await ownerItem.click();
+        await patchRequest;
+      }
+    } else {
+      await ownerItem.click();
+    }
   }
 
   if (isMultipleOwners) {
-    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-    await page.getByTestId('selectable-list-update-btn').click();
-    await patchRequest;
-  }
+    const updateButton = page.getByTestId('selectable-list-update-btn');
 
-  if (!isSelectableInsideForm) {
-    await page.waitForResponse(`/api/v1/${endpoint}/*`);
+    if (isSelectableInsideForm) {
+      await updateButton.click();
+    } else {
+      const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+      await updateButton.click();
+      await patchRequest;
+    }
   }
 
   for (const name of owners) {
@@ -214,10 +233,16 @@ export const addMultiOwner = async (data: {
   }
 };
 
-export const assignTier = async (page: Page, tier: string) => {
+export const assignTier = async (
+  page: Page,
+  tier: string,
+  endpoint: string
+) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId(`radio-btn-${tier}`).click();
+  await patchRequest;
   await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
