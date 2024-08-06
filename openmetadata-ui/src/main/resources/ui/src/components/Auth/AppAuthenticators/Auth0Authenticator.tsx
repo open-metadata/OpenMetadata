@@ -48,7 +48,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
         setIsAuthenticated(false);
         onLogoutSuccess();
       },
-      renewIdToken() {
+      renewIdToken(): Promise<string> {
         let idToken = '';
         if (authConfig && authConfig.provider !== undefined) {
           return new Promise((resolve, reject) => {
