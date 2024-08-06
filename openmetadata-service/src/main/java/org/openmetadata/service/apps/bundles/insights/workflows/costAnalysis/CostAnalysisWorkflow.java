@@ -64,7 +64,7 @@ public class CostAnalysisWorkflow {
   @Getter
   private AggregatedCostAnalysisReportDataProcessor aggregatedCostAnalysisReportDataProcessor;
 
-  @Getter private final WorkflowStats workflowStats = new WorkflowStats();
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("CostAnalysisWorkflow");
 
   public CostAnalysisWorkflow(
       Long timestamp, int batchSize, Optional<DataInsightsApp.Backfill> backfill) {
@@ -114,7 +114,7 @@ public class CostAnalysisWorkflow {
               new PaginatedEntitiesSource(Entity.TABLE, batchSize, List.of("*"), filter)
                   .withName(
                       String.format(
-                          "PaginatedEntitiesSource-%s", databaseService.getFullyQualifiedName())));
+                          "[CostAnalysisWorkflow] %s", databaseService.getFullyQualifiedName())));
           total +=
               ((TableRepository) Entity.getEntityRepository(Entity.TABLE))
                   .getDao()
@@ -204,7 +204,8 @@ public class CostAnalysisWorkflow {
     contextData.put(REPORT_DATA_TYPE_KEY, ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
     CreateReportDataProcessor createReportdataProcessor =
         new CreateReportDataProcessor(
-            rawCostAnalysisReportDataList.size(), "RawCostAnalysisReportDataProcessor");
+            rawCostAnalysisReportDataList.size(),
+            "[CostAnalysisWorkflow] Raw Cost Analysis Report Data Processor");
 
     Optional<List<ReportData>> rawCostAnalysisReportData = Optional.empty();
 
@@ -226,7 +227,8 @@ public class CostAnalysisWorkflow {
     if (rawCostAnalysisReportData.isPresent()) {
       ReportDataSink reportDataSink =
           new ReportDataSink(
-              rawCostAnalysisReportData.get().size(), "RawCostAnalysisReportDataSink");
+              rawCostAnalysisReportData.get().size(),
+              "[CostAnalysisWorkflow] Raw Cost Analysis Report Data " + "Sink");
       try {
         reportDataSink.write(rawCostAnalysisReportData.get(), contextData);
       } catch (SearchIndexException ex) {
@@ -277,7 +279,7 @@ public class CostAnalysisWorkflow {
       CreateReportDataProcessor createReportdataProcessor =
           new CreateReportDataProcessor(
               aggregatedCostAnalysisReportDataList.get().size(),
-              "AggregatedCostAnalysisReportDataProcessor");
+              "[CostAnalysisWorkflow] Aggregated Cost Analysis Report Data Processor");
       Optional<List<ReportData>> aggregatedCostAnalysisReportData = Optional.empty();
 
       try {
@@ -300,7 +302,7 @@ public class CostAnalysisWorkflow {
         ReportDataSink reportDataSink =
             new ReportDataSink(
                 aggregatedCostAnalysisReportData.get().size(),
-                "AggregatedCostAnalysisReportDataSink");
+                "[CostAnalysisWorkflow] Aggregated Cost Analysis Report Data Sink");
         try {
           reportDataSink.write(aggregatedCostAnalysisReportData.get(), contextData);
         } catch (SearchIndexException ex) {

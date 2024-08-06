@@ -66,7 +66,9 @@ public class WebAnalyticsEntityViewProcessor
               .withSubmittedCount(input.getData().size())
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
-              .withMessage("WebAnalytics Entity View Processor Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "WebAnalytics Entity View Processor Encounter Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[WebAnalyticsEntityViewProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));

@@ -22,7 +22,10 @@ public class AggregatedCostAnalysisReportDataAggregator
     implements Processor<
         List<AggregatedCostAnalysisReportData>,
         Map<String, Map<String, Map<String, CostAnalysisWorkflow.AggregatedCostAnalysisData>>>> {
-  @Getter private final String name = "AggregatedCostAnlysisReportDataAggregator";
+  @Getter
+  private final String name =
+      "[CostAnalysisWorkflow] Aggregated Cost Anlysis Report Data Aggregator";
+
   private final StepStats stats = new StepStats();
 
   public AggregatedCostAnalysisReportDataAggregator(int total) {
@@ -93,7 +96,9 @@ public class AggregatedCostAnalysisReportDataAggregator
               .withSubmittedCount(input.size())
               .withFailedCount(input.size())
               .withSuccessCount(0)
-              .withMessage("Aggregated Cost Analysis Aggregator Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "Aggregated Cost Analysis Aggregator Encounter Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[AggregatedCostAnalysisAggregator] Failed. Details: {}", JsonUtils.pojoToJson(error));

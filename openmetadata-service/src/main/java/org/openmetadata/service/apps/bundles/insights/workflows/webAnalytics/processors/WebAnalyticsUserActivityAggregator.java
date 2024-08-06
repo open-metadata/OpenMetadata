@@ -24,7 +24,7 @@ public class WebAnalyticsUserActivityAggregator
     implements Processor<
         Map<UUID, WebAnalyticUserActivityReportData>,
         Map<UUID, WebAnalyticsWorkflow.UserActivityData>> {
-  @Getter private final String name = "WebAnalyticsUserActivityAggregator";
+  @Getter private final String name = "[WebAnalyticsWorkflow] User Activity Aggregator";
   private final StepStats stats = new StepStats();
 
   public WebAnalyticsUserActivityAggregator(int total) {
@@ -48,7 +48,10 @@ public class WebAnalyticsUserActivityAggregator
               .withSubmittedCount(input.size())
               .withFailedCount(input.size())
               .withSuccessCount(0)
-              .withMessage("Web Analytics User Activity Aggregator Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "Web Analytics User Activity Aggregator Encounter Failure: %s",
+                      e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[WebAnalyticsUserActivityAggregator] Failed. Details: {}", JsonUtils.pojoToJson(error));

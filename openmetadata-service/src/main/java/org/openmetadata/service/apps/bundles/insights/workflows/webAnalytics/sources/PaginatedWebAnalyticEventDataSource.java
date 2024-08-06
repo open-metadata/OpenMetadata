@@ -15,6 +15,7 @@ import org.openmetadata.schema.analytics.type.WebAnalyticEventType;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.WebAnalyticEventRepository;
 import org.openmetadata.service.util.RestUtil;
@@ -46,7 +47,10 @@ public class PaginatedWebAnalyticEventDataSource
     this.batchSize = batchSize;
     this.startTs = startTs;
     this.endTs = endTs;
-    this.name = String.format("PaginatedWebAnalyticEventDataSource-%s-%s", startTs, endTs);
+    this.name =
+        String.format(
+            "[WebAnalyticsWorkflow] Event Data Source %s",
+            TimestampUtils.timestampToString(startTs, "YYYY-MM-dd"));
     this.totalRecords = repository.listWebAnalyticEventDataCount(eventType, startTs, endTs, false);
     this.stats.withTotalRecords(totalRecords).withSuccessRecords(0).withFailedRecords(0);
   }

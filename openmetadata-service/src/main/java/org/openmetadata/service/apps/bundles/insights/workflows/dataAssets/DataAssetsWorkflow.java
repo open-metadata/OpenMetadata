@@ -67,7 +67,7 @@ public class DataAssetsWorkflow {
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
-  @Getter private final WorkflowStats workflowStats = new WorkflowStats();
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataAssetsWorkflow");
 
   public DataAssetsWorkflow(
       Long timestamp,
@@ -115,7 +115,7 @@ public class DataAssetsWorkflow {
           List<String> fields = List.of("*");
           PaginatedEntitiesSource source =
               new PaginatedEntitiesSource(entityType, batchSize, fields)
-                  .withName(String.format("PaginatedEntitiesSource-%s", entityType));
+                  .withName(String.format("[DataAssetsWorkflow] %s", entityType));
           sources.add(source);
         });
 

@@ -80,7 +80,9 @@ public class DatabaseServiceTablesProcessor
               .withSubmittedCount(input.getData().size())
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
-              .withMessage("Database Service Tables Processor Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "Database Service Tables Processor Encounter Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[DatabaseServiceTAblesProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));

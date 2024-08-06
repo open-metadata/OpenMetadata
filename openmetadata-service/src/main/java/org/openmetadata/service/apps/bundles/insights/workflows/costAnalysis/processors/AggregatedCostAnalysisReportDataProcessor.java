@@ -271,7 +271,9 @@ public class AggregatedCostAnalysisReportDataProcessor
               .withSubmittedCount(input.size())
               .withFailedCount(input.size())
               .withSuccessCount(0)
-              .withMessage("Aggregated Cost Analysis Processor Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "Aggregated Cost Analysis Processor Encounter Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[AggregatedCostAnalysisProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));

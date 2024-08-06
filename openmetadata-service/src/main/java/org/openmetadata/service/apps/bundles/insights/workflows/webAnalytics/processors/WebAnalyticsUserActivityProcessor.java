@@ -49,7 +49,9 @@ public class WebAnalyticsUserActivityProcessor
               .withSubmittedCount(input.getData().size())
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
-              .withMessage("WebAnalytics User Activity Processor Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "WebAnalytics User Activity Processor Encounter Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[WebAnalyticsUserActivityProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
