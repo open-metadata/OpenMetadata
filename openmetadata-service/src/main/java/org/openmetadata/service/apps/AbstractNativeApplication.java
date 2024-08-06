@@ -211,6 +211,11 @@ public class AbstractNativeApplication implements NativeApplication {
             Relationship.HAS.ordinal());
   }
 
+  @Override
+  public void cleanup() {
+    /* Not needed by default*/
+  }
+
   protected void validateServerExecutableApp(AppRuntime context) {
     // Server apps are native
     if (!app.getAppType().equals(AppType.Internal)) {
