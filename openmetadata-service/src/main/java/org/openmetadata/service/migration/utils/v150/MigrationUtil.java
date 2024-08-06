@@ -3,6 +3,7 @@ package org.openmetadata.service.migration.utils.v150;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -281,17 +282,24 @@ public class MigrationUtil {
   public static void createSystemDICharts() {
     dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
 
+    String exclude_tags_filter =
+            "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}}]}}}";
     // total data assets
+    List<String> excludeList = List.of("tag", "glossaryTerm");
     createChart(
         "total_data_assets",
-        new LineChart().withFormula("count(k='id.keyword')").withGroupBy("entityType.keyword"));
+        new LineChart()
+            .withFormula("count(k='id.keyword')")
+            .withGroupBy("entityType.keyword")
+            .withExcludeGroups(excludeList));
 
     // Percentage of Data Asset with Description
     createChart(
         "percentage_of_data_asset_with_description",
         new LineChart()
             .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
-            .withGroupBy("entityType.keyword"));
+            .withGroupBy("entityType.keyword")
+            .withExcludeGroups(excludeList));
 
     // Percentage of Data Asset with Owner
     createChart(
@@ -299,7 +307,8 @@ public class MigrationUtil {
         new LineChart()
             .withFormula(
                 "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
-            .withGroupBy("entityType.keyword"));
+            .withGroupBy("entityType.keyword")
+            .withExcludeGroups(excludeList));
 
     // Percentage of Service with Description
     createChart(
@@ -323,50 +332,58 @@ public class MigrationUtil {
 
     // total data assets summary card
     createChart(
-        "total_data_assets_summary_card", new SummaryCard().withFormula("count(k='id.keyword')"));
+        "total_data_assets_summary_card",
+        new SummaryCard().withFormula("count(k='id.keyword')").withFilter(exclude_tags_filter));
 
     // data assets with description summary card
     createChart(
         "data_assets_with_description_summary_card",
         new SummaryCard()
-            .withFormula(
-                "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"));
+            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+            .withFilter(exclude_tags_filter));
 
     // data assets with owner summary card
     createChart(
         "data_assets_with_owner_summary_card",
         new SummaryCard()
             .withFormula(
-                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100"));
+                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+            .withFilter(exclude_tags_filter));
 
     // total data assets with tier summary card
     createChart(
         "total_data_assets_with_tier_summary_card",
         new SummaryCard()
-            .withFormula("(count(k='id.keyword',q='tier.keyword: *')/count(k='id.keyword'))*100"));
+            .withFormula("(count(k='id.keyword',q='tier.keyword: *')/count(k='id.keyword'))*100")
+            .withFilter(exclude_tags_filter));
 
     // percentage of Data Asset with Description KPI
     createChart(
         "percentage_of_data_asset_with_description_kpi",
         new LineChart()
-            .withFormula(
-                "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100"));
+            .withFormula("(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100")
+            .withFilter(exclude_tags_filter));
 
     // Number of Data Asset with Owner KPI
     createChart(
         "percentage_of_data_asset_with_owner_kpi",
         new LineChart()
             .withFormula(
-                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100"));
+                "(count(k='id.keyword',q='owners.name.keyword: *')/count(k='id.keyword'))*100")
+            .withFilter(exclude_tags_filter));
 
     // number of Data Asset with Description KPI
     createChart(
         "number_of_data_asset_with_description_kpi",
-        new LineChart().withFormula("count(k='id.keyword',q='hasDescription: 1')"));
+        new LineChart()
+            .withFormula("count(k='id.keyword',q='hasDescription: 1')")
+            .withFilter(exclude_tags_filter));
 
     // Number of Data Asset with Owner KPI
     createChart(
         "number_of_data_asset_with_owner_kpi",
-        new LineChart().withFormula("count(k='id.keyword',q='owners.name.keyword: *')"));
+        new LineChart()
+            .withFormula("count(k='id.keyword',q='owners.name.keyword: *')")
+            .withFilter(exclude_tags_filter));
   }
 }
