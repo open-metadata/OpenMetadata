@@ -240,12 +240,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             "where": self.get_where(),
         }
         logger.debug(
-            "Calling table diff with parameters:"  # pylint: disable=consider-using-f-string
-            " table1={}, table2={}, kwargs={}".format(
-                table1.table_path,
-                table2.table_path,
-                ",".join(f"{k}={v}" for k, v in data_diff_kwargs.items()),
-            )
+            "Calling table diff with parameters: table1=%s, table2=%s, kwargs=%s",
+            table1.table_path,
+            table2.table_path,
+            ",".join(f"{k}={v}" for k, v in data_diff_kwargs.items()),
         )
         return data_diff.diff_tables(table1, table2, **data_diff_kwargs)  # type: ignore
 
