@@ -41,14 +41,21 @@ export const visitEntityPage = async (data: {
   await page.getByTestId('searchBox').clear();
 };
 
-export const addOwner = async (
-  page: Page,
-  owner: string,
-  type: 'Teams' | 'Users' = 'Users',
-  endpoint: EntityTypeEndpoint,
-  dataTestId?: string,
-  initiatorId = 'edit-owner'
-) => {
+export const addOwner = async ({
+  page,
+  owner,
+  endpoint,
+  type = 'Users',
+  dataTestId,
+  initiatorId = 'edit-owner',
+}: {
+  page: Page;
+  owner: string;
+  endpoint: EntityTypeEndpoint;
+  type?: 'Teams' | 'Users';
+  dataTestId?: string;
+  initiatorId?: string;
+}) => {
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
@@ -91,13 +98,19 @@ export const addOwner = async (
   );
 };
 
-export const updateOwner = async (
-  page: Page,
-  owner: string,
-  type: 'Teams' | 'Users' = 'Users',
-  endpoint: EntityTypeEndpoint,
-  dataTestId?: string
-) => {
+export const updateOwner = async ({
+  page,
+  owner,
+  endpoint,
+  type = 'Users',
+  dataTestId,
+}: {
+  page: Page;
+  owner: string;
+  endpoint: EntityTypeEndpoint;
+  type?: 'Teams' | 'Users';
+  dataTestId?: string;
+}) => {
   await page.getByTestId('edit-owner').click();
   await page.getByRole('tab', { name: type }).click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -125,13 +138,19 @@ export const updateOwner = async (
   );
 };
 
-export const removeOwner = async (
-  page: Page,
-  endpoint: EntityTypeEndpoint,
-  ownerName: string,
-  type: 'Teams' | 'Users' = 'Users',
-  dataTestId?: string
-) => {
+export const removeOwner = async ({
+  page,
+  endpoint,
+  ownerName,
+  type = 'Users',
+  dataTestId,
+}: {
+  page: Page;
+  endpoint: EntityTypeEndpoint;
+  ownerName: string;
+  type?: 'Teams' | 'Users';
+  dataTestId?: string;
+}) => {
   await page.getByTestId('edit-owner').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -196,13 +215,18 @@ export const addMultiOwner = async (data: {
 
     await page.getByRole('listitem', { name: ownerName, exact: true }).click();
   }
+  let updateCall = Promise.resolve({});
+
+  if (!isSelectableInsideForm) {
+    updateCall = page.waitForResponse(`/api/v1/${endpoint}/*`);
+  }
 
   if (isMultipleOwners) {
     await page.click('[data-testid="selectable-list-update-btn"]');
   }
 
   if (!isSelectableInsideForm) {
-    await page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await updateCall;
   }
 
   for (const name of owners) {
@@ -253,10 +277,11 @@ export const assignTag = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  await page.locator('#tagsForm_tags').fill(tag);
-  await page.waitForResponse(
+  const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
   );
+  await page.locator('#tagsForm_tags').fill(tag);
+  await searchTags;
   await page.getByTestId(`tag-${tag}`).click();
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -266,6 +291,53 @@ export const assignTag = async (
   await expect(
     page
       .getByTestId('entity-right-panel')
+      .getByTestId('tags-container')
+      .getByTestId(`tag-${tag}`)
+  ).toBeVisible();
+};
+
+export const assignTagToChildren = async ({
+  page,
+  tag,
+  rowId,
+  action = 'Add',
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  tag: string;
+  rowId: string;
+  action?: 'Add' | 'Edit';
+  rowSelector?: string;
+}) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('tags-container')
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .click();
+
+  const searchTags = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+  );
+
+  await page.locator('#tagsForm_tags').fill(tag);
+
+  await searchTags;
+
+  await page.getByTestId(`tag-${tag}`).click();
+
+  const patchRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await patchRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
@@ -285,8 +357,8 @@ export const removeTag = async (page: Page, tags: string[]) => {
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForRequest(
-      (request) => request.method() === 'PATCH'
+    const patchRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -297,6 +369,49 @@ export const removeTag = async (page: Page, tags: string[]) => {
     expect(
       page
         .getByTestId('entity-right-panel')
+        .getByTestId('tags-container')
+        .getByTestId(`tag-${tag}`)
+    ).not.toBeVisible();
+  }
+};
+
+export const removeTagsFromChildren = async ({
+  page,
+  rowId,
+  tags,
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  tags: string[];
+  rowId: string;
+  rowSelector?: string;
+}) => {
+  for (const tag of tags) {
+    await page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('tags-container')
+      .getByTestId('edit-button')
+      .click();
+
+    await page
+      .getByTestId('tag-selector')
+      .getByTestId(`selected-tag-${tag}`)
+      .getByTestId('remove-tags')
+      .click();
+
+    const patchTagRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await patchTagRequest;
+
+    await expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
         .getByTestId('tags-container')
         .getByTestId(`tag-${tag}`)
     ).not.toBeVisible();
@@ -320,10 +435,12 @@ export const assignGlossaryTerm = async (
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
 
-  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
-  await page.waitForResponse(
+  const searchGlossaryTerm = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
   );
+
+  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await searchGlossaryTerm;
   await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
 
   await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -333,6 +450,50 @@ export const assignGlossaryTerm = async (
   await expect(
     page
       .getByTestId('entity-right-panel')
+      .getByTestId('glossary-container')
+      .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
+  ).toBeVisible();
+};
+
+export const assignGlossaryTermToChildren = async ({
+  page,
+  glossaryTerm,
+  action = 'Add',
+  rowId,
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  glossaryTerm: GlossaryTermOption;
+  rowId: string;
+  action?: 'Add' | 'Edit';
+  rowSelector?: string;
+}) => {
+  await page
+    .locator(`[${rowSelector}="${rowId}"]`)
+    .getByTestId('glossary-container')
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .click();
+
+  const searchGlossaryTerm = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(glossaryTerm.displayName)}*`
+  );
+  await page.locator('#tagsForm_tags').fill(glossaryTerm.displayName);
+  await searchGlossaryTerm;
+  await page.getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`).click();
+
+  const patchRequest = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH'
+  );
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await patchRequest;
+
+  await expect(
+    page
+      .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -356,8 +517,8 @@ export const removeGlossaryTerm = async (
       .locator('svg')
       .click();
 
-    const patchRequest = page.waitForRequest(
-      (request) => request.method() === 'PATCH'
+    const patchRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
     );
 
     await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
@@ -368,6 +529,50 @@ export const removeGlossaryTerm = async (
     expect(
       page
         .getByTestId('entity-right-panel')
+        .getByTestId('glossary-container')
+        .getByTestId(`tag-${tag.fullyQualifiedName}`)
+    ).not.toBeVisible();
+  }
+};
+
+export const removeGlossaryTermFromChildren = async ({
+  page,
+  glossaryTerms,
+  rowId,
+  rowSelector = 'data-row-key',
+}: {
+  page: Page;
+  glossaryTerms: GlossaryTermOption[];
+  rowId: string;
+  rowSelector?: string;
+}) => {
+  for (const tag of glossaryTerms) {
+    await page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('glossary-container')
+      .getByTestId('edit-button')
+      .click();
+
+    await page
+      .getByTestId('glossary-container')
+      .getByTestId(new RegExp(tag.name))
+      .getByTestId('remove-tags')
+      .locator('svg')
+      .click();
+
+    const patchRequest = page.waitForResponse(
+      (response) => response.request().method() === 'PATCH'
+    );
+
+    await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+    await page.getByTestId('saveAssociatedTag').click();
+
+    await patchRequest;
+
+    expect(
+      page
+        .locator(`[${rowSelector}="${rowId}"]`)
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();

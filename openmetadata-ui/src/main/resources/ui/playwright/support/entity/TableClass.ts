@@ -44,54 +44,56 @@ export class TableClass extends EntityClass {
     name: `pw-database-schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
+  children = [
+    {
+      name: 'user_id',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+    },
+    {
+      name: 'shop_id',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+    },
+    {
+      name: 'name',
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Name of the staff member.',
+      children: [
+        {
+          name: 'first_name',
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+          description: 'First name of the staff member.',
+        },
+        {
+          name: 'last_name',
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+        },
+      ],
+    },
+    {
+      name: 'email',
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Email address of the staff member.',
+    },
+  ];
+
   entity = {
     name: `pw-table-${uuid()}`,
     description: 'description',
-    columns: [
-      {
-        name: 'user_id',
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
-        description:
-          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
-      },
-      {
-        name: 'shop_id',
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
-        description:
-          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
-      },
-      {
-        name: 'name',
-        dataType: 'VARCHAR',
-        dataLength: 100,
-        dataTypeDisplay: 'varchar',
-        description: 'Name of the staff member.',
-        children: [
-          {
-            name: 'first_name',
-            dataType: 'VARCHAR',
-            dataLength: 100,
-            dataTypeDisplay: 'varchar',
-            description: 'First name of the staff member.',
-          },
-          {
-            name: 'last_name',
-            dataType: 'VARCHAR',
-            dataLength: 100,
-            dataTypeDisplay: 'varchar',
-          },
-        ],
-      },
-      {
-        name: 'email',
-        dataType: 'VARCHAR',
-        dataLength: 100,
-        dataTypeDisplay: 'varchar',
-        description: 'Email address of the staff member.',
-      },
-    ],
+    columns: this.children,
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
@@ -107,6 +109,8 @@ export class TableClass extends EntityClass {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
     this.type = 'Table';
+    this.childrenTabId = 'schema';
+    this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
   }
 
   async create(apiContext: APIRequestContext) {

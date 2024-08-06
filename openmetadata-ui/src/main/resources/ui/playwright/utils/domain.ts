@@ -137,14 +137,14 @@ const fillCommonFormItems = async (
   await page.click('[data-testid="add-owner"]');
 
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
-    await addOwner(
+    await addOwner({
       page,
-      entity.owners[0].name,
-      entity.owners[0].type as 'Users' | 'Teams',
-      EntityTypeEndpoint.Domain,
-      'owner-container',
-      'add-owner'
-    );
+      owner: entity.owners[0].name,
+      type: entity.owners[0].type as 'Users' | 'Teams',
+      endpoint: EntityTypeEndpoint.Domain,
+      dataTestId: 'owner-container',
+      initiatorId: 'add-owner',
+    });
   }
 };
 
