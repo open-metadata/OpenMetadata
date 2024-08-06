@@ -7,6 +7,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.getClaimOrObject;
 import static org.openmetadata.service.security.SecurityUtil.getFirstMatchJwtClaim;
+import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
@@ -519,14 +520,6 @@ public class AuthenticationCodeFlowHandler {
       map.put(entry.getKey(), Arrays.asList(entry.getValue()));
     }
     return map;
-  }
-
-  private void writeJsonResponse(HttpServletResponse response, String message) throws IOException {
-    response.setContentType("application/json");
-    response.setCharacterEncoding("UTF-8");
-    response.getOutputStream().print(message);
-    response.getOutputStream().flush();
-    response.setStatus(HttpServletResponse.SC_OK);
   }
 
   private ClientAuthentication getClientAuthentication(OidcConfiguration configuration) {

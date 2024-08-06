@@ -409,16 +409,9 @@ export const SERVICE_TYPES_ENUM = {
 export const BETA_SERVICES = [
   DatabaseServiceType.BigTable,
   DatabaseServiceType.SAS,
-  DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
-  PipelineServiceType.Spark,
   PipelineServiceType.OpenLineage,
   PipelineServiceType.Flink,
-  DashboardServiceType.QlikSense,
-  DashboardServiceType.QlikCloud,
-  DatabaseServiceType.Couchbase,
-  DatabaseServiceType.Greenplum,
-  DatabaseServiceType.Iceberg,
   DatabaseServiceType.Teradata,
   APIServiceType.REST,
 ];
