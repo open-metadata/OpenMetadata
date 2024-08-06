@@ -37,6 +37,7 @@ public class MigrationUtil {
   private static final String QUERY_AUTOMATOR =
       "SELECT json FROM ingestion_pipeline_entity where appType = 'Automator'";
   private static final String ADD_OWNER_ACTION = "AddOwnerAction";
+  private static final String OWNER_KEY = "owner";
 
   /**
    * We need to update the `AddOwnerAction` action in the automator to have a list of owners
@@ -63,14 +64,17 @@ public class MigrationUtil {
                   actions.forEach(
                       action -> {
                         JsonObject actionObj = (JsonObject) action;
-                        if (ADD_OWNER_ACTION.equals(actionObj.getString("type"))) {
-                          JsonObject owner = actionObj.getJsonObject("owner");
+                        // Only process the automations with AddOwnerAction that still have the
+                        // `owner` key present
+                        if (ADD_OWNER_ACTION.equals(actionObj.getString("type"))
+                            && actionObj.containsKey(OWNER_KEY)) {
+                          JsonObject owner = actionObj.getJsonObject(OWNER_KEY);
                           JsonArrayBuilder owners = Json.createArrayBuilder();
                           owners.add(owner);
                           actionObj =
                               Json.createObjectBuilder(actionObj)
                                   .add("owners", owners)
-                                  .remove("owner")
+                                  .remove(OWNER_KEY)
                                   .build();
                         }
                         updatedActions.add(actionObj);
