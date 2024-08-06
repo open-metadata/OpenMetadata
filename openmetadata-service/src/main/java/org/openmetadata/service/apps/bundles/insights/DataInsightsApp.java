@@ -153,11 +153,25 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setFailure(ex.getIndexingError());
     } finally {
       WorkflowStats workflowStats = workflow.getWorkflowStats();
+
       for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
         String stepName = entry.getKey();
         StepStats stats = entry.getValue();
         updateStats(stepName, stats);
       }
+
+      if (workflowStats.getFailures().isEmpty()) {
+        IndexingError indexingError =
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage(
+                    String.format(
+                        "WebAnalytics Workflow Has encounter issues: %s",
+                        workflowStats.getFailures()));
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(indexingError);
+      }
+
       sendUpdates(jobExecutionContext);
     }
   }
@@ -172,11 +186,25 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setFailure(ex.getIndexingError());
     } finally {
       WorkflowStats workflowStats = workflow.getWorkflowStats();
+
       for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
         String stepName = entry.getKey();
         StepStats stats = entry.getValue();
         updateStats(stepName, stats);
       }
+
+      if (workflowStats.getFailures().isEmpty()) {
+        IndexingError indexingError =
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage(
+                    String.format(
+                        "CostAnalysis Workflow Has encounter issues: %s",
+                        workflowStats.getFailures()));
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(indexingError);
+      }
+
       sendUpdates(jobExecutionContext);
     }
   }
@@ -191,11 +219,25 @@ public class DataInsightsApp extends AbstractNativeApplication {
       jobData.setFailure(ex.getIndexingError());
     } finally {
       WorkflowStats workflowStats = workflow.getWorkflowStats();
+
       for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
         String stepName = entry.getKey();
         StepStats stats = entry.getValue();
         updateStats(stepName, stats);
       }
+
+      if (workflowStats.getFailures().isEmpty()) {
+        IndexingError indexingError =
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage(
+                    String.format(
+                        "DataAssets Workflow Has encounter issues: %s",
+                        workflowStats.getFailures()));
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(indexingError);
+      }
+
       sendUpdates(jobExecutionContext);
     }
   }
