@@ -19,7 +19,6 @@ Configure and schedule MongoDB metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
-- [Enable Security](#securing-mongo-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mongodb/yaml"} /%}
 
@@ -60,16 +59,6 @@ To fetch the metadata from MongoDB to OpenMetadata, the MongoDB user must have a
 {% partial file="/v1.4/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
-
-## Securing Mongo Connection with SSL in OpenMetadata
-
-To configure SSL for secure connections between OpenMetadata and a Mongo database, add the `ssl_certfile` key with the path to the certificate file as its value, and include the `ssl_keyfile` key with the path to the key file as its value in the Connection Options. Ensure that both the certificate and key files are accessible by the server. If deploying via Docker or Kubernetes, make sure to update the OpenMetadata server to reflect these changes, ensuring that the files are correctly referenced.
-
-{% image
-  src="/images/v1.4/connectors/ssl_mongo.png"
-  alt="SSL Configuration"
-  height="450px"
-  caption="SSL Configuration" /%}
 
 {% partial file="/v1.4/connectors/troubleshooting.md" /%}
 
