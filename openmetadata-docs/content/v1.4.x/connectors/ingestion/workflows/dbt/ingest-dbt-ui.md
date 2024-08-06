@@ -127,6 +127,7 @@ File server path of the `manifest.json`, `catalog.json` and `run_results.json` f
 #### 6. dbt Cloud
 
 Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with dbt cloud account setup if not done already.
+The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens) to generate an authentication token for your dbt cloud account.
 
 The `Account Viewer` permission is the minimum requirement for the dbt cloud token.
 
