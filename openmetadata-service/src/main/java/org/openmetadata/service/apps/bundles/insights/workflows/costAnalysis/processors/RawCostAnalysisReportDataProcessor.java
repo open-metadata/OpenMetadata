@@ -48,7 +48,9 @@ public class RawCostAnalysisReportDataProcessor
               .withSubmittedCount(input.size())
               .withFailedCount(input.size())
               .withSuccessCount(0)
-              .withMessage("Raw Cost Analysis Processor Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "Raw Cost Analysis Processor Encounter Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug("[RawCostAnalysisProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
       updateStats(0, input.size());
