@@ -283,7 +283,7 @@ public class MigrationUtil {
     dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
 
     String exclude_tags_filter =
-            "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}}]}}}";
+        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}}]}}}";
     // total data assets
     List<String> excludeList = List.of("tag", "glossaryTerm");
     createChart(
