@@ -48,6 +48,9 @@ const goToProfilerTab = () => {
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Table Profile')
+    .click();
 };
 
 const acknowledgeTask = (testCase: string) => {

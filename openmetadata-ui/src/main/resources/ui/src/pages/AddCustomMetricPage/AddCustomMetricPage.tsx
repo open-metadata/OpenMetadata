@@ -100,23 +100,19 @@ const AddCustomMetricPage = () => {
   );
 
   const handleBackClick = () => {
-    if (isColumnMetric) {
-      history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.TABLE,
-          entityFqn,
-          EntityTabs.PROFILER
-        ),
-        search: QueryString.stringify({
-          activeTab: TableProfilerTab.COLUMN_PROFILE,
-          activeColumnFqn,
-        }),
-      });
-    } else {
-      history.push(
-        getEntityDetailsPath(EntityType.TABLE, entityFqn, EntityTabs.PROFILER)
-      );
-    }
+    history.push({
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        entityFqn,
+        EntityTabs.PROFILER
+      ),
+      search: QueryString.stringify({
+        activeTab: isColumnMetric
+          ? TableProfilerTab.COLUMN_PROFILE
+          : TableProfilerTab.TABLE_PROFILE,
+        activeColumnFqn,
+      }),
+    });
   };
 
   const handleFormSubmit = async (values: CustomMetric) => {

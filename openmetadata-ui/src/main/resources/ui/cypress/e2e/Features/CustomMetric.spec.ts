@@ -99,12 +99,12 @@ const createCustomMetric = ({
   });
   // Click on create custom metric button
   cy.get('[data-testid="profiler"]').click();
+
   verifyResponseStatusCode('@getCustomMetric', 200);
-  if (isColumnMetric) {
-    cy.get('[data-testid="profiler-tab-left-panel"]')
-      .contains('Column Profile')
-      .click();
-  }
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains(isColumnMetric ? 'Column Profile' : 'Table Profile')
+    .click();
+
   cy.get('[data-testid="profiler-add-table-test-btn"]').click();
   cy.get('[data-testid="custom-metric"]').click();
 
@@ -175,11 +175,12 @@ const editCustomMetric = ({
     entity,
   });
   cy.get('[data-testid="profiler"]').click();
+
   verifyResponseStatusCode('@getCustomMetric', 200);
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains(isColumnMetric ? 'Column Profile' : 'Table Profile')
+    .click();
   if (isColumnMetric) {
-    cy.get('[data-testid="profiler-tab-left-panel"]')
-      .contains('Column Profile')
-      .click();
     metric.column &&
       cy.get('[data-row-key="user_id"]').contains(metric.column).click();
   }
@@ -229,11 +230,12 @@ const deleteCustomMetric = ({
     entity,
   });
   cy.get('[data-testid="profiler"]').click();
+
   verifyResponseStatusCode('@getCustomMetric', 200);
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains(isColumnMetric ? 'Column Profile' : 'Table Profile')
+    .click();
   if (isColumnMetric) {
-    cy.get('[data-testid="profiler-tab-left-panel"]')
-      .contains('Column Profile')
-      .click();
     metric.column &&
       cy.get('[data-row-key="user_id"]').contains(metric.column).click();
   }
