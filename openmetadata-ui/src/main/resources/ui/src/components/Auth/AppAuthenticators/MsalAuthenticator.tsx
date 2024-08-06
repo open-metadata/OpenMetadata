@@ -175,7 +175,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout() {
         logout();
       },
-      renewIdToken() {
+      renewIdToken(): Promise<string> {
         return new Promise((resolve, reject) => {
           fetchIdToken()
             .then((user) => {
