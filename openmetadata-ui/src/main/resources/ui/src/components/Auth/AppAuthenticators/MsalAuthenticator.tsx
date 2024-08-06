@@ -18,6 +18,7 @@ import {
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
 import { AxiosError } from 'axios';
+import { get } from 'lodash';
 import React, {
   forwardRef,
   Fragment,
@@ -34,6 +35,7 @@ import { Transi18next } from '../../../utils/CommonUtils';
 import {
   AuthenticatorRef,
   OidcUser,
+  UserProfile,
 } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -80,15 +82,21 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const parseResponse = (response: AuthenticationResult): OidcUser => {
       // Call your API with the access token and return the data you need to save in state
       const { idToken, scopes, account } = response;
+
       const user = {
         id_token: idToken,
         scope: scopes.join(),
         profile: {
-          email: account?.username || '',
+          email: get(account, 'idTokenClaims.email', ''),
           name: account?.name || '',
           picture: '',
-          sub: '',
-        },
+          preferred_username: get(
+            account,
+            'idTokenClaims.preferred_username',
+            ''
+          ),
+          sub: get(account, 'idTokenClaims.sub', ''),
+        } as UserProfile,
       };
 
       setOidcToken(idToken);
@@ -175,7 +183,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout() {
         logout();
       },
-      renewIdToken() {
+      renewIdToken(): Promise<string> {
         return new Promise((resolve, reject) => {
           fetchIdToken()
             .then((user) => {
