@@ -15,9 +15,9 @@ license = {file = "LICENSE"}
 description = "Airflow REST APIs to create and manage DAGS"
 requires-python = ">=3.8"
 dependencies = [
-    "pendulum~=2.1.2",
+    "pendulum~=3.0",
     "apache-airflow>=2.2.2",
-    "Flask>=1.1.4",
+    "Flask==2.2.5",
     "Flask-Admin==1.6.0",
 ]
 
