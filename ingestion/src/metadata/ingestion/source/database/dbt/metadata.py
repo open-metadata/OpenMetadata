@@ -54,6 +54,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
@@ -91,6 +92,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
@@ -139,7 +141,7 @@ class DbtSource(DbtServiceSource):
 
     def get_dbt_owner(
         self, manifest_node: Any, catalog_node: Optional[Any]
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Returns dbt owner
         """
@@ -457,7 +459,7 @@ class DbtSource(DbtServiceSource):
                                 upstream=self.parse_upstream_nodes(
                                     manifest_entities, manifest_node
                                 ),
-                                owner=self.get_dbt_owner(
+                                owners=self.get_dbt_owner(
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
                                 ),
@@ -840,7 +842,7 @@ class DbtSource(DbtServiceSource):
                                 manifest_node
                             ),
                             displayName=None,
-                            owner=None,
+                            owners=None,
                         )
                     )
         except Exception as err:  # pylint: disable=broad-except
@@ -867,18 +869,42 @@ class DbtSource(DbtServiceSource):
                     test_suite = check_or_create_test_suite(
                         self.metadata, entity_link_str
                     )
-                    yield Either(
-                        right=CreateTestCaseRequest(
-                            name=manifest_node.name,
-                            description=manifest_node.description,
-                            testDefinition=FullyQualifiedEntityName(manifest_node.name),
-                            entityLink=entity_link_str,
-                            testSuite=test_suite.fullyQualifiedName,
-                            parameterValues=create_test_case_parameter_values(dbt_test),
-                            displayName=None,
-                            owner=None,
-                        )
+                    table_fqn = get_table_fqn(entity_link_str)
+                    source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
+                    test_case_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=TestCase,
+                        service_name=source_elements[0],
+                        database_name=source_elements[1],
+                        schema_name=source_elements[2],
+                        table_name=source_elements[3],
+                        column_name=manifest_node.column_name
+                        if hasattr(manifest_node, "column_name")
+                        else None,
+                        test_case_name=manifest_node.name,
                     )
+
+                    test_case = self.metadata.get_by_name(
+                        TestCase, test_case_fqn, fields=["testDefinition,testSuite"]
+                    )
+                    if test_case is None:
+                        # Create the test case only if it does not exist
+                        yield Either(
+                            right=CreateTestCaseRequest(
+                                name=manifest_node.name,
+                                description=manifest_node.description,
+                                testDefinition=FullyQualifiedEntityName(
+                                    manifest_node.name
+                                ),
+                                entityLink=entity_link_str,
+                                testSuite=test_suite.fullyQualifiedName,
+                                parameterValues=create_test_case_parameter_values(
+                                    dbt_test
+                                ),
+                                displayName=None,
+                                owners=None,
+                            )
+                        )
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(

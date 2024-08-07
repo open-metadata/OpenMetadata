@@ -22,20 +22,25 @@ import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_S
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
+import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeSet;
 import java.util.UUID;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
@@ -45,11 +50,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -64,6 +71,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 public class SearchRepository {
@@ -77,7 +85,7 @@ public class SearchRepository {
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+      List.of(Entity.FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -758,6 +766,11 @@ public class SearchRepository {
     return searchClient.aggregate(query, index, aggregationJson);
   }
 
+  public DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata);
+  }
+
   public Response suggest(SearchRequest request) throws IOException {
     return searchClient.suggest(request);
   }
@@ -785,5 +798,55 @@ public class SearchRepository {
       throws IOException, ParseException {
     return searchClient.listDataInsightChartResult(
         startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
+  }
+
+  public List<EntityReference> getEntitiesContainingFQNFromES(
+      String entityFQN, int size, String indexName) {
+    try {
+      String queryFilter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
+              ReindexingUtil.escapeDoubleQuotes(entityFQN));
+
+      SearchRequest searchRequest =
+          new SearchRequest.ElasticSearchRequestBuilder(
+                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
+              .from(0)
+              .queryFilter(queryFilter)
+              .fetchSource(true)
+              .trackTotalHits(false)
+              .sortFieldParam("_score")
+              .deleted(false)
+              .sortOrder("desc")
+              .includeSourceFields(new ArrayList<>())
+              .build();
+
+      // Execute the search and parse the response
+      Response response = search(searchRequest);
+      String json = (String) response.getEntity();
+      Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
+
+      // Extract hits from the response JSON and create entity references
+      for (Iterator<JsonNode> it =
+              ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
+          it.hasNext(); ) {
+        JsonNode jsonNode = it.next();
+        String id = JsonUtils.extractValue(jsonNode, "_source", "id");
+        String fqn = JsonUtils.extractValue(jsonNode, "_source", "fullyQualifiedName");
+        String type = JsonUtils.extractValue(jsonNode, "_source", "entityType");
+        if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+          fqns.add(
+              new EntityReference()
+                  .withId(UUID.fromString(id))
+                  .withFullyQualifiedName(fqn)
+                  .withType(type));
+        }
+      }
+
+      return new ArrayList<>(fqns);
+    } catch (Exception ex) {
+      LOG.error("Error while getting entities from ES for validation", ex);
+    }
+    return new ArrayList<>();
   }
 }

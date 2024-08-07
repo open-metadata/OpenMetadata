@@ -131,6 +131,23 @@ export const AssetsFilterOptions: Array<{
     key: EntityType.SEARCH_SERVICE,
     value: SearchIndex.SEARCH_SERVICE,
   },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.api-uppercase'),
+    }),
+    key: EntityType.API_SERVICE,
+    value: SearchIndex.API_SERVICE_INDEX,
+  },
+  {
+    label: i18n.t('label.api-collection-plural'),
+    key: EntityType.API_COLLECTION,
+    value: SearchIndex.API_COLLECTION_INDEX,
+  },
+  {
+    label: i18n.t('label.api-endpoint-plural'),
+    key: EntityType.API_ENDPOINT,
+    value: SearchIndex.API_ENDPOINT_INDEX,
+  },
 ];
 
 export const ASSET_MENU_KEYS = [
@@ -161,4 +178,5 @@ export const NON_SERVICE_TYPE_ASSETS = [
   EntityType.PERSONA,
   EntityType.ROLE,
   EntityType.POLICY,
+  EntityType.KPI,
 ];

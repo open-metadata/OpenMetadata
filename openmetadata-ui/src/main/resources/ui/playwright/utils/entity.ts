@@ -46,9 +46,10 @@ export const addOwner = async (
   owner: string,
   type: 'Teams' | 'Users' = 'Users',
   endpoint: EntityTypeEndpoint,
-  dataTestId?: string
+  dataTestId?: string,
+  initiatorId = 'edit-owner'
 ) => {
-  await page.getByTestId('edit-owner').click();
+  await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
       '/api/v1/users?limit=*&isBot=false*'
@@ -72,9 +73,18 @@ export const addOwner = async (
   await page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByRole('listitem', { name: owner }).click();
-  await patchRequest;
+
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
@@ -98,9 +108,17 @@ export const updateOwner = async (
     `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
   );
 
-  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByRole('listitem', { name: owner }).click();
-  await patchRequest;
+  if (type === 'Teams') {
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await patchRequest;
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+
+    const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+    await page.getByTestId('selectable-list-update-btn').click();
+    await patchRequest;
+  }
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).toContainText(
     owner
@@ -111,15 +129,22 @@ export const removeOwner = async (
   page: Page,
   endpoint: EntityTypeEndpoint,
   ownerName: string,
+  type: 'Teams' | 'Users' = 'Users',
   dataTestId?: string
 ) => {
   await page.getByTestId('edit-owner').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
-
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
-  await page.getByTestId('remove-owner').locator('svg').click();
+  if (type === 'Teams') {
+    await expect(page.getByTestId('remove-owner').locator('svg')).toBeVisible();
+
+    await page.getByTestId('remove-owner').locator('svg').click();
+  } else {
+    await page.click('[data-testid="clear-all-button"]');
+    await page.click('[data-testid="selectable-list-update-btn"]');
+  }
+
   await patchRequest;
 
   await expect(page.getByTestId(dataTestId ?? 'owner-link')).not.toContainText(
@@ -127,10 +152,97 @@ export const removeOwner = async (
   );
 };
 
-export const assignTier = async (page: Page, tier: string) => {
+export const addMultiOwner = async (data: {
+  page: Page;
+  ownerNames: string | string[];
+  activatorBtnDataTestId: string;
+  endpoint: EntityTypeEndpoint;
+  resultTestId?: string;
+  isSelectableInsideForm?: boolean;
+  type: 'Teams' | 'Users';
+}) => {
+  const {
+    page,
+    ownerNames,
+    activatorBtnDataTestId,
+    resultTestId = 'owner-link',
+    isSelectableInsideForm = false,
+    endpoint,
+    type,
+  } = data;
+  const isMultipleOwners = Array.isArray(ownerNames);
+  const owners = isMultipleOwners ? ownerNames : [ownerNames];
+
+  await page.click(`[data-testid="${activatorBtnDataTestId}"]`);
+
+  await expect(page.locator("[data-testid='select-owner-tabs']")).toBeVisible();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await page.getByRole('tab', { name: 'Users' }).click();
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  if (isMultipleOwners) {
+    await page.click('[data-testid="clear-all-button"]');
+  }
+
+  for (const ownerName of owners) {
+    const searchOwner = page.waitForResponse(
+      'api/v1/search/query?q=*&index=user_search_index*'
+    );
+    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
+    await page.fill('[data-testid="owner-select-users-search-bar"]', ownerName);
+    await searchOwner;
+    await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+    const ownerItem = page.getByRole('listitem', {
+      name: ownerName,
+      exact: true,
+    });
+
+    if (type === 'Teams') {
+      if (isSelectableInsideForm) {
+        await ownerItem.click();
+      } else {
+        const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+        await ownerItem.click();
+        await patchRequest;
+      }
+    } else {
+      await ownerItem.click();
+    }
+  }
+
+  if (isMultipleOwners) {
+    const updateButton = page.getByTestId('selectable-list-update-btn');
+
+    if (isSelectableInsideForm) {
+      await updateButton.click();
+    } else {
+      const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
+      await updateButton.click();
+      await patchRequest;
+    }
+  }
+
+  for (const name of owners) {
+    await expect(page.locator(`[data-testid="${resultTestId}"]`)).toContainText(
+      name
+    );
+  }
+};
+
+export const assignTier = async (
+  page: Page,
+  tier: string,
+  endpoint: string
+) => {
   await page.getByTestId('edit-tier').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId(`radio-btn-${tier}`).click();
+  await patchRequest;
   await clickOutside(page);
 
   await expect(page.getByTestId('Tier')).toContainText(tier);
@@ -884,7 +996,7 @@ export const checkDataAssetWidget = async (
   await page.click('[data-testid="welcome-screen-close-btn"]');
 
   const quickFilterResponse = page.waitForResponse(
-    `/api/v1/search/query?q=&index=${index}*${serviceType}*`
+    `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
 
   await page
@@ -897,13 +1009,13 @@ export const checkDataAssetWidget = async (
     page.locator('[data-testid="search-dropdown-Service Type"]')
   ).toContainText(serviceType);
 
-  const isSelected = await page
-    .getByRole('menuitem', { name: type })
-    .evaluate((element) => {
-      return element.classList.contains('ant-menu-item-selected');
-    });
-
-  expect(isSelected).toBe(true);
+  await expect(
+    page
+      .getByTestId('explore-tree')
+      .locator('span')
+      .filter({ hasText: serviceType })
+      .first()
+  ).toHaveClass(/ant-tree-node-selected/);
 };
 
 export const escapeESReservedCharacters = (text?: string) => {

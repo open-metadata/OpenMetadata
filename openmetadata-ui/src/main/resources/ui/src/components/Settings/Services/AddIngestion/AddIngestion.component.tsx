@@ -27,13 +27,15 @@ import {
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getIngestionFrequency } from '../../../../utils/CommonUtils';
 import { getSuccessMessage } from '../../../../utils/IngestionUtils';
 import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
 import { generateUUID } from '../../../../utils/StringsUtils';
-import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
+import {
+  getDayCron,
+  getWeekCron,
+} from '../../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
@@ -94,7 +96,10 @@ const AddIngestion = ({
   const [scheduleInterval, setScheduleInterval] = useState(() =>
     data?.airflowConfig.scheduleInterval ?? limitConfig?.enable
       ? getWeekCron({ hour: 0, min: 0, dow: 1 })
-      : getIngestionFrequency(pipelineType)
+      : getDayCron({
+          min: 0,
+          hour: 0,
+        })
   );
 
   const { ingestionName, retries } = useMemo(
@@ -172,10 +177,12 @@ const AddIngestion = ({
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: 'user',
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: 'user',
+        },
+      ],
       pipelineType: pipelineType,
       service: {
         id: serviceData.id as string,

@@ -14,7 +14,7 @@
 export const OMD_REPOSITORY_LINK = 'https://star-us.open-metadata.org/';
 
 export const WORKFLOWS_PROFILER_DOCS =
-  'https://docs.open-metadata.org/connectors/ingestion/workflows/profiler';
+  'https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow';
 
 export const DATA_QUALITY_DOCS =
   'https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality';

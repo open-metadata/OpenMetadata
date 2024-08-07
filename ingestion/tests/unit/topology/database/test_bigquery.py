@@ -183,7 +183,7 @@ MOCK_TABLE = Table(
     tableConstraints=[],
     tablePartition=None,
     tableProfilerConfig=None,
-    owner=None,
+    owners=None,
     databaseSchema=EntityReference(
         id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="databaseSchema"
     ),
@@ -207,7 +207,7 @@ EXPECTED_DATABASE = [
         displayName=None,
         description=None,
         tags=[],
-        owner=None,
+        owners=None,
         service=FullyQualifiedEntityName("bigquery_source_test"),
         dataProducts=None,
         default=False,
@@ -226,7 +226,7 @@ EXPTECTED_DATABASE_SCHEMA = [
         name=EntityName("sample_schema"),
         displayName=None,
         description="",
-        owner=None,
+        owners=None,
         database=FullyQualifiedEntityName("bigquery_source_test.random-project-id"),
         dataProducts=None,
         tags=None,
@@ -415,7 +415,7 @@ EXPECTED_TABLE = [
             tableConstraints=[],
             tablePartition=None,
             tableProfilerConfig=None,
-            owner=None,
+            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
@@ -511,7 +511,7 @@ EXPECTED_TABLE = [
             ],
             tablePartition=None,
             tableProfilerConfig=None,
-            owner=None,
+            owners=None,
             databaseSchema=FullyQualifiedEntityName(
                 root="bigquery_source_test.random-project-id.sample_schema"
             ),
@@ -695,8 +695,7 @@ class BigqueryLineageSourceTest(TestCase):
         mock_credentials_path_bq_config = deepcopy(mock_bq_config)
         mock_credentials_path_bq_config["source"]["serviceConnection"]["config"][
             "credentials"
-        ]["gcpConfig"] = "credentials.json"
-
+        ]["gcpConfig"] = {"path": "credentials.json", "projectId": "my-gcp-project"}
         self.config = OpenMetadataWorkflowConfig.model_validate(
             mock_credentials_path_bq_config
         )

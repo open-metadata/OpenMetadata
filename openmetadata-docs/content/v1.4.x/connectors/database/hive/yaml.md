@@ -18,6 +18,7 @@ Configure and schedule Hive metadata and profiler workflows from the OpenMetadat
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
+- [Enable Security](#securing-hive-connection-with-ssl-in-openmetadata)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
@@ -200,6 +201,15 @@ source:
 {% partial file="/v1.4/connectors/yaml/data-profiler.md" variables={connector: "hive"} /%}
 
 {% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
+
+## Securing Hive Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and a Hive database, you need to add `ssl_cert` as a key and the path to the CA certificate as its value under `connectionArguments`. Ensure that the certificate is accessible by the server. If you use a Docker or Kubernetes deployment, update the CA certificate in the Open Metadata server.
+
+```yaml
+    connectionArguments:
+        ssl_cert: /path/to/ca/cert
+```
 
 ## dbt Integration
 

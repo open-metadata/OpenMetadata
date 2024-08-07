@@ -12,26 +12,14 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
-    DatabaseService,
     DatabaseServiceType,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-    Sink,
-    Source,
-    SourceConfig,
-    WorkflowConfig,
-)
-from metadata.ingestion.lineage.sql_lineage import search_cache
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.workflow.metadata import MetadataWorkflow
 
 
 @pytest.fixture(scope="module")
-def db_service(metadata, postgres_container):
-    service = CreateDatabaseServiceRequest(
-        name="docker_test_db",
+def create_service_request(postgres_container, tmp_path_factory):
+    return CreateDatabaseServiceRequest(
+        name="docker_test_" + tmp_path_factory.mktemp("postgres").name,
         serviceType=DatabaseServiceType.Postgres,
         connection=DatabaseConnection(
             config=PostgresConnection(
@@ -43,33 +31,19 @@ def db_service(metadata, postgres_container):
             )
         ),
     )
-    service_entity = metadata.create_or_update(data=service)
-    # Since we're using admin JWT (not ingestion-bot), the secret is not sent by the API
-    service_entity.connection.config.authType.password = CustomSecretStr(
-        postgres_container.password
-    )
-    yield service_entity
-    metadata.delete(
-        DatabaseService, service_entity.id, recursive=True, hard_delete=True
-    )
 
 
 @pytest.fixture(scope="module")
-def ingest_metadata(db_service, metadata: OpenMetadata):
-    workflow_config = OpenMetadataWorkflowConfig(
-        source=Source(
-            type=db_service.connection.config.type.value.lower(),
-            serviceName=db_service.fullyQualifiedName.root,
-            serviceConnection=db_service.connection,
-            sourceConfig=SourceConfig(config={}),
-        ),
-        sink=Sink(
-            type="metadata-rest",
-            config={},
-        ),
-        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
-    )
-    metadata_ingestion = MetadataWorkflow.create(workflow_config)
-    search_cache.clear()
-    metadata_ingestion.execute()
-    metadata_ingestion.raise_from_status()
+def ingestion_config(
+    db_service, metadata, workflow_config, sink_config, postgres_container
+):
+    return {
+        "source": {
+            "type": db_service.connection.config.type.value.lower(),
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+            "serviceConnection": db_service.connection.dict(),
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }

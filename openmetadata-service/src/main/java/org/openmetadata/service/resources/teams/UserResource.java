@@ -29,6 +29,7 @@ import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRE
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
+import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
 
@@ -176,7 +177,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domains,personas,defaultPersona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -567,14 +568,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
-    if (Boolean.TRUE.equals(create.getIsBot())) {
+    if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
 
     //
     try {
       // Email Validation
-      validateEmailAlreadyExists(create.getEmail());
+      validateEmailAlreadyExists(user.getEmail());
       addUserAuthForBasic(user, create);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
@@ -593,8 +594,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
-        if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
-          // User is creating himself on signup ?! :(
+        if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
           User created = addHref(uriInfo, repository.create(uriInfo, user));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
@@ -1448,26 +1448,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
       String csv)
       throws IOException {
     return importCsvInternal(securityContext, team, csv, dryRun);
-  }
-
-  public static User getUser(String updatedBy, CreateUser create) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withFullyQualifiedName(create.getName())
-        .withEmail(create.getEmail())
-        .withDescription(create.getDescription())
-        .withDisplayName(create.getDisplayName())
-        .withIsBot(create.getIsBot())
-        .withIsAdmin(create.getIsAdmin())
-        .withProfile(create.getProfile())
-        .withPersonas(create.getPersonas())
-        .withDefaultPersona(create.getDefaultPersona())
-        .withTimezone(create.getTimezone())
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
-        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
   }
 
   public void validateEmailAlreadyExists(String email) {

@@ -2,7 +2,7 @@ package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
 import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
@@ -44,6 +44,8 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -60,6 +62,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
@@ -156,6 +159,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Repair of CHANGE_LOG failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "syncEmailFromEnv",
+      description = "Sync the email configuration from environment variables")
+  public Integer syncEmailFromEnv() {
+    try {
+      parseConfig();
+      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+      SystemRepository systemRepository = new SystemRepository();
+      Settings updatedSettings =
+          new Settings()
+              .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+              .withConfigValue(config.getSmtpSettings());
+      systemRepository.createOrUpdate(updatedSettings);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Email Sync failed due to ", e);
       return 1;
     }
   }
@@ -385,7 +408,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       List<IngestionPipeline> pipelines =
           pipelineRepository.listAll(
-              new EntityUtil.Fields(Set.of(FIELD_OWNER, "service")),
+              new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
               new ListFilter(Include.NON_DELETED));
       LOG.debug(String.format("Pipelines %d", pipelines.size()));
       List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
@@ -582,7 +605,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
+            jdbi,
+            nativeSQLScriptRootPath,
+            connType,
+            extensionSQLScriptRootPath,
+            config.getPipelineServiceClientConfiguration(),
+            force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();

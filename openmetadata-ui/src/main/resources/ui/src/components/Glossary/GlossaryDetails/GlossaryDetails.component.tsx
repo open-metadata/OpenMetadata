@@ -159,7 +159,7 @@ const GlossaryDetails = ({
                       }
                       isDescriptionExpanded={isEmpty(glossary.children)}
                       isEdit={isDescriptionEditable}
-                      owner={glossary?.owner}
+                      owner={glossary?.owners}
                       showActions={!glossary.deleted}
                       onCancel={() => setIsDescriptionEditable(false)}
                       onDescriptionEdit={() => setIsDescriptionEditable(true)}
@@ -244,7 +244,7 @@ const GlossaryDetails = ({
                   entityType={EntityType.GLOSSARY}
                   fqn={glossary.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
-                  owner={glossary.owner}
+                  owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
                 />

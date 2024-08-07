@@ -14,13 +14,14 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
@@ -32,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.SecurityContext;
@@ -42,6 +44,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -77,9 +80,9 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains";
   private volatile EntityReference organization;
 
   public UserRepository() {
@@ -120,6 +123,26 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public User getByName(UriInfo uriInfo, String name, Fields fields) {
     return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
+  }
+
+  private List<EntityReference> getDomains(UUID teamId) {
+    // Team does not have domain. 'domains' is the field for user as team can belong to multiple
+    // domains
+    return findFrom(teamId, USER, Relationship.HAS, Entity.DOMAIN);
+  }
+
+  @Override
+  protected void storeDomain(User entity, EntityReference exclude) {
+    for (EntityReference domainRef : listOrEmpty(entity.getDomains())) {
+      // Add relationship domain --- has ---> entity
+      LOG.info(
+          "Adding domain {} for user {}:{}",
+          domainRef.getFullyQualifiedName(),
+          entityType,
+          entity.getId());
+      addRelationship(
+          domainRef.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
   }
 
   public User getByEmail(UriInfo uriInfo, String email, Fields fields) {
@@ -193,13 +216,19 @@ public class UserRepository extends EntityRepository<User> {
   public void setInheritedFields(User user, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
-    if (fields.contains(FIELD_DOMAIN) && user.getDomain() == null) {
+    if (fields.contains(FIELD_DOMAINS)) {
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
-        Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
-        inheritDomain(user, fields, team);
+        for (EntityReference team : teams) {
+          Team parent = Entity.getEntity(TEAM, team.getId(), "domains", ALL);
+          combinedParent.addAll(parent.getDomains());
+        }
       }
+      user.setDomains(
+          EntityUtil.mergedInheritedEntityRefs(
+              user.getDomains(), combinedParent.stream().toList()));
     }
   }
 
@@ -219,6 +248,7 @@ public class UserRepository extends EntityRepository<User> {
         fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
+    user.setDomains(fields.contains("domains") ? getDomains(user.getId()) : user.getDomains());
   }
 
   @Override
@@ -338,7 +368,10 @@ public class UserRepository extends EntityRepository<User> {
 
   public void validateLoggedInUserNameAndEmailMatches(
       String username, String email, User storedUser) {
-    if (!(username.equals(storedUser.getName()) && email.equals(storedUser.getEmail()))) {
+    String lowerCasedName = username.toLowerCase();
+    String lowerCasedEmail = email.toLowerCase();
+    if (!(lowerCasedName.equals(storedUser.getName().toLowerCase())
+        && lowerCasedEmail.equals(storedUser.getEmail().toLowerCase()))) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
   }
@@ -436,13 +469,15 @@ public class UserRepository extends EntityRepository<User> {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       // Field 1, 2, 3, 4, 5, 6 - name, displayName, description, email, timezone, isAdmin
       User user =
-          new User()
-              .withName(csvRecord.get(0))
-              .withDisplayName(csvRecord.get(1))
-              .withDescription(csvRecord.get(2))
-              .withEmail(csvRecord.get(3))
-              .withTimezone(csvRecord.get(4))
-              .withIsAdmin(getBoolean(printer, csvRecord, 5))
+          UserUtil.getUser(
+                  importedBy,
+                  new CreateUser()
+                      .withName(csvRecord.get(0))
+                      .withDisplayName(csvRecord.get(1))
+                      .withDescription(csvRecord.get(2))
+                      .withEmail(csvRecord.get(3))
+                      .withTimezone(csvRecord.get(4))
+                      .withIsAdmin(getBoolean(printer, csvRecord, 5)))
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       if (processRecord) {
@@ -542,6 +577,10 @@ public class UserRepository extends EntityRepository<User> {
     @Transaction
     @Override
     public void entitySpecificUpdate() {
+      // LowerCase Email
+      updated.setEmail(updated.getEmail().toLowerCase());
+
+      // Updates
       updateRoles(original, updated);
       updateTeams(original, updated);
       updatePersonas(original, updated);
@@ -551,7 +590,7 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-      recordChange("email", original.getEmail(), updated.getEmail());
+      recordChange("email", original.getEmail(), updated.getEmail().toLowerCase());
       recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
       updateAuthenticationMechanism(original, updated);
     }
@@ -571,6 +610,42 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(
           ROLES_FIELD, origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    @Override
+    protected void updateDomain() {
+      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
+        // Revert change to non-empty domain if it is being updated by a bot
+        // This is to prevent bots from overwriting the domain. Domain need to be
+        // updated with a PATCH request
+        updated.setDomains(original.getDomains());
+        return;
+      }
+
+      List<EntityReference> origDomains =
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
+      List<EntityReference> updatedDomains =
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+
+      // Remove Domains for the user
+      deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);
+
+      for (EntityReference domain : updatedDomains) {
+        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+      }
+
+      origDomains.sort(EntityUtil.compareEntityReference);
+      updatedDomains.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          FIELD_DOMAINS,
+          origDomains,
+          updatedDomains,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
     }
 
     private void updateTeams(User original, User updated) {

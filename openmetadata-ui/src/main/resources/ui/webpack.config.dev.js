@@ -213,10 +213,6 @@ module.exports = {
           to: outputPath,
         },
         {
-          from: path.join(__dirname, 'public/robots.txt'),
-          to: outputPath,
-        },
-        {
           from: path.join(__dirname, 'public/locales'),
           to: outputPath,
         },
@@ -257,7 +253,7 @@ module.exports = {
     // Proxy configuration
     proxy: [
       {
-        context: '/api',
+        context: '/api/',
         target: 'http://localhost:8585/',
         changeOrigin: true,
       },

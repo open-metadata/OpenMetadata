@@ -12,6 +12,7 @@
 Base workflow definition.
 """
 
+import traceback
 import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
@@ -47,7 +48,7 @@ from metadata.utils.class_helper import (
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
-from metadata.workflow.output_handler import report_ingestion_status
+from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
 from metadata.workflow.workflow_status_mixin import (
     SUCCESS_THRESHOLD_VALUE,
     WorkflowStatusMixin,
@@ -84,10 +85,12 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         log_level: LogLevels,
         metadata_config: OpenMetadataConnection,
         service_type: ServiceType,
+        output_handler: WorkflowOutputHandler = WorkflowOutputHandler(),
     ):
         """
         Disabling pylint to wait for workflow reimplementation as a topology
         """
+        self.output_handler = output_handler
         self.config = config
         self.service_type = service_type
         self._timer: Optional[RepeatedTimer] = None
@@ -107,7 +110,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.post_init()
 
     @property
-    def ingestion_pipeline(self):
+    def ingestion_pipeline(self) -> Optional[IngestionPipeline]:
         """Get or create the Ingestion Pipeline from the configuration"""
         if not self._ingestion_pipeline and self.config.ingestionPipelineFQN:
             self._ingestion_pipeline = self.get_or_create_ingestion_pipeline()
@@ -136,7 +139,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         """
         if not self._timer:
             self._timer = RepeatedTimer(
-                REPORTS_INTERVAL_SECONDS, report_ingestion_status, logger, self
+                REPORTS_INTERVAL_SECONDS, self._report_ingestion_status
             )
 
         return self._timer
@@ -249,7 +252,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                             ),
                         ),
                         pipelineType=get_pipeline_type_from_source_config(
-                            self.config.source.sourceConfig.config
+                            self.config.source.sourceConfig
                         ),
                         sourceConfig=self.config.source.sourceConfig,
                         airflowConfig=AirflowConfig(),
@@ -276,4 +279,38 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         return self.metadata.get_by_name(
             entity=get_service_class_from_service_type(self.service_type),
             fqn=self.config.source.serviceName,
+        )
+
+    def _report_ingestion_status(self):
+        """
+        Given a logger, use it to INFO the workflow status
+        """
+        try:
+            for step in self.workflow_steps():
+                logger.info(
+                    f"{step.name}: Processed {len(step.status.records)} records,"
+                    f" filtered {len(step.status.filtered)} records,"
+                    f" found {len(step.status.failures)} errors"
+                )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Wild exception reporting status - {exc}")
+
+    def _is_debug_enabled(self) -> bool:
+        return (
+            hasattr(self, "config")
+            and hasattr(self.config, "workflowConfig")
+            and hasattr(self.config.workflowConfig, "loggerLevel")
+            and self.config.workflowConfig.loggerLevel is LogLevels.DEBUG
+        )
+
+    def print_status(self):
+        start_time = self.workflow_steps()[0].get_status().source_start_time
+
+        self.output_handler.print_status(
+            self.result_status(),
+            self.workflow_steps(),
+            start_time,
+            self._is_debug_enabled(),
         )

@@ -163,7 +163,7 @@ import yaml
 
 from metadata.workflow.metadata import MetadataWorkflow
 
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 CONFIG = f"""
 source:
@@ -182,7 +182,7 @@ def run():
     workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 
@@ -286,7 +286,7 @@ except ModuleNotFoundError:
 from metadata.config.common import load_config_file
 from metadata.workflow.metadata import MetadataWorkflow
 
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 # Import the hook
 from airflow.hooks.base import BaseHook
@@ -326,7 +326,7 @@ def metadata_ingestion_workflow():
     workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 with DAG(
@@ -363,7 +363,7 @@ except ModuleNotFoundError:
 from metadata.config.common import load_config_file
 from metadata.workflow.metadata import MetadataWorkflow
 
-from metadata.workflow.workflow_output_handler import print_status
+ 
 
 config = """
 source:
@@ -388,7 +388,7 @@ def metadata_ingestion_workflow():
     workflow = MetadataWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    print_status(workflow)
+    workflow.print_status()
     workflow.stop()
 
 with DAG(

@@ -90,7 +90,7 @@ import org.openmetadata.service.util.ResultList;
 public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryTermRepository> {
   public static final String COLLECTION_PATH = "v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owner,tags,usageCount,domain,extension,childrenCount";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domain,extension,childrenCount";
 
   @Override
   public GlossaryTerm addHref(UriInfo uriInfo, GlossaryTerm term) {

@@ -14,10 +14,11 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
-import static org.openmetadata.csv.CsvUtil.addUserOwner;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.BUSINESS_UNIT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DEPARTMENT;
 import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.DIVISION;
@@ -26,7 +27,7 @@ import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.ORGANIZATION
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.POLICY;
 import static org.openmetadata.service.Entity.ROLE;
@@ -50,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -84,9 +86,9 @@ import org.openmetadata.service.util.ResultList;
 public class TeamRepository extends EntityRepository<Team> {
   static final String PARENTS_FIELD = "parents";
   static final String TEAM_UPDATE_FIELDS =
-      "profile,users,defaultRoles,parents,children,policies,teamType,email";
+      "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
   static final String TEAM_PATCH_FIELDS =
-      "profile,users,defaultRoles,parents,children,policies,teamType,email";
+      "profile,users,defaultRoles,parents,children,policies,teamType,email,domains";
   private static final String DEFAULT_ROLES = "defaultRoles";
   private Team organization = null;
 
@@ -116,6 +118,7 @@ public class TeamRepository extends EntityRepository<Team> {
         fields.contains("childrenCount") ? getChildrenCount(team) : team.getChildrenCount());
     team.setUserCount(
         fields.contains("userCount") ? getUserCount(team.getId()) : team.getUserCount());
+    team.setDomains(fields.contains(FIELD_DOMAINS) ? getDomains(team.getId()) : team.getDomains());
   }
 
   @Override
@@ -129,6 +132,26 @@ public class TeamRepository extends EntityRepository<Team> {
     team.setPolicies(fields.contains("policies") ? team.getPolicies() : null);
     team.setChildrenCount(fields.contains("childrenCount") ? team.getChildrenCount() : null);
     team.withUserCount(fields.contains("userCount") ? team.getUserCount() : null);
+  }
+
+  private List<EntityReference> getDomains(UUID teamId) {
+    // Team does not have domain. 'domains' is the field for user as team can belong to multiple
+    // domains
+    return findFrom(teamId, TEAM, Relationship.HAS, Entity.DOMAIN);
+  }
+
+  @Override
+  protected void storeDomain(Team entity, EntityReference exclude) {
+    for (EntityReference domainRef : listOrEmpty(entity.getDomains())) {
+      // Add relationship domain --- has ---> entity
+      LOG.info(
+          "Adding domain {} for user {}:{}",
+          domainRef.getFullyQualifiedName(),
+          entityType,
+          entity.getId());
+      addRelationship(
+          domainRef.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
   }
 
   @Override
@@ -230,13 +253,19 @@ public class TeamRepository extends EntityRepository<Team> {
   public void setInheritedFields(Team team, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
-    if (fields.contains(FIELD_DOMAIN) && team.getDomain() == null) {
+    if (fields.contains(FIELD_DOMAINS)) {
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> parents =
           !fields.contains(PARENTS_FIELD) ? getParents(team) : team.getParents();
       if (!nullOrEmpty(parents)) {
-        Team parent = Entity.getEntity(TEAM, parents.get(0).getId(), "domain", ALL);
-        inheritDomain(team, fields, parent);
+        for (EntityReference parentRef : parents) {
+          Team parentTeam = Entity.getEntity(TEAM, parentRef.getId(), "domains", ALL);
+          combinedParent.addAll(parentTeam.getDomains());
+        }
       }
+      team.setDomains(
+          EntityUtil.mergedInheritedEntityRefs(
+              team.getDomains(), combinedParent.stream().toList()));
     }
   }
 
@@ -632,7 +661,7 @@ public class TeamRepository extends EntityRepository<Team> {
               .withDisplayName(csvRecord.get(1))
               .withDescription(csvRecord.get(2))
               .withTeamType(TeamType.fromValue(csvRecord.get(3)))
-              .withOwner(getOwnerAsUser(printer, csvRecord, 5))
+              .withOwners(getOwners(printer, csvRecord, 5))
               .withIsJoinable(getBoolean(printer, csvRecord, 6))
               .withDefaultRoles(getEntityReferences(printer, csvRecord, 7, ROLE))
               .withPolicies(getEntityReferences(printer, csvRecord, 8, POLICY));
@@ -652,7 +681,7 @@ public class TeamRepository extends EntityRepository<Team> {
       addField(recordList, entity.getDescription());
       addField(recordList, entity.getTeamType().value());
       addEntityReferences(recordList, entity.getParents());
-      addUserOwner(recordList, entity.getOwner());
+      addOwners(recordList, entity.getOwners());
       addField(recordList, entity.getIsJoinable());
       addEntityReferences(recordList, entity.getDefaultRoles());
       addEntityReferences(recordList, entity.getPolicies());
@@ -716,7 +745,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
     public String exportCsv() throws IOException {
       TeamRepository repository = (TeamRepository) Entity.getEntityRepository(TEAM);
-      final Fields fields = repository.getFields("owner,defaultRoles,parents,policies");
+      final Fields fields = repository.getFields("owners,defaultRoles,parents,policies");
       return exportCsv(listTeams(repository, team.getName(), new ArrayList<>(), fields));
     }
   }
@@ -781,6 +810,42 @@ public class TeamRepository extends EntityRepository<Team> {
           origDefaultRoles,
           updatedDefaultRoles,
           false);
+    }
+
+    @Override
+    protected void updateDomain() {
+      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
+        // Revert change to non-empty domain if it is being updated by a bot
+        // This is to prevent bots from overwriting the domain. Domain need to be
+        // updated with a PATCH request
+        updated.setDomains(original.getDomains());
+        return;
+      }
+
+      List<EntityReference> origDomains =
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
+      List<EntityReference> updatedDomains =
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+
+      // Remove Domains for the user
+      deleteTo(original.getId(), TEAM, Relationship.HAS, Entity.DOMAIN);
+
+      for (EntityReference domain : updatedDomains) {
+        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, TEAM, Relationship.HAS);
+      }
+
+      origDomains.sort(EntityUtil.compareEntityReference);
+      updatedDomains.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          FIELD_DOMAINS,
+          origDomains,
+          updatedDomains,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
     }
 
     private void updateParents(Team original, Team updated) {

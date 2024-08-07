@@ -16,6 +16,7 @@ import { ComponentType, ReactNode } from 'react';
 import { AuthenticationConfiguration } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { User } from '../../../generated/entity/teams/user';
+import { AccessTokenResponse } from '../../../rest/auth-API';
 
 export interface AuthProviderProps {
   childComponentType: ComponentType;
@@ -38,7 +39,7 @@ export type OidcUser = {
 export interface AuthenticatorRef {
   invokeLogin: () => void;
   invokeLogout: () => void;
-  renewIdToken: () => Promise<string>;
+  renewIdToken: () => Promise<string> | Promise<AccessTokenResponse>;
 }
 
 export enum JWT_PRINCIPAL_CLAIMS {

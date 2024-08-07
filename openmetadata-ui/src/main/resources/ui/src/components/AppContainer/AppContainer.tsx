@@ -13,19 +13,16 @@
  */
 import { Layout } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Redirect, Route, Switch } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
+import { ES_MAX_PAGE_SIZE } from '../../constants/constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
-import SignUpPage from '../../pages/SignUp/SignUpPage';
+import { getDomainList } from '../../rest/domainAPI';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Appbar from '../AppBar/Appbar';
-
 import { LimitBanner } from '../common/LimitBanner/LimitBanner';
 import LeftSidebar from '../MyData/LeftSidebar/LeftSidebar.component';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
@@ -35,16 +32,35 @@ const AppContainer = () => {
   const { i18n } = useTranslation();
   const { Header, Sider, Content } = Layout;
   const { currentUser } = useApplicationStore();
-  const { fetchDomainList } = useDomainStore();
+  const { updateDomains, updateDomainLoading } = useDomainStore();
   const AuthenticatedRouter = applicationRoutesClass.getRouteElements();
   const ApplicationExtras = applicationsClassBase.getApplicationExtension();
   const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
   const { setConfig, bannerDetails } = useLimitStore();
 
-  const fetchLimitConfig = useCallback(async () => {
-    const response = await getLimitConfig();
+  const fetchDomainList = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, [currentUser]);
 
-    setConfig(response);
+  const fetchLimitConfig = useCallback(async () => {
+    try {
+      const response = await getLimitConfig();
+
+      setConfig(response);
+    } catch (error) {
+      // silent fail
+    }
   }, []);
 
   useEffect(() => {
@@ -73,14 +89,8 @@ const AppContainer = () => {
             <Appbar />
           </Header>
           <Content>
-            <Switch>
-              <Route exact component={SignUpPage} path={ROUTES.SIGNUP}>
-                {!isEmpty(currentUser) && <Redirect to={ROUTES.HOME} />}
-              </Route>
-
-              <AuthenticatedRouter />
-              {ApplicationExtras && <ApplicationExtras />}
-            </Switch>
+            <AuthenticatedRouter />
+            {ApplicationExtras && <ApplicationExtras />}
           </Content>
         </Layout>
       </Layout>

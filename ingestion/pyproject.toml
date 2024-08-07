@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools==69.0.2"]
+requires = ["setuptools~=70.3.0"]
 build-backend = "setuptools.build_meta"
 
 # We will keep handling dependencies in setup.py
@@ -9,9 +9,9 @@ name = "openmetadata-ingestion"
 version = "1.5.0.0.dev0"
 dynamic = ["readme", "dependencies", "optional-dependencies"]
 authors = [
-    {name = "OpenMetadata Committers"}
+    { name = "OpenMetadata Committers" }
 ]
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 description = "Ingestion Framework for OpenMetadata"
 requires-python = ">=3.8"
 
@@ -21,7 +21,7 @@ Documentation = "https://docs.open-metadata.org/"
 Source = "https://github.com/open-metadata/OpenMetadata"
 
 [tool.setuptools.dynamic]
-readme = {file = ["README.md"]}
+readme = { file = ["README.md"] }
 
 [tool.setuptools.packages.find]
 where = ["./src"]
@@ -72,7 +72,6 @@ disallow_incomplete_defs = false
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')"
 ]
-norecursedirs = "tests/helpers"
 
 [tool.pylint.BASIC]
 # W1203: logging-fstring-interpolation - f-string brings better readability and unifies style
@@ -142,3 +141,47 @@ skip_glob = [
 profile = "black"
 indent = "    "
 multi_line_output = 3
+
+[tool.basedpyright]
+include = ["src"]
+exclude = [
+  "**/__pycache__",
+  "src/metadata/generated/*",
+  "src/metadata/__version__.py",
+]
+
+# TODO: Remove the ignored paths little by little.
+ignore = [
+  "src/_openmetadata_testutils/*",
+  "src/airflow_provider_openmetadata/*",
+  "src/metadata/antlr/*",
+  "src/metadata/automations/*",
+  "src/metadata/cli/*",
+  "src/metadata/clients/*",
+  "src/metadata/config/*",
+  "src/metadata/data_insight/*",
+  "src/metadata/data_quality/*",
+  "src/metadata/examples/*",
+  "src/metadata/great_expectations/*",
+  "src/metadata/ingestion/*",
+  "src/metadata/mixins/*",
+  "src/metadata/parsers/*",
+  "src/metadata/pii/*",
+  "src/metadata/profiler/*",
+  "src/metadata/readers/*",
+  "src/metadata/timer/*",
+  "src/metadata/utils/*",
+  "src/metadata/workflow/base.py",
+  "src/metadata/workflow/application.py",
+  "src/metadata/workflow/data_insight.py",
+  "src/metadata/workflow/data_quality.py",
+  "src/metadata/workflow/ingestion.py",
+  "src/metadata/workflow/metadata.py",
+  "src/metadata/workflow/profiler.py",
+  "src/metadata/workflow/usage.py",
+  "src/metadata/workflow/workflow_status_mixin.py",
+]
+
+reportDeprecated = false
+reportMissingTypeStubs = false
+reportAny = false

@@ -232,6 +232,16 @@ h2.rotated-header {
   width: 3px;
 }
 
+.left-panel-splitter {
+  .panel-grabber-vertical {
+    margin-left: -10px;
+
+    .handle-icon-vertical {
+      margin-left: 0px;
+    }
+  }
+}
+
 .handle-icon-horizontal {
   margin: 0 auto auto;
   width: 30px;
@@ -280,4 +290,9 @@ h2.rotated-header {
 .right-panel-collapsed {
   flex: 0 !important;
   padding: 0 !important;
+}
+
+.left-panel-collapse-button.collapsed {
+  right: initial;
+  left: -16px;
 }

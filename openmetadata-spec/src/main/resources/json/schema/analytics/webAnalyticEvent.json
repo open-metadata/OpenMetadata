@@ -35,9 +35,9 @@
       "description": "Metadata version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/entityVersion"
     },
-    "owner": {
-      "description": "Owner of this report.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this report.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "updatedAt": {
@@ -65,6 +65,10 @@
       "description": "Weather the event is enable (i.e. data is being collected)",
       "type": "boolean",
       "default": true
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["eventType", "name"],

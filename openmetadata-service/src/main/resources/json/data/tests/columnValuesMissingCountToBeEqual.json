@@ -22,5 +22,5 @@
     }
   ],
   "provider": "system",
-  "datatQualityDimension": "Completeness"
+  "dataQualityDimension": "Completeness"
 }

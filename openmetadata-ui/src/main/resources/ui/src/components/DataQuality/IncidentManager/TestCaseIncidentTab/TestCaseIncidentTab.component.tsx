@@ -45,7 +45,7 @@ const TestCaseIncidentTab = () => {
   const { fqn: decodedFqn } = useFqn();
   const { testCase } = useTestCaseStore();
 
-  const owner = useMemo(() => testCase?.owner, [testCase]);
+  const owners = useMemo(() => testCase?.owners, [testCase]);
 
   const {
     selectedThread,
@@ -188,7 +188,7 @@ const TestCaseIncidentTab = () => {
             <TaskTab
               entityType={EntityType.TEST_CASE}
               isForFeedTab={false}
-              owner={owner}
+              owners={owners}
               taskThread={selectedThread}
               onAfterClose={handleAfterTaskClose}
             />

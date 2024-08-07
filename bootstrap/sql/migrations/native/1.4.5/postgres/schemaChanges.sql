@@ -16,3 +16,6 @@ CREATE INDEX idx_field_relationship_to ON field_relationship (fromType, toFQNHas
 CREATE INDEX idx_entity_id ON thread_entity (entityId);
 
 CREATE INDEX idx_type_task_status ON thread_entity (type, taskStatus);
+
+-- Clean dangling workflows not removed after test connection
+truncate automations_workflow;

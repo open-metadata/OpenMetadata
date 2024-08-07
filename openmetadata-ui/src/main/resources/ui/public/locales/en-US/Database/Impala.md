@@ -5,7 +5,7 @@ In this section, we provide guides and references to use the Impala connector. Y
 To extract metadata, the user used in the connection needs to be able to perform `SELECT`, `SHOW`, and `DESCRIBE` operations in the database/schema where the metadata needs to be extracted from.
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 You can find further information on the Impala connector in the [docs](https://docs.open-metadata.org/connectors/database/impala).
 
@@ -71,10 +71,12 @@ $$
 
 $$section
 ### Connection Options $(id="connectionOptions")
-Additional connection options to build the URL that can be sent to service during the connection. The connectionOptions parameter is specific to the connection method being used. For example, if you are using SSL encryption, you might set the connectionOptions parameter to {'ssl': 'true', 'sslTrustStore': '/path/to/truststore'}.
+Additional connection options to build the URL that can be sent to service during the connection. The connectionOptions parameter is specific to the connection method being used.
 $$
 
 $$section
 ### Connection Arguments $(id="connectionArguments")
-Additional connection arguments such as security or protocol configs that can be sent to service during connection.
+
+Additional connection arguments such as security or protocol configs that can be sent to service during connection.For example, if you are using SSL encryption, update the parameters to {'use_ssl': 'true', 'ssl_cert': '/path/to/ca/cert'}.
+Ensure that the certificate is accessible by the server. If you use a Docker or Kubernetes deployment, update the CA certificate in the Open Metadata server.
 $$

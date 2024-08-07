@@ -22,9 +22,11 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.util.EntityUtil.customFieldMatch;
 import static org.openmetadata.service.util.EntityUtil.getCustomField;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
@@ -185,8 +187,46 @@ public class TypeRepository extends EntityRepository<Type> {
           throw new IllegalArgumentException("Enum Custom Property Type must have EnumConfig.");
         }
       }
+      case "date-cp" -> validateDateFormat(
+          customProperty.getCustomPropertyConfig(), getDateTokens(), "Invalid date format");
+      case "dateTime-cp" -> validateDateFormat(
+          customProperty.getCustomPropertyConfig(), getDateTimeTokens(), "Invalid dateTime format");
+      case "time-cp" -> validateDateFormat(
+          customProperty.getCustomPropertyConfig(), getTimeTokens(), "Invalid time format");
       case "int", "string" -> {}
     }
+  }
+
+  private void validateDateFormat(
+      CustomPropertyConfig config, Set<Character> validTokens, String errorMessage) {
+    if (config != null) {
+      String format = String.valueOf(config.getConfig());
+      for (char c : format.toCharArray()) {
+        if (Character.isLetter(c) && !validTokens.contains(c)) {
+          throw new IllegalArgumentException(errorMessage + ": " + format);
+        }
+      }
+      try {
+        DateTimeFormatter.ofPattern(format);
+      } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException(errorMessage + ": " + format, e);
+      }
+    } else {
+      throw new IllegalArgumentException(errorMessage + " must have Config populated with format.");
+    }
+  }
+
+  private Set<Character> getDateTokens() {
+    return Set.of('y', 'M', 'd', 'E', 'D', 'W', 'w');
+  }
+
+  private Set<Character> getDateTimeTokens() {
+    return Set.of(
+        'y', 'M', 'd', 'E', 'D', 'W', 'w', 'H', 'h', 'm', 's', 'a', 'T', 'X', 'Z', '+', '-', 'S');
+  }
+
+  private Set<Character> getTimeTokens() {
+    return Set.of('H', 'h', 'm', 's', 'a', 'S');
   }
 
   /** Handles entity updated from PUT and POST operation. */

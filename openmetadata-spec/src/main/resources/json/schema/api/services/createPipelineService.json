@@ -34,9 +34,10 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
     },
     "scheduleInterval": {
       "description": "Scheduler Interval for the pipeline in cron format.",

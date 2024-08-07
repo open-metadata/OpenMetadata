@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.apis;
 
-import com.google.api.Endpoint;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -71,7 +70,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "apiEndpoints")
 public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpointRepository> {
   public static final String COLLECTION_PATH = "v1/apiEndpoints/";
-  static final String FIELDS = "owner,followers,tags,extension,domain,dataProducts,sourceHash";
+  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
 
   @Override
   public APIEndpoint addHref(UriInfo uriInfo, APIEndpoint apiEndpoint) {
@@ -173,7 +172,8 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   public EntityHistory listVersions(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
+          @PathParam("id")
           UUID id) {
     return super.listVersionsInternal(securityContext, id);
   }
@@ -181,6 +181,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @GET
   @Path("/{id}")
   @Operation(
+      operationId = "getEndpointById",
       summary = "Get a APIEndpoint by id",
       description = "Get a APIEndpoint by `id`.",
       responses = {
@@ -219,16 +220,16 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @Path("/name/{fqn}")
   @Operation(
       operationId = "getEndpointByFQN",
-      summary = "Get a Endpoint by fully qualified name",
+      summary = "Get a Endpoint by fully qualified name.",
       description = "Get a Endpoint by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The Endpoint",
+            description = "The APIEndpoint",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Endpoint.class))),
+                    schema = @Schema(implementation = APIEndpoint.class))),
         @ApiResponse(responseCode = "404", description = "Endpoint for instance {fqn} is not found")
       })
   public APIEndpoint getByName(
