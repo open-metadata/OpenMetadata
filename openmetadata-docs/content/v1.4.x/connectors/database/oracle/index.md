@@ -65,7 +65,7 @@ GRANT SELECT_CATALOG_ROLE to my_user;
 ```
 
 
-With just these permissions, your user should be able to ingest the metadata of the tables. E.g.,
+With just these permissions, your user should be able to ingest the metadata of entities for which the user has access to. E.g.,
 
 ```sql
 -- if you are using role
