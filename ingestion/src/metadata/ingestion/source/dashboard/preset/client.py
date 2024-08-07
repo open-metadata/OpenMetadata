@@ -60,14 +60,14 @@ class PresetAuthenticationProvider(AuthenticationProvider):
 
     def auth_token(self) -> None:
         login_request = self._login_request()
-        login_response = self.client.post("/auth/", login_request)
-        self.generated_auth_token = login_response["access_token"]
+        login_response = self.client.post("/auth/", data=login_request)
+        self.generated_auth_token = login_response['payload']['access_token']
         self.expiry = 0
 
     def _login_request(self) -> str:
         auth_request = {
-            "api_token": self.service_connection.connection.api_token,
-            "api_secret": self.service_connection.connection.api_secret.get_secret_value(),
+            "name": self.service_connection.connection.api_token,
+            "secret": self.service_connection.connection.api_secret.get_secret_value(),
             # "refresh": True,
             # "provider": self.service_connection.connection.provider.value,  ## Might not be needed
         }
