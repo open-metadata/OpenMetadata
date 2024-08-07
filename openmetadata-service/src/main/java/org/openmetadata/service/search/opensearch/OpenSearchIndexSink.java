@@ -95,7 +95,7 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
                 .withSubmittedCount(data.numberOfActions())
                 .withSuccessCount(data.numberOfActions() - entityErrorList.size())
                 .withFailedCount(entityErrorList.size())
-                .withMessage("Issues in Sink To Elastic Search.")
+                .withMessage(String.format("Issues in Sink To Elastic Search: %s", entityErrorList))
                 .withFailedEntities(entityErrorList));
       }
 
