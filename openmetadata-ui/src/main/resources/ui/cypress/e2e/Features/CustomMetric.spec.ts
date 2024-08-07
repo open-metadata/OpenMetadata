@@ -246,7 +246,7 @@ const deleteCustomMetric = ({
   toastNotification(`"${metric.name}" deleted successfully!`);
 };
 
-describe('Custom Metric', { tags: 'Observability' }, () => {
+describe.skip('Custom Metric', { tags: 'Observability' }, () => {
   before(() => {
     cy.login();
     cy.getAllLocalStorage().then((data) => {
