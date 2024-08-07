@@ -1762,6 +1762,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/credentials/gitcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GithubCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/githubcredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GitlabCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gitlabcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials
     url: /main-concepts/metadata-standard/schemas/security/credentials
   - category: Main Concepts / Metadata Standard / Schemas / Security
