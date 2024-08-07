@@ -568,6 +568,31 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.ometa_api_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/ometa_api_service/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.ometa_api_service = self.metadata.get_service_or_create(
+            entity=ApiService,
+            config=WorkflowSource(**self.ometa_api_service_json),
+        )
+        self.ometa_api_collection = json.load(
+            open(
+                sample_data_folder + "/ometa_api_service/ometa_api_collection.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.ometa_api_endpoint = json.load(
+            open(
+                sample_data_folder + "/ometa_api_service/ometa_api_endpoint.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
 
     @classmethod
     def create(
@@ -611,6 +636,7 @@ class SampleDataSource(
         yield from self.ingest_data_insights()
         yield from self.ingest_life_cycle()
         yield from self.ingest_api_service()
+        yield from self.ingest_ometa_api_service()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -1119,10 +1145,10 @@ class SampleDataSource(
 
     def ingest_pipelines(self) -> Iterable[Either[Pipeline]]:
         for pipeline in self.pipelines["pipelines"]:
-            owner = None
+            owners = None
             if pipeline.get("owner"):
-                owner = self.metadata.get_reference_by_email(
-                    email=pipeline.get("owner")
+                owners = self.metadata.get_reference_by_email(
+                    email=pipeline.get("owners")
                 )
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
@@ -1131,7 +1157,7 @@ class SampleDataSource(
                 sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
-                owner=owner,
+                owners=owners,
                 scheduleInterval=pipeline.get("scheduleInterval"),
             )
             yield Either(right=pipeline_ev)
@@ -1474,6 +1500,7 @@ class SampleDataSource(
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
                         ],
+                        useDynamicAssertion=test_case.get("useDynamicAssertion", False),
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)
@@ -1696,5 +1723,16 @@ class SampleDataSource(
         yield Either(right=collection_request)
 
         for endpoint in self.api_endpoint.get("endpoints"):
+            endpoint_request = CreateAPIEndpointRequest(**endpoint)
+            yield Either(right=endpoint_request)
+
+    def ingest_ometa_api_service(self) -> Iterable[Either[Entity]]:
+        """Ingest users & tables ometa API services"""
+
+        for collection in self.ometa_api_collection.get("collections"):
+            collection_request = CreateAPICollectionRequest(**collection)
+            yield Either(right=collection_request)
+
+        for endpoint in self.ometa_api_endpoint.get("endpoints"):
             endpoint_request = CreateAPIEndpointRequest(**endpoint)
             yield Either(right=endpoint_request)

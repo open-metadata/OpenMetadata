@@ -96,6 +96,97 @@ describe('prepareChartData', () => {
           label: 'max',
         },
       ],
+      showAILearningBanner: false,
+    });
+  });
+
+  it('should handle min/max bound correctly', () => {
+    const testObj = {
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          timestamp: 1720525804736,
+          testCaseStatus: 'Failed',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [
+            {
+              name: 'max',
+              value: '1720520076998',
+            },
+          ],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          maxBound: 1720275283528,
+        },
+        {
+          timestamp: 1720525503943,
+          testCaseStatus: 'Failed',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [
+            {
+              name: 'max',
+              value: '1720520076998',
+            },
+          ],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          minBound: 1720165283528,
+        },
+        {
+          timestamp: 1720525503943,
+          testCaseStatus: 'Failed',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [
+            {
+              name: 'max',
+              value: '1720520076998',
+            },
+          ],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          maxBound: 1720275283528,
+          minBound: 1720165283528,
+        },
+      ],
+      entityThread: [],
+    } as PrepareChartDataType;
+
+    const result = prepareChartData(testObj);
+
+    expect(result).toEqual({
+      data: [
+        {
+          boundArea: [1720165283528, 1720275283528],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          max: 1720520076998,
+          name: 1720525503943,
+          status: 'Failed',
+          task: undefined,
+        },
+        {
+          boundArea: undefined,
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          max: 1720520076998,
+          name: 1720525503943,
+          status: 'Failed',
+          task: undefined,
+        },
+        {
+          boundArea: undefined,
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          max: 1720520076998,
+          name: 1720525804736,
+          status: 'Failed',
+          task: undefined,
+        },
+      ],
+      information: [
+        {
+          color: '#7147E8',
+          label: 'max',
+        },
+      ],
+      showAILearningBanner: true,
     });
   });
 
@@ -141,6 +232,7 @@ describe('prepareChartData', () => {
           label: 'max',
         },
       ],
+      showAILearningBanner: false,
     });
   });
 
@@ -165,6 +257,60 @@ describe('prepareChartData', () => {
     expect(result).toEqual({
       data: [],
       information: [],
+      showAILearningBanner: false,
+    });
+  });
+
+  it('should handle string value in testCaseParams correctly', () => {
+    const testObj = {
+      testCaseParameterValue: [
+        {
+          name: 'minValueForMaxInCol',
+          value: 'Sales',
+        },
+        {
+          name: 'maxValueForMaxInCol',
+          value: '1720275283528',
+        },
+      ],
+      testCaseResults: [
+        {
+          timestamp: 1720525804736,
+          testCaseStatus: 'Failed',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [
+            {
+              name: 'max',
+              value: '1720520076998',
+            },
+          ],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+        },
+      ],
+      entityThread: [],
+    } as PrepareChartDataType;
+
+    const result = prepareChartData(testObj);
+
+    expect(result).toEqual({
+      data: [
+        {
+          boundArea: undefined,
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          max: 1720520076998,
+          name: 1720525804736,
+          status: 'Failed',
+          task: undefined,
+        },
+      ],
+      information: [
+        {
+          color: '#7147E8',
+          label: 'max',
+        },
+      ],
+      showAILearningBanner: true,
     });
   });
 });

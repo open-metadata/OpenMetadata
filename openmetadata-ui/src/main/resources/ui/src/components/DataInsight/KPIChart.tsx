@@ -14,7 +14,7 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Space } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, round } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
@@ -51,13 +51,11 @@ import {
   ChartFilter,
   UIKpiResult,
 } from '../../interface/data-insight.interface';
+import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
 import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import {
-  CustomTooltip,
-  getKpiGraphData,
-  renderLegend,
-} from '../../utils/DataInsightUtils';
+import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
+import { formatDate } from '../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../PageHeader/PageHeader.component';
@@ -83,7 +81,9 @@ const KPIChart: FC<Props> = ({
   const { t } = useTranslation();
   const history = useHistory();
 
-  const [kpiResults, setKpiResults] = useState<KpiResult[]>([]);
+  const [kpiResults, setKpiResults] = useState<
+    Record<string, DataInsightCustomChartResult['results']>
+  >({});
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -92,23 +92,31 @@ const KPIChart: FC<Props> = ({
 
   const handleAddKpi = () => history.push(ROUTES.ADD_KPI);
 
+  const getKPIResult = async (kpi: Kpi) => {
+    const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
+      startTs: chartFilter.startTs,
+      endTs: chartFilter.endTs,
+    });
+
+    return { name: kpi.name, data: response.results };
+  };
+
   const fetchKpiResults = async () => {
     setIsLoading(true);
     try {
-      const promises = kpiList.map((kpi) =>
-        getListKpiResult(kpi.fullyQualifiedName ?? '', {
-          startTs: chartFilter.startTs,
-          endTs: chartFilter.endTs,
-        })
-      );
+      const promises = kpiList.map(getKPIResult);
       const responses = await Promise.allSettled(promises);
-      const kpiResultsList: KpiResult[] = [];
+      const kpiResultsList: Record<
+        string,
+        DataInsightCustomChartResult['results']
+      > = {};
 
       responses.forEach((response) => {
         if (response.status === 'fulfilled') {
-          kpiResultsList.push(...response.value.data);
+          kpiResultsList[response.value.name] = response.value.data;
         }
       });
+
       setKpiResults(kpiResultsList);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -134,14 +142,14 @@ const KPIChart: FC<Props> = ({
           const kpi = kpiList.find((k) => k.fullyQualifiedName === kpiName);
 
           // get the kpiTarget
-          const kpiTarget = kpi?.targetDefinition?.[0];
+          const kpiTarget = kpi?.targetValue;
 
           if (!isUndefined(kpi) && !isUndefined(kpiTarget)) {
             return {
               ...previous,
               [kpiName]: {
                 ...resultValue,
-                target: kpiTarget?.value,
+                target: kpiTarget,
                 metricType: kpi?.metricType as KpiTargetType,
                 startDate: kpi?.startDate,
                 endDate: kpi?.endDate,
@@ -162,28 +170,45 @@ const KPIChart: FC<Props> = ({
     }
   };
 
-  const { kpis, graphData, kpiTooltipRecord } = useMemo(() => {
-    const kpiTooltipRecord = kpiList.reduce((previous, curr) => {
-      return { ...previous, [curr.name]: curr.metricType };
-    }, {});
-
-    return { ...getKpiGraphData(kpiResults, kpiList), kpiTooltipRecord };
-  }, [kpiResults, kpiList]);
-
   const handleLegendClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+      updateActiveChartFilter(event.value, prevActiveKeys)
     );
   };
   const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
-    setActiveMouseHoverKey(event.dataKey);
+    setActiveMouseHoverKey(event.value);
   };
   const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
     setActiveMouseHoverKey('');
   };
 
+  const mapKPIMetricType = useMemo(() => {
+    return kpiList.reduce(
+      (acc, kpi) => {
+        acc[kpi.fullyQualifiedName ?? ''] = kpi.metricType;
+
+        return acc;
+      },
+
+      {} as Record<string, KpiTargetType>
+    );
+  }, [kpiList]);
+
+  const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
+
+  const kpiTooltipValueFormatter = (
+    value: string | number,
+    key?: string
+  ): string => {
+    const isPercentage = key
+      ? mapKPIMetricType[key] === KpiTargetType.Percentage
+      : KpiTargetType.Number;
+
+    return isPercentage ? round(Number(value), 2) + '%' : value + '';
+  };
+
   useEffect(() => {
-    setKpiResults([]);
+    setKpiResults({});
     setKpiLatestResults(undefined);
   }, [chartFilter]);
 
@@ -210,25 +235,39 @@ const KPIChart: FC<Props> = ({
       }>
       {kpiList.length ? (
         <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          {graphData.length ? (
+          {!isEmpty(kpiResults) ? (
             <>
               <Col span={DI_STRUCTURE.leftContainerSpan}>
                 <ResponsiveContainer
                   debounce={1}
                   height={GRAPH_HEIGHT}
                   id="kpi-chart">
-                  <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
+                  <LineChart margin={BAR_CHART_MARGIN}>
                     <CartesianGrid
                       stroke={GRAPH_BACKGROUND_COLOR}
                       vertical={false}
                     />
-                    <XAxis dataKey="timestamp" />
-                    <YAxis />
+                    <Tooltip
+                      content={
+                        <CustomTooltip
+                          timeStampKey="day"
+                          valueFormatter={kpiTooltipValueFormatter}
+                        />
+                      }
+                    />
+                    <XAxis
+                      allowDuplicatedCategory={false}
+                      dataKey="day"
+                      tickFormatter={formatDate}
+                      type="category"
+                    />
+                    <YAxis dataKey="count" />
                     <Legend
                       align="left"
                       content={(props) =>
                         renderLegend(props as LegendProps, activeKeys)
                       }
+                      key="name"
                       layout="horizontal"
                       verticalAlign="top"
                       wrapperStyle={{ left: '0px', top: '0px' }}
@@ -236,24 +275,22 @@ const KPIChart: FC<Props> = ({
                       onMouseEnter={handleLegendMouseEnter}
                       onMouseLeave={handleLegendMouseLeave}
                     />
-                    <Tooltip
-                      content={
-                        <CustomTooltip kpiTooltipRecord={kpiTooltipRecord} />
-                      }
-                    />
-                    {kpis.map((kpi, i) => (
+
+                    {kpiNames.map((key, i) => (
                       <Line
-                        dataKey={kpi}
+                        data={kpiResults[key]}
+                        dataKey="count"
                         hide={
-                          activeKeys.length && kpi !== activeMouseHoverKey
-                            ? !activeKeys.includes(kpi)
+                          activeKeys.length && key !== activeMouseHoverKey
+                            ? !activeKeys.includes(key)
                             : false
                         }
-                        key={i}
+                        key={key}
+                        name={key}
                         stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
                         strokeOpacity={
                           isEmpty(activeMouseHoverKey) ||
-                          kpi === activeMouseHoverKey
+                          key === activeMouseHoverKey
                             ? DEFAULT_CHART_OPACITY
                             : HOVER_CHART_OPACITY
                         }

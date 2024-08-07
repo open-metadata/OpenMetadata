@@ -50,7 +50,7 @@ import {
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../../constants/docs.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
@@ -206,7 +206,7 @@ const AssetsTabs = forwardRef(
           return `(dataProducts.fullyQualifiedName:"${encodedFqn}")`;
 
         case AssetsOfEntity.TEAM:
-          return `(owner.fullyQualifiedName:"${escapeESReservedCharacters(
+          return `(owners.fullyQualifiedName:"${escapeESReservedCharacters(
             fqn
           )}")`;
 
@@ -303,7 +303,9 @@ const AssetsTabs = forwardRef(
 
           break;
         case AssetsOfEntity.DATA_PRODUCT:
-          data = await getDataProductByName(fqn, { fields: 'domain,assets' });
+          data = await getDataProductByName(fqn, {
+            fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
+          });
 
           break;
         case AssetsOfEntity.GLOSSARY:

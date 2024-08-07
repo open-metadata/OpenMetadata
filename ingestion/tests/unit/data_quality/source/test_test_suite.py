@@ -38,6 +38,14 @@ MOCK_ENTITY_REFERENCE = EntityReference(
             },
             ["test_case1"],
         ),
+        (
+            {
+                "type": "TestSuite",
+                "entityFullyQualifiedName": "MyTestSuite",
+                "testCases": [],
+            },
+            [],
+        ),
     ],
 )
 def test_source_config(parameters, expected, monkeypatch):

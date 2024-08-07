@@ -15,6 +15,9 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
 import { CSSProperties } from 'react';
+import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
+import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
@@ -46,6 +49,7 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+export const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
@@ -523,6 +527,8 @@ export const ENTITY_PATH = {
   databases: 'database',
   databaseSchemas: 'databaseSchema',
   dashboardDataModels: 'dashboardDataModel',
+  apiCollections: 'apiCollection',
+  apiEndpoints: 'apiEndpoint',
 };
 
 export const VALIDATION_MESSAGES = {
@@ -575,4 +581,10 @@ export const COMMON_ICON_STYLES: CSSProperties = {
 
 export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
   headers: { 'Content-type': 'application/json' },
+};
+
+export const STATUS_ICON = {
+  success: IconSuccessBadge,
+  failed: IconFailedBadge,
+  completed: IconCompleteBadge,
 };

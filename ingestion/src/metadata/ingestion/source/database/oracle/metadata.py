@@ -222,8 +222,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                     language=Language.SQL,
                     code=stored_procedure.definition,
                 ),
-                owner=self.metadata.get_reference_by_name(
-                    name=stored_procedure.owner.lower()
+                owners=self.metadata.get_reference_by_name(
+                    name=stored_procedure.owner.lower(), is_owner=True
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,

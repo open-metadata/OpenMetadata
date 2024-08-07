@@ -38,7 +38,10 @@
       "domain",
       "storedProcedure",
       "dataProduct",
-      "testCaseResolutionStatus"
+      "testCaseResolutionStatus",
+      "apiService",
+      "apiEndpoint",
+      "apiCollection"
     ],
     "recreateIndex": true,
     "batchSize": "100",

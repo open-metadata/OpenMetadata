@@ -16,20 +16,26 @@ import { TestCase } from '../../../generated/tests/testCase';
 export interface UseTestCaseStoreInterface {
   testCase: TestCase | undefined;
   isLoading: boolean;
+  showAILearningBanner: boolean;
   setTestCase: (testCase: TestCase) => void;
   setIsLoading: (isLoading: boolean) => void;
+  setShowAILearningBanner: (showBanner: boolean) => void;
   reset: () => void;
 }
 export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   testCase: undefined,
   isLoading: true,
+  showAILearningBanner: false,
   setTestCase: (testCase: TestCase) => {
     set({ testCase });
   },
   setIsLoading: (isLoading: boolean) => {
     set({ isLoading });
   },
+  setShowAILearningBanner: (showAILearningBanner: boolean) => {
+    set({ showAILearningBanner });
+  },
   reset: () => {
-    set({ testCase: undefined, isLoading: true });
+    set({ testCase: undefined, isLoading: true, showAILearningBanner: false });
   },
 }));

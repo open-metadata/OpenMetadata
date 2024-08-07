@@ -56,12 +56,20 @@ export const entityData = [
     label: t('label.container-plural'),
   },
   {
+    type: SearchIndex.PIPELINE,
+    label: t('label.pipeline-plural'),
+  },
+  {
     type: SearchIndex.SEARCH_INDEX,
     label: t('label.search-index-plural'),
   },
   {
     type: SearchIndex.DASHBOARD_DATA_MODEL,
     label: t('label.data-model-plural'),
+  },
+  {
+    type: SearchIndex.API_ENDPOINT_INDEX,
+    label: t('label.api-endpoint-plural'),
   },
 ];
 
@@ -78,7 +86,7 @@ export const ELEMENT_DELETE_STATE = {
 
 export const LINEAGE_DEFAULT_QUICK_FILTERS = [
   EntityFields.DOMAIN,
-  EntityFields.OWNER,
+  EntityFields.OWNERS,
   EntityFields.TAG,
   EntityFields.COLUMN,
 ];
@@ -111,7 +119,7 @@ export const LINEAGE_EXPORT_HEADERS = [
   { field: 'fullyQualifiedName', title: 'Fully Qualified Name' },
   { field: 'entityType', title: 'Entity Type' },
   { field: 'direction', title: 'Direction' },
-  { field: 'owner', title: 'Owner' },
+  { field: 'owners', title: 'Owner' },
   { field: 'domain', title: 'Domain' },
   { field: 'tags', title: 'Tags' },
   { field: 'tier', title: 'Tier' },

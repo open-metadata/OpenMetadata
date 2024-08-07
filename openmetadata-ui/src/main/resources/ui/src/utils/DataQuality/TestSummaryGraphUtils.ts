@@ -30,12 +30,18 @@ export const prepareChartData = ({
   testCaseResults,
   entityThread,
 }: PrepareChartDataType) => {
+  // Bond will only be shown if params length is 2 and both values are present
   const params =
     testCaseParameterValue.length === 2 ? testCaseParameterValue : [];
   const dataPoints: TestCaseChartDataType['data'] = [];
   const yValues = params.reduce((acc, curr, i) => {
-    return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
+    // value is a string, so we need to parse it to an integer
+    const value = parseInt(curr.value ?? '');
+
+    // checking for NaN values to set undefined
+    return { ...acc, [`y${i + 1}`]: isNaN(value) ? undefined : value };
   }, {});
+  let showAILearningBanner = false;
   testCaseResults.forEach((result) => {
     const values = result.testResultValue?.reduce((acc, curr) => {
       const value = round(parseFloat(curr.value ?? ''), 2) || 0;
@@ -55,16 +61,23 @@ export const prepareChartData = ({
         ? undefined
         : `${round(result.failedRowsPercentage, 2)}%`,
     };
+    // if minBound or maxBound is not present, will fallback to calculated yValues from params
+    const y1 = result?.minBound ?? yValues.y1;
+    const y2 = result?.maxBound ?? yValues.y2;
+
+    // if one of y1 or y2 is undefined, will not show the bound area
+    const boundArea = isUndefined(y1) || isUndefined(y2) ? undefined : [y1, y2];
+
+    if (isUndefined(boundArea)) {
+      showAILearningBanner = true;
+    }
 
     dataPoints.push({
       name: result.timestamp,
       status: result.testCaseStatus,
       ...values,
       ...omitBy(metric, isUndefined),
-      boundArea: [
-        result?.minBound ?? yValues.y1,
-        result?.maxBound ?? yValues.y2,
-      ],
+      boundArea,
       incidentId: result.incidentId,
       task: entityThread.find(
         (task) => task.task?.testCaseResolutionStatusId === result.incidentId
@@ -81,5 +94,6 @@ export const prepareChartData = ({
         color: COLORS[i],
       })) ?? [],
     data: dataPoints,
+    showAILearningBanner,
   };
 };

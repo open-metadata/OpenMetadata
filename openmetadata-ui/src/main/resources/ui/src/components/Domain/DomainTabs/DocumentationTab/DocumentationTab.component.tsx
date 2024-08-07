@@ -19,13 +19,12 @@ import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.
 import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
 import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import DomainExperts from '../../../../components/Domain/DomainExperts/DomainExperts.component';
 import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
   Domain,
@@ -36,17 +35,18 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import {
-  domainTypeTooltipDataRender,
-  getUserNames,
-} from '../../../../utils/DomainUtils';
+import { domainTypeTooltipDataRender } from '../../../../utils/DomainUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import {
+  getEntityVersionByField,
+  getOwnerVersionLabel,
+} from '../../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TagButton from '../../../common/TagButton/TagButton.component';
 import '../../domain.less';
+import SubDomainsTable from '../../SubDomainsTable/SubDomainsTable.component';
 import {
   DocumentationEntity,
   DocumentationTabProps,
@@ -57,6 +57,8 @@ const DocumentationTab = ({
   onUpdate,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
+  subDomains,
+  isSubDomainsLoading,
 }: DocumentationTabProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -67,6 +69,8 @@ const DocumentationTab = ({
     type === DocumentationEntity.DOMAIN
       ? ResourceEntity.DOMAIN
       : ResourceEntity.DATA_PRODUCT;
+
+  const isSubDomain = Boolean((domain as Domain).parent);
 
   const { editDescriptionPermission, editOwnerPermission, editAllPermission } =
     useMemo(() => {
@@ -85,7 +89,7 @@ const DocumentationTab = ({
       );
 
       const editOwner = checkPermission(
-        Operation.EditOwner,
+        Operation.EditOwners,
         resourceType,
         permissions
       );
@@ -129,10 +133,10 @@ const DocumentationTab = ({
     }
   };
 
-  const handleUpdatedOwner = async (newOwner: Domain['owner']) => {
+  const handleUpdatedOwner = async (newOwners: Domain['owners']) => {
     const updatedData = {
       ...domain,
-      owner: newOwner,
+      owners: newOwners,
     };
     await onUpdate(updatedData as Domain | DataProduct);
   };
@@ -185,6 +189,15 @@ const DocumentationTab = ({
               onDescriptionEdit={() => setIsDescriptionEditable(true)}
               onDescriptionUpdate={onDescriptionUpdate}
             />
+
+            {!isSubDomain && (
+              <div className="p-t-lg">
+                <SubDomainsTable
+                  isLoading={isSubDomainsLoading}
+                  subDomains={subDomains}
+                />
+              </div>
+            )}
           </div>
         ),
         minWidth: 800,
@@ -198,13 +211,12 @@ const DocumentationTab = ({
                 <Typography.Text className="right-panel-label">
                   {t('label.owner')}
                 </Typography.Text>
-                {editOwnerPermission && domain.owner && (
+                {editOwnerPermission && domain.owners && (
                   <UserTeamSelectableList
                     hasPermission
-                    owner={domain.owner}
-                    onUpdate={(updatedUser) =>
-                      handleUpdatedOwner(updatedUser as EntityReference)
-                    }>
+                    multiple={{ team: false, user: true }}
+                    owner={domain.owners}
+                    onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                     <Tooltip
                       title={t('label.edit-entity', {
                         entity: t('label.owner'),
@@ -222,20 +234,20 @@ const DocumentationTab = ({
               </div>
 
               <Space className="m-r-xss" size={4}>
-                {getUserNames(
+                {getOwnerVersionLabel(
                   domain,
-                  editOwnerPermission || editAllPermission,
-                  isVersionsView
+                  isVersionsView,
+                  TabSpecificField.OWNERS,
+                  editOwnerPermission || editAllPermission
                 )}
               </Space>
 
-              {!domain.owner && editOwnerPermission && (
+              {domain.owners?.length === 0 && editOwnerPermission && (
                 <UserTeamSelectableList
                   hasPermission
-                  owner={domain.owner}
-                  onUpdate={(updatedUser) =>
-                    handleUpdatedOwner(updatedUser as EntityReference)
-                  }>
+                  multiple={{ team: false, user: true }}
+                  owner={domain.owners}
+                  onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
                   <TagButton
                     className="tw-text-primary cursor-pointer"
                     icon={<PlusIcon height={16} name="plus" width={16} />}
@@ -280,11 +292,15 @@ const DocumentationTab = ({
                     </UserSelectableList>
                   )}
               </div>
-              <DomainExperts
-                editPermission={editAllPermission}
-                entity={domain}
-                isVersionsView={isVersionsView}
-              />
+              <div>
+                {getOwnerVersionLabel(
+                  domain,
+                  isVersionsView ?? false,
+                  TabSpecificField.EXPERTS,
+                  editAllPermission
+                )}
+              </div>
+
               <div>
                 {editOwnerPermission &&
                   domain.experts &&

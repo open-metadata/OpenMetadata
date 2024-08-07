@@ -36,7 +36,7 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
@@ -66,8 +66,13 @@ const KPIList = () => {
     try {
       setIsLoading(true);
       const response = await getListKPIs({
-        fields:
-          'startDate,endDate,targetDefinition,dataInsightChart,metricType',
+        fields: [
+          TabSpecificField.START_DATE,
+          TabSpecificField.END_DATE,
+          TabSpecificField.TARGET_VALUE,
+          TabSpecificField.DATA_INSIGHT_CHART,
+          TabSpecificField.METRIC_TYPE,
+        ],
         limit: PAGE_SIZE_MEDIUM,
         before: param && param.before,
         after: param && param.after,
@@ -126,16 +131,12 @@ const KPIList = () => {
       },
       {
         title: t('label.target'),
-        dataIndex: 'targetDefinition',
-        key: 'targetDefinition',
-        render: (targetDefinition: Kpi['targetDefinition'], record: Kpi) => {
+        dataIndex: 'targetValue',
+        key: 'targetValue',
+        render: (value: Kpi['targetValue'], record: Kpi) => {
           const isPercentageMetric =
             record.metricType === KpiTargetType.Percentage;
-          const targetValue = targetDefinition?.length
-            ? isPercentageMetric
-              ? `${+targetDefinition[0].value * 100}%`
-              : targetDefinition[0].value
-            : '-';
+          const targetValue = isPercentageMetric ? `${+value}%` : value;
 
           return <Typography.Text>{targetValue}</Typography.Text>;
         },

@@ -13,8 +13,6 @@
 
 package org.openmetadata.service;
 
-import static org.openmetadata.service.security.SecurityUtil.tryCreateOidcClient;
-
 import io.dropwizard.Application;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
@@ -105,6 +103,7 @@ import org.openmetadata.service.security.AuthCallbackServlet;
 import org.openmetadata.service.security.AuthLoginServlet;
 import org.openmetadata.service.security.AuthLogoutServlet;
 import org.openmetadata.service.security.AuthRefreshServlet;
+import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.NoopFilter;
@@ -118,6 +117,7 @@ import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -127,7 +127,6 @@ import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverity
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.OMSqlLogger;
 import org.pac4j.core.util.CommonHelper;
-import org.pac4j.oidc.client.OidcClient;
 import org.quartz.SchedulerException;
 
 /** Main catalog application */
@@ -273,55 +272,32 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         contextHandler.setSessionHandler(new SessionHandler());
       }
 
+      AuthenticationCodeFlowHandler authenticationCodeFlowHandler =
+          new AuthenticationCodeFlowHandler(
+              config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
+
       // Register Servlets
-      OidcClient oidcClient =
-          tryCreateOidcClient(config.getAuthenticationConfiguration().getOidcConfiguration());
-      oidcClient.setCallbackUrl(
-          config.getAuthenticationConfiguration().getOidcConfiguration().getCallbackUrl());
       ServletRegistration.Dynamic authLogin =
           environment
               .servlets()
-              .addServlet(
-                  "oauth_login",
-                  new AuthLoginServlet(
-                      oidcClient,
-                      config.getAuthenticationConfiguration(),
-                      config.getAuthorizerConfiguration()));
+              .addServlet("oauth_login", new AuthLoginServlet(authenticationCodeFlowHandler));
       authLogin.addMapping("/api/v1/auth/login");
       ServletRegistration.Dynamic authCallback =
           environment
               .servlets()
-              .addServlet(
-                  "auth_callback",
-                  new AuthCallbackServlet(
-                      oidcClient,
-                      config.getAuthenticationConfiguration(),
-                      config.getAuthorizerConfiguration()));
+              .addServlet("auth_callback", new AuthCallbackServlet(authenticationCodeFlowHandler));
       authCallback.addMapping("/callback");
 
       ServletRegistration.Dynamic authLogout =
           environment
               .servlets()
-              .addServlet(
-                  "auth_logout",
-                  new AuthLogoutServlet(
-                      config
-                          .getAuthenticationConfiguration()
-                          .getOidcConfiguration()
-                          .getServerUrl()));
+              .addServlet("auth_logout", new AuthLogoutServlet(authenticationCodeFlowHandler));
       authLogout.addMapping("/api/v1/auth/logout");
 
       ServletRegistration.Dynamic refreshServlet =
           environment
               .servlets()
-              .addServlet(
-                  "auth_refresh",
-                  new AuthRefreshServlet(
-                      oidcClient,
-                      config
-                          .getAuthenticationConfiguration()
-                          .getOidcConfiguration()
-                          .getServerUrl()));
+              .addServlet("auth_refresh", new AuthRefreshServlet(authenticationCodeFlowHandler));
       refreshServlet.addMapping("/api/v1/auth/refresh");
     }
   }
@@ -382,6 +358,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ServletRegistration.Dynamic samlMetadataServlet =
           environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
       samlMetadataServlet.addMapping("/api/v1/saml/metadata");
+
+      ServletRegistration.Dynamic samlRefreshServlet =
+          environment.servlets().addServlet("saml_refresh_token", new SamlTokenRefreshServlet());
+      samlRefreshServlet.addMapping("/api/v1/saml/refresh");
     }
   }
 
@@ -467,6 +447,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
+            conf.getPipelineServiceClientConfiguration(),
             false);
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray } from 'lodash';
+import { isArray, isUndefined, omit, omitBy } from 'lodash';
+import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { TEST_CASE_FILTERS } from '../../constants/profiler.constant';
 import { TestCaseParameterValue } from '../../generated/tests/testCase';
 import {
@@ -18,6 +19,7 @@ import {
   TestDefinition,
 } from '../../generated/tests/testDefinition';
 import { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { generateEntityLink } from '../TableUtils';
 
 /**
  * Builds the parameters for a test case search based on the given filters.
@@ -73,4 +75,28 @@ export const createTestCaseParameters = (
         return acc;
       }, [] as TestCaseParameterValue[])
     : params;
+};
+
+export const getTestCaseFiltersValue = (
+  values: TestCaseSearchParams,
+  selectedFilter: string[]
+) => {
+  const { lastRunRange, tableFqn } = values;
+  const startTimestamp = lastRunRange?.startTs;
+  const endTimestamp = lastRunRange?.endTs;
+  const entityLink = tableFqn ? generateEntityLink(tableFqn) : undefined;
+
+  const apiParams = {
+    ...omit(values, ['lastRunRange', 'tableFqn', 'searchValue']),
+    startTimestamp,
+    endTimestamp,
+    entityLink,
+  };
+
+  const updatedParams = omitBy(
+    buildTestCaseParams(apiParams, selectedFilter),
+    isUndefined
+  );
+
+  return updatedParams;
 };

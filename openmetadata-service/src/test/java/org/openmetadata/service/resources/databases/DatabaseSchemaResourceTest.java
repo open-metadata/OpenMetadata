@@ -57,7 +57,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
-class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
+public class DatabaseSchemaResourceTest
+    extends EntityResourceTest<DatabaseSchema, CreateDatabaseSchema> {
   public DatabaseSchemaResourceTest() {
     super(
         Entity.DATABASE_SCHEMA,
@@ -166,7 +167,7 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
     List<String> updateRecords =
         listOf(
             String.format(
-                "s1,dsp1,new-dsc1,user;%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
+                "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
                 user1, escapeCsv(DOMAIN.getFullyQualifiedName())));
 
     // Update created entity with changes
@@ -197,9 +198,9 @@ class DatabaseSchemaResourceTest extends EntityResourceTest<DatabaseSchema, Crea
             ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(schema.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(schema.getService(), schema.getServiceType(), schema.getDatabase());
-    assertListNull(schema.getOwner(), schema.getTables());
+    assertListNull(schema.getOwners(), schema.getTables());
 
-    fields = "owner,tags,tables";
+    fields = "owners,tags,tables";
     schema =
         byName
             ? getEntityByName(schema.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

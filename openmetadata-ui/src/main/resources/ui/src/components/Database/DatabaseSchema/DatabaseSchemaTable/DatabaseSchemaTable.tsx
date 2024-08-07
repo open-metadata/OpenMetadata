@@ -21,6 +21,7 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
 } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
 import { Include } from '../../../../generated/type/include';
@@ -80,7 +81,7 @@ export const DatabaseSchemaTable = ({
           after: params?.after,
           before: params?.before,
           include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
-          fields: ['owner', 'usageSummary'],
+          fields: [TabSpecificField.OWNERS, TabSpecificField.USAGE_SUMMARY],
         });
 
         setSchemas(data);

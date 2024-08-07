@@ -96,6 +96,8 @@ site_menu:
     url: /deployment/security/custom-oidc/bare-metal
   - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
     url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / OIDC SSO
+    url: /deployment/security/oidc
   - category: Deployment / Enable Security / Google SSO
     url: /deployment/security/google
   - category: Deployment / Enable Security / Google SSO / Docker
@@ -267,6 +269,10 @@ site_menu:
     url: /connectors/database/domo-database/yaml
   - category: Connectors / Database / Domo Database / Troubleshoot
     url: /connectors/database/domo-database/troubleshoot
+  - category: Connectors / Database / Doris
+    url: /connectors/database/doris
+  - category: Connectors / Database / Doris / Run Externally
+    url: /connectors/database/doris/yaml
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
   - category: Connectors / Database / Druid / Run Externally
@@ -877,6 +883,12 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.4.5 Release
+    url: /releases/all-releases/#1.4.5-release
+  - category: Releases / All Releases / 1.4.4 Release
+    url: /releases/all-releases/#1.4.4-release
+  - category: Releases / All Releases / 1.4.3 Release
+    url: /releases/all-releases/#1.4.3-release
   - category: Releases / All Releases / 1.4.2 Release
     url: /releases/all-releases/#1.4.2-release
   - category: Releases / All Releases / 1.4.1 Release

@@ -78,7 +78,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
-        "owner,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domain,dataProducts,experts", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
   }
 
@@ -98,7 +98,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
   }
 
   protected T addHref(UriInfo uriInfo, T entity) {
-    Entity.withHref(uriInfo, entity.getOwner());
+    Entity.withHref(uriInfo, entity.getOwners());
     Entity.withHref(uriInfo, entity.getFollowers());
     Entity.withHref(uriInfo, entity.getExperts());
     Entity.withHref(uriInfo, entity.getReviewers());
@@ -128,6 +128,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     Fields fields = getFields(fieldsParam);
     OperationContext listOperationContext =
         new OperationContext(entityType, getViewOperations(fields));
+
     return listInternal(
         uriInfo,
         securityContext,
@@ -153,6 +154,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     RestUtil.validateCursors(before, after);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
+    // Add Domain Filter
+    EntityUtil.addDomainQueryParam(securityContext, filter);
+
+    // List
     ResultList<T> resultList;
     if (before != null) { // Reverse paging
       resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
@@ -433,7 +438,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owner,followers,votes,tags,extension,domain,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domain,dataProducts,experts"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

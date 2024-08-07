@@ -28,6 +28,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import ServiceConfig from '../../components/Settings/Services/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
@@ -89,7 +90,7 @@ function EditConnectionFormPage() {
       );
       setServiceDetails({
         ...response,
-        owner: response?.owner ?? serviceDetails?.owner,
+        owners: response?.owners ?? serviceDetails?.owners,
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -100,7 +101,7 @@ function EditConnectionFormPage() {
     setIsLoading(true);
     try {
       const response = await getServiceByFQN(serviceCategory, serviceFQN, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setServiceDetails(response);
       setSlashedBreadcrumb([

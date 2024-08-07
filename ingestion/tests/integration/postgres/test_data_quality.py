@@ -4,15 +4,11 @@ from typing import List
 import pytest
 
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.entity.services.ingestionPipelines.status import (
-    StackTraceError,
-)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
     TestSuitePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
-    LogLevels,
     OpenMetadataWorkflowConfig,
     Processor,
     Sink,
@@ -24,18 +20,26 @@ from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
+from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
+from metadata.workflow.metadata import MetadataWorkflow
 
 if not sys.version_info >= (3, 9):
     pytest.skip("requires python 3.9+", allow_module_level=True)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture()
 def run_data_quality_workflow(
-    ingest_metadata, db_service: DatabaseService, metadata: OpenMetadata
+    run_workflow,
+    ingestion_config,
+    db_service: DatabaseService,
+    metadata: OpenMetadata,
+    sink_config,
+    workflow_config,
 ):
-    workflow_config = OpenMetadataWorkflowConfig(
+    run_workflow(MetadataWorkflow, ingestion_config)
+    test_suite_config = OpenMetadataWorkflowConfig(
         source=Source(
             type=TestSuiteConfigType.TestSuite.value,
             serviceName="MyTestSuite",
@@ -82,17 +86,12 @@ def run_data_quality_workflow(
                 }
             ),
         ),
-        sink=Sink(
-            type="metadata-rest",
-            config={},
-        ),
-        workflowConfig=WorkflowConfig(
-            loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
-        ),
+        sink=Sink.model_validate(sink_config),
+        workflowConfig=WorkflowConfig.model_validate(workflow_config),
     )
-    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
-    test_suite_procesor.execute()
-    test_suite_procesor.raise_from_status()
+    test_suite_processor = TestSuiteWorkflow.create(test_suite_config)
+    test_suite_processor.execute()
+    test_suite_processor.raise_from_status()
     yield
     test_suite: TestSuite = metadata.get_by_name(
         TestSuite, "MyTestSuite", nullable=True
@@ -122,8 +121,9 @@ def test_data_quality(
     assert test_case.testCaseResult.testCaseStatus == expected_status
 
 
-def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_service):
-    workflow_config = {
+@pytest.fixture()
+def incpompatible_column_type_config(db_service, workflow_config, sink_config):
+    return {
         "source": {
             "type": "TestSuite",
             "serviceName": "MyTestSuite",
@@ -133,7 +133,6 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
                     "entityFullyQualifiedName": f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
                 }
             },
-            "serviceConnection": db_service.connection.model_dump(),
         },
         "processor": {
             "type": "orm-test-runner",
@@ -160,24 +159,30 @@ def test_incompatible_column_type(ingest_metadata, metadata: OpenMetadata, db_se
                 ]
             },
         },
-        "sink": {
-            "type": "metadata-rest",
-            "config": {},
-        },
-        "workflowConfig": {
-            "loggerLevel": "DEBUG",
-            "openMetadataServerConfig": metadata.config.model_dump(),
-        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
     }
-    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
-    test_suite_procesor.execute()
-    assert test_suite_procesor.steps[0].get_status().failures == [
-        StackTraceError(
+
+
+def test_incompatible_column_type(
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    incpompatible_column_type_config,
+    metadata: OpenMetadata,
+    db_service,
+):
+    run_workflow(MetadataWorkflow, ingestion_config)
+    test_suite_processor = run_workflow(
+        TestSuiteWorkflow, incpompatible_column_type_config, raise_from_status=False
+    )
+    assert test_suite_processor.steps[0].get_status().failures == [
+        TruncatedStackTraceError(
             name="Incompatible Column for Test Case",
             error="Test case incompatible_column_type of type columnValueMaxToBeBetween is not compatible with column first_name of type VARCHAR",
         )
     ], "Test case incompatible_column_type should fail"
     assert (
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer.customer_id.compatible_test"
-        in test_suite_procesor.steps[1].get_status().records
+        in test_suite_processor.steps[1].get_status().records
     ), "Test case compatible_test should pass"

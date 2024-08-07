@@ -58,6 +58,7 @@ from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -330,7 +331,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.error(
-                        f"Error to yield dashboard lineage details for data model name [{datamodel.name}]: {err}"
+                        f"Error to yield dashboard lineage details for data model name [{str(datamodel)}]: {err}"
                     )
 
     def get_db_service_names(self) -> List[str]:
@@ -345,17 +346,25 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_dashboard_lineage(
         self, dashboard_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """
         Yields lineage if config is enabled.
 
         We will look for the data in all the services
         we have informed.
         """
-        yield from self.yield_datamodel_dashboard_lineage() or []
+        for lineage in self.yield_datamodel_dashboard_lineage() or []:
+            if lineage.right is not None:
+                yield Either(
+                    right=OMetaLineageRequest(
+                        lineage_request=lineage.right,
+                        override_lineage=self.source_config.overrideLineage,
+                    )
+                )
+            else:
+                yield lineage
 
         db_service_names = self.get_db_service_names()
-
         for db_service_name in db_service_names or []:
             yield from self.yield_dashboard_lineage_details(
                 dashboard_details, db_service_name
@@ -425,7 +434,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def get_owner_ref(  # pylint: disable=unused-argument, useless-return
         self, dashboard_details
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """
         Method to process the dashboard owners
         """

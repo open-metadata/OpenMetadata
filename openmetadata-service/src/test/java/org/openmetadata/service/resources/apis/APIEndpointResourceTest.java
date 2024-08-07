@@ -4,8 +4,10 @@ import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.resources.topics.TopicResourceTest.getField;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -26,8 +28,12 @@ import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.Response;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateAPIEndpoint;
 import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.type.APIRequestMethod;
@@ -42,6 +48,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, CreateAPIEndpoint> {
 
   public static final List<Field> api_request_fields =
@@ -88,27 +96,37 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
         "[endpointURL must not be null]");
   }
 
+  @Order(1)
   @Test
   void post_apiEndpointWithDifferentService_200_ok(TestInfo test) throws IOException {
-    String[] differentAPICollections = {
-      OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName(),
-      SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()
-    };
+    List<APIEndpoint> omAPIEndpoints = new ArrayList<>();
+    List<APIEndpoint> sampleAPIEndpoints = new ArrayList<>();
 
-    // Create topic for each service and test APIs
-    for (String apiCollection : differentAPICollections) {
-      createAndCheckEntity(
-          createRequest(test).withApiCollection(apiCollection), ADMIN_AUTH_HEADERS);
-
-      // List topics by filtering on service name and ensure right endPoints in the response
-      Map<String, String> queryParams = new HashMap<>();
-      queryParams.put("apiCollection", apiCollection);
-
-      ResultList<APIEndpoint> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-      for (APIEndpoint endpoint : list.getData()) {
-        assertEquals(apiCollection, endpoint.getApiCollection().getFullyQualifiedName());
-      }
+    // Create API Endpoints for each service and test APIs
+    for (int i = 0; i < 5; i++) {
+      omAPIEndpoints.add(
+          createAndCheckEntity(
+              createRequest(String.format("%s%d", test.getDisplayName(), i))
+                  .withApiCollection(OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS));
     }
+
+    for (int i = 0; i < 3; i++) {
+      sampleAPIEndpoints.add(
+          createAndCheckEntity(
+              createRequest(String.format("%s%s%d", test.getDisplayName(), "S", i))
+                  .withApiCollection(SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName()),
+              ADMIN_AUTH_HEADERS));
+    }
+
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("apiCollection", OPENMETADATA_API_COLLECTION_REFERENCE.getFullyQualifiedName());
+    ResultList<APIEndpoint> list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(omAPIEndpoints.size(), list.getPaging().getTotal());
+
+    queryParams.put("apiCollection", SAMPLE_API_COLLECTION_REFERENCE.getFullyQualifiedName());
+    list = listEntities(queryParams, ADMIN_AUTH_HEADERS);
+    assertEquals(sampleAPIEndpoints.size(), list.getPaging().getTotal());
   }
 
   @Test
@@ -116,7 +134,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     APISchema responseSchema = new APISchema().withSchemaFields(api_response_fields);
     CreateAPIEndpoint createAPIEndpoint =
         createRequest(test)
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withRequestMethod(APIRequestMethod.GET)
             .withEndpointURL(URI.create("https://localhost:8585/api/v1/users"))
             .withResponseSchema(responseSchema);
@@ -124,12 +142,13 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     // Patch and update the topic
     APIEndpoint apiEndpoint = createEntity(createAPIEndpoint, ADMIN_AUTH_HEADERS);
     createAPIEndpoint
-        .withOwner(TEAM11_REF)
+        .withOwners(List.of(TEAM11_REF))
         .withResponseSchema(responseSchema)
         .withRequestMethod(APIRequestMethod.POST);
 
     ChangeDescription change = getChangeDescription(apiEndpoint, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
     fieldUpdated(change, "requestMethod", "GET", "POST");
 
     updateAndCheckEntity(
@@ -194,9 +213,9 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
         byName
             ? getAPIEndpointByName(endpoint.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getAPIEndpoint(endpoint.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(endpoint.getOwner(), endpoint.getFollowers());
+    assertListNull(endpoint.getOwners(), endpoint.getFollowers());
 
-    fields = "owner, followers, tags";
+    fields = "owners, followers, tags";
     endpoint =
         byName
             ? getAPIEndpointByName(endpoint.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

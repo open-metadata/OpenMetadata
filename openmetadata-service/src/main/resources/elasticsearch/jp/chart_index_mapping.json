@@ -115,7 +115,7 @@
       "href": {
         "type": "text"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -255,7 +255,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "deleted": {
         "type": "text"

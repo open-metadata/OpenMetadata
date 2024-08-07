@@ -39,6 +39,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_E
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.getUser;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -343,12 +344,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getOMUrl());
         try {
           EmailUtil.sendMail(
-              subject,
-              templatePopulator,
-              user.getEmail(),
-              EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-              EmailUtil.INVITE_RANDOM_PWD,
-              true);
+              subject, templatePopulator, user.getEmail(), EmailUtil.INVITE_RANDOM_PWD, true);
         } catch (TemplateException ex) {
           LOG.error(
               "Failed in sending Mail to user [{}]. Reason : {}",
@@ -449,17 +445,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         BCrypt.withDefaults().hashToString(HASHING_COST, create.getPassword().toCharArray());
 
     BasicAuthMechanism newAuthMechanism = new BasicAuthMechanism().withPassword(hashedPwd);
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(username)
-        .withFullyQualifiedName(username)
-        .withEmail(create.getEmail())
-        .withDisplayName(create.getFirstName() + create.getLastName())
-        .withIsBot(false)
-        .withIsAdmin(false)
-        .withUpdatedBy(username)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsEmailVerified(false)
+    return getUser(
+            username,
+            new CreateUser()
+                .withName(username)
+                .withEmail(create.getEmail())
+                .withDisplayName(String.format("%s%s", create.getFirstName(), create.getLastName()))
+                .withIsBot(false)
+                .withIsAdmin(false))
         .withAuthenticationMechanism(
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.BASIC)

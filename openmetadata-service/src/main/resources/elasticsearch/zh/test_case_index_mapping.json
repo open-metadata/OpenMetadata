@@ -198,21 +198,18 @@
               }
             }
           },
-          "entityType": {
+          "type": {
             "type": "keyword"
-          },
-          "testPlatforms": {
-            "type": "text",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
           }
         }
       },
+      "testCaseType": {
+        "type": "keyword"
+      },
       "entityType": {
+        "type": "keyword"
+      },
+      "dataQualityDimension": {
         "type": "keyword"
       },
       "suggest": {
@@ -225,7 +222,7 @@
           }
         ]
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

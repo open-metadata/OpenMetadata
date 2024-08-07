@@ -49,7 +49,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -77,11 +77,11 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const columns: DashboardDataModel['columns'] = useMemo(() => {

@@ -38,4 +38,9 @@ public class DBSecretsManager extends SecretsManager {
   // Nothing to delete on the Noop SM. We only delete on External SM
   @Override
   protected void deleteSecretInternal(String secretName) {}
+
+  @Override
+  String getSecret(String secretName) {
+    return secretName;
+  }
 }

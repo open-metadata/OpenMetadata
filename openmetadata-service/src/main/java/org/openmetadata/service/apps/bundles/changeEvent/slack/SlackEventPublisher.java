@@ -26,6 +26,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Webhook;
@@ -44,14 +45,17 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   private Invocation.Builder target;
   private final Client client;
   @Getter private final SubscriptionDestination subscriptionDestination;
+  private final EventSubscription eventSubscription;
 
-  public SlackEventPublisher(SubscriptionDestination subscription) {
-    if (subscription.getType() == SLACK) {
-      this.subscriptionDestination = subscription;
-      this.webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
+  public SlackEventPublisher(
+      EventSubscription eventSubscription, SubscriptionDestination subscriptionDest) {
+    if (subscriptionDest.getType() == SLACK) {
+      this.eventSubscription = eventSubscription;
+      this.subscriptionDestination = subscriptionDest;
+      this.webhook = JsonUtils.convertValue(subscriptionDest.getConfig(), Webhook.class);
 
       // Build Client
-      client = getClient(subscription.getTimeout(), subscription.getReadTimeout());
+      client = getClient(subscriptionDest.getTimeout(), subscriptionDest.getReadTimeout());
 
       // Build Target
       if (webhook != null && webhook.getEndpoint() != null) {
@@ -68,7 +72,9 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      SlackMessage slackMessage = slackMessageFormatter.buildOutgoingMessage(event);
+      SlackMessage slackMessage =
+          slackMessageFormatter.buildOutgoingMessage(
+              eventSubscription.getFullyQualifiedName(), event);
       List<Invocation.Builder> targets =
           getTargetsForWebhookAlert(
               webhook, subscriptionDestination.getCategory(), SLACK, client, event);
@@ -93,6 +99,35 @@ public class SlackEventPublisher implements Destination<ChangeEvent> {
       LOG.error(message);
       throw new EventPublisherException(message, Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    try {
+      SlackMessage slackMessage =
+          slackMessageFormatter.buildOutgoingTestMessage(eventSubscription.getFullyQualifiedName());
+
+      if (target != null) {
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(
+                      webhook.getSecretKey(), JsonUtils.pojoToJson(slackMessage));
+          postWebhookMessage(this, target.header(RestUtil.SIGNATURE_HEADER, hmac), slackMessage);
+        } else {
+          postWebhookMessage(this, target, slackMessage);
+        }
+      }
+    } catch (Exception e) {
+      String message = CatalogExceptionMessage.eventPublisherFailedToPublish(SLACK, e.getMessage());
+      LOG.error(message);
+      throw new EventPublisherException(message);
+    }
+  }
+
+  @Override
+  public EventSubscription getEventSubscriptionForDestination() {
+    return eventSubscription;
   }
 
   @Override

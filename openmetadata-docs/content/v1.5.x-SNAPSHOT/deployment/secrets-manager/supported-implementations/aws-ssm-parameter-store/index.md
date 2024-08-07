@@ -87,11 +87,18 @@ default credential will look for credentials in:
 More info in [AWS SDK for Java](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html) and 
 [Boto3 Docs](https://boto3.amazonaws.com/v1/documentation/api/latest/guide/credentials.html)
 
-### 3. Restart both servers
+### 3. Migrate Secrets & restart both servers
 
-After updating the configuration files, we are ready to restart both services. When the OM server starts, it will 
-automatically detect that a Secrets Manager has been configured and will migrate all our sensitive data and remove it 
-from our DB.
+After updating the configuration files, we are ready to migrate the secrets and restart both services.
+
+In order to ensure that the current sensitive information is properly migrated to the Secrets Manager, you need to
+run the following command:
+
+```bash
+./bootstrap/openmetadata-ops.sh migrate-secrets
+```
+
+Make sure you are running it with the same environment variables required by the server.
 
 If everything goes as planned, all the data would be displayed using the parameters names which starts with 
 `/openmetadata/...` in your AWS Systems Manager Parameter Store console. The following image shows what it should look 

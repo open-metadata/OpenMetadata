@@ -37,6 +37,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -95,6 +96,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
+import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -869,6 +871,17 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         entityNotFound("user", user.getId()));
   }
 
+  protected void validateCommonEntityFields(User entity, CreateEntity create, String updatedBy) {
+    assertListNotNull(entity.getId(), entity.getHref(), entity.getFullyQualifiedName());
+    assertEquals(create.getName().toLowerCase(), entity.getName());
+    assertEquals(create.getDisplayName(), entity.getDisplayName());
+    assertEquals(create.getDescription(), entity.getDescription());
+    assertEquals(
+        JsonUtils.valueToTree(create.getExtension()), JsonUtils.valueToTree(entity.getExtension()));
+    assertOwners(create.getOwners(), entity.getOwners());
+    assertEquals(updatedBy, entity.getUpdatedBy());
+  }
+
   @Test
   void put_generateToken_bot_user_200_ok() throws HttpResponseException {
     AuthenticationMechanism authMechanism =
@@ -940,7 +953,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // jwtAuth Response should be null always
     user = getEntity(user.getId(), ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(name, user.getName());
+    assertEquals(name.toLowerCase(), user.getName());
     assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
@@ -1006,9 +1019,9 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
         getResource("users/signup"), newRegistrationRequest, String.class, ADMIN_AUTH_HEADERS);
 
     // jwtAuth Response should be null always
-    User user = getEntityByName("testBasicAuth123", null, ADMIN_AUTH_HEADERS);
+    User user = getEntityByName(name, null, ADMIN_AUTH_HEADERS);
     assertNull(user.getAuthenticationMechanism());
-    assertEquals(name, user.getName());
+    assertEquals(name.toLowerCase(), user.getName());
     assertEquals(name.toLowerCase(), user.getFullyQualifiedName());
 
     // Login With Correct Password
@@ -1024,7 +1037,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
             OK.getStatusCode(),
             ADMIN_AUTH_HEADERS);
 
-    validateJwtBasicAuth(jwtResponse, "testBasicAuth123");
+    validateJwtBasicAuth(jwtResponse, name);
 
     // Login With Wrong email
     LoginRequest failedLoginWithWrongEmail =
@@ -1157,36 +1170,36 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // Create users in the team hierarchy
     // Headers - name,displayName,description,email,timezone,isAdmin,teams,roles
     String user =
-        "userImportExport,d,s,userImportExport@domain.com,America/Los_Angeles,true,teamImportExport,";
+        "userimportexport,d,s,userimportexport@domain.com,America/Los_Angeles,true,teamImportExport,";
     String user1 =
-        "userImportExport1,,,userImportExport1@domain.com,,false,teamImportExport1,DataConsumer";
-    String user11 = "userImportExport11,,,userImportExport11@domain.com,,false,teamImportExport11,";
+        "userimportexport1,,,userimportexport1@domain.com,,false,teamImportExport1,DataConsumer";
+    String user11 = "userimportexport11,,,userimportexport11@domain.com,,false,teamImportExport11,";
     List<String> createRecords = listOf(user, user1, user11);
 
     // Update user descriptions
-    user = "userImportExport,displayName,,userImportExport@domain.com,,false,teamImportExport,";
+    user = "userimportexport,displayName,,userimportexport@domain.com,,false,teamImportExport,";
     user1 =
-        "userImportExport1,displayName1,,userImportExport1@domain.com,,false,teamImportExport1,";
+        "userimportexport1,displayName1,,userimportexport1@domain.com,,false,teamImportExport1,";
     user11 =
-        "userImportExport11,displayName11,,userImportExport11@domain.com,,false,teamImportExport11,";
+        "userimportexport11,displayName11,,userimportexport11@domain.com,,false,teamImportExport11,";
     List<String> updateRecords = listOf(user, user1, user11);
 
     // Add new users
     String user2 =
-        "userImportExport2,displayName2,,userImportExport2@domain.com,,false,teamImportExport1,";
+        "userimportexport2,displayName2,,userimportexport2@domain.com,,false,teamImportExport1,";
     String user21 =
-        "userImportExport21,displayName21,,userImportExport21@domain.com,,false,teamImportExport11,";
+        "userimportexport21,displayName21,,userimportexport21@domain.com,,false,teamImportExport11,";
     List<String> newRecords = listOf(user2, user21);
     testImportExport("teamImportExport", UserCsv.HEADERS, createRecords, updateRecords, newRecords);
 
     // Import to team11 a user in team1 - since team1 is not under team11 hierarchy, import should
     // fail
     String user3 =
-        "userImportExport3,displayName3,,userImportExport3@domain.com,,false,teamImportExport1,";
+        "userimportexport3,displayName3,,userimportexport3@domain.com,,false,teamImportExport1,";
     csv = EntityCsvTest.createCsv(UserCsv.HEADERS, listOf(user3), null);
     result = importCsv("teamImportExport11", csv, false);
     String error =
-        UserCsv.invalidTeam(6, "teamImportExport11", "userImportExport3", "teamImportExport1");
+        UserCsv.invalidTeam(6, "teamImportExport11", "userimportexport3", "teamImportExport1");
     assertTrue(result.getImportResultsCsv().contains(error));
   }
 
@@ -1200,7 +1213,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     Date date = jwt.getExpiresAt();
     long hours = ((date.getTime() - jwt.getIssuedAt().getTime()) / (1000 * 60 * 60));
     assertEquals(1, hours);
-    assertEquals(username, jwt.getClaims().get("sub").asString());
+    assertEquals(username.toLowerCase(), jwt.getClaims().get("sub").asString().toLowerCase());
     assertEquals(false, jwt.getClaims().get("isBot").asBoolean());
   }
 
@@ -1307,12 +1320,26 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // When domain is not set for a user term, carry it forward from the parent team
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
-        teamResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        teamResourceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
+      throws IOException, InterruptedException {
+    User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
+    entity = getEntityByName(entity.getFullyQualifiedName(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain, FIELD_DOMAINS);
+    return entity;
   }
 
   @Test
@@ -1404,7 +1431,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   @Override
   public void validateCreatedEntity(
       User user, CreateUser createRequest, Map<String, String> authHeaders) {
-    assertEquals(createRequest.getName(), user.getName());
+    assertEquals(createRequest.getName().toLowerCase(), user.getName());
     assertEquals(createRequest.getDisplayName(), user.getDisplayName());
     assertEquals(createRequest.getTimezone(), user.getTimezone());
     assertEquals(createRequest.getIsBot(), user.getIsBot());

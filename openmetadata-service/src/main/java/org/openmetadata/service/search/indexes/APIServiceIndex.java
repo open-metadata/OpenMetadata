@@ -24,8 +24,7 @@ public record APIServiceIndex(APIService apiService) implements SearchIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    Map<String, Object> commonAttributes =
-        getCommonAttributesMap(apiService, Entity.SEARCH_SERVICE);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(apiService, Entity.API_SERVICE);
     doc.putAll(commonAttributes);
     return doc;
   }

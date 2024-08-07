@@ -97,6 +97,8 @@ site_menu:
     url: /deployment/security/custom-oidc/bare-metal
   - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
     url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / OIDC SSO
+    url: /deployment/security/oidc
   - category: Deployment / Enable Security / Google SSO
     url: /deployment/security/google
   - category: Deployment / Enable Security / Google SSO / Docker
@@ -268,6 +270,10 @@ site_menu:
     url: /connectors/database/domo-database/yaml
   - category: Connectors / Database / Domo Database / Troubleshoot
     url: /connectors/database/domo-database/troubleshoot
+  - category: Connectors / Database / Doris
+    url: /connectors/database/doris
+  - category: Connectors / Database / Doris / Run Externally
+    url: /connectors/database/doris/yaml
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
   - category: Connectors / Database / Druid / Run Externally
@@ -364,6 +370,12 @@ site_menu:
     url: /connectors/database/sqlite
   - category: Connectors / Database / SQLite / Run Externally
     url: /connectors/database/sqlite/yaml
+  - category: Connectors / Database / Synapse
+    url: /connectors/database/synapse
+  - category: Connectors / Database / Synapse / Run Externally
+    url: /connectors/database/synapse/yaml
+  - category: Connectors / Database / Synapse / Troubleshooting
+    url: /connectors/database/synapse/troubleshooting
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -565,6 +577,10 @@ site_menu:
     url: /connectors/metadata/alation
   - category: Connectors / Metadata / Alation / Run Externally
     url: /connectors/metadata/alation/yaml
+  - category: Connectors / Metadata / Alation Sink
+    url: /connectors/metadata/alationsink
+  - category: Connectors / Metadata / Alation Sink / Run Externally
+    url: /connectors/metadata/alationsink/yaml
 
   - category: Connectors / Custom Connectors
     url: /connectors/custom-connectors
@@ -1746,6 +1762,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/credentials/gitcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GithubCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/githubcredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GitlabCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gitlabcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials
     url: /main-concepts/metadata-standard/schemas/security/credentials
   - category: Main Concepts / Metadata Standard / Schemas / Security

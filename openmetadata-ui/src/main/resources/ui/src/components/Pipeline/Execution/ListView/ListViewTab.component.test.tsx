@@ -39,7 +39,7 @@ describe('Test ListViewTab Component', () => {
   it('Should render loader in table component', async () => {
     render(<ListView {...mockProps} loading />);
 
-    expect(screen.getByTestId('skeleton-table')).toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('Should render component properly if not loading', async () => {

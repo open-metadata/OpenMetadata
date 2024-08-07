@@ -387,7 +387,7 @@ export const checkAddGroupWithOperator = ({
   // Click on field dropdown
   cy.get('.rule--field').eq(index_2).scrollIntoView().click();
 
-  cy.get(fieldId).eq(2).scrollIntoView().click();
+  cy.get(`.ant-select-dropdown:visible ${fieldId}`).scrollIntoView().click();
 
   // Select the condition
   cy.get('.rule--operator').eq(index_2).scrollIntoView().click();
@@ -531,7 +531,9 @@ export const checkAddRuleWithOperator = ({
   // Select the condition
   cy.get('.rule--operator').eq(index_2).scrollIntoView().click();
 
-  cy.get(`[label="${condition_2}"]`).eq(index_2).scrollIntoView().click();
+  cy.get(`.ant-select-dropdown:visible [label="${condition_2}"]`)
+    .scrollIntoView()
+    .click();
   // Verify the condition
   cy.get('.rule--operator .ant-select-selection-item').should(
     'contain',
@@ -618,11 +620,13 @@ export const advanceSearchPreRequests = (testData, token: string) => {
         body: [
           {
             op: 'add',
-            path: '/owner',
-            value: {
-              id: testData.user_1.id,
-              type: 'user',
-            },
+            path: '/owners',
+            value: [
+              {
+                id: testData.user_1.id,
+                type: 'user',
+              },
+            ],
           },
         ],
       });

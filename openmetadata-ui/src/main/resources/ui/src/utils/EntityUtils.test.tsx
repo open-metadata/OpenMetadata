@@ -15,6 +15,7 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { TestSuite } from '../generated/tests/testCase';
 import { MOCK_CHART_DATA } from '../mocks/Chart.mock';
+import { MOCK_TABLE, MOCK_TIER_DATA } from '../mocks/TableData.mock';
 import {
   columnSorter,
   getBreadcrumbForTestSuite,
@@ -129,6 +130,35 @@ describe('EntityUtils unit tests', () => {
       expect(result).toContain('Other');
       expect(result).toContain('label.service-type');
       expect(result).toContain('Superset');
+    });
+
+    it('should call getChartOverview and get TableData if ExplorePageTabs is table', () => {
+      const result = JSON.stringify(
+        getEntityOverview(ExplorePageTabs.TABLES, {
+          ...MOCK_TABLE,
+          tags: [MOCK_TIER_DATA],
+        })
+      );
+
+      expect(result).toContain('label.owner');
+      expect(result).toContain('label.type');
+      expect(result).toContain('label.service');
+      expect(result).toContain('label.database');
+      expect(result).toContain('label.schema');
+      expect(result).toContain('label.tier');
+      expect(result).toContain('label.usage');
+      expect(result).toContain('label.query-plural');
+      expect(result).toContain('label.column-plural');
+      expect(result).toContain('label.row-plural');
+
+      expect(result).toContain('Tier4');
+      expect(result).toContain('Regular');
+      expect(result).toContain('sample_data');
+      expect(result).toContain('ecommerce_db');
+      expect(result).toContain('shopify');
+      expect(result).toContain('0th label.pctile-lowercase');
+      expect(result).toContain('4');
+      expect(result).toContain('14567');
     });
   });
 });
