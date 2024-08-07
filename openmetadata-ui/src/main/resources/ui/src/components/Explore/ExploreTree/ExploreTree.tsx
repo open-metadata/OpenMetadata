@@ -13,13 +13,14 @@
 import { Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString, uniqueId } from 'lodash';
+import { isString } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -33,6 +34,7 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { UrlParams } from '../ExplorePage.interface';
 import {
@@ -122,7 +124,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         });
 
         const aggregations = getAggregations(res.aggregations);
-        const buckets = aggregations[bucketToFind].buckets;
+        const buckets = aggregations[bucketToFind].buckets.filter(
+          (item) =>
+            !searchClassBase
+              .notIncludeAggregationExploreTree()
+              .includes(item.key as EntityType)
+        );
         const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
         const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
 
@@ -131,7 +138,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         );
 
         const children = sortedBuckets.map((bucket) => {
-          const id = uniqueId();
+          const id = generateUUID();
 
           let logo = undefined;
           if (isEntityType) {
@@ -180,7 +187,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 getQuickFilterObject(bucketToFind, bucket.key),
               ],
               isRoot: false,
-              rootIndex: treeNode.data?.rootIndex,
+              rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
               dataId: bucket.key,
             },
           };

@@ -385,6 +385,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Rename Glossary Term and verify assets', async ({ browser }) => {
+    test.slow();
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const table = new TableClass();
     const topic = new TopicClass();
