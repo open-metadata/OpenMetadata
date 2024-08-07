@@ -19,7 +19,7 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S>
     for (B entityFqnBucket : getBuckets(entityFqnBuckets)) {
       String tableFqn = getKeyAsString(entityFqnBucket);
       S sumPageViews = getAggregations(entityFqnBucket, "pageViews");
-      M ownerBucket = getBucketAggregation(entityFqnBucket, "owner");
+      M ownerBucket = getBucketAggregation(entityFqnBucket, "owners");
       M entityTypeBucket = getBucketAggregation(entityFqnBucket, "entityType");
       M entityHrefBucket = getBucketAggregation(entityFqnBucket, "entityHref");
       String owner = getFirstValueFromBucketOrNull(ownerBucket);

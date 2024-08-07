@@ -1,5 +1,8 @@
 package org.openmetadata.service.migration.utils.v150;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,6 +16,7 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
+import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.type.DataQualityDimensions;
@@ -33,6 +37,7 @@ public class MigrationUtil {
   private static final String QUERY_AUTOMATOR =
       "SELECT json FROM ingestion_pipeline_entity where appType = 'Automator'";
   private static final String ADD_OWNER_ACTION = "AddOwnerAction";
+  private static final String OWNER_KEY = "owner";
 
   /**
    * We need to update the `AddOwnerAction` action in the automator to have a list of owners
@@ -59,14 +64,17 @@ public class MigrationUtil {
                   actions.forEach(
                       action -> {
                         JsonObject actionObj = (JsonObject) action;
-                        if (ADD_OWNER_ACTION.equals(actionObj.getString("type"))) {
-                          JsonObject owner = actionObj.getJsonObject("owner");
+                        // Only process the automations with AddOwnerAction that still have the
+                        // `owner` key present
+                        if (ADD_OWNER_ACTION.equals(actionObj.getString("type"))
+                            && actionObj.containsKey(OWNER_KEY)) {
+                          JsonObject owner = actionObj.getJsonObject(OWNER_KEY);
                           JsonArrayBuilder owners = Json.createArrayBuilder();
                           owners.add(owner);
                           actionObj =
                               Json.createObjectBuilder(actionObj)
                                   .add("owners", owners)
-                                  .remove("owner")
+                                  .remove(OWNER_KEY)
                                   .build();
                         }
                         updatedActions.add(actionObj);
@@ -147,6 +155,43 @@ public class MigrationUtil {
       marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
     } catch (EntityNotFoundException ex) {
       LOG.debug("DataInsights Application Marketplace Definition not found.");
+    }
+  }
+
+  public static void migratePolicies(Handle handle, CollectionDAO collectionDAO) {
+    String DB_POLICY_QUERY = "SELECT json FROM policy_entity";
+    try {
+      handle
+          .createQuery(DB_POLICY_QUERY)
+          .mapToMap()
+          .forEach(
+              row -> {
+                try {
+                  ObjectMapper objectMapper = new ObjectMapper();
+                  JsonNode rootNode = objectMapper.readTree(row.get("json").toString());
+                  ArrayNode rulesArray = (ArrayNode) rootNode.path("rules");
+
+                  rulesArray.forEach(
+                      ruleNode -> {
+                        ArrayNode operationsArray = (ArrayNode) ruleNode.get("operations");
+                        for (int i = 0; i < operationsArray.size(); i++) {
+                          if ("EditOwner".equals(operationsArray.get(i).asText())) {
+                            operationsArray.set(i, operationsArray.textNode("EditOwners"));
+                          }
+                        }
+                      });
+                  String updatedJsonString =
+                      objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(rootNode);
+                  Policy policy = JsonUtils.readValue(updatedJsonString, Policy.class);
+                  policy.setUpdatedBy("ingestion-bot");
+                  policy.setUpdatedAt(System.currentTimeMillis());
+                  collectionDAO.policyDAO().update(policy);
+                } catch (Exception e) {
+                  LOG.warn("Error migrating policies", e);
+                }
+              });
+    } catch (Exception e) {
+      LOG.warn("Error running the policy migration ", e);
     }
   }
 
