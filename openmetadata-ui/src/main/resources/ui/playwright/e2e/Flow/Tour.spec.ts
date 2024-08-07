@@ -24,55 +24,93 @@ test.describe('Tour should work properly', () => {
   test('All tour steps should work', async ({ page }) => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour' }).click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('1');
+
     // step 1
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('2');
 
     // step 2
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('3');
+
     await page.getByTestId('searchBox').fill('dim_a');
     await page.getByTestId('searchBox').press('Enter');
 
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('4');
+
     // step 3
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('5');
 
     await expect(
       page.getByTestId('sample_data.ecommerce_db.shopify.dim_address')
     ).toBeVisible();
 
     // step 4
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('6');
+
     // step 5
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('7');
+
     // step 6
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('8');
+
     // step 7
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('9');
+
     // step 8
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('10');
 
     await expect(
       page.getByTestId('sample_data').getByText('Sample Data')
     ).toBeVisible();
 
     // step 9
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('11');
+
     // step 10
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('12');
 
     await expect(page.getByText('Profiler & Data Quality')).toBeVisible();
 
     // step 11
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('13');
 
     // step 12
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('14');
 
     await expect(
       page.getByTestId('lineage').getByText('Lineage')
     ).toBeVisible();
 
     // step 13
-    await page.locator('.sc-gLLuof > button:nth-child(3)').click();
+    await page.locator('[data-tour-elem="right-arrow"]').click();
+
+    await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('15');
+
     await page.getByTestId('last-step-button').click();
     await page.getByTestId('saveButton').click();
   });
