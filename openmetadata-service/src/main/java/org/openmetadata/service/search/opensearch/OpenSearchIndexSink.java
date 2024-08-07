@@ -95,7 +95,7 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
                 .withSubmittedCount(data.numberOfActions())
                 .withSuccessCount(data.numberOfActions() - entityErrorList.size())
                 .withFailedCount(entityErrorList.size())
-                .withMessage("Issues in Sink To Elastic Search.")
+                .withMessage(String.format("Issues in Sink To Elastic Search: %s", entityErrorList))
                 .withFailedEntities(entityErrorList));
       }
 
@@ -110,7 +110,7 @@ public class OpenSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
               .withSubmittedCount(data.numberOfActions())
               .withSuccessCount(0)
               .withFailedCount(data.numberOfActions())
-              .withMessage("Issue in Sink to Elastic Search.")
+              .withMessage(String.format("Issue in Sink to Elastic Search: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug("[OSSearchIndexSink] Failed, Details : {}", JsonUtils.pojoToJson(indexingError));
       updateStats(0, data.numberOfActions());
