@@ -23,7 +23,6 @@ import {
 import React from 'react';
 import { Layout } from 'react-grid-layout';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
-import { GRID_LAYOUT_SIZE } from '../constants/CustomizableLanding.constants';
 import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,
@@ -59,7 +58,8 @@ const getNewWidgetPlacement = (
 
   // Check if there's enough space to place the new widget on the same row
   if (
-    GRID_LAYOUT_SIZE - (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
+    customizePageClassBase.landingPageMaxGridSize -
+      (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
     widgetWidth
   ) {
     return {
