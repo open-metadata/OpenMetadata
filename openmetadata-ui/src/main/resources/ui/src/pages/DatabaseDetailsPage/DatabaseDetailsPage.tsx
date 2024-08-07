@@ -48,6 +48,7 @@ import {
   getEntityDetailsPath,
   getExplorePath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -55,6 +56,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -214,8 +216,13 @@ const DatabaseDetails: FunctionComponent = () => {
           setServiceType(serviceType);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         // Error
+        if (
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        ) {
+          history.replace(ROUTES.FORBIDDEN);
+        }
       })
       .finally(() => {
         setIsLoading(false);

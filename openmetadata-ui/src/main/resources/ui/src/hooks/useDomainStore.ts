@@ -42,7 +42,7 @@ export const useDomainStore = create<DomainStore>()(
           userDomainsObj.map((item) => item.fullyQualifiedName) ?? [];
 
         let filteredDomains: Domain[] = data;
-        if (domains.length > 0) {
+        if (domains.length > 0 && !isAdmin) {
           filteredDomains = data.filter((domain) =>
             userDomainFqn.includes(domain.fullyQualifiedName)
           );
