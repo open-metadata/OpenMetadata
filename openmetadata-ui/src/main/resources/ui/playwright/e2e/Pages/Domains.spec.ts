@@ -290,13 +290,18 @@ test.describe('Domains Rbac', () => {
         const fqn = encodeURIComponent(
           get(asset, 'entityResponseData.fullyQualifiedName', '')
         );
+
+        const assetData = userPage.waitForResponse(
+          `/api/v1/${asset.endpoint}/name/${fqn}*`
+        );
         await userPage.goto(`/${ENTITY_PATH[asset.endpoint]}/${fqn}`);
+        await assetData;
 
         await expect(
-          userPage.getByText(
-            "You don't have access, please check with the admin to get permissions"
-          )
-        ).toBeVisible();
+          userPage.getByTestId('permission-error-placeholder')
+        ).toHaveText(
+          'You don’t have access, please check with the admin to get permissions'
+        );
       }
 
       await afterActionUser1();
