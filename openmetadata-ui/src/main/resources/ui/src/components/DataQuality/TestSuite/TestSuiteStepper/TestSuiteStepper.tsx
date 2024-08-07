@@ -62,15 +62,17 @@ const TestSuiteStepper = () => {
       return curr.id ? [...ids, curr.id] : ids;
     }, [] as string[]);
     try {
-      const owner = {
-        id: currentUser?.id ?? '',
-        type: OwnerType.USER,
-      };
+      const owners = [
+        {
+          id: currentUser?.id ?? '',
+          type: OwnerType.USER,
+        },
+      ];
 
       const response = await createTestSuites({
         name: testSuiteResponse?.name ?? '',
         description: testSuiteResponse?.description,
-        owner,
+        owners,
       });
       setTestSuiteResponse(response);
       await addTestCaseToLogicalTestSuite({

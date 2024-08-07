@@ -50,7 +50,7 @@ import { EntityReference } from '../../../generated/entity/type';
 import { EnumConfig } from '../../../generated/type/customProperty';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -702,7 +702,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                                 width="18"
                               />
                             ) : (
-                              getEntityIcon(item.type)
+                              searchClassBase.getEntityIcon(item.type)
                             )}
                           </div>
                         }
@@ -753,7 +753,7 @@ export const PropertyValue: FC<PropertyValueProps> = ({
                         width="18"
                       />
                     ) : (
-                      getEntityIcon(item.type)
+                      searchClassBase.getEntityIcon(item.type)
                     )}
                   </div>
                 }

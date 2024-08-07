@@ -219,6 +219,13 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String domainPermissionNotAllowed(
+      String user, String domainName, List<MetadataOperation> operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} does not belong to domain %s. to perform the %s ",
+        user, domainName, operations);
+  }
+
   public static String taskOperationNotAllowed(String user, String operations) {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
@@ -318,6 +325,11 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Failed to publish event %s to %s due to %s ",
         JsonUtils.pojoToJson(event), type.value(), message);
+  }
+
+  public static String eventPublisherFailedToPublish(
+      SubscriptionDestination.SubscriptionType type, String message) {
+    return String.format("Failed to publish event %s due to %s ", type.value(), message);
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {

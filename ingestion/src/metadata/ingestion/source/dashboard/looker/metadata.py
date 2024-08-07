@@ -73,6 +73,9 @@ from metadata.generated.schema.security.credentials.bitbucketCredentials import 
 from metadata.generated.schema.security.credentials.githubCredentials import (
     GitHubCredentials,
 )
+from metadata.generated.schema.security.credentials.gitlabCredentials import (
+    GitlabCredentials,
+)
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
@@ -83,6 +86,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -202,6 +206,7 @@ class LookerSource(DashboardServiceSource):
                 NoGitCredentials,
                 GitHubCredentials,
                 BitBucketCredentials,
+                GitlabCredentials,
             ]
         ]
     ) -> "LookMLRepo":
@@ -224,6 +229,7 @@ class LookerSource(DashboardServiceSource):
                 NoGitCredentials,
                 GitHubCredentials,
                 BitBucketCredentials,
+                GitlabCredentials,
             ]
         ],
         path="manifest.lkml",
@@ -283,7 +289,7 @@ class LookerSource(DashboardServiceSource):
             }
             logger.info(f"We found the following parsers:\n {self._project_parsers}")
 
-    def get_lookml_project_credentials(self, project_name: str) -> GitHubCredentials:
+    def get_lookml_project_credentials(self, project_name: str) -> ReadersCredentials:
         """
         Given a lookml project, get its git URL and build the credentials
         """
@@ -304,7 +310,7 @@ class LookerSource(DashboardServiceSource):
         Depending on the type of the credentials we'll need a different reader
         """
         if not self._reader_class and self.service_connection.gitCredentials:
-            # Both credentials from Github & Bitbucket will process by LocalReader
+            # Credentials from Github/Gitlab/Bitbucket will process by LocalReader
             self._reader_class = LocalReader
 
         return self._reader_class
@@ -318,7 +324,7 @@ class LookerSource(DashboardServiceSource):
         """
         if not self._repo_credentials:
             if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, GitHubCredentials
+                self.service_connection.gitCredentials, ReadersCredentials
             ):
                 self._repo_credentials = self.service_connection.gitCredentials
 
@@ -638,7 +644,7 @@ class LookerSource(DashboardServiceSource):
 
     def get_owner_ref(
         self, dashboard_details: LookerDashboard
-    ) -> Optional[EntityReference]:
+    ) -> Optional[EntityReferenceList]:
         """Get dashboard owner
 
         Store the visited users in the _owners_ref cache, even if we found them
@@ -692,7 +698,7 @@ class LookerSource(DashboardServiceSource):
                 f"{clean_uri(self.service_connection.hostPort)}/dashboards/{dashboard_details.id}"
             ),
             service=self.context.get().dashboard_service,
-            owner=self.get_owner_ref(dashboard_details=dashboard_details),
+            owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)

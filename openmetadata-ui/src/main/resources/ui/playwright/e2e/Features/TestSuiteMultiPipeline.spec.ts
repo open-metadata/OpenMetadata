@@ -45,6 +45,7 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     );
 
     await page.getByTestId('add-ingestion-button').click();
+    await page.getByTestId('select-all-test-cases').click();
     await page.getByTestId('cron-type').getByText('Hour').click();
     await page.getByTitle('Day').click();
     await page.getByTestId('deploy-button').click();
@@ -65,7 +66,7 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     await page.getByTestId('add-pipeline-button').click();
 
     await page.fill('[data-testid="pipeline-name"]', pipelineName);
-    await page.getByTestId('select-test-case').click();
+
     await page.getByTestId(testCaseName).click();
 
     await page.getByTestId('cron-type').locator('div').click();
@@ -96,7 +97,13 @@ test('TestSuite multi pipeline support', async ({ page }) => {
       .getByRole('row', {
         name: new RegExp(pipelineName),
       })
-      .getByTestId('edit')
+      .getByTestId('more-actions')
+      .click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+      )
       .click();
 
     await expect(page.getByRole('checkbox').first()).toBeVisible();
@@ -123,8 +130,15 @@ test('TestSuite multi pipeline support', async ({ page }) => {
       .getByRole('row', {
         name: new RegExp(pipelineName),
       })
-      .getByTestId('delete')
+      .getByTestId('more-actions')
       .click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+      )
+      .click();
+
     await page.getByTestId('confirmation-text-input').fill('DELETE');
     const deleteRes = page.waitForResponse(
       '/api/v1/services/ingestionPipelines/*?hardDelete=true'
@@ -132,7 +146,13 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     await page.getByTestId('confirm-button').click();
     await deleteRes;
 
-    await page.getByRole('button', { name: 'Delete' }).click();
+    await page.getByTestId('more-actions').click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+      )
+      .click();
     await page.getByTestId('confirmation-text-input').fill('DELETE');
     await page.getByTestId('confirm-button').click();
     await deleteRes;
@@ -176,7 +196,13 @@ test("Edit the pipeline's test case", async ({ page }) => {
     .getByRole('row', {
       name: new RegExp(pipeline?.['name']),
     })
-    .getByTestId('edit')
+    .getByTestId('more-actions')
+    .click();
+
+  await page
+    .locator(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    )
     .click();
 
   for (const testCaseName of testCaseNames) {
@@ -205,7 +231,13 @@ test("Edit the pipeline's test case", async ({ page }) => {
     .getByRole('row', {
       name: new RegExp(pipeline?.['name']),
     })
-    .getByTestId('edit')
+    .getByTestId('more-actions')
+    .click();
+
+  await page
+    .locator(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    )
     .click();
 
   await expect(

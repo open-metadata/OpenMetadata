@@ -16,6 +16,7 @@ package org.openmetadata.service.secrets.converter;
 import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.services.connections.database.common.AzureConfig;
 import org.openmetadata.schema.services.connections.database.common.IamAuthConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.service.util.JsonUtils;
@@ -28,7 +29,7 @@ public class PostgresConnectionClassConverter extends ClassConverter {
   private static final List<Class<?>> SSL_SOURCE_CLASS = List.of(ValidateSSLClientConfig.class);
 
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(basicAuth.class, IamAuthConfig.class);
+      List.of(basicAuth.class, IamAuthConfig.class, AzureConfig.class);
 
   public PostgresConnectionClassConverter() {
     super(PostgresConnection.class);

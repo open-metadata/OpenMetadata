@@ -77,6 +77,9 @@ const goToProfilerTab = (data?: { service: string; entityName: string }) => {
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Table Profile')
+    .click();
 };
 
 const visitTestSuiteDetailsPage = (testSuiteName: string) => {
@@ -185,18 +188,13 @@ describe(
       cy.settingClick(GlobalSettingOptions.DATABASES);
 
       cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-      interceptURL(
-        'GET',
-        '/api/v1/system/config/pipeline-service-client',
-        'airflow'
-      );
+
       searchServiceFromSettingPage(data.service);
       cy.get(`[data-testid="service-name-${data.service}"]`)
         .should('exist')
         .click();
       cy.get('[data-testid="tabs"]').should('exist');
       cy.wait('@ingestionData');
-      verifyResponseStatusCode('@airflow', 200);
       cy.get('[data-testid="ingestions"]')
         .scrollIntoView()
         .should('be.visible')
@@ -277,6 +275,7 @@ describe(
       cy.get('[data-testid="add-ingestion-button"]')
         .should('be.visible')
         .click();
+      cy.get('[data-testid="select-all-test-cases"]').click();
       scheduleIngestion(false);
 
       cy.get('[data-testid="success-line"]')
@@ -692,6 +691,9 @@ describe(
         .should('be.visible');
 
       cy.get('[data-testid="profiler"]').should('be.visible').click();
+      cy.get('[data-testid="profiler-tab-left-panel"]')
+        .contains('Table Profile')
+        .click();
       interceptURL(
         'GET',
         '/api/v1/tables/*/columnProfile?*',
@@ -1214,6 +1216,9 @@ describe(
         entity: EntityType.Table,
       });
       cy.get('[data-testid="profiler"]').should('be.visible').click();
+      cy.get('[data-testid="profiler-tab-left-panel"]')
+        .contains('Table Profile')
+        .click();
       verifyResponseStatusCode('@tableProfiler', 200);
       verifyResponseStatusCode('@systemProfiler', 200);
       cy.get('[data-testid="profiler-setting-btn"]').click();

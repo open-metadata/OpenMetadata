@@ -276,7 +276,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "deleted": {
         "type": "text"
@@ -294,7 +295,7 @@
           }
         ]
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

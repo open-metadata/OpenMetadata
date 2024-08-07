@@ -127,9 +127,9 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this database service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this database service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this database service.",
@@ -146,6 +146,10 @@
     },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "required": ["id", "name", "serviceType"],

@@ -27,6 +27,7 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../../../generated/api/services/createMlModelService';
 import { StorageServiceType } from '../../../../generated/entity/data/container';
+import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
@@ -177,6 +178,14 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
       case ServiceCategory.SEARCH_SERVICES: {
         connSch = serviceUtilClassBase.getSearchServiceConfig(
           serviceType as SearchServiceType
+        );
+
+        break;
+      }
+
+      case ServiceCategory.API_SERVICES: {
+        connSch = serviceUtilClassBase.getAPIServiceConfig(
+          serviceType as APIServiceType
         );
 
         break;

@@ -41,6 +41,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -66,7 +67,7 @@ class OMetaDomainTest(TestCase):
     user = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateDashboardServiceRequest(
         name="test-service-dashboard",

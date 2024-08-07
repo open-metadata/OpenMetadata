@@ -52,11 +52,18 @@ public class JsonPatchUtils {
     return getMetadataOperation(path);
   }
 
+  public static String getPath(String path) {
+    return Arrays.stream(path.split("/")).filter(part -> !part.isEmpty()).findFirst().orElse(path);
+  }
+
+  // Its important that we parse the path from starting down to end
+  // In case of /owners/0/displayName we should see if the user has permission to EDIT_OWNERS
+  // If not, we will end up returning user does not have permission to edit the displayName
   public static MetadataOperation getMetadataOperation(String path) {
-    String[] fields = ResourceRegistry.getEditableFields(); // Get editable fields of an entity
-    for (String field : fields) {
-      if (path.contains(field)) { // If path contains the editable field
-        return ResourceRegistry.getEditOperation(field); // Return the corresponding operation
+    String[] paths = path.contains("/") ? path.split("/") : new String[] {path};
+    for (String p : paths) {
+      if (ResourceRegistry.hasEditOperation(p)) {
+        return ResourceRegistry.getEditOperation(p);
       }
     }
     LOG.warn("Failed to find specific operation for patch path {}", path);

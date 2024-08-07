@@ -50,7 +50,6 @@ import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { getEntityIcon } from '../TableUtils';
 import { showSuccessToast } from '../ToastUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -782,7 +781,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -796,7 +795,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -879,17 +878,21 @@ export const getSourceOptionsFromResourceList = (
   showCheckbox?: boolean,
   selectedResource?: string[]
 ) =>
-  resources.map((resource) => ({
-    label: (
-      <div
-        className="d-flex items-center gap-2"
-        data-testid={`${resource}-option`}>
-        {showCheckbox && (
-          <Checkbox checked={selectedResource?.includes(resource)} />
-        )}
-        <div className="d-flex h-4 w-4">{getEntityIcon(resource ?? '')}</div>
-        <span>{getEntityNameLabel(resource ?? '')}</span>
-      </div>
-    ),
-    value: resource ?? '',
-  }));
+  resources.map((resource) => {
+    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
+
+    return {
+      label: (
+        <div
+          className="d-flex items-center gap-2"
+          data-testid={`${resource}-option`}>
+          {showCheckbox && (
+            <Checkbox checked={selectedResource?.includes(resource)} />
+          )}
+          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          <span>{getEntityNameLabel(resource ?? '')}</span>
+        </div>
+      ),
+      value: resource ?? '',
+    };
+  });

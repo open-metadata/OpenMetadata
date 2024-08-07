@@ -12,10 +12,15 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { CardStyle } from '../../../../generated/entity/feed/thread';
+import {
+  CardStyle,
+  FieldOperation,
+  GeneratedBy,
+  ThreadType,
+} from '../../../../generated/entity/feed/thread';
 import FeedCardHeaderV2 from './FeedCardHeaderV2';
 
-jest.mock('../../../../utils/TableUtils', () => ({
+jest.mock('../../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockReturnValue('entityIcon'),
 }));
 
@@ -71,6 +76,48 @@ const mockProps = {
   createdBy: 'admin',
   isEntityFeed: false,
   isAnnouncement: false,
+  feed: {
+    id: '44e4ed8b-cc61-47dd-a69b-b0a5c0b61e48',
+    type: ThreadType.Conversation,
+    href: 'http://localhost:8585/api/v1/feed/44e4ed8b-cc61-47dd-a69b-b0a5c0b61e48',
+    threadTs: 1721995244668,
+    about: '<#E::databaseSchema::Glue.default.information_schema>',
+    entityRef: {
+      id: '4151c69c-de97-4e5a-9900-18969980f9e8',
+      type: 'databaseSchema',
+      name: 'information_schema',
+      fullyQualifiedName: 'Glue.default.information_schema',
+      description:
+        'This **mock** database contains tables related to the Glue service',
+      displayName: 'Information Schema',
+      deleted: false,
+    },
+    entityUrlLink:
+      '[Glue.default.information_schema](/databaseSchema/Glue.default.information_schema)',
+    generatedBy: GeneratedBy.System,
+    cardStyle: CardStyle.Tags,
+    fieldOperation: FieldOperation.Added,
+    feedInfo: {
+      headerMessage:
+        'admin added the tags for databaseSchema [Glue.default.information_schema](/databaseSchema/Glue.default.information_schema)',
+      fieldName: 'tags',
+      entitySpecificInfo: {
+        diffMessage:
+          'Added **description**: <span class="diff-added">This is testing !</span>',
+        newDescription: 'This is testing !',
+        previousDescription: '',
+      },
+    },
+    createdBy: 'admin',
+    updatedAt: 1721995244668,
+    updatedBy: 'admin',
+    resolved: false,
+    message: 'Added **tags**: <span class="diff-added">PII.NonSensitive</span>',
+    postsCount: 0,
+    posts: [],
+    reactions: [],
+    relativeDay: 'Today',
+  },
 };
 
 describe('Test FeedCardHeaderV2 Component', () => {

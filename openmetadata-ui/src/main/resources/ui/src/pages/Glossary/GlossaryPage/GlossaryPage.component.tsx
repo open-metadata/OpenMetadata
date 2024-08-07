@@ -34,6 +34,7 @@ import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -130,7 +131,14 @@ const GlossaryPage = () => {
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
-        fields: 'owner,tags,reviewers,votes,domain',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.DOMAIN,
+        ],
+
         limit: PAGE_SIZE_LARGE,
       });
       setGlossaries(data);
@@ -149,8 +157,16 @@ const GlossaryPage = () => {
     setIsRightPanelLoading(true);
     try {
       const response = await getGlossaryTermByFQN(glossaryFqn, {
-        fields:
-          'relatedTerms,reviewers,tags,owner,children,votes,domain,extension',
+        fields: [
+          TabSpecificField.RELATED_TERMS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.OWNERS,
+          TabSpecificField.CHILDREN,
+          TabSpecificField.VOTES,
+          TabSpecificField.DOMAIN,
+          TabSpecificField.EXTENSION,
+        ],
       });
       setActiveGlossary(response as ModifiedGlossary);
     } catch (error) {

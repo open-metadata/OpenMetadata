@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.data.table import (
     TablePartition,
     TableType,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.database.iceberg.helper import (
     IcebergColumnParser,
     get_column_from_partition,
@@ -36,7 +36,7 @@ class IcebergTable(BaseModel):
     name: str
     tableType: TableType
     description: Optional[str] = None
-    owner: Optional[EntityReference] = None
+    owners: Optional[EntityReferenceList] = None
     columns: List[Column] = []
     tablePartition: Optional[TablePartition] = None
 
@@ -45,7 +45,7 @@ class IcebergTable(BaseModel):
         cls,
         name: str,
         table_type: TableType,
-        owner: Optional[EntityReference],
+        owners: Optional[EntityReferenceList],
         table: pyiceberg.table.Table,
     ) -> IcebergTable:
         """Responsible for parsing the needed information from a PyIceberg Table."""
@@ -55,7 +55,7 @@ class IcebergTable(BaseModel):
             name=name,
             tableType=table_type,
             description=table.properties.get("comment"),
-            owner=owner,
+            owners=owners,
             columns=[IcebergColumnParser.parse(column) for column in iceberg_columns],
             tablePartition=TablePartition(
                 columns=[

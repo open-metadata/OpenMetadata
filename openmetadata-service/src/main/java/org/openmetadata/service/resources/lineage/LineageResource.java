@@ -490,7 +490,7 @@ public class LineageResource {
     }
 
     @Override
-    public EntityReference getOwner() {
+    public List<EntityReference> getOwners() {
       return null;
     }
 
@@ -501,6 +501,11 @@ public class LineageResource {
 
     @Override
     public EntityInterface getEntity() {
+      return null;
+    }
+
+    @Override
+    public EntityReference getDomain() {
       return null;
     }
   }

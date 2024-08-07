@@ -40,8 +40,10 @@ const queryTable = {
 };
 const table1 = generateRandomTable();
 const table2 = generateRandomTable();
-const user = generateRandomUser();
-let userId = '';
+const user1 = generateRandomUser();
+const user2 = generateRandomUser();
+const owner = `${user2.firstName}${user2.lastName}`;
+const userIds: string[] = [];
 
 const DATA = {
   ...queryTable,
@@ -92,9 +94,17 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
         method: 'POST',
         url: `/api/v1/users/signup`,
         headers: { Authorization: `Bearer ${token}` },
-        body: user,
+        body: user1,
       }).then((response) => {
-        userId = response.body.id;
+        userIds.push(response.body.id);
+      });
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: user2,
+      }).then((response) => {
+        userIds.push(response.body.id);
       });
     });
   });
@@ -111,10 +121,12 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
       });
 
       // Delete created user
-      cy.request({
-        method: 'DELETE',
-        url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
-        headers: { Authorization: `Bearer ${token}` },
+      userIds.forEach((userId) => {
+        cy.request({
+          method: 'DELETE',
+          url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+          headers: { Authorization: `Bearer ${token}` },
+        });
       });
     });
   });
@@ -183,16 +195,14 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     // Update owner
     cy.get(':nth-child(2) > [data-testid="edit-owner"]').click();
     verifyResponseStatusCode('@getUsers', 200);
-    interceptURL(
-      'GET',
-      `api/v1/search/query?q=*${encodeURI(DATA.owner)}*`,
-      'searchOwner'
-    );
-    cy.get('[data-testid="owner-select-users-search-bar"]').type(DATA.owner);
+    cy.get('[data-testid="loader"]').should('not.exist');
+    interceptURL('GET', `api/v1/search/query?q=*`, 'searchOwner');
+    cy.get('[data-testid="owner-select-users-search-bar"]').type(owner);
     verifyResponseStatusCode('@searchOwner', 200);
-    cy.get(`.ant-popover [title="${DATA.owner}"]`).click();
+    cy.get(`.ant-popover [title="${owner}"]`).click();
+    cy.get('[data-testid="selectable-list-update-btn"]').click();
     verifyResponseStatusCode('@patchQuery', 200);
-    cy.get('[data-testid="owner-link"]').should('contain', DATA.owner);
+    cy.get('[data-testid="owner-link"]').should('contain', owner);
 
     // Update Description
     cy.get('[data-testid="edit-description"]').filter(':visible').click();
@@ -216,7 +226,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     });
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@fetchQuery', 200);
-    const userName = `${user.firstName}${user.lastName}`;
+    const userName = `${user1.firstName}${user1.lastName}`;
     interceptURL(
       'GET',
       `/api/v1/search/query?*${encodeURI(
@@ -225,20 +235,20 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
       'searchUserName'
     );
     queryFilters({
-      filter: `${user.firstName}${user.lastName}`,
+      filter: `${user1.firstName}${user1.lastName}`,
       apiKey: '@searchUserName',
       key: 'Owner',
     });
     interceptURL(
       'GET',
       `/api/v1/search/query?*${encodeURI(
-        DATA.owner
+        owner
       )}*index=user_search_index,team_search_index*`,
       'searchOwner'
     );
     cy.get('[data-testid="no-data-placeholder"]').should('be.visible');
     queryFilters({
-      filter: DATA.owner,
+      filter: owner,
       apiKey: '@searchOwner',
       key: 'Owner',
     });

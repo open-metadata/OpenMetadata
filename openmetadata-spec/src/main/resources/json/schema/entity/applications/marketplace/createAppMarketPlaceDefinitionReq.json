@@ -23,9 +23,9 @@
       "description": "Features of the Application.",
       "$ref": "../../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this workflow.",
-      "$ref": "../../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this workflow.",
+      "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },
     "tags": {
@@ -102,6 +102,10 @@
       "description": "A system app cannot be uninstalled or modified.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "additionalProperties": false,

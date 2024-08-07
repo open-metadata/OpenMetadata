@@ -14,6 +14,7 @@ Add methods to the workflows for updating the IngestionPipeline status
 import traceback
 import uuid
 from datetime import datetime
+from enum import Enum
 from typing import Optional, Tuple
 
 from metadata.config.common import WorkflowExecutionError
@@ -37,6 +38,11 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 SUCCESS_THRESHOLD_VALUE = 90
+
+
+class WorkflowResultStatus(Enum):
+    SUCCESS = 0
+    FAILURE = 1
 
 
 class WorkflowStatusMixin:
@@ -127,13 +133,13 @@ class WorkflowStatusMixin:
             self.set_ingestion_pipeline_status(PipelineState.failed)
             raise err
 
-    def result_status(self) -> int:
+    def result_status(self) -> WorkflowResultStatus:
         """
         Returns 1 if source status is failed, 0 otherwise.
         """
         if self.get_failures():
-            return 1
-        return 0
+            return WorkflowResultStatus.FAILURE
+        return WorkflowResultStatus.SUCCESS
 
     def build_ingestion_status(self) -> Optional[IngestionStatus]:
         """

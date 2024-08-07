@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/email/emailTemplatePlaceholder.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Email Template Placeholder",
+  "description": "Schema defining placeholders used in email templates.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.email.EmailTemplatePlaceholder",
+  "properties": {
+    "name": {
+      "description": "Name of the placeholder.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what this placeholder represents.",
+      "type": "string"
+    }
+  },
+  "required": ["name", "description"],
+  "additionalProperties": false
+}

@@ -874,9 +874,9 @@
             "type": "string"
           }
         },
-        "owner": {
-          "description": "Owner of this Model.",
-          "$ref": "../../type/entityReference.json",
+        "owners": {
+          "description": "Owners of this Table.",
+          "$ref": "../../type/entityReferenceList.json",
           "default": null
         },
         "tags": {
@@ -970,9 +970,9 @@
     "tablePartition": {
       "$ref": "#/definitions/tablePartition"
     },
-    "owner": {
-      "description": "Owner of this table.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this table.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "databaseSchema": {
@@ -1073,7 +1073,7 @@
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
     "domain" : {
-      "description": "Domain the table belongs to. When not set, the table inherits the domain from the database schema it belongs to.",
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
     "dataProducts" : {
