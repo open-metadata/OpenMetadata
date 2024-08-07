@@ -495,6 +495,16 @@ In this configuration we will be fetching the dbt `manifest.json`, `catalog.json
 
 The `Account Viewer` permission is the minimum requirement for the dbt cloud token.
 
+{% note %}
+
+The dbt Cloud workflow leverages the [dbt Cloud v2](https://docs.getdbt.com/dbt-cloud/api-v2#/) APIs to retrieve dbt run artifacts (manifest.json, catalog.json, and run_results.json) and ingest the dbt metadata.
+
+It uses the [/runs](https://docs.getdbt.com/dbt-cloud/api-v2#/operations/List%20Runs) API to obtain the most recent successful dbt run, filtering by account_id, project_id and job_id if specified. The artifacts from this run are then collected using the [/artifacts](https://docs.getdbt.com/dbt-cloud/api-v2#/operations/List%20Run%20Artifacts) API.
+
+Refer to the code [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/dbt/dbt_config.py#L142)
+
+{% /note %}
+
 {% codePreview %}
 
 {% codeInfoContainer %}
@@ -507,6 +517,7 @@ The `Account Viewer` permission is the minimum requirement for the dbt cloud tok
 
 {% codeInfo srNumber=61 %}
 - **dbtCloudAuthToken**: Please follow the instructions in [dbt Cloud's API](https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens) documentation to create a dbt Cloud authentication token.
+The `Account Viewer` permission is the minimum requirement for the dbt cloud token.
 {% /codeInfo %}
 
 {% codeInfo srNumber=62 %}
@@ -518,12 +529,18 @@ For example, if the URL is `https://cloud.getdbt.com/#/accounts/1234/projects/67
 {% codeInfo srNumber=63 %}
 - **dbtCloudJobId**: In case of multiple jobs in a dbt cloud account, specify the job's ID from which you want to extract the dbt run artifacts.
 If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud.
+
+After creating a dbt job, take note of the url which will be similar to `https://cloud.getdbt.com/#/accounts/1234/projects/6789/jobs/553344/`. The job ID is `553344`.
+
 The value entered should be a `numeric` value.
 {% /codeInfo %}
 
 {% codeInfo srNumber=64 %}
 - **dbtCloudProjectId**: In case of multiple projects in a dbt cloud account, specify the project's ID from which you want to extract the dbt run artifacts.
 If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud.
+
+To find your project ID, sign in to your dbt cloud account and choose a specific project. Take note of the url which will be similar to `https://cloud.getdbt.com/#/accounts/1234/settings/projects/6789/`, the project ID is `6789`.
+
 The value entered should be a `numeric` value.
 {% /codeInfo %}
 
