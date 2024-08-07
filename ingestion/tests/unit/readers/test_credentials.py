@@ -153,6 +153,6 @@ class TestCreds(TestCase):
         )
 
         gl_updated_not_owner = get_credentials_from_url(
-            original=bb_original_not_owner, url=gl_url
+            original=gl_original_not_owner, url=gl_url
         )
         self.assertEqual(gl_updated_not_owner, gl_original_not_owner)
