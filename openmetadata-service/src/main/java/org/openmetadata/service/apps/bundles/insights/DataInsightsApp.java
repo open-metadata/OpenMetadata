@@ -6,6 +6,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getT
 
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
@@ -119,9 +120,37 @@ public class DataInsightsApp extends AbstractNativeApplication {
         backfill = Optional.empty();
       }
 
-      processWebAnalytics(jobExecutionContext);
-      processCostAnalysis(jobExecutionContext);
-      processDataAssets(jobExecutionContext);
+      WorkflowStats webAnalyticsStats = processWebAnalytics();
+      updateJobStatsWithWorkflowStats(webAnalyticsStats);
+
+      WorkflowStats costAnalysisStats = processCostAnalysis();
+      updateJobStatsWithWorkflowStats(costAnalysisStats);
+
+      WorkflowStats dataAssetsStats = processDataAssets();
+      updateJobStatsWithWorkflowStats(dataAssetsStats);
+
+      if (webAnalyticsStats.hasFailed()
+          || costAnalysisStats.hasFailed()
+          || dataAssetsStats.hasFailed()) {
+        String errorMessage = "Errors Found:\n";
+
+        for (WorkflowStats stats : List.of(webAnalyticsStats, costAnalysisStats, dataAssetsStats)) {
+          if (stats.hasFailed()) {
+            errorMessage = String.format("%s\n  %s\n", errorMessage, stats.getName());
+            for (String failure : stats.getFailures()) {
+              errorMessage = String.format("%s    - %s\n", errorMessage, failure);
+            }
+          }
+        }
+
+        IndexingError indexingError =
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage(errorMessage);
+        LOG.error(indexingError.getMessage());
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(indexingError);
+      }
 
       updateJobStatus();
     } catch (Exception ex) {
@@ -130,7 +159,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
               .withErrorSource(IndexingError.ErrorSource.JOB)
               .withMessage(
                   String.format(
-                      "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
+                      "Data Insights Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
                       jobData.toString(), ExceptionUtils.getStackTrace(ex)));
       LOG.error(indexingError.getMessage());
       jobData.setStatus(EventPublisherJob.Status.FAILED);
@@ -144,59 +173,54 @@ public class DataInsightsApp extends AbstractNativeApplication {
     timestamp = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
   }
 
-  private void processWebAnalytics(JobExecutionContext jobExecutionContext) {
+  private WorkflowStats processWebAnalytics() {
     WebAnalyticsWorkflow workflow = new WebAnalyticsWorkflow(timestamp, batchSize, backfill);
+    WorkflowStats workflowStats = workflow.getWorkflowStats();
+
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
-    } finally {
-      WorkflowStats workflowStats = workflow.getWorkflowStats();
-      for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
-        String stepName = entry.getKey();
-        StepStats stats = entry.getValue();
-        updateStats(stepName, stats);
-      }
-      sendUpdates(jobExecutionContext);
     }
+
+    return workflowStats;
   }
 
-  private void processCostAnalysis(JobExecutionContext jobExecutionContext) {
-    // TODO: Actually implement Backfill
+  private WorkflowStats processCostAnalysis() {
     CostAnalysisWorkflow workflow = new CostAnalysisWorkflow(timestamp, batchSize, backfill);
+    WorkflowStats workflowStats = workflow.getWorkflowStats();
+
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
-    } finally {
-      WorkflowStats workflowStats = workflow.getWorkflowStats();
-      for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
-        String stepName = entry.getKey();
-        StepStats stats = entry.getValue();
-        updateStats(stepName, stats);
-      }
-      sendUpdates(jobExecutionContext);
     }
+
+    return workflowStats;
   }
 
-  private void processDataAssets(JobExecutionContext jobExecutionContext) {
+  private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
         new DataAssetsWorkflow(timestamp, batchSize, backfill, collectionDAO, searchRepository);
+    WorkflowStats workflowStats = workflow.getWorkflowStats();
+
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
-    } finally {
-      WorkflowStats workflowStats = workflow.getWorkflowStats();
-      for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
-        String stepName = entry.getKey();
-        StepStats stats = entry.getValue();
-        updateStats(stepName, stats);
-      }
-      sendUpdates(jobExecutionContext);
+    }
+
+    return workflowStats;
+  }
+
+  private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {
+    for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
+      String stepName = entry.getKey();
+      StepStats stats = entry.getValue();
+      updateStats(stepName, stats);
     }
   }
 
