@@ -220,6 +220,7 @@ const TestCaseResultTab = () => {
               </Col>
               <Col span={24}>
                 <SchemaEditor
+                  className="query-editor-min-h-60"
                   editorClass="table-query-editor"
                   mode={{ name: CSMode.SQL }}
                   options={{
