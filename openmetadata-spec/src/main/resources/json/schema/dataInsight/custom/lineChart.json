@@ -33,6 +33,20 @@
             "description": "Breakdown field for the data insight chart.",
             "type": "string"
         },
+        "includeGroups": {
+            "description": "List of groups to be included in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "excludeGroups": {
+            "description": "List of groups to be excluded in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "xAxisLabel": {
             "description": "X-axis label for the data insight chart.",
             "type": "string"

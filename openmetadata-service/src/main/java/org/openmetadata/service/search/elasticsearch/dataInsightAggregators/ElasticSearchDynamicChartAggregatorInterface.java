@@ -88,7 +88,12 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
             AggregationBuilders.filter("filer" + index, queryBuilder).subAggregation(subAgg));
         holder.setQuery(matcher.group(4));
       } else {
-        dateHistogramAggregationBuilder.subAggregation(subAgg);
+        if (filter != null) {
+          dateHistogramAggregationBuilder.subAggregation(
+              AggregationBuilders.filter("filer" + index, filter).subAggregation(subAgg));
+        } else {
+          dateHistogramAggregationBuilder.subAggregation(subAgg);
+        }
       }
       formulas.add(holder);
       index++;
