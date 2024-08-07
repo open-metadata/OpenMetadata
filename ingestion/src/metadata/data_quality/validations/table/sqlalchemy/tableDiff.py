@@ -126,7 +126,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             stats = table_diff_iter.get_stats_dict()
             if stats["total"] > 0:
                 logger.debug("Sample of failed rows:")
-                gen = self.get_table_diff()
                 # depending on the data, this require scanning a lot of data
                 # so we only log the sample in debug mode. data can be sensitive
                 # so it is masked by default
