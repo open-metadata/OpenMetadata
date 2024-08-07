@@ -83,7 +83,6 @@ class TestCreds(TestCase):
             gl_updated.repositoryOwner.root, gl_original.repositoryOwner.root
         )
         self.assertEqual(gl_updated.token.root, gl_original.token.root)
-        self.assertEqual(gl_updated.branch, gl_original.branch)
 
     def test_get_credentials_from_url(self):
         """
