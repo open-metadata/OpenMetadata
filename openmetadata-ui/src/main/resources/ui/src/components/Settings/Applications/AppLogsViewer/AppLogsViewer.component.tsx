@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Badge,
   Button,
@@ -22,11 +23,11 @@ import {
   Table,
   Typography,
 } from 'antd';
-import { isEmpty, isNil } from 'lodash';
+import { capitalize, isEmpty, isNil } from 'lodash';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LazyLog } from 'react-lazylog';
-import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
+import { ICON_DIMENSION, STATUS_ICON } from '../../../../constants/constants';
 import { getEntityStatsData } from '../../../../utils/ApplicationUtils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import { formatJsonString } from '../../../../utils/StringsUtils';
@@ -42,7 +43,7 @@ import {
 const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
   const { t } = useTranslation();
 
-  const { successContext, failureContext, timestamp } = data;
+  const { successContext, failureContext, timestamp, status } = data;
 
   const handleJumpToEnd = () => {
     const logsBody = document.getElementsByClassName(
@@ -101,8 +102,11 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
                 )}:`}</span>
 
                 <Space align="center" className="m-l-xs" size={8}>
-                  <IconSuccessBadge height={14} width={14} />
-                  <span>{t('label.success')}</span>
+                  <Icon
+                    component={STATUS_ICON[status as keyof typeof STATUS_ICON]}
+                    style={ICON_DIMENSION}
+                  />
+                  <span>{capitalize(status)}</span>
                 </Space>
               </div>
               <Divider type="vertical" />
