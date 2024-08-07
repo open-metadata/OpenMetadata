@@ -23,6 +23,7 @@ import {
 import React from 'react';
 import { Layout } from 'react-grid-layout';
 import EmptyWidgetPlaceholder from '../components/MyData/CustomizableComponents/EmptyWidgetPlaceholder/EmptyWidgetPlaceholder';
+import { GRID_LAYOUT_SIZE } from '../constants/CustomizableLanding.constants';
 import { SIZE } from '../enums/common.enum';
 import {
   LandingPageWidgetKeys,
@@ -33,6 +34,46 @@ import { Thread } from '../generated/entity/feed/thread';
 import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizePageClassBase from './CustomizePageClassBase';
+
+const getNewWidgetPlacement = (
+  currentLayout: WidgetConfig[],
+  widgetWidth: number
+) => {
+  const lowestWidgetLayout = currentLayout.reduce(
+    (acc, widget) => {
+      if (
+        widget.y >= acc.y &&
+        widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+      ) {
+        if (widget.y === acc.y && widget.x < acc.x) {
+          return acc;
+        }
+
+        return widget;
+      }
+
+      return acc;
+    },
+    { y: 0, x: 0, w: 0 }
+  );
+
+  // Check if there's enough space to place the new widget on the same row
+  if (
+    GRID_LAYOUT_SIZE - (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
+    widgetWidth
+  ) {
+    return {
+      x: lowestWidgetLayout.x + lowestWidgetLayout.w,
+      y: lowestWidgetLayout.y,
+    };
+  }
+
+  // Otherwise, move to the next row
+  return {
+    x: 0,
+    y: lowestWidgetLayout.y + 1,
+  };
+};
 
 export const getAddWidgetHandler =
   (
@@ -55,19 +96,14 @@ export const getAddWidgetHandler =
     if (
       placeholderWidgetKey === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
     ) {
-      const emptyWidgetPlaceholder = currentLayout.find(
-        (item) => item.i === LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-      ) ?? { x: 0, y: 99 };
-
       return [
         ...moveEmptyWidgetToTheEnd(currentLayout),
         {
           w: widgetWidth,
           h: widgetHeight,
-          x: emptyWidgetPlaceholder.x,
-          y: emptyWidgetPlaceholder.y,
           i: widgetFQN,
           static: false,
+          ...getNewWidgetPlacement(currentLayout, widgetWidth),
         },
       ];
     } else {
