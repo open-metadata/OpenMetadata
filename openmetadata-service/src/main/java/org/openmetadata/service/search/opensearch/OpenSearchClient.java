@@ -1234,6 +1234,14 @@ public class OpenSearchClient implements SearchClient {
         QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
     queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.name.keyword")
+            .field("database.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.name.keyword")
+            .field("databaseSchema.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
     return addAggregation(searchSourceBuilder);
   }
 

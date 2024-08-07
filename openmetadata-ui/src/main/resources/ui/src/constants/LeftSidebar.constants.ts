@@ -38,7 +38,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
   {
     key: ROUTES.EXPLORE,
     label: i18next.t('label.explore'),
-    redirect_url: '/explore/tables',
+    redirect_url: ROUTES.EXPLORE,
     icon: ExploreIcon,
     dataTestId: `app-bar-item-${SidebarItem.EXPLORE}`,
   },

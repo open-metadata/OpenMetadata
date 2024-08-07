@@ -38,6 +38,15 @@ jest.mock('../common/ResizablePanels/ResizablePanels', () => {
   ));
 });
 
+jest.mock('../common/ResizablePanels/ResizableLeftPanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
+});
+
 jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
