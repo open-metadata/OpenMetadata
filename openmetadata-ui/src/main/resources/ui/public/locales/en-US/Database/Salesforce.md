@@ -74,6 +74,15 @@ $$section
 The CA certificate used for SSL validation to connect to Salesforce.
 $$
 
+$$section
+### SSL Certificate $(id="sslCertificate")
+Provide the path to SSL client certificate file (`ssl_cert`)
+$$
+
+$$section
+### SSL Key $(id="sslKey")
+Provide the path to SSL key file (`ssl_key`)
+$$
 
 $$section
 ### Connection Options $(id="connectionOptions")
