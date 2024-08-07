@@ -245,5 +245,5 @@ export const mockAddWidgetReturnValues2 = [
     y: 4,
     static: false,
   },
-  { h: 3, i: 'KnowledgePanel.Following-1', static: false, w: 1, x: 3, y: 4 },
+  { h: 3, i: 'KnowledgePanel.Following-2', static: false, w: 1, x: 3, y: 4 },
 ];
