@@ -65,8 +65,7 @@ GRANT SELECT_CATALOG_ROLE to my_user;
 ```
 
 
-With just these permissions, your user should be able to ingest the schemas, but not the tables inside them. To get
-the tables, you should grant `SELECT` permissions to the tables you are interested in. E.g.,
+With just these permissions, your user should be able to ingest the metadata of entities for which the user has access to. E.g.,
 
 ```sql
 -- if you are using role
