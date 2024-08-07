@@ -29,4 +29,4 @@ export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 2 and 64';
 
 export const NAME_MAX_LENGTH_VALIDATION_ERROR =
-  'Name can be a maximum of 128 characters';
+  'Name size must be between 1 and 128';

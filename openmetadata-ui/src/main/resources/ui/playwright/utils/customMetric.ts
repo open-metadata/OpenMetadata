@@ -32,12 +32,12 @@ const validateForm = async (page: Page, isColumnMetric = false) => {
   await expect(page.locator('#name_help')).toHaveText('Name is required');
 
   await expect(page.locator('#expression_help')).toHaveText(
-    'SQL Query is required'
+    'SQL Query is required.'
   );
 
   if (isColumnMetric) {
     await expect(page.locator('#columnName_help')).toHaveText(
-      'Column is required'
+      'Column is required.'
     );
   }
 
@@ -61,9 +61,11 @@ export const createCustomMetric = async ({
   isColumnMetric = false,
   metric,
 }: CustomMetricDetails) => {
-  if (isColumnMetric) {
-    await page.getByRole('menuitem', { name: 'Column Profile' }).click();
-  }
+  await page
+    .getByRole('menuitem', {
+      name: isColumnMetric ? 'Column Profile' : 'Table Profile',
+    })
+    .click();
   await page.locator('[data-testid="profiler-add-table-test-btn"]').click();
   await page.locator('[data-testid="custom-metric"]').click();
 
@@ -140,16 +142,6 @@ export const deleteCustomMetric = async ({
   metric,
   isColumnMetric = false,
 }) => {
-  if (isColumnMetric) {
-    const columnProfilerResponse = page.waitForResponse(
-      `/api/v1/tables/*/columnProfile?startTs=*&endTs=*`
-    );
-    await page.getByRole('menuitem', { name: 'Column Profile' }).click();
-    if (metric.column) {
-      await page.getByRole('button', { name: 'user_id' });
-    }
-    await columnProfilerResponse;
-  }
   await page
     .locator(`[data-testid="${metric.name}-custom-metrics"]`)
     .scrollIntoViewIfNeeded();
@@ -173,9 +165,7 @@ export const deleteCustomMetric = async ({
   await deleteMetricResponse;
 
   // Verifying the deletion
-  await page.waitForSelector('.Toastify__toast-body');
-
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(
+  await expect(page.getByRole('alert').first()).toHaveText(
     `"${metric.name}" deleted successfully!`
   );
 };

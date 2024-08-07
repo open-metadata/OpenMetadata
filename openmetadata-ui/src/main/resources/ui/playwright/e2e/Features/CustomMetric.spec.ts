@@ -33,8 +33,13 @@ test('Table custom metric', async ({ page }) => {
   };
 
   await test.step('Create', async () => {
+    const profilerResponse = page.waitForResponse(
+      `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest`
+    );
     await table.visitEntityPage(page);
     await page.click('[data-testid="profiler"]');
+    await profilerResponse;
+    await page.waitForTimeout(1000);
     await createCustomMetric({
       page,
       metric: TABLE_CUSTOM_METRIC,
@@ -65,8 +70,13 @@ test('Column custom metric', async ({ page }) => {
   };
 
   await test.step('Create', async () => {
+    const profilerResponse = page.waitForResponse(
+      `/api/v1/tables/${table.entityResponseData?.['fullyQualifiedName']}/tableProfile/latest`
+    );
     await table.visitEntityPage(page);
     await page.click('[data-testid="profiler"]');
+    await profilerResponse;
+    await page.waitForTimeout(1000);
     await createCustomMetric({
       page,
       metric: COLUMN_CUSTOM_METRIC,
