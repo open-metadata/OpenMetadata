@@ -570,6 +570,10 @@ class SearchClassBase {
         };
     }
   }
+
+  public notIncludeAggregationExploreTree() {
+    return [EntityType.CHART, EntityType.INGESTION_PIPELINE];
+  }
 }
 
 const searchClassBase = new SearchClassBase();

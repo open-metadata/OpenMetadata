@@ -16,6 +16,7 @@ import { SearchIndex } from '../enums/search.enum';
 import {
   getChartsOptions,
   getColumnsOptions,
+  getOptionsFromAggregationBucket,
   getSchemaFieldOptions,
   getSearchDropdownLabels,
   getSearchLabel,
@@ -25,6 +26,7 @@ import {
 } from './AdvancedSearchUtils';
 import {
   highlightedItemLabel,
+  mockBucketOptions,
   mockGetChartsOptionsData,
   mockGetChartsOptionsDataWithoutDN,
   mockGetChartsOptionsDataWithoutNameDN,
@@ -202,5 +204,15 @@ describe('AdvancedSearchUtils tests', () => {
     );
 
     expect(resultGetChartsOptions).toBe('chart text');
+  });
+
+  it('Function getOptionsFromAggregationBucket should return options which not include ingestionPipeline', () => {
+    const resultGetOptionsWithoutPipeline =
+      getOptionsFromAggregationBucket(mockBucketOptions);
+
+    expect(resultGetOptionsWithoutPipeline).toStrictEqual([
+      { count: 1, key: 'pipeline', label: 'pipeline' },
+      { count: 3, key: 'chart', label: 'chart' },
+    ]);
   });
 });
