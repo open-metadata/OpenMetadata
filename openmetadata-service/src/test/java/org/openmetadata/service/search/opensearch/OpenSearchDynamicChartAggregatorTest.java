@@ -57,7 +57,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   static final long START = 1721082271000l;
   static final long END = 1721592271000l;
 
-  private boolean compareRequest(String expectedJsonReq, Map<String, String> chartDetails)
+  private boolean compareRequest(String expectedJsonReq, Map<String, Object> chartDetails)
       throws IOException {
     XContentParser parser =
         XContentFactory.xContent(expectedJsonReq)
@@ -85,7 +85,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   public void testFieldChartRequestCount() throws IOException {
     String cardString1 =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-21T01:34:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
-    Map<String, String> summaryCard1 = new LinkedHashMap<>();
+    Map<String, Object> summaryCard1 = new LinkedHashMap<>();
     summaryCard1.put("type", "SummaryCard");
     summaryCard1.put("field", "id.keyword");
     summaryCard1.put("function", "count");
@@ -93,15 +93,15 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
-    Map<String, String> lineChart = new LinkedHashMap<>();
+    Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     lineChart.put("field", "id.keyword");
     lineChart.put("function", "count");
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
-    Map<String, String> lineChart1 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
+    Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     lineChart1.put("field", "id.keyword");
     lineChart1.put("function", "count");
@@ -110,7 +110,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString2 =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
-    Map<String, String> lineChart2 = new LinkedHashMap<>();
+    Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     lineChart2.put("field", "id.keyword");
     lineChart2.put("function", "count");
@@ -124,43 +124,43 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   public void testFormulaChartRequest() throws IOException {
     String cardString =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-21T01:34:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
-    Map<String, String> summaryCard = new LinkedHashMap<>();
+    Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("formula", "count(k='id.keyword')");
     assertTrue(compareRequest(cardString, summaryCard));
 
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
-    Map<String, String> lineChart = new LinkedHashMap<>();
+    Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     lineChart.put("formula", "count(k='id.keyword')");
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"version1\":{\"sum\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> lineChart1 = new LinkedHashMap<>();
+    Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     lineChart1.put("formula", "count(k='id.keyword')+sum(k='version')");
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
-    Map<String, String> lineChart2 = new LinkedHashMap<>();
+    Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     lineChart2.put("formula", "count(k='id.keyword')+count(k='id.keyword')");
     assertTrue(compareRequest(lineString2, lineChart2));
 
     String lineString3 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
-    Map<String, String> lineChart3 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
+    Map<String, Object> lineChart3 = new LinkedHashMap<>();
     lineChart3.put("type", "LineChart");
     lineChart3.put("formula", "count(k='id.keyword')+count(k='id.keyword')");
     lineChart3.put("groupBy", "entityType.keyword");
     assertTrue(compareRequest(lineString3, lineChart3));
 
     String lineString4 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";
-    Map<String, String> lineChart4 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";
+    Map<String, Object> lineChart4 = new LinkedHashMap<>();
     lineChart4.put("type", "LineChart");
     lineChart4.put(
         "formula",
@@ -169,8 +169,8 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     assertTrue(compareRequest(lineString4, lineChart4));
 
     String lineString5 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";
-    Map<String, String> lineChart5 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";
+    Map<String, Object> lineChart5 = new LinkedHashMap<>();
     lineChart5.put("type", "LineChart");
     lineChart5.put(
         "formula",
@@ -180,13 +180,22 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
         "filter",
         "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":\"admin\"}}]}}]}}}");
     assertTrue(compareRequest(lineString5, lineChart5));
+
+    String lineString6 =
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}],\"exclude\":[\"glossaryTerm\",\"tag\"]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}},\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}";
+    Map<String, Object> lineChart6 = new LinkedHashMap<>();
+    lineChart6.put("type", "LineChart");
+    lineChart6.put("formula", "count(k='id.keyword')+count(k='id.keyword')");
+    lineChart6.put("groupBy", "entityType.keyword");
+    lineChart6.put("excludeGroups", List.of("tag", "glossaryTerm"));
+    assertTrue(compareRequest(lineString6, lineChart6));
   }
 
   @Test
   public void testFieldChartRequestSum() throws IOException {
     String cardString =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-21T01:34:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> summaryCard = new LinkedHashMap<>();
+    Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("field", "version");
     summaryCard.put("function", "sum");
@@ -194,15 +203,15 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> lineChart = new LinkedHashMap<>();
+    Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     lineChart.put("field", "version");
     lineChart.put("function", "sum");
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart1 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}}}";
+    Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     lineChart1.put("field", "version");
     lineChart1.put("function", "sum");
@@ -211,7 +220,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString2 =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart2 = new LinkedHashMap<>();
+    Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     lineChart2.put("field", "version");
     lineChart2.put("function", "sum");
@@ -225,7 +234,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   public void testFieldChartRequestAvg() throws IOException {
     String cardString =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-21T01:34:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> summaryCard = new LinkedHashMap<>();
+    Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("field", "version");
     summaryCard.put("function", "avg");
@@ -233,15 +242,15 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> lineChart = new LinkedHashMap<>();
+    Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     lineChart.put("field", "version");
     lineChart.put("function", "avg");
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart1 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}}}";
+    Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     lineChart1.put("field", "version");
     lineChart1.put("function", "avg");
@@ -250,7 +259,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString2 =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart2 = new LinkedHashMap<>();
+    Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     lineChart2.put("field", "version");
     lineChart2.put("function", "avg");
@@ -264,7 +273,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   public void testFieldChartRequestMin() throws IOException {
     String cardString =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-21T01:34:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> summaryCard = new LinkedHashMap<>();
+    Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("field", "version");
     summaryCard.put("function", "min");
@@ -272,15 +281,15 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> lineChart = new LinkedHashMap<>();
+    Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     lineChart.put("field", "version");
     lineChart.put("function", "min");
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart1 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}}}";
+    Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     lineChart1.put("field", "version");
     lineChart1.put("function", "min");
@@ -289,7 +298,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString2 =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart2 = new LinkedHashMap<>();
+    Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     lineChart2.put("field", "version");
     lineChart2.put("function", "min");
@@ -303,7 +312,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   public void testFieldChartRequestMax() throws IOException {
     String cardString =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-21T01:34:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> summaryCard = new LinkedHashMap<>();
+    Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("field", "version");
     summaryCard.put("function", "max");
@@ -311,15 +320,15 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}";
-    Map<String, String> lineChart = new LinkedHashMap<>();
+    Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     lineChart.put("field", "version");
     lineChart.put("function", "max");
     assertTrue(compareRequest(lineString, lineChart));
 
     String lineString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":10,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart1 = new LinkedHashMap<>();
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}}}";
+    Map<String, Object> lineChart1 = new LinkedHashMap<>();
     lineChart1.put("type", "LineChart");
     lineChart1.put("field", "version");
     lineChart1.put("function", "max");
@@ -328,7 +337,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String lineString2 =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer\":{\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}}}}}}}";
-    Map<String, String> lineChart2 = new LinkedHashMap<>();
+    Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     lineChart2.put("field", "version");
     lineChart2.put("function", "max");
@@ -402,7 +411,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
   private boolean compareResponse(
       String expectedJsonRes,
-      Map<String, String> chartDetails,
+      Map<String, Object> chartDetails,
       String formula,
       List<DataInsightCustomChartResult> expectedResultList)
       throws IOException {
@@ -427,20 +436,20 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
   public void testSearchResponseProcessor() throws IOException {
     String sampleResponse1 =
         "{\"took\":26,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":132,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-21T00:00:00.000Z\",\"key\":1721520000000,\"doc_count\":54,\"value_count#id.keyword0\":{\"value\":54}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":78,\"value_count#id.keyword0\":{\"value\":78}}]}}}";
-    Map<String, String> summaryCard = new LinkedHashMap<>();
+    Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("formula", "count(k='id.keyword')");
     List<DataInsightCustomChartResult> resultList = new ArrayList<>();
     resultList.add(new DataInsightCustomChartResult().withCount(78d).withDay(1721586600000d));
     assertTrue(compareResponse(sampleResponse1, summaryCard, "count(k='id.keyword')", resultList));
 
-    Map<String, String> summaryCardFunc = new LinkedHashMap<>();
+    Map<String, Object> summaryCardFunc = new LinkedHashMap<>();
     summaryCardFunc.put("type", "SummaryCard");
     summaryCardFunc.put("function", "count");
     summaryCardFunc.put("field", "id.keyword");
     assertTrue(compareResponse(sampleResponse1, summaryCardFunc, null, resultList));
 
-    Map<String, String> lineChart = new LinkedHashMap<>();
+    Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
     lineChart.put("formula", "count(k='id.keyword')");
     List<DataInsightCustomChartResult> resultListLine = new ArrayList<>();
@@ -449,7 +458,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     assertTrue(
         compareResponse(sampleResponse1, lineChart, "count(k='id.keyword')", resultListLine));
 
-    Map<String, String> lineChartFunc = new LinkedHashMap<>();
+    Map<String, Object> lineChartFunc = new LinkedHashMap<>();
     lineChartFunc.put("type", "LineChart");
     lineChartFunc.put("function", "count");
     lineChartFunc.put("field", "id.keyword");
@@ -457,7 +466,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
 
     String sampleResponse2 =
         "{\"took\":100,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":192,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"sterms#0\":{\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0,\"buckets\":[{\"key\":\"Table\",\"doc_count\":85,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":5,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":5}}]}},{\"key\":\"Tag\",\"doc_count\":74,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":10,\"filter#filer0\":{\"doc_count\":10,\"value_count#id.keyword0\":{\"value\":10}},\"value_count#id.keyword1\":{\"value\":10}}]}},{\"key\":\"StoredProcedure\",\"doc_count\":15,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":3,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":3}}]}},{\"key\":\"Database\",\"doc_count\":9,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}}]}},{\"key\":\"DatabaseSchema\",\"doc_count\":9,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}}]}}]}}}";
-    Map<String, String> lineChartFormula = new LinkedHashMap<>();
+    Map<String, Object> lineChartFormula = new LinkedHashMap<>();
     lineChartFormula.put("type", "LineChart");
     lineChartFormula.put(
         "formula", "(count(k='id.keyword',q='hasDescription: 1')/count(k='id.keyword'))*100");

@@ -175,7 +175,8 @@ public class DataAssetsWorkflow {
                 .withSuccessCount(resultList.getData().size())
                 .withFailedCount(resultList.getErrors().size())
                 .withMessage(
-                    "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                    String.format(
+                        "Issues in Reading A Batch For Entities: %s", resultList.getErrors()))
                 .withFailedEntities(resultList.getErrors()));
       }
       paginatedSource.updateStats(resultList.getData().size(), 0);

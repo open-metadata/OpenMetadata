@@ -8,6 +8,7 @@ import es.org.elasticsearch.search.aggregations.Aggregation;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.ParsedTerms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
@@ -17,6 +18,7 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -54,9 +56,21 @@ public class ElasticSearchLineChartAggregator
             .lte(endTimeStamp.toLocalDateTime().toString() + "Z");
 
     if (lineChart.getGroupBy() != null) {
+      String[] includeArr = null;
+      String[] excludeArr = null;
+      if (!CommonUtil.nullOrEmpty(lineChart.getIncludeGroups())) {
+        includeArr = lineChart.getIncludeGroups().toArray(new String[0]);
+      }
+      if (!CommonUtil.nullOrEmpty(lineChart.getExcludeGroups())) {
+        excludeArr = lineChart.getExcludeGroups().toArray(new String[0]);
+      }
       TermsAggregationBuilder termsAggregationBuilder =
-          AggregationBuilders.terms("0").field(lineChart.getGroupBy());
+          AggregationBuilders.terms("0").field(lineChart.getGroupBy()).size(20);
       termsAggregationBuilder.subAggregation(dateHistogramAggregationBuilder);
+      if (includeArr != null || excludeArr != null) {
+        IncludeExclude includeExclude = new IncludeExclude(includeArr, excludeArr);
+        termsAggregationBuilder.includeExclude(includeExclude);
+      }
       searchSourceBuilder.size(0);
       searchSourceBuilder.aggregation(termsAggregationBuilder);
     } else {
