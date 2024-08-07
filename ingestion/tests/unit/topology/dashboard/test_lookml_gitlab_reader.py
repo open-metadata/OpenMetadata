@@ -29,9 +29,9 @@ class TestLookMLGitlabReader(TestCase):
 
     creds = GitlabCredentials(
         # An accessible LookML Gitlab Repository is required to run this Test
-        # repositoryName="test-group/test-repo",
-        # repositoryOwner="test-owner",
-        # token="token"
+        repositoryName="test-group/test-repo",
+        repositoryOwner="test-owner",
+        token="token",
     )
 
     reader = GitlabReader(creds)
