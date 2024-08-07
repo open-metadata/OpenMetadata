@@ -30,7 +30,9 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
@@ -395,11 +397,16 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     return [];
   }
 
-  return buckets.map((option) => ({
-    key: option.key,
-    label: option.key,
-    count: option.doc_count ?? 0,
-  }));
+  return buckets
+    .filter(
+      (item) =>
+        !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
+    )
+    .map((option) => ({
+      key: option.key,
+      label: option.key,
+      count: option.doc_count ?? 0,
+    }));
 };
 
 export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
