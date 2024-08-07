@@ -42,7 +42,7 @@ export const mockApplicationData = {
   supportEmail: 'support@getcollate.io',
   className: 'org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp',
   appType: AppType.Internal,
-  scheduleType: ScheduleType.Scheduled,
+  scheduleType: ScheduleType.ScheduledOrManual,
   permission: Permissions.All,
   bot: {
     id: '7afdf172-ba26-44b5-b2bd-4dfd6768f44c',
