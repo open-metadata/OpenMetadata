@@ -572,7 +572,7 @@ class SearchClassBase {
   }
 
   public notIncludeAggregationExploreTree() {
-    return ['chart'];
+    return [EntityType.CHART, EntityType.INGESTION_PIPELINE];
   }
 }
 

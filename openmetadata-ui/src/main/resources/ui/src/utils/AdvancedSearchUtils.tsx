@@ -32,6 +32,7 @@ import {
 } from '../constants/AdvancedSearch.constants';
 import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
@@ -397,7 +398,10 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
   }
 
   return buckets
-    .filter((item) => !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key))
+    .filter(
+      (item) =>
+        !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
+    )
     .map((option) => ({
       key: option.key,
       label: option.key,

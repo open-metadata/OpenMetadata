@@ -14,6 +14,7 @@
 import { SortingField } from '../components/Explore/SortingDropDown';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
+import { EntityType } from '../enums/entity.enum';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const INITIAL_SORT_FIELD = 'totalVotes';
@@ -34,7 +35,9 @@ export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   EntityFields.TAG,
 ];
 
-export const NOT_INCLUDE_AGGREGATION_QUICK_FILTER = ['ingestionPipeline'];
+export const NOT_INCLUDE_AGGREGATION_QUICK_FILTER = [
+  EntityType.INGESTION_PIPELINE,
+];
 
 // as it is used only in unit tests it's not needed for translation
 export const tableSortingFields: SortingField[] = [
