@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
@@ -365,8 +366,7 @@ public class SearchRepository {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
       Pair<String, String> parentMatch;
-      if (!updates.getValue().isEmpty()
-          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")) {
+      if (!updates.getValue().isEmpty() && updates.getValue().containsKey("domain")) {
         if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
             || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
@@ -426,12 +426,19 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference entityReference =
-                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
-            scriptTxt.append(
-                String.format(
-                    PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT, field.getName(), field.getName()));
-            fieldData = JsonUtils.getMap(entityReference);
+            if (field.getName().equals(FIELD_OWNERS)) {
+              List<EntityReference> inheritedOwners =
+                  JsonUtils.readObjects(field.getNewValue().toString(), EntityReference.class);
+              fieldData.put(field.getName(), inheritedOwners);
+              scriptTxt.append("ctx._source.owners.addAll(params.owners);");
+            } else {
+              EntityReference entityReference =
+                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+              scriptTxt.append(
+                  String.format(
+                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT, field.getName(), field.getName()));
+              fieldData = JsonUtils.getMap(entityReference);
+            }
           } catch (UnhandledServerException e) {
             scriptTxt.append(
                 String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
@@ -462,16 +469,26 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference entityReference =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-            scriptTxt.append(
-                String.format(
-                    REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                    field.getName(),
-                    field.getName(),
-                    entityReference.getId().toString(),
-                    field.getName()));
-            fieldData = JsonUtils.getMap(entityReference);
+            if (field.getName().equals(FIELD_OWNERS)) {
+              List<EntityReference> inheritedOwners =
+                  JsonUtils.readObjects(field.getOldValue().toString(), EntityReference.class);
+              for (EntityReference owner : inheritedOwners) {
+                fieldData.put(field.getName(), owner.getId().toString());
+              }
+              scriptTxt.append(
+                  "ctx._source.owners.removeAll(Collections.singleton(params.owners));");
+            } else {
+              EntityReference entityReference =
+                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+              scriptTxt.append(
+                  String.format(
+                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
+                      entityReference.getId().toString(),
+                      field.getName()));
+              fieldData = JsonUtils.getMap(entityReference);
+            }
           } catch (UnhandledServerException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
