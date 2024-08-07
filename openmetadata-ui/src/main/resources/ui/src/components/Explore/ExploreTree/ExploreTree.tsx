@@ -13,7 +13,7 @@
 import { Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString, uniqueId } from 'lodash';
+import { isString } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -34,6 +34,7 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { UrlParams } from '../ExplorePage.interface';
 import {
@@ -137,7 +138,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         );
 
         const children = sortedBuckets.map((bucket) => {
-          const id = uniqueId();
+          const id = generateUUID();
 
           let logo = undefined;
           if (isEntityType) {
@@ -186,7 +187,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 getQuickFilterObject(bucketToFind, bucket.key),
               ],
               isRoot: false,
-              rootIndex: treeNode.data?.rootIndex,
+              rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
               dataId: bucket.key,
             },
           };

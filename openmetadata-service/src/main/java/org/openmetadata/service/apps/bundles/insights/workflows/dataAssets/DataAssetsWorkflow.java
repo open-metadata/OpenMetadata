@@ -67,7 +67,7 @@ public class DataAssetsWorkflow {
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
-  @Getter private final WorkflowStats workflowStats = new WorkflowStats();
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataAssetsWorkflow");
 
   public DataAssetsWorkflow(
       Long timestamp,
@@ -115,7 +115,7 @@ public class DataAssetsWorkflow {
           List<String> fields = List.of("*");
           PaginatedEntitiesSource source =
               new PaginatedEntitiesSource(entityType, batchSize, fields)
-                  .withName(String.format("PaginatedEntitiesSource-%s", entityType));
+                  .withName(String.format("[DataAssetsWorkflow] %s", entityType));
           sources.add(source);
         });
 
@@ -147,9 +147,9 @@ public class DataAssetsWorkflow {
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage = String.format("Failed processing Data from %s", source.getName());
+          String errorMessage =
+              String.format("Failed processing Data from %s: %s", source.getName(), ex);
           workflowStats.addFailure(errorMessage);
-          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }
