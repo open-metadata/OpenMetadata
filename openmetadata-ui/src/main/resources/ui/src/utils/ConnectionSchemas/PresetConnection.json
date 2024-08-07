@@ -25,8 +25,8 @@
       "title": "Host and Port",
       "description": "URL for the preset instance.",
       "type": "string",
-      "format": "uri",
-      "default": "http://localhost:8088"
+      "format": "url",
+      "default": "https://api.app.preset.io"
     },
     "connection": {
       "title": "Preset Connection",

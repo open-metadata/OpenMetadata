@@ -42,7 +42,7 @@ class PresetAuthenticationProvider(AuthenticationProvider):
         self.service_connection = self.config
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
-            base_url=str(config.hostPort),
+            base_url='https://api.app.preset.io',
             api_version="v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
@@ -60,7 +60,7 @@ class PresetAuthenticationProvider(AuthenticationProvider):
 
     def auth_token(self) -> None:
         login_request = self._login_request()
-        login_response = self.client.post("/auth", login_request)
+        login_response = self.client.post("/auth/", login_request)
         self.generated_auth_token = login_response["access_token"]
         self.expiry = 0
 
@@ -68,8 +68,8 @@ class PresetAuthenticationProvider(AuthenticationProvider):
         auth_request = {
             "api_token": self.service_connection.connection.api_token,
             "api_secret": self.service_connection.connection.api_secret.get_secret_value(),
-            "refresh": True,
-            "provider": self.service_connection.connection.provider.value,  ## Might not be needed
+            # "refresh": True,
+            # "provider": self.service_connection.connection.provider.value,  ## Might not be needed
         }
         return json.dumps(auth_request)
 

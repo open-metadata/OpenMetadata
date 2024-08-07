@@ -25,7 +25,7 @@
       "title": "Host and Port",
       "description": "URL for the preset instance.",
       "type": "string",
-      "format": "uri",
+      "format": "url",
       "default": "https://api.app.preset.io"
     },
     "managerPort": {
@@ -33,7 +33,7 @@
       "title": "Host and Port",
       "description": "URL for the preset managed instance.",
       "type": "string",
-      "format": "uri",
+      "format": "url",
       "default": "https://api.app.preset.io"
     },
     "connection":{

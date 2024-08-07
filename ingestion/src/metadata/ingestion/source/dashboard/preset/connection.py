@@ -41,9 +41,6 @@ def get_connection(connection: PresetConnection) -> PresetAPIClient:
     """
     Create connection
     """
-    import pdb
-
-    pdb.set_trace()
     if isinstance(connection.connection, PresetApiConnection):
         return PresetAPIClient(connection)
     return None
