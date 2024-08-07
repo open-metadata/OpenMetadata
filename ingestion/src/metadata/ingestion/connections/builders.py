@@ -185,4 +185,5 @@ def get_connection_url_common(connection) -> str:
             f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
         )
         url = f"{url}?{params}"
+    print(url)
     return url

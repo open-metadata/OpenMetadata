@@ -27,13 +27,17 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
     PostgresConnection,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
+from metadata.ingestion.connections.sql.builders.helpers import (
     get_connection_args_common,
-    get_connection_url_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import test_connection_db_common
+from metadata.ingestion.connections.sql.builders.engine import default_engine_builder
+from metadata.ingestion.connections.sql.builders.url import default_url_builder
+from metadata.ingestion.connections.sql.builders.connection import SqlAlchemyConnectionBuilder
+from metadata.generated.schema.security.ssl import verifySSLConfig
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.ssl_manager import SSLManager
 from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DATABASE,
     POSTGRES_TEST_GET_QUERIES,
@@ -44,11 +48,40 @@ from metadata.ingestion.source.database.postgres.utils import (
 )
 
 
-def get_connection(connection: PostgresConnection) -> Engine:
+def setup_ssl(connection: PostgresConnection) -> Optional[SSLManager]:
+    if not connection.sslMode:
+        return None
+
+    ssl_manager = SSLManager(
+        ca=connection.sslConfig.__root__.caCertificate
+        if connection.sslConfig
+        else None
+    )
+
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
+    connection.connectionArguments.__root__["sslmode"] = connection.sslMode.value
+
+    if connection.sslMode in (
+        verifySSLConfig.SslMode.verify_ca,
+        verifySSLConfig.SslMode.verify_full,
+    ):
+        if ssl_manager.ca_file_path:
+            connection.connectionArguments.__root__["sslrootcert"] = ssl_manager.ca_file_path
+        else:
+            raise ValueError(
+                "CA certificate is required for SSL mode verify-ca or verify-full"
+            )
+
+    return ssl_manager
+
+
+
+def get_connection(connection: PostgresConnection) -> SqlAlchemyConnectionBuilder:
     """
     Create connection
     """
-
     if hasattr(connection.authType, "azureConfig"):
         azure_client = AzureClient(connection.authType.azureConfig).create_client()
         if not connection.authType.azureConfig.scopes:
@@ -59,11 +92,16 @@ def get_connection(connection: PostgresConnection) -> Engine:
             *connection.authType.azureConfig.scopes.split(",")
         )
         connection.authType = BasicAuth(password=access_token_obj.token)
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url_common,
-        get_connection_args_fn=get_connection_args_common,
-    )
+
+    ssl_manager = setup_ssl(connection)
+
+    engine = default_engine_builder(
+        default_url_builder(connection).build(),
+        get_connection_args_common(connection)
+    ).build()
+
+    return SqlAlchemyConnectionBuilder(engine) \
+        .with_ssl_manager(ssl_manager)
 
 
 def test_connection(
