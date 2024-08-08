@@ -68,6 +68,12 @@ GRANT SELECT_CATALOG_ROLE to my_user;
 With just these permissions, your user should be able to ingest the metadata of entities for which the user has access to. E.g.,
 
 ```sql
+-- If you are using a role and do not want to specify a specific table, but any
+GRANT SELECT ANY TABLE TO new_role;
+
+-- If you are not using a role, but directly giving permission to the user and do not want to specify a specific table, but any
+GRANT SELECT ANY TABLE TO my_user;
+
 -- if you are using role
 GRANT SELECT ON ADMIN.EXAMPLE_TABLE TO new_role;
 
