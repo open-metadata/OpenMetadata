@@ -335,7 +335,10 @@ public class MigrationUtil {
     // total data assets by tier
     createChart(
         "total_data_assets_by_tier",
-        new LineChart().withFormula("count(k='id.keyword')").withGroupBy("tier.keyword"));
+        new LineChart()
+            .withFormula("count(k='id.keyword')")
+            .withGroupBy("tier.keyword")
+            .withFilter(exclude_tags_filter));
 
     // total data assets summary card
     createChart(
