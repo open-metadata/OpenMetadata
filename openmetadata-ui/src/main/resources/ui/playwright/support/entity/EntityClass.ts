@@ -160,6 +160,7 @@ export class EntityClass {
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: this.endpoint,
+        type,
       });
       if (isEditPermission) {
         await addMultiOwner({
@@ -168,6 +169,7 @@ export class EntityClass {
           activatorBtnDataTestId: 'edit-owner',
           resultTestId: 'data-assets-header',
           endpoint: this.endpoint,
+          type,
         });
         await removeOwner({
           page,
@@ -181,8 +183,8 @@ export class EntityClass {
   }
 
   async tier(page: Page, tier1: string, tier2: string) {
-    await assignTier(page, tier1);
-    await assignTier(page, tier2);
+    await assignTier(page, tier1, this.endpoint);
+    await assignTier(page, tier2, this.endpoint);
     await removeTier(page);
   }
 

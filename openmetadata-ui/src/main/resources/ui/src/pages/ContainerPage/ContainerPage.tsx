@@ -41,6 +41,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import {
   getEntityDetailsPath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -49,6 +50,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -150,6 +152,9 @@ const ContainerPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
