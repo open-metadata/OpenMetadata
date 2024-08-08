@@ -22,6 +22,7 @@ Configure and schedule Postgres metadata and profiler workflows from the OpenMet
 - [Data Profiler](#data-profiler)
 - [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
+- [Enable Security](#securing-postgres-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
 
@@ -292,6 +293,24 @@ source:
 {% partial file="/v1.5/connectors/yaml/data-profiler.md" variables={connector: "postgres"} /%}
 
 {% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
+
+## Securing Postgres Connection with SSL in OpenMetadata
+
+To configure SSL for secure connections between OpenMetadata and a PostgreSQL database, PostgreSQL offers various SSL modes, each providing different levels of connection security.
+
+When running the ingestion process externally, specify the SSL mode to be used for the PostgreSQL connection, such as `prefer`, `verify-ca`, `allow`, and others. Once you've chosen the SSL mode, provide the CA certificate for SSL validation (`caCertificate`). Only the CA certificate is required for SSL validation in PostgreSQL.
+
+{% note %}
+
+For IAM authentication, it is recommended to select the `allow` mode or another SSL mode that aligns with your specific needs.
+
+{% /note %}
+
+```yaml
+      sslMode: disable #allow prefer require verify-ca verify-full
+      sslConfig:
+            caCertificate: "/path/to/ca/certificate"
+```
 
 ## dbt Integration
 

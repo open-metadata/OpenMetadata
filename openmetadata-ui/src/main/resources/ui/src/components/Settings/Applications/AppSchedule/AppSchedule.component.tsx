@@ -25,6 +25,7 @@ import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore
 import {
   AppScheduleClass,
   AppType,
+  ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
@@ -50,6 +51,14 @@ const AppSchedule = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const { config } = useLimitStore();
+
+  const showRunNowButton = useMemo(() => {
+    if (appData && appData.scheduleType === ScheduleType.ScheduledOrManual) {
+      return true;
+    }
+
+    return false;
+  }, [appData]);
 
   const { pipelineSchedules } =
     config?.limits?.config.featureLimits.find(
@@ -213,14 +222,16 @@ const AppSchedule = ({
                 </Button>
               )}
 
-              <Button
-                data-testid="run-now-button"
-                disabled={appData.deleted}
-                loading={isRunLoading}
-                type="primary"
-                onClick={onAppTrigger}>
-                {t('label.run-now')}
-              </Button>
+              {showRunNowButton && (
+                <Button
+                  data-testid="run-now-button"
+                  disabled={appData.deleted}
+                  loading={isRunLoading}
+                  type="primary"
+                  onClick={onAppTrigger}>
+                  {t('label.run-now')}
+                </Button>
+              )}
             </Space>
           </Col>
         )}
