@@ -18,10 +18,11 @@ from typing import Iterable, Optional, Tuple, Union
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
+from sqlalchemy import exc, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
+from sqlalchemy.sql import text
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
 
@@ -54,6 +55,8 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
     DATABRICKS_VIEW_DEFINITIONS,
+    DESCRIBE_CATALOG,
+    DESCRIBE_SCHEMA,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -295,6 +298,59 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
+def get_catalog_type(connection, schema):
+    """get databricks catalog type (Regular/Foreign)"""
+    if not schema:
+        return
+    query = DESCRIBE_SCHEMA.format(schema_name=schema)
+    rows = connection.execute(query)
+    catalog_name = None
+    for row in rows:
+        row_dict = dict(row)
+        if row_dict.get("database_description_item") == "Catalog Name":
+            catalog_name = row_dict.get("database_description_value")
+    if not catalog_name:
+        return
+
+    query = DESCRIBE_CATALOG.format(catalog_name=catalog_name)
+    rows = connection.execute(query)
+    catalog_type = None
+    for row in rows:
+        row_dict = dict(row)
+        if row_dict.get("info_name") == "Catalog Type":
+            catalog_type = row_dict.get("info_value")
+    return catalog_type
+
+
+def get_table_columns(self, connection, table_name, schema):
+    """get databricks table columns"""
+    full_table = table_name
+    if schema:
+        full_table = schema + "." + table_name
+    catalog_type = get_catalog_type(connection, schema)
+    if catalog_type == "Foreign":
+        return []
+    # TODO using TGetColumnsReq hangs after sending TFetchResultsReq.
+    # Using DESCRIBE works but is uglier.
+    try:
+        # This needs the table name to be unescaped (no backticks).
+        rows = connection.execute(text("DESCRIBE {}".format(full_table))).fetchall()
+    except exc.OperationalError as e:
+        # Does the table exist?
+        regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
+        regex = regex_fmt.format(re.escape(full_table))
+        if re.search(regex, e.args[0]):
+            raise exc.NoSuchTableError(full_table)
+        else:
+            raise
+    else:
+        # Hive is stupid: this is what I get from DESCRIBE some_schema.does_not_exist
+        regex = r"Table .* does not exist"
+        if len(rows) == 1 and re.match(regex, rows[0].col_name):
+            raise exc.NoSuchTableError(full_table)
+        return rows
+
+
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
@@ -302,6 +358,7 @@ DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_table_names = get_table_names
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
+DatabricksDialect._get_table_columns = get_table_columns
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
 
