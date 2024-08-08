@@ -135,6 +135,7 @@ export const ROUTES = {
   SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
+  FORBIDDEN: '/403',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',

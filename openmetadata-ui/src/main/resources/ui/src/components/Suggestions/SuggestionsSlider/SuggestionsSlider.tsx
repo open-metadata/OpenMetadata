@@ -30,7 +30,7 @@ const SuggestionsSlider = () => {
   } = useSuggestionsContext();
 
   return (
-    <div className="d-flex items-center gap-2">
+    <div className="d-flex items-center gap-2 m-r-md">
       <Typography.Text className="right-panel-label">
         {t('label.suggested-description-plural')}
       </Typography.Text>

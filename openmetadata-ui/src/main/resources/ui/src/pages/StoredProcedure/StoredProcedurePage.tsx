@@ -40,6 +40,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import {
   getEntityDetailsPath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -48,6 +49,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { CSMode } from '../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -198,7 +200,9 @@ const StoredProcedurePage = () => {
         id: response.id ?? '',
       });
     } catch (error) {
-      // Error here
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
