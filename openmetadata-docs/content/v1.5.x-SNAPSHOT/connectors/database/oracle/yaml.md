@@ -67,6 +67,12 @@ GRANT SELECT_CATALOG_ROLE to my_user;
 **Note**: With just these permissions, your user should be able to ingest the metadata, but not the `Profiler & Data Quality`, you should grant `SELECT` permissions to the tables you are interested in for the `Profiler & Data Quality` features to work. 
 
 ```sql
+-- If you are using a role and do not want to specify a specific table, but any
+GRANT SELECT ANY TABLE TO new_role;
+
+-- If you are not using a role, but directly giving permission to the user and do not want to specify a specific table, but any
+GRANT SELECT ANY TABLE TO my_user;
+
 -- if you are using role
 GRANT SELECT ON ADMIN.EXAMPLE_TABLE TO new_role;
 
