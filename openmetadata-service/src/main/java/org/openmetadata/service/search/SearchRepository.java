@@ -10,6 +10,7 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.search.SearchClient.ADD_REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
@@ -334,7 +335,7 @@ public class SearchRepository {
         searchClient.updateEntity(
             indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
         propagateInheritedFieldsToChildren(
-            entityType, entityId, entity.getChangeDescription(), indexMapping);
+            entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
         propagateGlossaryTags(
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
       } catch (Exception ie) {
@@ -362,9 +363,11 @@ public class SearchRepository {
       String entityType,
       String entityId,
       ChangeDescription changeDescription,
-      IndexMapping indexMapping) {
+      IndexMapping indexMapping,
+      EntityInterface entity) {
     if (changeDescription != null) {
-      Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(changeDescription, entity);
       Pair<String, String> parentMatch;
       if (!updates.getValue().isEmpty() && updates.getValue().containsKey("domain")) {
         if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
@@ -419,7 +422,7 @@ public class SearchRepository {
   }
 
   private Pair<String, Map<String, Object>> getInheritedFieldChanges(
-      ChangeDescription changeDescription) {
+      ChangeDescription changeDescription, EntityInterface entity) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
     if (changeDescription != null) {
@@ -427,10 +430,9 @@ public class SearchRepository {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
-              List<EntityReference> inheritedOwners =
-                  JsonUtils.readObjects(field.getNewValue().toString(), EntityReference.class);
+              List<EntityReference> inheritedOwners = entity.getOwners();
               fieldData.put(field.getName(), inheritedOwners);
-              scriptTxt.append("ctx._source.owners.addAll(params.owners);");
+              scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
@@ -470,13 +472,9 @@ public class SearchRepository {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
-              List<EntityReference> inheritedOwners =
-                  JsonUtils.readObjects(field.getOldValue().toString(), EntityReference.class);
-              for (EntityReference owner : inheritedOwners) {
-                fieldData.put(field.getName(), owner.getId().toString());
-              }
-              scriptTxt.append(
-                  "ctx._source.owners.removeAll(Collections.singleton(params.owners));");
+              List<EntityReference> inheritedOwners = entity.getOwners();
+              fieldData.put(field.getName(), inheritedOwners);
+              scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
