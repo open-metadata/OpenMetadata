@@ -290,7 +290,7 @@ public class MigrationUtil {
         "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}}]}}}";
 
     String exclude_tier_filter =
-            "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"tier.keyword\":\"NoTier\"}}}}]}}}";
+        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"tier.keyword\":\"NoTier\"}}}}]}}}";
     // total data assets
     List<String> excludeList = List.of("tag", "glossaryTerm");
     createChart(
