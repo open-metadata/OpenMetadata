@@ -198,9 +198,7 @@ class UsersTestClass {
     cy.get('[data-testid="inline-save-btn"]').click();
     verifyResponseStatusCode('@updateName', 200);
 
-    cy.get('[data-testid="user-name"]')
-      .scrollIntoView()
-      .contains('Add Display Name');
+    cy.get('[data-testid="user-name"]').should('contain', 'Add Display Name');
 
     cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
     cy.get('[data-testid="edit-teams-button"]').click();
