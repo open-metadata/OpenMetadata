@@ -349,7 +349,7 @@ $$
 $$section
 ### Use email to assign DBT model owner in OpenMetadata $(id="dbtOwnerUseEmail")
 
-This option uses the email address of the dbt model owner to assign the owner in OpenMetadata. Default is set to `false`, which means the owner will be assigned using its name setup in OpenMetadata.
+This option uses the email address of the dbt model owner to assign the owner in OpenMetadata. Default is set to `false`, which means the owner will be matched using its name setup in OpenMetadata.
 $$
 
 $$section
