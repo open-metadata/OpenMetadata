@@ -56,3 +56,7 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
 )
 
 DATABRICKS_DDL = "SHOW CREATE TABLE {table_name}"
+
+DESCRIBE_CATALOG = "DESCRIBE CATALOG {catalog_name};"
+
+DESCRIBE_SCHEMA = "DESCRIBE SCHEMA {schema_name};"
