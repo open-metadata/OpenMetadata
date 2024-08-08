@@ -19,30 +19,15 @@ def usage_config(db_service, workflow_config):
                 "config": {
                     "queryLogDuration": 2,
                     "resultLimit": 1000,
-                    "databaseFilterPattern": {
-                        "includes": [
-                            "TestDB",
-                            "AdventureWorks"
-                        ]
-                    }
+                    "databaseFilterPattern": {"includes": ["TestDB", "AdventureWorks"]},
                 },
             },
         },
-        "processor": {
-            "type": "query-parser",
-            "config": {}
-        },
-        "stage": {
-            "type": "table-usage",
-            "config": {
-                "filename": "/tmp/mssql_usage"
-            }
-        },
+        "processor": {"type": "query-parser", "config": {}},
+        "stage": {"type": "table-usage", "config": {"filename": "/tmp/mssql_usage"}},
         "bulkSink": {
             "type": "metadata-usage",
-            "config": {
-                "filename": "/tmp/mssql_usage"
-            }
+            "config": {"filename": "/tmp/mssql_usage"},
         },
         "workflowConfig": workflow_config,
     }
