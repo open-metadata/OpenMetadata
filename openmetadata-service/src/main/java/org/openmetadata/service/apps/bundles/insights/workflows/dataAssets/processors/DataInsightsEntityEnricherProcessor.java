@@ -172,7 +172,9 @@ public class DataInsightsEntityEnricherProcessor
     if (oEntityTags.isPresent()) {
       Optional<String> oEntityTier =
           getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
-      oEntityTier.ifPresent(s -> entityMap.put("tier", s));
+      oEntityTier.ifPresentOrElse(s -> entityMap.put("tier", s), () -> entityMap.put("tier", "NoTier"));
+    } else {
+      entityMap.put("tier", "NoTier");
     }
 
     // Enrich with Description Stats
