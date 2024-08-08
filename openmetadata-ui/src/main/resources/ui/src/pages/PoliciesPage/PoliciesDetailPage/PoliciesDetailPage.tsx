@@ -62,6 +62,7 @@ import {
   getEditPolicyRulePath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
+import { getEncodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-detail.less';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
@@ -253,7 +254,11 @@ const PoliciesDetailPage = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         history.push(
-                          getEditPolicyRulePath(fqn, rule.name || '')
+                          getEditPolicyRulePath(
+                            fqn,
+                            // rule name is same as entity fqn so we need to encode it to pass it as a param
+                            getEncodedFqn(rule.name || '')
+                          )
                         );
                       }}>
                       <Space align="center">
