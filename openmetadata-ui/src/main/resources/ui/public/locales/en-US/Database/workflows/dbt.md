@@ -347,6 +347,12 @@ However, if the option is enabled, descriptions for all tables and columns in th
 $$
 
 $$section
+### Use email to assign DBT model owner in OpenMetadata $(id="dbtOwnerUseEmail")
+
+This option uses the email address of the dbt model owner to assign the owner in OpenMetadata. Default is set to `false`, which means the owner will be assigned using its name setup in OpenMetadata.
+$$
+
+$$section
 ### Include dbt Tags $(id="includeTags")
 
 Option to include fetching the tags metadata from dbt. 
