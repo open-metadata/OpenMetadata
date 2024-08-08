@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.API_COLLCECTION;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -79,6 +80,15 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       setFieldFQN(
           apiEndpoint.getFullyQualifiedName(), apiEndpoint.getResponseSchema().getSchemaFields());
     }
+  }
+
+  @Override
+  public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
+    APICollection apiCollection =
+        Entity.getEntity(
+            API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
+    inheritOwners(endpoint, fields, apiCollection);
+    inheritDomain(endpoint, fields, apiCollection);
   }
 
   @Override

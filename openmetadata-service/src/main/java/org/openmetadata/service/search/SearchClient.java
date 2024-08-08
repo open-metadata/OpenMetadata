@@ -66,6 +66,8 @@ public interface SearchClient {
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
+  String ADD_REMOVE_OWNERS_SCRIPT =
+      "if (ctx._source.owners != null) { ctx._source.owners.clear(); } else { ctx._source.owners = []; } for (int i = 0; i < params.owners.size(); i++) { def newOwner = params.owners[i]; ctx._source.owners.add(newOwner); }";
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   boolean isClientAvailable();
