@@ -673,10 +673,10 @@ export const getQueryFilterForDataInsightChart = (
             bool: {
               must: [
                 ...(tierFilter
-                  ? [{ term: { 'tier.tagFQN': tierFilter } }]
+                  ? [{ term: { 'tier.keyword': tierFilter } }]
                   : []),
                 ...(teamFilter
-                  ? [{ term: { 'owner.displayName.keyword': teamFilter } }]
+                  ? [{ term: { 'owners.displayName.keyword': teamFilter } }]
                   : []),
               ],
             },
