@@ -67,6 +67,9 @@ describe('Ingestion Workflow tests', () => {
     const databaseSchema = getMetadataSchemaByServiceCategory(
       ServiceCategory.DATABASE_SERVICES
     );
+    const metadataSchema = getMetadataSchemaByServiceCategory(
+      ServiceCategory.METADATA_SERVICES
+    );
     const dashboardSchema = getMetadataSchemaByServiceCategory(
       ServiceCategory.DASHBOARD_SERVICES
     );
@@ -75,6 +78,7 @@ describe('Ingestion Workflow tests', () => {
     );
 
     expect(databaseSchema).toBeDefined();
+    expect(metadataSchema).toBeDefined();
     expect(dashboardSchema).toBeDefined();
     expect(messagingSchema).toBeDefined();
   });
