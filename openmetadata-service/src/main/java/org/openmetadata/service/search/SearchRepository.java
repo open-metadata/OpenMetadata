@@ -429,7 +429,8 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            if (field.getName().equals(FIELD_OWNERS)) {
+            if (field.getName().equals(FIELD_OWNERS)
+                && entity.getEntityReference().getType().equalsIgnoreCase(Entity.TEST_CASE)) {
               List<EntityReference> inheritedOwners = entity.getOwners();
               fieldData.put(field.getName(), inheritedOwners);
               scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
@@ -471,7 +472,8 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            if (field.getName().equals(FIELD_OWNERS)) {
+            if (field.getName().equals(FIELD_OWNERS)
+                && entity.getEntityReference().getType().equalsIgnoreCase(Entity.TEST_CASE)) {
               List<EntityReference> inheritedOwners = entity.getOwners();
               fieldData.put(field.getName(), inheritedOwners);
               scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
