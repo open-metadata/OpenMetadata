@@ -187,6 +187,11 @@ public class DataInsightsEntityEnricherProcessor
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
 
+    // Remove 'changeDescription' field
+    entityMap.remove("changeDescription");
+    // Remove 'sampleData'
+    entityMap.remove("sampleData");
+
     return entityMap;
   }
 
