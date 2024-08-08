@@ -601,7 +601,6 @@ export const isPercentageSystemGraph = (graph: SystemChartType) => {
     SystemChartType.PercentageOfDataAssetWithOwner,
     SystemChartType.PercentageOfServiceWithDescription,
     SystemChartType.PercentageOfServiceWithOwner,
-    SystemChartType.TotalDataAssetsByTier,
   ].includes(graph);
 };
 
@@ -612,7 +611,7 @@ export const renderDataInsightLineChart = (
   }[],
   activeKeys: string[],
   activeMouseHoverKey: string,
-  isPercentage = true
+  isPercentage: boolean
 ) => {
   return (
     <LineChart margin={BAR_CHART_MARGIN}>
