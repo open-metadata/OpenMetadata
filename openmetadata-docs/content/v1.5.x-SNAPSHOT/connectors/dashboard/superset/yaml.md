@@ -147,7 +147,7 @@ source:
       type: Superset
 ```
 ```yaml {% srNumber=1 %}
-      hostPort: http://localhost:8080
+      hostPort: http://localhost:8088
       connection:
         # For Superset API Connection
         username: admin
