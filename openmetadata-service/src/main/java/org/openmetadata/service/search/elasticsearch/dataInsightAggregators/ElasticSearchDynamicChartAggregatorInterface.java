@@ -147,7 +147,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       throws IOException {
     if (formula != null) {
 
-      if (filter != null) {
+      if (filter != null && filter.equals("{}")) {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
@@ -162,7 +162,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
 
     // process non formula date histogram
     ValuesSourceAggregationBuilder subAgg = getSubAggregationsByFunction(function, field, 0);
-    if (filter != null) {
+    if (filter != null && filter.equals("{}")) {
       XContentParser filterParser =
           XContentType.JSON
               .xContent()
