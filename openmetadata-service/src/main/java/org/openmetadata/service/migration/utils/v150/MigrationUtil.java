@@ -287,10 +287,10 @@ public class MigrationUtil {
     dataInsightSystemChartRepository = new DataInsightSystemChartRepository();
 
     String exclude_tags_filter =
-        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}}]}}}";
+        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"dataProduct\"}}}}]}}}";
 
     String exclude_tier_filter =
-        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"tier.keyword\":\"NoTier\"}}}}]}}}";
+        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"dataProduct\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"tier.keyword\":\"NoTier\"}}}}]}}}";
     // total data assets
     List<String> excludeList = List.of("tag", "glossaryTerm");
     createChart(
@@ -335,10 +335,7 @@ public class MigrationUtil {
     // total data assets by tier
     createChart(
         "total_data_assets_by_tier",
-        new LineChart()
-            .withFormula("count(k='id.keyword')")
-            .withGroupBy("tier.keyword")
-            .withFilter(exclude_tags_filter));
+        new LineChart().withFormula("count(k='id.keyword')").withGroupBy("tier.keyword"));
 
     // total data assets summary card
     createChart(
