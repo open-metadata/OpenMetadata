@@ -15,6 +15,7 @@ import traceback
 from copy import deepcopy
 from typing import Iterable, Optional, Tuple, Union
 
+from pydantic import EmailStr
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
@@ -51,7 +52,6 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
-    DATABRICKS_TABLE_DESCRIBE,
     DATABRICKS_VIEW_DEFINITIONS,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
@@ -670,31 +670,34 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         filtered_name = re.sub(pattern, "", owner_name).strip()
         return filtered_name
 
-    def _check_if_email(self, email_id: str) -> bool:
-        """check if email string is valid"""
-        email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-        return re.match(email_pattern, email_id)
-
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """
-        query = DATABRICKS_TABLE_DESCRIBE.format(
-            catalog_name=self.context.get().database,
-            schema_name=self.context.get().database_schema,
-            table_name=table_name,
-        )
-        result = self.connection.engine.execute(query)
-        for row in result:
-            row_dict = dict(row)
-            if row_dict.get("col_name") == "Owner":
-                owner = row_dict.get("data_type")
-                if not owner:
-                    return
-                owner = self._filter_owner_name(owner)
-                if self._check_if_email(owner):
-                    owner_ref = self.metadata.get_reference_by_email(email=owner)
-                else:
-                    owner_ref = self.metadata.get_reference_by_name(name=owner)
-                return owner_ref
+        try:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                schema_name=self.context.get().database_schema,
+                table_name=table_name,
+            )
+            result = self.connection.engine.execute(query)
+            owner = None
+            for row in result:
+                row_dict = dict(row)
+                if row_dict.get("col_name") == "Owner":
+                    owner = row_dict.get("data_type")
+                    break
+            if not owner:
+                return
+
+            owner = self._filter_owner_name(owner)
+            owner_ref = None
+            try:
+                owner_email = EmailStr._validate(owner)
+                owner_ref = self.metadata.get_reference_by_email(email=owner_email)
+            except Exception:
+                owner_ref = self.metadata.get_reference_by_name(name=owner)
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return
