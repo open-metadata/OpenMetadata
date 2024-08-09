@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import antlr4 from 'antlr4';
-import { ParseTreeWalker } from 'antlr4/src/antlr4/tree';
+import {
+  CommonTokenStream,
+  InputStream,
+  ParseTreeListener,
+  ParseTreeWalker,
+} from 'antlr4';
 import i18next from 'i18next';
 import SplitListener from '../antlr/SplitListener';
 import FqnLexer from '../generated/antlr/FqnLexer';
@@ -21,13 +25,16 @@ import FqnParser from '../generated/antlr/FqnParser';
 export default class Fqn {
   // Equivalent of Java's FullyQualifiedName#split
   static split(fqn: string) {
-    const chars = new antlr4.InputStream(fqn);
+    const chars = new InputStream(fqn);
     const lexer = new FqnLexer(chars);
-    const tokens = new antlr4.CommonTokenStream(lexer);
+    const tokens = new CommonTokenStream(lexer);
     const parser = new FqnParser(tokens);
     const tree = parser.fqn();
     const splitter = new SplitListener();
-    ParseTreeWalker.DEFAULT.walk(splitter, tree);
+    ParseTreeWalker.DEFAULT.walk(
+      splitter as unknown as ParseTreeListener,
+      tree
+    );
 
     return splitter.split();
   }
