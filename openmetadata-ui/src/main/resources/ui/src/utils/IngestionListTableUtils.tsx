@@ -74,9 +74,9 @@ export const renderScheduleField = (_: string, record: IngestionPipeline) => {
   );
 
   return (
-    <Row align="middle" gutter={[8, 8]} wrap={false}>
-      <Col className="flex-center">
-        <TimeDateIcon height={20} width={20} />
+    <Row gutter={[8, 8]} wrap={false}>
+      <Col>
+        <TimeDateIcon className="m-t-xss" height={20} width={20} />
       </Col>
       <Col>
         <Row className="line-height-16">

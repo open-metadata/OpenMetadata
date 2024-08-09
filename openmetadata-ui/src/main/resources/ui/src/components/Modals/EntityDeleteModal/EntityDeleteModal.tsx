@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Modal, Typography } from 'antd';
+import { Button, Input, InputRef, Modal, Typography } from 'antd';
 import { t } from 'i18next';
-import React, { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import React, {
+  ChangeEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Trans } from 'react-i18next';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { EntityDeleteModalProp } from './EntityDeleteModal.interface';
@@ -27,6 +33,7 @@ const EntityDeleteModal = ({
   visible,
   bodyText,
 }: EntityDeleteModalProp) => {
+  const deleteTextInputRef = useRef<InputRef>(null);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +52,20 @@ const EntityDeleteModal = ({
   // To remove the entered text in the modal input after modal closed
   useEffect(() => {
     setName('');
+
+    // Using this method to autoFocus Input element since directly calling focus() doesn't work
+    // for the inputs inside modal. Ref - https://github.com/ant-design/ant-design/issues/8668
+    let timeout: number;
+
+    if (visible) {
+      timeout = window.setTimeout(() => {
+        deleteTextInputRef.current?.focus();
+      }, 1);
+    }
+
+    return () => {
+      clearTimeout(timeout);
+    };
   }, [visible]);
 
   return (
@@ -117,6 +138,7 @@ const EntityDeleteModal = ({
           disabled={saving}
           name="entityName"
           placeholder={t('label.delete-uppercase')}
+          ref={deleteTextInputRef}
           type="text"
           value={name}
           onChange={handleOnChange}
