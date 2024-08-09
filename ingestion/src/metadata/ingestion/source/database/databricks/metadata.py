@@ -55,8 +55,7 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
     DATABRICKS_VIEW_DEFINITIONS,
-    DESCRIBE_CATALOG,
-    DESCRIBE_SCHEMA,
+    DESCRIBE_TABLE_EXTENDED,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -298,37 +297,30 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
-def get_catalog_type(connection, schema):
-    """get databricks catalog type (Regular/Foreign)"""
-    if not schema:
-        return
-    query = DESCRIBE_SCHEMA.format(schema_name=schema)
-    rows = connection.execute(query)
-    catalog_name = None
-    for row in rows:
-        row_dict = dict(row)
-        if row_dict.get("database_description_item") == "Catalog Name":
-            catalog_name = row_dict.get("database_description_value")
-    if not catalog_name:
-        return
-
-    query = DESCRIBE_CATALOG.format(catalog_name=catalog_name)
-    rows = connection.execute(query)
-    catalog_type = None
-    for row in rows:
-        row_dict = dict(row)
-        if row_dict.get("info_name") == "Catalog Type":
-            catalog_type = row_dict.get("info_value")
-    return catalog_type
+def get_table_type(connection, schema, table):
+    """get table type (regular/foreign)"""
+    try:
+        query = DESCRIBE_TABLE_EXTENDED.format(schema_name=schema, table_name=table)
+        rows = connection.execute(query)
+        for row in rows:
+            row_dict = dict(row)
+            if row_dict.get("col_name") == "Type":
+                return row_dict.get("data_type")
+    except Exception:
+        pass
+    return
 
 
 def get_table_columns(self, connection, table_name, schema):
     """get databricks table columns"""
     full_table = table_name
+    table_type = None
     if schema:
         full_table = schema + "." + table_name
-    catalog_type = get_catalog_type(connection, schema)
-    if catalog_type == "Foreign":
+        # need to fetch table type before accessing column metadata
+        # if foreign table then skip to get column metadata
+        table_type = get_table_type(connection, schema, table_name)
+    if table_type == "FOREIGN":
         return []
     # TODO using TGetColumnsReq hangs after sending TFetchResultsReq.
     # Using DESCRIBE works but is uglier.
