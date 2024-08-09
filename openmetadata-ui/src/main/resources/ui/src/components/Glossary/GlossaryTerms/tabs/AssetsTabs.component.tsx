@@ -495,7 +495,7 @@ const AssetsTabs = forwardRef(
           <ErrorPlaceHolder
             icon={<AddPlaceHolderIcon className="h-32 w-32" />}
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph style={{ marginBottom: '0' }}>
+            <Typography.Paragraph>
               {noDataPlaceholder ??
                 t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
                   entity: t('label.asset'),

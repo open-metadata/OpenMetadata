@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
+import { SubDomain } from '../support/domain/SubDomain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
@@ -104,6 +105,20 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     .click();
 };
 
+export const selectSubDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  subDomain: SubDomain['data']
+) => {
+  await page
+    .getByRole('menuitem', { name: domain.displayName })
+    .locator('span')
+    .click();
+
+  await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  await page.getByTestId(subDomain.name).click();
+};
+
 export const selectDataProduct = async (
   page: Page,
   domain: Domain['data'],
@@ -129,13 +144,11 @@ const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
 
 const fillCommonFormItems = async (
   page: Page,
-  entity: Domain['data'] | DataProduct['data']
+  entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
   await page.locator('[data-testid="name"]').fill(entity.name);
   await page.locator('[data-testid="display-name"]').fill(entity.displayName);
   await page.fill(descriptionBox, entity.description);
-  await page.click('[data-testid="add-owner"]');
-
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner(
       page,
@@ -148,9 +161,21 @@ const fillCommonFormItems = async (
   }
 };
 
-const fillDomainForm = async (page: Page, entity: Domain['data']) => {
+const fillDomainForm = async (
+  page: Page,
+  entity: Domain['data'] | SubDomain['data'],
+  isDomain
+) => {
   await fillCommonFormItems(page, entity);
-  await page.click('[data-testid="domainType"]');
+  if (isDomain) {
+    await page.click('[data-testid="domainType"]');
+  } else {
+    await page
+      .getByLabel('Add Sub Domain')
+      .getByTestId('domainType')
+      .locator('div')
+      .click();
+  }
   await page.getByTitle(entity.domainType).locator('div').click();
 };
 
@@ -175,7 +200,12 @@ export const checkDataProductCount = async (page: Page, count: number) => {
   ).toContainText(count.toString());
 };
 
-export const verifyDomain = async (page: Page, domain: Domain['data']) => {
+export const verifyDomain = async (
+  page: Page,
+  domain: Domain['data'] | SubDomain['data'],
+  parentDomain?: Domain['data'],
+  isDomain = true
+) => {
   await checkDomainDisplayName(page, domain.displayName);
 
   const viewerContainerText = await page.textContent(
@@ -193,6 +223,13 @@ export const verifyDomain = async (page: Page, domain: Domain['data']) => {
   await expect(
     page.getByTestId('domain-type-label').locator('div')
   ).toContainText(domain.domainType);
+
+  // Check breadcrumbs
+  if (!isDomain && parentDomain) {
+    await expect(
+      page.getByRole('link', { name: parentDomain.fullyQualifiedName })
+    ).toBeVisible();
+  }
 };
 
 export const createDomain = async (
@@ -221,6 +258,21 @@ export const createDomain = async (
   await checkDomainDisplayName(page, domain.displayName);
   await checkAssetsCount(page, 0);
   await checkDataProductCount(page, 0);
+};
+
+export const createSubDomain = async (
+  page: Page,
+  subDomain: SubDomain['data']
+) => {
+  await page.getByTestId('domain-details-add-button').click();
+  await page.getByRole('menuitem', { name: 'Sub Domains' }).click();
+
+  await expect(page.getByText('Add Sub Domain')).toBeVisible();
+
+  await fillDomainForm(page, subDomain);
+  const saveRes = page.waitForResponse('/api/v1/domains');
+  await page.getByTestId('save-sub-domain').click();
+  await saveRes;
 };
 
 export const addAssetsToDomain = async (
