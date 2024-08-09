@@ -13,17 +13,18 @@
 import { useParams } from 'react-router-dom';
 import { getDecodedFqn } from '../utils/StringsUtils';
 
-type Fqn = { fqn: string; ingestionFQN: string };
+type Fqn = { fqn: string; ingestionFQN: string; ruleName: string };
 
 /**
  * @description Hook to get the decoded fqn and ingestionFQN from the url
  * @returns {fqn: string, ingestionFQN: string} - fqn and ingestionFQN from the url
  */
 export const useFqn = (): Fqn => {
-  const { fqn, ingestionFQN } = useParams<Fqn>();
+  const { fqn, ingestionFQN, ruleName } = useParams<Fqn>();
 
   return {
     fqn: fqn ? getDecodedFqn(fqn) : '',
     ingestionFQN: ingestionFQN ? getDecodedFqn(ingestionFQN) : '',
+    ruleName: ruleName ? getDecodedFqn(ruleName) : '',
   };
 };
