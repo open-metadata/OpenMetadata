@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { mockWidgetsData } from '../../../../mocks/AddWidgetModal.mock';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import AddWidgetModal from './AddWidgetModal';
@@ -73,6 +74,11 @@ describe('AddWidgetModal component', () => {
   it('AddWidgetModal should display all widgets tab from the widgets list', async () => {
     await act(async () => {
       render(<AddWidgetModal {...mockProps} />);
+    });
+
+    expect(getAllKnowledgePanels).toHaveBeenCalledWith({
+      fqnPrefix: 'KnowledgePanel',
+      limit: PAGE_SIZE_MEDIUM,
     });
 
     expect(

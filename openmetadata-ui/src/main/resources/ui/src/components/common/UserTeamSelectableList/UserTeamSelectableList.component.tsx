@@ -176,25 +176,10 @@ export const UserTeamSelectableList = ({
   };
 
   const handleUpdate = async (updateItems: EntityReference[]) => {
-    // const isMulti =
-    //   (activeTab === 'teams' && isMultiTeam) ||
-    //   (activeTab === 'users' && isMultiUser);
-
     let updateData: EntityReference[] = [];
     if (!isEmpty(updateItems)) {
       updateData = updateItems;
     }
-    // else if (isMulti) {
-    //   updateData = updateItems;
-    // } else {
-    //   updateData = {
-    //     id: updateItems[0].id,
-    //     type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
-    //     name: updateItems[0].name,
-    //     fullyQualifiedName: updateItems[0].fullyQualifiedName,
-    //     displayName: updateItems[0].displayName,
-    //   };
-    // }
 
     await onUpdate(updateData);
     setPopupVisible(false);
@@ -229,7 +214,7 @@ export const UserTeamSelectableList = ({
   };
 
   const init = async () => {
-    if (popupVisible) {
+    if (popupVisible || popoverProps?.open) {
       reset();
       if (ownerType === EntityType.USER) {
         await getTeamCount();

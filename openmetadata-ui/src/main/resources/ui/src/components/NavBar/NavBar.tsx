@@ -558,6 +558,7 @@ const NavBar = ({
               <Icon
                 className="align-middle"
                 component={Help}
+                data-testid="help-icon"
                 style={{ fontSize: '24px' }}
               />
             </Tooltip>
