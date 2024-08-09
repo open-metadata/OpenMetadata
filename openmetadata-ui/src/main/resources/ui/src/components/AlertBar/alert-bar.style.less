@@ -1,0 +1,83 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@keyframes resize-show-animation {
+  from {
+    height: 0;
+    padding: 0 20px;
+  }
+  to {
+    height: 64px;
+    padding: 20px;
+  }
+}
+
+@keyframes resize-hide-animation {
+  from {
+    height: 64px;
+    padding: 20px;
+  }
+  to {
+    height: 0;
+    padding: 0 20px;
+  }
+}
+
+.alert-container {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  overflow-y: scroll;
+
+  &.show-alert {
+    animation: resize-show-animation 0.3s ease-in-out forwards;
+  }
+
+  &.hide-alert {
+    animation: resize-hide-animation 0.3s ease-in-out forwards;
+  }
+
+  &.info {
+    background-color: #f6f8ff;
+    color: #0950c5;
+    border: none;
+    border-radius: 0px;
+  }
+
+  &.success {
+    background-color: #f5fbf8;
+    color: #1d7c4d;
+    border: none;
+    border-radius: 0px;
+  }
+
+  &.warning {
+    background-color: #fff5eb;
+    color: #f59638;
+    border: none;
+    border-radius: 0px;
+  }
+
+  &.error {
+    background-color: #fcf0f1;
+    color: #cb2531;
+    border: none;
+    border-radius: 0px;
+  }
+
+  .ant-alert-description {
+    font-size: 16px;
+  }
+}
