@@ -905,7 +905,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID runId) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatus(fqn, runId);
   }
