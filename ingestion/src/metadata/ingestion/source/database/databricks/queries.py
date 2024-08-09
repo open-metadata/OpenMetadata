@@ -56,5 +56,3 @@ DATABRICKS_GET_COLUMN_TAGS = textwrap.dedent(
 )
 
 DATABRICKS_DDL = "SHOW CREATE TABLE {table_name}"
-
-DESCRIBE_TABLE_EXTENDED = "DESCRIBE TABLE EXTENDED {schema_name}.{table_name};"

@@ -55,7 +55,6 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_TABLE_COMMENTS,
     DATABRICKS_GET_TABLE_TAGS,
     DATABRICKS_VIEW_DEFINITIONS,
-    DESCRIBE_TABLE_EXTENDED,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -300,11 +299,14 @@ def get_table_names(
 def get_table_type(connection, schema, table):
     """get table type (regular/foreign)"""
     try:
-        query = DESCRIBE_TABLE_EXTENDED.format(schema_name=schema, table_name=table)
+        query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            schema_name=schema, table_name=table
+        )
         rows = connection.execute(query)
         for row in rows:
             row_dict = dict(row)
             if row_dict.get("col_name") == "Type":
+                # get type of table
                 return row_dict.get("data_type")
     except Exception:
         pass
@@ -313,10 +315,9 @@ def get_table_type(connection, schema, table):
 
 def get_table_columns(self, connection, table_name, schema):
     """get databricks table columns"""
-    full_table = table_name
     table_type = None
     if schema:
-        full_table = schema + "." + table_name
+        table_name = schema + "." + table_name
         # need to fetch table type before accessing column metadata
         # if foreign table then skip to get column metadata
         table_type = get_table_type(connection, schema, table_name)
@@ -326,20 +327,20 @@ def get_table_columns(self, connection, table_name, schema):
     # Using DESCRIBE works but is uglier.
     try:
         # This needs the table name to be unescaped (no backticks).
-        rows = connection.execute(text("DESCRIBE {}".format(full_table))).fetchall()
+        rows = connection.execute(text("DESCRIBE {}".format(table_name))).fetchall()
     except exc.OperationalError as e:
         # Does the table exist?
         regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
-        regex = regex_fmt.format(re.escape(full_table))
+        regex = regex_fmt.format(re.escape(table_name))
         if re.search(regex, e.args[0]):
-            raise exc.NoSuchTableError(full_table)
+            raise exc.NoSuchTableError(table_name)
         else:
             raise
     else:
         # Hive is stupid: this is what I get from DESCRIBE some_schema.does_not_exist
         regex = r"Table .* does not exist"
         if len(rows) == 1 and re.match(regex, rows[0].col_name):
-            raise exc.NoSuchTableError(full_table)
+            raise exc.NoSuchTableError(table_name)
         return rows
 
 
