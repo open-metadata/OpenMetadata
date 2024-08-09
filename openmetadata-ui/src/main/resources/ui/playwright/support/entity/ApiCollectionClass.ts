@@ -235,7 +235,7 @@ export class ApiCollectionClass extends EntityClass {
     page: Page,
     owner1: string[],
     owner2: string[],
-    type?: 'Teams' | 'Users'
+    type: 'Teams' | 'Users' = 'Users'
   ): Promise<void> {
     if (type === 'Teams') {
       await addOwner(
@@ -268,6 +268,7 @@ export class ApiCollectionClass extends EntityClass {
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: this.endpoint,
+        type,
       });
       await addMultiOwner({
         page,
@@ -275,6 +276,7 @@ export class ApiCollectionClass extends EntityClass {
         activatorBtnDataTestId: 'edit-owner',
         resultTestId: 'data-assets-header',
         endpoint: this.endpoint,
+        type,
       });
       await this.verifyOwnerPropagation(page, owner2[0]);
       await removeOwner(
