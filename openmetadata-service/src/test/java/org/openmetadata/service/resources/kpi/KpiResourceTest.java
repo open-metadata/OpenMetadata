@@ -16,6 +16,7 @@ import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -47,6 +48,23 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
 
   private void createDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface;
+    Set<String> dataAssetTypes =
+        Set.of(
+            "table",
+            "storedProcedure",
+            "databaseSchema",
+            "database",
+            "chart",
+            "dashboard",
+            "dashboardDataModel",
+            "pipeline",
+            "topic",
+            "container",
+            "searchIndex",
+            "mlmodel",
+            "dataProduct",
+            "glossaryTerm",
+            "tag");
     if (getSearchRepository()
         .getSearchType()
         .equals(ElasticSearchConfiguration.SearchType.ELASTICSEARCH)) {
@@ -59,17 +77,21 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
               (os.org.opensearch.client.RestClient)
                   getSearchRepository().getSearchClient().getLowLevelClient());
     }
-
     try {
-      if (!searchInterface.dataAssetDataStreamExists("di-data-assets")) {
-        searchInterface.createDataAssetsDataStream();
+      for (String dataAssetType : dataAssetTypes) {
+        String dataStreamName =
+            String.format("%s-%s", "di-data-assets", dataAssetType).toLowerCase();
+        if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          searchInterface.createDataAssetsDataStream(dataStreamName);
+        }
       }
     } catch (IOException ex) {
-      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.");
+      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
     }
   }
 
   public void setupKpi() throws IOException {
+
     createDataAssetsDataStream();
     KPI_TARGET = new KpiTarget().withName("Percentage").withValue("80.0");
   }
