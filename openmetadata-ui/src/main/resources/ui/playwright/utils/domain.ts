@@ -164,7 +164,7 @@ const fillCommonFormItems = async (
 const fillDomainForm = async (
   page: Page,
   entity: Domain['data'] | SubDomain['data'],
-  isDomain
+  isDomain = true
 ) => {
   await fillCommonFormItems(page, entity);
   if (isDomain) {
