@@ -39,6 +39,7 @@ import {
   DRUID,
   DYNAMODB,
   ELASTIC_SEARCH,
+  EXASOL,
   FIVETRAN,
   FLINK,
   GCS,
@@ -301,6 +302,9 @@ class ServiceUtilClassBase {
 
       case this.DatabaseServiceTypeSmallCase.DynamoDB:
         return DYNAMODB;
+
+      case this.DatabaseServiceTypeSmallCase.Exasol:
+        return EXASOL;
 
       case this.DatabaseServiceTypeSmallCase.SingleStore:
         return SINGLESTORE;
