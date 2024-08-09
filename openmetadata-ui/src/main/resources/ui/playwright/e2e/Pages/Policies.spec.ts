@@ -70,9 +70,6 @@ const addRule = async (
     '✅ Valid condition'
   );
 
-  // Wait for a short period
-  await page.waitForTimeout(500);
-
   // Submit
   await page.locator('[data-testid="submit-btn"]').click();
 };
