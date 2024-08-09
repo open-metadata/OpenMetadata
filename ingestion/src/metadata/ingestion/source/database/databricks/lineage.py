@@ -42,8 +42,8 @@ class DatabricksLineageSource(DatabricksQueryParserSource, LineageSource):
                     yield TableQuery(
                         query=row.get("query_text"),
                         userName=row.get("user_name"),
-                        startTime=row.get("query_start_time_ms"),
-                        endTime=row.get("execution_end_time_ms"),
+                        startTime=str(row.get("query_start_time_ms")),
+                        endTime=str(row.get("execution_end_time_ms")),
                         analysisDate=DateTime(datetime.now()),
                         serviceName=self.config.serviceName,
                     )
