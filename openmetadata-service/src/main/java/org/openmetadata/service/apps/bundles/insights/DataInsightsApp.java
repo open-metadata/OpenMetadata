@@ -47,6 +47,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   public record Backfill(String startDate, String endDate) {}
 
+  private Optional<Boolean> recreateDataAssetsIndex;
+
   @Getter private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
@@ -55,7 +57,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     super(collectionDAO, searchRepository);
   }
 
-  private void createDataAssetsDataStream() {
+  private DataInsightsSearchInterface getSearchInterface() {
     DataInsightsSearchInterface searchInterface;
 
     if (searchRepository
@@ -70,6 +72,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
               (os.org.opensearch.client.RestClient)
                   searchRepository.getSearchClient().getLowLevelClient());
     }
+    return searchInterface;
+  }
+
+  private void createDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
       if (!searchInterface.dataAssetDataStreamExists("di-data-assets")) {
@@ -77,6 +84,18 @@ public class DataInsightsApp extends AbstractNativeApplication {
       }
     } catch (IOException ex) {
       LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
+    }
+  }
+
+  private void deleteDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
+
+    try {
+      if (searchInterface.dataAssetDataStreamExists("di-data-assets")) {
+        searchInterface.deleteDataAssetDataStream();
+      }
+    } catch (IOException ex) {
+      LOG.error("Couldn't delete DataAssets DataStream", ex);
     }
   }
 
@@ -89,6 +108,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     // Configure batchSize
     batchSize = config.getBatchSize();
+
+    // Configure recreate
+    recreateDataAssetsIndex = Optional.ofNullable(config.getRecreateDataAssetsIndex());
 
     // Configure Backfill
     Optional<BackfillConfiguration> backfillConfig =
@@ -118,6 +140,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
       if (!runType.equals(ON_DEMAND_JOB)) {
         backfill = Optional.empty();
+        recreateDataAssetsIndex = Optional.empty();
+      }
+
+      if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
+        deleteDataAssetsDataStream();
+        createDataAssetsDataStream();
       }
 
       WorkflowStats webAnalyticsStats = processWebAnalytics();

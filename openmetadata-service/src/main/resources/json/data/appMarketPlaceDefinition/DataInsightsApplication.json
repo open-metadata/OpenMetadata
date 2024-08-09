@@ -17,6 +17,7 @@
   },
   "appConfiguration": {
     "batchSize": 100,
+    "recreateDataAssetsIndex": false,
     "backfillConfiguration": {
       "enabled": false
     }
