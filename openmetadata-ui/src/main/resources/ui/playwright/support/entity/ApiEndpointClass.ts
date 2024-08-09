@@ -38,55 +38,57 @@ export class ApiEndpointClass extends EntityClass {
   private apiEndpointName = `pw-api-endpoint-${uuid()}`;
   private fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}`;
 
+  children = [
+    {
+      name: 'default',
+      dataType: 'RECORD',
+      fullyQualifiedName: `${this.fqn}.default`,
+      tags: [],
+      children: [
+        {
+          name: 'name',
+          dataType: 'RECORD',
+          fullyQualifiedName: `${this.fqn}.default.name`,
+          tags: [],
+          children: [
+            {
+              name: 'first_name',
+              dataType: 'STRING',
+              description: 'Description for schema field first_name',
+              fullyQualifiedName: `${this.fqn}.default.name.first_name`,
+              tags: [],
+            },
+            {
+              name: 'last_name',
+              dataType: 'STRING',
+              fullyQualifiedName: `${this.fqn}.default.name.last_name`,
+              tags: [],
+            },
+          ],
+        },
+        {
+          name: 'age',
+          dataType: 'INT',
+          fullyQualifiedName: `${this.fqn}.default.age`,
+          tags: [],
+        },
+        {
+          name: 'club_name',
+          dataType: 'STRING',
+          fullyQualifiedName: `${this.fqn}.default.club_name`,
+          tags: [],
+        },
+      ],
+    },
+  ];
+
   entity = {
     name: this.apiEndpointName,
     apiCollection: `${this.service.name}.${this.apiCollection.name}`,
     endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
     requestSchema: {
       schemaType: 'JSON',
-      schemaFields: [
-        {
-          name: 'default',
-          dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default`,
-          tags: [],
-          children: [
-            {
-              name: 'name',
-              dataType: 'RECORD',
-              fullyQualifiedName: `${this.fqn}.default.name`,
-              tags: [],
-              children: [
-                {
-                  name: 'first_name',
-                  dataType: 'STRING',
-                  description: 'Description for schema field first_name',
-                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
-                  tags: [],
-                },
-                {
-                  name: 'last_name',
-                  dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
-                  tags: [],
-                },
-              ],
-            },
-            {
-              name: 'age',
-              dataType: 'INT',
-              fullyQualifiedName: `${this.fqn}.default.age`,
-              tags: [],
-            },
-            {
-              name: 'club_name',
-              dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.club_name`,
-              tags: [],
-            },
-          ],
-        },
-      ],
+      schemaFields: this.children,
     },
     responseSchema: {
       schemaType: 'JSON',
@@ -143,6 +145,8 @@ export class ApiEndpointClass extends EntityClass {
     super(EntityTypeEndpoint.API_ENDPOINT);
     this.service.name = name ?? this.service.name;
     this.type = 'ApiEndpoint';
+    this.childrenTabId = 'schema';
+    this.childrenSelectorId = this.children[0].name;
   }
 
   async create(apiContext: APIRequestContext) {

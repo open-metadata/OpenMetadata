@@ -38,18 +38,21 @@ export class MlModelClass extends EntityClass {
       },
     },
   };
+
+  children = [
+    {
+      name: 'sales',
+      dataType: 'numerical',
+      description: 'Sales amount',
+    },
+  ];
+
   entity = {
     name: `pw-mlmodel-${uuid()}`,
     displayName: `pw-mlmodel-${uuid()}`,
     service: this.service.name,
     algorithm: 'Time Series',
-    mlFeatures: [
-      {
-        name: 'sales',
-        dataType: 'numerical',
-        description: 'Sales amount',
-      },
-    ],
+    mlFeatures: this.children,
   };
 
   serviceResponseData: ResponseDataType;
@@ -59,6 +62,8 @@ export class MlModelClass extends EntityClass {
     super(EntityTypeEndpoint.MlModel);
     this.service.name = name ?? this.service.name;
     this.type = 'MlModel';
+    this.childrenTabId = 'features';
+    this.childrenSelectorId = `feature-card-${this.children[0].name}`;
   }
 
   async create(apiContext: APIRequestContext) {
