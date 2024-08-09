@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Domain } from '../../../generated/entity/domains/domain';
 
 export interface SubDomainsTableProps {
   subDomains?: Domain[];
   isLoading?: boolean;
+  permissions: OperationPermission;
+  onAddSubDomain: () => void;
 }
