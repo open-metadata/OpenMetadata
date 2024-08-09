@@ -133,7 +133,6 @@ const EntityDeleteModal = ({
           </Trans>
         </Typography>
         <Input
-          autoFocus
           autoComplete="off"
           data-testid="confirmation-text-input"
           disabled={saving}
