@@ -155,7 +155,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       return omUser;
     } catch (EntityNotFoundException ex) {
       // User does not exist
-      return userRepository.create(null, getUserForLdap(email, userName, userDn));
+      return userRepository.create(null, getUserForLdap(email, userName, userDn, Boolean.FALSE));
     } catch (LDAPException e) {
       LOG.error(
           "An error occurs when reassigning roles for an LDAP user({}): {}",
@@ -218,16 +218,31 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public User lookUserInProvider(String email) {
+    LDAPConnection connection = new LDAPConnection();
     try {
-      Filter emailFilter =
-          Filter.createEqualityFilter(ldapConfiguration.getMailAttributeName(), email);
+      connection =
+          new LDAPConnection(
+              ldapConfiguration.getHost(),
+              ldapConfiguration.getPort(),
+              ldapConfiguration.getDnAdminPrincipal(),
+              ldapConfiguration.getDnAdminPassword());
+      Filter filter;
+
+      if (EmailUtil.isValidEmail(email)) {
+        filter = Filter.createEqualityFilter(ldapConfiguration.getMailAttributeName(), email);
+      } else {
+        filter = Filter.createEqualityFilter(ldapConfiguration.getUsernameAttributeName(), email);
+      }
+
       SearchRequest searchRequest =
           new SearchRequest(
               ldapConfiguration.getUserBaseDN(),
               SearchScope.SUB,
-              emailFilter,
-              ldapConfiguration.getMailAttributeName());
-      SearchResult result = ldapLookupConnectionPool.search(searchRequest);
+              filter,
+              ldapConfiguration.getMailAttributeName(),
+              ldapConfiguration.getUsernameAttributeName());
+      SearchResult result = connection.search(searchRequest);
+
       // there has to be a unique entry for username and email in LDAP under the group
       if (result.getSearchEntries().size() == 1) {
         // Get the user using DN directly
@@ -235,9 +250,11 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         String userDN = searchResultEntry.getDN();
         Attribute emailAttr =
             searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
+        Attribute userNameAttr =
+            searchResultEntry.getAttribute(ldapConfiguration.getUsernameAttributeName());
 
         if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
-          return getUserForLdap(email).withName(userDN);
+          return getUserForLdap(emailAttr.getValue(), userNameAttr.getValue()).withName(userDN);
         } else {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
@@ -250,27 +267,56 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       }
     } catch (LDAPException ex) {
       throw new CustomExceptionMessage(INTERNAL_SERVER_ERROR, "LDAP_ERROR", ex.getMessage());
+    } finally {
+      connection.close();
     }
   }
 
   private User getUserForLdap(String email) {
     String userName = email.split("@")[0];
-    return UserUtil.getUser(
-            userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(userName)
+        .withFullyQualifiedName(userName)
+        .withEmail(email)
+        .withIsBot(false)
+        .withUpdatedBy(userName)
+        .withUpdatedAt(System.currentTimeMillis())
         .withIsEmailVerified(false)
         .withAuthenticationMechanism(null);
   }
 
-  private User getUserForLdap(String email, String userName, String userDn) {
+  private User getUserForLdap(String email, String userName) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(userName)
+        .withFullyQualifiedName(userName)
+        .withEmail(email)
+        .withIsBot(false)
+        .withUpdatedBy(userName)
+        .withUpdatedAt(System.currentTimeMillis())
+        .withIsEmailVerified(false)
+        .withAuthenticationMechanism(null);
+  }
+
+  // Make ENV reAssignRole configurable in the future
+  private User getUserForLdap(String email, String userName, String userDn, Boolean reAssignRole) {
     User user =
-        UserUtil.getUser(
-                userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
+        new User()
+            .withId(UUID.randomUUID())
+            .withName(userName)
+            .withFullyQualifiedName(userName)
+            .withEmail(email)
+            .withIsBot(false)
+            .withUpdatedBy(userName)
+            .withUpdatedAt(System.currentTimeMillis())
             .withIsEmailVerified(false)
             .withAuthenticationMechanism(null);
+
     try {
-      getRoleForLdap(user, userDn, false);
+      this.getRoleForLdap(user, userDn, reAssignRole);
     } catch (LDAPException | JsonProcessingException e) {
-      LOG.error(
+       LOG.error(
           "Failed to assign roles from LDAP to OpenMetadata for the user {} due to {}",
           user.getName(),
           e.getMessage());
@@ -289,7 +335,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   private void getRoleForLdap(User user, String userDn, Boolean reAssign)
       throws LDAPException, JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
+    LDAPConnection connection = new LDAPConnection();
     try {
+      connection =
+              new LDAPConnection(
+                      ldapConfiguration.getHost(),
+                      ldapConfiguration.getPort(),
+                      ldapConfiguration.getDnAdminPrincipal(),
+                      ldapConfiguration.getDnAdminPassword());
       Filter groupFilter =
           Filter.createEqualityFilter(
               ldapConfiguration.getGroupAttributeName(),
@@ -303,7 +356,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               SearchScope.SUB,
               groupAndMemberFilter,
               ldapConfiguration.getAllAttributeName());
-      SearchResult searchResult = ldapLookupConnectionPool.search(searchRequest);
+      SearchResult searchResult = connection.search(searchRequest);
 
       // if user don't belong to any group, assign empty role list to it
       if (CollectionUtils.isEmpty(searchResult.getSearchEntries())) {
@@ -361,6 +414,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       user.setRoles(this.getReassignRoles(user, roleReferenceList, adminFlag));
 
       if (Boolean.TRUE.equals(reAssign)) {
+        // Re-assign the roles to the user
         UserUtil.addOrUpdateUser(user);
       }
     } catch (Exception ex) {
@@ -368,6 +422,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           "Failed to get user's groups from LDAP server using the DN of the user {} due to {}",
           userDn,
           ex.getMessage());
+    } finally {
+      connection.close();
     }
   }
 
