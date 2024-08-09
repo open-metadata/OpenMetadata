@@ -15,6 +15,8 @@ import traceback
 from copy import deepcopy
 from typing import Iterable, Optional, Tuple, Union
 
+from pydantic import EmailStr
+from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
@@ -35,6 +37,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -661,3 +664,41 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
         return description
+
+    def _filter_owner_name(self, owner_name: str) -> str:
+        """remove unnecessary keyword from name"""
+        pattern = r"\(Unknown\)"
+        filtered_name = re.sub(pattern, "", owner_name).strip()
+        return filtered_name
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+        """
+        try:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                schema_name=self.context.get().database_schema,
+                table_name=table_name,
+            )
+            result = self.connection.engine.execute(query)
+            owner = None
+            for row in result:
+                row_dict = dict(row)
+                if row_dict.get("col_name") == "Owner":
+                    owner = row_dict.get("data_type")
+                    break
+            if not owner:
+                return
+
+            owner = self._filter_owner_name(owner)
+            owner_ref = None
+            try:
+                owner_email = EmailStr._validate(owner)
+                owner_ref = self.metadata.get_reference_by_email(email=owner_email)
+            except PydanticCustomError:
+                owner_ref = self.metadata.get_reference_by_name(name=owner)
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+        return
