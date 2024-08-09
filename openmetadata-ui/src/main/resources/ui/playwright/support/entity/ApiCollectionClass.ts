@@ -13,13 +13,22 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
+import {
+  addMultiOwner,
+  addOwner,
+  removeOwner,
+  updateOwner,
+  visitEntityPage,
+} from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class ApiCollectionClass extends EntityClass {
+  private serviceName = `pw-api-service-${uuid()}`;
+  private apiCollectionName = `pw-api-collection-${uuid()}`;
   service = {
-    name: `pw-api-service-${uuid()}`,
+    name: this.serviceName,
     serviceType: 'REST',
     connection: {
       config: {
@@ -30,12 +39,113 @@ export class ApiCollectionClass extends EntityClass {
   };
 
   entity = {
-    name: `pw-api-collection-${uuid()}`,
+    name: this.apiCollectionName,
     service: this.service.name,
+  };
+
+  private apiEndpointName = `pw-api-endpoint-${uuid()}`;
+  private fqn = `${this.service.name}.${this.entity.name}.${this.apiEndpointName}`;
+
+  apiEndpoint = {
+    name: this.apiEndpointName,
+    apiCollection: `${this.service.name}.${this.entity.name}`,
+    endpointURL: 'https://sandbox-beta.open-metadata.org/swagger.json',
+    requestSchema: {
+      schemaType: 'JSON',
+      schemaFields: [
+        {
+          name: 'default',
+          dataType: 'RECORD',
+          fullyQualifiedName: `${this.fqn}.default`,
+          tags: [],
+          children: [
+            {
+              name: 'name',
+              dataType: 'RECORD',
+              fullyQualifiedName: `${this.fqn}.default.name`,
+              tags: [],
+              children: [
+                {
+                  name: 'first_name',
+                  dataType: 'STRING',
+                  description: 'Description for schema field first_name',
+                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
+                  tags: [],
+                },
+                {
+                  name: 'last_name',
+                  dataType: 'STRING',
+                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
+                  tags: [],
+                },
+              ],
+            },
+            {
+              name: 'age',
+              dataType: 'INT',
+              fullyQualifiedName: `${this.fqn}.default.age`,
+              tags: [],
+            },
+            {
+              name: 'club_name',
+              dataType: 'STRING',
+              fullyQualifiedName: `${this.fqn}.default.club_name`,
+              tags: [],
+            },
+          ],
+        },
+      ],
+    },
+    responseSchema: {
+      schemaType: 'JSON',
+      schemaFields: [
+        {
+          name: 'default',
+          dataType: 'RECORD',
+          fullyQualifiedName: `${this.fqn}.default`,
+          tags: [],
+          children: [
+            {
+              name: 'name',
+              dataType: 'RECORD',
+              fullyQualifiedName: `${this.fqn}.default.name`,
+              tags: [],
+              children: [
+                {
+                  name: 'first_name',
+                  dataType: 'STRING',
+                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
+                  tags: [],
+                },
+                {
+                  name: 'last_name',
+                  dataType: 'STRING',
+                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
+                  tags: [],
+                },
+              ],
+            },
+            {
+              name: 'age',
+              dataType: 'INT',
+              fullyQualifiedName: `${this.fqn}.default.age`,
+              tags: [],
+            },
+            {
+              name: 'club_name',
+              dataType: 'STRING',
+              fullyQualifiedName: `${this.fqn}.default.club_name`,
+              tags: [],
+            },
+          ],
+        },
+      ],
+    },
   };
 
   serviceResponseData: unknown;
   entityResponseData: unknown;
+  apiEndpointResponseData: unknown;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_COLLECTION);
@@ -54,15 +164,22 @@ export class ApiCollectionClass extends EntityClass {
       data: this.entity,
     });
 
+    const apiEndpointResponse = await apiContext.post('/api/v1/apiEndpoints', {
+      data: this.apiEndpoint,
+    });
+
     const service = await serviceResponse.json();
     const entity = await entityResponse.json();
+    const apiEndpoint = await apiEndpointResponse.json();
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
+    this.apiEndpointResponseData = apiEndpoint;
 
     return {
       service,
       entity,
+      apiEndpoint,
     };
   }
 
@@ -70,6 +187,7 @@ export class ApiCollectionClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      apiEndpoint: this.apiEndpointResponseData,
     };
   }
 
@@ -101,5 +219,71 @@ export class ApiCollectionClass extends EntityClass {
       service: serviceResponse.body,
       entity: this.entityResponseData,
     };
+  }
+
+  async verifyOwnerPropagation(page: Page, owner: string) {
+    await visitEntityPage({
+      page,
+      searchTerm: this.apiEndpointResponseData?.['fullyQualifiedName'],
+      dataTestId: `${this.service.name}-${this.apiEndpoint.name}`,
+    });
+    await page.getByRole('link', { name: owner }).isVisible();
+    await this.visitEntityPage(page);
+  }
+
+  override async owner(
+    page: Page,
+    owner1: string[],
+    owner2: string[],
+    type?: 'Teams' | 'Users'
+  ): Promise<void> {
+    if (type === 'Teams') {
+      await addOwner(
+        page,
+        owner1[0],
+        type,
+        this.endpoint,
+        'data-assets-header'
+      );
+      await updateOwner(
+        page,
+        owner2[0],
+        type,
+        this.endpoint,
+        'data-assets-header'
+      );
+      await this.verifyOwnerPropagation(page, owner2[0]);
+
+      await removeOwner(
+        page,
+        this.endpoint,
+        owner2[0],
+        type,
+        'data-assets-header'
+      );
+    } else {
+      await addMultiOwner({
+        page,
+        ownerNames: owner1,
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: this.endpoint,
+      });
+      await addMultiOwner({
+        page,
+        ownerNames: owner2,
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: this.endpoint,
+      });
+      await this.verifyOwnerPropagation(page, owner2[0]);
+      await removeOwner(
+        page,
+        this.endpoint,
+        owner2[0],
+        type,
+        'data-assets-header'
+      );
+    }
   }
 }
