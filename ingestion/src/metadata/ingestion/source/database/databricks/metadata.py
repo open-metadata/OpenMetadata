@@ -16,6 +16,7 @@ from copy import deepcopy
 from typing import Iterable, Optional, Tuple, Union
 
 from pydantic import EmailStr
+from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
 from sqlalchemy import types, util
 from sqlalchemy.engine import reflection
@@ -694,7 +695,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             try:
                 owner_email = EmailStr._validate(owner)
                 owner_ref = self.metadata.get_reference_by_email(email=owner_email)
-            except Exception:
+            except PydanticCustomError:
                 owner_ref = self.metadata.get_reference_by_name(name=owner)
             return owner_ref
         except Exception as exc:
