@@ -16,10 +16,11 @@ from copy import deepcopy
 from typing import Iterable, Optional, Tuple, Union
 
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
+from sqlalchemy import exc, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
+from sqlalchemy.sql import text
 from sqlalchemy.sql.sqltypes import String
 from sqlalchemy_databricks._dialect import DatabricksDialect
 
@@ -292,6 +293,54 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
+def get_table_type(connection, schema, table):
+    """get table type (regular/foreign)"""
+    try:
+        query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            schema_name=schema, table_name=table
+        )
+        rows = connection.execute(query)
+        for row in rows:
+            row_dict = dict(row)
+            if row_dict.get("col_name") == "Type":
+                # get type of table
+                return row_dict.get("data_type")
+    except Exception:
+        pass
+    return
+
+
+def get_table_columns(self, connection, table_name, schema):
+    """get databricks table columns"""
+    table_type = None
+    if schema:
+        table_name = schema + "." + table_name
+        # need to fetch table type before accessing column metadata
+        # if foreign table then skip to get column metadata
+        table_type = get_table_type(connection, schema, table_name)
+    if table_type == "FOREIGN":
+        return []
+    # TODO using TGetColumnsReq hangs after sending TFetchResultsReq.
+    # Using DESCRIBE works but is uglier.
+    try:
+        # This needs the table name to be unescaped (no backticks).
+        rows = connection.execute(text("DESCRIBE {}".format(table_name))).fetchall()
+    except exc.OperationalError as e:
+        # Does the table exist?
+        regex_fmt = r"TExecuteStatementResp.*SemanticException.*Table not found {}"
+        regex = regex_fmt.format(re.escape(table_name))
+        if re.search(regex, e.args[0]):
+            raise exc.NoSuchTableError(table_name)
+        else:
+            raise
+    else:
+        # Hive is stupid: this is what I get from DESCRIBE some_schema.does_not_exist
+        regex = r"Table .* does not exist"
+        if len(rows) == 1 and re.match(regex, rows[0].col_name):
+            raise exc.NoSuchTableError(table_name)
+        return rows
+
+
 DatabricksDialect.get_table_comment = get_table_comment
 DatabricksDialect.get_view_names = get_view_names
 DatabricksDialect.get_columns = get_columns
@@ -299,6 +348,7 @@ DatabricksDialect.get_schema_names = get_schema_names
 DatabricksDialect.get_view_definition = get_view_definition
 DatabricksDialect.get_table_names = get_table_names
 DatabricksDialect.get_all_view_definitions = get_all_view_definitions
+DatabricksDialect._get_table_columns = get_table_columns
 reflection.Inspector.get_schema_names = get_schema_names_reflection
 reflection.Inspector.get_table_ddl = get_table_ddl
 
