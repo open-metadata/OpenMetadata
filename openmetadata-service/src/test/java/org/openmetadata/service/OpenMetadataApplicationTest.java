@@ -238,6 +238,7 @@ public abstract class OpenMetadataApplicationTest {
     workflow.runMigrationWorkflows();
     Entity.cleanup();
   }
+
   @NotNull
   protected DropwizardAppExtension<OpenMetadataApplicationConfig> getApp(
       ConfigOverride[] configOverridesArray) {
