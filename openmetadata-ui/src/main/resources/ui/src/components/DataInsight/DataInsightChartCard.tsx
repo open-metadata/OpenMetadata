@@ -18,7 +18,8 @@ import {
   groupBy,
   includes,
   last,
-  map,
+  omit,
+  reduce,
   round,
   sortBy,
   startCase,
@@ -100,39 +101,48 @@ export const DataInsightChartCard = ({
   const { rightSideEntityList, latestData, graphData, changeInValue } =
     useMemo(() => {
       const results = chartData.results ?? [];
+      const timeStampResults = groupBy(results, 'day');
 
-      const groupedResults = groupBy(results, 'group');
-      const latestData: Record<string, number> = {};
-      let total = 0;
+      const test = Object.entries(timeStampResults).map(([key, value]) => {
+        const keys = value.reduce((acc, curr) => {
+          return { ...acc, [curr.group ?? 'count']: curr.count };
+        }, {});
 
-      let firstRecordTotal = 0;
-
-      Object.entries(groupedResults).forEach(([key, value]) => {
-        const newValues = sortBy(value, 'day');
-
-        latestData[key] = last(newValues)?.count ?? 0;
-
-        total += latestData[key];
-        firstRecordTotal += first(newValues)?.count ?? 0;
+        return {
+          day: +key,
+          ...keys,
+        };
       });
+
+      const finalData = sortBy(test, 'day');
+
+      const latestData: Record<string, number> = omit(
+        last(finalData ?? {}),
+        'day'
+      );
+
+      const total = reduce(latestData, (acc, value) => acc + value, 0);
+
+      const firstRecordTotal = reduce(
+        omit(first(finalData) ?? {}, 'day'),
+        (acc, value) => acc + value,
+        0
+      );
+
+      const uniqueLabels = Object.entries(latestData)
+        .sort(([, valueA], [, valueB]) => valueB - valueA)
+        .map(([key]) => key);
 
       const changeInValue = firstRecordTotal
         ? (total - firstRecordTotal) / firstRecordTotal
         : 0;
 
-      const graphData = map(groupedResults, (value, key) => ({
-        name: key,
-        data: value,
-      }));
-
-      const labels = Object.keys(groupedResults);
-
       return {
-        rightSideEntityList: labels.filter((entity) =>
+        rightSideEntityList: uniqueLabels.filter((entity) =>
           includes(toLower(entity), toLower(searchEntityKeyWord))
         ),
         latestData,
-        graphData,
+        graphData: finalData,
         changeInValue,
       };
     }, [chartData.results, searchEntityKeyWord]);
@@ -267,6 +277,7 @@ export const DataInsightChartCard = ({
             id={`${type}-graph`}>
             {renderDataInsightLineChart(
               graphData,
+              rightSideEntityList,
               activeKeys,
               activeMouseHoverKey,
               isPercentageGraph

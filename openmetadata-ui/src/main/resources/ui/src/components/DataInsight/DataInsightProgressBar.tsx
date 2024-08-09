@@ -63,7 +63,7 @@ const DataInsightProgressBar = ({
             className="data-insight-progress-bar"
             format={() => (
               <>
-                {target && (
+                {target ? (
                   <span
                     className="data-insight-kpi-target"
                     style={{ width: `${target}%` }}>
@@ -72,7 +72,7 @@ const DataInsightProgressBar = ({
                       {suffix}
                     </span>
                   </span>
-                )}
+                ) : null}
               </>
             )}
             percent={progress}
