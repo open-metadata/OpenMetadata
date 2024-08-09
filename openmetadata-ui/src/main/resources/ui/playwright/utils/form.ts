@@ -31,7 +31,7 @@ export const validateFormNameFieldInput = async ({
   if (checkEmpty) {
     // Check empty name field message
     await page.fill(fieldSelector, 'test');
-    await page.fill(fieldSelector, '');
+    await page.locator(fieldSelector).clear();
 
     await page.getByText(`${fieldName} is required`).isVisible();
   }
@@ -44,7 +44,7 @@ export const validateFormNameFieldInput = async ({
       .getByText(`${fieldName} size must be between 1 and 128`)
       .isVisible();
 
-    await page.fill(fieldSelector, '');
+    await page.locator(fieldSelector).clear();
   }
 
   await page.fill(fieldSelector, value);

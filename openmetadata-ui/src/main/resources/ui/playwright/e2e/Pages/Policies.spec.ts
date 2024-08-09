@@ -11,45 +11,26 @@
  *  limitations under the License.
  */
 import test, { expect, Page } from '@playwright/test';
+import {
+  DEFAULT_POLICIES,
+  DESCRIPTION,
+  ERROR_MESSAGE_VALIDATION,
+  NEW_RULE_DESCRIPTION,
+  NEW_RULE_NAME,
+  POLICY_NAME,
+  RULE_DESCRIPTION,
+  RULE_DETAILS,
+  RULE_NAME,
+  UPDATED_DESCRIPTION,
+  UPDATED_RULE_NAME,
+} from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import { descriptionBox, redirectToHomePage } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
 import { settingClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
-
-const policies = {
-  dataConsumerPolicy: 'Data Consumer Policy',
-  dataStewardPolicy: 'Data Steward Policy',
-  organizationPolicy: 'Organization Policy',
-  teamOnlyAccessPolicy: 'Team only access Policy',
-};
-
-const ruleDetails = {
-  resources: 'All',
-  operations: 'All',
-  effect: 'Allow',
-  condition: 'isOwner()',
-  inValidCondition: 'isOwner(',
-};
-
-const errorMessageValidation = {
-  lastPolicyCannotBeRemoved: 'At least one policy is required in a role',
-  lastRuleCannotBeRemoved: 'At least one rule is required in a policy',
-};
-
-const policyName = `Policy-test-${uuid()}`;
-const description = `This is ${policyName} description`;
-
-const ruleName = `Rule / test-${uuid()}`;
-const ruleDescription = `This is ${ruleName} description`;
-const updatedDescription = 'This is updated description';
-
-const newRuleName = `New / Rule-test-${uuid()}`;
-const newRuledescription = `This is ${newRuleName} description`;
-
-const updatedRuleName = `New-Rule-test-${uuid()}-updated`;
 
 const addRule = async (
   page: Page,
@@ -82,7 +63,7 @@ const addRule = async (
   await page.locator('[data-testid="condition"]').click();
 
   // Select condition
-  await page.locator(`[title="${ruleDetails.condition}"]`).click();
+  await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
 
   // Verify condition success
   await expect(page.locator('[data-testid="condition-success"]')).toContainText(
@@ -108,7 +89,7 @@ test.describe('Policy page should work properly', () => {
       'Default Policies and Roles should be displayed',
       async () => {
         // Verifying the default roles and policies are present
-        for (const policy of Object.values(policies)) {
+        for (const policy of Object.values(DEFAULT_POLICIES)) {
           const policyElement = page.locator('[data-testid="policy-name"]', {
             hasText: policy,
           });
@@ -125,27 +106,27 @@ test.describe('Policy page should work properly', () => {
       await expect(page.locator('[data-testid="inactive-link"]')).toBeVisible();
 
       // Enter policy name
-      await page.locator('[data-testid="policy-name"]').fill(policyName);
+      await page.locator('[data-testid="policy-name"]').fill(POLICY_NAME);
       await validateFormNameFieldInput({
         page,
-        value: policyName,
+        value: POLICY_NAME,
         fieldName: 'Name',
         fieldSelector: '[data-testid="policy-name"]',
         errorDivSelector: '#name_help',
       });
 
       // Enter description
-      await page.locator(descriptionBox).nth(0).fill(description);
+      await page.locator(descriptionBox).nth(0).fill(DESCRIPTION);
 
       // Enter rule name
-      await addRule(page, ruleName, ruleDescription, 1);
+      await addRule(page, RULE_NAME, RULE_DESCRIPTION, 1);
 
       // Validate the added policy
       await expect(page.locator('[data-testid="inactive-link"]')).toHaveText(
-        policyName
+        POLICY_NAME
       );
 
-      await page.getByText(ruleName, { exact: true }).isVisible();
+      await page.getByText(RULE_NAME, { exact: true }).isVisible();
 
       // Verify policy description
       await expect(
@@ -154,7 +135,7 @@ test.describe('Policy page should work properly', () => {
             '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
           )
           .nth(0)
-      ).toContainText(description);
+      ).toContainText(DESCRIPTION);
 
       // Verify rule description
       await expect(
@@ -163,25 +144,25 @@ test.describe('Policy page should work properly', () => {
             '[data-testid="viewer-container"] > [data-testid="markdown-parser"]'
           )
           .nth(1)
-      ).toContainText(ruleDescription);
+      ).toContainText(RULE_DESCRIPTION);
 
       // Verify other details
       await page.locator('[data-testid="rule-name"]').click();
 
       await expect(page.locator('[data-testid="resources"]')).toContainText(
-        ruleDetails.resources
+        RULE_DETAILS.resources
       );
 
       await expect(page.locator('[data-testid="operations"]')).toContainText(
-        ruleDetails.operations
+        RULE_DETAILS.operations
       );
 
       await expect(page.locator('[data-testid="effect"]')).toContainText(
-        ruleDetails.effect
+        RULE_DETAILS.effect
       );
 
       await expect(page.locator('[data-testid="condition"]')).toContainText(
-        ruleDetails.condition
+        RULE_DETAILS.condition
       );
     });
 
@@ -191,7 +172,7 @@ test.describe('Policy page should work properly', () => {
 
       await page
         .locator(descriptionBox)
-        .fill(`${updatedDescription}-${policyName}`);
+        .fill(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
 
       // Click on save
       await page.locator('[data-testid="save"]').click();
@@ -203,7 +184,7 @@ test.describe('Policy page should work properly', () => {
             '[data-testid="asset-description-container"] [data-testid="viewer-container"]'
           )
           .nth(0)
-      ).toContainText(`${updatedDescription}-${policyName}`);
+      ).toContainText(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
     });
 
     await test.step('Add new rule', async () => {
@@ -211,77 +192,77 @@ test.describe('Policy page should work properly', () => {
       await page.locator('[data-testid="add-rule"]').click();
 
       // Add rule (assuming addRule is a function you have defined elsewhere)
-      await addRule(page, newRuleName, newRuledescription, 0);
+      await addRule(page, NEW_RULE_NAME, NEW_RULE_DESCRIPTION, 0);
 
       // Validate added rule
-      await page.getByText(ruleName, { exact: true }).isVisible();
+      await page.getByText(RULE_NAME, { exact: true }).isVisible();
 
       // Verify other details
-      await page.getByText(ruleName, { exact: true }).click();
+      await page.getByText(RULE_NAME, { exact: true }).click();
 
       await expect(
         page.locator('[data-testid="resources"]').last()
-      ).toContainText(ruleDetails.resources);
+      ).toContainText(RULE_DETAILS.resources);
 
       await expect(
         page.locator('[data-testid="operations"]').last()
-      ).toContainText(ruleDetails.operations);
+      ).toContainText(RULE_DETAILS.operations);
 
       await expect(page.locator('[data-testid="effect"]').last()).toContainText(
-        ruleDetails.effect
+        RULE_DETAILS.effect
       );
 
       await expect(
         page.locator('[data-testid="condition"]').last()
-      ).toContainText(ruleDetails.condition);
+      ).toContainText(RULE_DETAILS.condition);
     });
 
     await test.step('Edit rule name for created Rule', async () => {
       // Click on new rule manage button
       await page
-        .locator(`[data-testid="manage-button-${newRuleName}"]`)
+        .locator(`[data-testid="manage-button-${NEW_RULE_NAME}"]`)
         .click();
 
       // Click on edit rule button
       await page.locator('[data-testid="edit-rule"]').click();
 
       // Enter new name
-      await page.locator('[data-testid="rule-name"]').fill(updatedRuleName);
+      await page.locator('[data-testid="rule-name"]').fill(UPDATED_RULE_NAME);
 
       // Click on submit button
       await page.locator('[data-testid="submit-btn"]').click();
 
       // Verify the URL contains the policy name
-      await expect(page).toHaveURL(new RegExp(policyName));
+      await expect(page).toHaveURL(new RegExp(POLICY_NAME));
 
       // Verify the rule name is updated
-      await page.getByText(updatedRuleName, { exact: true }).isVisible();
+      await page.getByText(UPDATED_RULE_NAME, { exact: true }).isVisible();
     });
 
     await test.step('Delete new rule', async () => {
       // Click on new rule manage button
       await page
-        .locator(`[data-testid="manage-button-${updatedRuleName}"]`)
+        .locator(`[data-testid="manage-button-${UPDATED_RULE_NAME}"]`)
         .click();
 
       // Click on delete rule button
       await page.locator('[data-testid="delete-rule"]').click();
 
       await expect(
-        page.getByText(updatedRuleName, { exact: true })
+        page.getByText(UPDATED_RULE_NAME, { exact: true })
       ).not.toBeVisible();
     });
 
     await test.step('Delete last rule and validate', async () => {
       // Click on new rule manage button
-      await page.locator(`[data-testid="manage-button-${ruleName}"]`).click();
+      await page.locator(`[data-testid="manage-button-${RULE_NAME}"]`).click();
 
       // Click on delete rule button
       await page.locator('[data-testid="delete-rule"]').click();
 
       // Validate the error message
       await expect(page.locator('.Toastify__toast-body')).toContainText(
-        errorMessageValidation.lastRuleCannotBeRemoved
+        ERROR_MESSAGE_VALIDATION.lastRuleCannotBeRemoved
       );
     });
 
@@ -292,7 +273,7 @@ test.describe('Policy page should work properly', () => {
       });
       // Click on delete action button
       await page
-        .locator(`[data-testid="delete-action-${policyName}"]`)
+        .locator(`[data-testid="delete-action-${POLICY_NAME}"]`)
         .click({ force: true });
 
       // Type 'DELETE' in the confirmation text input
@@ -305,7 +286,7 @@ test.describe('Policy page should work properly', () => {
 
       // Validate deleted policy
       await expect(
-        page.getByText(policyName, { exact: true })
+        page.getByText(POLICY_NAME, { exact: true })
       ).not.toBeVisible();
     });
   });
