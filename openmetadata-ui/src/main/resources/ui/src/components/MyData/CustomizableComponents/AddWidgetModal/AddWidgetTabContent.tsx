@@ -90,7 +90,6 @@ function AddWidgetTabContent({
                 placement="bottom"
                 title={widgetAddable ? '' : t('message.can-not-add-widget')}>
                 <Button
-                  ghost
                   className="p-x-lg m-t-md"
                   data-testid="add-widget-button"
                   disabled={!widgetAddable}

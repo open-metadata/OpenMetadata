@@ -47,7 +47,7 @@ class CustomizePageClassBase {
   defaultWidgetHeight = 3;
   landingPageWidgetMargin = 16;
   landingPageRowHeight = 100;
-  landingPageMaxGridSize = 3;
+  landingPageMaxGridSize = 4;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
     activityFeed: 6,

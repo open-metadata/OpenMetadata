@@ -13,19 +13,41 @@
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import {
   mockAddWidgetReturnValues,
+  mockAddWidgetReturnValues2,
   mockCurrentAddWidget,
 } from '../mocks/CustomizablePage.mock';
 import { getAddWidgetHandler } from './CustomizableLandingPageUtils';
 
 describe('getAddWidgetHandler function', () => {
-  it('should add new widget at EmptyWidgetPlaceholder place to be in the bottom', () => {
+  it('should add new widget at the bottom if not fit in the grid row', () => {
     const result = getAddWidgetHandler(
       mockWidget,
       'ExtraWidget.EmptyWidgetPlaceholder',
       1,
-      3
+      4
     )(mockCurrentAddWidget);
 
     expect(result).toEqual(mockAddWidgetReturnValues);
+  });
+
+  it('should add new widget at the same line if new widget can fit', () => {
+    const result = getAddWidgetHandler(
+      mockWidget,
+      'ExtraWidget.EmptyWidgetPlaceholder',
+      1,
+      4
+    )([
+      ...mockCurrentAddWidget,
+      {
+        h: 3,
+        i: 'KnowledgePanel.dataAsset',
+        w: 1,
+        x: 2,
+        y: 4,
+        static: false,
+      },
+    ]);
+
+    expect(result).toEqual(mockAddWidgetReturnValues2);
   });
 });
