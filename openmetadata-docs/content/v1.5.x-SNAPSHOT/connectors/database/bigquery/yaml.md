@@ -136,7 +136,8 @@ Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data.
 - If you prefer to pass the credentials file, you can do so as follows:
 ```yaml
 credentials:
-  gcpConfig: <path to file>
+  gcpConfig: 
+    path: <path to file>
 ```
 
 - If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave
