@@ -192,6 +192,12 @@ export class DatabaseClass extends EntityClass {
   }
 
   async verifyOwnerPropagation(page: Page, owner: string) {
+    const databaseSchemaResponse = page.waitForResponse(
+      `/api/v1/databaseSchemas/name/*${this.schema.name}?**`
+    );
+    await page.getByTestId(this.schema.name).click();
+    await databaseSchemaResponse;
+
     await visitEntityPage({
       page,
       searchTerm: this.tableResponseData?.['fullyQualifiedName'],
