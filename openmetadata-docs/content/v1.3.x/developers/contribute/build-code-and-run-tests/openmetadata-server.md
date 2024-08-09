@@ -48,7 +48,7 @@ Extract the distribution tar.gz file created on the previous step and run the fo
 
 ```shell
 cd open-metadata-<version>
-sh bootstrap/bootstrap_storage.sh drop-create-all
+sh bootstrap/openmetadata-ops.sh create
 ```
 
 ## Running the OpenMetadata server
