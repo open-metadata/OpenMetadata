@@ -2410,7 +2410,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(TABLE);
     Response response;
-    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    // Direct request to es needs to have es clusterAlias appended with indexName
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);

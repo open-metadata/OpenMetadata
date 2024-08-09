@@ -110,7 +110,7 @@ if [ $RESULT -ne 0 ]; then
   exit 1
 fi
 
-until curl -s -f "http://localhost:9200/_cat/indices/team_search_index"; do
+until curl -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_index"; do
   echo 'Checking if Elastic Search instance is up...\n'
   sleep 5
 done
