@@ -438,6 +438,19 @@ The Table Row Inserted Count To Be Between cannot be executed against tables tha
 }
 ```
 ### Compare 2 Tables for Differences
+
+Supported connectors:
+- Snowflake
+- BigQuery
+- Athena
+- Redshift
+- Postgres
+- MySQL
+- MSSQL
+- Oracle
+- Trino
+- SAP Hana
+
 Compare 2 tables and report any column or row differences. The test will fail for any column differences or row differences that
 are over the threshold.
 
