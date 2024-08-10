@@ -17,7 +17,7 @@ import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -51,8 +51,7 @@ const InitialData: Rule = {
 const EditRulePage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { ruleName } = useParams<{ ruleName: string }>();
-  const { fqn } = useFqn();
+  const { fqn, ruleName } = useFqn();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [ruleData, setRuleData] = useState<Rule>(InitialData);
