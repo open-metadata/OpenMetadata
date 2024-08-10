@@ -67,7 +67,7 @@
         "$ref": "#/definitions/testConnectionStep"
       }
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this TestConnection definition.",
       "$ref": "../../../type/entityReferenceList.json",
       "default": null
