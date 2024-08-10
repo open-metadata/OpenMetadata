@@ -377,7 +377,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception ignored) {
       }
       LOG.info(
-          "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
+          "[Reindexing] Current Available Status : {}. Reindexing is still, waiting for 10 seconds to fetch the latest status again.",
+          JsonUtils.pojoToJson(appRunRecord));
       Thread.sleep(10000);
     } while (!isRunCompleted(appRunRecord));
 
