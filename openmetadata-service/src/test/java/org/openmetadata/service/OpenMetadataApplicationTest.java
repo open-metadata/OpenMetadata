@@ -75,6 +75,7 @@ public abstract class OpenMetadataApplicationTest {
   public static final Integer ELASTIC_BATCH_SIZE = 10;
   public static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
       IndexMappingLanguage.EN;
+  public static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
   public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
       ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
@@ -256,6 +257,7 @@ public abstract class OpenMetadataApplicationTest {
         .withKeepAliveTimeoutSecs(ELASTIC_KEEP_ALIVE_TIMEOUT)
         .withBatchSize(ELASTIC_BATCH_SIZE)
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
+        .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(ELASTIC_SEARCH_TYPE);
     SearchRepository searchRepository = new SearchRepository(esConfig);
     LOG.info("creating indexes.");
@@ -313,6 +315,8 @@ public abstract class OpenMetadataApplicationTest {
         ConfigOverride.config(
             "elasticsearch.searchIndexMappingLanguage",
             ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE.value()));
+    configOverrides.add(
+        ConfigOverride.config("elasticsearch.clusterAlias", ELASTIC_SEARCH_CLUSTER_ALIAS));
     configOverrides.add(
         ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
   }

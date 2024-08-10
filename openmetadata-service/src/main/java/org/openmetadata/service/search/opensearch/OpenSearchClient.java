@@ -277,8 +277,13 @@ public class OpenSearchClient implements SearchClient {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     try {
-      List<String> aliases = indexMapping.getParentAliases(clusterAlias);
+      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
+      // Get the child aliases
+      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+
+      // Add the child aliases to the set of aliases
+      aliases.addAll(childAliases);
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
               .index(indexMapping.getIndexName(clusterAlias))
@@ -1673,7 +1678,8 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }

@@ -261,7 +261,7 @@ export const filterOptionsByIndex = (
   maxItemsPerType = 5
 ) =>
   options
-    .filter((option) => option._index === searchIndex)
+    .filter((option) => option._index.includes(searchIndex))
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
 
