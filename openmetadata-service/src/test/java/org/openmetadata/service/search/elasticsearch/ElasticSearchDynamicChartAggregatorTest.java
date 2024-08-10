@@ -130,6 +130,11 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     summaryCard.put("formula", "count(k='id.keyword')");
     assertTrue(compareRequest(cardString, summaryCard));
 
+    Map<String, Object> summaryCard1 = new LinkedHashMap<>();
+    summaryCard1.put("type", "SummaryCard");
+    summaryCard1.put("formula", "count()");
+    assertTrue(compareRequest(cardString, summaryCard1));
+
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
@@ -168,6 +173,14 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
         "count(k='id.keyword',q='hasDescription: 1')+count(k='id.keyword',q='owner.name.keyword: *')");
     lineChart4.put("groupBy", "entityType.keyword");
     assertTrue(compareRequest(lineString4, lineChart4));
+
+    Map<String, Object> lineChart41 = new LinkedHashMap<>();
+    lineChart41.put("type", "LineChart");
+    lineChart41.put(
+            "formula",
+            "count(q='hasDescription: 1')+count(q='owner.name.keyword: *')");
+    lineChart41.put("groupBy", "entityType.keyword");
+    assertTrue(compareRequest(lineString4, lineChart41));
 
     String lineString5 =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";

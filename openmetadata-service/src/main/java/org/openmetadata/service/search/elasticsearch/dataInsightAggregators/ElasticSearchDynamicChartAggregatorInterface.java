@@ -70,23 +70,29 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       FormulaHolder holder = new FormulaHolder();
       holder.setFormula(matcher.group());
       holder.setFunction(Function.valueOf(matcher.group(1).toUpperCase()));
-      holder.setField(matcher.group(2));
+      String field;
+      if (matcher.group(3) != null){
+        field = matcher.group(3);
+      }
+      else {
+        field = "id.keyword";
+      }
       ValuesSourceAggregationBuilder subAgg =
           getSubAggregationsByFunction(
-              Function.valueOf(matcher.group(1).toUpperCase()), matcher.group(2), index);
-      if (matcher.group(4) != null) {
+              Function.valueOf(matcher.group(1).toUpperCase()), field, index);
+      if (matcher.group(5) != null) {
         QueryBuilder queryBuilder;
         if (filter != null) {
           queryBuilder =
               QueryBuilders.boolQuery()
-                  .must(QueryBuilders.queryStringQuery(matcher.group(4)))
+                  .must(QueryBuilders.queryStringQuery(matcher.group(5)))
                   .must(filter);
         } else {
-          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(4));
+          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(5));
         }
         dateHistogramAggregationBuilder.subAggregation(
             AggregationBuilders.filter("filer" + index, queryBuilder).subAggregation(subAgg));
-        holder.setQuery(matcher.group(4));
+        holder.setQuery(matcher.group(5));
       } else {
         if (filter != null) {
           dateHistogramAggregationBuilder.subAggregation(
