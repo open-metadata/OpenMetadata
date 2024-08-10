@@ -61,6 +61,19 @@ export class UserClass {
     };
   }
 
+  async setAdminRole(apiContext: APIRequestContext) {
+    return this.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'replace',
+          path: '/isAdmin',
+          value: true,
+        },
+      ],
+    });
+  }
+
   async delete(apiContext: APIRequestContext) {
     const response = await apiContext.delete(
       `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=true`
