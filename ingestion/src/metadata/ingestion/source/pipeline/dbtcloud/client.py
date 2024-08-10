@@ -45,7 +45,7 @@ class DBTCloudClient:
             base_url=clean_uri(self.config.host),
             api_version="api/v2",
             auth_header=AUTHORIZATION_HEADER,
-            auth_token=lambda: (self.config.token, 0),
+            auth_token=lambda: (self.config.token.get_secret_value(), 0),
             allow_redirects=True,
         )
 
@@ -53,7 +53,7 @@ class DBTCloudClient:
             base_url=clean_uri(self.config.discoveryAPI),
             api_version="",
             auth_header=AUTHORIZATION_HEADER,
-            auth_token=lambda: (self.config.token, 0),
+            auth_token=lambda: (self.config.token.get_secret_value(), 0),
             allow_redirects=True,
         )
 
