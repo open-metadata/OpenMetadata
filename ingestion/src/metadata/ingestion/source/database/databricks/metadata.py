@@ -293,6 +293,9 @@ def get_table_names(
             table_type = get_table_type(connection, schema, table_name)
             if not table_type or table_type == "FOREIGN":
                 # skip the table if it's foreign table / error in fetching table_type
+                logger.debug(
+                    f"Skipping metadata ingestion for unsupported foreign table {table_name}"
+                )
                 continue
         tables.append(table_name)
 
