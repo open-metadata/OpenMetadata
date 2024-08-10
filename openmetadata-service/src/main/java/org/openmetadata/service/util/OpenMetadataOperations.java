@@ -269,6 +269,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
               defaultValue = "100")
           int batchSize,
       @Option(
+              names = {"-p", "--payload-size"},
+              defaultValue = "100")
+          int payloadSize,
+      @Option(
               names = {"--recreate-indexes"},
               defaultValue = "true")
           boolean recreateIndexes) {
@@ -283,14 +287,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
       AppScheduler.initialize(config, collectionDAO, searchRepository);
 
       String appName = "SearchIndexingApplication";
-      return executeSearchReindexApp(appName, batchSize, recreateIndexes);
+      return executeSearchReindexApp(appName, batchSize, payloadSize, recreateIndexes);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
     }
   }
 
-  private int executeSearchReindexApp(String appName, int batchSize, boolean recreateIndexes) {
+  private int executeSearchReindexApp(
+      String appName, int batchSize, int payloadSize, boolean recreateIndexes) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App originalSearchIndexApp =
         appRepository.getByName(null, appName, appRepository.getFields("id"));
@@ -302,6 +307,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
     updatedJob
         .withBatchSize(batchSize)
+        .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
         .withEntities(Set.of("all"));
 
