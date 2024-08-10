@@ -316,7 +316,7 @@ class DatabaseServiceSource(
         """
 
     def yield_table_tag_details(
-        self, table_name_and_type: str
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
