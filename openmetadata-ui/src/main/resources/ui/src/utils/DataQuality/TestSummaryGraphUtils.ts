@@ -87,9 +87,14 @@ export const prepareChartData = ({
 
   dataPoints.reverse();
 
+  // get params from the result
+  const testCaseResultParams = testCaseResults.find(
+    (result) => result.testResultValue?.length
+  );
+
   return {
     information:
-      testCaseResults[0]?.testResultValue?.map((info, i) => ({
+      testCaseResultParams?.testResultValue?.map((info, i) => ({
         label: info.name ?? '',
         color: COLORS[i],
       })) ?? [],
