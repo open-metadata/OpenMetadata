@@ -225,9 +225,7 @@ class SupersetSourceMixin(DashboardServiceSource):
 
     def _clearn_column_datatype(self, datatype: str) -> str:
         """clean datatype of column fetched from superset"""
-        if "()" in datatype:
-            datatype = datatype.replace("()", "")
-        return datatype
+        return datatype.replace("()", "")
 
     def get_column_info(
         self, data_source: List[Union[DataSourceResult, FetchColumn]]
