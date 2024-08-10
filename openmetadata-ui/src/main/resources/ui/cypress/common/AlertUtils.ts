@@ -376,6 +376,12 @@ export const verifyAlertDetails = (
   }
 
   if (!isEmpty(destinations)) {
+    // Check connection timeout details
+    cy.get('[data-testid="connection-timeout"]').should(
+      'contain',
+      destinations[0].timeout
+    );
+
     destinations.forEach((destination) => {
       // Check Destination category
       cy.get(
@@ -389,12 +395,10 @@ export const verifyAlertDetails = (
 
       if (!isEmpty(destination.config?.secretKey)) {
         // Check secret key is present
-        destination.config.receivers.forEach((receiver) => {
-          cy.get(`[data-testid="destination-${destination.category}"]`).should(
-            'contain',
-            'Secret Key'
-          );
-        });
+        cy.get(`[data-testid="destination-${destination.category}"]`).should(
+          'contain',
+          'Secret Key'
+        );
       }
 
       if (!isEmpty(destination.config?.receivers)) {

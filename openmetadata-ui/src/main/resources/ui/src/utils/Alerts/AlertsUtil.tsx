@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Input, Select, Switch, Tooltip } from 'antd';
+import {
+  Checkbox,
+  Col,
+  Divider,
+  Input,
+  Row,
+  Select,
+  Switch,
+  Tooltip,
+} from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
@@ -44,6 +53,7 @@ import {
 } from '../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
+import { ModifiedCreateEventSubscription } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
@@ -292,6 +302,30 @@ export const getSupportedFilterOptions = (
     disabled: selectedFilters?.some((d) => d.name === func.name),
   }));
 
+export const getConnectionTimeoutField = () => (
+  <>
+    <Row align="middle">
+      <Col span={7}>{`${t('label.connection-timeout')} (${t(
+        'label.second-plural'
+      )})`}</Col>
+      <Col span={1}>:</Col>
+      <Col data-testid="connection-timeout" span={16}>
+        <Form.Item name="timeout">
+          <Input
+            data-testid="connection-timeout-input"
+            defaultValue={10}
+            placeholder={`${t('label.connection-timeout')} (${t(
+              'label.second-plural'
+            )})`}
+            type="number"
+          />
+        </Form.Item>
+      </Col>
+    </Row>
+    <Divider className="p-x-xs" />
+  </>
+);
+
 export const getDestinationConfigField = (
   type: SubscriptionType | SubscriptionCategory,
   fieldName: number
@@ -321,15 +355,21 @@ export const getDestinationConfigField = (
             </Form.Item>
           </Col>
           {type === SubscriptionType.Webhook && (
-            <Col span={12}>
-              <Form.Item name={[fieldName, 'config', 'secretKey']}>
-                <Input.Password
-                  data-testid={`secret-key-input-${fieldName}`}
-                  placeholder={`${t('label.secret-key')} (${t(
-                    'label.optional'
-                  )})`}
-                />
-              </Form.Item>
+            <Col span={24}>
+              <Row align="middle">
+                <Col span={7}>{t('label.secret-key')}</Col>
+                <Col span={1}>:</Col>
+                <Col data-testid="secret-key" span={16}>
+                  <Form.Item name={[fieldName, 'config', 'secretKey']}>
+                    <Input.Password
+                      data-testid={`secret-key-input-${fieldName}`}
+                      placeholder={`${t('label.secret-key')} (${t(
+                        'label.optional'
+                      )})`}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
             </Col>
           )}
         </>
@@ -769,14 +809,14 @@ export const handleAlertSave = async ({
   afterSaveAction,
   setInlineAlertDetails,
 }: {
-  data: CreateEventSubscription;
+  data: ModifiedCreateEventSubscription;
   createAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
   updateAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
-  afterSaveAction: () => void;
+  afterSaveAction: () => Promise<void>;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
   fqn?: string;
 }) => {
@@ -785,6 +825,7 @@ export const handleAlertSave = async ({
       type: d.type,
       config: d.config,
       category: d.category,
+      timeout: data.timeout,
     }));
 
     if (fqn && !isUndefined(alert)) {
@@ -817,8 +858,10 @@ export const handleAlertSave = async ({
 
       await updateAlertAPI(newData);
     } else {
+      // Remove timeout from alert object since it's only for UI
+      const { timeout, ...finalData } = data;
       await createAlertAPI({
-        ...data,
+        ...finalData,
         destinations,
       });
     }

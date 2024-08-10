@@ -32,6 +32,7 @@ import { searchData } from '../../rest/miscAPI';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
+  getConnectionTimeoutField,
   getDestinationConfigField,
   getDisplayNameForEntities,
   getFieldByArgumentType,
@@ -532,5 +533,17 @@ describe('getFieldByArgumentType tests', () => {
     const secretKeyInput = screen.queryByTestId('secret-key-input-4');
 
     expect(secretKeyInput).toBeNull();
+  });
+
+  it('getConnectionTimeoutField should return the connection timeout field', () => {
+    const field = getConnectionTimeoutField();
+
+    render(field);
+
+    expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
+
+    const input = screen.getByTestId('connection-timeout-input');
+
+    expect(input).toHaveValue(10);
   });
 });

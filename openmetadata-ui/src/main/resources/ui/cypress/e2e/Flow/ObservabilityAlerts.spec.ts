@@ -261,6 +261,11 @@ describe(
       addGetSchemaChangesAction(0);
 
       // Select Destination
+      cy.get('[data-testid="connection-timeout-input"]')
+        .scrollIntoView()
+        .clear()
+        .type('26');
+
       cy.get('[data-testid="add-destination-button"]').scrollIntoView().click();
 
       addInternalDestination(0, 'Admins', 'Email');
