@@ -42,9 +42,11 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -153,6 +155,91 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
 
     updateAndCheckEntity(
         createAPIEndpoint, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+  }
+
+  @Test
+  void put_patch_endPointAttributes_200_ok(TestInfo test) throws IOException {
+    APISchema responseSchema = new APISchema().withSchemaFields(api_response_fields);
+    CreateAPIEndpoint createAPIEndpoint =
+        createRequest(test)
+            .withOwners(List.of(USER1_REF))
+            .withRequestMethod(APIRequestMethod.GET)
+            .withEndpointURL(URI.create("https://localhost:8585/api/v1/users"))
+            .withResponseSchema(responseSchema);
+
+    // Patch and update the topic
+    APIEndpoint apiEndpoint = createEntity(createAPIEndpoint, ADMIN_AUTH_HEADERS);
+    createAPIEndpoint
+        .withOwners(List.of(TEAM11_REF))
+        .withResponseSchema(responseSchema)
+        .withRequestMethod(APIRequestMethod.POST);
+
+    ChangeDescription change = getChangeDescription(apiEndpoint, MINOR_UPDATE);
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldUpdated(change, "requestMethod", "GET", "POST");
+
+    updateAndCheckEntity(
+        createAPIEndpoint, Response.Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    APIEndpoint endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    String endpointJson = JsonUtils.pojoToJson(endpoint);
+    List<Field> fields = endpoint.getResponseSchema().getSchemaFields();
+    assertFields(api_response_fields, fields);
+    fields.get(0).getTags().add(PERSONAL_DATA_TAG_LABEL);
+    fields.get(0).getTags().add(PII_SENSITIVE_TAG_LABEL);
+    endpoint.getResponseSchema().setSchemaFields(fields);
+    patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    List<TagLabel> tags = fields.get(0).getTags();
+    for (TagLabel tag : tags) {
+      assertTrue(tag.equals(PERSONAL_DATA_TAG_LABEL) || tag.equals(PII_SENSITIVE_TAG_LABEL));
+    }
+    endpointJson = JsonUtils.pojoToJson(endpoint);
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    fields.get(0).getTags().remove(PERSONAL_DATA_TAG_LABEL);
+    endpoint.getResponseSchema().setSchemaFields(fields);
+    patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    tags = fields.get(0).getTags();
+    assertEquals(1, tags.size());
+    for (TagLabel tag : tags) {
+      assertEquals(tag, PII_SENSITIVE_TAG_LABEL);
+    }
+
+    // add 2 new tags
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    endpointJson = JsonUtils.pojoToJson(endpoint);
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    fields.get(0).getTags().add(PERSONAL_DATA_TAG_LABEL);
+    fields.get(0).getTags().add(USER_ADDRESS_TAG_LABEL);
+    patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    tags = fields.get(0).getTags();
+    assertEquals(3, tags.size());
+    for (TagLabel tag : tags) {
+      assertTrue(
+          tag.equals(PERSONAL_DATA_TAG_LABEL)
+              || tag.equals(PII_SENSITIVE_TAG_LABEL)
+              || tag.equals(USER_ADDRESS_TAG_LABEL));
+    }
+
+    // remove 1 tag
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    endpointJson = JsonUtils.pojoToJson(endpoint);
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    fields.get(0).getTags().remove(PERSONAL_DATA_TAG_LABEL);
+    patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    tags = fields.get(0).getTags();
+    assertEquals(2, tags.size());
+    for (TagLabel tag : tags) {
+      assertTrue(tag.equals(PII_SENSITIVE_TAG_LABEL) || tag.equals(USER_ADDRESS_TAG_LABEL));
+    }
   }
 
   @Override
