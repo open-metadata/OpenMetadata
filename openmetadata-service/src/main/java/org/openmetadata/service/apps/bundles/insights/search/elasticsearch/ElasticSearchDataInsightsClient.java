@@ -67,4 +67,9 @@ public class ElasticSearchDataInsightsClient implements DataInsightsSearchInterf
         "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
     createDataStream("di-data-assets");
   }
+
+  @Override
+  public void deleteDataAssetDataStream() throws IOException {
+    performRequest("DELETE", "/_data_stream/di-data-assets");
+  }
 }

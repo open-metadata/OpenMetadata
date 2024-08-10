@@ -13,6 +13,13 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
+import {
+  addMultiOwner,
+  addOwner,
+  removeOwner,
+  updateOwner,
+  visitEntityPage,
+} from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
@@ -41,9 +48,66 @@ export class DatabaseClass extends EntityClass {
     name: `pw-database-${uuid()}`,
     service: this.service.name,
   };
+  schema = {
+    name: `pw-database-schema-${uuid()}`,
+    database: `${this.service.name}.${this.entity.name}`,
+  };
+
+  table = {
+    name: `pw-table-${uuid()}`,
+    description: 'description',
+    columns: [
+      {
+        name: 'user_id',
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+      },
+      {
+        name: 'shop_id',
+        dataType: 'NUMERIC',
+        dataTypeDisplay: 'numeric',
+        description:
+          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+      },
+      {
+        name: 'name',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Name of the staff member.',
+        children: [
+          {
+            name: 'first_name',
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar',
+            description: 'First name of the staff member.',
+          },
+          {
+            name: 'last_name',
+            dataType: 'VARCHAR',
+            dataLength: 100,
+            dataTypeDisplay: 'varchar',
+          },
+        ],
+      },
+      {
+        name: 'email',
+        dataType: 'VARCHAR',
+        dataLength: 100,
+        dataTypeDisplay: 'varchar',
+        description: 'Email address of the staff member.',
+      },
+    ],
+    databaseSchema: `${this.service.name}.${this.entity.name}.${this.schema.name}`,
+  };
 
   serviceResponseData: unknown;
   entityResponseData: unknown;
+  schemaResponseData: unknown;
+  tableResponseData: unknown;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Database);
@@ -62,15 +126,29 @@ export class DatabaseClass extends EntityClass {
       data: this.entity,
     });
 
+    const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
+      data: this.schema,
+    });
+
+    const tableResponse = await apiContext.post('/api/v1/tables', {
+      data: this.table,
+    });
+
     const service = await serviceResponse.json();
     const entity = await entityResponse.json();
+    const schema = await schemaResponse.json();
+    const table = await tableResponse.json();
 
     this.serviceResponseData = service;
     this.entityResponseData = entity;
+    this.schemaResponseData = schema;
+    this.tableResponseData = table;
 
     return {
       service,
       entity,
+      table,
+      schema,
     };
   }
 
@@ -78,6 +156,8 @@ export class DatabaseClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+      schema: this.schemaResponseData,
+      table: this.tableResponseData,
     };
   }
 
@@ -109,5 +189,79 @@ export class DatabaseClass extends EntityClass {
       service: serviceResponse.body,
       entity: this.entityResponseData,
     };
+  }
+
+  async verifyOwnerPropagation(page: Page, owner: string) {
+    const databaseSchemaResponse = page.waitForResponse(
+      `/api/v1/databaseSchemas/name/*${this.schema.name}?**`
+    );
+    await page.getByTestId(this.schema.name).click();
+    await databaseSchemaResponse;
+
+    await visitEntityPage({
+      page,
+      searchTerm: this.tableResponseData?.['fullyQualifiedName'],
+      dataTestId: `${this.service.name}-${this.table.name}`,
+    });
+    await page.getByRole('link', { name: owner }).isVisible();
+    await this.visitEntityPage(page);
+  }
+
+  override async owner(
+    page: Page,
+    owner1: string[],
+    owner2: string[],
+    type: 'Teams' | 'Users' = 'Users'
+  ): Promise<void> {
+    if (type === 'Teams') {
+      await addOwner(
+        page,
+        owner1[0],
+        type,
+        this.endpoint,
+        'data-assets-header'
+      );
+      await updateOwner(
+        page,
+        owner2[0],
+        type,
+        this.endpoint,
+        'data-assets-header'
+      );
+      await this.verifyOwnerPropagation(page, owner2[0]);
+
+      await removeOwner(
+        page,
+        this.endpoint,
+        owner2[0],
+        type,
+        'data-assets-header'
+      );
+    } else {
+      await addMultiOwner({
+        page,
+        ownerNames: owner1,
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: this.endpoint,
+        type,
+      });
+      await addMultiOwner({
+        page,
+        ownerNames: owner2,
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: this.endpoint,
+        type,
+      });
+      await this.verifyOwnerPropagation(page, owner2[0]);
+      await removeOwner(
+        page,
+        this.endpoint,
+        owner2[0],
+        type,
+        'data-assets-header'
+      );
+    }
   }
 }
