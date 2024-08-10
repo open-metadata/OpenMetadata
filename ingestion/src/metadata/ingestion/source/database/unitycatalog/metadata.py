@@ -50,6 +50,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -61,6 +62,7 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
+from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.connection import get_connection
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
@@ -99,6 +101,7 @@ class UnitycatalogSource(
         )
         self.external_location_map = {}
         self.client = get_connection(self.service_connection)
+        self.api_client = UnityCatalogClient(self.service_connection)
         self.connection_obj = self.client
         self.table_constraints = []
         self.context.storage_location = None
@@ -330,6 +333,7 @@ class UnitycatalogSource(
                         schema_name=schema_name,
                     )
                 ),
+                owners=self.get_owner_ref(table_name),
             )
             yield Either(right=table_request)
 
@@ -537,3 +541,19 @@ class UnitycatalogSource(
 
     def close(self):
         """Nothing to close"""
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+        """
+        try:
+            full_table_name = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
+            owner = self.api_client.get_owner_info(full_table_name)
+            if not owner:
+                return
+            owner_ref = self.metadata.get_reference_by_email(email=owner)
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+        return
