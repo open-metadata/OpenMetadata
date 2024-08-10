@@ -46,6 +46,7 @@ import {
   ArgumentsInput,
   EventSubscription,
   ProviderType,
+  SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
@@ -220,6 +221,18 @@ function AlertDetailsPage({
               <Col data-testid="destination-type" span={20}>
                 {startCase(destination.type)}
               </Col>
+              {destination.type === SubscriptionType.Webhook &&
+                destination.config?.secretKey && (
+                  <>
+                    <Col className="font-medium" span={3}>
+                      {t('label.secret-key')}
+                    </Col>
+                    <Col span={1}>:</Col>
+                    <Col data-testid="secret-key" span={20}>
+                      {destination.config.secretKey}
+                    </Col>
+                  </>
+                )}
               {!isEmpty(destination.config?.receivers) &&
                 !isNil(destination.config?.receivers) && (
                   <>

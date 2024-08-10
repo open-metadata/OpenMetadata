@@ -302,23 +302,37 @@ export const getDestinationConfigField = (
     case SubscriptionType.GChat:
     case SubscriptionType.Webhook:
       return (
-        <Col span={12}>
-          <Form.Item
-            name={[fieldName, 'config', 'endpoint']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.endpoint-url'),
-                }),
-              },
-            ]}>
-            <Input
-              data-testid={`endpoint-input-${fieldName}`}
-              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-            />
-          </Form.Item>
-        </Col>
+        <>
+          <Col span={12}>
+            <Form.Item
+              name={[fieldName, 'config', 'endpoint']}
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.endpoint-url'),
+                  }),
+                },
+              ]}>
+              <Input
+                data-testid={`endpoint-input-${fieldName}`}
+                placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+              />
+            </Form.Item>
+          </Col>
+          {type === SubscriptionType.Webhook && (
+            <Col span={12}>
+              <Form.Item name={[fieldName, 'config', 'secretKey']}>
+                <Input.Password
+                  data-testid={`secret-key-input-${fieldName}`}
+                  placeholder={`${t('label.secret-key')} (${t(
+                    'label.optional'
+                  )})`}
+                />
+              </Form.Item>
+            </Col>
+          )}
+        </>
       );
     case SubscriptionType.Email:
       return (

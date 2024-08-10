@@ -504,7 +504,8 @@ describe(
                 addExternalDestination(
                   destinationNumber,
                   destination.category,
-                  destination.inputValue
+                  destination.inputValue,
+                  destination.secretKey
                 );
               }
             }

@@ -32,6 +32,7 @@ import { searchData } from '../../rest/miscAPI';
 import {
   getAlertActionTypeDisplayName,
   getAlertsActionTypeIcon,
+  getDestinationConfigField,
   getDisplayNameForEntities,
   getFieldByArgumentType,
   getFilteredDestinationOptions,
@@ -182,7 +183,10 @@ describe('AlertsUtil tests', () => {
       results.map((result) =>
         expect(
           mockExternalDestinationOptions.includes(
-            result.value as SubscriptionType
+            result.value as Exclude<
+              SubscriptionType,
+              SubscriptionType.ActivityFeed
+            >
           )
         ).toBeTruthy()
       );
@@ -222,7 +226,10 @@ describe('AlertsUtil tests', () => {
       results.map((result) =>
         expect(
           mockNonTaskInternalDestinationOptions.includes(
-            result.value as SubscriptionCategory
+            result.value as Exclude<
+              SubscriptionCategory,
+              SubscriptionCategory.External | SubscriptionCategory.Assignees
+            >
           )
         ).toBeTruthy()
       );
@@ -503,5 +510,27 @@ describe('getFieldByArgumentType tests', () => {
     const selectDiv = screen.queryByText('AsyncSelect');
 
     expect(selectDiv).toBeNull();
+  });
+
+  it('getDestinationConfigField should return secretKey field for webhook type', () => {
+    const field = getDestinationConfigField(SubscriptionType.Webhook, 4) ?? (
+      <></>
+    );
+
+    render(field);
+
+    const secretKeyInput = screen.getByTestId('secret-key-input-4');
+
+    expect(secretKeyInput).toBeInTheDocument();
+  });
+
+  it('getDestinationConfigField should not return secretKey field for or other type', () => {
+    const field = getDestinationConfigField(SubscriptionType.Email, 4) ?? <></>;
+
+    render(field);
+
+    const secretKeyInput = screen.queryByTestId('secret-key-input-4');
+
+    expect(secretKeyInput).toBeNull();
   });
 });
