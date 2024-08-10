@@ -311,7 +311,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         .withRecreateIndex(recreateIndexes)
         .withEntities(Set.of("all"));
 
-    // Update the search index app with the new batch size and recreate index flag
+    // Update the search index app with the new batch size, payload size and recreate index flag
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
     updatedSearchIndexApp.withAppConfiguration(updatedJob);
     JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
