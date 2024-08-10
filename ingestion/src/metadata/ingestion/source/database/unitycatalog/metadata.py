@@ -49,7 +49,11 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -451,12 +455,12 @@ class UnitycatalogSource(
         """
         try:
             if column.children is None:
-                if column_json.metadata:
-                    column.description = column_json.metadata.comment
+                if column_json.metadata and column_json.metadata.comment:
+                    column.description = Markdown(column_json.metadata.comment)
             else:
                 for i, child in enumerate(column.children):
-                    if column_json.metadata:
-                        column.description = column_json.metadata.comment
+                    if column_json.metadata and column_json.metadata.comment:
+                        column.description = Markdown(column_json.metadata.comment)
                     if (
                         column_json.type
                         and isinstance(column_json.type, Type)
@@ -497,7 +501,8 @@ class UnitycatalogSource(
             )
             parsed_string["name"] = column.name[:256]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-            parsed_string["description"] = column.comment
+            if column.comment:
+                parsed_string["description"] = Markdown(column.comment)
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,
