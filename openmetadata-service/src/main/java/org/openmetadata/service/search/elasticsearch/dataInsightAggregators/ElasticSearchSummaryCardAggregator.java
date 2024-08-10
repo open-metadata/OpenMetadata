@@ -71,7 +71,7 @@ public class ElasticSearchSummaryCardAggregator
             searchResponse.getAggregations().asList(), summaryCard.getFormula(), null, formulas);
 
     List<DataInsightCustomChartResult> finalResults = new ArrayList<>();
-    for (int i = results.size() - 1; i >= 0; i++) {
+    for (int i = results.size() - 1; i >= 0; i--) {
       if (results.get(i).getCount() != null) {
         finalResults.add(results.get(i));
         resultList.setResults(finalResults);

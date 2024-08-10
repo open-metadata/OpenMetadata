@@ -601,21 +601,18 @@ export const isPercentageSystemGraph = (graph: SystemChartType) => {
     SystemChartType.PercentageOfDataAssetWithOwner,
     SystemChartType.PercentageOfServiceWithDescription,
     SystemChartType.PercentageOfServiceWithOwner,
-    SystemChartType.TotalDataAssetsByTier,
   ].includes(graph);
 };
 
 export const renderDataInsightLineChart = (
-  graphData: {
-    name: string;
-    data: { day: number; count: number }[];
-  }[],
+  graphData: Array<Record<string, number>>,
+  labels: string[],
   activeKeys: string[],
   activeMouseHoverKey: string,
-  isPercentage = true
+  isPercentage: boolean
 ) => {
   return (
-    <LineChart margin={BAR_CHART_MARGIN}>
+    <LineChart data={graphData} margin={BAR_CHART_MARGIN}>
       <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} vertical={false} />
       <Tooltip
         content={
@@ -630,24 +627,26 @@ export const renderDataInsightLineChart = (
         type="category"
       />
       <YAxis
-        dataKey="count"
-        tickFormatter={(value: number) => axisTickFormatter(value, '%')}
+        tickFormatter={
+          isPercentage
+            ? (value: number) => axisTickFormatter(value, '%')
+            : undefined
+        }
       />
 
-      {graphData.map((s, i) => (
+      {labels.map((s, i) => (
         <Line
-          data={s.data}
-          dataKey="count"
+          dataKey={s}
           hide={
-            activeKeys.length && s.name !== activeMouseHoverKey
-              ? !activeKeys.includes(s.name)
+            activeKeys.length && s !== activeMouseHoverKey
+              ? !activeKeys.includes(s)
               : false
           }
-          key={s.name}
-          name={s.name}
+          key={s}
+          name={s}
           stroke={TOTAL_ENTITY_CHART_COLOR[i] ?? getRandomHexColor()}
           strokeOpacity={
-            isEmpty(activeMouseHoverKey) || s.name === activeMouseHoverKey
+            isEmpty(activeMouseHoverKey) || s === activeMouseHoverKey
               ? DEFAULT_CHART_OPACITY
               : HOVER_CHART_OPACITY
           }
@@ -674,10 +673,10 @@ export const getQueryFilterForDataInsightChart = (
             bool: {
               must: [
                 ...(tierFilter
-                  ? [{ term: { 'tier.tagFQN': tierFilter } }]
+                  ? [{ term: { 'tier.keyword': tierFilter } }]
                   : []),
                 ...(teamFilter
-                  ? [{ term: { 'owner.displayName.keyword': teamFilter } }]
+                  ? [{ term: { 'owners.displayName.keyword': teamFilter } }]
                   : []),
               ],
             },
