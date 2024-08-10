@@ -110,6 +110,7 @@ import { DomainFormType, DomainTabs } from '../DomainPage.interface';
 import DataProductsTab from '../DomainTabs/DataProductsTab/DataProductsTab.component';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
 import DocumentationTab from '../DomainTabs/DocumentationTab/DocumentationTab.component';
+import SubDomainsTable from '../SubDomainsTable/SubDomainsTable.component';
 import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
 
 const DomainDetailsPage = ({
@@ -205,15 +206,11 @@ const DomainDetailsPage = ({
       key: '1',
       onClick: () => setAssetModalVisible(true),
     },
-    ...(isSubDomain
-      ? []
-      : [
-          {
-            label: t('label.sub-domain-plural'),
-            key: '2',
-            onClick: () => setShowAddSubDomainModal(true),
-          },
-        ]),
+    {
+      label: t('label.sub-domain-plural'),
+      key: '2',
+      onClick: () => setShowAddSubDomainModal(true),
+    },
     {
       label: t('label.data-product-plural'),
       key: '3',
@@ -512,15 +509,32 @@ const DomainDetailsPage = ({
         children: (
           <DocumentationTab
             domain={domain}
-            isSubDomainsLoading={isSubDomainsLoading}
             isVersionsView={isVersionsView}
-            subDomains={subDomains}
             onUpdate={(data: Domain | DataProduct) => onUpdate(data as Domain)}
           />
         ),
       },
       ...(!isVersionsView
         ? [
+            {
+              label: (
+                <TabsLabel
+                  count={subDomains.length ?? 0}
+                  id={DomainTabs.SUBDOMAINS}
+                  isActive={activeTab === DomainTabs.SUBDOMAINS}
+                  name={t('label.sub-domain-plural')}
+                />
+              ),
+              key: DomainTabs.SUBDOMAINS,
+              children: (
+                <SubDomainsTable
+                  isLoading={isSubDomainsLoading}
+                  permissions={domainPermission}
+                  subDomains={subDomains}
+                  onAddSubDomain={() => setShowAddSubDomainModal(true)}
+                />
+              ),
+            },
             {
               label: (
                 <TabsLabel

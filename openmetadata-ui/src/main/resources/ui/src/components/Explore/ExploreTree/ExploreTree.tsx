@@ -25,7 +25,7 @@ import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/CommonUtils';
-import { getEntityNameLabel } from '../../../utils/EntityUtils';
+import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
   getQuickFilterObject,
@@ -33,6 +33,7 @@ import {
   updateTreeData,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -167,7 +168,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 className={classNames({
                   'm-l-xss': !logo,
                 })}>
-                {isEntityType ? getEntityNameLabel(bucket.key) : bucket.key}
+                {isEntityType ? getPluralizeEntityName(bucket.key) : bucket.key}
               </Typography.Text>
               {isEntityType && <span>{getCountBadge(bucket.doc_count)}</span>}
             </div>

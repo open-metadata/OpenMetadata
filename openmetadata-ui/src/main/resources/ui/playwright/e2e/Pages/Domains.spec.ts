@@ -16,6 +16,7 @@ import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
+import { SubDomain } from '../../support/domain/SubDomain';
 import { ENTITY_PATH } from '../../support/entity/Entity.interface';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -26,9 +27,11 @@ import {
   checkAssetsCount,
   createDataProduct,
   createDomain,
+  createSubDomain,
   removeAssetsFromDataProduct,
   selectDataProduct,
   selectDomain,
+  selectSubDomain,
   setupAssetsForDomain,
   verifyDomain,
 } from '../../utils/domain';
@@ -184,6 +187,31 @@ test.describe('Domains', () => {
     await checkAssetsCount(page, assets.length);
     await domain.delete(apiContext);
     await assetCleanup();
+    await afterAction();
+  });
+
+  test('Create nested sub domain', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const subDomain = new SubDomain(domain);
+    const nestedSubDomain = new SubDomain(subDomain);
+
+    await domain.create(apiContext);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.reload();
+    await selectDomain(page, domain.data);
+    // Create sub domain
+    await createSubDomain(page, subDomain.data);
+    await selectSubDomain(page, domain.data, subDomain.data);
+    await verifyDomain(page, subDomain.data, domain.data, false);
+
+    // Create new sub domain under the existing sub domain
+    await createSubDomain(page, nestedSubDomain.data);
+    await page.getByTestId('subdomains').getByText('Sub Domains').click();
+    await page.getByTestId(nestedSubDomain.data.name).click();
+    await verifyDomain(page, nestedSubDomain.data, domain.data, false);
+
+    await domain.delete(apiContext);
     await afterAction();
   });
 });

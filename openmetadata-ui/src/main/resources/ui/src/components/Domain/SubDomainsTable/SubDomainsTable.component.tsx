@@ -12,10 +12,11 @@
  */
 import { Table } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { isEmpty } from 'lodash';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   Domain,
   EntityReference,
@@ -31,9 +32,10 @@ import { SubDomainsTableProps } from './SubDomainsTable.interface';
 const SubDomainsTable = ({
   subDomains = [],
   isLoading = false,
+  permissions,
+  onAddSubDomain,
 }: SubDomainsTableProps) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
 
   const columns: ColumnsType<Domain> = useMemo(() => {
     const data = [
@@ -79,19 +81,28 @@ const SubDomainsTable = ({
     ];
 
     return data;
-  }, [subDomains, permissions]);
+  }, [subDomains]);
 
   if (isLoading) {
     return <Loader />;
   }
 
-  if (subDomains.length === 0) {
-    return <ErrorPlaceHolder />;
+  if (isEmpty(subDomains) && !isLoading) {
+    return (
+      <ErrorPlaceHolder
+        className="m-t-xlg"
+        heading={t('label.sub-domain')}
+        permission={permissions.Create}
+        type={ERROR_PLACEHOLDER_TYPE.CREATE}
+        onClick={onAddSubDomain}
+      />
+    );
   }
 
   return (
     <Table
       bordered
+      className="p-md"
       columns={columns}
       dataSource={subDomains}
       pagination={false}
