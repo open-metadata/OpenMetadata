@@ -29,6 +29,12 @@ AUTHENTICATION_CLIENT_ID=open-metadata # Update with your Client ID
 AUTHENTICATION_CALLBACK_URL=http://localhost:8585/callback
 ```
 
+{% note %}
+
+Altering the order of claims in `jwtPrincipalClaims` may lead to problems when matching a user from a token with an existing user in the system. The mapping process relies on the specific order of claims, so changing it can result in inconsistencies or authentication failures, as the system cannot ensure correct user mapping with a new claim order.
+
+{% /note %}
+
 ## 2. Start Docker
 
 ```commandline
