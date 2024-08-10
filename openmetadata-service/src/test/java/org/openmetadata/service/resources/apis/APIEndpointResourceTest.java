@@ -158,7 +158,7 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
   }
 
   @Test
-  void put_patch_endPointAttributes_200_ok(TestInfo test) throws IOException {
+  void put_patch_endPointTags_200_ok(TestInfo test) throws IOException {
     APISchema responseSchema = new APISchema().withSchemaFields(api_response_fields);
     CreateAPIEndpoint createAPIEndpoint =
         createRequest(test)
@@ -240,6 +240,30 @@ public class APIEndpointResourceTest extends EntityResourceTest<APIEndpoint, Cre
     for (TagLabel tag : tags) {
       assertTrue(tag.equals(PII_SENSITIVE_TAG_LABEL) || tag.equals(USER_ADDRESS_TAG_LABEL));
     }
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    endpointJson = JsonUtils.pojoToJson(endpoint);
+    endpoint.setRequestSchema(RESPONSE_SCHEMA);
+    patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    List<Field> requestFields = endpoint.getRequestSchema().getSchemaFields();
+    assertFields(api_response_fields, requestFields);
+    requestFields.get(0).getTags().add(PII_SENSITIVE_TAG_LABEL);
+    requestFields.get(0).getTags().add(USER_ADDRESS_TAG_LABEL);
+    patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    endpointJson = JsonUtils.pojoToJson(endpoint);
+    requestFields = endpoint.getRequestSchema().getSchemaFields();
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    requestFields.get(0).getTags().remove(PII_SENSITIVE_TAG_LABEL);
+    fields.get(0).getTags().remove(USER_ADDRESS_TAG_LABEL);
+    patchEntity(endpoint.getId(), endpointJson, endpoint, ADMIN_AUTH_HEADERS);
+    endpoint = getAPIEndpoint(apiEndpoint.getId(), "tags", ADMIN_AUTH_HEADERS);
+    requestFields = endpoint.getRequestSchema().getSchemaFields();
+    fields = endpoint.getResponseSchema().getSchemaFields();
+    assertEquals(1, requestFields.get(0).getTags().size());
+    assertEquals(1, fields.get(0).getTags().size());
+    assertEquals(USER_ADDRESS_TAG_LABEL, requestFields.get(0).getTags().get(0));
+    assertEquals(PII_SENSITIVE_TAG_LABEL, fields.get(0).getTags().get(0));
   }
 
   @Override
