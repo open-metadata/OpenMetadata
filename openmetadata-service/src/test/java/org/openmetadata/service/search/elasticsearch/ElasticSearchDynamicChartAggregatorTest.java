@@ -176,9 +176,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
 
     Map<String, Object> lineChart41 = new LinkedHashMap<>();
     lineChart41.put("type", "LineChart");
-    lineChart41.put(
-            "formula",
-            "count(q='hasDescription: 1')+count(q='owner.name.keyword: *')");
+    lineChart41.put("formula", "count(q='hasDescription: 1')+count(q='owner.name.keyword: *')");
     lineChart41.put("groupBy", "entityType.keyword");
     assertTrue(compareRequest(lineString4, lineChart41));
 

@@ -128,7 +128,7 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("formula", "count(k='id.keyword')");
     assertTrue(compareRequest(cardString, summaryCard));
-    
+
     Map<String, Object> summaryCard1 = new LinkedHashMap<>();
     summaryCard1.put("type", "SummaryCard");
     summaryCard1.put("formula", "count()");
@@ -173,12 +173,9 @@ public class OpenSearchDynamicChartAggregatorTest extends OpenMetadataApplicatio
     lineChart4.put("groupBy", "entityType.keyword");
     assertTrue(compareRequest(lineString4, lineChart4));
 
-
     Map<String, Object> lineChart41 = new LinkedHashMap<>();
     lineChart41.put("type", "LineChart");
-    lineChart41.put(
-            "formula",
-            "count(q='hasDescription: 1')+count(q='owner.name.keyword: *')");
+    lineChart41.put("formula", "count(q='hasDescription: 1')+count(q='owner.name.keyword: *')");
     lineChart41.put("groupBy", "entityType.keyword");
     assertTrue(compareRequest(lineString4, lineChart41));
 

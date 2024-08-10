@@ -71,10 +71,9 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       holder.setFormula(matcher.group());
       holder.setFunction(Function.valueOf(matcher.group(1).toUpperCase()));
       String field;
-      if (matcher.group(3) != null){
+      if (matcher.group(3) != null) {
         field = matcher.group(3);
-      }
-      else {
+      } else {
         field = "id.keyword";
       }
       ValuesSourceAggregationBuilder subAgg =
