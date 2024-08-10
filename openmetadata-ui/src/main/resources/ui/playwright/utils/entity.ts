@@ -74,12 +74,13 @@ export const addOwner = async ({
     await page.getByRole('tab', { name: type }).click();
   }
 
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
+  await searchUser;
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
@@ -114,12 +115,14 @@ export const updateOwner = async ({
   await page.getByTestId('edit-owner').click();
   await page.getByRole('tab', { name: type }).click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
   await page
     .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
     .fill(owner);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
-  );
+  await searchUser;
 
   if (type === 'Teams') {
     const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
@@ -602,15 +605,18 @@ export const removeGlossaryTermFromChildren = async ({
 };
 
 export const upVote = async (page: Page, endPoint: string) => {
+  const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+
   await page.getByTestId('up-vote-btn').click();
-  await page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+  await patchRequest;
 
   await expect(page.getByTestId('up-vote-count')).toContainText('1');
 };
 
 export const downVote = async (page: Page, endPoint: string) => {
+  const patchRequest = page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
   await page.getByTestId('down-vote-btn').click();
-  await page.waitForResponse(`/api/v1/${endPoint}/*/vote`);
+  await patchRequest;
 
   await expect(page.getByTestId('down-vote-count')).toContainText('1');
 };
@@ -684,8 +690,11 @@ const announcementForm = async (
   );
 
   await page.locator('#announcement-submit').scrollIntoViewIfNeeded();
+  const announcementSubmit = page.waitForResponse(
+    '/api/v1/feed?entityLink=*type=Announcement*'
+  );
   await page.click('#announcement-submit');
-  await page.waitForResponse('/api/v1/feed?entityLink=*type=Announcement*');
+  await announcementSubmit;
   await page.click('.Toastify__close-button');
 };
 
