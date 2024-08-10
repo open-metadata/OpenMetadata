@@ -62,6 +62,7 @@ from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSou
 from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from metadata.ingestion.source.dashboard.superset.models import (
     FetchChart,
+    FetchColumn,
     FetchDashboard,
     SupersetChart,
     SupersetDashboardCount,
@@ -211,6 +212,11 @@ EXPECTED_CHART_2 = CreateChartRequest(
     lifeCycle=None,
     sourceHash=None,
 )
+MOCK_DATASOURCE = [
+    FetchColumn(
+        id=11, type="INT()", column_name="Population", table_name="sample_table"
+    )
+]
 
 # EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
 # EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
@@ -602,3 +608,11 @@ class SupersetUnitTest(TestCase):
             ),
             "/app/superset_home/superset.db",
         )
+
+    def test_broken_column_type_in_datamodel(self):
+        """
+        Test column parsing with column containing () in datatype
+        """
+        self.superset_db.prepare()
+        parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
+        assert parsed_datasource[0].dataType.value == "INT"
