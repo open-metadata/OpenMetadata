@@ -208,5 +208,42 @@ export const mockAddWidgetReturnValues = [
     x: 0,
     y: 100,
   },
-  { h: 3, i: 'KnowledgePanel.Following-1', static: false, w: 1, x: 0, y: 6 },
+  { h: 3, i: 'KnowledgePanel.Following-1', static: false, w: 1, x: 0, y: 4 },
+];
+
+export const mockAddWidgetReturnValues2 = [
+  {
+    h: 6,
+    i: 'KnowledgePanel.ActivityFeed',
+    static: false,
+    w: 3,
+    x: 0,
+    y: 0,
+  },
+  {
+    h: 3,
+    i: 'KnowledgePanel.RecentlyViewed',
+    static: false,
+    w: 1,
+    x: 3,
+    y: 3,
+  },
+  {
+    h: 2,
+    i: 'ExtraWidget.EmptyWidgetPlaceholder',
+    isDraggable: false,
+    static: false,
+    w: 4,
+    x: 0,
+    y: 100,
+  },
+  {
+    h: 3,
+    i: 'KnowledgePanel.dataAsset',
+    w: 1,
+    x: 2,
+    y: 4,
+    static: false,
+  },
+  { h: 3, i: 'KnowledgePanel.Following-2', static: false, w: 1, x: 3, y: 4 },
 ];
