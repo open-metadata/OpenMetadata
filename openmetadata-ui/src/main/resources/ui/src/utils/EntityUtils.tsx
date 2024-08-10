@@ -2312,3 +2312,24 @@ export const getEntityNameLabel = (entityName?: string) => {
     startCase(entityName)
   );
 };
+
+export const getPluralizeEntityName = (entityType?: string) => {
+  const entityNameLabels = {
+    [EntityType.TABLE]: t('label.table-plural'),
+    [EntityType.TOPIC]: t('label.topic-plural'),
+    [EntityType.PIPELINE]: t('label.pipeline-plural'),
+    [EntityType.CONTAINER]: t('label.container-plural'),
+    [EntityType.DASHBOARD]: t('label.dashboard-plural'),
+    [EntityType.STORED_PROCEDURE]: t('label.stored-procedure-plural'),
+    [EntityType.MLMODEL]: t('label.ml-model-plural'),
+    [EntityType.DASHBOARD_DATA_MODEL]: t('label.data-model-plural'),
+    [EntityType.SEARCH_INDEX]: t('label.search-index-plural'),
+    [EntityType.API_COLLECTION]: t('label.api-collection-plural'),
+    [EntityType.API_ENDPOINT]: t('label.api-endpoint-plural'),
+  };
+
+  return (
+    entityNameLabels[entityType as keyof typeof entityNameLabels] ||
+    getEntityNameLabel(entityType)
+  );
+};
