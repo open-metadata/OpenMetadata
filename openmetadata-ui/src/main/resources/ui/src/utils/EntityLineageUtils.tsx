@@ -79,6 +79,7 @@ import {
 } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddLineage, EntitiesEdge } from '../generated/api/lineage/addLineage';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
@@ -574,6 +575,10 @@ export const getEntityChildrenAndLabel = (
     },
     [EntityType.TOPIC]: {
       data: (node as Topic).messageSchema?.schemaFields ?? [],
+      label: t('label.field-plural'),
+    },
+    [EntityType.API_ENDPOINT]: {
+      data: (node as APIEndpoint)?.responseSchema?.schemaFields ?? [],
       label: t('label.field-plural'),
     },
     [EntityType.SEARCH_INDEX]: {
