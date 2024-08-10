@@ -103,18 +103,20 @@ export const DataInsightChartCard = ({
       const results = chartData.results ?? [];
       const timeStampResults = groupBy(results, 'day');
 
-      const test = Object.entries(timeStampResults).map(([key, value]) => {
-        const keys = value.reduce((acc, curr) => {
-          return { ...acc, [curr.group ?? 'count']: curr.count };
-        }, {});
+      const graphResults = Object.entries(timeStampResults).map(
+        ([key, value]) => {
+          const keys = value.reduce((acc, curr) => {
+            return { ...acc, [curr.group ?? 'count']: curr.count };
+          }, {});
 
-        return {
-          day: +key,
-          ...keys,
-        };
-      });
+          return {
+            day: +key,
+            ...keys,
+          };
+        }
+      );
 
-      const finalData = sortBy(test, 'day');
+      const finalData = sortBy(graphResults, 'day');
 
       const latestData: Record<string, number> = omit(
         last(finalData ?? {}),
