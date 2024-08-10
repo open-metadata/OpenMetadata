@@ -10,12 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SidebarItem } from '../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from './common';
 
 const BASE_WAIT_TIME = 5000;
 const RETRY_TIMES = 4;
-let isSuccessStatus = false;
 
 const waitForTimer = (timer: number, count: number) => {
   // retry after waiting with log1 method [4s,8s,16s,32s,64s]
@@ -37,51 +35,15 @@ export const checkDataInsightSuccessStatus = (
   );
 
   // the latest run should be success
-  cy.get('[data-testid="app-run-history-table"]').then(($ingestionTable) => {
-    if ($ingestionTable.find('[data-testid="pipeline-status"]').length) {
-      cy.get('[data-testid="app-run-history-table"]')
-        .find('[data-testid="pipeline-status"]')
-        .first()
-        .then(($ingestionStatus) => {
-          if (
-            $ingestionStatus.text() !== 'Success' &&
-            $ingestionStatus.text() !== 'Failed' &&
-            count <= RETRY_TIMES
-          ) {
-            waitForTimer(timer, count);
-          } else {
-            if ($ingestionStatus.text() === 'Success') {
-              expect($ingestionStatus.text()).eq('Success');
-
-              isSuccessStatus = true;
-            }
-
-            isSuccessStatus = false;
-          }
-        });
-    } else if (count <= RETRY_TIMES) {
-      waitForTimer(timer, count);
-    } else {
-      isSuccessStatus = false;
-    }
-  });
-};
-
-export const verifyKpiChart = () => {
-  interceptURL(
-    'GET',
-    '/api/v1/analytics/dataInsights/charts/aggregate?*',
-    'dataInsightsChart'
-  );
-  checkDataInsightSuccessStatus();
-
-  cy.sidebarClick(SidebarItem.DATA_INSIGHT);
-  verifyResponseStatusCode('@dataInsightsChart', 200);
-  cy.get('[data-testid="search-dropdown-Team"]').should('be.visible');
-  cy.get('[data-testid="search-dropdown-Tier"]').should('be.visible');
-  cy.get('[data-testid="summary-card"]').should('be.visible');
-  cy.get('[data-testid="kpi-card"]').should('be.visible');
-  if (isSuccessStatus) {
-    cy.get('#kpi-chart').scrollIntoView().should('be.visible');
-  }
+  cy.get('[data-testid="pipeline-status"]')
+    .invoke('text')
+    .then((pipelineStatus) => {
+      if (pipelineStatus === 'Running' && count <= RETRY_TIMES) {
+        waitForTimer(timer, count);
+      } else if (pipelineStatus === 'Failed' || pipelineStatus === 'Success') {
+        expect(pipelineStatus).eq('Success');
+      } else if (count <= RETRY_TIMES) {
+        waitForTimer(timer, count);
+      }
+    });
 };
