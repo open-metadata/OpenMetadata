@@ -313,4 +313,112 @@ describe('prepareChartData', () => {
       showAILearningBanner: true,
     });
   });
+
+  it('should show calculate test case result params accurately', () => {
+    const testObj = {
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          timestamp: 1720525804736,
+          testCaseStatus: 'Aborted',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+        },
+        {
+          timestamp: 1720525503943,
+          testCaseStatus: 'Failed',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [
+            {
+              name: 'max',
+              value: '1720520076998',
+            },
+          ],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          minBound: 1720165283528,
+        },
+      ],
+      entityThread: [],
+    } as PrepareChartDataType;
+
+    const result = prepareChartData(testObj);
+
+    expect(result).toEqual({
+      data: [
+        {
+          boundArea: undefined,
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          max: 1720520076998,
+          name: 1720525503943,
+          status: 'Failed',
+          task: undefined,
+        },
+        {
+          boundArea: undefined,
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          name: 1720525804736,
+          status: 'Aborted',
+          task: undefined,
+        },
+      ],
+      information: [
+        {
+          color: '#7147E8',
+          label: 'max',
+        },
+      ],
+      showAILearningBanner: true,
+    });
+  });
+
+  it('should not calculate params for aborted test', () => {
+    const testObj = {
+      testCaseParameterValue: [],
+      testCaseResults: [
+        {
+          timestamp: 1720525804736,
+          testCaseStatus: 'Aborted',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+        },
+        {
+          timestamp: 1720525503943,
+          testCaseStatus: 'Aborted',
+          result:
+            'Found max=1720520076998 vs.  the expected min=1720165283528.0, max=1720275283528.0.',
+          testResultValue: [],
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+        },
+      ],
+      entityThread: [],
+    } as PrepareChartDataType;
+
+    const result = prepareChartData(testObj);
+
+    expect(result).toEqual({
+      data: [
+        {
+          boundArea: undefined,
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          name: 1720525503943,
+          status: 'Aborted',
+          task: undefined,
+        },
+        {
+          boundArea: undefined,
+          incidentId: '3093dbee-196b-4284-9f97-7103063d0dd7',
+          name: 1720525804736,
+          status: 'Aborted',
+          task: undefined,
+        },
+      ],
+      information: [],
+      showAILearningBanner: true,
+    });
+  });
 });
