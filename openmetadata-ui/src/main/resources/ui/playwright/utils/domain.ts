@@ -269,7 +269,7 @@ export const createSubDomain = async (
 
   await expect(page.getByText('Add Sub Domain')).toBeVisible();
 
-  await fillDomainForm(page, subDomain);
+  await fillDomainForm(page, subDomain, false);
   const saveRes = page.waitForResponse('/api/v1/domains');
   await page.getByTestId('save-sub-domain').click();
   await saveRes;
