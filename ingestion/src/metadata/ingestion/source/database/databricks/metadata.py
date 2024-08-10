@@ -18,7 +18,7 @@ from typing import Iterable, Optional, Tuple, Union
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
+from sqlalchemy import exc, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
@@ -286,13 +286,40 @@ def get_table_names(
         # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
         # else it is hive with 1 column in the result
         if len(row) > 1:
-            tables.append(row[1])
+            table_name = row[1]
         else:
-            tables.append(row[0])
+            table_name = row[0]
+        if schema:
+            table_type = get_table_type(connection, schema, table_name)
+            if not table_type or table_type == "FOREIGN":
+                # skip the table if it's foreign table / error in fetching table_type
+                logger.debug(
+                    f"Skipping metadata ingestion for unsupported foreign table {table_name}"
+                )
+                continue
+        tables.append(table_name)
+
     # "SHOW TABLES" command in hive also fetches view names
     # Below code filters out view names from table names
     views = self.get_view_names(connection, schema)
     return [table for table in tables if table not in views]
+
+
+def get_table_type(connection, schema, table):
+    """get table type (regular/foreign)"""
+    try:
+        query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            schema_name=schema, table_name=table
+        )
+        rows = connection.execute(query)
+        for row in rows:
+            row_dict = dict(row)
+            if row_dict.get("col_name") == "Type":
+                # get type of table
+                return row_dict.get("data_type")
+    except Exception:
+        pass
+    return
 
 
 DatabricksDialect.get_table_comment = get_table_comment
