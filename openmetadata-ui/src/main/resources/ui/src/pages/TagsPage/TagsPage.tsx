@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Space, Tooltip, Typography } from 'antd';
+import { Badge, Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -545,26 +545,22 @@ const TagsPage = () => {
                 {t('label.classification-plural')}
               </Typography.Text>
               {createClassificationPermission && (
-                <Tooltip title={t('message.no-permission-for-action')}>
-                  <Button
-                    block
-                    className=" text-primary"
-                    data-testid="add-classification"
-                    onClick={() => {
-                      setIsAddingClassification((prevState) => !prevState);
-                    }}>
-                    <div className="d-flex items-center justify-center">
-                      <PlusIcon className="anticon" />
-                      <Typography.Text
-                        className="p-l-xss"
-                        ellipsis={{ tooltip: true }}>
-                        {t('label.add-entity', {
-                          entity: t('label.classification'),
-                        })}
-                      </Typography.Text>
-                    </div>
-                  </Button>
-                </Tooltip>
+                <Button
+                  block
+                  className=" text-primary"
+                  data-testid="add-classification"
+                  icon={<PlusIcon className="align-middle" />}
+                  onClick={() => {
+                    setIsAddingClassification((prevState) => !prevState);
+                  }}>
+                  <Typography.Text
+                    className="p-l-xss"
+                    ellipsis={{ tooltip: true }}>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </Typography.Text>
+                </Button>
               )}
             </Space>
 
