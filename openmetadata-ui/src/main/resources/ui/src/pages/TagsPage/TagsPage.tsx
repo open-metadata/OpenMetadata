@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Space, Tooltip, Typography } from 'antd';
+import { Badge, Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -544,31 +544,24 @@ const TagsPage = () => {
               <Typography.Text className="text-sm font-semibold">
                 {t('label.classification-plural')}
               </Typography.Text>
-              <Tooltip
-                title={
-                  !createClassificationPermission &&
-                  t('message.no-permission-for-action')
-                }>
+              {createClassificationPermission && (
                 <Button
                   block
                   className=" text-primary"
                   data-testid="add-classification"
-                  disabled={!createClassificationPermission}
+                  icon={<PlusIcon className="align-middle" />}
                   onClick={() => {
                     setIsAddingClassification((prevState) => !prevState);
                   }}>
-                  <div className="d-flex items-center justify-center">
-                    <PlusIcon className="anticon" />
-                    <Typography.Text
-                      className="p-l-xss"
-                      ellipsis={{ tooltip: true }}>
-                      {t('label.add-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </Typography.Text>
-                  </div>
+                  <Typography.Text
+                    className="p-l-xss"
+                    ellipsis={{ tooltip: true }}>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </Typography.Text>
                 </Button>
-              </Tooltip>
+              )}
             </Space>
 
             {classifications.map((category: Classification) => (
