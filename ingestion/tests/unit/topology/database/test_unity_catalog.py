@@ -14,8 +14,20 @@ Test unitycatalog using the topology
 """
 
 from unittest import TestCase
-from unittest import mock
 from unittest.mock import patch
+
+from databricks.sdk.service.catalog import (
+    CatalogInfo,
+    CatalogInfoSecurableKind,
+    CatalogType,
+    ColumnInfo,
+    ColumnTypeName,
+    DataSourceFormat,
+    IsolationMode,
+    SchemaInfo,
+    TableInfo,
+)
+from databricks.sdk.service.catalog import TableType as DatabricksTableType
 
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -34,20 +46,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
-from databricks.sdk.service.catalog import (
-    CatalogInfo,
-    CatalogType,
-    IsolationMode,
-    CatalogInfoSecurableKind,
-    SchemaInfo,
-    TableType as DatabricksTableType,
-    TableInfo,
-    ColumnInfo,
-    ColumnTypeName,
-    DataSourceFormat,
-)
 
 # pylint: disable=line-too-long
 mock_unitycatalog_config = {
@@ -1075,8 +1074,8 @@ class unitycatalogUnitTest(TestCase):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
             self.unitycatalog_source.get_database_schema_names()
         )
-        
-    @patch('databricks.sdk.service.catalog.TablesAPI.list')
+
+    @patch("databricks.sdk.service.catalog.TablesAPI.list")
     def test_get_tables_name_and_type(self, mock_list):
         mock_list.return_value = MOCK_TABLE_INFO
         tables = self.unitycatalog_source.get_tables_name_and_type()
@@ -1110,5 +1109,3 @@ class unitycatalogUnitTest(TestCase):
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):
             self.assertEqual(expected, original)
-
-    
