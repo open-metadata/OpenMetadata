@@ -96,7 +96,7 @@ export const UserTab = ({
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
     setIsLoading(true);
     getUsers({
-      fields: `${TabSpecificField.TEAMS},${TabSpecificField.ROLES}`,
+      fields: `${TabSpecificField.ROLES}`,
       limit: pageSize,
       team,
       ...paging,
@@ -182,7 +182,8 @@ export const UserTab = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
-      ...commonUserDetailColumns(),
+      // will not show teams column in the Team Page
+      ...commonUserDetailColumns().filter((item) => item.key !== 'teams'),
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
