@@ -144,10 +144,13 @@ export const CustomEdge = ({
       isStrokeNeeded = isColumnHighlighted;
     }
 
+    const opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0.25;
+
     return {
       ...style,
       ...{
         stroke: isStrokeNeeded ? theme.primaryColor : undefined,
+        opacity,
       },
     };
   }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
