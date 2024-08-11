@@ -544,31 +544,28 @@ const TagsPage = () => {
               <Typography.Text className="text-sm font-semibold">
                 {t('label.classification-plural')}
               </Typography.Text>
-              <Tooltip
-                title={
-                  !createClassificationPermission &&
-                  t('message.no-permission-for-action')
-                }>
-                <Button
-                  block
-                  className=" text-primary"
-                  data-testid="add-classification"
-                  disabled={!createClassificationPermission}
-                  onClick={() => {
-                    setIsAddingClassification((prevState) => !prevState);
-                  }}>
-                  <div className="d-flex items-center justify-center">
-                    <PlusIcon className="anticon" />
-                    <Typography.Text
-                      className="p-l-xss"
-                      ellipsis={{ tooltip: true }}>
-                      {t('label.add-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </Typography.Text>
-                  </div>
-                </Button>
-              </Tooltip>
+              {createClassificationPermission && (
+                <Tooltip title={t('message.no-permission-for-action')}>
+                  <Button
+                    block
+                    className=" text-primary"
+                    data-testid="add-classification"
+                    onClick={() => {
+                      setIsAddingClassification((prevState) => !prevState);
+                    }}>
+                    <div className="d-flex items-center justify-center">
+                      <PlusIcon className="anticon" />
+                      <Typography.Text
+                        className="p-l-xss"
+                        ellipsis={{ tooltip: true }}>
+                        {t('label.add-entity', {
+                          entity: t('label.classification'),
+                        })}
+                      </Typography.Text>
+                    </div>
+                  </Button>
+                </Tooltip>
+              )}
             </Space>
 
             {classifications.map((category: Classification) => (
