@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getCurrentMillis } from '../../../src/utils/date-time/DateTimeUtils';
 import { uuid } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import {
@@ -217,6 +218,30 @@ const prepareDataQualityTestCasesViaREST = ({
           testDefinition: 'tableColumnCountToBeBetween',
           testSuite: testSuite.name,
         },
+      }).then((response) => {
+        const testCaseFqn = response.body.fullyQualifiedName;
+
+        cy.request({
+          method: 'PUT',
+          url: `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            result:
+              'Found min=10001, max=27809 vs. the expected min=90001, max=96162.',
+            testCaseStatus: 'Failed',
+            testResultValue: [
+              {
+                name: 'minValueForMaxInCol',
+                value: '10001',
+              },
+              {
+                name: 'maxValueForMaxInCol',
+                value: '27809',
+              },
+            ],
+            timestamp: getCurrentMillis(),
+          },
+        });
       });
     });
     cy.request({
@@ -245,11 +270,6 @@ const prepareDataQualityTestCasesViaREST = ({
         headers: { Authorization: `Bearer ${token}` },
       })
     );
-  });
-
-  triggerTestCasePipeline({
-    serviceName: serviceName,
-    tableName: tableName,
   });
 };
 
