@@ -247,8 +247,6 @@ def update_mssql_ischema_names(ischema_names):
             "nvarchar": create_sqlalchemy_type("NVARCHAR"),
             "nchar": create_sqlalchemy_type("NCHAR"),
             "ntext": create_sqlalchemy_type("NTEXT"),
-            "hierarchyid": create_sqlalchemy_type("HIERARCHYID"),
-            "geography": create_sqlalchemy_type("GEOGRAPHY"),
             "bit": create_sqlalchemy_type("BIT"),
             "image": create_sqlalchemy_type("IMAGE"),
             "binary": create_sqlalchemy_type("BINARY"),
