@@ -13,7 +13,7 @@
 Test unitycatalog using the topology
 """
 
-from typing import Iterable, List
+from typing import List
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -36,7 +36,12 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
-from metadata.generated.schema.entity.data.table import Column, DataType, TableType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    DataType,
+    TableType,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -45,7 +50,11 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
@@ -313,7 +322,7 @@ MOCK_TABLE_INFO = TableInfo(
     ],
     comment=None,
     created_at=1713519443052,
-    created_by="akash.j@deuexsolutions.com",
+    created_by="test@open-metadata.org",
     data_access_configuration_id="00000000-0000-0000-0000-000000000000",
     data_source_format=DataSourceFormat.DELTA,
     deleted_at=None,
@@ -324,7 +333,7 @@ MOCK_TABLE_INFO = TableInfo(
     full_name="demo.default.complex_data",
     metastore_id="3849887a-24ae-4b8e-a470-9d953589f80e",
     name="complex_data",
-    owner="akash.j@deuexsolutions.com",
+    owner="test@open-metadata.org",
     pipeline_id=None,
     properties={
         "delta.lastCommitTimestamp": "1713519423000",
@@ -345,7 +354,7 @@ MOCK_TABLE_INFO = TableInfo(
     table_id="fe201793-8483-4edd-90a7-d27332d1418a",
     table_type=DatabricksTableType.MANAGED,
     updated_at=1713519443052,
-    updated_by="akash.j@deuexsolutions.com",
+    updated_by="test@open-metadata.org",
     view_definition=None,
     view_dependencies=None,
 )
@@ -467,99 +476,207 @@ EXPTECTED_DATABASE_SCHEMA = [
 
 
 EXPTECTED_TABLE = [
-    CreateTableRequest(
-        name="newtable",
-        displayName="newtable",
-        description="this is a description for dataset input",
-        tableType=TableType.Regular.value,
-        columns=[
-            Column(
-                name="amount",
-                displayName=None,
-                dataType=DataType.DOUBLE.value,
-                arrayDataType=None,
-                dataLength=None,
-                precision=None,
-                scale=None,
-                dataTypeDisplay=None,
-                description=Markdown(""),
-                fullyQualifiedName=None,
-                tags=None,
-                constraint=None,
-                ordinalPosition=1,
-                jsonSchema=None,
-                children=None,
-                customMetrics=None,
-                profile=None,
+    Either(
+        right=CreateTableRequest(
+            name=EntityName(root="complex_data"),
+            displayName=None,
+            description=None,
+            tableType=TableType.Regular,
+            columns=[
+                Column(
+                    name=ColumnName(root="id"),
+                    displayName=None,
+                    dataType=DataType.INT,
+                    arrayDataType=None,
+                    dataLength=1,
+                    precision=None,
+                    scale=None,
+                    dataTypeDisplay="int",
+                    description=None,
+                    fullyQualifiedName=None,
+                    tags=None,
+                    constraint=None,
+                    ordinalPosition=None,
+                    jsonSchema=None,
+                    children=None,
+                    profile=None,
+                    customMetrics=None,
+                ),
+                Column(
+                    name=ColumnName(root="array_data"),
+                    displayName=None,
+                    dataType=DataType.ARRAY,
+                    arrayDataType=DataType.INT,
+                    dataLength=1,
+                    precision=None,
+                    scale=None,
+                    dataTypeDisplay="array<int>",
+                    description=None,
+                    fullyQualifiedName=None,
+                    tags=None,
+                    constraint=None,
+                    ordinalPosition=None,
+                    jsonSchema=None,
+                    children=None,
+                    profile=None,
+                    customMetrics=None,
+                ),
+                Column(
+                    name=ColumnName(root="map_data"),
+                    displayName=None,
+                    dataType=DataType.MAP,
+                    arrayDataType=None,
+                    dataLength=1,
+                    precision=None,
+                    scale=None,
+                    dataTypeDisplay="map<string,int>",
+                    description=None,
+                    fullyQualifiedName=None,
+                    tags=None,
+                    constraint=None,
+                    ordinalPosition=None,
+                    jsonSchema=None,
+                    children=None,
+                    profile=None,
+                    customMetrics=None,
+                ),
+                Column(
+                    name=ColumnName(root="struct_data"),
+                    displayName=None,
+                    dataType=DataType.STRUCT,
+                    arrayDataType=None,
+                    dataLength=1,
+                    precision=None,
+                    scale=None,
+                    dataTypeDisplay="struct<a:int,b:string,c:array<string>,d:struct<abc:int>>",
+                    description=None,
+                    fullyQualifiedName=None,
+                    tags=None,
+                    constraint=None,
+                    ordinalPosition=None,
+                    jsonSchema=None,
+                    children=[
+                        Column(
+                            name=ColumnName(root="a"),
+                            displayName=None,
+                            dataType=DataType.INT,
+                            arrayDataType=None,
+                            dataLength=None,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="int",
+                            description=None,
+                            fullyQualifiedName=None,
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=None,
+                            profile=None,
+                            customMetrics=None,
+                        ),
+                        Column(
+                            name=ColumnName(root="b"),
+                            displayName=None,
+                            dataType=DataType.STRING,
+                            arrayDataType=None,
+                            dataLength=None,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="string",
+                            description=None,
+                            fullyQualifiedName=None,
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=None,
+                            profile=None,
+                            customMetrics=None,
+                        ),
+                        Column(
+                            name=ColumnName(root="c"),
+                            displayName=None,
+                            dataType=DataType.ARRAY,
+                            arrayDataType=DataType.STRING,
+                            dataLength=None,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="array<string>",
+                            description=None,
+                            fullyQualifiedName=None,
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=None,
+                            profile=None,
+                            customMetrics=None,
+                        ),
+                        Column(
+                            name=ColumnName(root="d"),
+                            displayName=None,
+                            dataType=DataType.STRUCT,
+                            arrayDataType=None,
+                            dataLength=None,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="struct<abc:int>",
+                            description=None,
+                            fullyQualifiedName=None,
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=[
+                                Column(
+                                    name=ColumnName(root="abc"),
+                                    displayName=None,
+                                    dataType=DataType.INT,
+                                    arrayDataType=None,
+                                    dataLength=None,
+                                    precision=None,
+                                    scale=None,
+                                    dataTypeDisplay="int",
+                                    description=None,
+                                    fullyQualifiedName=None,
+                                    tags=None,
+                                    constraint=None,
+                                    ordinalPosition=None,
+                                    jsonSchema=None,
+                                    children=None,
+                                    profile=None,
+                                    customMetrics=None,
+                                )
+                            ],
+                            profile=None,
+                            customMetrics=None,
+                        ),
+                    ],
+                    profile=None,
+                    customMetrics=None,
+                ),
+            ],
+            dataModel=None,
+            tableConstraints=[],
+            tablePartition=None,
+            tableProfilerConfig=None,
+            owners=None,
+            databaseSchema=FullyQualifiedEntityName(
+                root="local_unitycatalog.hive_metastore.do_it_all_with_default_schema"
             ),
-            Column(
-                name="bank_transfer_amount",
-                displayName=None,
-                dataType=DataType.DOUBLE.value,
-                arrayDataType=None,
-                dataLength=None,
-                precision=None,
-                scale=None,
-                dataTypeDisplay=None,
-                description=Markdown(""),
-                fullyQualifiedName=None,
-                tags=None,
-                constraint=None,
-                ordinalPosition=2,
-                jsonSchema=None,
-                children=None,
-                customMetrics=None,
-                profile=None,
-            ),
-            Column(
-                name="coupon_amount",
-                displayName=None,
-                dataType=DataType.DOUBLE.value,
-                arrayDataType=None,
-                dataLength=None,
-                precision=None,
-                scale=None,
-                dataTypeDisplay=None,
-                description=Markdown(""),
-                fullyQualifiedName=None,
-                tags=None,
-                constraint=None,
-                ordinalPosition=3,
-                jsonSchema=None,
-                children=None,
-                customMetrics=None,
-                profile=None,
-            ),
-            Column(
-                name="credit_card_amount",
-                displayName=None,
-                dataType=DataType.DOUBLE.value,
-                arrayDataType=None,
-                dataLength=None,
-                precision=None,
-                scale=None,
-                dataTypeDisplay=None,
-                description=Markdown(""),
-                fullyQualifiedName=None,
-                tags=None,
-                constraint=None,
-                ordinalPosition=4,
-                jsonSchema=None,
-                children=None,
-                customMetrics=None,
-                profile=None,
-            ),
-        ],
-        tableConstraints=None,
-        tablePartition=None,
-        tableProfilerConfig=None,
-        owners=None,
-        databaseSchema=FullyQualifiedEntityName(
-            "local_unitycatalog.hive_metastore.do_it_all_with_default_schema"
+            tags=None,
+            schemaDefinition=None,
+            retentionPeriod=None,
+            extension=None,
+            sourceUrl=None,
+            domain=None,
+            dataProducts=None,
+            fileFormat=None,
+            lifeCycle=None,
+            sourceHash=None,
         ),
-        tags=None,
-        schemaDefinition=None,
-        extension=None,
+        left=None,
     )
 ]
 
@@ -617,12 +734,8 @@ class unitycatalogUnitTest(TestCase):
         mock_data.return_value = MOCK_TABLE_INFO
         table_list = []
         self.unitycatalog_source.context.get().table_data = MOCK_CONTEXT_TABLEDATA
-        yield_tables: Iterable[
-            Either[CreateTableRequest]
-        ] = self.unitycatalog_source.yield_table(("complex_data", "Regular"))
-
-        for table in yield_tables:
-            if isinstance(table, CreateTableRequest):
+        for table in self.unitycatalog_source.yield_table(("complex_data", "Regular")):
+            if isinstance(table, Either):
                 table_list.append(table)
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):
