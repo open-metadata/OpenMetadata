@@ -154,9 +154,11 @@ class UnitycatalogSource(
                     )
                     if filter_by_database(
                         self.config.sourceConfig.config.databaseFilterPattern,
-                        database_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else catalog_name,
+                        (
+                            database_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else catalog_name
+                        ),
                     ):
                         self.status.filter(
                             database_fqn,
@@ -203,9 +205,11 @@ class UnitycatalogSource(
                 )
                 if filter_by_schema(
                     self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else schema.name,
+                    (
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema.name
+                    ),
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
@@ -267,9 +271,11 @@ class UnitycatalogSource(
                 )
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table_name,
+                    (
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name
+                    ),
                 ):
                     self.status.filter(
                         table_fqn,
@@ -491,14 +497,19 @@ class UnitycatalogSource(
         """
 
         for column in column_data:
-            if column.type_text.lower().startswith("union"):
-                column.type_text = column.Type.replace(" ", "")
-            if column.type_text.lower() == "struct":
-                column.type_text = "struct<>"
+            parsed_string = {}
+            if column.type_text:
+                if column.type_text.lower().startswith("union"):
+                    column.type_text = column.type_text.replace(" ", "")
+                if (
+                    column.type_text.lower() == "struct"
+                    or column.type_text.lower() == "array"
+                ):
+                    column.type_text = column.type_text.lower() + "<>"
 
-            parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                column.type_text.lower()
-            )
+                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                    column.type_text.lower()
+                )
             parsed_string["name"] = column.name[:256]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
             if column.comment:
