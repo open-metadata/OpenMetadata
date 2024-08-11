@@ -389,9 +389,9 @@ public class SearchRepository {
       } else {
         parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
       }
-      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-        searchClient.updateChildren(
-            indexMapping.getChildAliases(clusterAlias), parentMatch, updates);
+      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+      if (updates.getKey() != null && !updates.getKey().isEmpty() && !nullOrEmpty(childAliases)) {
+        searchClient.updateChildren(childAliases, parentMatch, updates);
       }
     }
   }
