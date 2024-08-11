@@ -36,6 +36,13 @@ public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
   }
 
+  public ElasticSearchIndexSink(
+      SearchRepository searchRepository, int total, int maxPayLoadSizeInBytes) {
+    this.searchRepository = searchRepository;
+    this.maxPayLoadSizeInBytes = maxPayLoadSizeInBytes;
+    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
+  }
+
   @Override
   public BulkResponse write(BulkRequest data, Map<String, Object> contextData)
       throws SearchIndexException {

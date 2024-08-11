@@ -199,7 +199,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } else {
       this.entityProcessor = new ElasticSearchEntitiesProcessor(totalRecords);
       this.entityTimeSeriesProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
-      this.searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords);
+      this.searchIndexSink =
+          new ElasticSearchIndexSink(searchRepository, totalRecords, jobData.getPayLoadSize());
     }
   }
 
