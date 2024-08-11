@@ -26,6 +26,7 @@ import {
 } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { deleteTag, getAllClassifications } from '../../rest/tagAPI';
+import { checkPermission } from '../../utils/PermissionsUtils';
 import { getClassifications } from '../../utils/TagsUtils';
 import TagsPage from './TagsPage';
 import {
@@ -515,6 +516,14 @@ describe('Test TagsPage page', () => {
 
     expect(tagName).toBeInTheDocument();
     expect(tagsComponent).toBeInTheDocument();
+  });
+
+  it("Should not render add classification button if doesn't have create permission", async () => {
+    (checkPermission as jest.Mock).mockReturnValueOnce(false);
+
+    render(<TagsPage />);
+
+    expect(screen.queryByTestId('add-classification')).not.toBeInTheDocument();
   });
 
   describe('Render Sad Paths', () => {
