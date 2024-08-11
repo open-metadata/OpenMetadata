@@ -30,7 +30,9 @@ import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
-    <UserPopOverCard showUserName profileWidth={16} userName={user.name} />
+    <div className="w-fit-content">
+      <UserPopOverCard showUserName profileWidth={16} userName={user.name} />
+    </div>
   ) : (
     getEntityName(user)
   );
