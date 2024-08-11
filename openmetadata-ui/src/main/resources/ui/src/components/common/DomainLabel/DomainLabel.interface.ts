@@ -26,4 +26,5 @@ export type DomainLabelProps = {
   textClassName?: string;
   showDomainHeading?: boolean;
   multiple?: boolean;
+  onUpdate?: (domain: EntityReference | EntityReference[]) => Promise<void>;
 };
