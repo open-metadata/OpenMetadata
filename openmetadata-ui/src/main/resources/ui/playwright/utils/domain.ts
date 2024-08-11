@@ -288,7 +288,7 @@ export const addAssetsToDomain = async (
   );
 
   await page.getByTestId('domain-details-add-button').click();
-  await page.getByRole('menuitem', { name: 'Assets' }).click();
+  await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
