@@ -143,7 +143,7 @@ public class MigrationUtil {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
     try {
-      appRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+      appRepository.deleteByName("admin", "DataInsightsApplication", false, true);
     } catch (EntityNotFoundException ex) {
       LOG.debug("DataInsights Application not found.");
     }
@@ -153,7 +153,7 @@ public class MigrationUtil {
         (AppMarketPlaceRepository) Entity.getEntityRepository(Entity.APP_MARKET_PLACE_DEF);
 
     try {
-      marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", true, true);
+      marketPlaceRepository.deleteByName("admin", "DataInsightsApplication", false, true);
     } catch (EntityNotFoundException ex) {
       LOG.debug("DataInsights Application Marketplace Definition not found.");
     }
