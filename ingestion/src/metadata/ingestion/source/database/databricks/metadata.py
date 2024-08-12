@@ -311,7 +311,7 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
-def get_table_type(connection, database, schema, table, **kw):
+def get_table_type(connection, database, schema, table):
     """get table type (regular/foreign)"""
     try:
         if database:
