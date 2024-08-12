@@ -266,11 +266,42 @@ def get_table_names(
         if len(row) > 1:
             tables.append(row[1])
         else:
-            tables.append(row[0])
+            table_name = row[0]
+        if schema:
+            database = kw.get("db_name")
+            table_type = get_table_type(connection, database, schema, table_name)
+            if not table_type or table_type == "FOREIGN":
+                # skip the table if it's foreign table / error in fetching table_type
+                logger.debug(
+                    f"Skipping metadata ingestion for unsupported foreign table {table_name}"
+                )
+                continue
+        tables.append(table_name)
+
     # "SHOW TABLES" command in hive also fetches view names
     # Below code filters out view names from table names
     views = self.get_view_names(connection, schema)
     return [table for table in tables if table not in views]
+
+
+def get_table_type(connection, database, schema, table):
+    """get table type (regular/foreign)"""
+    try:
+        if database:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=database, schema_name=schema, table_name=table
+            )
+        else:
+            query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
+        rows = connection.execute(query)
+        for row in rows:
+            row_dict = dict(row)
+            if row_dict.get("col_name") == "Type":
+                # get type of table
+                return row_dict.get("data_type")
+    except DatabaseError as err:
+        logger.error(f"Failed to fetch table type for table {table} due to: {err}")
+    return
 
 
 DatabricksDialect.get_table_comment = get_table_comment
