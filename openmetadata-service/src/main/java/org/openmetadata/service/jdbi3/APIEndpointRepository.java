@@ -74,11 +74,13 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
             apiEndpoint.getApiCollection().getFullyQualifiedName(), apiEndpoint.getName()));
     if (apiEndpoint.getRequestSchema() != null) {
       setFieldFQN(
-          apiEndpoint.getFullyQualifiedName(), apiEndpoint.getRequestSchema().getSchemaFields());
+          apiEndpoint.getFullyQualifiedName() + ".requestSchema",
+          apiEndpoint.getRequestSchema().getSchemaFields());
     }
     if (apiEndpoint.getResponseSchema() != null) {
       setFieldFQN(
-          apiEndpoint.getFullyQualifiedName(), apiEndpoint.getResponseSchema().getSchemaFields());
+          apiEndpoint.getFullyQualifiedName() + ".responseSchema",
+          apiEndpoint.getResponseSchema().getSchemaFields());
     }
   }
 
@@ -147,14 +149,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       populateEntityFieldTags(
           entityType,
           apiEndpoint.getRequestSchema().getSchemaFields(),
-          apiEndpoint.getFullyQualifiedName(),
+          apiEndpoint.getFullyQualifiedName() + ".requestSchema",
           fields.contains(FIELD_TAGS));
     }
     if (apiEndpoint.getResponseSchema() != null) {
       populateEntityFieldTags(
           entityType,
           apiEndpoint.getResponseSchema().getSchemaFields(),
-          apiEndpoint.getFullyQualifiedName(),
+          apiEndpoint.getFullyQualifiedName() + ".responseSchema",
           fields.contains(FIELD_TAGS));
     }
   }
@@ -242,7 +244,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(apiEndpoint);
     if (apiEndpoint.getRequestSchema() != null) {
-      applyTags(apiEndpoint.getResponseSchema().getSchemaFields());
+      applyTags(apiEndpoint.getRequestSchema().getSchemaFields());
     }
     if (apiEndpoint.getResponseSchema() != null) {
       applyTags(apiEndpoint.getResponseSchema().getSchemaFields());
@@ -270,11 +272,18 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     List<TagLabel> allTags = new ArrayList<>();
     APIEndpoint apiEndpoint = (APIEndpoint) entity;
     EntityUtil.mergeTags(allTags, apiEndpoint.getTags());
-    List<Field> schemaFields =
+    List<Field> requestSchemaFields =
+        apiEndpoint.getRequestSchema() != null
+            ? apiEndpoint.getRequestSchema().getSchemaFields()
+            : null;
+    List<Field> responseSchemaFields =
         apiEndpoint.getResponseSchema() != null
             ? apiEndpoint.getResponseSchema().getSchemaFields()
             : null;
-    for (Field schemaField : listOrEmpty(schemaFields)) {
+    for (Field schemaField : listOrEmpty(responseSchemaFields)) {
+      EntityUtil.mergeTags(allTags, schemaField.getTags());
+    }
+    for (Field schemaField : listOrEmpty(requestSchemaFields)) {
       EntityUtil.mergeTags(allTags, schemaField.getTags());
     }
     return allTags;

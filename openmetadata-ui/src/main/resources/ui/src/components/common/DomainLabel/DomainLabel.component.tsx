@@ -45,6 +45,7 @@ export const DomainLabel = ({
   textClassName,
   showDomainHeading = false,
   multiple = false,
+  onUpdate,
 }: DomainLabelProps) => {
   const { t } = useTranslation();
   const [activeDomain, setActiveDomain] = useState<EntityReference[]>([]);
@@ -84,7 +85,7 @@ export const DomainLabel = ({
         showErrorToast(err as AxiosError);
       }
     },
-    [entityType, entityId, entityFqn, afterDomainUpdateAction]
+    [entityType, entityId, entityFqn, afterDomainUpdateAction, onUpdate]
   );
 
   useEffect(() => {
@@ -136,7 +137,7 @@ export const DomainLabel = ({
           hasPermission={Boolean(hasPermission)}
           multiple={multiple}
           selectedDomain={activeDomain}
-          onUpdate={handleDomainSave}
+          onUpdate={onUpdate ?? handleDomainSave}
         />
       )
     );
