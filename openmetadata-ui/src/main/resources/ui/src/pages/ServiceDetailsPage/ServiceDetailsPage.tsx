@@ -46,6 +46,7 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
   pagingObject,
+  ROUTES,
 } from '../../constants/constants';
 import {
   OPEN_METADATA,
@@ -53,6 +54,7 @@ import {
 } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -582,6 +584,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setShowDeleted(response.deleted ?? false);
     } catch (error) {
       // Error
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
