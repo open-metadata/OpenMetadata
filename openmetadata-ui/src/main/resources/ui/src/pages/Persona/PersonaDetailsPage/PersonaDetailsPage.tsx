@@ -10,19 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Tabs, Typography } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
@@ -65,7 +68,7 @@ export const PersonaDetailsPage = () => {
         ),
       },
       {
-        name: getEntityName(personaDetails),
+        name: personaDetails?.name ?? '',
         url: '',
       },
     ],
@@ -182,14 +185,18 @@ export const PersonaDetailsPage = () => {
       <Row className="m-b-md page-container" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
-            <div>
+            <div className="w-full">
               <TitleBreadcrumb titleLinks={breadcrumb} />
-              <Typography.Title
-                className="m-b-0 m-t-xs"
-                data-testid="persona-heading"
-                level={5}>
-                {getEntityName(personaDetails)}
-              </Typography.Title>
+
+              <EntityHeaderTitle
+                className="m-t-xs"
+                displayName={personaDetails.displayName}
+                icon={
+                  <Icon component={IconPersona} style={{ fontSize: '36px' }} />
+                }
+                name={personaDetails?.name}
+                serviceName={personaDetails.name}
+              />
             </div>
             <ManageButton
               afterDeleteAction={handleAfterDeleteAction}

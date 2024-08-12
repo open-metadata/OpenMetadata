@@ -160,7 +160,11 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
     verifyResponseStatusCode('@getPersonaDetails', 200);
 
-    cy.get('[data-testid="persona-heading"]').should(
+    cy.get('[data-testid="entity-header-name"]').should(
+      'contain',
+      PERSONA_DETAILS.name
+    );
+    cy.get('[data-testid="entity-header-display-name"]').should(
       'contain',
       PERSONA_DETAILS.displayName
     );
@@ -220,11 +224,14 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
     updatePersonaDisplayName('Test Persona');
 
-    cy.get('[data-testid="persona-heading"]').should('contain', 'Test Persona');
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      'Test Persona'
+    );
 
     updatePersonaDisplayName(PERSONA_DETAILS.displayName);
 
-    cy.get('[data-testid="persona-heading"]').should(
+    cy.get('[data-testid="entity-header-display-name"]').should(
       'contain',
       PERSONA_DETAILS.displayName
     );
