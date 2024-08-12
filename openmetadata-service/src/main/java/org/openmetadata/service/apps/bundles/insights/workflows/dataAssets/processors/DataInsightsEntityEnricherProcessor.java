@@ -92,7 +92,7 @@ public class DataInsightsEntityEnricherProcessor
       EntityInterface versionEntity =
           JsonUtils.readOrConvertValue(
               version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-      Long versionTimestamp = TimestampUtils.getEndOfDayTimestamp(versionEntity.getUpdatedAt());
+      Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
       if (versionTimestamp > pointerTimestamp) {
         continue;
       } else if (versionTimestamp < startTimestamp) {
@@ -108,15 +108,12 @@ public class DataInsightsEntityEnricherProcessor
         Map<String, Object> versionMap = new HashMap<>();
 
         versionMap.put("endTimestamp", pointerTimestamp);
-        versionMap.put("startTimestamp", versionTimestamp);
+        versionMap.put("startTimestamp", TimestampUtils.getEndOfDayTimestamp(versionTimestamp));
         versionMap.put("versionEntity", versionEntity);
 
         entityVersions.add(versionMap);
-        if (versionTimestamp.equals(pointerTimestamp)) {
-          pointerTimestamp = TimestampUtils.subtractDays(pointerTimestamp, 1);
-        } else {
-          pointerTimestamp = versionTimestamp;
-        }
+        pointerTimestamp =
+            TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
       }
     }
     return entityVersions;

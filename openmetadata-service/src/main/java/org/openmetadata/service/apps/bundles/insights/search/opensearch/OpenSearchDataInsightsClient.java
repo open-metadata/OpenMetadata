@@ -63,7 +63,7 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   }
 
   @Override
-  public void createDataAssetsDataStream() throws IOException {
+  public void createDataAssetsDataStream(String name) throws IOException {
     String resourcePath = "/dataInsights/opensearch";
     createLifecyclePolicy(
         "di-data-assets-lifecycle",
@@ -73,11 +73,11 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
         readResource(String.format("%s/indexMappingsTemplate.json", resourcePath)));
     createIndexTemplate(
         "di-data-assets", readResource(String.format("%s/indexTemplate.json", resourcePath)));
-    createDataStream("di-data-assets");
+    createDataStream(name);
   }
 
   @Override
-  public void deleteDataAssetDataStream() throws IOException {
-    performRequest("DELETE", "_data_stream/di-data-assets");
+  public void deleteDataAssetDataStream(String name) throws IOException {
+    performRequest("DELETE", String.format("_data_stream/%s", name));
   }
 }

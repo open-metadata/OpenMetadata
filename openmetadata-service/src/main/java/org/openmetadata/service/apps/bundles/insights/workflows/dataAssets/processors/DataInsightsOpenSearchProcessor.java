@@ -1,6 +1,6 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors;
 
-import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.DATA_ASSETS_DATA_STREAM;
+import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.DataAssetsWorkflow.DATA_STREAM_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
 import java.util.List;
@@ -29,7 +29,7 @@ public class DataInsightsOpenSearchProcessor
   @Override
   public BulkRequest process(List<Map<String, Object>> input, Map<String, Object> contextData)
       throws SearchIndexException {
-    String index = DATA_ASSETS_DATA_STREAM;
+    String index = (String) contextData.get(DATA_STREAM_KEY);
     LOG.debug(
         "[OsEntitiesProcessor] Processing a Batch of Size: {}, Index: {} ", input.size(), index);
     BulkRequest requests;

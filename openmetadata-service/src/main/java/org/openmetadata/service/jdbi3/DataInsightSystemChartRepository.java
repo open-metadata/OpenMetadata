@@ -18,7 +18,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
-  public static final String DI_SEARCH_INDEX = "di-data-assets";
+  public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
   public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg)+\\(k='([^']*)',?\\s*(q='([^']*)')?\\)?";

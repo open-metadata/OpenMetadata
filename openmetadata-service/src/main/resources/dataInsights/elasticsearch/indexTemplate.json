@@ -1,6 +1,6 @@
 {
   "index_patterns": [
-    "di-data-assets"
+    "di-data-assets-*"
   ],
   "data_stream": {},
   "composed_of": [

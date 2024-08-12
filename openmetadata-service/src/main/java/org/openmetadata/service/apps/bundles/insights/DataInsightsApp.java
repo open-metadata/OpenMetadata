@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -42,6 +43,7 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String REPORT_DATA_TYPE_KEY = "ReportDataType";
+  public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
@@ -52,6 +54,24 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
+
+  public final Set<String> dataAssetTypes =
+      Set.of(
+          "table",
+          "storedProcedure",
+          "databaseSchema",
+          "database",
+          "chart",
+          "dashboard",
+          "dashboardDataModel",
+          "pipeline",
+          "topic",
+          "container",
+          "searchIndex",
+          "mlmodel",
+          "dataProduct",
+          "glossaryTerm",
+          "tag");
 
   public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -75,12 +95,19 @@ public class DataInsightsApp extends AbstractNativeApplication {
     return searchInterface;
   }
 
+  public static String getDataStreamName(String dataAssetType) {
+    return String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+  }
+
   private void createDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
-      if (!searchInterface.dataAssetDataStreamExists("di-data-assets")) {
-        searchInterface.createDataAssetsDataStream();
+      for (String dataAssetType : dataAssetTypes) {
+        String dataStreamName = getDataStreamName(dataAssetType);
+        if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          searchInterface.createDataAssetsDataStream(dataStreamName);
+        }
       }
     } catch (IOException ex) {
       LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
@@ -91,8 +118,11 @@ public class DataInsightsApp extends AbstractNativeApplication {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
-      if (searchInterface.dataAssetDataStreamExists("di-data-assets")) {
-        searchInterface.deleteDataAssetDataStream();
+      for (String dataAssetType : dataAssetTypes) {
+        String dataStreamName = getDataStreamName(dataAssetType);
+        if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          searchInterface.deleteDataAssetDataStream(dataStreamName);
+        }
       }
     } catch (IOException ex) {
       LOG.error("Couldn't delete DataAssets DataStream", ex);
@@ -231,7 +261,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
-        new DataAssetsWorkflow(timestamp, batchSize, backfill, collectionDAO, searchRepository);
+        new DataAssetsWorkflow(
+            timestamp, batchSize, backfill, dataAssetTypes, collectionDAO, searchRepository);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {

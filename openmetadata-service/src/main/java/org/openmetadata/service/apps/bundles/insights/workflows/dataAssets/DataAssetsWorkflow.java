@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
+import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
@@ -38,7 +39,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
 public class DataAssetsWorkflow {
-  public static final String DATA_ASSETS_DATA_STREAM = "di-data-assets";
+  public static final String DATA_STREAM_KEY = "DataStreamKey";
   private final int retentionDays = 30;
   private final Long startTimestamp;
   private final Long endTimestamp;
@@ -46,23 +47,7 @@ public class DataAssetsWorkflow {
   private final SearchRepository searchRepository;
   private final CollectionDAO collectionDAO;
   private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
-  private final Set<String> entityTypes =
-      Set.of(
-          "table",
-          "storedProcedure",
-          "databaseSchema",
-          "database",
-          "chart",
-          "dashboard",
-          "dashboardDataModel",
-          "pipeline",
-          "topic",
-          "container",
-          "searchIndex",
-          "mlmodel",
-          "dataProduct",
-          "glossaryTerm",
-          "tag");
+  private final Set<String> entityTypes;
 
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
@@ -73,6 +58,7 @@ public class DataAssetsWorkflow {
       Long timestamp,
       int batchSize,
       Optional<DataInsightsApp.Backfill> backfill,
+      Set<String> entityTypes,
       CollectionDAO collectionDAO,
       SearchRepository searchRepository) {
     if (backfill.isPresent()) {
@@ -105,6 +91,7 @@ public class DataAssetsWorkflow {
     this.batchSize = batchSize;
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
+    this.entityTypes = entityTypes;
   }
 
   private void initialize() {
@@ -144,9 +131,9 @@ public class DataAssetsWorkflow {
     contextData.put(START_TIMESTAMP_KEY, startTimestamp);
     contextData.put(END_TIMESTAMP_KEY, endTimestamp);
 
-    deleteDataBeforeInserting();
-
     for (PaginatedEntitiesSource source : sources) {
+      deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
+      contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
 
       while (!source.isDone()) {
@@ -191,12 +178,12 @@ public class DataAssetsWorkflow {
     }
   }
 
-  private void deleteDataBeforeInserting() throws SearchIndexException {
+  private void deleteDataBeforeInserting(String dataStreamName) throws SearchIndexException {
     try {
       searchRepository
           .getSearchClient()
           .deleteByQuery(
-              DATA_ASSETS_DATA_STREAM,
+              dataStreamName,
               String.format(
                   "{\"@timestamp\": {\"gte\": %s, \"lte\": %s}}", startTimestamp, endTimestamp));
     } catch (Exception rx) {
