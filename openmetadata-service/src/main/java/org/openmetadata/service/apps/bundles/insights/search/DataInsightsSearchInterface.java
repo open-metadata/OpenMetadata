@@ -25,5 +25,7 @@ public interface DataInsightsSearchInterface {
 
   void createDataAssetsDataStream() throws IOException;
 
+  void deleteDataAssetDataStream() throws IOException;
+
   Boolean dataAssetDataStreamExists(String name) throws IOException;
 }

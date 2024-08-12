@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -37,6 +38,7 @@ public class DataInsightsEntityEnricherProcessor
     implements Processor<List<Map<String, Object>>, ResultList<? extends EntityInterface>> {
 
   private final StepStats stats = new StepStats();
+  private static final Set<String> NON_TIER_ENTITIES = Set.of("tag", "glossaryTerm", "dataProduct");
 
   public DataInsightsEntityEnricherProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
@@ -172,7 +174,15 @@ public class DataInsightsEntityEnricherProcessor
     if (oEntityTags.isPresent()) {
       Optional<String> oEntityTier =
           getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
-      oEntityTier.ifPresent(s -> entityMap.put("tier", s));
+      oEntityTier.ifPresentOrElse(
+          s -> entityMap.put("tier", s),
+          () -> {
+            if (!NON_TIER_ENTITIES.contains(entityType)) {
+              entityMap.put("tier", "NoTier");
+            }
+          });
+    } else if (!NON_TIER_ENTITIES.contains(entityType)) {
+      entityMap.put("tier", "NoTier");
     }
 
     // Enrich with Description Stats
@@ -186,6 +196,16 @@ public class DataInsightsEntityEnricherProcessor
                   .reduce(0, Integer::sum));
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
+
+    // Modify Custom Property key
+    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.remove("extension"));
+    oCustomProperties.ifPresent(
+        o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
+
+    // Remove 'changeDescription' field
+    entityMap.remove("changeDescription");
+    // Remove 'sampleData'
+    entityMap.remove("sampleData");
 
     return entityMap;
   }

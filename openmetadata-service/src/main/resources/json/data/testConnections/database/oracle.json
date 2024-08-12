@@ -6,7 +6,7 @@
       {
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-        "errorMessage": "Failed to connect to oracle, please validate the credentials",
+        "errorMessage": "Failed to connect to oracle, please validate if the user has relevant permissions, if not, please provide the necessary permissions. For more details, please refer https://docs.open-metadata.org/connectors/database/oracle.",
         "shortCircuit": true,
         "mandatory": true
       },

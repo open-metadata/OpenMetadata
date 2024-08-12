@@ -44,6 +44,21 @@ Admin permissions are required to register the application on the Azure portal.
 - Provide a redirect URL as a `Single Page Application`.
 - Click on `Register`.
 
+{% note %}
+
+- **SPA (Single Page Application):**  
+  This type is designed for implicit flows. In this case, providing both the client ID and client secret will result in a failure because the implicit flow only requires the client ID for authentication.
+
+- **Web:**  
+  This type is intended for confidential clients. If you select this option, you must provide both the client ID and client secret. Simply passing the client ID will cause the authorization process to fail, as the Authorization Code flow requires both credentials for successful authentication.
+
+### Recommendation:
+
+- Use the **Web** type for confidential clients that require both a client ID and secret.
+- Use the **SPA** type for applications using implicit flows where only a client ID is needed.
+
+{% /note %}
+
 {% image src="/images/v1.5/deployment/security/azure/create-app-3.png" alt="create-app" /%}
 
 ### Step 3: Where to Find the Credentials

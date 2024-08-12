@@ -269,6 +269,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
               defaultValue = "100")
           int batchSize,
       @Option(
+              names = {"-p", "--payload-size"},
+              defaultValue = "100")
+          int payloadSize,
+      @Option(
               names = {"--recreate-indexes"},
               defaultValue = "true")
           boolean recreateIndexes) {
@@ -283,14 +287,15 @@ public class OpenMetadataOperations implements Callable<Integer> {
       AppScheduler.initialize(config, collectionDAO, searchRepository);
 
       String appName = "SearchIndexingApplication";
-      return executeSearchReindexApp(appName, batchSize, recreateIndexes);
+      return executeSearchReindexApp(appName, batchSize, payloadSize, recreateIndexes);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
     }
   }
 
-  private int executeSearchReindexApp(String appName, int batchSize, boolean recreateIndexes) {
+  private int executeSearchReindexApp(
+      String appName, int batchSize, int payloadSize, boolean recreateIndexes) {
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     App originalSearchIndexApp =
         appRepository.getByName(null, appName, appRepository.getFields("id"));
@@ -302,10 +307,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
     EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
     updatedJob
         .withBatchSize(batchSize)
+        .withPayLoadSize(payloadSize)
         .withRecreateIndex(recreateIndexes)
         .withEntities(Set.of("all"));
 
-    // Update the search index app with the new batch size and recreate index flag
+    // Update the search index app with the new batch size, payload size and recreate index flag
     App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
     updatedSearchIndexApp.withAppConfiguration(updatedJob);
     JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
@@ -371,7 +377,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
       } catch (Exception ignored) {
       }
       LOG.info(
-          "Reindexing Status not available yet, waiting for 10 seconds to fetch the status again.");
+          "[Reindexing] Current Available Status : {}. Reindexing is still, waiting for 10 seconds to fetch the latest status again.",
+          JsonUtils.pojoToJson(appRunRecord));
       Thread.sleep(10000);
     } while (!isRunCompleted(appRunRecord));
 

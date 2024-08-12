@@ -267,7 +267,7 @@
   },
   "apiEndpoint": {
     "indexName": "api_endpoint_search_index",
-    "alias": "apiCollection",
+    "alias": "apiEndpoint",
     "indexMappingFile": "/elasticsearch/%s/api_endpoint_index_mapping.json",
     "parentAliases": ["apiService", "apiCollection", "all", "dataAsset"],
     "childAliases": []
