@@ -165,7 +165,7 @@ class OMetaUserMixin:
         is_owner: bool = False,
     ) -> Optional[EntityReferenceList]:
         """
-        Get a User or Team Entity Reference by searching by its name or email
+        Get a User or Team Entity Reference by searching by its name
         """
         maybe_user = self._search_by_name(
             entity=User, name=name, from_count=from_count, size=size, fields=fields
@@ -178,23 +178,6 @@ class OMetaUserMixin:
                         type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
                         name=maybe_user.name.root,
                         displayName=maybe_user.displayName,
-                    )
-                ]
-            )
-
-        # Fallback to email matching
-        maybe_user_by_email = self._search_by_email(
-            entity=User, email=name, from_count=from_count, size=size, fields=fields
-        )
-
-        if maybe_user_by_email:
-            return EntityReferenceList(
-                root=[
-                    EntityReference(
-                        id=maybe_user_by_email.id.root,
-                        type=ENTITY_REFERENCE_TYPE_MAP[User.__name__],
-                        name=maybe_user_by_email.name.root,
-                        displayName=maybe_user_by_email.displayName,
                     )
                 ]
             )
