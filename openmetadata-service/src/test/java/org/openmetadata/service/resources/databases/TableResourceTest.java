@@ -2401,7 +2401,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("limit", "100");
 
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, tables.getData().size());
+    assertEquals(4, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 
