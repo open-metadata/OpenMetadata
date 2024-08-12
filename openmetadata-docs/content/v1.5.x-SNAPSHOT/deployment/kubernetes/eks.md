@@ -74,7 +74,7 @@ openmetadata:
 
 Make sure to create RDS and OpenSearch credentials as Kubernetes Secrets mentioned [here](/quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
 
-Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 
 ### Create Elastic File System in AWS
 

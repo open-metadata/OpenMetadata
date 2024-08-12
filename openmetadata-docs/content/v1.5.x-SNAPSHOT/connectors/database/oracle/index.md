@@ -40,18 +40,50 @@ CREATE ROLE new_role;
 -- GRANT ROLE TO USER 
 GRANT new_role TO user_name;
 
--- GRANT CREATE SESSION PRIVILEGE TO USER
+-- Grant CREATE SESSION Privilege.
+--   This allows the role to connect.
 GRANT CREATE SESSION TO new_role;
 
--- GRANT SELECT CATALOG ROLE PRIVILEGE TO FETCH METADATA TO ROLE / USER
+-- Grant SELECT_CATALOG_ROLE Privilege.
+--   This allows the role ReadOnly Access to Data Dictionaries
 GRANT SELECT_CATALOG_ROLE TO new_role;
 ```
 
-With just these permissions, your user should be able to ingest the schemas, but not the tables inside them. To get
-the tables, you should grant `SELECT` permissions to the tables you are interested in. E.g.,
+If you don't want to create a role, and directly give permissions to the user, you can take a look at an example given below.
 
 ```sql
-SELECT ON ADMIN.EXAMPLE_TABLE TO new_role;
+-- Create a New User
+CREATE USER my_user IDENTIFIED by my_password;
+
+-- Grant CREATE SESSION Privilege.
+--   This allows the user to connect.
+GRANT CREATE SESSION TO my_user;
+
+-- Grant SELECT_CATALOG_ROLE Privilege.
+--   This allows the user ReadOnly Access to Data Dictionaries
+GRANT SELECT_CATALOG_ROLE to my_user;
+```
+
+**Note**: With just these permissions, your user should be able to ingest the metadata, but not the `Profiler & Data Quality`, you should grant `SELECT` permissions to the tables you are interested in for the `Profiler & Data Quality` features to work. 
+
+```sql
+-- If you are using a role and do not want to specify a specific table, but any
+GRANT SELECT ANY TABLE TO new_role;
+
+-- If you are not using a role, but directly giving permission to the user and do not want to specify a specific table, but any
+GRANT SELECT ANY TABLE TO my_user;
+
+-- if you are using role
+GRANT SELECT ON ADMIN.EXAMPLE_TABLE TO new_role;
+
+-- if you are not using role, but directly giving permission to the user
+GRANT SELECT ON ADMIN.EXAMPLE_TABLE TO my_user;
+
+-- if you are using role
+GRANT SELECT ON {schema}.{table} TO new_role;
+
+-- if you are not using role, but directly giving permission to the user
+GRANT SELECT ON {schema}.{table} TO my_user;
 ```
 
 You can find further information [here](https://docs.oracle.com/javadb/10.8.3.0/ref/rrefsqljgrant.html). Note that

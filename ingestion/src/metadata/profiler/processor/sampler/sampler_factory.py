@@ -15,6 +15,9 @@ Factory class for creating sampler objects
 
 from typing import Union
 
+from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
+    AzureSQLConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -36,6 +39,9 @@ from metadata.generated.schema.entity.services.connections.database.trinoConnect
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.profiler.processor.sampler.nosql.sampler import NoSQLSampler
 from metadata.profiler.processor.sampler.pandas.sampler import DatalakeSampler
+from metadata.profiler.processor.sampler.sqlalchemy.azuresql.sampler import (
+    AzureSQLSampler,
+)
 from metadata.profiler.processor.sampler.sqlalchemy.bigquery.sampler import (
     BigQuerySampler,
 )
@@ -88,4 +94,7 @@ sampler_factory_.register(
 )
 sampler_factory_.register(
     source_type=DynamoDBConnection.__name__, sampler_class=NoSQLSampler
+)
+sampler_factory_.register(
+    source_type=AzureSQLConnection.__name__, sampler_class=AzureSQLSampler
 )
