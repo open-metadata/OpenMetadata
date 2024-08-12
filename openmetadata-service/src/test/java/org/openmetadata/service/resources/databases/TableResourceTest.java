@@ -2449,7 +2449,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         createEntity(createWithEmptyColumnDescription, ADMIN_AUTH_HEADERS);
     // Create an entity with null description but with column description
     CreateTable createWithNullDescription =
-        createRequest(test, 3)
+        createRequest(test, 6)
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription(null)
             .withColumns(listOf(columnWithDescription))
@@ -2479,6 +2479,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     request.setJsonEntity(query);
     response = searchClient.performRequest(request);
     searchClient.close();
+    LOG.info("Response: {}", response);
 
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =

@@ -67,7 +67,7 @@ public interface SearchClient {
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
   String ADD_REMOVE_OWNERS_SCRIPT =
-      "if (params.containsKey('updatedOwners') && params.updatedOwners != null && !params.updatedOwners.isEmpty()) { if (ctx._source.owners != null) { ctx._source.owners.clear(); } else { ctx._source.owners = []; } for (int i = 0; i < params.updatedOwners.size(); i++) { def newOwner = params.updatedOwners[i]; ctx._source.owners.add(newOwner); } }";
+      "if (params.containsKey('updatedOwners') && params.updatedOwners != null && !params.updatedOwners.isEmpty()) { ctx._source.owners = params.updatedOwners; }";
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   boolean isClientAvailable();
