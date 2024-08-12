@@ -1,3 +1,4 @@
+#  pylint: disable=too-many-lines
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -319,7 +320,8 @@ class DbtSource(DbtServiceSource):
         self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
             (
                 item
-                for item in dbt_objects.dbt_run_results.results
+                for run_result in dbt_objects.dbt_run_results
+                for item in run_result.results
                 if item.unique_id == key
             ),
             None,
@@ -347,12 +349,14 @@ class DbtSource(DbtServiceSource):
             self.context.get().data_model_links = []
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
+            # Since we'll be processing multiple run_results for a single project
+            # we'll only consider the first run_results generated_at time
             if (
                 dbt_objects.dbt_run_results
-                and dbt_objects.dbt_run_results.metadata.generated_at
+                and dbt_objects.dbt_run_results[0].metadata.generated_at
             ):
                 self.context.get().run_results_generate_time = (
-                    dbt_objects.dbt_run_results.metadata.generated_at
+                    dbt_objects.dbt_run_results[0].metadata.generated_at
                 )
             for key, manifest_node in manifest_entities.items():
                 try:
