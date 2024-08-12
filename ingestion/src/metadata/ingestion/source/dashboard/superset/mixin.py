@@ -223,6 +223,10 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return None
 
+    def _clearn_column_datatype(self, datatype: str) -> str:
+        """clean datatype of column fetched from superset"""
+        return datatype.replace("()", "")
+
     def get_column_info(
         self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
@@ -236,6 +240,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         for field in data_source or []:
             try:
                 if field.type:
+                    field.type = self._clearn_column_datatype(field.type)
                     col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type
                     )
