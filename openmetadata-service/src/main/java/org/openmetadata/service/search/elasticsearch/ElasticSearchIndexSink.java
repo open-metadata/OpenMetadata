@@ -30,12 +30,6 @@ public class ElasticSearchIndexSink implements Sink<BulkRequest, BulkResponse> {
   private final SearchRepository searchRepository;
   private final int maxPayLoadSizeInBytes;
 
-  public ElasticSearchIndexSink(SearchRepository searchRepository, int total) {
-    this.searchRepository = searchRepository;
-    this.maxPayLoadSizeInBytes = searchRepository.getElasticSearchConfiguration().getPayLoadSize();
-    this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
-  }
-
   public ElasticSearchIndexSink(
       SearchRepository searchRepository, int total, int maxPayLoadSizeInBytes) {
     this.searchRepository = searchRepository;
