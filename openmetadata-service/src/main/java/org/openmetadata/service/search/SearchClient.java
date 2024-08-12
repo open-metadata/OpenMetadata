@@ -43,7 +43,7 @@ public interface SearchClient {
   String DEFAULT_UPDATE_SCRIPT = "for (k in params.keySet()) { ctx._source.put(k, params.get(k)) }";
   String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
   String PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT =
-      "if(ctx._source.%s == null){ ctx._source.put('%s', params)}";
+      "if(ctx._source.containsKey('%s') || (ctx._source.%s == null)) { ctx._source.put('%s', params.%s); }";
 
   String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
 
@@ -51,7 +51,7 @@ public interface SearchClient {
       "if((ctx._source.%s != null) && (ctx._source.%s.id == '%s')){ ctx._source.remove('%s')}";
   String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
   String UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
-      "if((ctx._source.%s == null) || (ctx._source.%s.id == '%s')) { ctx._source.put('%s', params)}";
+      "if (ctx._source.containsKey('%s') || (ctx._source.%s == null)) { ctx._source.put('%s', params.%s); }";
   String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.tags.length; i++) { if (ctx._source.tags[i].tagFQN == params.fqn) { ctx._source.tags.remove(i) }}";
@@ -67,7 +67,7 @@ public interface SearchClient {
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
   String ADD_REMOVE_OWNERS_SCRIPT =
-      "if (ctx._source.owners != null) { ctx._source.owners.clear(); } else { ctx._source.owners = []; } for (int i = 0; i < params.owners.size(); i++) { def newOwner = params.owners[i]; ctx._source.owners.add(newOwner); }";
+      "if (params.containsKey('updatedOwners') && params.updatedOwners != null && !params.updatedOwners.isEmpty()) { if (ctx._source.owners != null) { ctx._source.owners.clear(); } else { ctx._source.owners = []; } for (int i = 0; i < params.updatedOwners.size(); i++) { def newOwner = params.updatedOwners[i]; ctx._source.owners.add(newOwner); } }";
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   boolean isClientAvailable();
