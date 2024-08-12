@@ -276,6 +276,20 @@ update thread_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.ow
 update topic_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
 update type_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
 update user_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update test_case set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update installed_apps set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update apps_marketplace set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update classification set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update storage_container_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update data_insight_chart set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update doc_store set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update tag set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update test_connection_definition set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update test_definition set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update test_suite set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update topic_entity set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update web_analytic_event set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
+update automations_workflow set json = JSON_REMOVE(json, '$.owner') where json -> '$.owner' is not null;
 
 update table_entity set json = JSON_SET(
     JSON_REMOVE(json, '$.dataModel.owner'),

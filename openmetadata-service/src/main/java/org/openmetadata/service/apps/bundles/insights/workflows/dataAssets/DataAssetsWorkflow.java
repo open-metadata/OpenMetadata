@@ -109,10 +109,18 @@ public class DataAssetsWorkflow {
     this.entityEnricher = new DataInsightsEntityEnricherProcessor(totalRecords);
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new DataInsightsOpenSearchProcessor(totalRecords);
-      this.searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords);
+      this.searchIndexSink =
+          new OpenSearchIndexSink(
+              searchRepository,
+              totalRecords,
+              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
     } else {
       this.entityProcessor = new DataInsightsElasticSearchProcessor(totalRecords);
-      this.searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords);
+      this.searchIndexSink =
+          new ElasticSearchIndexSink(
+              searchRepository,
+              totalRecords,
+              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
     }
   }
 

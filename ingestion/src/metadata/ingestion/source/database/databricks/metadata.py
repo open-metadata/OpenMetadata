@@ -15,8 +15,10 @@ import traceback
 from copy import deepcopy
 from typing import Iterable, Optional, Tuple, Union
 
+from pydantic import EmailStr
+from pydantic_core import PydanticCustomError
 from pyhive.sqlalchemy_hive import _type_map
-from sqlalchemy import types, util
+from sqlalchemy import exc, types, util
 from sqlalchemy.engine import reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
@@ -35,6 +37,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -162,16 +165,19 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         }
         if col_type in {"array", "struct", "map"}:
             col_name = f"`{col_name}`" if "." in col_name else col_name
-            rows = dict(
-                connection.execute(
-                    f"DESCRIBE {schema}.{table_name} {col_name}"
-                    if schema
-                    else f"DESCRIBE {table_name} {col_name}"
-                ).fetchall()
-            )
-
-            col_info["system_data_type"] = rows["data_type"]
-            col_info["is_complex"] = True
+            try:
+                rows = dict(
+                    connection.execute(
+                        f"DESCRIBE TABLE {kw.get('db_name')}.{schema}.{table_name} {col_name}"
+                    ).fetchall()
+                )
+                col_info["system_data_type"] = rows["data_type"]
+                col_info["is_complex"] = True
+            except DatabaseError as err:
+                logger.error(
+                    f"Failed to fetch column details for column {col_name} in table {table_name} due to: {err}"
+                )
+                logger.debug(traceback.format_exc())
         result.append(col_info)
     return result
 
@@ -221,7 +227,9 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     cursor = connection.execute(
         DATABRICKS_GET_TABLE_COMMENTS.format(
-            schema_name=schema_name, table_name=table_name
+            database_name=self.context.get().database,
+            schema_name=schema_name,
+            table_name=table_name,
         )
     )
     try:
@@ -283,13 +291,40 @@ def get_table_names(
         # if it is > 1, we use spark thrift server with 3 columns in the result (schema, table, is_temporary)
         # else it is hive with 1 column in the result
         if len(row) > 1:
-            tables.append(row[1])
+            table_name = row[1]
         else:
-            tables.append(row[0])
+            table_name = row[0]
+        if schema:
+            table_type = get_table_type(connection, schema, table_name)
+            if not table_type or table_type == "FOREIGN":
+                # skip the table if it's foreign table / error in fetching table_type
+                logger.debug(
+                    f"Skipping metadata ingestion for unsupported foreign table {table_name}"
+                )
+                continue
+        tables.append(table_name)
+
     # "SHOW TABLES" command in hive also fetches view names
     # Below code filters out view names from table names
     views = self.get_view_names(connection, schema)
     return [table for table in tables if table not in views]
+
+
+def get_table_type(connection, schema, table):
+    """get table type (regular/foreign)"""
+    try:
+        query = DATABRICKS_GET_TABLE_COMMENTS.format(
+            schema_name=schema, table_name=table
+        )
+        rows = connection.execute(query)
+        for row in rows:
+            row_dict = dict(row)
+            if row_dict.get("col_name") == "Type":
+                # get type of table
+                return row_dict.get("data_type")
+    except Exception:
+        pass
+    return
 
 
 DatabricksDialect.get_table_comment = get_table_comment
@@ -476,9 +511,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_catalog,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_catalog
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -638,7 +675,9 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             cursor = self.connection.execute(
                 DATABRICKS_GET_TABLE_COMMENTS.format(
-                    schema_name=schema_name, table_name=table_name
+                    database_name=self.context.get().database,
+                    schema_name=schema_name,
+                    table_name=table_name,
                 )
             )
             for result in list(cursor):
@@ -661,3 +700,42 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 f"Table description error for table [{schema_name}.{table_name}]: {exc}"
             )
         return description
+
+    def _filter_owner_name(self, owner_name: str) -> str:
+        """remove unnecessary keyword from name"""
+        pattern = r"\(Unknown\)"
+        filtered_name = re.sub(pattern, "", owner_name).strip()
+        return filtered_name
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+        """
+        try:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=self.context.get().database,
+                schema_name=self.context.get().database_schema,
+                table_name=table_name,
+            )
+            result = self.connection.engine.execute(query)
+            owner = None
+            for row in result:
+                row_dict = dict(row)
+                if row_dict.get("col_name") == "Owner":
+                    owner = row_dict.get("data_type")
+                    break
+            if not owner:
+                return
+
+            owner = self._filter_owner_name(owner)
+            owner_ref = None
+            try:
+                owner_email = EmailStr._validate(owner)
+                owner_ref = self.metadata.get_reference_by_email(email=owner_email)
+            except PydanticCustomError:
+                owner_ref = self.metadata.get_reference_by_name(name=owner)
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+        return

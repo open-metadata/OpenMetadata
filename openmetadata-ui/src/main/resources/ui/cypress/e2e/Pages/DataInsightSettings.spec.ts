@@ -121,33 +121,35 @@ describe(
       );
     });
 
-    it('Deploy & run application', () => {
-      interceptURL(
-        'GET',
-        '/api/v1/apps/name/DataInsightsApplication?fields=*',
-        'getDataInsightDetails'
-      );
-      interceptURL(
-        'POST',
-        '/api/v1/apps/trigger/DataInsightsApplication',
-        'triggerPipeline'
-      );
-      cy.get(
-        '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
-      ).click();
-      verifyResponseStatusCode('@getDataInsightDetails', 200);
+    if (Cypress.env('isOss')) {
+      it('Run application', () => {
+        interceptURL(
+          'GET',
+          '/api/v1/apps/name/DataInsightsApplication?fields=*',
+          'getDataInsightDetails'
+        );
+        interceptURL(
+          'POST',
+          '/api/v1/apps/trigger/DataInsightsApplication',
+          'triggerPipeline'
+        );
+        cy.get(
+          '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+        ).click();
+        verifyResponseStatusCode('@getDataInsightDetails', 200);
 
-      cy.get('[data-testid="run-now-button"]').click();
-      verifyResponseStatusCode('@triggerPipeline', 200);
-      cy.reload();
-      checkDataInsightSuccessStatus();
-      cy.get('[data-testid="logs"]').click();
+        cy.get('[data-testid="run-now-button"]').click();
+        verifyResponseStatusCode('@triggerPipeline', 200);
+        cy.reload();
+        checkDataInsightSuccessStatus();
+        cy.get('[data-testid="logs"]').click();
 
-      cy.get('[data-testid="stats-component"]').contains('Success');
+        cy.get('[data-testid="stats-component"]').contains('Success');
 
-      cy.get('[data-testid="app-entity-stats-history-table"]').should(
-        'be.visible'
-      );
-    });
+        cy.get('[data-testid="app-entity-stats-history-table"]').should(
+          'be.visible'
+        );
+      });
+    }
   }
 );

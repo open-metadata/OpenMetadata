@@ -282,6 +282,7 @@ function IngestionListTable({
         title: t('label.schedule'),
         dataIndex: 'schedule',
         key: 'schedule',
+        width: 240,
         render: renderScheduleField,
       },
       {
