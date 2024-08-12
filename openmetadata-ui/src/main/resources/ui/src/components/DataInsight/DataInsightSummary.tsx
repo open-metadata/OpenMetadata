@@ -202,7 +202,12 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                   total={0}
                   value={`${summary.latest}
                     ${
-                      summary.id === SystemChartType.TotalDataAssets ? '' : '%'
+                      [
+                        SystemChartType.TotalDataAssets,
+                        SystemChartType.TotalDataAssetsByTier,
+                      ].includes(summary.id)
+                        ? ''
+                        : '%'
                     }`}
                 />
               </Col>

@@ -648,6 +648,7 @@ class AdvancedSearchClassBase {
     isExplorePage?: boolean
   ) => BasicConfig = (tierOptions, entitySearchIndex, isExplorePage) => {
     const searchIndexWithServices = [
+      SearchIndex.ALL,
       SearchIndex.TABLE,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
