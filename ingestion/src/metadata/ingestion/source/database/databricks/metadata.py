@@ -165,16 +165,19 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         }
         if col_type in {"array", "struct", "map"}:
             col_name = f"`{col_name}`" if "." in col_name else col_name
-            rows = dict(
-                connection.execute(
-                    f"DESCRIBE {schema}.{table_name} {col_name}"
-                    if schema
-                    else f"DESCRIBE {table_name} {col_name}"
-                ).fetchall()
-            )
-
-            col_info["system_data_type"] = rows["data_type"]
-            col_info["is_complex"] = True
+            try:
+                rows = dict(
+                    connection.execute(
+                        f"DESCRIBE TABLE {kw.get('db_name')}.{schema}.{table_name} {col_name}"
+                    ).fetchall()
+                )
+                col_info["system_data_type"] = rows["data_type"]
+                col_info["is_complex"] = True
+            except DatabaseError as err:
+                logger.error(
+                    f"Failed to fetch column details for column {col_name} in table {table_name} due to: {err}"
+                )
+                logger.debug(traceback.format_exc())
         result.append(col_info)
     return result
 
@@ -224,7 +227,9 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     cursor = connection.execute(
         DATABRICKS_GET_TABLE_COMMENTS.format(
-            schema_name=schema_name, table_name=table_name
+            database_name=self.context.get().database,
+            schema_name=schema_name,
+            table_name=table_name,
         )
     )
     try:
@@ -290,7 +295,8 @@ def get_table_names(
         else:
             table_name = row[0]
         if schema:
-            table_type = get_table_type(connection, schema, table_name)
+            database = kw.get("db_name")
+            table_type = get_table_type(connection, database, schema, table_name)
             if not table_type or table_type == "FOREIGN":
                 # skip the table if it's foreign table / error in fetching table_type
                 logger.debug(
@@ -305,20 +311,23 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
-def get_table_type(connection, schema, table):
+def get_table_type(connection, database, schema, table):
     """get table type (regular/foreign)"""
     try:
-        query = DATABRICKS_GET_TABLE_COMMENTS.format(
-            schema_name=schema, table_name=table
-        )
+        if database:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=database, schema_name=schema, table_name=table
+            )
+        else:
+            query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
         rows = connection.execute(query)
         for row in rows:
             row_dict = dict(row)
             if row_dict.get("col_name") == "Type":
                 # get type of table
                 return row_dict.get("data_type")
-    except Exception:
-        pass
+    except DatabaseError as err:
+        logger.error(f"Failed to fetch table type for table {table} due to: {err}")
     return
 
 
@@ -506,9 +515,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_catalog,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_catalog
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
@@ -668,7 +679,9 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             cursor = self.connection.execute(
                 DATABRICKS_GET_TABLE_COMMENTS.format(
-                    schema_name=schema_name, table_name=table_name
+                    database_name=self.context.get().database,
+                    schema_name=schema_name,
+                    table_name=table_name,
                 )
             )
             for result in list(cursor):
@@ -704,6 +717,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         """
         try:
             query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=self.context.get().database,
                 schema_name=self.context.get().database_schema,
                 table_name=table_name,
             )
