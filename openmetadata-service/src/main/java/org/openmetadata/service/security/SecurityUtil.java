@@ -32,7 +32,10 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public final class SecurityUtil {
@@ -43,6 +46,10 @@ public final class SecurityUtil {
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
+  }
+
+  public static LoginConfiguration getLoginConfiguration() {
+    return SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   public static Map<String, String> authHeaders(String username) {

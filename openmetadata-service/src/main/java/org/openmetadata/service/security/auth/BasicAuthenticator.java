@@ -57,7 +57,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
-import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -74,15 +73,14 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -99,7 +97,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private TokenRepository tokenRepository;
   private LoginAttemptCache loginAttemptCache;
   private AuthorizerConfiguration authorizerConfiguration;
-  private LoginConfiguration loginConfiguration;
   private boolean isEmailServiceEnabled;
   private boolean isSelfSignUpAvailable;
 
@@ -112,8 +109,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
-    this.loginConfiguration =
-        SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   @Override
@@ -389,7 +384,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
                 getRoleListFromUser(storedUser),
                 !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
-                loginConfiguration.getJwtTokenExpiryTime(),
+                SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime(),
                 false,
                 ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();
@@ -471,7 +466,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(userName, storedUser, loginRequest.getPassword());
-    return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
+    return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
   @Override
@@ -486,13 +481,13 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throws TemplateException, IOException {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
-    if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
+    if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
           storedUser,
           "Multiple Failed Login Attempts.",
           String.format(
               "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
-              loginConfiguration.getAccessBlockTime()));
+              SecurityUtil.getLoginConfiguration().getAccessBlockTime()));
     }
   }
 
