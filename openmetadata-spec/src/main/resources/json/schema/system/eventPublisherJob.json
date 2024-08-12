@@ -104,7 +104,7 @@
     "payLoadSize": {
       "description": "Payload size in bytes depending on config",
       "type": "integer",
-      "default": 104857600
+      "default": 10485760
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",
