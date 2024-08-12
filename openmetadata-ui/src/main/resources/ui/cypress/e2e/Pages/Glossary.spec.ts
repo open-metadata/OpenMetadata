@@ -504,7 +504,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
         interceptURL('GET', `/api/v1/teams/**`, 'getTeams');
         interceptURL(
           'GET',
-          `/api/v1/users?fields=teams%2Croles&limit=25&team=${appName}`,
+          `/api/v1/users?fields=roles&limit=25&team=${appName}`,
           'teamUsers'
         );
 

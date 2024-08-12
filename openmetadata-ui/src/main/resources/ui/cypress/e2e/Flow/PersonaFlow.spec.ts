@@ -160,12 +160,10 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
     verifyResponseStatusCode('@getPersonaDetails', 200);
 
-    cy.get(
-      '[data-testid="page-header-container"] [data-testid="heading"]'
-    ).should('contain', PERSONA_DETAILS.displayName);
-    cy.get(
-      '[data-testid="page-header-container"] [data-testid="sub-heading"]'
-    ).should('contain', PERSONA_DETAILS.name);
+    cy.get('[data-testid="persona-heading"]').should(
+      'contain',
+      PERSONA_DETAILS.displayName
+    );
     cy.get(
       '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
     ).should('contain', PERSONA_DETAILS.description);
@@ -222,11 +220,11 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
     updatePersonaDisplayName('Test Persona');
 
-    cy.get('[data-testid="heading"]').should('contain', 'Test Persona');
+    cy.get('[data-testid="persona-heading"]').should('contain', 'Test Persona');
 
     updatePersonaDisplayName(PERSONA_DETAILS.displayName);
 
-    cy.get('[data-testid="heading"]').should(
+    cy.get('[data-testid="persona-heading"]').should(
       'contain',
       PERSONA_DETAILS.displayName
     );
