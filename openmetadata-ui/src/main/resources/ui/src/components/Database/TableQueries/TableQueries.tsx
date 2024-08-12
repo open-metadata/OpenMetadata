@@ -50,6 +50,7 @@ import {
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -60,6 +61,7 @@ import {
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   createQueryFilter,
@@ -191,7 +193,13 @@ const TableQueries: FC<TableQueriesProp> = ({
     try {
       await updateQueryVote(id ?? '', data);
       const response = await getQueryById(id ?? '', {
-        fields: 'owner,votes,tags,queryUsedIn,users',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.TAGS,
+          TabSpecificField.QUERY_USED_IN,
+          TabSpecificField.USERS,
+        ],
       });
       setSelectedQuery(response);
       setTableQueries((pre) => {
@@ -281,11 +289,16 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchTags = async (searchText = WILD_CARD_CHAR) => {
-    return fetchFilterOptions(
+    const data = await fetchFilterOptions(
       searchText,
       'disabled:false AND !classification.name:Tier',
       SearchIndex.TAG
     );
+
+    return data.hits.hits.map((hit) => ({
+      key: hit._source.fullyQualifiedName ?? hit._source.name,
+      label: getEntityName(hit._source),
+    }));
   };
 
   const setTagsDefaultOption = () => {
@@ -336,10 +349,15 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const fetchOwner = async (searchText = WILD_CARD_CHAR) => {
-    return fetchFilterOptions(searchText, 'isBot:false', [
+    const data = await fetchFilterOptions(searchText, 'isBot:false', [
       SearchIndex.USER,
       SearchIndex.TEAM,
     ]);
+
+    return data.hits.hits.map((hit) => ({
+      key: hit._source.name,
+      label: getEntityName(hit._source),
+    }));
   };
 
   const setOwnerDefaultOption = () => {

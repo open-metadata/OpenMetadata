@@ -153,7 +153,7 @@ const TagsV1 = ({
         {...tagProps}>
         {/* Wrap only content to avoid redirect on closeable icons  */}
         <Link
-          className="no-underline h-full"
+          className="no-underline h-full w-full"
           data-testid="tag-redirect-link"
           to={redirectLink}>
           {tagContent}

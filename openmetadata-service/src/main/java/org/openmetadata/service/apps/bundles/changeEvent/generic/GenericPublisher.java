@@ -104,6 +104,39 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
+  @Override
+  public void sendTestMessage() throws EventPublisherException {
+    long attemptTime = System.currentTimeMillis();
+    try {
+      // Post Message to default
+      String json =
+          "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
+      if (webhook.getEndpoint() != null) {
+        if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
+          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
+        } else {
+          postWebhookMessage(this, getTarget(), json);
+        }
+      }
+    } catch (Exception ex) {
+      Throwable cause = ex.getCause();
+      String message = "";
+      if (cause != null && cause.getClass() == UnknownHostException.class) {
+        message =
+            String.format(
+                "Unknown Host Exception for Generic Publisher : %s , WebhookEndpoint : %s",
+                subscriptionDestination.getId(), webhook.getEndpoint());
+        LOG.warn(message);
+        setErrorStatus(attemptTime, 400, "UnknownHostException");
+      } else {
+        message = CatalogExceptionMessage.eventPublisherFailedToPublish(WEBHOOK, ex.getMessage());
+        LOG.error(message);
+      }
+      throw new EventPublisherException(message);
+    }
+  }
+
   private Invocation.Builder getTarget() {
     Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
     return SecurityUtil.addHeaders(client.target(webhook.getEndpoint()), authHeaders);

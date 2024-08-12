@@ -59,7 +59,7 @@ class SapErpClient:
             api_version="v1",
             allow_redirects=True,
             retry_codes=[500, 504],
-            retry_wait=5,
+            retry_wait=2,
             verify=get_verify_ssl(config.sslConfig),
         )
         self.client = REST(client_config)

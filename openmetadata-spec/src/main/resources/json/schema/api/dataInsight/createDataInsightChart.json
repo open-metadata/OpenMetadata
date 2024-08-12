@@ -37,9 +37,14 @@
         "$ref": "../../dataInsight/dataInsightChart.json#/definitions/chartParameterValues"
       }
     },
-    "owner": {
-      "description": "Owner of this chart",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this chart",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
   "required": ["name"],

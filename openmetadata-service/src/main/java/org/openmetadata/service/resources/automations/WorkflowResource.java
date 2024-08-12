@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.automations;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -82,7 +82,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
 
   private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
@@ -357,7 +357,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    EntityUtil.Fields fields = getFields(FIELD_OWNER);
+    EntityUtil.Fields fields = getFields(FIELD_OWNERS);
     Workflow workflow = repository.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());

@@ -813,6 +813,8 @@ site_menu:
     url: /how-to-guides/data-insights/email-report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
+  - category: How-to Guides / Data Insights / Custom Data Insight Dashboards
+    url: /how-to-guides/data-insights/custom-dashboard
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
@@ -1762,6 +1764,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/credentials/gitcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GithubCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/githubcredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GitlabCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gitlabcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials
     url: /main-concepts/metadata-standard/schemas/security/credentials
   - category: Main Concepts / Metadata Standard / Schemas / Security

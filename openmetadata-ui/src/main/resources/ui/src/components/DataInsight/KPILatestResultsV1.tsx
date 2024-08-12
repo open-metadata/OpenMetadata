@@ -54,10 +54,10 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const targetMetValue = toNumber(resultData.target);
 
         const targetPercentValue = isPercentage
-          ? (targetValue * 100).toFixed(2)
+          ? targetValue.toFixed(2)
           : targetValue;
         const targetMetPercentValue = isPercentage
-          ? (targetMetValue * 100).toFixed(2)
+          ? targetMetValue.toFixed(2)
           : targetMetValue;
 
         const suffix = isPercentage ? '%' : '';

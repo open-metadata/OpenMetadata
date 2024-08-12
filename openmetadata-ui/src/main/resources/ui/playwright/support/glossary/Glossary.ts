@@ -12,38 +12,12 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { omit } from 'lodash';
-import { uuid } from '../../utils/common';
-import { visitGlossaryPage } from '../../utils/glossary';
-import { getRandomFirstName } from '../../utils/user';
-import { GlossaryTerm } from './GlossaryTerm';
-
-type ResponseDataType = {
-  name: string;
-  displayName: string;
-  description: string;
-  reviewers: unknown[];
-  tags: unknown[];
-  mutuallyExclusive: boolean;
-  id: string;
-  fullyQualifiedName: string;
-};
-
-export type UserTeamRef = {
-  name: string;
-  type: string;
-};
-
-export type GlossaryData = {
-  name: string;
-  displayName: string;
-  description: string;
-  reviewers: UserTeamRef[];
-  tags: string[];
-  mutuallyExclusive: boolean;
-  terms: GlossaryTerm[];
-  owner: UserTeamRef | undefined;
-  fullyQualifiedName: string;
-};
+import {
+  getRandomFirstName,
+  uuid,
+  visitGlossaryPage,
+} from '../../utils/common';
+import { GlossaryData, GlossaryResponseDataType } from './Glossary.interface';
 
 export class Glossary {
   randomName = getRandomFirstName();
@@ -57,12 +31,12 @@ export class Glossary {
     tags: [],
     mutuallyExclusive: false,
     terms: [],
-    owner: undefined,
+    owners: [],
     // eslint-disable-next-line no-useless-escape
     fullyQualifiedName: `\"PW%${this.randomId}.${this.randomName}\"`,
   };
 
-  responseData: ResponseDataType;
+  responseData: GlossaryResponseDataType;
 
   constructor(name?: string) {
     this.data.name = name ?? this.data.name;
@@ -77,7 +51,7 @@ export class Glossary {
   }
 
   async create(apiContext: APIRequestContext) {
-    const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owner']);
+    const apiData = omit(this.data, ['fullyQualifiedName', 'terms', 'owners']);
     const response = await apiContext.post('/api/v1/glossaries', {
       data: apiData,
     });

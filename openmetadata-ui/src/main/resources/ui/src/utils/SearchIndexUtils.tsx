@@ -17,7 +17,7 @@ import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const makeRow = (column: SearchIndexField) => {
   return {

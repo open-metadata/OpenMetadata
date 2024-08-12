@@ -40,6 +40,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import {
   getEntityDetailsPath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -48,6 +49,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { CSMode } from '../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -117,7 +119,7 @@ const StoredProcedurePage = () => {
   const {
     id: storedProcedureId = '',
     followers,
-    owner,
+    owners,
     tags,
     tier,
     version,
@@ -198,7 +200,9 @@ const StoredProcedurePage = () => {
         id: response.id ?? '',
       });
     } catch (error) {
-      // Error here
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -321,17 +325,17 @@ const StoredProcedurePage = () => {
   }, [isFollowing]);
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: StoredProcedure['owner']) => {
+    async (newOwner?: StoredProcedure['owners']) => {
       if (!storedProcedure) {
         return;
       }
       const updatedEntityDetails = {
         ...storedProcedure,
-        owner: newOwner,
+        owners: newOwner,
       };
-      await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
+      await handleStoreProcedureUpdate(updatedEntityDetails, 'owners');
     },
-    [owner, storedProcedure]
+    [owners, storedProcedure]
   );
 
   const handleToggleDelete = (version?: number) => {
@@ -552,7 +556,7 @@ const StoredProcedurePage = () => {
                         hasEditAccess={editDescriptionPermission}
                         isDescriptionExpanded={isEmpty(code)}
                         isEdit={isEdit}
-                        owner={owner}
+                        owner={owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}

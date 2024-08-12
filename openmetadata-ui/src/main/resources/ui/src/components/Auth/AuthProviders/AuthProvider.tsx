@@ -45,6 +45,7 @@ import {
   ROUTES,
 } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   AuthenticationConfiguration,
@@ -93,7 +94,14 @@ interface AuthProviderProps {
 
 const cookieStorage = new CookieStorage();
 
-const userAPIQueryFields = 'profile,teams,roles,personas,defaultPersona';
+const userAPIQueryFields = [
+  TabSpecificField.PROFILE,
+  TabSpecificField.TEAMS,
+  TabSpecificField.ROLES,
+  TabSpecificField.PERSONAS,
+  TabSpecificField.DEFAULT_PERSONA,
+  TabSpecificField.DOMAINS,
+];
 
 const isEmailVerifyField = 'isEmailVerified';
 
@@ -443,11 +451,16 @@ export const AuthProvider = ({
     const isGetRequest = config.method === 'get';
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = window.location.pathname;
+    const shouldNotIntercept = [
+      '/domain',
+      '/auth/logout',
+      '/auth/refresh',
+    ].reduce((prev, curr) => {
+      return prev || currentPath.startsWith(curr);
+    }, false);
 
     // Do not intercept requests from domains page or /auth endpoints
-    if (
-      ['/domain', '/auth/logout', '/auth/refresh'].indexOf(currentPath) > -1
-    ) {
+    if (shouldNotIntercept) {
       return config;
     }
 

@@ -76,7 +76,7 @@ import {
   getEntityName,
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
-import { getServiceIcon } from './TableUtils';
+import { getEntityIcon, getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
@@ -484,6 +484,10 @@ class SearchClassBase {
     return getServiceIcon(source);
   }
 
+  public getEntityIcon(indexType: string, iconClass = '', iconStyle = {}) {
+    return getEntityIcon(indexType, iconClass, iconStyle);
+  }
+
   public getListOfEntitiesWithoutDomain(): string[] {
     return [EntityType.TEST_CASE];
   }
@@ -565,6 +569,10 @@ class SearchClassBase {
           GroupIcon: IconTable,
         };
     }
+  }
+
+  public notIncludeAggregationExploreTree() {
+    return [EntityType.CHART, EntityType.INGESTION_PIPELINE];
   }
 }
 

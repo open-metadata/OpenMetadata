@@ -67,9 +67,9 @@
         "$ref": "#/definitions/testConnectionStep"
       }
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this TestConnection definition.",
-      "$ref": "../../../type/entityReference.json",
+      "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },
     "version": {
@@ -96,6 +96,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "additionalProperties": false,

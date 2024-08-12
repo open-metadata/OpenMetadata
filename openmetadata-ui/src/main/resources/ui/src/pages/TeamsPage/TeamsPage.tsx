@@ -29,7 +29,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
@@ -48,7 +48,6 @@ import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -112,7 +111,7 @@ const TeamsPage = () => {
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
     try {
       const { data } = await getTeams({
-        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        parentTeam: parentTeam ?? 'organization',
         include: Include.All,
       });
 
@@ -138,9 +137,14 @@ const TeamsPage = () => {
 
     try {
       const { data } = await getTeams({
-        parentTeam: getDecodedFqn(parentTeam ?? '') ?? 'organization',
+        parentTeam: parentTeam ?? 'organization',
         include: Include.All,
-        fields: 'userCount,childrenCount,owns,parents',
+        fields: [
+          TabSpecificField.USER_COUNT,
+          TabSpecificField.CHILDREN_COUNT,
+          TabSpecificField.OWNS,
+          TabSpecificField.PARENTS,
+        ],
       });
 
       const modifiedTeams: Team[] = data.map((team) => ({
@@ -172,7 +176,7 @@ const TeamsPage = () => {
     setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(name, {
-        fields: 'parents',
+        fields: TabSpecificField.PARENTS,
         include: Include.All,
       });
       if (data) {
@@ -195,7 +199,7 @@ const TeamsPage = () => {
           ``,
           0,
           0,
-          `owner.id:${selectedTeam.id}`,
+          `owners.id:${selectedTeam.id}`,
           '',
           '',
           SearchIndex.ALL
@@ -212,7 +216,12 @@ const TeamsPage = () => {
     setIsPageLoading(loadPage);
     try {
       const data = await getTeamByName(name, {
-        fields: 'users,parents,profile,owner',
+        fields: [
+          TabSpecificField.USERS,
+          TabSpecificField.PARENTS,
+          TabSpecificField.PROFILE,
+          TabSpecificField.OWNERS,
+        ],
         include: Include.All,
       });
 
@@ -231,7 +240,13 @@ const TeamsPage = () => {
     setFetchingAdvancedDetails(true);
     try {
       const data = await getTeamByName(name, {
-        fields: 'users,defaultRoles,policies,childrenCount,domain',
+        fields: [
+          TabSpecificField.USERS,
+          TabSpecificField.DEFAULT_ROLES,
+          TabSpecificField.POLICIES,
+          TabSpecificField.CHILDREN_COUNT,
+          TabSpecificField.DOMAINS,
+        ],
         include: Include.All,
       });
 
@@ -256,6 +271,8 @@ const TeamsPage = () => {
   const createNewTeam = async (data: Team) => {
     try {
       setIsLoading(true);
+      const domains =
+        data?.domains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
       const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
@@ -263,8 +280,10 @@ const TeamsPage = () => {
         teamType: data.teamType as TeamType,
         parents: fqn ? [selectedTeam.id] : undefined,
         email: data.email || undefined,
+        domains,
         isJoinable: data.isJoinable,
       };
+
       const res = await createTeam(teamData);
       if (res) {
         fetchTeamBasicDetails(selectedTeam.name, true);

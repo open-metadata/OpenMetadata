@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { generateRandomUsername } from '../../utils/user';
+import { generateRandomUsername } from '../../utils/common';
 
 type ResponseDataType = {
   name: string;
@@ -59,6 +59,19 @@ export class UserClass {
     return {
       entity: response.body,
     };
+  }
+
+  async setAdminRole(apiContext: APIRequestContext) {
+    return this.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'replace',
+          path: '/isAdmin',
+          value: true,
+        },
+      ],
+    });
   }
 
   async delete(apiContext: APIRequestContext) {

@@ -7,6 +7,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.getClaimOrObject;
 import static org.openmetadata.service.security.SecurityUtil.getFirstMatchJwtClaim;
+import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.pac4j.core.util.CommonHelper.assertNotNull;
 import static org.pac4j.core.util.CommonHelper.isNotEmpty;
@@ -42,6 +43,7 @@ import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
 import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
+import com.nimbusds.oauth2.sdk.token.RefreshToken;
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
 import com.nimbusds.openid.connect.sdk.AuthenticationErrorResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
@@ -65,12 +67,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.text.ParseException;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
@@ -423,19 +428,25 @@ public class AuthenticationCodeFlowHandler {
   }
 
   private void validateAndSendTokenRequest(
-      HttpServletRequest req, OidcCredentials oidcCredentials, String computedCallbackUrl)
+      HttpServletRequest httpServletRequest,
+      OidcCredentials oidcCredentials,
+      String computedCallbackUrl)
       throws IOException, com.nimbusds.oauth2.sdk.ParseException, URISyntaxException {
     if (oidcCredentials.getCode() != null) {
-      LOG.debug("Initiating Token Request for User Session: {} ", req.getSession().getId());
+      LOG.debug(
+          "Initiating Token Request for User Session: {} ",
+          httpServletRequest.getSession().getId());
       CodeVerifier verifier =
           (CodeVerifier)
-              req.getSession().getAttribute(client.getCodeVerifierSessionAttributeName());
+              httpServletRequest
+                  .getSession()
+                  .getAttribute(client.getCodeVerifierSessionAttributeName());
       // Token request
       TokenRequest request =
           createTokenRequest(
               new AuthorizationCodeGrant(
                   oidcCredentials.getCode(), new URI(computedCallbackUrl), verifier));
-      executeAuthorizationCodeTokenRequest(request, oidcCredentials);
+      executeAuthorizationCodeTokenRequest(httpServletRequest, request, oidcCredentials);
     }
   }
 
@@ -519,14 +530,6 @@ public class AuthenticationCodeFlowHandler {
       map.put(entry.getKey(), Arrays.asList(entry.getValue()));
     }
     return map;
-  }
-
-  private void writeJsonResponse(HttpServletResponse response, String message) throws IOException {
-    response.setContentType("application/json");
-    response.setCharacterEncoding("UTF-8");
-    response.getOutputStream().print(message);
-    response.getOutputStream().flush();
-    response.setStatus(HttpServletResponse.SC_OK);
   }
 
   private ClientAuthentication getClientAuthentication(OidcConfiguration configuration) {
@@ -770,8 +773,14 @@ public class AuthenticationCodeFlowHandler {
       }
       var body = HttpUtils.readBody(connection);
       Map<String, Object> res = JsonUtils.readValue(body, new TypeReference<>() {});
+
+      // Populate Tokens
       azureAdProfile.setAccessToken(new BearerAccessToken((String) res.get("access_token")));
+      azureAdProfile.setRefreshToken(new RefreshToken((String) res.get("refresh_token")));
+      azureAdProfile.setIdToken(SignedJWT.parse((String) res.get("id_token")));
     } catch (final IOException e) {
+      throw new TechnicalException(e);
+    } catch (ParseException e) {
       throw new TechnicalException(e);
     } finally {
       HttpUtils.closeConnection(connection);
@@ -874,14 +883,22 @@ public class AuthenticationCodeFlowHandler {
     }
   }
 
+  @SneakyThrows
   private void executeAuthorizationCodeTokenRequest(
-      TokenRequest request, OidcCredentials credentials)
+      HttpServletRequest httpServletRequest, TokenRequest request, OidcCredentials credentials)
       throws IOException, com.nimbusds.oauth2.sdk.ParseException {
     HTTPResponse httpResponse = executeTokenHttpRequest(request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
 
     // Populate credentials
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
+
+    // Check expiry, azure on first go itself is returning a expried token sometimes
+    Date expirationTime = credentials.getIdToken().getJWTClaimsSet().getExpirationTime();
+    if (expirationTime != null
+        && expirationTime.before(Calendar.getInstance(TimeZone.getTimeZone("UTC")).getTime())) {
+      renewOidcCredentials(httpServletRequest, credentials);
+    }
   }
 
   private void populateCredentialsFromTokenResponse(

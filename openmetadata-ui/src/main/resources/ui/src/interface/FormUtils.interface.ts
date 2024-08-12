@@ -12,6 +12,7 @@
  */
 
 import { FormItemProps, FormRule } from 'antd';
+import { NamePath } from 'antd/lib/form/interface';
 import { ReactNode } from 'react';
 import { FormValidationRulesType } from '../enums/form.enum';
 
@@ -39,6 +40,7 @@ export enum FieldTypes {
   USER_TEAM_SELECT = 'user_team_select',
   USER_MULTI_SELECT = 'user_multi_select',
   COLOR_PICKER = 'color_picker',
+  DOMAIN_SELECT = 'domain_select',
   CRON_EDITOR = 'cron_editor',
 }
 
@@ -49,7 +51,7 @@ export enum HelperTextType {
 
 export interface FieldProp {
   label: ReactNode;
-  name: string;
+  name: NamePath;
   type: FieldTypes;
   required: boolean;
   id: string;

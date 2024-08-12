@@ -117,6 +117,7 @@ import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -357,6 +358,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ServletRegistration.Dynamic samlMetadataServlet =
           environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
       samlMetadataServlet.addMapping("/api/v1/saml/metadata");
+
+      ServletRegistration.Dynamic samlRefreshServlet =
+          environment.servlets().addServlet("saml_refresh_token", new SamlTokenRefreshServlet());
+      samlRefreshServlet.addMapping("/api/v1/saml/refresh");
     }
   }
 
@@ -442,6 +447,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             conf.getMigrationConfiguration().getNativePath(),
             connectionType,
             conf.getMigrationConfiguration().getExtensionPath(),
+            conf.getPipelineServiceClientConfiguration(),
             false);
     migrationWorkflow.loadMigrations();
     migrationWorkflow.validateMigrationsForServer();

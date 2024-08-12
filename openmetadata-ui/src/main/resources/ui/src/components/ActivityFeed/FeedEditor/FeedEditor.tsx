@@ -19,6 +19,7 @@ import 'quill-mention';
 import QuillMarkdown from 'quilljs-markdown';
 import React, {
   forwardRef,
+  KeyboardEvent,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -35,6 +36,7 @@ import {
   MENTION_DENOTATION_CHARS,
   TOOLBAR_ITEMS,
 } from '../../../constants/Feeds.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getUserByName } from '../../../rest/userAPI';
 import {
@@ -45,7 +47,7 @@ import {
 import { LinkBlot } from '../../../utils/QuillLink/QuillLink';
 import { insertMention, insertRef } from '../../../utils/QuillUtils';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
-import { getEntityIcon } from '../../../utils/TableUtils';
+import searchClassBase from '../../../utils/SearchClassBase';
 import { editorRef } from '../../common/RichTextEditor/RichTextEditor.interface';
 import './feed-editor.less';
 import { FeedEditorProp, MentionSuggestionsItem } from './FeedEditor.interface';
@@ -92,17 +94,17 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
         // Fetch profile images in case of user listing
         const promises = matches.map(async (item, index) => {
           if (item.type === 'user') {
-            return getUserByName(item.name, { fields: 'profile' }).then(
-              (res) => {
-                newMatches[index] = {
-                  ...item,
-                  avatarEle: userMentionItemWithAvatar(
-                    item,
-                    userProfilePics[item.name] ?? res
-                  ),
-                };
-              }
-            );
+            return getUserByName(item.name, {
+              fields: TabSpecificField.PROFILE,
+            }).then((res) => {
+              newMatches[index] = {
+                ...item,
+                avatarEle: userMentionItemWithAvatar(
+                  item,
+                  userProfilePics[item.name] ?? res
+                ),
+              };
+            });
           } else if (item.type === 'team') {
             newMatches[index] = {
               ...item,
@@ -140,7 +142,7 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
             </div>`
           : '';
 
-        const icon = getEntityIcon(item.type as string);
+        const icon = searchClassBase.getEntityIcon(item.type ?? '');
 
         const iconString = ReactDOMServer.renderToString(icon ?? <></>);
 
@@ -236,14 +238,27 @@ export const FeedEditor = forwardRef<editorRef, FeedEditorProp>(
      */
     const handleKeyDown = (e: KeyboardEvent) => {
       // This logic will handle Enter key binding
-      if (e.key === 'Enter' && !e.shiftKey && !isMentionListOpen) {
-        e.preventDefault();
-        onSaveHandle();
-      }
-      // handle enter keybinding for mention popup
-      // set mention list state to false when mention item is selected
-      else if (e.key === 'Enter') {
-        toggleMentionList(false);
+      if (e.key === 'Enter') {
+        // Ignore Enter keydown events caused by IME operations during CJK text input.
+        // https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event#keydown_events_with_ime
+        // Note: `compositionstart` may fire after keydown when typing the first character that opens up the IME,
+        // and compositionend may fire before keydown when typing the last character that closes the IME.
+        // In these cases, isComposing is false even when the event is part of composition.
+        // However, KeyboardEvent.keyCode is still 229 in these cases,
+        // so it's still advisable to check keyCode as well, although it's deprecated.
+        if (e.nativeEvent.isComposing || e.keyCode === 229) {
+          return;
+        }
+        // handle enter keybinding for save
+        if (!e.shiftKey && !isMentionListOpen) {
+          e.preventDefault();
+          onSaveHandle();
+        }
+        // handle enter keybinding for mention popup
+        // set mention list state to false when mention item is selected
+        else {
+          toggleMentionList(false);
+        }
       }
     };
 

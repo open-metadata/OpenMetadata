@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForFutureDays,
+} from '../../../src/utils/date-time/DateTimeUtils';
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import { checkDataInsightSuccessStatus } from '../../common/DataInsightUtils';
-import { BASE_URL } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 
 describe(
@@ -89,6 +93,23 @@ describe(
       ).click();
       cy.get('[data-testid="install-application"]').click();
       cy.get('[data-testid="save-button"]').click();
+
+      cy.get('#root\\/backfillConfiguration\\/enabled').click();
+
+      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
+      const endDate = customFormatDateTime(
+        getEpochMillisForFutureDays(5),
+        'yyyy-MM-dd'
+      );
+      cy.get('#root\\/backfillConfiguration\\/startDate')
+        .click()
+        .type(`${startDate}`);
+      cy.get('#root\\/backfillConfiguration\\/endDate')
+        .click()
+        .type(`${endDate}`);
+
+      cy.get('[data-testid="submit-btn"]').click();
+
       cy.get('[data-testid="cron-type"]').click();
       cy.get('.rc-virtual-list [title="Day"]').click();
       cy.get('[data-testid="cron-type"]').should('contain', 'Day');
@@ -100,40 +121,35 @@ describe(
       );
     });
 
-    it('Deploy & run application', () => {
-      interceptURL(
-        'GET',
-        '/api/v1/apps/name/DataInsightsApplication?fields=*',
-        'getDataInsightDetails'
-      );
-      interceptURL(
-        'POST',
-        '/api/v1/apps/deploy/DataInsightsApplication',
-        'deploy'
-      );
-      interceptURL(
-        'POST',
-        '/api/v1/apps/trigger/DataInsightsApplication',
-        'triggerPipeline'
-      );
-      cy.get(
-        '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
-      ).click();
-      verifyResponseStatusCode('@getDataInsightDetails', 200);
-      cy.get('[data-testid="deploy-button"]').click();
-      verifyResponseStatusCode('@deploy', 200);
-      cy.reload();
-      verifyResponseStatusCode('@getDataInsightDetails', 200);
+    if (Cypress.env('isOss')) {
+      it('Run application', () => {
+        interceptURL(
+          'GET',
+          '/api/v1/apps/name/DataInsightsApplication?fields=*',
+          'getDataInsightDetails'
+        );
+        interceptURL(
+          'POST',
+          '/api/v1/apps/trigger/DataInsightsApplication',
+          'triggerPipeline'
+        );
+        cy.get(
+          '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
+        ).click();
+        verifyResponseStatusCode('@getDataInsightDetails', 200);
 
-      // Adding a manual wait to allow some time between deploying the pipeline and triggering it
-      // eslint-disable-next-line cypress/no-unnecessary-waiting
-      cy.wait(2000);
-      cy.get('[data-testid="run-now-button"]').click();
-      verifyResponseStatusCode('@triggerPipeline', 200);
-      cy.reload();
-      checkDataInsightSuccessStatus();
-      cy.get('[data-testid="logs"]').click();
-      cy.url().should('eq', `${BASE_URL}/apps/DataInsightsApplication/logs`);
-    });
+        cy.get('[data-testid="run-now-button"]').click();
+        verifyResponseStatusCode('@triggerPipeline', 200);
+        cy.reload();
+        checkDataInsightSuccessStatus();
+        cy.get('[data-testid="logs"]').click();
+
+        cy.get('[data-testid="stats-component"]').contains('Success');
+
+        cy.get('[data-testid="app-entity-stats-history-table"]').should(
+          'be.visible'
+        );
+      });
+    }
   }
 );

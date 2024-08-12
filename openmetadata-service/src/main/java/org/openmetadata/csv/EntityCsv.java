@@ -25,6 +25,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -165,26 +167,31 @@ public abstract class EntityCsv<T extends EntityInterface> {
     csvFile.withRecords(list);
   }
 
-  /** Owner field is in entityType;entityName format */
-  public EntityReference getOwner(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
+  /** Owner field is in entityType:entityName format */
+  public List<EntityReference> getOwners(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber)
       throws IOException {
     if (!processRecord) {
       return null;
     }
-
-    String ownerField = csvRecord.get(fieldNumber);
-    if (nullOrEmpty(ownerField)) {
+    String ownersRecord = csvRecord.get(fieldNumber);
+    if (nullOrEmpty(ownersRecord)) {
       return null;
     }
-
-    List<String> list = CsvUtil.fieldToStrings(ownerField);
-    if (list.size() != 2) {
-      importFailure(printer, invalidOwner(fieldNumber), csvRecord);
-      return null;
+    List<String> owners = listOrEmpty(CsvUtil.fieldToStrings(ownersRecord));
+    List<EntityReference> refs = new ArrayList<>();
+    for (String owner : owners) {
+      List<String> ownerTypes = listOrEmpty(CsvUtil.fieldToEntities(owner));
+      if (ownerTypes.size() != 2) {
+        importFailure(printer, invalidOwner(fieldNumber), csvRecord);
+        return Collections.emptyList();
+      }
+      EntityReference ownerRef =
+          getEntityReference(printer, csvRecord, fieldNumber, ownerTypes.get(0), ownerTypes.get(1));
+      if (ownerRef != null) {
+        refs.add(ownerRef);
+      }
     }
-    EntityReference owner =
-        getEntityReference(printer, csvRecord, fieldNumber, list.get(0), list.get(1));
-    return owner == null || Boolean.TRUE.equals(owner.getInherited()) ? null : owner;
+    return refs.isEmpty() ? null : refs;
   }
 
   /** Owner field is in entityName format */
@@ -273,6 +280,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         refs.add(ref);
       }
     }
+    refs.sort(Comparator.comparing(EntityReference::getName));
     return refs.isEmpty() ? null : refs;
   }
 
@@ -518,7 +526,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public static String invalidOwner(int field) {
-    String error = "Owner should be of format user;userName or team;teamName";
+    String error = "Owner should be of format user:userName or team:teamName";
     return String.format(FIELD_ERROR_MSG, CsvErrorType.INVALID_FIELD, field + 1, error);
   }
 

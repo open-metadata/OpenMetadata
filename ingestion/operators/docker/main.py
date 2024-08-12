@@ -20,7 +20,6 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
 )
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.utils.logger import set_loggers_level
-from metadata.workflow.data_insight import DataInsightWorkflow
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -32,7 +31,6 @@ WORKFLOW_MAP = {
     PipelineType.lineage.value: MetadataWorkflow,
     PipelineType.profiler.value: ProfilerWorkflow,
     PipelineType.TestSuite.value: TestSuiteWorkflow,
-    PipelineType.dataInsight.value: DataInsightWorkflow,
     PipelineType.elasticSearchReindex.value: MetadataWorkflow,
     PipelineType.dbt.value: MetadataWorkflow,
 }

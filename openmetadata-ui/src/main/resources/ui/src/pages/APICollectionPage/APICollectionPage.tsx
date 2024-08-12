@@ -46,6 +46,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -53,6 +54,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -206,13 +208,16 @@ const APICollectionPage: FunctionComponent = () => {
       setIsAPICollectionLoading(true);
       const response = await getApiCollectionByFQN(decodedAPICollectionFQN, {
         // eslint-disable-next-line max-len
-        fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
         include: Include.All,
       });
       setAPICollection(response);
       setShowDeletedEndpoints(response.deleted ?? false);
     } catch (err) {
       // Error
+      if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsAPICollectionLoading(false);
     }
@@ -228,7 +233,7 @@ const APICollectionPage: FunctionComponent = () => {
       try {
         const res = await getApiEndPoints({
           ...params,
-          fields: TabSpecificField.OWNER,
+          fields: TabSpecificField.OWNERS,
           apiCollection: decodedAPICollectionFQN,
           service: apiCollection?.service?.fullyQualifiedName ?? '',
           include: showDeletedEndpoints ? Include.Deleted : Include.NonDeleted,
@@ -308,11 +313,11 @@ const APICollectionPage: FunctionComponent = () => {
   );
 
   const handleUpdateOwner = useCallback(
-    async (owner: APICollection['owner']) => {
+    async (owners: APICollection['owners']) => {
       try {
         const updatedData = {
           ...apiCollection,
-          owner: owner,
+          owners,
         };
 
         const response = await saveUpdatedAPICollectionData(
@@ -329,7 +334,7 @@ const APICollectionPage: FunctionComponent = () => {
         );
       }
     },
-    [apiCollection, apiCollection?.owner]
+    [apiCollection, apiCollection?.owners]
   );
 
   const handleTagsUpdate = async (selectedTags?: Array<EntityTags>) => {
@@ -670,7 +675,7 @@ const APICollectionPage: FunctionComponent = () => {
     try {
       await updateApiCollectionVote(id, data);
       const response = await getApiCollectionByFQN(decodedAPICollectionFQN, {
-        fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.VOTES}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.VOTES}`,
         include: Include.All,
       });
       setAPICollection(response);

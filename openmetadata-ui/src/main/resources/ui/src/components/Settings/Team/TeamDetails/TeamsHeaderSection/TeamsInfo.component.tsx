@@ -50,7 +50,7 @@ const TeamsInfo = ({
 
   const { currentUser } = useApplicationStore();
 
-  const { email, owner, teamType, id, fullyQualifiedName } = useMemo(
+  const { email, owners, teamType, id, fullyQualifiedName } = useMemo(
     () => currentTeam,
     [currentTeam]
   );
@@ -64,12 +64,14 @@ const TeamsInfo = ({
     [entityPermissions, isTeamDeleted]
   );
 
+  const isUserPartOfCurrentTeam = useMemo<boolean>(() => {
+    return owners?.some((owner) => owner.id === currentUser?.id) ?? false;
+  }, [owners, currentUser]);
+
   const hasEditSubscriptionPermission = useMemo(
     () =>
-      (entityPermissions.EditAll ||
-        currentTeam.owner?.id === currentUser?.id) &&
-      !isTeamDeleted,
-    [entityPermissions, currentTeam, currentUser, isTeamDeleted]
+      (entityPermissions.EditAll || isUserPartOfCurrentTeam) && !isTeamDeleted,
+    [entityPermissions, isUserPartOfCurrentTeam, isTeamDeleted]
   );
 
   const onEmailSave = async (data: { email: string }) => {
@@ -88,11 +90,11 @@ const TeamsInfo = ({
   };
 
   const updateOwner = useCallback(
-    async (owner?: EntityReference) => {
+    async (owners?: EntityReference[]) => {
       if (currentTeam) {
         const updatedData: Team = {
           ...currentTeam,
-          owner,
+          owners,
         };
 
         await updateTeamHandler(updatedData);
@@ -205,7 +207,6 @@ const TeamsInfo = ({
                   className="toolbar-button align-middle"
                   component={EditIcon}
                   data-testid="edit-email"
-                  style={{ fontSize: '16px' }}
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
@@ -250,21 +251,18 @@ const TeamsInfo = ({
 
             {hasEditPermission && (
               <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.team-type'),
-                })}>
+                title={
+                  isGroupType
+                    ? t('message.group-team-type-change-message')
+                    : t('label.edit-entity', {
+                        entity: t('label.team-type'),
+                      })
+                }>
                 <Icon
-                  className={classNames('vertical-middle m-l-xs', {
-                    'opacity-50': isGroupType,
+                  className={classNames('align-middle m-l-xss', {
+                    'opacity-30': isGroupType,
                   })}
                   data-testid="edit-team-type-icon"
-                  title={
-                    isGroupType
-                      ? t('message.group-team-type-change-message')
-                      : t('label.edit-entity', {
-                          entity: t('label.team-type'),
-                        })
-                  }
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
@@ -295,7 +293,8 @@ const TeamsInfo = ({
   return (
     <Space size={0}>
       <DomainLabel
-        domain={currentTeam.domain}
+        multiple
+        domain={currentTeam.domains}
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
@@ -305,7 +304,7 @@ const TeamsInfo = ({
       <OwnerLabel
         className="text-sm"
         hasPermission={hasAccess}
-        owner={owner}
+        owners={owners}
         onUpdate={updateOwner}
       />
       <Divider type="vertical" />

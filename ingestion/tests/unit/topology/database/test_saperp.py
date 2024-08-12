@@ -152,10 +152,10 @@ EXPECTED_TABLES_AND_COLUMNS = [
                 displayName="Client",
                 dataType="INT",
                 arrayDataType=None,
-                dataLength=1,
+                dataLength=3,
                 precision=None,
                 scale=None,
-                dataTypeDisplay="INT",
+                dataTypeDisplay="CLNT(3)",
                 description=Markdown(root="Client"),
                 fullyQualifiedName=None,
                 tags=None,
@@ -196,7 +196,7 @@ EXPECTED_TABLES_AND_COLUMNS = [
         ],
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
             root="saperp_source_test.saperp_database.saperp_database_schema"
         ),
@@ -287,7 +287,7 @@ EXPECTED_TABLES_AND_COLUMNS = [
         ],
         tablePartition=None,
         tableProfilerConfig=None,
-        owner=None,
+        owners=None,
         databaseSchema=FullyQualifiedEntityName(
             root="saperp_source_test.saperp_database.saperp_database_schema"
         ),

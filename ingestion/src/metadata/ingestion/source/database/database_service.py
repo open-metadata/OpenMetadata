@@ -52,7 +52,7 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
@@ -316,7 +316,7 @@ class DatabaseServiceSource(
         """
 
     def yield_table_tag_details(
-        self, table_name_and_type: str
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         From topology. To be run for each table
@@ -527,7 +527,7 @@ class DatabaseServiceSource(
             yield schema_fqn if return_fqn else schema_name
 
     @calculate_execution_time()
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
         Method to process the table owners
         """

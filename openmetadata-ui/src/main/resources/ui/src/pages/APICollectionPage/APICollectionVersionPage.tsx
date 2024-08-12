@@ -41,7 +41,11 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { ChangeDescription } from '../../generated/entity/type';
@@ -105,7 +109,7 @@ const APICollectionVersionPage = () => {
   const [currentEndpointsPage, setCurrentEndpointsPage] =
     useState<number>(INITIAL_PAGING_VALUE);
 
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -125,11 +129,11 @@ const APICollectionVersionPage = () => {
       () =>
         getCommonExtraInfoForVersionDetails(
           currentVersionData?.changeDescription as ChangeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [currentVersionData?.changeDescription, owner, tier, domain]
+      [currentVersionData?.changeDescription, owners, tier, domain]
     );
 
   const init = useCallback(async () => {
@@ -173,7 +177,7 @@ const APICollectionVersionPage = () => {
       try {
         const res = await getApiEndPoints({
           ...params,
-          fields: 'owner',
+          fields: TabSpecificField.OWNERS,
           apiCollection: collection?.fullyQualifiedName ?? '',
           service: collection?.service?.fullyQualifiedName ?? '',
           include: Include.All,

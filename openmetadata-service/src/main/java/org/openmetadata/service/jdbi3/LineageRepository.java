@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.EntityCsv.getCsvDocumentation;
+import static org.openmetadata.service.Entity.API_ENDPOINT;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
@@ -44,6 +45,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -200,10 +202,11 @@ public class LineageRepository {
       if (pipelineRef.getType().equals(PIPELINE)) {
         pipelineMap =
             JsonUtils.getMap(
-                Entity.getEntity(pipelineRef, "pipelineStatus,tags,owner", Include.ALL));
+                Entity.getEntity(pipelineRef, "pipelineStatus,tags,owners", Include.ALL));
       } else {
-        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owner", Include.ALL));
+        pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
       }
+      pipelineMap.remove("changeDescription");
       relationshipDetails.put("pipelineEntityType", pipelineRef.getType());
       relationshipDetails.put(PIPELINE, pipelineMap);
     }
@@ -350,6 +353,12 @@ public class LineageRepository {
                 () ->
                     new IllegalArgumentException(
                         CatalogExceptionMessage.invalidFieldName("feature", columnFQN)));
+      }
+      case API_ENDPOINT -> {
+        APIEndpoint apiEndpoint =
+            Entity.getEntity(
+                API_ENDPOINT, entityReference.getId(), "responseSchema", Include.NON_DELETED);
+        ColumnUtil.validateFieldFQN(apiEndpoint.getResponseSchema().getSchemaFields(), columnFQN);
       }
       default -> throw new IllegalArgumentException(
           String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));

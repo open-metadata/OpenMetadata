@@ -41,6 +41,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import {
   getEntityDetailsPath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -49,8 +50,13 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Container } from '../../generated/entity/data/container';
@@ -118,8 +124,17 @@ const ContainerPage = () => {
     setIsLoading(true);
     try {
       const response = await getContainerByName(containerFQN, {
-        fields:
-          'parent,dataModel,owner,tags,followers,extension,domain,dataProducts,votes',
+        fields: [
+          TabSpecificField.PARENT,
+          TabSpecificField.DATAMODEL,
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.EXTENSION,
+          TabSpecificField.DOMAIN,
+          TabSpecificField.DATA_PRODUCTS,
+          TabSpecificField.VOTES,
+        ],
         include: Include.All,
       });
       addToRecentViewed({
@@ -137,6 +152,9 @@ const ContainerPage = () => {
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +164,7 @@ const ContainerPage = () => {
     setIsChildrenLoading(true);
     try {
       const { children } = await getContainerByName(decodedContainerName, {
-        fields: 'children',
+        fields: TabSpecificField.CHILDREN,
       });
       setContainerChildrenData(children);
     } catch (error) {
@@ -192,7 +210,7 @@ const ContainerPage = () => {
 
   const {
     deleted,
-    owner,
+    owners,
     description,
     version,
     entityName,
@@ -202,7 +220,7 @@ const ContainerPage = () => {
   } = useMemo(() => {
     return {
       deleted: containerData?.deleted,
-      owner: containerData?.owner,
+      owners: containerData?.owners,
       description: containerData?.description,
       version: containerData?.version,
       tier: getTierTags(containerData?.tags ?? []),
@@ -353,23 +371,23 @@ const ContainerPage = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (updatedOwner?: Container['owner']) => {
+    async (updatedOwner?: Container['owners']) => {
       try {
-        const { owner: newOwner, version } = await handleUpdateContainerData({
+        const { owners: newOwner, version } = await handleUpdateContainerData({
           ...(containerData as Container),
-          owner: updatedOwner,
+          owners: updatedOwner,
         });
 
         setContainerData((prev) => ({
           ...(prev as Container),
-          owner: newOwner,
+          owners: newOwner,
           version,
         }));
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [containerData, containerData?.owner]
+    [containerData, containerData?.owners]
   );
 
   const handleUpdateTier = async (updatedTier?: Tag) => {
@@ -574,7 +592,7 @@ const ContainerPage = () => {
                         hasEditAccess={editDescriptionPermission}
                         isDescriptionExpanded={isEmpty(containerChildrenData)}
                         isEdit={isEditDescription}
-                        owner={owner}
+                        owner={owners}
                         showActions={!deleted}
                         onCancel={() => setIsEditDescription(false)}
                         onDescriptionEdit={() => setIsEditDescription(true)}
@@ -736,7 +754,7 @@ const ContainerPage = () => {
       editCustomAttributePermission,
       viewAllPermission,
       deleted,
-      owner,
+      owners,
       isChildrenLoading,
       tags,
       feedCount.totalCount,
@@ -755,7 +773,15 @@ const ContainerPage = () => {
       await updateContainerVotes(id, data);
 
       const details = await getContainerByName(decodedContainerName, {
-        fields: 'parent,dataModel,owner,tags,followers,extension,votes',
+        fields: [
+          TabSpecificField.PARENT,
+          TabSpecificField.DATAMODEL,
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.EXTENSION,
+          TabSpecificField.VOTES,
+        ],
       });
 
       setContainerData(details);

@@ -187,17 +187,23 @@ class UsersTestClass {
   }
 
   restoreAdminDetails() {
+    interceptURL('GET', '/api/v1/users/name/*?fields=*', 'fetchUserData');
+    interceptURL('GET', '/api/v1/feed?type=Conversation', 'fetchFeedData');
     cy.get('[data-testid="dropdown-profile"]').click({ force: true });
     cy.get('[data-testid="user-name"] > .ant-typography').click({
       force: true,
     });
+    verifyResponseStatusCode('@fetchUserData', 200);
+    verifyResponseStatusCode('@fetchFeedData', 200);
+
     cy.get('[data-testid="edit-displayName"]').should('be.visible');
     cy.get('[data-testid="edit-displayName"]').click();
     cy.get('[data-testid="displayName"]').clear();
     interceptURL('PATCH', '/api/v1/users/*', 'updateName');
     cy.get('[data-testid="inline-save-btn"]').click();
-    cy.get('[data-testid="edit-displayName"]').scrollIntoView();
     verifyResponseStatusCode('@updateName', 200);
+
+    cy.get('[data-testid="user-name"]').should('contain', 'Add Display Name');
 
     cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
     cy.get('[data-testid="edit-teams-button"]').click();

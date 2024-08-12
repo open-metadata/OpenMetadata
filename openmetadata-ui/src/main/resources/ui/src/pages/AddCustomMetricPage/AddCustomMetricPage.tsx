@@ -27,7 +27,11 @@ import RightPanel from '../../components/DataQuality/AddDataQualityTest/componen
 import CustomMetricForm from '../../components/DataQuality/CustomMetricForm/CustomMetricForm.component';
 import { getEntityDetailsPath } from '../../constants/constants';
 import { DEFAULT_RANGE_DATA } from '../../constants/profiler.constant';
-import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../enums/table.enum';
 import { CustomMetric, Table } from '../../generated/entity/data/table';
 import { useFqn } from '../../hooks/useFqn';
@@ -96,23 +100,19 @@ const AddCustomMetricPage = () => {
   );
 
   const handleBackClick = () => {
-    if (isColumnMetric) {
-      history.push({
-        pathname: getEntityDetailsPath(
-          EntityType.TABLE,
-          entityFqn,
-          EntityTabs.PROFILER
-        ),
-        search: QueryString.stringify({
-          activeTab: TableProfilerTab.COLUMN_PROFILE,
-          activeColumnFqn,
-        }),
-      });
-    } else {
-      history.push(
-        getEntityDetailsPath(EntityType.TABLE, entityFqn, EntityTabs.PROFILER)
-      );
-    }
+    history.push({
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        entityFqn,
+        EntityTabs.PROFILER
+      ),
+      search: QueryString.stringify({
+        activeTab: isColumnMetric
+          ? TableProfilerTab.COLUMN_PROFILE
+          : TableProfilerTab.TABLE_PROFILE,
+        activeColumnFqn,
+      }),
+    });
   };
 
   const handleFormSubmit = async (values: CustomMetric) => {
@@ -137,7 +137,11 @@ const AddCustomMetricPage = () => {
     setIsLoading(true);
     try {
       const table = await getTableDetailsByFQN(fqn, {
-        fields: 'testSuite,customMetrics,columns',
+        fields: [
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.CUSTOM_METRICS,
+          TabSpecificField.COLUMNS,
+        ],
       });
       setTable(table);
     } catch (error) {

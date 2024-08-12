@@ -528,7 +528,7 @@ class CommonDbSourceService(
                     database_name=self.context.get().database,
                     table_type=table_type,
                 ),
-                owner=self.get_owner_ref(table_name=table_name),
+                owners=self.get_owner_ref(table_name=table_name),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(

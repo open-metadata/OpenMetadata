@@ -144,7 +144,7 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
               {`${t('label.created-by')}: `}
             </Typography.Text>
             <OwnerLabel
-              owner={{ name: thread.createdBy, type: 'user', id: '' }}
+              owners={[{ name: thread.createdBy, type: 'user', id: '' }]}
             />
           </div>
         </Space>

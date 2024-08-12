@@ -19,6 +19,10 @@ export interface ResizablePanelsProps {
   hideSecondPanel?: boolean;
 }
 
+export interface ResizablePanelsLeftProps extends ResizablePanelsProps {
+  hideFirstPanel?: boolean;
+}
+
 export interface PanelProps {
   children: React.ReactNode;
   minWidth: number;

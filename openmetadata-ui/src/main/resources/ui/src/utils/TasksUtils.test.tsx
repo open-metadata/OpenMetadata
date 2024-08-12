@@ -239,15 +239,17 @@ describe('Tests for getTaskAssignee', () => {
 
   it('should return owner data if no reviewer present', async () => {
     const response = getTaskAssignee({
-      owner: {
-        deleted: false,
-        displayName: 'David',
-        fullyQualifiedName: 'david',
-        href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        name: 'david',
-        type: 'user',
-      },
+      owners: [
+        {
+          deleted: false,
+          displayName: 'David',
+          fullyQualifiedName: 'david',
+          href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          name: 'david',
+          type: 'user',
+        },
+      ],
     } as Glossary);
 
     expect(response).toEqual([
@@ -273,15 +275,17 @@ describe('Tests for getTaskAssignee', () => {
           type: 'user',
         },
       ],
-      owner: {
-        deleted: false,
-        displayName: 'David',
-        fullyQualifiedName: 'david',
-        href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
-        name: 'david',
-        type: 'user',
-      },
+      owners: [
+        {
+          deleted: false,
+          displayName: 'David',
+          fullyQualifiedName: 'david',
+          href: 'http://localhost:8585/api/v1/users/5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          id: '5e08061e-4cf2-46d0-93e3-2f0cc38844db',
+          name: 'david',
+          type: 'user',
+        },
+      ],
     } as Glossary);
 
     expect(response).toEqual([

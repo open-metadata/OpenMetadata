@@ -66,6 +66,11 @@ public class FeedMessageDecorator implements MessageDecorator<FeedMessage> {
   }
 
   @Override
+  public FeedMessage buildTestMessage(String publisherName) {
+    return null;
+  }
+
+  @Override
   public FeedMessage buildThreadMessage(String publisherName, ChangeEvent event) {
     return null;
   }

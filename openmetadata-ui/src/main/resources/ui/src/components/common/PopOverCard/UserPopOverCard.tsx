@@ -32,6 +32,7 @@ import {
   getUserPath,
   TERM_ADMIN,
 } from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -125,7 +126,9 @@ const PopoverContent = React.memo(
     const getUserWithAdditionalDetails = useCallback(async () => {
       try {
         setLoading(true);
-        let user = await getUserByName(userName, { fields: 'teams, roles' });
+        let user = await getUserByName(userName, {
+          fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
+        });
         user = getUserWithImage(user);
 
         updateUserProfilePics({

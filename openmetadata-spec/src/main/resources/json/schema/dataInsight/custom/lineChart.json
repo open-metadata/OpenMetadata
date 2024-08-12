@@ -1,0 +1,63 @@
+{
+    "$id": "https://open-metadata.org/schema/dataInsight/custom/lineChart.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "LineChart",
+    "description": "Line Chart",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.dataInsight.custom.LineChart",
+    "properties": {
+        "type": {
+            "description": "Type of the data insight chart.",
+            "type": "string",
+            "enum": [
+                "LineChart"
+            ],
+            "default": "LineChart"
+        },
+        "function": {
+            "$ref": "dataInsightCustomChart.json#/definitions/function"
+        },
+        "field": {
+            "description": "Filter field for the data insight chart.",
+            "type": "string"
+        },
+        "filter": {
+            "description": "Filter value for the data insight chart.",
+            "type": "string"
+        },
+        "formula": {
+            "description": "Formula for the data insight chart calculation.",
+            "type": "string"
+        },
+        "groupBy": {
+            "description": "Breakdown field for the data insight chart.",
+            "type": "string"
+        },
+        "includeGroups": {
+            "description": "List of groups to be included in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "excludeGroups": {
+            "description": "List of groups to be excluded in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "xAxisLabel": {
+            "description": "X-axis label for the data insight chart.",
+            "type": "string"
+        },
+        "yAxisLabel": {
+            "description": "Y-axis label for the data insight chart.",
+            "type": "string"
+        },
+        "kpiDetails": {
+            "$ref": "dataInsightCustomChart.json#/definitions/kpiDetails"
+        }
+    },
+    "additionalProperties": false
+}

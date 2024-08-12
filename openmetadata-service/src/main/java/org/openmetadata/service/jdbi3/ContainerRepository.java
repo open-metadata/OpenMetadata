@@ -118,7 +118,7 @@ public class ContainerRepository extends EntityRepository<Container> {
     container.setServiceType(storageService.getServiceType());
 
     if (container.getParent() != null) {
-      Container parent = Entity.getEntity(container.getParent(), "owner", ALL);
+      Container parent = Entity.getEntity(container.getParent(), "owners", ALL);
       container.withParent(parent.getEntityReference());
     }
   }

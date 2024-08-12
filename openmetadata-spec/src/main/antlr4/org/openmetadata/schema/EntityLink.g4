@@ -79,6 +79,9 @@ ENTITY_TYPE
     | 'customMetric'
     | 'eventsubscription'
     | 'ingestionPipeline'
+    | 'apiCollection'
+    | 'apiEndpoint'
+    | 'apiService'
     ;
 
 ENTITY_FIELD
@@ -128,6 +131,9 @@ ENTITY_FIELD
     | 'teams'
     | 'personas'
     | 'ingestionPipeline'
+    | 'apiCollection'
+    | 'apiEndpoint'
+    | 'apiService'
     ;
 
     
