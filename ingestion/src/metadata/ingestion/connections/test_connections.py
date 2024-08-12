@@ -329,6 +329,8 @@ def test_connection_db_common(
         timeout_seconds=timeout_seconds,
     )
 
+    kill_active_connections(engine)
+
 
 def test_connection_db_schema_sources(
     metadata: OpenMetadata,
@@ -391,6 +393,18 @@ def test_connection_db_schema_sources(
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
+
+    kill_active_connections(engine)
+
+
+def kill_active_connections(engine: Engine):
+    """
+    Method to kill the active connections
+    as well as idle connections in the engine
+    """
+    active_conn = engine.pool.checkedout() + engine.pool.checkedin()
+    if active_conn:
+        engine.dispose()
 
 
 def test_query(engine: Engine, statement: str):
