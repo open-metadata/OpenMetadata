@@ -173,8 +173,11 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                 )
                 col_info["system_data_type"] = rows["data_type"]
                 col_info["is_complex"] = True
-            except DatabaseError:
-                pass
+            except DatabaseError as err:
+                logger.error(
+                    f"Failed to fetch column details for column {col_name} in table {table_name} due to: {err}"
+                )
+                logger.debug(traceback.format_exc())
         result.append(col_info)
     return result
 
@@ -481,9 +484,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_catalog,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_catalog
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
