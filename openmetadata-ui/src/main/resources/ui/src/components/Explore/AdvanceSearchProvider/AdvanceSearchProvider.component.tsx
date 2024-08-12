@@ -69,7 +69,7 @@ export const AdvanceSearchProvider = ({
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (isNil(tabInfo)) {
-      return SearchIndex.TABLE;
+      return SearchIndex.DATA_ASSET;
     }
 
     return tabInfo[0] as SearchIndex;

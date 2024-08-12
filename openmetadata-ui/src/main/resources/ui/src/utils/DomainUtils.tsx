@@ -244,12 +244,12 @@ export const renderDomainLink = (
 );
 
 export const initializeDomainEntityRef = (
-  domains: Domain[],
+  domains: EntityReference[],
   activeDomainKey: string
 ) => {
-  const domain = domains.find(
-    (item) => item.fullyQualifiedName === activeDomainKey
-  );
+  const domain = domains.find((item) => {
+    return item.fullyQualifiedName === activeDomainKey;
+  });
   if (domain) {
     return getEntityReferenceFromEntity(domain, EntityType.DOMAIN);
   }
