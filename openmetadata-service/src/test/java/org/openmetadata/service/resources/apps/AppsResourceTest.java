@@ -299,7 +299,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     // -------------------------------------------------
     RestClient searchClient = getSearchClient();
     es.org.elasticsearch.client.Response response;
-    Request request = new Request("GET", "di-data-assets/_search");
+    Request request = new Request("GET", "di-data-assets-*/_search");
     String payload =
         String.format(
             "{\"query\":{\"bool\":{\"must\":{\"term\":{\"fullyQualifiedName.keyword\":\"%s\"}}}}}",
