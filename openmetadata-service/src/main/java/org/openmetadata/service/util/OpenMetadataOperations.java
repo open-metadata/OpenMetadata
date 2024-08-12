@@ -270,7 +270,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int batchSize,
       @Option(
               names = {"-p", "--payload-size"},
-              defaultValue = "100")
+              defaultValue = "10485760")
           int payloadSize,
       @Option(
               names = {"--recreate-indexes"},
