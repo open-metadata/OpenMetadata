@@ -48,11 +48,6 @@
       "type": "boolean",
       "default": false
     },
-    "dbtOwnerUseEmail": {
-      "description": "Optional configuration to use email to parse owner for dbt models.",
-      "type": "boolean",
-      "default": false
-    },
     "includeTags": {
       "description": "Optional configuration to toggle the tags ingestion.",
       "type": "boolean",
