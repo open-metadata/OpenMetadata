@@ -26,7 +26,10 @@ from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTRun,
     DBTRunList,
 )
-from metadata.ingestion.source.pipeline.dbtcloud.queries import DBT_QUERY
+from metadata.ingestion.source.pipeline.dbtcloud.queries import (
+    DBT_GET_MODEL_DEPENDS_ON,
+    DBT_GET_MODELS_SEEDS,
+)
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ometa_logger
@@ -102,7 +105,7 @@ class DBTCloudClient:
         """
         try:
             query_params = {
-                "query": DBT_QUERY,
+                "query": DBT_GET_MODEL_DEPENDS_ON,
                 "variables": {"jobId": job_id, "runId": run_id},
             }
 
@@ -111,6 +114,28 @@ class DBTCloudClient:
             if result.get("data") and result["data"].get("job"):
                 model_list = DBTModelList(**result["data"]["job"]).models
                 return model_list
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to get model info :{exc}")
+        return None
+
+    def get_models_and_seeds_details(self, job_id: int, run_id: int):
+        """
+        get model details for a job in dbt cloud for lineage
+        """
+        try:
+            query_params = {
+                "query": DBT_GET_MODELS_SEEDS,
+                "variables": {"jobId": job_id, "runId": run_id},
+            }
+
+            result = self.graphql_client.post("", json=query_params)
+
+            if result.get("data") and result["data"].get("job"):
+                result = DBTModelList(**result["data"]["job"])
+                parents_list = result.models + result.seeds
+                return parents_list
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

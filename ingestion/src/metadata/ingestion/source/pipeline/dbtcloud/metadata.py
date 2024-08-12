@@ -177,6 +177,10 @@ class DbtcloudSource(PipelineServiceSource):
                     job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
                 )
 
+                dbt_parents = self.client.get_models_and_seeds_details(
+                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
+                )
+
                 for model in dbt_models or []:
                     for dbservicename in (
                         self.source_config.lineageInformation.dbServiceNames or []
@@ -186,7 +190,7 @@ class DbtcloudSource(PipelineServiceSource):
                             fqn=fqn.build(
                                 metadata=self.metadata,
                                 entity_type=Table,
-                                table_name=model.alias,
+                                table_name=model.name,
                                 database_name=model.database,
                                 schema_name=model.dbtschema,
                                 service_name=dbservicename,
@@ -196,37 +200,41 @@ class DbtcloudSource(PipelineServiceSource):
                         if to_entity is None:
                             continue
 
-                        for dest in model.parentsSources or []:
-                            from_entity = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=fqn.build(
-                                    metadata=self.metadata,
-                                    entity_type=Table,
-                                    table_name=dest.name,
-                                    database_name=dest.database,
-                                    schema_name=dest.dbtschema,
-                                    service_name=dbservicename,
-                                ),
-                            )
+                        for unique_id in model.dependsOn or []:
+                            parents = [
+                                d for d in dbt_parents if d.uniqueId == unique_id
+                            ]
+                            if parents:
+                                from_entity = self.metadata.get_by_name(
+                                    entity=Table,
+                                    fqn=fqn.build(
+                                        metadata=self.metadata,
+                                        entity_type=Table,
+                                        table_name=parents[0].name,
+                                        database_name=parents[0].database,
+                                        schema_name=parents[0].dbtschema,
+                                        service_name=dbservicename,
+                                    ),
+                                )
 
-                            if from_entity is None:
-                                continue
+                                if from_entity is None:
+                                    continue
 
-                            yield Either(
-                                right=AddLineageRequest(
-                                    edge=EntitiesEdge(
-                                        fromEntity=EntityReference(
-                                            id=from_entity.id,
-                                            type="table",
-                                        ),
-                                        toEntity=EntityReference(
-                                            id=to_entity.id,
-                                            type="table",
-                                        ),
-                                        lineageDetails=lineage_details,
+                                yield Either(
+                                    right=AddLineageRequest(
+                                        edge=EntitiesEdge(
+                                            fromEntity=EntityReference(
+                                                id=from_entity.id,
+                                                type="table",
+                                            ),
+                                            toEntity=EntityReference(
+                                                id=to_entity.id,
+                                                type="table",
+                                            ),
+                                            lineageDetails=lineage_details,
+                                        )
                                     )
                                 )
-                            )
 
         except Exception as exc:
             yield Either(
