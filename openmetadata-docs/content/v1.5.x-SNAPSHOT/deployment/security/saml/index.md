@@ -82,4 +82,14 @@ More specific details on different IDPs can be found below:
   {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
+{% inlineCalloutContainer %}
+{% inlineCallout
+color="violet-70"
+icon="celebration"
+bold="Azure Saml"
+href="/deployment/security/saml/azure" %}
+Configure AWS as IDP.
+{% /inlineCallout %}
+{% /inlineCalloutContainer %}
+
 {% partial file="/v1.5/deployment/configure-ingestion.md" /%}
