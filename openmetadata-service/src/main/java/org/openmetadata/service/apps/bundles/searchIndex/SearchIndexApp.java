@@ -195,7 +195,8 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new OpenSearchEntitiesProcessor(totalRecords);
       this.entityTimeSeriesProcessor = new OpenSearchEntityTimeSeriesProcessor(totalRecords);
-      this.searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords);
+      this.searchIndexSink =
+          new OpenSearchIndexSink(searchRepository, totalRecords, jobData.getPayLoadSize());
     } else {
       this.entityProcessor = new ElasticSearchEntitiesProcessor(totalRecords);
       this.entityTimeSeriesProcessor = new ElasticSearchEntityTimeSeriesProcessor(totalRecords);
