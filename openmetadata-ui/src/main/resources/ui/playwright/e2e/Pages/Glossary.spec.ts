@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { toString } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -427,11 +426,7 @@ test.describe('Glossary tests', () => {
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
-        await goToAssetsTab(
-          page,
-          glossaryTerm1.data.displayName,
-          toString(assets.length)
-        );
+        await goToAssetsTab(page, glossaryTerm1.data.displayName);
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await verifyGlossaryTermAssets(
           page,
