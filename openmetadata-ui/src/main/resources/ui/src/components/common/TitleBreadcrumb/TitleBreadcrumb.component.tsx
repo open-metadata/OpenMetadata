@@ -22,7 +22,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
-import { TitleBreadcrumbProps } from './TitleBreadcrumb.interface';
+import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
@@ -33,8 +33,6 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 }: TitleBreadcrumbProps) => {
   const { t } = useTranslation();
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
-
-  const breadcrumbData = useMemo(() => titleLinks.slice(0, -1), [titleLinks]);
 
   const finalWidthOfBreadcrumb = useMemo(() => {
     return (
@@ -55,12 +53,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 
   const renderBreadcrumb = (
     index: number,
-    link: {
-      name: string;
-      url: string;
-      imgSrc?: string;
-      activeTitle?: boolean;
-    },
+    link: TitleLink,
     classes: string
   ) => {
     if (link.url) {
@@ -70,12 +63,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
           style={{
             maxWidth,
           }}
-          to={{
-            pathname: link.url,
-            state: {
-              breadcrumbData,
-            },
-          }}>
+          to={link.url}>
           {link.name}
         </Link>
       );
@@ -132,12 +120,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                         maxWidth,
                         fontSize: '16px',
                       }}
-                      to={{
-                        pathname: link.url,
-                        state: {
-                          breadcrumbData,
-                        },
-                      }}>
+                      to={link.url}>
                       {link.name}
                     </Link>
                     <span className="text-xss p-x-xs text-grey-muted">

@@ -26,6 +26,7 @@ import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
+import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
@@ -1730,17 +1731,27 @@ export const getBreadcrumbForContainer = (data: {
   ];
 };
 
-export const getBreadcrumbForTestCase = (entity: TestCase) => [
+export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   {
     name: i18next.t('label.data-quality'),
     url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
   },
   {
     name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      (entity as SourceType)?.entityType as EntityType
-    ),
+    url: {
+      pathname: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        (entity as SourceType)?.entityType as EntityType
+      ),
+      state: {
+        breadcrumbData: [
+          {
+            name: i18next.t('label.data-quality'),
+            url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
+          },
+        ],
+      },
+    },
   },
 ];
 
