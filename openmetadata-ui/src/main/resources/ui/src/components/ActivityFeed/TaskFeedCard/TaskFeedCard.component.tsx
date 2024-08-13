@@ -20,7 +20,6 @@ import { useHistory } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
-import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
@@ -38,6 +37,7 @@ import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
 
 import { TASK_TYPES } from '../../../constants/Task.constant';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -206,7 +206,7 @@ const TaskFeedCard = ({
           </Col>
           {!showThread ? (
             <Col span={24}>
-              <div className="d-flex items-center p-l-lg gap-2">
+              <div className="d-flex items-start p-l-lg gap-2">
                 {postLength > 0 && (
                   <>
                     <div className="thread-users-profile-pic">
@@ -241,11 +241,7 @@ const TaskFeedCard = ({
                   }>
                   {`${t('label.assignee-plural')}: `}
                 </Typography.Text>
-                <AssigneeList
-                  assignees={feed?.task?.assignees || []}
-                  className="d-flex gap-1"
-                  showUserName={false}
-                />
+                <OwnerLabel owners={feed?.task?.assignees} />
               </div>
             </Col>
           ) : null}

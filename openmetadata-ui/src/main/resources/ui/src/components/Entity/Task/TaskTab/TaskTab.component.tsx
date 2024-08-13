@@ -103,7 +103,6 @@ import ActivityFeedEditor, {
   EditorContentRef,
 } from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import AssigneeList from '../../../common/AssigneeList/AssigneeList';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
@@ -806,12 +805,13 @@ export const TaskTab = ({
     <TaskTabIncidentManagerHeader thread={taskThread} />
   ) : (
     <div
-      className={classNames('d-flex justify-between', {
+      className={classNames('d-flex justify-between flex-wrap gap-2', {
         'flex-column': isEditAssignee,
       })}>
-      <div className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+      <div className={classNames('d-flex gap-2')}>
         {isEditAssignee ? (
           <Form
+            className="w-full"
             form={assigneesForm}
             layout="vertical"
             onFinish={handleAssigneeUpdate}>
@@ -859,15 +859,12 @@ export const TaskTab = ({
             <Typography.Text className="text-grey-muted">
               {t('label.assignee-plural')}:{' '}
             </Typography.Text>
-            <AssigneeList
-              assignees={taskDetails?.assignees ?? []}
-              showUserName={false}
-            />
+            <OwnerLabel owners={taskDetails?.assignees} />
             {(isCreator || hasEditAccess) &&
             !isTaskClosed &&
             owners.length === 0 ? (
               <Button
-                className="flex-center p-0"
+                className="flex-center p-0 h-auto"
                 data-testid="edit-assignees"
                 icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 size="small"
@@ -878,7 +875,7 @@ export const TaskTab = ({
           </>
         )}
       </div>
-      <div className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+      <div className="d-flex gap-2">
         <Typography.Text className="text-grey-muted">
           {t('label.created-by')}:{' '}
         </Typography.Text>
