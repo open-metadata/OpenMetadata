@@ -19,6 +19,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
+from ..conftest import ingestion_config as base_ingestion_config
+
 
 @pytest.fixture(scope="module")
 def mssql_container(tmp_path_factory):
@@ -112,22 +114,13 @@ def create_service_request(mssql_container, scheme, tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def ingestion_config(db_service, tmp_path_factory, workflow_config, sink_config):
-    return {
-        "source": {
-            "type": "mssql",
-            "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
-            "sourceConfig": {
-                "config": {
-                    "type": "DatabaseMetadata",
-                    "databaseFilterPattern": {"includes": ["TestDB", "AdventureWorks"]},
-                },
-            },
-        },
-        "sink": sink_config,
-        "workflowConfig": workflow_config,
+def ingestion_config(
+    db_service, tmp_path_factory, workflow_config, sink_config, base_ingestion_config
+):
+    base_ingestion_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
+        "includes": ["TestDB", "AdventureWorks"],
     }
+    return base_ingestion_config
 
 
 @pytest.fixture(scope="module")

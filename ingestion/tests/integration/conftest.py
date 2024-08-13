@@ -154,6 +154,20 @@ def create_service_request():
 
 @pytest.fixture()
 def patch_passwords_for_db_services(db_service, unmask_password, monkeypatch):
+    """Patch the password for all db services returned by the metadata service.
+
+    Usage:
+
+    def test_my_test(db_service, patch_passwords_for_db_services):
+        ...
+
+    OR
+
+    @pytest.usefixtures("patch_passwords_for_db_services")
+    def test_my_test(db_service):
+        ...
+    """
+
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
@@ -187,3 +201,17 @@ def cleanup_fqns(metadata):
         entity = metadata.get_by_name(etype, fqn, fields=["*"])
         if entity:
             metadata.delete(etype, entity.id, recursive=True, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def ingestion_config(db_service, metadata, workflow_config, sink_config):
+    return {
+        "source": {
+            "type": db_service.connection.config.type.value.lower(),
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+            "serviceConnection": db_service.connection.model_dump(),
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
