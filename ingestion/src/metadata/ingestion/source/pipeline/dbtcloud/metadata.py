@@ -309,7 +309,7 @@ class DbtcloudSource(PipelineServiceSource):
                             pipeline_details.created_at, "%Y-%m-%dT%H:%M:%S.%f%z"
                         )
                         if pipeline_details.created_at
-                        else datetime.now()
+                        else None
                     )
                 ),
             )

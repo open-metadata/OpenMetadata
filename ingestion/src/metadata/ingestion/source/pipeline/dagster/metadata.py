@@ -11,7 +11,6 @@
 """
 Dagster source to extract metadata from OM UI
 """
-import datetime
 import traceback
 from typing import Iterable, List, Optional
 
@@ -192,7 +191,6 @@ class DagsterSource(PipelineServiceSource):
                     else None
                 ),
             )
-
             pipeline_status = PipelineStatus(
                 taskStatus=[task_status],
                 executionStatus=STATUS_MAP.get(
@@ -201,8 +199,7 @@ class DagsterSource(PipelineServiceSource):
                 timestamp=Timestamp(
                     round(
                         convert_timestamp_to_milliseconds(
-                            timestamp=run.endTime
-                            or datetime.datetime.timestamp(datetime.datetime.now())
+                            timestamp=run.startTime
                         )
                     )
                 ),
