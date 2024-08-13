@@ -131,9 +131,11 @@ class DbtcloudSource(PipelineServiceSource):
                 description=Markdown(pipeline_details.description),
                 sourceUrl=SourceUrl(connection_url),
                 tasks=self._get_task_list(job_id=int(pipeline_details.id)),
-                scheduleInterval=str(pipeline_details.schedule.cron)
-                if pipeline_details.schedule
-                else None,
+                scheduleInterval=(
+                    str(pipeline_details.schedule.cron)
+                    if pipeline_details.schedule
+                    else None
+                ),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             )
             yield Either(right=pipeline_request)
@@ -278,21 +280,27 @@ class DbtcloudSource(PipelineServiceSource):
                 TaskStatus(
                     name=str(task.id),
                     executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
-                    startTime=Timestamp(
-                        datetime_to_ts(
-                            datetime.strptime(task.started_at, "%Y-%m-%d %H:%M:%S.%f%z")
-                            if task.started_at
-                            else datetime.now()
-                        )
-                    ),
-                    endTime=Timestamp(
-                        datetime_to_ts(
-                            datetime.strptime(
-                                task.finished_at, "%Y-%m-%d %H:%M:%S.%f%z"
+                    startTime=(
+                        Timestamp(
+                            datetime_to_ts(
+                                datetime.strptime(
+                                    task.started_at, "%Y-%m-%d %H:%M:%S.%f%z"
+                                )
                             )
-                            if task.finished_at
-                            else datetime.now()
                         )
+                        if task.started_at
+                        else None
+                    ),
+                    endTime=(
+                        Timestamp(
+                            datetime_to_ts(
+                                datetime.strptime(
+                                    task.finished_at, "%Y-%m-%d %H:%M:%S.%f%z"
+                                )
+                            )
+                        )
+                        if task.finished_at
+                        else None
                     ),
                 )
                 for task in self.client.get_runs(job_id=int(pipeline_details.id)) or []

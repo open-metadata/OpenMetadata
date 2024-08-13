@@ -197,11 +197,7 @@ class DagsterSource(PipelineServiceSource):
                     run.status.lower(), StatusType.Pending.value
                 ),
                 timestamp=Timestamp(
-                    round(
-                        convert_timestamp_to_milliseconds(
-                            timestamp=run.startTime
-                        )
-                    )
+                    round(convert_timestamp_to_milliseconds(timestamp=run.startTime))
                 ),
             )
             pipeline_fqn = fqn.build(
