@@ -60,6 +60,12 @@ public class TokenUtil {
     return refreshToken;
   }
 
+  public static RefreshToken getRefreshTokenForLDAP(UUID userId, UUID token) {
+    RefreshToken refreshToken = getRefreshToken(userId, token);
+    refreshToken.setExpiryDate(Instant.now().plus(24, ChronoUnit.HOURS).toEpochMilli());
+    return refreshToken;
+  }
+
   public static PersonalAccessToken getPersonalAccessToken(
       CreatePersonalToken request, User user, JWTAuthMechanism authMechanism) {
     PersonalAccessToken personalAccessToken = new PersonalAccessToken();
