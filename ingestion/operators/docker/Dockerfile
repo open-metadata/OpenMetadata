@@ -59,6 +59,14 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 
 ENV LD_LIBRARY_PATH=/instantclient
 
+# Install DB2 OAccess Driver
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
+  && apt update \
+  && apt install ibm-iaccess; \
+  fi
+
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.

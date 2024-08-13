@@ -88,7 +88,12 @@ Executing the profiler workflow or data quality tests, will require the user to 
 - **database**: Database of the data source.
 - **Host and Port**: Enter the fully qualified hostname and port number for your DB2 deployment in the Host and Port field.
 
-Note: In case you are using Db2 for IBM i, then from advanced config you need choose the `ibmi` scheme.
+{% note %}
+If you are using DB2 for IBM i:
+
+- From advanced config you need to chose `ibmi` scheme
+- In Host and Port you should not add the Port Number.
+{% /note %}
 
 {% partial file="/v1.5/connectors/database/advanced-configuration.md" /%}
 

@@ -54,6 +54,14 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 
 ENV LD_LIBRARY_PATH=/instantclient
 
+# Install DB2 OAccess Driver
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
+  && apt update \
+  && apt install ibm-iaccess; \
+  fi
+
 # Required for Starting Ingestion Container in Docker Compose
 # Provide Execute Permissions to shell script
 COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflow
