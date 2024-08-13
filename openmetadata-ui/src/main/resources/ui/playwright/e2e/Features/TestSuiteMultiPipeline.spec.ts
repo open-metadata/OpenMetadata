@@ -202,7 +202,7 @@ test("Edit the pipeline's test case", async ({ page }) => {
       name: new RegExp(pipeline?.['name']),
     })
     .getByTestId('more-actions')
-    .click();
+    .click({ force: true });
 
   await page
     .locator(
