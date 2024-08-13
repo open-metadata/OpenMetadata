@@ -73,7 +73,7 @@ export const selectActiveGlossaryTerm = async (
 export const goToAssetsTab = async (
   page: Page,
   displayName: string,
-  count = '0'
+  count = 0
 ) => {
   await selectActiveGlossaryTerm(page, displayName);
   await page.getByTestId('assets').click();
@@ -81,7 +81,7 @@ export const goToAssetsTab = async (
 
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count);
+  ).toContainText(`${count}`);
 };
 
 export const removeReviewer = async (
@@ -629,11 +629,7 @@ export const verifyGlossaryTermAssets = async (
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await selectActiveGlossary(page, glossary.displayName);
-  await goToAssetsTab(
-    page,
-    glossaryTermData.displayName,
-    assetsLength.toString()
-  );
+  await goToAssetsTab(page, glossaryTermData.displayName, assetsLength);
 };
 
 export const renameGlossaryTerm = async (
