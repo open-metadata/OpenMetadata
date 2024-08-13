@@ -133,9 +133,11 @@ class DagsterSource(PipelineServiceSource):
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.id.replace(":", "")),
                 displayName=pipeline_details.name,
-                description=Markdown(pipeline_details.description)
-                if pipeline_details.description
-                else None,
+                description=(
+                    Markdown(pipeline_details.description)
+                    if pipeline_details.description
+                    else None
+                ),
                 tasks=self._get_task_list(pipeline_name=pipeline_details.name),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
                 tags=get_tag_labels(
@@ -178,24 +180,25 @@ class DagsterSource(PipelineServiceSource):
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
-                startTime=round(convert_timestamp_to_milliseconds(run.startTime))
-                if run.startTime
-                else None,
-                endTime=round(convert_timestamp_to_milliseconds(run.endTime))
-                if run.endTime
-                else None,
+                startTime=(
+                    round(convert_timestamp_to_milliseconds(run.startTime))
+                    if run.startTime
+                    else None
+                ),
+                endTime=(
+                    round(convert_timestamp_to_milliseconds(run.endTime))
+                    if run.endTime
+                    else None
+                ),
             )
-
             pipeline_status = PipelineStatus(
                 taskStatus=[task_status],
                 executionStatus=STATUS_MAP.get(
                     run.status.lower(), StatusType.Pending.value
                 ),
                 timestamp=Timestamp(
-                    round(convert_timestamp_to_milliseconds(run.endTime))
-                )
-                if run.endTime
-                else None,
+                    round(convert_timestamp_to_milliseconds(timestamp=run.startTime))
+                ),
             )
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
