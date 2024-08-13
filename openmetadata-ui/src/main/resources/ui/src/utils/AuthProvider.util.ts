@@ -42,17 +42,21 @@ export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
 export const EXPIRY_THRESHOLD_MILLES_PUBLIC = 2 * 60 * 1000;
 
 export const getRedirectUri = (callbackUrl: string) => {
+  const subPath = process.env.APP_SUB_PATH ?? '';
+
   return isDev()
-    ? 'http://localhost:3000/callback'
+    ? `http://localhost:3000${subPath}/callback`
     : !isNil(callbackUrl)
     ? callbackUrl
-    : `${window.location.origin}/callback`;
+    : `${window.location.origin}${subPath}/callback`;
 };
 
 export const getSilentRedirectUri = () => {
+  const subPath = process.env.APP_SUB_PATH ?? '';
+
   return isDev()
-    ? 'http://localhost:3000/silent-callback'
-    : `${window.location.origin}/silent-callback`;
+    ? `http://localhost:3000${subPath}/silent-callback`
+    : `${window.location.origin}${subPath}/silent-callback`;
 };
 
 export const getUserManagerConfig = (
@@ -294,6 +298,8 @@ export const getNameFromUserData = (
 };
 
 export const isProtectedRoute = (pathname: string) => {
+  const cleanedPathname = pathname.replace(process.env.APP_SUB_PATH ?? '', '');
+
   return (
     [
       ROUTES.SIGNUP,
@@ -308,7 +314,7 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
       ROUTES.NOT_FOUND,
-    ].indexOf(pathname) === -1
+    ].indexOf(cleanedPathname) === -1
   );
 };
 

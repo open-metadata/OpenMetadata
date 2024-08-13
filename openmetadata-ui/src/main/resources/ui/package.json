@@ -199,6 +199,7 @@
     "cypress": "12.17.4",
     "cypress-postgresql": "^1.0.8",
     "dotenv": "^16.0.0",
+    "dotenv-webpack": "^8.1.0",
     "eslint": "7.32.0",
     "eslint-config-prettier": "8.3.0",
     "eslint-plugin-cypress": "^2.12.1",
