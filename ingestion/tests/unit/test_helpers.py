@@ -26,6 +26,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.utils.helpers import (
     clean_up_starting_ending_double_quotes_in_string,
     deep_size_of_dict,
+    pretty_print_time_duration,
     find_suggestion,
     format_large_string_numbers,
     get_entity_tier_from_tags,
@@ -210,3 +211,17 @@ class TestHelpers(TestCase):
             entity_link=EntityLink("<#E::table::tableFQN::columns::col>"),
         )
         self.assertEqual(suggestion_col, suggestions[1])
+
+    def test_pretty_print_time_duration(self):
+        self.assertEqual(pretty_print_time_duration(10),"10s")
+        self.assertEqual(pretty_print_time_duration(100),"1m 40s")
+        self.assertEqual(pretty_print_time_duration(1000),"16m 40s")
+        self.assertEqual(pretty_print_time_duration(10000),"2h 46m 40s")
+        self.assertEqual(pretty_print_time_duration(100000),"1day(s) 3h 46m 40s")
+        self.assertEqual(pretty_print_time_duration(1000000),"11day(s) 13h 46m 40s")
+        self.assertEqual(pretty_print_time_duration(20),"20s")
+        self.assertEqual(pretty_print_time_duration(200),"3m 20s")
+        self.assertEqual(pretty_print_time_duration(2000),"33m 20s")
+        self.assertEqual(pretty_print_time_duration(20000),"5h 33m 20s")
+        self.assertEqual(pretty_print_time_duration(200000),"2day(s) 7h 33m 20s")
+        self.assertEqual(pretty_print_time_duration(2000000),"23day(s) 3h 33m 20s")
