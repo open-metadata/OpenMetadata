@@ -43,7 +43,7 @@
       "type": "array",
       "items": {
         "placeholder": "Search Databases",
-        "type": "string",
+        "$ref": "../../../../type/entityReference.json",
         "format": "autoComplete",
         "autoCompleteType": "database_search_index"
       }
