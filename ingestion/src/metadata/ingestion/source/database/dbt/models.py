@@ -20,13 +20,13 @@ from pydantic import BaseModel
 class DbtFiles(BaseModel):
     dbt_catalog: Optional[dict]
     dbt_manifest: dict
-    dbt_run_results: Optional[dict]
+    dbt_run_results: Optional[List[dict]]
 
 
 class DbtObjects(BaseModel):
     dbt_catalog: Optional[Any]
     dbt_manifest: Any
-    dbt_run_results: Optional[Any]
+    dbt_run_results: Optional[List[Any]]
 
 
 class DbtFilteredModel(BaseModel):

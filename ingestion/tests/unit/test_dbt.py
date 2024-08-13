@@ -495,7 +495,7 @@ class DbtUnitTest(TestCase):
             if dbt_files.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(dbt_files.dbt_manifest),
-            dbt_run_results=parse_run_results(dbt_files.dbt_run_results)
+            dbt_run_results=[parse_run_results(dbt_files.dbt_run_results)]
             if dbt_files.dbt_run_results
             else None,
         )
