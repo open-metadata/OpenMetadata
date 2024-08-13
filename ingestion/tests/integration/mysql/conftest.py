@@ -2,6 +2,7 @@ import os
 from subprocess import CalledProcessError
 
 import pytest
+from sqlalchemy import create_engine
 from testcontainers.mysql import MySqlContainer
 
 from _openmetadata_testutils.helpers.docker import try_bind
@@ -43,6 +44,13 @@ def mysql_container(tmp_path_factory):
                 raise CalledProcessError(
                     returncode=res[0], cmd=res, output=res[1].decode("utf-8")
                 )
+        engine = create_engine(container.get_connection_url())
+        engine.execute(
+            "ALTER TABLE employees ADD COLUMN last_update TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+        )
+        engine.execute(
+            "UPDATE employees SET last_update = hire_date + INTERVAL FLOOR(1 + RAND() * 500000) SECOND"
+        )
         yield container
 
 

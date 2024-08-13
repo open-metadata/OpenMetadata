@@ -1,11 +1,12 @@
 import sys
+from dataclasses import dataclass
+from datetime import datetime
 from typing import List
 
 import pytest
 
 from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
@@ -48,11 +49,18 @@ def get_test_suite_config(workflow_config, sink_config):
     return inner
 
 
-@pytest.mark.parametrize(
-    "test_case_definition,expected_result",
-    [
-        (
-            TestCaseDefinition(
+@dataclass
+class TestColumnParameter:
+    entity_fqn: str
+    test_case_definition: TestCaseDefinition
+    expected_result: TestCaseResult
+
+
+@pytest.fixture(
+    params=[
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
                 name="first_name_includes_tom_and_jerry_wo_enum",
                 testDefinitionName="columnValuesToBeInSet",
                 computePassedFailedRowCount=True,
@@ -61,12 +69,13 @@ def get_test_suite_config(workflow_config, sink_config):
                     {"name": "allowedValues", "value": "['Tom', 'Jerry']"}
                 ],
             ),
-            TestCaseResult(
+            expected_result=TestCaseResult(
                 testCaseStatus=TestCaseStatus.Failed,
             ),
         ),
-        (
-            TestCaseDefinition(
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
                 name="value_lengths_between_3_and_5",
                 testDefinitionName="columnValueLengthsToBeBetween",
                 computePassedFailedRowCount=True,
@@ -76,12 +85,13 @@ def get_test_suite_config(workflow_config, sink_config):
                     {"name": "maxLength", "value": "5"},
                 ],
             ),
-            TestCaseResult(
+            expected_result=TestCaseResult(
                 testCaseStatus=TestCaseStatus.Failed,
             ),
         ),
-        (
-            TestCaseDefinition(
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
                 name="value_lengths_at_most_5",
                 testDefinitionName="columnValueLengthsToBeBetween",
                 columnName="first_name",
@@ -90,12 +100,13 @@ def get_test_suite_config(workflow_config, sink_config):
                     {"name": "maxLength", "value": "5"},
                 ],
             ),
-            TestCaseResult(
+            expected_result=TestCaseResult(
                 testCaseStatus=TestCaseStatus.Failed,
             ),
         ),
-        (
-            TestCaseDefinition(
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
                 name="value_lengths_at_least_3",
                 testDefinitionName="columnValueLengthsToBeBetween",
                 columnName="first_name",
@@ -104,12 +115,13 @@ def get_test_suite_config(workflow_config, sink_config):
                     {"name": "minLength", "value": "3"},
                 ],
             ),
-            TestCaseResult(
+            expected_result=TestCaseResult(
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
-        (
-            TestCaseDefinition(
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
                 name="id_at_least_0",
                 testDefinitionName="columnValuesToBeBetween",
                 columnName="emp_no",
@@ -118,64 +130,93 @@ def get_test_suite_config(workflow_config, sink_config):
                     {"name": "minValue", "value": "0"},
                 ],
             ),
-            TestCaseResult(
+            expected_result=TestCaseResult(
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
-        (
-            TestCaseDefinition(
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
                 name="id_no_bounds",
                 testDefinitionName="columnValuesToBeBetween",
                 columnName="emp_no",
                 computePassedFailedRowCount=True,
                 parameterValues=[],
             ),
-            TestCaseResult(
+            expected_result=TestCaseResult(
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
+                name="values_between_date",
+                testDefinitionName="columnValuesToBeBetween",
+                columnName="hire_date",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    {
+                        "name": "minValue",
+                        "value": str(int(datetime(1960, 1, 1).timestamp())),
+                    },
+                ],
+            ),
+            expected_result=TestCaseResult(
+                testCaseStatus=TestCaseStatus.Success,
+            ),
+        ),
+        TestColumnParameter(
+            entity_fqn="{database_service_fqn}.default.employees.employees",
+            test_case_definition=TestCaseDefinition(
+                name="value_between_timestamp",
+                testDefinitionName="columnValuesToBeBetween",
+                columnName="last_update",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    {
+                        "name": "minValue",
+                        "value": str(int(datetime(2000, 1, 1).timestamp())),
+                    },
+                ],
+            ),
+            expected_result=TestCaseResult(
+                testCaseStatus=TestCaseStatus.Failed,
+            ),
+        ),
     ],
-    ids=lambda x: (
-        x.name if isinstance(x, TestCaseDefinition) else x.testCaseStatus.value
-    ),
+    ids=lambda x: x.test_case_definition.name,
 )
+def parameters(request, db_service):
+    request.param.entity_fqn = request.param.entity_fqn.format(
+        database_service_fqn=db_service.fullyQualifiedName.root
+    )
+    return request.param
+
+
 def test_column_test_cases(
     patch_passwords_for_db_services,
     run_workflow,
     ingestion_config,
     db_service: DatabaseService,
     metadata: OpenMetadata,
-    test_case_definition: TestCaseDefinition,
-    expected_result: TestCaseResult,
+    parameters: TestColumnParameter,
     get_test_suite_config,
     cleanup_fqns,
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
-    table: Table = metadata.get_by_name(
-        Table,
-        ".".join(
-            [
-                db_service.fullyQualifiedName.root,
-                "default",
-                "employees",
-                "employees",
-            ]
-        ),
-        nullable=False,
-    )
     test_suite_config = get_test_suite_config(
-        table.fullyQualifiedName.root,
-        [test_case_definition],
+        parameters.entity_fqn,
+        [parameters.test_case_definition],
     )
     run_workflow(TestSuiteWorkflow, test_suite_config)
     test_case: TestCase = metadata.get_by_name(
         TestCase,
-        f"{table.fullyQualifiedName.root}.{test_case_definition.columnName}.{test_case_definition.name}",
+        f"{parameters.entity_fqn}.{parameters.test_case_definition.name}",
         fields=["*"],
         nullable=False,
     )
     cleanup_fqns(TestCase, test_case.fullyQualifiedName.root)
     assert_equal_pydantic_objects(
-        expected_result,
+        parameters.expected_result,
         test_case.testCaseResult,
     )

@@ -64,9 +64,9 @@ class ColumnValuesToBeBetweenValidator(
         """
         row_count = self._compute_row_count(self.runner, column)
         filters = []
-        if min_bound > -math.inf:
+        if not isinstance(min_bound, (int, float)) or min_bound > -math.inf:
             filters.append((column, "lt", min_bound))
-        if max_bound < math.inf:
+        if not isinstance(min_bound, (int, float)) or max_bound < math.inf:
             filters.append((column, "gt", max_bound))
         failed_rows = self._compute_row_count_between(
             self.runner,
