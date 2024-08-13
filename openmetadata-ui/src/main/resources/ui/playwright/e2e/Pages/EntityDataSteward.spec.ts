@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
+import { Page, test as base } from '@playwright/test';
 import { isUndefined } from 'lodash';
-import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -24,14 +23,11 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import {
-  createNewPage,
-  getApiContext,
-  getAuthContext,
-  getToken,
-  redirectToHomePage,
-} from '../../utils/common';
-import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
+import { redirectToHomePage } from '../../utils/common';
+
+const user = new UserClass();
 
 const entities = [
   ApiEndpointClass,
@@ -46,16 +42,47 @@ const entities = [
   DashboardDataModelClass,
 ] as const;
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// Create 2 page and authenticate 1 with admin and another with normal user
+const test = base.extend<{
+  page: Page;
+}>({
+  page: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await user.login(page);
+    await use(page);
+    await page.close();
+  },
+});
 
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
-  const deleteEntity = new EntityClass();
 
   test.describe(entity.getType(), () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await user.create(apiContext);
+
+      const dataStewardRoleResponse = await apiContext.get(
+        '/api/v1/roles/name/DataSteward'
+      );
+
+      const dataStewardRole = await dataStewardRoleResponse.json();
+
+      await user.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/roles/0',
+            value: {
+              id: dataStewardRole.id,
+              type: 'role',
+              name: dataStewardRole.name,
+            },
+          },
+        ],
+      });
 
       await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
@@ -65,14 +92,6 @@ entities.forEach((EntityClass) => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
       await entity.visitEntityPage(page);
-    });
-
-    test('Domain Add, Update and Remove', async ({ page }) => {
-      await entity.domain(
-        page,
-        EntityDataClass.domain1.responseData,
-        EntityDataClass.domain2.responseData
-      );
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {
@@ -122,7 +141,7 @@ entities.forEach((EntityClass) => {
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.tagChildren({
-          page: page,
+          page,
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
@@ -140,7 +159,7 @@ entities.forEach((EntityClass) => {
         await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.glossaryTermChildren({
-          page: page,
+          page,
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
@@ -149,17 +168,6 @@ entities.forEach((EntityClass) => {
         });
       });
     }
-
-    test(`Announcement create & delete`, async ({ page }) => {
-      await entity.announcement(
-        page,
-        entity.entityResponseData?.['fullyQualifiedName']
-      );
-    });
-
-    test(`Inactive Announcement create & delete`, async ({ page }) => {
-      await entity.inactiveAnnouncement(page);
-    });
 
     test(`UpVote & DownVote entity`, async ({ page }) => {
       await entity.upVote(page);
@@ -171,83 +179,12 @@ entities.forEach((EntityClass) => {
       await entity.followUnfollowEntity(page, entityName);
     });
 
-    // Create custom property only for supported entities
-    if (CustomPropertySupportedEntityList.includes(entity.endpoint)) {
-      const properties = Object.values(CustomPropertyTypeByName);
-      const titleText = properties.join(', ');
-
-      test(`Set & Update ${titleText} Custom Property `, async ({ page }) => {
-        // increase timeout as it using single test for multiple steps
-        test.slow(true);
-
-        const { apiContext, afterAction } = await getApiContext(page);
-        await entity.prepareCustomProperty(apiContext);
-
-        await test.step(`Set ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].value
-            );
-          }
-        });
-
-        await test.step(`Update ${titleText} Custom Property`, async () => {
-          for (const type of properties) {
-            await entity.updateCustomProperty(
-              page,
-              entity.customPropertyValue[type].property,
-              entity.customPropertyValue[type].newValue
-            );
-          }
-        });
-
-        await entity.cleanupCustomProperty(apiContext);
-        await afterAction();
-      });
-    }
-
-    test(`Update displayName`, async ({ page }) => {
-      await entity.renameEntity(page, entity.entity.name);
-    });
-
     test.afterAll('Cleanup', async ({ browser }) => {
-      const { apiContext, afterAction } = await createNewPage(browser);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await user.delete(apiContext);
       await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
-    });
-  });
-
-  test(`Delete ${deleteEntity.getType()}`, async ({ page }) => {
-    // increase timeout as it using single test for multiple steps
-    test.slow(true);
-
-    await redirectToHomePage(page);
-    // get the token from localStorage
-    const token = await getToken(page);
-
-    // create a new context with the token
-    const apiContext = await getAuthContext(token);
-    await deleteEntity.create(apiContext);
-    await redirectToHomePage(page);
-    await deleteEntity.visitEntityPage(page);
-
-    await test.step('Soft delete', async () => {
-      await deleteEntity.softDeleteEntity(
-        page,
-        deleteEntity.entity.name,
-        deleteEntity.entityResponseData?.['displayName']
-      );
-    });
-
-    await test.step('Hard delete', async () => {
-      await deleteEntity.hardDeleteEntity(
-        page,
-        deleteEntity.entity.name,
-        deleteEntity.entityResponseData?.['displayName']
-      );
     });
   });
 });

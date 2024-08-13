@@ -185,8 +185,9 @@ export const setValueForProperty = async (data: {
         )}*`;
         await page.route(searchApi, (route) => route.continue());
         await page.locator('#entityReference').clear();
+        const searchEntity = page.waitForResponse(searchApi);
         await page.locator('#entityReference').fill(val);
-        await page.waitForResponse(searchApi);
+        await searchEntity;
         await page.locator(`[data-testid="${val}"]`).click();
       }
 

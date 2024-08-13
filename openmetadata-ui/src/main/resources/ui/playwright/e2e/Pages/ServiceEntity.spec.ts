@@ -136,7 +136,7 @@ entities.forEach((EntityClass) => {
 
         await test.step(`Set ${titleText} Custom Property`, async () => {
           for (const type of properties) {
-            await entity.setCustomProperty(
+            await entity.updateCustomProperty(
               page,
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].value

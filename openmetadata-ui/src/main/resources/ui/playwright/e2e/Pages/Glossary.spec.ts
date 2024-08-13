@@ -360,7 +360,7 @@ test.describe('Glossary tests', () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
 
         await selectActiveGlossary(page, glossary2.data.displayName);
-        await goToAssetsTab(page, glossaryTerm3.data.displayName, '2');
+        await goToAssetsTab(page, glossaryTerm3.data.displayName, 2);
 
         // Check if the selected asset are present
         const assetContainer = await page.locator(
@@ -426,7 +426,11 @@ test.describe('Glossary tests', () => {
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
-        await goToAssetsTab(page, glossaryTerm1.data.displayName);
+        await goToAssetsTab(
+          page,
+          glossaryTerm1.data.displayName,
+          assets.length
+        );
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await verifyGlossaryTermAssets(
           page,

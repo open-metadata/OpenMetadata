@@ -191,6 +191,7 @@ const NotificationListPage = () => {
                   <Button
                     className="flex flex-center"
                     data-testid={`alert-edit-${record.name}`}
+                    disabled={record.provider === ProviderType.System}
                     icon={<EditIcon height={16} />}
                     type="text"
                   />

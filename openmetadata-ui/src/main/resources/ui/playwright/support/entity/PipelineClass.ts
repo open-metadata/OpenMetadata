@@ -30,11 +30,14 @@ export class PipelineClass extends EntityClass {
       },
     },
   };
+
+  children = [{ name: 'snowflake_task' }];
+
   entity = {
     name: `pw-pipeline-${uuid()}`,
     displayName: `pw-pipeline-${uuid()}`,
     service: this.service.name,
-    tasks: [{ name: 'snowflake_task' }],
+    tasks: this.children,
   };
 
   serviceResponseData: unknown;
@@ -44,6 +47,8 @@ export class PipelineClass extends EntityClass {
     super(EntityTypeEndpoint.Pipeline);
     this.service.name = name ?? this.service.name;
     this.type = 'Pipeline';
+    this.childrenTabId = 'tasks';
+    this.childrenSelectorId = this.children[0].name;
   }
 
   async create(apiContext: APIRequestContext) {

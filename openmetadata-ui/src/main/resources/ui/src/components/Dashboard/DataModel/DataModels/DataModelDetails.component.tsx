@@ -317,7 +317,7 @@ const DataModelDetails = ({
         label: (
           <TabsLabel
             data-testid={EntityTabs.MODEL}
-            id={EntityTabs.DETAILS}
+            id={EntityTabs.MODEL}
             name={t('label.model')}
           />
         ),

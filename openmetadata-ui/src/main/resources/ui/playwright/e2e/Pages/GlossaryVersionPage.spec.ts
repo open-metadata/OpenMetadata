@@ -82,6 +82,7 @@ test('Glossary', async ({ page }) => {
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
       isSelectableInsideForm: true,
+      type: 'Users',
     });
 
     await page.reload();
@@ -109,6 +110,7 @@ test('Glossary', async ({ page }) => {
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.Glossary,
+      type: 'Users',
     });
 
     await page.reload();
@@ -177,6 +179,7 @@ test('GlossaryTerm', async ({ page }) => {
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
       isSelectableInsideForm: true,
+      type: 'Users',
     });
 
     await page.reload();
@@ -204,6 +207,7 @@ test('GlossaryTerm', async ({ page }) => {
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
+      type: 'Users',
     });
 
     await page.reload();
