@@ -11,19 +11,8 @@ from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
     TestSuitePipeline,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-    Processor,
-    Sink,
-    Source,
-    SourceConfig,
-    WorkflowConfig,
-)
-from metadata.generated.schema.tests.basic import TestCaseStatus, TestCaseResult
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.generated.schema.type.basic import ComponentConfig
-from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow

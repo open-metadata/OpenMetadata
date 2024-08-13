@@ -2,16 +2,15 @@ import os
 from subprocess import CalledProcessError
 
 import pytest
+from testcontainers.mysql import MySqlContainer
 
 from _openmetadata_testutils.helpers.docker import try_bind
-from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from testcontainers.mysql import MySqlContainer
 
 
 @pytest.fixture(scope="module")
