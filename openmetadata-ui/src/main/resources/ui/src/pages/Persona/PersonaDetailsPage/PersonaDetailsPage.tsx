@@ -68,7 +68,7 @@ export const PersonaDetailsPage = () => {
         ),
       },
       {
-        name: personaDetails?.name ?? '',
+        name: getEntityName(personaDetails),
         url: '',
       },
     ],
