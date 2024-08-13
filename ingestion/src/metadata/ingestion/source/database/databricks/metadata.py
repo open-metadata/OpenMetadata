@@ -295,7 +295,8 @@ def get_table_names(
         else:
             table_name = row[0]
         if schema:
-            table_type = get_table_type(connection, schema, table_name)
+            database = kw.get("db_name")
+            table_type = get_table_type(connection, database, schema, table_name)
             if not table_type or table_type == "FOREIGN":
                 # skip the table if it's foreign table / error in fetching table_type
                 logger.debug(
@@ -310,20 +311,23 @@ def get_table_names(
     return [table for table in tables if table not in views]
 
 
-def get_table_type(connection, schema, table):
+def get_table_type(connection, database, schema, table):
     """get table type (regular/foreign)"""
     try:
-        query = DATABRICKS_GET_TABLE_COMMENTS.format(
-            schema_name=schema, table_name=table
-        )
+        if database:
+            query = DATABRICKS_GET_TABLE_COMMENTS.format(
+                database_name=database, schema_name=schema, table_name=table
+            )
+        else:
+            query = f"DESCRIBE TABLE EXTENDED {schema}.{table}"
         rows = connection.execute(query)
         for row in rows:
             row_dict = dict(row)
             if row_dict.get("col_name") == "Type":
                 # get type of table
                 return row_dict.get("data_type")
-    except Exception:
-        pass
+    except DatabaseError as err:
+        logger.error(f"Failed to fetch table type for table {table} due to: {err}")
     return
 
 
