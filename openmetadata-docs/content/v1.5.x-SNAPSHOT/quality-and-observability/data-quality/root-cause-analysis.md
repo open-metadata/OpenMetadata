@@ -5,21 +5,21 @@ slug: /quality-and-observability/data-quality/root-cause-analysis
 
 # Root Cause Analysis
 
-## Failed Rows Sample
+## Failed Rows Sample (Collate Only)
 
 Some tests will produce a failed sample upon failure. This allows the platform users to understand the nature of the failure and take corrective actions. The failed sample will be a subset of the rows that failed the test.
 
 The sample will be collected when the option `computePassedFailedRowCount` is set.
 
 ## Supported Test Definitions
-
-- [Column Values to Be Not Null](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-not-null)
-- [Column Values to Match Regex](/connectors/ingestion/workflows/data-quality/tests#column-values-to-match-regex)
-- [Column Values to not Match Regex](/connectors/ingestion/workflows/data-quality/tests#column-values-to-not-match-regex)
-- [Column Values to Be in Set](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-in-set)
-- [Column Values to Be Not In Set](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-not-in-set)
-- [Column Values to Be Between](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-between)
-- [Column Values Lengths to Be Between](/connectors/ingestion/workflows/data-quality/tests#column-values-lengths-to-be-between)
+- [Column Values to Be Not Null](/how-to-guides/data-quality-profiler/tests-yaml#column-values-to-be-not-null)
+- [Column Values to Match Regex](/how-to-guides/data-quality-profiler/tests-yaml#column-values-to-match-regex)
+- [Column Values to not Match Regex](/how-to-guides/data-quality-profiler/tests-yaml#column-values-to-not-match-regex)
+- [Column Values to Be in Set](/how-to-guides/data-quality-profiler/tests-yaml#column-values-to-be-in-set)
+- [Column Values to Be Not In Set](/how-to-guides/data-quality-profiler/tests-yaml#column-values-to-be-not-in-set)
+- [Column Values to Be Between](/how-to-guides/data-quality-profiler/tests-yaml#column-values-to-be-between)
+- [Column Values Lengths to Be Between](/how-to-guides/data-quality-profiler/tests-yaml#column-values-lengths-to-be-between)
+- [Costom SQL](/how-to-guides/data-quality-profiler/tests-yaml##table-custom-sql-test)
 
 ## Deleting Sample Rows
 If you wish to delete sample rows, you can do so by clicking on the three dots above the table of sample rows. This will open a window with the `Delete` option. Note that failed sample rows will automatically be deleted upon test success.
