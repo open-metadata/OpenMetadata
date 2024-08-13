@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import kill_active_connections
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
@@ -395,16 +396,6 @@ def test_connection_db_schema_sources(
     )
 
     kill_active_connections(engine)
-
-
-def kill_active_connections(engine: Engine):
-    """
-    Method to kill the active connections
-    as well as idle connections in the engine
-    """
-    active_conn = engine.pool.checkedout() + engine.pool.checkedin()
-    if active_conn:
-        engine.dispose()
 
 
 def test_query(engine: Engine, statement: str):

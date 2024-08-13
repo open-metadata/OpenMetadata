@@ -16,6 +16,7 @@ for any source.
 from typing import Any, Callable
 
 from pydantic import BaseModel
+from sqlalchemy.engine import Engine
 
 from metadata.utils.importer import import_connection_fn
 
@@ -47,3 +48,13 @@ def get_connection(connection: BaseModel) -> Any:
     a service connection pydantic model
     """
     return get_connection_fn(connection)(connection)
+
+
+def kill_active_connections(engine: Engine):
+    """
+    Method to kill the active connections
+    as well as idle connections in the engine
+    """
+    active_conn = engine.pool.checkedout() + engine.pool.checkedin()
+    if active_conn:
+        engine.dispose()
