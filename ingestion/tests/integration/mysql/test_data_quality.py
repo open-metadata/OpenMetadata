@@ -66,6 +66,7 @@ def get_test_suite_config(workflow_config, sink_config):
             TestCaseDefinition(
                 name="first_name_includes_tom_and_jerry_wo_enum",
                 testDefinitionName="columnValuesToBeInSet",
+                computePassedFailedRowCount=True,
                 columnName="first_name",
                 parameterValues=[
                     {"name": "allowedValues", "value": "['Tom', 'Jerry']"}
@@ -78,11 +79,12 @@ def get_test_suite_config(workflow_config, sink_config):
         (
             TestCaseDefinition(
                 name="value_lengths_between_3_and_5",
-                testDefinitionName="columnValuesToBeInSet",
+                testDefinitionName="columnValueLengthsToBeBetween",
+                computePassedFailedRowCount=True,
                 columnName="first_name",
                 parameterValues=[
-                    {"name": "minValue", "value": "3"},
-                    {"name": "maxValue", "value": "5"},
+                    {"name": "minLength", "value": "3"},
+                    {"name": "maxLength", "value": "5"},
                 ],
             ),
             TestCaseResult(
@@ -96,11 +98,11 @@ def get_test_suite_config(workflow_config, sink_config):
                 columnName="first_name",
                 computePassedFailedRowCount=True,
                 parameterValues=[
-                    {"name": "maxValue", "value": "5"},
+                    {"name": "maxLength", "value": "5"},
                 ],
             ),
             TestCaseResult(
-                testCaseStatus=TestCaseStatus.Success,
+                testCaseStatus=TestCaseStatus.Failed,
             ),
         ),
         (
@@ -110,15 +112,43 @@ def get_test_suite_config(workflow_config, sink_config):
                 columnName="first_name",
                 computePassedFailedRowCount=True,
                 parameterValues=[
-                    {"name": "minValue", "value": "3"},
+                    {"name": "minLength", "value": "3"},
                 ],
             ),
             TestCaseResult(
                 testCaseStatus=TestCaseStatus.Success,
             ),
         ),
+        (
+            TestCaseDefinition(
+                name="id_at_least_0",
+                testDefinitionName="columnValuesToBeBetween",
+                columnName="emp_no",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    {"name": "minValue", "value": "0"},
+                ],
+            ),
+            TestCaseResult(
+                testCaseStatus=TestCaseStatus.Success,
+            ),
+        ),
+        (
+            TestCaseDefinition(
+                name="id_no_bounds",
+                testDefinitionName="columnValuesToBeBetween",
+                columnName="emp_no",
+                computePassedFailedRowCount=True,
+                parameterValues=[],
+            ),
+            TestCaseResult(
+                testCaseStatus=TestCaseStatus.Success,
+            ),
+        ),
     ],
-    ids=lambda x: x.name if isinstance(x, TestCaseDefinition) else None,
+    ids=lambda x: (
+        x.name if isinstance(x, TestCaseDefinition) else x.testCaseStatus.value
+    ),
 )
 def test_column_test_cases(
     patch_passwords_for_db_services,
