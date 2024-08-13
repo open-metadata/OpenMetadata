@@ -20,11 +20,12 @@ import { useParams } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/CommonUtils';
-import { getEntityNameLabel } from '../../../utils/EntityUtils';
+import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
   getQuickFilterObject,
@@ -32,6 +33,7 @@ import {
   updateTreeData,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -123,7 +125,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         });
 
         const aggregations = getAggregations(res.aggregations);
-        const buckets = aggregations[bucketToFind].buckets;
+        const buckets = aggregations[bucketToFind].buckets.filter(
+          (item) =>
+            !searchClassBase
+              .notIncludeAggregationExploreTree()
+              .includes(item.key as EntityType)
+        );
         const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
         const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
 
@@ -161,7 +168,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 className={classNames({
                   'm-l-xss': !logo,
                 })}>
-                {isEntityType ? getEntityNameLabel(bucket.key) : bucket.key}
+                {isEntityType ? getPluralizeEntityName(bucket.key) : bucket.key}
               </Typography.Text>
               {isEntityType && <span>{getCountBadge(bucket.doc_count)}</span>}
             </div>

@@ -93,7 +93,7 @@ export const navigateToLandingPage = () => {
 export const openAddWidgetModal = () => {
   interceptURL(
     'GET',
-    `/api/v1/docStore?fqnPrefix=KnowledgePanel`,
+    `/api/v1/docStore?fqnPrefix=KnowledgePanel&limit=25`,
     'getWidgetsList'
   );
 

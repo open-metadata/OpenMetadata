@@ -263,6 +263,20 @@ update thread_entity set json = json#-'{owner}' where json #>> '{owner}' is not 
 update topic_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
 update type_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
 update user_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update test_case set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update installed_apps set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update apps_marketplace set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update classification set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update storage_container_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update data_insight_chart set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update doc_store set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update tag set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update test_connection_definition set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update test_definition set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update test_suite set json = json#-'{owner}' where json #>> '{owner}' is not null;
+update topic_entity set json = json#-'{owner}' where json #>> '{owner}' is not null;  
+update web_analytic_event set json = json#-'{owner}' where json #>> '{owner}' is not null;  
+update automations_workflow set json = json#-'{owner}' where json #>> '{owner}' is not null;  
 
 update table_entity set json = jsonb_set(json#-'{dataModel,owner}', '{dataModel,owners}', 
 jsonb_build_array(json#>'{dataModel,owner}')) where json #>> '{dataModel,owner}' is not null;

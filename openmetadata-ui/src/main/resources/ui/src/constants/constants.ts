@@ -15,6 +15,9 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
 import { CSSProperties } from 'react';
+import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
+import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
@@ -132,6 +135,7 @@ export const ROUTES = {
   SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
+  FORBIDDEN: '/403',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -578,4 +582,10 @@ export const COMMON_ICON_STYLES: CSSProperties = {
 
 export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
   headers: { 'Content-type': 'application/json' },
+};
+
+export const STATUS_ICON = {
+  success: IconSuccessBadge,
+  failed: IconFailedBadge,
+  completed: IconCompleteBadge,
 };

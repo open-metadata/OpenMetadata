@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -42,20 +43,41 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String REPORT_DATA_TYPE_KEY = "ReportDataType";
+  public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
   public record Backfill(String startDate, String endDate) {}
 
+  private Optional<Boolean> recreateDataAssetsIndex;
+
   @Getter private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
+
+  public final Set<String> dataAssetTypes =
+      Set.of(
+          "table",
+          "storedProcedure",
+          "databaseSchema",
+          "database",
+          "chart",
+          "dashboard",
+          "dashboardDataModel",
+          "pipeline",
+          "topic",
+          "container",
+          "searchIndex",
+          "mlmodel",
+          "dataProduct",
+          "glossaryTerm",
+          "tag");
 
   public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
   }
 
-  private void createDataAssetsDataStream() {
+  private DataInsightsSearchInterface getSearchInterface() {
     DataInsightsSearchInterface searchInterface;
 
     if (searchRepository
@@ -70,13 +92,40 @@ public class DataInsightsApp extends AbstractNativeApplication {
               (os.org.opensearch.client.RestClient)
                   searchRepository.getSearchClient().getLowLevelClient());
     }
+    return searchInterface;
+  }
+
+  public static String getDataStreamName(String dataAssetType) {
+    return String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+  }
+
+  private void createDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
-      if (!searchInterface.dataAssetDataStreamExists("di-data-assets")) {
-        searchInterface.createDataAssetsDataStream();
+      for (String dataAssetType : dataAssetTypes) {
+        String dataStreamName = getDataStreamName(dataAssetType);
+        if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          searchInterface.createDataAssetsDataStream(dataStreamName);
+        }
       }
     } catch (IOException ex) {
       LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
+    }
+  }
+
+  private void deleteDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
+
+    try {
+      for (String dataAssetType : dataAssetTypes) {
+        String dataStreamName = getDataStreamName(dataAssetType);
+        if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          searchInterface.deleteDataAssetDataStream(dataStreamName);
+        }
+      }
+    } catch (IOException ex) {
+      LOG.error("Couldn't delete DataAssets DataStream", ex);
     }
   }
 
@@ -89,6 +138,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     // Configure batchSize
     batchSize = config.getBatchSize();
+
+    // Configure recreate
+    recreateDataAssetsIndex = Optional.ofNullable(config.getRecreateDataAssetsIndex());
 
     // Configure Backfill
     Optional<BackfillConfiguration> backfillConfig =
@@ -118,6 +170,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
       if (!runType.equals(ON_DEMAND_JOB)) {
         backfill = Optional.empty();
+        recreateDataAssetsIndex = Optional.empty();
+      }
+
+      if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
+        deleteDataAssetsDataStream();
+        createDataAssetsDataStream();
       }
 
       WorkflowStats webAnalyticsStats = processWebAnalytics();
@@ -203,7 +261,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
   private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
-        new DataAssetsWorkflow(timestamp, batchSize, backfill, collectionDAO, searchRepository);
+        new DataAssetsWorkflow(
+            timestamp, batchSize, backfill, dataAssetTypes, collectionDAO, searchRepository);
     WorkflowStats workflowStats = workflow.getWorkflowStats();
 
     try {

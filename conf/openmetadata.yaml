@@ -148,6 +148,13 @@ database:
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+  maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-50}
+  minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-10}
+  initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-10}
+  checkConnectionWhileIdle: ${DB_CONNECTION_CHECK_CONNECTION_WHILE_IDLE:-true}
+  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-true}
+  evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
+  minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
 
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
@@ -271,13 +278,13 @@ elasticsearch:
   scheme: ${ELASTICSEARCH_SCHEME:-http}
   username: ${ELASTICSEARCH_USER:-""}
   password: ${ELASTICSEARCH_PASSWORD:-""}
-  clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-""}
+  clusterAlias: ${ELASTICSEARCH_CLUSTER_ALIAS:-"openmetadata"}
   truststorePath: ${ELASTICSEARCH_TRUST_STORE_PATH:-""}
   truststorePassword: ${ELASTICSEARCH_TRUST_STORE_PASSWORD:-""}
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
-  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
+  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory
