@@ -224,7 +224,7 @@ class MssqlSource(StoredProcedureMixin, CommonDbSourceService, MultiDBSource):
         current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(
             server_date_format, DEFAULT_DATETIME_FORMAT
         )
-        start = start.replace(tzinfo=None).strftime(current_datetime_format)
+        start = start.strftime(current_datetime_format)
         query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
             start_date=start,
         )

@@ -26,10 +26,6 @@ from metadata.ingestion.source.database.mssql.utils import (
 
 
 class MssqlLineageSource(MssqlQueryParserSource, LineageSource):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.start = self.start.replace(tzinfo=None)
-        self.end = self.end.replace(tzinfo=None)
 
     sql_stmt = MSSQL_SQL_STATEMENT
 
