@@ -109,6 +109,19 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
+
+    tableType: {
+      label: t('label.table-type'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.TABLE,
+          entityField: EntityFields.TABLE_TYPE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
   };
 
   /**
@@ -171,6 +184,24 @@ class AdvancedSearchClassBase {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.API_ENDPOINT_INDEX,
           entityField: EntityFields.RESPONSE_SCHEMA_FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to Glossary
+   */
+  glossaryQueryBuilderFields: Fields = {
+    status: {
+      label: t('label.status'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.GLOSSARY_TERM,
+          entityField: EntityFields.GLOSSARY_TERM_STATUS,
         }),
         useAsyncSearch: true,
       },
@@ -548,6 +579,18 @@ class AdvancedSearchClassBase {
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
       },
+      [SearchIndex.DATA_ASSET]: {
+        ...this.tableQueryBuilderFields,
+        ...this.pipelineQueryBuilderFields,
+        ...this.dashboardQueryBuilderFields,
+        ...this.topicQueryBuilderFields,
+        ...this.mlModelQueryBuilderFields,
+        ...this.containerQueryBuilderFields,
+        ...this.searchIndexQueryBuilderFields,
+        ...this.dataModelQueryBuilderFields,
+        ...this.apiEndpointQueryBuilderFields,
+        ...this.glossaryQueryBuilderFields,
+      },
     };
 
     entitySearchIndex.forEach((index) => {
@@ -606,6 +649,7 @@ class AdvancedSearchClassBase {
   ) => BasicConfig = (tierOptions, entitySearchIndex, isExplorePage) => {
     const searchIndexWithServices = [
       SearchIndex.DATA_ASSET,
+      SearchIndex.ALL,
       SearchIndex.TABLE,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
