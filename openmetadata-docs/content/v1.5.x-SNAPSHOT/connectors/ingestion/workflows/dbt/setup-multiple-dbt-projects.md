@@ -15,7 +15,7 @@ This functionality is supported for s3, GCS, and Azure configurations only.
 
 To ensure the workflow operates smoothly, organize the dbt files for each project into separate directories and name the files `manifest.json`, `catalog.json`, and `run_results.json`.
 
-If your dbt tests are split across multiple run_results.json files, place these files in the same directory as their corresponding manifest.json file. Ensure that each file retains `run_results` in its name, and append a unique prefix as needed. For example: run_results_one.json, run_results_two.json, run_results_three.json
+If your dbt tests are split across multiple run_results.json files, place these files in the same directory as their corresponding manifest.json file. Ensure that each file retains `run_results` in its name, and append a unique suffix as needed. For example: run_results_one.json, run_results_two.json, run_results_three.json
 
 The workflow will scan through the specified prefix path in the designated bucket, traversing each folder to locate these dbt files.
 
