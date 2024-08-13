@@ -108,17 +108,14 @@ public class SamlSettingsHolder {
     samlData.put(
         SettingsBuilder.SECURITY_WANT_ASSERTIONS_ENCRYPTED,
         securityConfig.getWantAssertionEncrypted());
-    samlData.put(
-        SettingsBuilder.SECURITY_WANT_NAMEID_ENCRYPTED, securityConfig.getWantNameIdEncrypted());
+    samlData.put(SettingsBuilder.SECURITY_WANT_NAMEID_ENCRYPTED, false);
     samlData.put(SettingsBuilder.SECURITY_REQUESTED_AUTHNCONTEXTCOMPARISON, "exact");
     samlData.put(
         SettingsBuilder.SECURITY_SIGNATURE_ALGORITHM,
         "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
     samlData.put(
         SettingsBuilder.SECURITY_DIGEST_ALGORITHM, "http://www.w3.org/2001/04/xmlenc#sha256");
-    if (securityConfig.getSendSignedAuthRequest()
-        || securityConfig.getWantAssertionEncrypted()
-        || Boolean.TRUE.equals(securityConfig.getWantNameIdEncrypted())) {
+    if (securityConfig.getSendSignedAuthRequest() || securityConfig.getWantAssertionEncrypted()) {
       if (!CommonUtil.nullOrEmpty(securityConfig.getKeyStoreFilePath())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias())) {

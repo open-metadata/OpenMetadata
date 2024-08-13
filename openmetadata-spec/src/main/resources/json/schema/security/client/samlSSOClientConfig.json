@@ -75,6 +75,11 @@
           "type": "boolean",
           "default": false
         },
+        "validateXml": {
+          "description": "In case of strict mode whether to validate XML format.",
+          "type": "boolean",
+          "default": false
+        },
         "tokenValidity": {
           "description": "Validity for the JWT Token created from SAML Response",
           "type": "integer",
@@ -107,11 +112,6 @@
         },
         "wantAssertionEncrypted": {
           "description": "SP requires the assertion received to be encrypted.",
-          "type": "boolean",
-          "default": false
-        },
-        "wantNameIdEncrypted": {
-          "description": "SP requires the Name Id received to be encrypted.",
           "type": "boolean",
           "default": false
         },
