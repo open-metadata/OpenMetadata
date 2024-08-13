@@ -1,8 +1,11 @@
 import sys
+from dataclasses import dataclass
 from typing import List
 
 import pytest
 
+from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
+from metadata.data_quality.api.models import TestCaseDefinition
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
@@ -122,66 +125,118 @@ def test_data_quality(
 
 
 @pytest.fixture()
-def incpompatible_column_type_config(db_service, workflow_config, sink_config):
-    return {
-        "source": {
-            "type": "TestSuite",
-            "serviceName": "MyTestSuite",
-            "sourceConfig": {
+def get_incompatible_column_type_config(workflow_config, sink_config):
+    def inner(entity_fqn: str, incompatible_test_case: TestCaseDefinition):
+        return {
+            "source": {
+                "type": "TestSuite",
+                "serviceName": "MyTestSuite",
+                "sourceConfig": {
+                    "config": {
+                        "type": "TestSuite",
+                        "entityFullyQualifiedName": entity_fqn,
+                    }
+                },
+            },
+            "processor": {
+                "type": "orm-test-runner",
                 "config": {
-                    "type": "TestSuite",
-                    "entityFullyQualifiedName": f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer",
-                }
+                    "testCases": [
+                        incompatible_test_case.model_dump(),
+                        {
+                            "name": "compatible_test",
+                            "testDefinitionName": "columnValueMaxToBeBetween",
+                            "columnName": "customer_id",
+                            "parameterValues": [
+                                {"name": "minValueForMaxInCol", "value": "0"},
+                                {"name": "maxValueForMaxInCol", "value": "10"},
+                            ],
+                        },
+                    ]
+                },
             },
-        },
-        "processor": {
-            "type": "orm-test-runner",
-            "config": {
-                "testCases": [
-                    {
-                        "name": "incompatible_column_type",
-                        "testDefinitionName": "columnValueMaxToBeBetween",
-                        "columnName": "first_name",
-                        "parameterValues": [
-                            {"name": "minValueForMaxInCol", "value": "0"},
-                            {"name": "maxValueForMaxInCol", "value": "10"},
-                        ],
-                    },
-                    {
-                        "name": "compatible_test",
-                        "testDefinitionName": "columnValueMaxToBeBetween",
-                        "columnName": "customer_id",
-                        "parameterValues": [
-                            {"name": "minValueForMaxInCol", "value": "0"},
-                            {"name": "maxValueForMaxInCol", "value": "10"},
-                        ],
-                    },
-                ]
-            },
-        },
-        "sink": sink_config,
-        "workflowConfig": workflow_config,
-    }
+            "sink": sink_config,
+            "workflowConfig": workflow_config,
+        }
+
+    return inner
+
+
+@dataclass
+class IncompatibleTypeParameter:
+    entity_fqn: str
+    test_case: TestCaseDefinition
+    expected_failure: TruncatedStackTraceError
+
+
+@pytest.fixture(
+    params=[
+        IncompatibleTypeParameter(
+            entity_fqn="{database_service}.dvdrental.public.customer",
+            test_case=TestCaseDefinition(
+                name="string_max_between",
+                testDefinitionName="columnValueMaxToBeBetween",
+                columnName="first_name",
+                parameterValues=[
+                    {"name": "minValueForMaxInCol", "value": "0"},
+                    {"name": "maxValueForMaxInCol", "value": "10"},
+                ],
+            ),
+            expected_failure=TruncatedStackTraceError(
+                name="Incompatible Column for Test Case",
+                error="Test case string_max_between of type columnValueMaxToBeBetween "
+                "is not compatible with column first_name of type VARCHAR",
+            ),
+        ),
+        IncompatibleTypeParameter(
+            entity_fqn="{database_service}.dvdrental.public.customer",
+            test_case=TestCaseDefinition(
+                name="unique_json_column",
+                testDefinitionName="columnValuesToBeUnique",
+                columnName="json_field",
+            ),
+            expected_failure=TruncatedStackTraceError(
+                name="Incompatible Column for Test Case",
+                error="Test case unique_json_column of type columnValuesToBeUnique "
+                "is not compatible with column json_field of type JSON",
+            ),
+        ),
+    ],
+    ids=lambda x: x.test_case.name,
+)
+def parameters(request, db_service):
+    request.param.entity_fqn = request.param.entity_fqn.format(
+        database_service=db_service.fullyQualifiedName.root
+    )
+    return request.param
 
 
 def test_incompatible_column_type(
+    parameters: IncompatibleTypeParameter,
     patch_passwords_for_db_services,
     run_workflow,
     ingestion_config,
-    incpompatible_column_type_config,
+    get_incompatible_column_type_config,
     metadata: OpenMetadata,
     db_service,
+    cleanup_fqns,
 ):
     run_workflow(MetadataWorkflow, ingestion_config)
     test_suite_processor = run_workflow(
-        TestSuiteWorkflow, incpompatible_column_type_config, raise_from_status=False
+        TestSuiteWorkflow,
+        get_incompatible_column_type_config(
+            parameters.entity_fqn, parameters.test_case
+        ),
+        raise_from_status=False,
     )
-    assert test_suite_processor.steps[0].get_status().failures == [
-        TruncatedStackTraceError(
-            name="Incompatible Column for Test Case",
-            error="Test case incompatible_column_type of type columnValueMaxToBeBetween is not compatible with column first_name of type VARCHAR",
-        )
-    ], "Test case incompatible_column_type should fail"
+    cleanup_fqns(
+        TestCase,
+        f"{parameters.entity_fqn}.{parameters.test_case.columnName}.{parameters.test_case.name}",
+    )
+    assert_equal_pydantic_objects(
+        parameters.expected_failure,
+        test_suite_processor.steps[0].get_status().failures[0],
+    )
     assert (
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer.customer_id.compatible_test"
         in test_suite_processor.steps[1].get_status().records
