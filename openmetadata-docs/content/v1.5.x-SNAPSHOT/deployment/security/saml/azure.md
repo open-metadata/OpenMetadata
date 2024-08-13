@@ -69,7 +69,7 @@ openssl x509 -in saml.crt -out samlCER.cer -outform DER
 
 - Under `Single Sign-On` you will see SAML Certificates, click on `Verification Certificates`.
  
-{% image src="/images/v1.5/deployment/security/saml/azure/saml-azure-`0.png" alt="verification-certificate" /%}
+{% image src="/images/v1.5/deployment/security/saml/azure/saml-azure-11.png" alt="verification-certificate" /%}
 
 - You can then check the `Require Verification Certificates` and import the certification with .cer format we generated previously.
 
