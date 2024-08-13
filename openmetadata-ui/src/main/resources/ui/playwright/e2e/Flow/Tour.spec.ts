@@ -24,6 +24,8 @@ test.describe('Tour should work properly', () => {
   test('All tour steps should work', async ({ page }) => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'Tour', exact: true }).click();
+    // adding manual wait, since we do not have any api end point on which we can wait for the tour to be loaded
+    await page.waitForTimeout(200);
 
     await expect(page.locator(`[data-tour-elem="badge"]`)).toHaveText('1');
 
