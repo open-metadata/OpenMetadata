@@ -228,20 +228,23 @@ const TaskFeedCard = ({
                       className="d-flex items-center thread-count cursor-pointer m-l-xs"
                       onClick={!hidePopover ? showReplies : noop}>
                       <ThreadIcon width={20} />{' '}
-                      <span className="text-xs p-l-xss">{postLength}</span>
+                      <span className="text-xs p-t-xss p-l-xss">
+                        {postLength}
+                      </span>
                     </div>
                   </>
                 )}
 
                 <Typography.Text
-                  className={
+                  className={classNames(
+                    'p-t-xss',
                     postLength > 0
                       ? 'm-l-sm text-sm text-grey-muted'
                       : 'text-sm text-grey-muted'
-                  }>
+                  )}>
                   {`${t('label.assignee-plural')}: `}
                 </Typography.Text>
-                <OwnerLabel owners={feed?.task?.assignees} />
+                <OwnerLabel className="p-t-05" owners={feed?.task?.assignees} />
               </div>
             </Col>
           ) : null}
