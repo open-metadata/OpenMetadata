@@ -117,7 +117,9 @@ def create_service_request(mssql_container, scheme, tmp_path_factory):
 def ingestion_config(
     db_service, tmp_path_factory, workflow_config, sink_config, base_ingestion_config
 ):
-    base_ingestion_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {
+    base_ingestion_config["source"]["sourceConfig"]["config"][
+        "databaseFilterPattern"
+    ] = {
         "includes": ["TestDB", "AdventureWorks"],
     }
     return base_ingestion_config
