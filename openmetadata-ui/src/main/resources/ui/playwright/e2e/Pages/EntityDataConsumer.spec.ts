@@ -44,9 +44,9 @@ const entities = [
 
 // Create 2 page and authenticate 1 with admin and another with normal user
 const test = base.extend<{
-  userPage: Page;
+  page: Page;
 }>({
-  userPage: async ({ browser }, use) => {
+  page: async ({ browser }, use) => {
     const page = await browser.newPage();
     await user.login(page);
     await use(page);
@@ -67,54 +67,48 @@ entities.forEach((EntityClass) => {
       await afterAction();
     });
 
-    test.beforeEach('Visit entity details page', async ({ userPage }) => {
-      await redirectToHomePage(userPage);
-      await entity.visitEntityPage(userPage);
+    test.beforeEach('Visit entity details page', async ({ page }) => {
+      await redirectToHomePage(page);
+      await entity.visitEntityPage(page);
     });
 
-    test('User as Owner Add, Update and Remove', async ({ userPage }) => {
+    test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
       const OWNER1 = EntityDataClass.user1.getUserName();
       const OWNER2 = EntityDataClass.user2.getUserName();
       const OWNER3 = EntityDataClass.user3.getUserName();
-      await entity.owner(
-        userPage,
-        [OWNER1, OWNER3],
-        [OWNER2],
-        undefined,
-        false
-      );
+      await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
     });
 
-    test('No edit owner permission', async ({ userPage }) => {
-      await userPage.reload();
-      await userPage.waitForSelector('[data-testid="loader"]', {
+    test('No edit owner permission', async ({ page }) => {
+      await page.reload();
+      await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
 
-      await expect(userPage.getByTestId('edit-owner')).not.toBeAttached();
+      await expect(page.getByTestId('edit-owner')).not.toBeAttached();
     });
 
-    test('Tier Add, Update and Remove', async ({ userPage }) => {
+    test('Tier Add, Update and Remove', async ({ page }) => {
       await entity.tier(
-        userPage,
+        page,
         'Tier1',
         EntityDataClass.tierTag1.data.displayName
       );
     });
 
-    test('Update description', async ({ userPage }) => {
-      await entity.descriptionUpdate(userPage);
+    test('Update description', async ({ page }) => {
+      await entity.descriptionUpdate(page);
     });
 
-    test('Tag Add, Update and Remove', async ({ userPage }) => {
-      await entity.tag(userPage, 'PersonalData.Personal', 'PII.None');
+    test('Tag Add, Update and Remove', async ({ page }) => {
+      await entity.tag(page, 'PersonalData.Personal', 'PII.None');
     });
 
-    test('Glossary Term Add, Update and Remove', async ({ userPage }) => {
+    test('Glossary Term Add, Update and Remove', async ({ page }) => {
       await entity.glossaryTerm(
-        userPage,
+        page,
         EntityDataClass.glossaryTerm1.responseData,
         EntityDataClass.glossaryTerm2.responseData
       );
@@ -123,12 +117,12 @@ entities.forEach((EntityClass) => {
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Tag Add, Update and Remove for child entities', async ({
-        userPage,
+        page,
       }) => {
-        await userPage.getByTestId(entity.childrenTabId ?? '').click();
+        await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.tagChildren({
-          page: userPage,
+          page,
           tag1: 'PersonalData.Personal',
           tag2: 'PII.None',
           rowId: entity.childrenSelectorId ?? '',
@@ -141,12 +135,12 @@ entities.forEach((EntityClass) => {
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
       test('Glossary Term Add, Update and Remove for child entities', async ({
-        userPage,
+        page,
       }) => {
-        await userPage.getByTestId(entity.childrenTabId ?? '').click();
+        await page.getByTestId(entity.childrenTabId ?? '').click();
 
         await entity.glossaryTermChildren({
-          page: userPage,
+          page,
           glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
           glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
           rowId: entity.childrenSelectorId ?? '',
@@ -156,14 +150,14 @@ entities.forEach((EntityClass) => {
       });
     }
 
-    test(`UpVote & DownVote entity`, async ({ userPage }) => {
-      await entity.upVote(userPage);
-      await entity.downVote(userPage);
+    test(`UpVote & DownVote entity`, async ({ page }) => {
+      await entity.upVote(page);
+      await entity.downVote(page);
     });
 
-    test(`Follow & Un-follow entity`, async ({ userPage }) => {
+    test(`Follow & Un-follow entity`, async ({ page }) => {
       const entityName = entity.entityResponseData?.['displayName'];
-      await entity.followUnfollowEntity(userPage, entityName);
+      await entity.followUnfollowEntity(page, entityName);
     });
 
     test.afterAll('Cleanup', async ({ browser }) => {
