@@ -13,12 +13,16 @@
 Main entrypoints to create and test connections
 for any source.
 """
+import traceback
 from typing import Any, Callable
 
 from pydantic import BaseModel
 from sqlalchemy.engine import Engine
 
 from metadata.utils.importer import import_connection_fn
+from metadata.utils.logger import cli_logger
+
+logger = cli_logger()
 
 GET_CONNECTION_FN_NAME = "get_connection"
 TEST_CONNECTION_FN_NAME = "test_connection"
@@ -55,6 +59,10 @@ def kill_active_connections(engine: Engine):
     Method to kill the active connections
     as well as idle connections in the engine
     """
-    active_conn = engine.pool.checkedout() + engine.pool.checkedin()
-    if active_conn:
-        engine.dispose()
+    try:
+        active_conn = engine.pool.checkedout() + engine.pool.checkedin()
+        if active_conn:
+            engine.dispose()
+    except Exception as exc:
+        logger.warning(f"Error Killing the active connections {exc}")
+        logger.debug(traceback.format_exc())
