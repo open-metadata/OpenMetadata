@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { sortBy } from 'lodash';
+import { isEmpty, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   AsyncFetchListValuesResult,
@@ -92,19 +92,6 @@ class AdvancedSearchClassBase {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.TABLE,
           entityField: EntityFields.DATABASE_SCHEMA,
-        }),
-        useAsyncSearch: true,
-      },
-    },
-
-    'columns.name.keyword': {
-      label: t('label.column'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.COLUMN,
         }),
         useAsyncSearch: true,
       },
@@ -320,18 +307,6 @@ class AdvancedSearchClassBase {
         useAsyncSearch: true,
       },
     },
-    'columns.name.keyword': {
-      label: t('label.data-model-column'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
-          entityField: EntityFields.COLUMN,
-        }),
-        useAsyncSearch: true,
-      },
-    },
     'project.keyword': {
       label: t('label.project'),
       type: 'select',
@@ -340,22 +315,6 @@ class AdvancedSearchClassBase {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
           entityField: EntityFields.PROJECT,
-        }),
-        useAsyncSearch: true,
-      },
-    },
-  };
-
-  dataAssetQueryBuilderFields: Fields = {
-    // Override columns fields as it is common in table and datamodel
-    'columns.name.keyword': {
-      label: t('label.column'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: this.autocomplete({
-          searchIndex: [SearchIndex.TABLE, SearchIndex.DASHBOARD_DATA_MODEL],
-          entityField: EntityFields.COLUMN,
         }),
         useAsyncSearch: true,
       },
@@ -567,6 +526,36 @@ class AdvancedSearchClassBase {
     };
   }
 
+  // Since the column field key 'columns.name.keyword` is common in table and data model,
+  // Following function is used to get the column field config based on the search index
+  // or if it is an explore page
+  public getColumnConfig = (entitySearchIndex: SearchIndex[]) => {
+    const searchIndexWithColumns = entitySearchIndex.filter(
+      (index) =>
+        index === SearchIndex.TABLE ||
+        index === SearchIndex.DASHBOARD_DATA_MODEL ||
+        index === SearchIndex.DATA_ASSET ||
+        index === SearchIndex.ALL
+    );
+
+    return !isEmpty(searchIndexWithColumns)
+      ? {
+          'columns.name.keyword': {
+            label: t('label.column'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            fieldSettings: {
+              asyncFetch: this.autocomplete({
+                searchIndex: searchIndexWithColumns,
+                entityField: EntityFields.COLUMN,
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        }
+      : {};
+  };
+
   /**
    * Get entity specific fields for the query builder
    */
@@ -606,7 +595,6 @@ class AdvancedSearchClassBase {
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
         ...this.glossaryQueryBuilderFields,
-        ...this.dataAssetQueryBuilderFields,
       },
     };
 
@@ -648,6 +636,7 @@ class AdvancedSearchClassBase {
       ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
+      ...this.getColumnConfig(entitySearchIndex),
     };
 
     // Sort the fields according to the label
