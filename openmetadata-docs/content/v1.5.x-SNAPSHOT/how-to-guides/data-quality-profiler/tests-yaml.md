@@ -25,6 +25,7 @@ Tests applied on top of a Table. Here is the list of all table tests:
 - [Table Custom SQL Test](#table-custom-sql-test)
 - [Table Row Inserted Count To Be Between](#table-row-inserted-count-to-be-between)
 - [Compare 2 tables for differences](#compare-2-tables-for-differences)
+- [Table is Fresh (Collate Only)](#table-is-fresh)
 
 ### Table Row Count to Equal
 Validate the total row count in the table is equal to the given value.
@@ -524,6 +525,59 @@ The comparison will be scoped by:
       {
         "name": "where",
         "value": "country = 'US'"
+      }
+    ]
+  }
+]
+```
+
+### Table is Fresh
+
+**Collate Only**
+
+Expect a table to be fresh based on a timestamp column. The test will fail if the table is not fresh.
+
+**Properties**
+
+* `Column`: Column used to calculate table freshness.
+* `Time Since Update (Seconds)`: The data is expected to be updated within this number of seconds. If the time between since the last update is greater than this value, the test will fail.
+
+**Behavior**
+
+| Condition                                                 | Status    |
+|-----------------------------------------------------------|-----------|
+| Interval is **greater** than _timeSinceUpdate_            | Failed ❌  |
+| Interval is **equal or less than** than _timeSinceUpdate_ | Success ✅ |
+
+**YAML Config**
+
+```yaml
+- name: myTableIsFresh
+  description: validate table freshness
+  testDefinitionName: tableDataToBeFresh
+  parameterValues:
+    - name: column
+      value: created_at
+    - name: timeSinceUpdate
+      value: "86400"
+```
+
+**JSON Config**
+
+```json
+[
+  {
+    "name": "myTableIsFresh",
+    "description": "validate table freshness",
+    "testDefinitionName": "tableDataToBeFresh",
+    "parameterValues": [
+      {
+        "name": "column",
+        "value": "created_at"
+      },
+      {
+        "name": "timeSinceUpdate",
+        "value": "86400"
       }
     ]
   }
