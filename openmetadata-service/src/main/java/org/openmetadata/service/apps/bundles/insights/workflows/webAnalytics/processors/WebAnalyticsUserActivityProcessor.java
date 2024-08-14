@@ -14,6 +14,7 @@ import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -76,7 +77,7 @@ public class WebAnalyticsUserActivityProcessor
       // Fetch user Info
       var userDetails =
           Entity.getEntityRepository(Entity.USER)
-              .get(null, userId, new EntityUtil.Fields(Set.of("teams")));
+              .get(null, userId, new EntityUtil.Fields(Set.of("teams")), Include.ALL, false);
 
       Map<UUID, List<Long>> sessions = new HashMap<>();
       sessions.put(sessionId, List.of(timestamp));
