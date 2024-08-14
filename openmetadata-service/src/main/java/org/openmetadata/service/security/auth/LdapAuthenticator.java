@@ -200,7 +200,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
-      bindingResult = ldapLookupConnectionPool.bind(storedUser.getName(), reqPassword);
+      bindingResult = ldapLookupConnectionPool.bind(storedUser.getFullyQualifiedName(), reqPassword);
       if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
         return;
       }
@@ -232,18 +232,21 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               ldapConfiguration.getUserBaseDN(),
               SearchScope.SUB,
               emailFilter,
-              ldapConfiguration.getMailAttributeName());
+              ldapConfiguration.getMailAttributeName(),
+              ldapConfiguration.getUsernameAttributeName());
       SearchResult result = ldapLookupConnectionPool.search(searchRequest);
       // there has to be a unique entry for username and email in LDAP under the group
       if (result.getSearchEntries().size() == 1) {
         // Get the user using DN directly
         SearchResultEntry searchResultEntry = result.getSearchEntries().get(0);
         String userDN = searchResultEntry.getDN();
-        Attribute emailAttr =
-            searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
+        String emailAttr =
+            searchResultEntry.getAttributeValue(ldapConfiguration.getMailAttributeName());
+        String usernameAttr =
+            searchResultEntry.getAttributeValue(ldapConfiguration.getUsernameAttributeName());
 
-        if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
-          return getUserForLdap(email).withName(userDN);
+        if (!CommonUtil.nullOrEmpty(userDN) && !CommonUtil.nullOrEmpty(emailAttr)) {
+          return getUserForLdap(emailAttr, userDN).withName(usernameAttr);
         } else {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
@@ -259,10 +262,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  private User getUserForLdap(String email) {
-    String userName = email.split("@")[0];
+  private User getUserForLdap(String email, String userDN) {
     return UserUtil.getUser(
-            userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
+            userName, new CreateUser().withName(userDN).withEmail(email).withIsBot(false))
         .withIsEmailVerified(false)
         .withAuthenticationMechanism(null);
   }
