@@ -144,13 +144,18 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+jest.mock(
+  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
+  () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
+);
+
 describe('PersonaDetailsPage', () => {
   it('Component should render', async () => {
     render(<PersonaDetailsPage />);
 
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
-    expect(screen.getByTestId('persona-heading')).toBeInTheDocument();
+    expect(screen.getByText('EntityHeaderTitle')).toBeInTheDocument();
     expect(screen.getByText('TitleBreadcrumb.component')).toBeInTheDocument();
     expect(
       await screen.findByText('ManageButton.component')

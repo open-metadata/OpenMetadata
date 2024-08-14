@@ -30,6 +30,7 @@ import { EntityTags, TagFilterOptions } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   DE_ACTIVE_COLOR,
   ICON_DIMENSION,
@@ -110,6 +111,16 @@ const SchemaTable = ({
   const [editColumnDisplayName, setEditColumnDisplayName] = useState<Column>();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
+  const tableFqn = useMemo(
+    () =>
+      getPartialNameFromTableFQN(
+        decodedEntityFqn,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      ),
+    [decodedEntityFqn]
+  );
+
   const sortByOrdinalPosition = useMemo(
     () => sortBy(tableColumns, 'ordinalPosition'),
     [tableColumns]
@@ -143,10 +154,10 @@ const SchemaTable = ({
   );
 
   useEffect(() => {
-    if (!isEmpty(decodedEntityFqn)) {
-      fetchResourcePermission(decodedEntityFqn);
+    if (!isEmpty(tableFqn)) {
+      fetchResourcePermission(tableFqn);
     }
-  }, [decodedEntityFqn]);
+  }, [tableFqn]);
 
   const handleEditColumn = (column: Column): void => {
     setEditColumn(column);
@@ -253,7 +264,7 @@ const SchemaTable = ({
             field: record.description,
             record,
           }}
-          entityFqn={decodedEntityFqn}
+          entityFqn={tableFqn}
           entityType={EntityType.TABLE}
           hasEditPermission={hasDescriptionEditAccess}
           index={index}
@@ -422,7 +433,7 @@ const SchemaTable = ({
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={decodedEntityFqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -454,7 +465,7 @@ const SchemaTable = ({
         ),
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
-            entityFqn={decodedEntityFqn}
+            entityFqn={tableFqn}
             entityType={EntityType.TABLE}
             handleTagSelection={handleTagSelection}
             hasTagEditAccess={hasTagEditAccess}
@@ -490,7 +501,7 @@ const SchemaTable = ({
       },
     ],
     [
-      decodedEntityFqn,
+      tableFqn,
       isReadOnly,
       tableConstraints,
       hasTagEditAccess,

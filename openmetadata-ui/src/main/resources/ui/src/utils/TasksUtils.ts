@@ -19,6 +19,7 @@ import { ReactComponent as CancelColored } from '../assets/svg/cancel-colored.sv
 import { ReactComponent as EditColored } from '../assets/svg/edit-colored.svg';
 import { ReactComponent as SuccessColored } from '../assets/svg/success-colored.svg';
 import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   getEntityDetailsPath,
   getGlossaryTermDetailsPath,
@@ -900,4 +901,16 @@ export const getTaskAssignee = (entityData: Glossary): Option[] => {
   }
 
   return defaultAssignee;
+};
+
+export const getTaskEntityFQN = (entityType: EntityType, fqn: string) => {
+  if (entityType === EntityType.TABLE) {
+    return getPartialNameFromTableFQN(
+      fqn,
+      [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+      FQN_SEPARATOR_CHAR
+    );
+  }
+
+  return fqn;
 };

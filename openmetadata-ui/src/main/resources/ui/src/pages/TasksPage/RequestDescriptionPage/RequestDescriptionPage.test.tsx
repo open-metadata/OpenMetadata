@@ -58,6 +58,9 @@ jest.mock('../../../utils/TasksUtils', () => ({
   getBreadCrumbList: jest.fn().mockReturnValue([]),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
+  getTaskEntityFQN: jest
+    .fn()
+    .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)
