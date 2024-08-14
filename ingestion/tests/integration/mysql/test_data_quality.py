@@ -211,7 +211,7 @@ def test_column_test_cases(
     run_workflow(TestSuiteWorkflow, test_suite_config)
     test_case: TestCase = metadata.get_by_name(
         TestCase,
-        f"{parameters.entity_fqn}.{parameters.test_case_definition.name}",
+        f"{parameters.entity_fqn}.{parameters.test_case_definition.columnName}.{parameters.test_case_definition.name}",
         fields=["*"],
         nullable=False,
     )
