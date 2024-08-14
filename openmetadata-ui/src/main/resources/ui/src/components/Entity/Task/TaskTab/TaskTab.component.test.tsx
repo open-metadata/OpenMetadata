@@ -54,10 +54,6 @@ jest.mock('../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor', () => {
   ));
 });
 
-jest.mock('../../../common/AssigneeList/AssigneeList', () => {
-  return jest.fn().mockImplementation(() => <p>AssigneeList</p>);
-});
-
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <p>OwnerLabel</p>),
 }));
@@ -169,6 +165,16 @@ describe('Test TaskFeedCard component', () => {
     const activityFeedCard = screen.getByTestId('task-tab');
 
     expect(activityFeedCard).toBeInTheDocument();
+  });
+
+  it('Should render the assignee and creator of task', async () => {
+    render(<TaskTab {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByText('label.assignee-plural:')).toBeInTheDocument();
+    expect(screen.getByText('label.created-by:')).toBeInTheDocument();
+    expect(screen.getAllByText('OwnerLabel')).toHaveLength(2);
   });
 
   it('should not render task action button to the task owner if task has reviewer', async () => {

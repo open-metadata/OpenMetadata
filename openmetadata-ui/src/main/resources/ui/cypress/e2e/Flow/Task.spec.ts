@@ -369,9 +369,10 @@ describe('Task flow should work', { tags: 'DataAssets' }, () => {
     verifyResponseStatusCode('@taskFeed', 200);
 
     // verify the task details
-    verifyTaskDetails(/#(\d+) Request to update description for/, USER_NAME);
-
-    cy.get(`[data-testid="${USER_NAME}"]`).should('be.visible');
+    verifyTaskDetails(
+      /#(\d+) Request to update description for/,
+      USER_DETAILS.firstName
+    );
 
     // Accept the description suggestion which is created
     cy.get('.ant-btn-compact-first-item').contains('Accept Suggestion').click();
