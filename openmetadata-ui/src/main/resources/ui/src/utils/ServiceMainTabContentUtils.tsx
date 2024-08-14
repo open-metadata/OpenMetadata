@@ -18,12 +18,12 @@ import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
+import { OwnerType } from '../enums/user.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
@@ -101,7 +101,7 @@ export const getServiceMainTabColumns = (
             displayName={owner.displayName}
             key={owner.id}
             profileWidth={20}
-            type={owner.type as UserTeam}
+            type={owner.type as OwnerType}
             userName={owner.name ?? ''}
           />
         ))
