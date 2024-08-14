@@ -25,6 +25,8 @@ export type TaskDetails = {
 
 const tag = 'PII.None';
 
+export const TASK_OPEN_FETCH_LINK = '/api/v1/feed**&type=Task&taskStatus=Open';
+
 export const createDescriptionTask = async (
   page: Page,
   value: TaskDetails,
@@ -145,4 +147,18 @@ export const createTagTask = async (
   await page.click('button[type="submit"]');
 
   await toastNotification(page, /Task created successfully./);
+};
+
+export const checkTaskCount = async (
+  page: Page,
+  openTask = 0,
+  closedTask = 0
+) => {
+  const openTaskElement = await page.getByTestId('open-task').textContent();
+
+  expect(openTaskElement).toContain(`${openTask} Open`);
+
+  const closedTaskElement = await page.getByTestId('closed-task').textContent();
+
+  expect(closedTaskElement).toContain(`${closedTask} Closed`);
 };
