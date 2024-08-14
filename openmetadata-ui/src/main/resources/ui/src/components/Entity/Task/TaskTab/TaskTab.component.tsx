@@ -143,7 +143,7 @@ export const TaskTab = ({
   const { isAdminUser } = useAuth();
   const {
     postFeed,
-    setActiveThread,
+    updateEntityThread,
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
@@ -232,7 +232,7 @@ export const TaskTab = ({
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
-
+  const [isAssigneeLoading, setIsAssigneeLoading] = useState<boolean>(false);
   const { initialAssignees, assigneeOptions } = useMemo(() => {
     const initialAssignees = generateOptions(taskDetails?.assignees ?? []);
     const assigneeOptions = unionBy(
@@ -772,6 +772,7 @@ export const TaskTab = ({
   }, [taskDetails, isTaskDescription]);
 
   const handleAssigneeUpdate = async () => {
+    setIsAssigneeLoading(true);
     const updatedTaskThread = {
       ...taskThread,
       task: {
@@ -786,9 +787,11 @@ export const TaskTab = ({
       const patch = compare(taskThread, updatedTaskThread);
       const data = await updateThread(taskThread.id, patch);
       setIsEditAssignee(false);
-      setActiveThread(data);
+      updateEntityThread(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsAssigneeLoading(false);
     }
   };
 
@@ -808,7 +811,7 @@ export const TaskTab = ({
       className={classNames('d-flex justify-between flex-wrap gap-2', {
         'flex-column': isEditAssignee,
       })}>
-      <div className={classNames('d-flex gap-2')}>
+      <div className="d-flex gap-2" data-testid="task-assignees">
         {isEditAssignee ? (
           <Form
             className="w-full"
@@ -830,6 +833,7 @@ export const TaskTab = ({
               <InlineEdit
                 className="assignees-edit-input"
                 direction="horizontal"
+                isLoading={isAssigneeLoading}
                 onCancel={() => {
                   setIsEditAssignee(false);
                   assigneesForm.setFieldValue('assignees', initialAssignees);
