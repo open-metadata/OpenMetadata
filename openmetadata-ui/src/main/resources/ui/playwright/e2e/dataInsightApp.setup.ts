@@ -19,11 +19,10 @@ setup.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-const table = new TableClass();
-
 setup(
   'Run Data Insight application and wait until success',
   async ({ page }) => {
+    const table = new TableClass();
     await redirectToHomePage(page);
 
     const { apiContext, afterAction } = await getApiContext(page);
