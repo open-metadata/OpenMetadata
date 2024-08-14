@@ -415,11 +415,11 @@ class CommonDbSourceService(
             return schema_definition
 
         except NotImplementedError:
-            logger.warning("Schema definition not implemented")
+            logger.debug("Schema definition not implemented")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
+            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
 
     def is_partition(  # pylint: disable=unused-argument
