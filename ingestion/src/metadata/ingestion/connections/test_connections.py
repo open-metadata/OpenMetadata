@@ -37,6 +37,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionStepResult,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import kill_active_connections
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
@@ -324,6 +325,8 @@ def test_connection_db_common(
         timeout_seconds=timeout_seconds,
     )
 
+    kill_active_connections(engine)
+
 
 def test_connection_db_schema_sources(
     metadata: OpenMetadata,
@@ -386,6 +389,8 @@ def test_connection_db_schema_sources(
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
+
+    kill_active_connections(engine)
 
 
 def test_query(engine: Engine, statement: str):
