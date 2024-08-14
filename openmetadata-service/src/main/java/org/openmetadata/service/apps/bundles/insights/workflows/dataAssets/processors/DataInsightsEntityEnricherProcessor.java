@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.JsonUtils;
@@ -149,18 +150,30 @@ public class DataInsightsEntityEnricherProcessor
       if (ownerType.equals(Entity.TEAM)) {
         entityMap.put("team", entityOwner.getName());
       } else {
-        Optional<User> oOwner =
-            Optional.ofNullable(
-                Entity.getEntityByName(
-                    Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
+        try {
+          Optional<User> oOwner =
+              Optional.ofNullable(
+                  Entity.getEntityByName(
+                      Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
 
-        if (oOwner.isPresent()) {
-          User owner = oOwner.get();
-          List<EntityReference> teams = owner.getTeams();
+          if (oOwner.isPresent()) {
+            User owner = oOwner.get();
+            List<EntityReference> teams = owner.getTeams();
 
-          if (!teams.isEmpty()) {
-            entityMap.put("team", teams.get(0).getName());
+            if (!teams.isEmpty()) {
+              entityMap.put("team", teams.get(0).getName());
+            }
           }
+        } catch (EntityNotFoundException ex) {
+          // Note: If the Owner is deleted we can't infer the Teams for which the Data Asset
+          // belonged.
+          LOG.debug(
+              String.format(
+                  "Owner %s for %s '%s' version '%s' not found.",
+                  entityOwner.getFullyQualifiedName(),
+                  entityType,
+                  entity.getFullyQualifiedName(),
+                  entity.getVersion()));
         }
       }
     }
