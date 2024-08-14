@@ -346,6 +346,22 @@ class AdvancedSearchClassBase {
     },
   };
 
+  dataAssetQueryBuilderFields: Fields = {
+    // Override columns fields as it is common in table and datamodel
+    'columns.name.keyword': {
+      label: t('label.column'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: [SearchIndex.TABLE, SearchIndex.DASHBOARD_DATA_MODEL],
+          entityField: EntityFields.COLUMN,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
   /**
    * Overriding default configurations.
    * Basic attributes that fields inherit from.
@@ -590,6 +606,7 @@ class AdvancedSearchClassBase {
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
         ...this.glossaryQueryBuilderFields,
+        ...this.dataAssetQueryBuilderFields,
       },
     };
 

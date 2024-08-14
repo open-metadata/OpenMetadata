@@ -354,6 +354,8 @@ const DatabaseDetails: FunctionComponent = () => {
     if (databasePermission.ViewAll || databasePermission.ViewBasic) {
       getDetailsByFQN();
       fetchDatabaseSchemaCount();
+    } else {
+      history.replace(ROUTES.FORBIDDEN);
     }
   }, [databasePermission, decodedDatabaseFQN]);
 
