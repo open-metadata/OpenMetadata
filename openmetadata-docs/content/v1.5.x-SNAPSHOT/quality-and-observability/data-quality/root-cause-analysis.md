@@ -5,13 +5,13 @@ slug: /quality-and-observability/data-quality/root-cause-analysis
 
 # Root Cause Analysis
 
-## Failed Rows Sample
+## Failed Rows Sample (Collate Only)
 
 Some tests will produce a failed sample upon failure. This allows the platform users to understand the nature of the failure and take corrective actions. The failed sample will be a subset of the rows that failed the test.
 
 The sample will be collected when the option `computePassedFailedRowCount` is set.
 
-## Supported Test Definitions
+### Supported Test Definitions
 
 - [Column Values to Be Not Null](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-not-null)
 - [Column Values to Match Regex](/connectors/ingestion/workflows/data-quality/tests#column-values-to-match-regex)
@@ -21,7 +21,7 @@ The sample will be collected when the option `computePassedFailedRowCount` is se
 - [Column Values to Be Between](/connectors/ingestion/workflows/data-quality/tests#column-values-to-be-between)
 - [Column Values Lengths to Be Between](/connectors/ingestion/workflows/data-quality/tests#column-values-lengths-to-be-between)
 
-## Deleting Sample Rows
+### Deleting Sample Rows
 If you wish to delete sample rows, you can do so by clicking on the three dots above the table of sample rows. This will open a window with the `Delete` option. Note that failed sample rows will automatically be deleted upon test success.
 
 {% image 
@@ -29,7 +29,7 @@ src="/images/v1.5/features/ingestion/workflows/data-quality/sample-row-failure-d
 alt="set compute row count"
 /%}
 
-## Example
+### Example
 
 {% image 
 src="/images/v1.5/features/ingestion/workflows/data-quality/set_compute_row_count.png"
@@ -38,3 +38,12 @@ alt="set compute row count"
 
 ![test definition](/images/v1.5/features/ingestion/workflows/data-quality/failed_rows_sample_1.png)
 ![failed rows sampls](/images/v1.5/features/ingestion/workflows/data-quality/failed_rows_sample_2.png)
+
+## Inspection Query (Collate Only)
+
+Supported test will generate an inspection query upon failure. This query can be run on the source data to understand
+the nature of the failure and take corrective actions.
+
+This query can be added to the table and shared with other users.
+
+![inspection query](/images/v1.5/features/ingestion/workflows/data-quality/inspection-query.png)
