@@ -74,7 +74,7 @@ export default defineConfig({
     {
       name: 'data-insight-application',
       dependencies: ['setup'],
-      testMatch: '**/dataInsightApp.setup.ts',
+      testMatch: '**/dataInsightApp.ts',
     },
     {
       name: 'Data Insight',

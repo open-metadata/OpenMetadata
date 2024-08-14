@@ -19,6 +19,8 @@ setup.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
+setup.describe.configure({ timeout: process.env.isOss ? 150000 : 3600000 });
+
 setup(
   'Run Data Insight application and wait until success',
   async ({ page }) => {
@@ -49,6 +51,9 @@ setup(
 
     await apiContext.post('/api/v1/apps/trigger/DataInsightsApplication');
 
+    // To avoid checking earlier status which is not relevant
+    await page.waitForTimeout(2000);
+
     await expect
       .poll(
         async () => {
@@ -63,8 +68,15 @@ setup(
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for the Data Insight Application run to be successful',
-          timeout: 3600_000,
-          intervals: [300_000],
+          ...(process.env.isOss
+            ? {
+                timeout: 120_000,
+                intervals: [5_000, 10_000],
+              }
+            : {
+                timeout: 3600_000,
+                intervals: [300_000, 300_000, 120_000],
+              }),
         }
       )
       .toBe('success');
