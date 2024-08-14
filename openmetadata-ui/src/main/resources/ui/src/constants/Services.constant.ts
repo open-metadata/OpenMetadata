@@ -414,6 +414,11 @@ export const BETA_SERVICES = [
   PipelineServiceType.Flink,
   DatabaseServiceType.Teradata,
   APIServiceType.REST,
+  StorageServiceType.Gcs,
+  DatabaseServiceType.SapERP,
+  PipelineServiceType.Flink,
+  MetadataServiceType.AlationSink,
+  DatabaseServiceType.Synapse,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

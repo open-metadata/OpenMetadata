@@ -73,7 +73,7 @@ export const selectActiveGlossaryTerm = async (
 export const goToAssetsTab = async (
   page: Page,
   displayName: string,
-  count = '0'
+  count = 0
 ) => {
   await selectActiveGlossaryTerm(page, displayName);
   await page.getByTestId('assets').click();
@@ -81,7 +81,7 @@ export const goToAssetsTab = async (
 
   await expect(
     page.getByTestId('assets').getByTestId('filter-count')
-  ).toContainText(count);
+  ).toContainText(`${count}`);
 };
 
 export const removeReviewer = async (
@@ -190,10 +190,16 @@ export const addTeamAsReviewer = async (
   await page.fill('[data-testid="owner-select-teams-search-bar"]', teamName);
   await teamsSearchResponse;
 
-  await page.click(`.ant-popover [title="${teamName}"]`);
+  const ownerItem = page.locator(`.ant-popover [title="${teamName}"]`);
 
-  if (!isSelectableInsideForm) {
-    await page.waitForRequest((request) => request.method() === 'PATCH');
+  if (isSelectableInsideForm) {
+    await ownerItem.click();
+  } else {
+    const patchRequest = page.waitForRequest(
+      (request) => request.method() === 'PATCH'
+    );
+    await ownerItem.click();
+    await patchRequest;
   }
 
   await expect(
@@ -261,6 +267,7 @@ export const createGlossary = async (
         resultTestId: 'reviewers-container',
         endpoint: EntityTypeEndpoint.Glossary,
         isSelectableInsideForm: true,
+        type: 'Users',
       });
     } else {
       await addTeamAsReviewer(
@@ -349,15 +356,17 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
-  await page.click('[data-testid="confirm-button"]');
-
-  // Wait for the API response and verify the status code
-  await page.waitForResponse(
+  const deleteGlossary = page.waitForResponse(
     (response) =>
       response.url().includes('/api/v1/glossaries/') &&
       response.request().method() === 'DELETE' &&
       response.status() === 200
   );
+
+  await page.click('[data-testid="confirm-button"]');
+
+  // Wait for the API response and verify the status code
+  await deleteGlossary;
 
   // Display toast notification
   await expect(page.locator('.toast-notification')).toHaveText(
@@ -450,6 +459,7 @@ export const fillGlossaryTermDetails = async (
       resultTestId: 'owner-container',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
       isSelectableInsideForm: true,
+      type: 'Users',
     });
   }
 };
@@ -619,11 +629,7 @@ export const verifyGlossaryTermAssets = async (
   await redirectToHomePage(page);
   await sidebarClick(page, SidebarItem.GLOSSARY);
   await selectActiveGlossary(page, glossary.displayName);
-  await goToAssetsTab(
-    page,
-    glossaryTermData.displayName,
-    assetsLength.toString()
-  );
+  await goToAssetsTab(page, glossaryTermData.displayName, assetsLength);
 };
 
 export const renameGlossaryTerm = async (
