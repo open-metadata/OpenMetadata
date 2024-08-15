@@ -33,6 +33,7 @@ import {
 } from './common';
 import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
+import { TASK_OPEN_FETCH_LINK } from './task';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
@@ -466,9 +467,7 @@ export const fillGlossaryTermDetails = async (
 
 const validateGlossaryTermTask = async (page: Page, term: GlossaryTermData) => {
   await page.click('[data-testid="activity_feed"]');
-  const taskFeeds = page.waitForResponse(
-    '/api/v1/feed?entityLink=**&type=Task'
-  );
+  const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
   await page
     .getByTestId('global-setting-left-panel')
     .getByText('Tasks')
