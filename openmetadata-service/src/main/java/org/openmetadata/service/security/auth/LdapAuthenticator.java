@@ -16,7 +16,6 @@ import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnection;
@@ -200,7 +199,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
-      bindingResult = ldapLookupConnectionPool.bind(storedUser.getFullyQualifiedName(), reqPassword);
+      bindingResult =
+          ldapLookupConnectionPool.bind(storedUser.getFullyQualifiedName(), reqPassword);
       if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
         return;
       }
