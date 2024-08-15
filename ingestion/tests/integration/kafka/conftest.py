@@ -117,9 +117,7 @@ def create_service_request(
 
 
 @pytest.fixture(scope="module")
-def ingestion_config(
-    db_service, metadata, workflow_config, sink_config, postgres_container
-):
+def ingestion_config(db_service, metadata, workflow_config, sink_config):
     return {
         "source": {
             "type": db_service.connection.config.type.value.lower(),
