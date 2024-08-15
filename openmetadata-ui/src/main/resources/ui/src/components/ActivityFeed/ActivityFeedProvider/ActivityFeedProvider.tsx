@@ -186,7 +186,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           after,
           type,
           feedFilterType,
-          taskStatus,
+          type === ThreadType.Task ? taskStatus : undefined,
           userId
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
