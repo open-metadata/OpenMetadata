@@ -1,10 +1,13 @@
 import os.path
 import random
+from time import sleep
 
 import docker
+import pandas as pd
 import pytest
 import testcontainers.core.network
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, insert
+from sqlalchemy.engine import make_url
 from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
@@ -119,15 +122,19 @@ def docker_network():
 
 @pytest.fixture(scope="session")
 def trino_container(hive_metastore_container, minio_container, docker_network):
-    with TrinoContainer(image="trinodb/trino:418").with_network(
-        docker_network
-    ).with_env(
-        "HIVE_METASTORE_URI",
-        f"thrift://metastore:{hive_metastore_container.port}",
-    ).with_env(
-        "MINIO_ENDPOINT",
-        f"http://minio:{minio_container.port}",
-    ) as trino:
+    container = (
+        TrinoContainer(image="trinodb/trino:418")
+        .with_network(docker_network)
+        .with_env(
+            "HIVE_METASTORE_URI",
+            f"thrift://metastore:{hive_metastore_container.port}",
+        )
+        .with_env(
+            "MINIO_ENDPOINT",
+            f"http://minio:{minio_container.port}",
+        )
+    )
+    with try_bind(container, container.port, container.port + 1) as trino:
         yield trino
 
 
@@ -175,13 +182,49 @@ def minio_container(docker_network):
 
 @pytest.fixture(scope="session")
 def create_test_data(trino_container):
-    engine = create_engine(trino_container.get_connection_url())
+    engine = create_engine(
+        make_url(trino_container.get_connection_url()).set(database="minio")
+    )
     engine.execute(
         "create schema minio.my_schema WITH (location = 's3a://hive-warehouse/')"
     )
-    engine.execute("create table minio.my_schema.test_table (id int)")
-    engine.execute("insert into minio.my_schema.test_table values (1), (2), (3)")
+    data_dir = os.path.dirname(__file__) + "/data"
+    for file in os.listdir(data_dir):
+        df = pd.read_parquet(f"{data_dir}/{file}")
+        for col in df.columns:
+            if pd.api.types.is_datetime64tz_dtype(df[col]):
+                df[col] = df[col].dt.tz_convert(None)
+        df.to_sql(
+            file.replace(".parquet", ""),
+            engine,
+            schema="my_schema",
+            if_exists="fail",
+            index=False,
+            method=custom_insert,
+        )
+        sleep(1)
     return
+
+
+def custom_insert(self, conn, keys: list[str], data_iter):
+    """
+    Hack pandas.io.sql.SQLTable._execute_insert_multi to retry untill rows are inserted.
+    This is required becauase using trino with pd.to_sql in our setup us unreliable.
+    """
+    rowcount = 0
+    max_tries = 10
+    try_num = 0
+    data = [dict(zip(keys, row)) for row in data_iter]
+    while rowcount != len(data):
+        if try_num >= max_tries:
+            raise RuntimeError(f"Failed to insert data after {max_tries} tries")
+        try_num += 1
+        stmt = insert(self.table).values(data)
+        conn.execute(stmt)
+        rowcount = conn.execute(
+            "SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"'
+        ).scalar()
+    return rowcount
 
 
 @pytest.fixture(scope="module")
@@ -201,7 +244,7 @@ def create_service_request(trino_container, tmp_path_factory):
     )
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def ingestion_config(db_service, sink_config, workflow_config):
     return {
         "source": {
