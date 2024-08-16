@@ -20,7 +20,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
@@ -144,7 +144,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         runner: QueryRunner,
         session,
         column: Column,
-    ):
+    ) -> Optional[Dict[str, Any]]:
         """If we catch an overflow error, we will try to compute the static
         metrics without the sum, mean and stddev
 
@@ -193,17 +193,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 entity=self.table_entity,
             )
             row = table_metric_computer.compute()
-            if row:
-                return dict(row)
-            return None
-
+            return dict(row)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(
-                f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"  # type: ignore
+            self.status.failed_profiler(
+                f"Error trying to compute profile for {runner.table.__tablename__}: {exc}",
+                traceback.format_exc(),
             )
             session.rollback()
-            raise RuntimeError(exc)
+        return None
 
     def _compute_static_metrics(
         self,
@@ -237,8 +234,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 runner, column, exc, session, metrics
             )
         except Exception as exc:
-            msg = f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}"
-            handle_query_exception(msg, exc, session)
+            self.status.failed_profiler(
+                f"Error trying to compute profile for {runner.table.__tablename__}.{column.name}: {exc}",
+                traceback.format_exc(),
+            )
+            session.rollback()
         return None
 
     def _compute_query_metrics(
@@ -354,8 +354,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
 
             except Exception as exc:
                 msg = f"Error trying to compute profile for {runner.table.__tablename__}.{metric.columnName}: {exc}"
-                logger.debug(traceback.format_exc())
-                logger.warning(msg)
+                self.status.failed_profiler(msg, traceback.format_exc())
         if custom_metrics:
             return {"customMetrics": custom_metrics}
         return None
@@ -383,7 +382,8 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
             return rows
         except Exception as exc:
             msg = f"Error trying to compute profile for {runner.table.__tablename__}: {exc}"
-            handle_query_exception(msg, exc, session)
+            self.status.failed_profiler(msg, traceback.format_exc())
+            session.rollback()
         return None
 
     def _create_thread_safe_sampler(
@@ -548,9 +548,11 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         try:
             return metric(column).fn(column_results)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")
             self.session.rollback()
+            self.status.failed_profiler(
+                f"Unexpected exception computing metric [{metric.name}] for column [f{str(column)}]: {exc}",
+                traceback.format_exc(),
+            )
             return None
 
     def get_hybrid_metrics(
@@ -570,8 +572,10 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         try:
             return metric(column).fn(sample, column_results, self.session)
         except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Unexpected exception computing metrics: {exc}")
+            self.status.failed_profiler(
+                f"Unexpected exception computing metric [{metric.name}]: {exc}",
+                traceback.format_exc(),
+            )
             self.session.rollback()
             return None
 
