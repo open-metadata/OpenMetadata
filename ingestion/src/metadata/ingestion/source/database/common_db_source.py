@@ -367,7 +367,10 @@ class CommonDbSourceService(
         """
         try:
             schema_definition = None
-            if table_type in (TableType.View, TableType.MaterializedView):
+            if (
+                table_type in (TableType.View, TableType.MaterializedView)
+                and self.source_config.includeDDL
+            ):
                 schema_definition = inspector.get_view_definition(
                     table_name, schema_name
                 )

@@ -249,6 +249,7 @@ def get_view_definition(
         )
     return None
 
+
 @reflection.cache
 def get_table_names(
     self, connection, schema=None, **kw
