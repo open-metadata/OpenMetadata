@@ -2039,6 +2039,7 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    List<Map<String, String>> fields = new ArrayList<>();
     GetMappingsRequest request =
         new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
 
@@ -2049,11 +2050,9 @@ public class ElasticSearchClient implements SearchClient {
     for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
       // Get fields for the index
       Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      List<Map<String, String>> fields = new ArrayList<>();
       getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
-      return fields;
     }
-    return null;
+    return fields;
   }
 
   void getFieldNames(
@@ -2074,11 +2073,13 @@ public class ElasticSearchClient implements SearchClient {
           getFieldNames(
               (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
         } else {
-          Map<String, String> map = new HashMap<>();
-          map.put("name", fieldName);
-          map.put("displayName", fieldNameOriginal);
-          map.put("type", type);
-          fieldList.add(map);
+          if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
+            Map<String, String> map = new HashMap<>();
+            map.put("name", fieldName);
+            map.put("displayName", fieldNameOriginal);
+            map.put("type", type);
+            fieldList.add(map);
+          }
         }
       }
     }

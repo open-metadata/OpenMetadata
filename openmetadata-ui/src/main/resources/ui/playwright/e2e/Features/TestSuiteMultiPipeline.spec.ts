@@ -30,6 +30,11 @@ test('TestSuite multi pipeline support', async ({ page }) => {
 
   await test.step('Create a new pipeline', async () => {
     await page.getByText('Profiler & Data Quality').click();
+    await page
+      .getByRole('menuitem', {
+        name: 'Table Profile',
+      })
+      .click();
     await page.getByTestId('profiler-add-table-test-btn').click();
     await page.getByTestId('test-case').click();
     await page.getByTestId('test-case-name').clear();
@@ -197,7 +202,7 @@ test("Edit the pipeline's test case", async ({ page }) => {
       name: new RegExp(pipeline?.['name']),
     })
     .getByTestId('more-actions')
-    .click();
+    .click({ force: true });
 
   await page
     .locator(

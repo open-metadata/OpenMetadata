@@ -53,6 +53,7 @@ export const AdvanceSearchProvider = ({
   children,
   isExplorePage = true,
   modalProps,
+  updateURL = true,
 }: AdvanceSearchProviderProps) => {
   const tierOptions = useMemo(getTierOptions, []);
 
@@ -69,7 +70,7 @@ export const AdvanceSearchProvider = ({
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (isNil(tabInfo)) {
-      return SearchIndex.TABLE;
+      return SearchIndex.DATA_ASSET;
     }
 
     return tabInfo[0] as SearchIndex;
@@ -309,9 +310,9 @@ export const AdvanceSearchProvider = ({
       treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
     );
 
-    isExplorePage && handleTreeUpdate(treeInternal);
+    updateURL && handleTreeUpdate(treeInternal);
     setShowModal(false);
-  }, [treeInternal, config, handleTreeUpdate, isExplorePage]);
+  }, [treeInternal, config, handleTreeUpdate, updateURL]);
 
   const contextValues = useMemo(
     () => ({

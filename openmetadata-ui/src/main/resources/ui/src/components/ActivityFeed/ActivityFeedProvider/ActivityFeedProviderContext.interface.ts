@@ -34,6 +34,7 @@ export interface ActivityFeedProviderContextType {
   focusReplyEditor: boolean;
   entityPaging: Paging;
   setActiveThread: (thread?: Thread) => void;
+  updateEntityThread: (thread: Thread) => void;
   userId: string;
   deleteFeed: (
     threadId: string,
