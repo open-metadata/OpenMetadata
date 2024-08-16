@@ -61,9 +61,6 @@ from metadata.ingestion.source.database.external_table_lineage_mixin import (
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
-from metadata.ingestion.source.database.life_cycle_query_mixin import (
-    LifeCycleQueryMixin,
-)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -81,7 +78,6 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_SCHEMA_COMMENTS,
     SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES,
     SNOWFLAKE_GET_STORED_PROCEDURES,
-    SNOWFLAKE_LIFE_CYCLE_QUERY,
     SNOWFLAKE_SESSION_TAG_QUERY,
 )
 from metadata.ingestion.source.database.snowflake.utils import (
@@ -144,7 +140,6 @@ SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
 class SnowflakeSource(
-    LifeCycleQueryMixin,
     StoredProcedureMixin,
     ExternalTableLineageMixin,
     CommonDbSourceService,
@@ -170,7 +165,6 @@ class SnowflakeSource(
 
         self._account: Optional[str] = None
         self._org_name: Optional[str] = None
-        self.life_cycle_query = SNOWFLAKE_LIFE_CYCLE_QUERY
         self.context.get_global().deleted_tables = []
         self.pipeline_name = pipeline_name
         self.incremental = incremental_configuration
