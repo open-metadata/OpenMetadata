@@ -19,6 +19,8 @@ import static org.openmetadata.service.util.SubscriptionUtil.getTargetsForWebhoo
 import static org.openmetadata.service.util.SubscriptionUtil.postWebhookMessage;
 
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.client.Client;
@@ -34,6 +36,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -62,6 +65,21 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     }
   }
 
+  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
+
+    if (encryptedSecretkey != null && encryptedSecretkey.startsWith("ENCRYPTED_")) {
+      // Remove the "ENCRYPTED_" prefix
+      encryptedSecretkey = encryptedSecretkey.substring("ENCRYPTED_".length());
+
+      if (Fernet.getInstance().isKeyDefined()) {
+        byte[] decodedKey = Base64.getDecoder().decode(encryptedSecretkey);
+        String decodedKeyStr = new String(decodedKey, StandardCharsets.UTF_8);
+        return Fernet.getInstance().decryptIfApplies(decodedKeyStr);
+      }
+    }
+    return encryptedSecretkey;
+  }
+
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     long attemptTime = System.currentTimeMillis();
@@ -70,7 +88,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       String json = JsonUtils.pojoToJson(event);
       if (webhook.getEndpoint() != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
           postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
         } else {
           postWebhookMessage(this, getTarget(), json);
@@ -113,7 +133,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
           "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
       if (webhook.getEndpoint() != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
           postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
         } else {
           postWebhookMessage(this, getTarget(), json);
