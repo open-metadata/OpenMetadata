@@ -343,6 +343,9 @@ function AlertDetailsPage({
                           <Button
                             className="flex flex-center"
                             data-testid="edit-button"
+                            disabled={
+                              alertDetails?.provider === ProviderType.System
+                            }
                             icon={<EditIcon height={16} width={16} />}
                           />
                         </Tooltip>

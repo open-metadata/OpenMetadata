@@ -70,23 +70,28 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       FormulaHolder holder = new FormulaHolder();
       holder.setFormula(matcher.group());
       holder.setFunction(Function.valueOf(matcher.group(1).toUpperCase()));
-      holder.setField(matcher.group(2));
+      String field;
+      if (matcher.group(3) != null) {
+        field = matcher.group(3);
+      } else {
+        field = "id.keyword";
+      }
       ValuesSourceAggregationBuilder subAgg =
           getSubAggregationsByFunction(
-              Function.valueOf(matcher.group(1).toUpperCase()), matcher.group(2), index);
-      if (matcher.group(4) != null) {
+              Function.valueOf(matcher.group(1).toUpperCase()), field, index);
+      if (matcher.group(5) != null) {
         QueryBuilder queryBuilder;
         if (filter != null) {
           queryBuilder =
               QueryBuilders.boolQuery()
-                  .must(QueryBuilders.queryStringQuery(matcher.group(4)))
+                  .must(QueryBuilders.queryStringQuery(matcher.group(5)))
                   .must(filter);
         } else {
-          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(4));
+          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(5));
         }
         dateHistogramAggregationBuilder.subAggregation(
             AggregationBuilders.filter("filer" + index, queryBuilder).subAggregation(subAgg));
-        holder.setQuery(matcher.group(4));
+        holder.setQuery(matcher.group(5));
       } else {
         if (filter != null) {
           dateHistogramAggregationBuilder.subAggregation(
@@ -127,11 +132,10 @@ public interface OpenSearchDynamicChartAggregatorInterface {
           && day != null) {
         Expression expression = CompiledRule.parseExpression(formulaCopy);
         Double value = (Double) expression.getValue();
-        if (value.isNaN() || value.isInfinite()) {
-          value = null;
+        if (!value.isNaN() && !value.isInfinite()) {
+          finalList.add(
+              new DataInsightCustomChartResult().withCount(value).withGroup(group).withDay(day));
         }
-        finalList.add(
-            new DataInsightCustomChartResult().withCount(value).withGroup(group).withDay(day));
       }
     }
     return finalList;
@@ -146,7 +150,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       List<FormulaHolder> formulas)
       throws IOException {
     if (formula != null) {
-      if (filter != null) {
+      if (filter != null && !filter.equals("{}")) {
         XContentParser filterParser =
             XContentType.JSON
                 .xContent()
@@ -161,7 +165,7 @@ public interface OpenSearchDynamicChartAggregatorInterface {
 
     // process non formula date histogram
     ValuesSourceAggregationBuilder subAgg = getSubAggregationsByFunction(function, field, 0);
-    if (filter != null) {
+    if (filter != null && !filter.equals("{}")) {
       XContentParser filterParser =
           XContentType.JSON
               .xContent()
@@ -242,12 +246,12 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       Double day,
       String group) {
     ParsedValueCount parsedValueCount = aggregation;
-    DataInsightCustomChartResult diChartResult =
-        new DataInsightCustomChartResult()
-            .withCount((double) parsedValueCount.getValue())
-            .withDay(day)
-            .withGroup(group);
-    diChartResults.add(diChartResult);
+    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+      DataInsightCustomChartResult diChartResult =
+          new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
+      diChartResults.add(diChartResult);
+    }
   }
 
   private void addProcessedSubResult(
@@ -257,12 +261,11 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       String group) {
     ParsedSingleValueNumericMetricsAggregation parsedValueCount = aggregation;
     Double value = parsedValueCount.value();
-    if (Double.isInfinite(value) || Double.isNaN(value)) {
-      value = null;
+    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+      DataInsightCustomChartResult diChartResult =
+          new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
+      diChartResults.add(diChartResult);
     }
-    DataInsightCustomChartResult diChartResult =
-        new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
-    diChartResults.add(diChartResult);
   }
 
   private void addProcessedSubResult(

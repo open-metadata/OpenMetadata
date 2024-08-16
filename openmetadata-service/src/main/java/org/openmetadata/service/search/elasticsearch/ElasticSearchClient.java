@@ -286,6 +286,11 @@ public class ElasticSearchClient implements SearchClient {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
+      // Get the child aliases
+      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+
+      // Add the child aliases to the set of aliases
+      aliases.addAll(childAliases);
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
               .index(indexMapping.getIndexName(clusterAlias))
@@ -1690,7 +1695,8 @@ public class ElasticSearchClient implements SearchClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
@@ -1740,7 +1746,7 @@ public class ElasticSearchClient implements SearchClient {
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
+      LOG.info(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
@@ -2004,6 +2010,7 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    List<Map<String, String>> fields = new ArrayList<>();
     GetMappingsRequest request =
         new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
 
@@ -2014,11 +2021,9 @@ public class ElasticSearchClient implements SearchClient {
     for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
       // Get fields for the index
       Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      List<Map<String, String>> fields = new ArrayList<>();
       getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
-      return fields;
     }
-    return null;
+    return fields;
   }
 
   void getFieldNames(
@@ -2039,11 +2044,13 @@ public class ElasticSearchClient implements SearchClient {
           getFieldNames(
               (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
         } else {
-          Map<String, String> map = new HashMap<>();
-          map.put("name", fieldName);
-          map.put("displayName", fieldNameOriginal);
-          map.put("type", type);
-          fieldList.add(map);
+          if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
+            Map<String, String> map = new HashMap<>();
+            map.put("name", fieldName);
+            map.put("displayName", fieldNameOriginal);
+            map.put("type", type);
+            fieldList.add(map);
+          }
         }
       }
     }

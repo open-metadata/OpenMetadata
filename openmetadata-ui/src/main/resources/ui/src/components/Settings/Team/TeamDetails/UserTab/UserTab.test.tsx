@@ -57,7 +57,14 @@ jest.mock(
 );
 
 jest.mock('../../../../../utils/Users.util', () => ({
-  commonUserDetailColumns: jest.fn().mockImplementation(() => []),
+  commonUserDetailColumns: jest.fn().mockImplementation(() => [
+    { title: 'label.users', dataIndex: 'users' },
+    {
+      title: 'label.team-plural',
+      dataIndex: 'teams',
+      key: 'teams',
+    },
+  ]),
 }));
 
 jest.mock('../../../../../rest/userAPI', () => ({
@@ -75,8 +82,11 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(getUsers).toHaveBeenCalled();
-    // expect(await screen.findByRole('table')).toBeInTheDocument();
+    expect(getUsers).toHaveBeenCalledWith({
+      fields: 'roles',
+      limit: 25,
+      team: 'Marketing',
+    });
     expect(
       await screen.findByTestId('user-selectable-list')
     ).toBeInTheDocument();
@@ -107,6 +117,8 @@ describe('UserTab', () => {
     );
 
     expect(screen.queryByRole('table')).toBeInTheDocument();
+    expect(screen.getByText('label.users')).toBeInTheDocument();
+    expect(screen.queryByText('label.team-plural')).not.toBeInTheDocument();
     expect(
       await screen.findByTestId('user-selectable-list')
     ).toBeInTheDocument();

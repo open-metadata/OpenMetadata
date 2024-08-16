@@ -30,7 +30,8 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
   onCancel,
 }: Props) => {
   const { t } = useTranslation();
-  const { config, treeInternal, onTreeUpdate, onReset } = useAdvanceSearch();
+  const { config, treeInternal, onTreeUpdate, onReset, modalProps } =
+    useAdvanceSearch();
 
   return (
     <Modal
@@ -61,13 +62,16 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       maskClosable={false}
       okText={t('label.submit')}
       open={visible}
-      title={t('label.advanced-entity', {
-        entity: t('label.search'),
-      })}
+      title={
+        modalProps?.title ??
+        t('label.advanced-entity', {
+          entity: t('label.search'),
+        })
+      }
       width={950}
       onCancel={onCancel}>
       <Typography.Text data-testid="advanced-search-message">
-        {t('message.advanced-search-message')}
+        {modalProps?.subTitle ?? t('message.advanced-search-message')}
       </Typography.Text>
       <Query
         {...config}

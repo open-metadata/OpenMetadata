@@ -111,6 +111,7 @@ export const LINEAGE_COLUMN_NODE_SUPPORTED = [
   EntityType.CONTAINER,
   EntityType.TOPIC,
   EntityType.SEARCH_INDEX,
+  EntityType.API_ENDPOINT,
 ];
 
 export const LINEAGE_EXPORT_HEADERS = [

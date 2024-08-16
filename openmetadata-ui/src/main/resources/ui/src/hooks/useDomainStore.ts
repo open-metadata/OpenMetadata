@@ -60,14 +60,19 @@ export const useDomainStore = create<DomainStore>()(
           selectDefault &&
           !isAdmin &&
           userDomainsObj.length > 0 &&
-          !get().activeDomain
+          get().activeDomain === DEFAULT_DOMAIN_VALUE
         ) {
-          set({ activeDomain: userDomainsObj[0].fullyQualifiedName });
+          get().updateActiveDomain(userDomainsObj[0].fullyQualifiedName ?? '');
         }
       },
       updateActiveDomain: (activeDomainKey: string) => {
+        const currentUser = useApplicationStore.getState().currentUser;
+        const { isAdmin = false, domains = [] } = currentUser ?? {};
+        const userDomainsObj = isAdmin ? [] : domains;
+        const allDomains = isAdmin ? get().domains : userDomainsObj;
+
         const activeDomainEntityRef = initializeDomainEntityRef(
-          get().domains,
+          allDomains as EntityReference[],
           activeDomainKey
         );
         set({
@@ -93,8 +98,13 @@ export const useDomainStore = create<DomainStore>()(
     {
       name: DOMAIN_STORAGE_KEY,
       partialize: (state) => {
+        const currentUser = useApplicationStore.getState().currentUser;
+        const { isAdmin = false, domains = [] } = currentUser ?? {};
+        const userDomainsObj = isAdmin ? [] : domains;
+        const allDomains = isAdmin ? state.domains : userDomainsObj;
+
         const activeDomainEntityRef = initializeDomainEntityRef(
-          state.domains,
+          allDomains as EntityReference[],
           state.activeDomain
         );
 
