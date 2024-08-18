@@ -21,7 +21,6 @@ import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testC
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import AssigneeList from '../../../common/AssigneeList/AssigneeList';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
 import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
@@ -136,7 +135,7 @@ const TaskTabIncidentManagerHeader = ({ thread }: { thread: Thread }) => {
             isEmpty(thread.task?.assignees) ? (
               NO_DATA_PLACEHOLDER
             ) : (
-              <AssigneeList assignees={thread.task?.assignees ?? []} />
+              <OwnerLabel owners={thread.task?.assignees} />
             )}
           </div>
           <div className="gap-2 flex-center">

@@ -187,7 +187,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           after,
           type,
           feedFilterType,
-          taskStatus,
+          type === ThreadType.Task ? taskStatus : undefined,
           userId,
           limit
         );
@@ -244,6 +244,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const refreshActivityFeed = useCallback((threads) => {
     setEntityThread([...threads]);
   }, []);
+
+  const updateEntityThread = useCallback(
+    (thread: Thread) => {
+      setEntityThread((prev) => {
+        return prev.map((threadItem) => {
+          if (threadItem.id === thread.id) {
+            return thread;
+          } else {
+            return threadItem;
+          }
+        });
+      });
+    },
+    [setEntityThread]
+  );
 
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
@@ -457,6 +472,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       hideDrawer,
       updateEditorFocus,
       setActiveThread,
+      updateEntityThread,
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
@@ -481,6 +497,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     hideDrawer,
     updateEditorFocus,
     setActiveThread,
+    updateEntityThread,
     entityPaging,
     user,
     currentUser,
