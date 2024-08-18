@@ -35,7 +35,7 @@ class DBTJob(BaseModel):
 
 
 class DBTJobList(BaseModel):
-    Jobs: Optional[List[DBTJob]] = Field(None, alias="data")
+    Jobs: Optional[List[DBTJob]] = Field([], alias="data")
 
 
 class DBTRun(BaseModel):
@@ -50,7 +50,7 @@ class DBTRun(BaseModel):
 
 
 class DBTRunList(BaseModel):
-    Runs: Optional[List[DBTRun]] = Field(None, alias="data")
+    Runs: Optional[List[DBTRun]] = Field([], alias="data")
 
 
 class DBTSources(BaseModel):
@@ -60,13 +60,13 @@ class DBTSources(BaseModel):
 
 
 class DBTModel(BaseModel):
+    uniqueId: Optional[str] = None
     name: Optional[str] = None
-    alias: Optional[str] = None
     dbtschema: Optional[str] = Field(None, alias="schema")
     database: Optional[str] = None
-    rawSql: Optional[str] = None
-    parentsSources: Optional[List[DBTSources]] = None
+    dependsOn: Optional[List[str]] = None
 
 
 class DBTModelList(BaseModel):
-    models: Optional[List[DBTModel]] = None
+    models: Optional[List[DBTModel]] = []
+    seeds: Optional[List[DBTModel]] = []

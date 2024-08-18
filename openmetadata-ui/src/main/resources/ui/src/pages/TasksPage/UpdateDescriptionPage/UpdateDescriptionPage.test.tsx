@@ -80,6 +80,9 @@ jest.mock('../../../utils/TasksUtils', () => ({
     description: mockTableData.columns[0].description,
   })),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
+  getTaskEntityFQN: jest
+    .fn()
+    .mockReturnValue('sample_data.ecommerce_db.shopify.dim_location'),
 }));
 jest.mock('../shared/Assignees', () =>
   jest.fn().mockImplementation(() => <div>Assignees.component</div>)

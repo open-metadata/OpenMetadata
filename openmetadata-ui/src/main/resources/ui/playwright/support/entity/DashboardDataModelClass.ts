@@ -33,19 +33,22 @@ export class DashboardDataModelClass extends EntityClass {
       },
     },
   };
+
+  children = [
+    {
+      name: 'country_name',
+      dataType: 'VARCHAR',
+      dataLength: 256,
+      dataTypeDisplay: 'varchar',
+      description: 'Name of the country.',
+    },
+  ];
+
   entity = {
     name: `pw-dashboard-data-model-${uuid()}`,
     displayName: `pw-dashboard-data-model-${uuid()}`,
     service: this.service.name,
-    columns: [
-      {
-        name: 'country_name',
-        dataType: 'VARCHAR',
-        dataLength: 256,
-        dataTypeDisplay: 'varchar',
-        description: 'Name of the country.',
-      },
-    ],
+    columns: this.children,
     dataModelType: 'SupersetDataModel',
   };
 
@@ -56,6 +59,8 @@ export class DashboardDataModelClass extends EntityClass {
     super(EntityTypeEndpoint.DataModel);
     this.service.name = name ?? this.service.name;
     this.type = 'Dashboard Data Model';
+    this.childrenTabId = 'model';
+    this.childrenSelectorId = this.children[0].name;
   }
 
   async create(apiContext: APIRequestContext) {
