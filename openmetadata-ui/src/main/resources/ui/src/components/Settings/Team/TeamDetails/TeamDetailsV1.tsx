@@ -925,7 +925,7 @@ const TeamDetailsV1 = ({
               <IconTeams className="text-primary" width={20} />
             </Avatar>
 
-            <Space direction="vertical" size={3}>
+            <div className="d-flex flex-column gap-1">
               {!isOrganization && (
                 <TitleBreadcrumb titleLinks={slashedTeamName} />
               )}
@@ -935,7 +935,7 @@ const TeamDetailsV1 = ({
                 entityPermissions={entityPermissions}
                 updateTeamHandler={updateTeamHandler}
               />
-            </Space>
+            </div>
           </Space>
 
           <Space align="center">

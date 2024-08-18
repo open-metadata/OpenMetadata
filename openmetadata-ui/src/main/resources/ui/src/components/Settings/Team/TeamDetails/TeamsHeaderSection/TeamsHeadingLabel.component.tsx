@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, {
+import {
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Button, Col, Input, Space, Tooltip, Typography } from 'antd';
+import { Button, Input, Space, Tooltip, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../../../constants/constants';
 import { Team } from '../../../../../generated/entity/teams/team';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
@@ -121,8 +122,8 @@ const TeamsHeadingLabel = ({
           </Space>
         </Space>
       ) : (
-        <Space align="center">
-          <Space align="baseline">
+        <>
+          <>
             {heading ? (
               <Typography.Title
                 className="m-b-0 w-max-200"
@@ -150,12 +151,13 @@ const TeamsHeadingLabel = ({
                       })
                     : t('message.no-permission-for-action')
                 }>
-                <Icon
-                  className="align-middle"
-                  component={EditIcon}
+                <Button
+                  className="p-0 flex-center"
                   data-testid="edit-team-name"
                   disabled={!hasEditDisplayNamePermission}
-                  style={{ fontSize: '16px' }}
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
+                  size="small"
+                  type="text"
                   onClick={(e) => {
                     // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                     e.stopPropagation();
@@ -164,16 +166,16 @@ const TeamsHeadingLabel = ({
                 />
               </Tooltip>
             )}
-          </Space>
+          </>
           {currentTeam.deleted && (
-            <Col className="text-xs">
-              <div className="deleted-badge-button" data-testid="deleted-badge">
-                <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
-                {t('label.deleted')}
-              </div>
-            </Col>
+            <div
+              className="deleted-badge-button text-xs flex-center"
+              data-testid="deleted-badge">
+              <ExclamationCircleFilled className="m-r-xss" />
+              {t('label.deleted')}
+            </div>
           )}
-        </Space>
+        </>
       ),
     [
       heading,
