@@ -432,6 +432,7 @@ export const ActivityFeedTab = ({
               className={classNames('cursor-pointer d-flex items-center', {
                 'font-medium': taskFilter === 'close',
               })}
+              data-testid="closed-task"
               onClick={() => {
                 handleUpdateTaskFilter('close');
                 setActiveThread();
