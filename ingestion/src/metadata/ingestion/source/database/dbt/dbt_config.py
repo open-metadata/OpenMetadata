@@ -263,10 +263,11 @@ def download_dbt_files(
             for blob in blobs:
                 if blob:
                     reader = get_reader(config_source=config, client=client)
-                    if DBT_MANIFEST_FILE_NAME in blob:
+                    blob_file_name = blob.rsplit("/", 1)[1] if "/" in blob else blob
+                    if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():
                         logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
                         dbt_manifest = reader.read(path=blob, **kwargs)
-                    if DBT_CATALOG_FILE_NAME in blob:
+                    if DBT_CATALOG_FILE_NAME == blob_file_name.lower():
                         try:
                             logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
                             dbt_catalog = reader.read(path=blob, **kwargs)
@@ -274,9 +275,9 @@ def download_dbt_files(
                             logger.warning(
                                 f"{DBT_CATALOG_FILE_NAME} not found in {key}: {exc}"
                             )
-                    if DBT_RUN_RESULTS_FILE_NAME in blob:
+                    if DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower():
                         try:
-                            logger.debug(f"{blob} found in {key}")
+                            logger.debug(f"{blob_file_name} found in {key}")
                             dbt_run_result = reader.read(path=blob, **kwargs)
                             if dbt_run_result:
                                 dbt_run_results.append(json.loads(dbt_run_result))
