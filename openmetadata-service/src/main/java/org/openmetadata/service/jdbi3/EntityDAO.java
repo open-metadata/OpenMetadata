@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.jdbi3.ListFilter.escape;
 import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
@@ -160,80 +159,26 @@ public interface EntityDAO<T extends EntityInterface> {
   @ConnectionAwareSqlQuery(
       value =
           "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.json FROM <table> <mysqlCond> AND "
-              + "<table>.name < :before "
-              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <table>.name DESC "
-              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
-              // have fqn)
+              + "SELECT <table>.name, <table>.id, <table>.json FROM <table> <mysqlCond> AND "
+              + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId)) "
+              + // Pagination by entity name or id (when entity name same)
+              "ORDER BY <table>.name DESC,<table>.id DESC "
+              + // Pagination by entity name or id (when entity name same)
               "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name",
+              + ") last_rows_subquery ORDER BY name,id",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
           "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.json FROM <table> <postgresCond> AND "
-              + "<table>.name < :before "
-              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <table>.name DESC "
-              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
-              // have fqn)
+              + "SELECT <table>.name, <table>.id, <table>.json FROM <table> <postgresCond> AND "
+              + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId)) "
+              + // Pagination by entity id or name (when entity have same name)
+              "ORDER BY <table>.name DESC,<table>.id DESC "
+              + // Pagination by entity id or name (when entity have same name)
               "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name",
+              + ") last_rows_subquery ORDER BY name,id",
       connectionType = POSTGRES)
   List<String> listBefore(
-      @Define("table") String table,
-      @BindMap Map<String, ?> params,
-      @Define("mysqlCond") String mysqlCond,
-      @Define("postgresCond") String postgresCond,
-      @Bind("limit") int limit,
-      @Bind("before") String before);
-
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT <table>.json FROM <table> <mysqlCond> AND "
-              + "<table>.name > :after "
-              + "ORDER BY <table>.name "
-              + "LIMIT :limit",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT <table>.json FROM <table> <postgresCond> AND "
-              + "<table>.name > :after "
-              + "ORDER BY <table>.name "
-              + "LIMIT :limit",
-      connectionType = POSTGRES)
-  List<String> listAfter(
-      @Define("table") String table,
-      @BindMap Map<String, ?> params,
-      @Define("mysqlCond") String mysqlCond,
-      @Define("postgresCond") String postgresCond,
-      @Bind("limit") int limit,
-      @Bind("after") String after);
-
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM ("
-              + "SELECT <table>.id, <table>.name, <table>.json FROM <table> <mysqlCond> AND "
-              + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId)) "
-              + // Pagination by entity id or name (when entity have same name)
-              "ORDER BY <table>.name DESC, <table>.id  DESC "
-              + // Pagination by entity id or name (when entity have same name)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name, id",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM ("
-              + "SELECT <table>.id, <table>.name, <table>.json FROM <table> <postgresCond> AND "
-              + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId)) "
-              + // Pagination by entity id or name (when entity have same name)
-              "ORDER BY <table>.name DESC, <table>.id DESC "
-              + // Pagination by entity id or name (when entity have same name)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name, id ",
-      connectionType = POSTGRES)
-  List<String> listBeforePagination(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
       @Define("mysqlCond") String mysqlCond,
@@ -256,7 +201,7 @@ public interface EntityDAO<T extends EntityInterface> {
               + "ORDER BY <table>.name,<table>.id "
               + "LIMIT :limit",
       connectionType = POSTGRES)
-  List<String> listAfterPagination(
+  List<String> listAfter(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
       @Define("mysqlCond") String mysqlCond,
@@ -287,51 +232,51 @@ public interface EntityDAO<T extends EntityInterface> {
   @ConnectionAwareSqlQuery(
       value =
           "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.json FROM <table> <mysqlCond> AND "
-              + "<table>.name < :before "
+              + "SELECT <table>.name, <table>.id, <table>.json FROM <table> <mysqlCond> AND "
+              + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
               + "<groupBy> "
-              + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <table>.name DESC "
-              + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
-              // have fqn)
+              + // Pagination by entity id or name (when entity have same name)
+              "ORDER BY <table>.name DESC,<table>.id DESC "
+              + // Pagination by entity id or name (when entity have same name)
               "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name",
+              + ") last_rows_subquery ORDER BY name,id",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
           "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.json FROM <table> <postgresCond> AND "
-              + "<table>.name < :before "
+              + "SELECT <table>.name, <table>.id, <table>.json FROM <table> <postgresCond> AND "
+              + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
               + "<groupBy> "
               + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-              "ORDER BY <table>.name DESC "
+              "ORDER BY <table>.name DESC,<table>.id DESC "
               + // Pagination ordering by entity fullyQualifiedName or name (when entity does not
               // have fqn)
               "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name",
+              + ") last_rows_subquery ORDER BY name,id",
       connectionType = POSTGRES)
   List<String> listBefore(
       @Define("table") String table,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
-      @Bind("before") String before,
+      @Bind("beforeName") String beforeName,
+      @Bind("beforeId") String beforeId,
       @Define("groupBy") String groupBy);
 
   @ConnectionAwareSqlQuery(
       value =
           "SELECT <table>.json FROM <table> <mysqlCond> AND "
-              + "<table>.name > :after "
+              + "(<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId)) "
               + "<groupBy> "
-              + "ORDER BY <table>.name "
+              + "ORDER BY <table>.name,<table>.id "
               + "LIMIT :limit",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
           "SELECT <table>.json FROM <table> <postgresCond> AND "
-              + "<table>.name > :after "
+              + "(<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId))  "
               + "<groupBy> "
-              + "ORDER BY <table>.name "
+              + "ORDER BY <table>.name,<table>.id "
               + "LIMIT :limit",
       connectionType = POSTGRES)
   List<String> listAfter(
@@ -339,33 +284,9 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
-      @Bind("after") String after,
+      @Bind("afterName") String afterName,
+      @Bind("afterId") String afterId,
       @Define("groupBy") String groupBy);
-
-  @SqlQuery(
-      "SELECT json FROM ("
-          + "SELECT name, json FROM <table> <cond> AND "
-          + "name < :before "
-          + // Pagination by entity fullyQualifiedName or name (when entity does not have fqn)
-          "ORDER BY name DESC "
-          + // Pagination ordering by entity fullyQualifiedName or name (when entity does not have
-          // fqn)
-          "LIMIT :limit"
-          + ") last_rows_subquery ORDER BY name")
-  List<String> listBefore(
-      @Define("table") String table,
-      @BindMap Map<String, ?> params,
-      @Define("cond") String cond,
-      @Bind("limit") int limit,
-      @Bind("before") String before);
-
-  @SqlQuery("SELECT json FROM <table> <cond> AND name > :after ORDER BY name LIMIT :limit")
-  List<String> listAfter(
-      @Define("table") String table,
-      @BindMap Map<String, ?> params,
-      @Define("cond") String cond,
-      @Bind("limit") int limit,
-      @Bind("after") String after);
 
   @SqlQuery(
       "SELECT json FROM ("
@@ -376,7 +297,7 @@ public interface EntityDAO<T extends EntityInterface> {
           + // Pagination by entity id or name (when entity have same name)
           "LIMIT :limit"
           + ") last_rows_subquery ORDER BY name,id")
-  List<String> listBeforePagination(
+  List<String> listBefore(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
       @Define("cond") String cond,
@@ -386,7 +307,7 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @SqlQuery(
       "SELECT json FROM <table> <cond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId)) ORDER BY name,id LIMIT :limit")
-  List<String> listAfterPagination(
+  List<String> listAfter(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
       @Define("cond") String cond,
@@ -519,30 +440,22 @@ public interface EntityDAO<T extends EntityInterface> {
     return listTotalCount(getTableName(), getNameHashColumn());
   }
 
-  default List<String> listBefore(ListFilter filter, int limit, String before) {
+  default List<String> listBefore(
+      ListFilter filter, int limit, String beforeName, String beforeId) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
-    before = FullyQualifiedName.unquoteName(before);
     return listBefore(
-        getTableName(), filter.getQueryParams(), filter.getCondition(), limit, before);
+        getTableName(),
+        filter.getQueryParams(),
+        filter.getCondition(),
+        limit,
+        beforeName,
+        beforeId);
   }
 
-  @SuppressWarnings("unchecked")
-  default Map<String, String> parseCursorMap(String param) {
-    Map<String, String> cursorMap;
-    if (param == null) {
-      cursorMap = Map.of("name", null, "id", null);
-    } else if (nullOrEmpty(param)) {
-      cursorMap = Map.of("name", "", "id", "");
-    } else {
-      cursorMap = JsonUtils.readValue(param, Map.class);
-    }
-    return cursorMap;
-  }
-
-  default List<String> listAfter(ListFilter filter, int limit, String after) {
+  default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
     // Quoted name is stored in fullyQualifiedName column and not in the name column
-    after = FullyQualifiedName.unquoteName(after);
-    return listAfter(getTableName(), filter.getQueryParams(), filter.getCondition(), limit, after);
+    return listAfter(
+        getTableName(), filter.getQueryParams(), filter.getCondition(), limit, afterName, afterId);
   }
 
   default List<String> listAfterWithOffset(int limit, int offset) {

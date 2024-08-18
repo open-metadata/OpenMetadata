@@ -26,7 +26,8 @@ public class MigrationUtil {
       CronMapper quartzToUnixMapper = CronMapper.fromQuartzToUnix();
       CronParser quartzParser = new CronParser(CronDefinitionBuilder.instanceDefinitionFor(QUARTZ));
       ListFilter filter = new ListFilter(Include.ALL);
-      List<String> jsons = daoCollection.applicationDAO().listAfter(filter, Integer.MAX_VALUE, "");
+      List<String> jsons =
+          daoCollection.applicationDAO().listAfter(filter, Integer.MAX_VALUE, "", "");
       for (String jsonStr : jsons) {
         App application = JsonUtils.readValue(jsonStr, App.class);
         String cronExpression = application.getAppSchedule().getCronExpression();
