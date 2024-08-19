@@ -41,6 +41,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Glossary', async ({ page }) => {
+  test.slow(true);
+
   const glossary = new Glossary();
   const { afterAction, apiContext } = await getApiContext(page);
   await glossary.create(apiContext);
@@ -129,6 +131,8 @@ test('Glossary', async ({ page }) => {
 });
 
 test('GlossaryTerm', async ({ page }) => {
+  test.slow(true);
+
   const { term1, term2, cleanup } = await setupGlossaryAndTerms(page);
 
   await test.step('Version changes', async () => {

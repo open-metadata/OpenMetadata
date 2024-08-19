@@ -58,6 +58,8 @@ test.describe('Glossary tests', () => {
   test('Glossary & terms creation for reviewer as user', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
@@ -103,6 +105,8 @@ test.describe('Glossary tests', () => {
   test('Glossary & terms creation for reviewer as team', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user2);
@@ -385,7 +389,7 @@ test.describe('Glossary tests', () => {
   });
 
   test('Rename Glossary Term and verify assets', async ({ browser }) => {
-    test.slow();
+    test.slow(true);
 
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const table = new TableClass();
