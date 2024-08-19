@@ -33,7 +33,13 @@ import freemarker.template.TemplateException;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.ws.rs.BadRequestException;
@@ -136,9 +142,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(loginRequest.getEmail());
     User storedUser = lookUserInProvider(loginRequest.getEmail());
     validatePassword(storedUser.getEmail(), storedUser, loginRequest.getPassword());
-    User omUser =
-        checkAndCreateUser(
-            storedUser.getEmail(), storedUser.getFullyQualifiedName(), storedUser.getName());
+    User omUser = checkAndCreateUser(storedUser.getEmail(), storedUser.getName());
     return getJwtResponse(omUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
@@ -147,25 +151,24 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * group else, create a new user and assign roles according to it's ldap group
    *
    * @param email email address of user
-   * @param userName userName of user
-   * @param userDn the dn of user from ldap
+   * @param name userName of user
    * @return user info
    * @author Eric Wen@2023-07-16 17:06:43
    */
-  private User checkAndCreateUser(String email, String userName, String userDn) throws IOException {
+  private User checkAndCreateUser(String email, String name) throws IOException {
     // Check if the user exists in OM Database
     try {
       User omUser =
-          userRepository.getByName(null, userName, userRepository.getFields("id,name,email,roles"));
-      getRoleForLdap(omUser, userDn, Boolean.TRUE);
+          userRepository.getByName(null, name, userRepository.getFields("id,name,email,roles"));
+      getRoleForLdap(omUser, Boolean.TRUE);
       return omUser;
     } catch (EntityNotFoundException ex) {
       // User does not exist
-      return userRepository.create(null, getUserForLdap(email, userName, userDn));
+      return userRepository.create(null, getUserForLdap(email, name));
     } catch (LDAPException e) {
       LOG.error(
           "An error occurs when reassigning roles for an LDAP user({}): {}",
-          userName,
+          name,
           e.getMessage(),
           e);
       throw new UnhandledServerException(e.getMessage());
@@ -243,7 +246,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             searchResultEntry.getAttribute(ldapConfiguration.getMailAttributeName());
 
         if (!CommonUtil.nullOrEmpty(userDN) && emailAttr != null) {
-          return getUserForLdap(email).withName(userDN);
+          return getUserForLdap(email).withName(userDN.toLowerCase());
         } else {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
@@ -267,14 +270,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         .withAuthenticationMechanism(null);
   }
 
-  private User getUserForLdap(String email, String userName, String userDn) {
+  private User getUserForLdap(String email, String userName) {
     User user =
         UserUtil.getUser(
                 userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
             .withIsEmailVerified(false)
             .withAuthenticationMechanism(null);
     try {
-      getRoleForLdap(user, userDn, false);
+      getRoleForLdap(user, false);
     } catch (LDAPException | JsonProcessingException e) {
       LOG.error(
           "Failed to assign roles from LDAP to OpenMetadata for the user {} due to {}",
@@ -288,11 +291,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * Getting user's roles according to the mapping between ldap groups and roles
    *
    * @param user user object
-   * @param userDn the dn of user from ldap
    * @param reAssign flag to decide whether to reassign roles
    * @author Eric Wen@2023-07-16 17:23:57
    */
-  private void getRoleForLdap(User user, String userDn, Boolean reAssign)
+  private void getRoleForLdap(User user, Boolean reAssign)
       throws LDAPException, JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
@@ -301,7 +303,8 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               ldapConfiguration.getGroupAttributeName(),
               ldapConfiguration.getGroupAttributeValue());
       Filter groupMemberAttr =
-          Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
+          Filter.createEqualityFilter(
+              ldapConfiguration.getGroupMemberAttributeName(), user.getName());
       Filter groupAndMemberFilter = Filter.createANDFilter(groupFilter, groupMemberAttr);
       SearchRequest searchRequest =
           new SearchRequest(
@@ -372,7 +375,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     } catch (Exception ex) {
       LOG.warn(
           "Failed to get user's groups from LDAP server using the DN of the user {} due to {}",
-          userDn,
+          user.getName(),
           ex.getMessage());
     }
   }
