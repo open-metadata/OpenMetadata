@@ -2243,7 +2243,10 @@ public class EventSubscriptionResourceTest
             .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
             .withType(SubscriptionDestination.SubscriptionType.WEBHOOK)
             .withConfig(
-                new Webhook().withEndpoint(URI.create(uri)).withReceivers(new HashSet<>())));
+                new Webhook()
+                    .withEndpoint(URI.create(uri))
+                    .withReceivers(new HashSet<>())
+                    .withSecretKey("webhookTest")));
   }
 
   public List<SubscriptionDestination> getSlackWebhook(String uri) {

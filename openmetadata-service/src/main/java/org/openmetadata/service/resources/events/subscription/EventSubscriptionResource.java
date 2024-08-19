@@ -28,20 +28,14 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import javax.json.Json;
-import javax.json.JsonArrayBuilder;
-import javax.json.JsonObject;
 import javax.json.JsonPatch;
-import javax.json.JsonValue;
 import javax.validation.Valid;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
@@ -61,7 +55,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
@@ -73,13 +66,11 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.NotificationResourceDescriptor;
-import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
 import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -353,8 +344,7 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    JsonPatch jsonPatch = encryptSecretKeysInPatch(patch);
-    Response response = patchInternal(uriInfo, securityContext, id, jsonPatch);
+    Response response = patchInternal(uriInfo, securityContext, id, patch);
     EventSubscriptionScheduler.getInstance()
         .updateEventSubscription((EventSubscription) response.getEntity());
     return response;
@@ -386,70 +376,10 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    JsonPatch jsonPatch = encryptSecretKeysInPatch(patch);
-    Response response = patchInternal(uriInfo, securityContext, fqn, jsonPatch);
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     EventSubscriptionScheduler.getInstance()
         .updateEventSubscription((EventSubscription) response.getEntity());
     return response;
-  }
-
-  private JsonPatch encryptSecretKeysInPatch(JsonPatch patch) {
-    JsonArrayBuilder patchArrayBuilder = Json.createArrayBuilder();
-
-    for (JsonValue patchOp : patch.toJsonArray()) {
-      JsonObject patchOpObject = patchOp.asJsonObject();
-
-      // Check if the operation contains "path" and "value"
-      if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
-        String path = patchOpObject.getString("path");
-        JsonValue value = patchOpObject.get("value");
-
-        // If the path ends with "/destinations/-", process it
-        if (path.endsWith("/destinations/-")) {
-          JsonObject jsonObject = value.asJsonObject();
-
-          // Check if the destination is a Webhook type
-          if (jsonObject.containsKey("type")
-              && SubscriptionDestination.SubscriptionType.WEBHOOK
-                  .value()
-                  .equals(jsonObject.getString("type"))) {
-            JsonObject configObject = jsonObject.getJsonObject("config");
-            if (configObject != null && configObject.containsKey("secretKey")) {
-              String secretKey = configObject.getString("secretKey");
-
-              // Encrypt the secret key
-              String encryptedSecretKey = encryptWebhookSecretKey(secretKey);
-
-              // Replace the original secret key with the encrypted one
-              JsonObject encryptedConfigObject =
-                  Json.createObjectBuilder(configObject)
-                      .add("secretKey", encryptedSecretKey)
-                      .build();
-
-              // Rebuild the destination object with the encrypted secret key
-              JsonObject encryptedDestinationObject =
-                  Json.createObjectBuilder(jsonObject).add("config", encryptedConfigObject).build();
-
-              // Rebuild the patch operation with the encrypted destination object
-              JsonObject modifiedPatchOp =
-                  Json.createObjectBuilder(patchOpObject)
-                      .add("value", encryptedDestinationObject)
-                      .build();
-
-              // Add the modified operation to the patch array
-              patchArrayBuilder.add(modifiedPatchOp);
-              continue;
-            }
-          }
-        }
-      }
-
-      // If no modification, just add the original operation to the patch array
-      patchArrayBuilder.add(patchOpObject);
-    }
-
-    // Build the new JsonPatch from the modified array
-    return Json.createPatch(patchArrayBuilder.build());
   }
 
   @GET
@@ -710,46 +640,14 @@ public class EventSubscriptionResource
   private List<SubscriptionDestination> getSubscriptions(
       List<SubscriptionDestination> subscriptions) {
     List<SubscriptionDestination> result = new ArrayList<>();
-
     subscriptions.forEach(
         subscription -> {
-          if (SubscriptionDestination.SubscriptionType.WEBHOOK.equals(subscription.getType())) {
-            Webhook webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
-
-            if (webhook != null && !nullOrEmpty(webhook.getSecretKey())) {
-              if (!isSecretKeyEncrypted(webhook.getSecretKey())) {
-                String encryptedSecretKey = encryptWebhookSecretKey(webhook.getSecretKey());
-                webhook.withSecretKey(encryptedSecretKey);
-
-                Map<String, Object> config = (Map<String, Object>) subscription.getConfig();
-                if (config != null) {
-                  config.put("secretKey", encryptedSecretKey);
-                  subscription.withConfig(config);
-                }
-              }
-            }
-          }
-
           if (nullOrEmpty(subscription.getId())) {
             subscription.withId(UUID.randomUUID());
           }
           result.add(subscription);
         });
     return result;
-  }
-
-  private boolean isSecretKeyEncrypted(String secretKey) {
-    return secretKey.startsWith("ENCRYPTED_");
-  }
-
-  @SneakyThrows
-  public static String encryptWebhookSecretKey(String secretKey) {
-    if (Fernet.getInstance().isKeyDefined()) {
-      String encryptedKey = Fernet.getInstance().encryptIfApplies(secretKey);
-      return "ENCRYPTED_"
-          + Base64.getEncoder().encodeToString(encryptedKey.getBytes(StandardCharsets.UTF_8));
-    }
-    return secretKey;
   }
 
   public static List<FilterResourceDescriptor> getNotificationsFilterDescriptors()
