@@ -2207,23 +2207,35 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return null;
     }
-    List<EntityReference> validatedOwners = new ArrayList<>();
-    for (EntityReference owner : owners) {
-      if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidOwnerType(owner.getType()));
-      } else if (owner
-          .getType()
-          .equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
-        if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
-        }
-      }
-      validatedOwners.add(Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL));
+
+    long teamCount = owners.stream().filter(owner -> owner.getType().equals(Entity.TEAM)).count();
+    long userCount = owners.size() - teamCount;
+
+    if (teamCount > 1 || userCount > 5 || (teamCount > 0 && userCount > 0)) {
+      throw new IllegalArgumentException(
+          teamCount > 1
+              ? CatalogExceptionMessage.onlyOneTeamAllowed()
+              : userCount > 5
+                  ? CatalogExceptionMessage.maxUserLimitExceeded()
+                  : CatalogExceptionMessage.noTeamAndUserComboAllowed());
     }
-    return validatedOwners;
+
+    return owners.stream()
+        .map(
+            owner -> {
+              if (owner.getType().equals(Entity.TEAM)) {
+                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
+                if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
+                  throw new IllegalArgumentException(
+                      CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+                }
+              } else if (!owner.getType().equals(Entity.USER)) {
+                throw new IllegalArgumentException(
+                    CatalogExceptionMessage.invalidOwnerType(owner.getType()));
+              }
+              return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+            })
+        .collect(Collectors.toList());
   }
 
   protected void validateTags(T entity) {
