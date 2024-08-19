@@ -74,9 +74,11 @@ export const EntityImport = ({
         setUploading(true);
         const response = await onImport(entityName, result);
 
-        setCsvImportResult(response);
-        setCsvFileResult(result);
-        setActiveStep(2);
+        if (response) {
+          setCsvImportResult(response);
+          setCsvFileResult(result);
+          setActiveStep(2);
+        }
       }
     } catch (error) {
       setCsvImportResult(undefined);

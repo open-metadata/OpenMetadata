@@ -120,6 +120,21 @@ const GlossaryHeader = ({
     [globalPermissions]
   );
 
+  const importExportPermissions = useMemo(
+    () =>
+      checkPermission(
+        Operation.All,
+        ResourceEntity.GLOSSARY_TERM,
+        globalPermissions
+      ) ||
+      checkPermission(
+        Operation.EditAll,
+        ResourceEntity.GLOSSARY_TERM,
+        globalPermissions
+      ),
+    [globalPermissions]
+  );
+
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
   const fetchCurrentGlossaryInfo = async () => {
@@ -298,7 +313,7 @@ const GlossaryHeader = ({
   }, [selectedData]);
 
   const manageButtonContent: ItemType[] = [
-    ...(isGlossary
+    ...(isGlossary && importExportPermissions
       ? ([
           {
             label: (
