@@ -125,7 +125,7 @@ class Histogram(HybridMetric):
                 logger.warn(
                     f"An warning occurred while computing the number of bins: {warning}"
                 )
-                num_bins = max_bin_count
+                return 0, bin_width
 
         # sturge's rule
         if res_iqr is None or num_bins > max_bin_count:

@@ -28,7 +28,8 @@ public class JsonPatchProvider implements ContextResolver<ObjectMapper> {
     mapper.registerModule(new JSR353Module());
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
     // This feature allows the parser to accept non-numeric numbers such as NaN,
-    // Infinity, and -Infinity in JSON input.
+    // Infinity, and -Infinity in JSON input. ref:
+    // https://github.com/FasterXML/jackson-core/wiki/JsonReadFeatures
     mapper.enable(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS.mappedFeature());
     return mapper;
   }
