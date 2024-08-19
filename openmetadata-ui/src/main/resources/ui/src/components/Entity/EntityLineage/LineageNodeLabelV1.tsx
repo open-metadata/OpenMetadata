@@ -35,7 +35,8 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
     return {
       showDbtIcon:
         node.entityType === EntityType.TABLE &&
-        (node as Table)?.dataModel?.modelType === ModelType.Dbt,
+        (node as Table)?.dataModel?.modelType === ModelType.Dbt &&
+        (node as Table)?.dataModel?.resourceType?.toLowerCase() !== 'seed',
       showDeletedIcon: node.deleted ?? false,
     };
   }, [node]);

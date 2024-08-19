@@ -393,6 +393,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       );
 
       setTracedColumns(connectedColumnEdges);
+      setTracedNodes([]);
     },
     [nodes, edges]
   );
