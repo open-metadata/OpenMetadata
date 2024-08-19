@@ -298,3 +298,8 @@ update table_entity set json = JSON_SET(
         JSON_EXTRACT(json, '$.dataModel.owner')
     )
 ) where json -> '$.dataModel.owner' is not null;
+
+ALTER TABLE automations_workflow DROP COLUMN status, DROP COLUMN workflowType;
+ALTER TABLE automations_workflow
+  ADD COLUMN status VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.status') STORED,
+  ADD COLUMN workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.workflowType') STORED NOT NULL;
