@@ -23,6 +23,25 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { QueryVoteType } from '../../Database/TableQueries/TableQueries.interface';
 import GlossaryHeader from './GlossaryHeader.component';
 
+const glossaryTermPermission = {
+  All: true,
+  Create: true,
+  Delete: true,
+  ViewAll: true,
+  EditAll: true,
+  EditDescription: true,
+  EditDisplayName: true,
+  EditCustomFields: true,
+};
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn().mockImplementation(() => ({
+    permissions: {
+      glossaryTerm: glossaryTermPermission,
+    },
+  })),
+}));
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
   useParams: jest.fn().mockReturnValue({
@@ -193,6 +212,24 @@ describe('GlossaryHeader component', () => {
       screen.queryByText('label.change-parent-entity')
     ).not.toBeInTheDocument();
     expect(screen.queryByText('label.style')).not.toBeInTheDocument();
+  });
+
+  it('should not render import and export dropdown menu items if no permission', async () => {
+    glossaryTermPermission.All = false;
+    glossaryTermPermission.EditAll = false;
+    render(
+      <GlossaryHeader
+        isGlossary
+        permissions={DEFAULT_ENTITY_PERMISSION}
+        selectedData={{ displayName: 'glossaryTest' } as Glossary}
+        updateVote={mockOnUpdateVote}
+        onAddGlossaryTerm={mockOnDelete}
+        onDelete={mockOnDelete}
+        onUpdate={mockOnUpdate}
+      />
+    );
+
+    expect(screen.queryByTestId('manage-button')).not.toBeInTheDocument();
   });
 
   it('should render changeParentHierarchy and style dropdown menu items only for glossaryTerm', async () => {
