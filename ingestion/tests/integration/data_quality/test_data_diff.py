@@ -477,6 +477,8 @@ def copy_table(source_engine, destination_engine, table_name):
             and destination_engine.dialect.name == "mssql"
         ):
             column_copy = SQAColumn(column.name, sqltypes.DateTime)
+        elif isinstance(column.type, postgresql.json.JSONB):
+            column_copy = SQAColumn(column.name, sqltypes.JSON)
         else:
             column_copy = SQAColumn(column.name, column.type)
         destination_table.append_column(column_copy)

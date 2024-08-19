@@ -107,3 +107,8 @@ WHERE JSON_CONTAINS_PATH(json, 'one', '$.entityId') OR JSON_CONTAINS_PATH(json, 
 -- Add entityId and type column to thread_entity table
 ALTER table thread_entity ADD COLUMN entityId VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityRef.id');
 ALTER table thread_entity ADD COLUMN entityType VARCHAR(36) GENERATED ALWAYS AS (json ->> '$.entityRef.type');
+
+
+UPDATE test_definition
+SET json = JSON_SET(json, '$.supportedDataTypes', JSON_ARRAY('NUMBER',  'TINYINT',  'SMALLINT',  'INT',  'BIGINT',  'BYTEINT',  'BYTES',  'FLOAT',  'DOUBLE',  'DECIMAL',  'NUMERIC',  'TIMESTAMP',  'TIMESTAMPZ',  'TIME',  'DATE',  'DATETIME',  'INTERVAL',  'STRING',  'MEDIUMTEXT',  'TEXT',  'CHAR',  'VARCHAR',  'BOOLEAN',  'BINARY',  'VARBINARY',  'BLOB',  'LONGBLOB',  'MEDIUMBLOB',  'MAP',  'STRUCT',  'UNION',  'SET',  'GEOGRAPHY',  'ENUM',  'UUID',  'VARIANT',  'GEOMETRY',  'POINT',  'POLYGON'))
+WHERE name = 'columnValuesToBeUnique';
