@@ -68,26 +68,3 @@ Watch a demo of Data Insights in OpenMetadata
   Improve your data culture for data-driven decision making.
  {%/inlineCallout%}
 {%/inlineCalloutContainer%}
-
-Refer the following for technical documentation related to Data Insights
-
-{%inlineCalloutContainer%}
- {%inlineCallout
-  color="violet-70"
-  bold="Run Data Insights using Airflow SDK"
-  icon="MdInsights"
-  href="/how-to-guides/data-insights/airflow-sdk"%}
- {%/inlineCallout%}
- {%inlineCallout
-  color="violet-70"
-  bold="Run Data Insights using Metadata CLI"
-  icon="MdInsights"
-  href="/how-to-guides/data-insights/metadata-cli"%}
- {%/inlineCallout%}
- {%inlineCallout
-  color="violet-70"
-  bold="Run Elasticsearch Reindex using Airflow SDK"
-  icon="MdInsights"
-  href="/how-to-guides/data-insights/elasticsearch-reindex"%}
- {%/inlineCallout%}
-{%/inlineCalloutContainer%}
