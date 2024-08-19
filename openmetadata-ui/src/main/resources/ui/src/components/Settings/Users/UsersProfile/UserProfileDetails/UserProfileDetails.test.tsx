@@ -17,6 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../../../generated/settings/settings';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { useFqn } from '../../../../../hooks/useFqn';
 import { USER_DATA } from '../../../../../mocks/User.mock';
 import { restoreUser } from '../../../../../rest/userAPI';
 import UserProfileDetails from './UserProfileDetails.component';
@@ -152,7 +153,9 @@ describe('Test User Profile Details Component', () => {
     expect(screen.getByTestId('user-profile-details')).toBeInTheDocument();
 
     // if user doesn't have displayname
-    expect(screen.getByTestId('user-name')).toContainHTML('label.add-entity');
+    expect(screen.getByTestId('user-name')).not.toContainHTML(
+      'label.add-entity'
+    );
     expect(screen.getByTestId('edit-displayName')).toBeInTheDocument();
 
     // user email
@@ -226,7 +229,7 @@ describe('Test User Profile Details Component', () => {
     expect(screen.getByTestId('user-profile-details')).toBeInTheDocument();
 
     // render user name with no edit if doesn't have edit access
-    expect(screen.getByTestId('user-name')).toContainHTML('entityName');
+    expect(screen.getByTestId('user-name')).not.toContainHTML('entityName');
     expect(screen.queryByTestId('edit-displayName')).not.toBeInTheDocument();
 
     // render chip in case of no default persona to other user
@@ -277,7 +280,9 @@ describe('Test User Profile Details Component', () => {
 
     expect(screen.getByTestId('user-profile-details')).toBeInTheDocument();
 
-    expect(screen.getByTestId('user-name')).toContainHTML('label.add-entity');
+    expect(screen.getByTestId('user-name')).not.toContainHTML(
+      'label.add-entity'
+    );
 
     const editButton = screen.getByTestId('edit-displayName');
 
@@ -411,5 +416,27 @@ describe('Test User Profile Details Component', () => {
     expect(restoreUser).toHaveBeenCalledWith(USER_DATA.id);
 
     expect(mockPropsData.afterDeleteAction).toHaveBeenCalled();
+  });
+
+  it('should not show edit display name button for admins in user profile page', async () => {
+    (useFqn as jest.Mock).mockImplementationOnce(() => ({
+      fqn: 'test1', // fqn is not equal to current logged in admin user
+    }));
+    render(<UserProfileDetails {...mockPropsData} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.queryByTestId('edit-displayName')).toBeNull();
+  });
+
+  it('should show edit display name button on non admin logged in user profile', async () => {
+    (useAuth as jest.Mock).mockImplementationOnce(() => ({
+      isAdminUser: false,
+    }));
+    render(<UserProfileDetails {...mockPropsData} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByTestId('edit-displayName')).toBeInTheDocument();
   });
 });
