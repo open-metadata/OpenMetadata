@@ -298,3 +298,5 @@ update table_entity set json = JSON_SET(
         JSON_EXTRACT(json, '$.dataModel.owner')
     )
 ) where json -> '$.dataModel.owner' is not null;
+
+ALTER TABLE entity_extension ADD INDEX extension_index(extension);

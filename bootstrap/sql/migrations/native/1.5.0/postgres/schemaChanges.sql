@@ -280,3 +280,5 @@ update automations_workflow set json = json#-'{owner}' where json #>> '{owner}' 
 
 update table_entity set json = jsonb_set(json#-'{dataModel,owner}', '{dataModel,owners}', 
 jsonb_build_array(json#>'{dataModel,owner}')) where json #>> '{dataModel,owner}' is not null;
+
+CREATE INDEX IF NOT EXISTS  extension_index  ON entity_extension (extension);
