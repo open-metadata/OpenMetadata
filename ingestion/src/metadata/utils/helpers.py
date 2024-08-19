@@ -342,7 +342,14 @@ def format_large_string_numbers(number: Union[float, int]) -> str:
         return "0"
     units = ["", "K", "M", "B", "T"]
     constant_k = 1000.0
-    magnitude = int(floor(log(abs(number), constant_k)))
+    try:
+        magnitude = int(floor(log(abs(number), constant_k)))
+    except OverflowError as warning:
+        logger.warning(
+            "Cannot compute properly the magnitude due to overflow error "
+            f"because of non numeric numbers (inf, -inf, NaN): {warning}."
+        )
+        return f"{log(abs(number), constant_k)}"
     if magnitude >= len(units):
         return f"{int(number / constant_k**magnitude)}e{magnitude*3}"
     return f"{number / constant_k**magnitude:.3f}{units[magnitude]}"
