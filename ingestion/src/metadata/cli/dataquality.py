@@ -37,7 +37,6 @@ def run_test(config_path: Path) -> None:
     workflow_config_dict = None
     try:
         workflow_config_dict = load_config_file(config_path)
-        logger.debug(f"Using config: {workflow_config_dict}")
         workflow = TestSuiteWorkflow.create(workflow_config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())

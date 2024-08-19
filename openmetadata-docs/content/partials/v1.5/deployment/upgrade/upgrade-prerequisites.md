@@ -120,6 +120,11 @@ We believe this update will bring greater consistency and clarity to our version
 - Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. 
   It won't appear anymore in your `dag_generated_configs` in Airflow.
 
+### Python SDK
+ 
+- `metadata insight` command removed.
+  Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.
+
 ### UI
 
 ### API
