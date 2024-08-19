@@ -21,9 +21,9 @@ import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import tagCategoryImg from '../../../assets/img/TagCategory.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const LATEST_VERSION_ID = 32;
+export const LATEST_VERSION_ID = 33;
 
-export const COOKIE_VERSION = 'VERSION_1_4_7'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_4_8'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1821,6 +1821,24 @@ API:
     features: [],
     changeLogs: {
       Improvements: `-   Resolved issue with Azure login related to email principal claims.`,
+    },
+  },
+  {
+    id: 33,
+    version: 'v1.4.8',
+    description: `Released on 19th August 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Fix Entity listing API.
+-   Fix user profile task listing.
+-   Fix import/export UI flow ${CollateIconWithLinkMD}.
+-   Improve SAML logging backend.
+-   Add Unity Catalog Lineage Dialect.
+-   Clean idle connections during ingestion.
+-   Fix Databricks Describe Table during metadata ingestion.
+-   Glossary Upload now shows permissions errors for non-owners.
+-   Fix task not showing in the right panel after clicking, in the Activity Feed.
+-   Support multiple dbt run_results.json for a single manifest for improved performance.`,
     },
   },
 ];
