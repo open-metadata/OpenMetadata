@@ -16,6 +16,7 @@ supporting sqlalchemy abstraction layer
 """
 
 import concurrent.futures
+import math
 import threading
 import traceback
 from collections import defaultdict
@@ -231,6 +232,13 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     if not metric.is_window_metric()
                 ],
             )
+            # Replace NaN values with None
+            logger.warn(
+                "NaN Data Type Not Supported: NaN values will be cast to null in OpenMetadata"
+                " to maintain database parity. Ensure your data handling processes account for this conversion."
+            )
+
+            row = {k: None if math.isnan(v) else v for k, v in dict(row).items()}
             return dict(row)
         except (ProgrammingError, DBAPIError) as exc:
             return self._programming_error_static_metric(

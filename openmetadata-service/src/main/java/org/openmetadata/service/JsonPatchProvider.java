@@ -13,6 +13,7 @@
 
 package org.openmetadata.service;
 
+import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
@@ -26,6 +27,9 @@ public class JsonPatchProvider implements ContextResolver<ObjectMapper> {
     final ObjectMapper mapper = new ObjectMapper();
     mapper.registerModule(new JSR353Module());
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+    // This feature allows the parser to accept non-numeric numbers such as NaN,
+    // Infinity, and -Infinity in JSON input.
+    mapper.enable(JsonReadFeature.ALLOW_NON_NUMERIC_NUMBERS.mappedFeature());
     return mapper;
   }
 }
