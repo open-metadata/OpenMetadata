@@ -24,6 +24,8 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 
+from ..conftest import ingestion_config as base_ingestion_config
+
 
 class TrinoContainer(DbContainer):
     def __init__(
@@ -202,26 +204,13 @@ def create_service_request(trino_container, tmp_path_factory):
 
 
 @pytest.fixture
-def ingestion_config(db_service, sink_config, workflow_config):
-    return {
-        "source": {
-            "type": db_service.connection.config.type.value.lower(),
-            "serviceName": db_service.fullyQualifiedName.root,
-            "serviceConnection": db_service.connection.dict(),
-            "sourceConfig": {
-                "config": {
-                    "type": "DatabaseMetadata",
-                    "schemaFilterPattern": {
-                        "excludes": [
-                            "^information_schema$",
-                        ],
-                    },
-                },
-            },
-        },
-        "sink": sink_config,
-        "workflowConfig": workflow_config,
+def ingestion_config(db_service, sink_config, workflow_config, base_ingestion_config):
+    base_ingestion_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "excludes": [
+            "^information_schema$",
+        ],
     }
+    return base_ingestion_config
 
 
 @pytest.fixture(scope="module")

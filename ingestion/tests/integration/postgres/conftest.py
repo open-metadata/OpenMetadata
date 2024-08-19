@@ -31,19 +31,3 @@ def create_service_request(postgres_container, tmp_path_factory):
             )
         ),
     )
-
-
-@pytest.fixture(scope="module")
-def ingestion_config(
-    db_service, metadata, workflow_config, sink_config, postgres_container
-):
-    return {
-        "source": {
-            "type": db_service.connection.config.type.value.lower(),
-            "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-            "serviceConnection": db_service.connection.dict(),
-        },
-        "sink": sink_config,
-        "workflowConfig": workflow_config,
-    }
