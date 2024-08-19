@@ -408,7 +408,7 @@ class CommonDbSourceService(
                 schema_definition = inspector.get_view_definition(
                     table_name, schema_name
                 )
-            elif hasattr(inspector, "get_table_ddl"):
+            elif hasattr(inspector, "get_table_ddl") and self.source_config.includeDDL:
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name
                 )
@@ -420,11 +420,11 @@ class CommonDbSourceService(
             return schema_definition
 
         except NotImplementedError:
-            logger.warning("Schema definition not implemented")
+            logger.debug("Schema definition not implemented")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
+            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
 
     def is_partition(  # pylint: disable=unused-argument
