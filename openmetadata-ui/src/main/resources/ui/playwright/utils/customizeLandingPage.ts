@@ -25,19 +25,20 @@ export const navigateToCustomizeLandingPage = async (
 
   await getPersonas;
 
-  // Navigate to the customize landing page
-  await page.click(
-    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
-  );
-
-  const getCustomPageDataResponse = await page.waitForResponse(
+  const getCustomPageDataResponse = page.waitForResponse(
     `/api/v1/docStore/name/persona.${encodeURIComponent(
       personaName
     )}.Page.LandingPage`
   );
 
-  //   await getCustomPageDataResponse;
-  expect(getCustomPageDataResponse.status()).toBe(customPageDataResponse);
+  // Navigate to the customize landing page
+  await page.click(
+    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
+  );
+
+  expect((await getCustomPageDataResponse).status()).toBe(
+    customPageDataResponse
+  );
 };
 
 export const removeAndCheckWidget = async (
