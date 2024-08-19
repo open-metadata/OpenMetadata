@@ -38,7 +38,6 @@ def run_ingest(config_path: Path) -> None:
     try:
         config_dict = load_config_file(config_path)
         workflow = MetadataWorkflow.create(config_dict)
-        logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.debug(traceback.format_exc())
         WorkflowInitErrorHandler.print_init_error(

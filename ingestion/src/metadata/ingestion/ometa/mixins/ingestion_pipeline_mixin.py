@@ -50,7 +50,7 @@ class OMetaIngestionPipelineMixin:
             data=pipeline_status.model_dump_json(),
         )
         logger.debug(
-            f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {resp}"
+            f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}"
         )
         return resp
 
