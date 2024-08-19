@@ -82,6 +82,12 @@ def run_data_quality_workflow(
                                 {"name": "matchEnum", "value": "True"},
                             ],
                         },
+                        {
+                            "name": "id_no_bounds",
+                            "testDefinitionName": "columnValuesToBeBetween",
+                            "columnName": "customer_id",
+                            "parameterValues": [],
+                        },
                     ],
                 }
             ),
@@ -106,6 +112,7 @@ def run_data_quality_workflow(
         ("first_name_includes_tom_and_jerry_wo_enum", TestCaseStatus.Success),
         ("first_name_includes_tom_and_jerry", TestCaseStatus.Success),
         ("first_name_is_tom_or_jerry", TestCaseStatus.Failed),
+        ("id_no_bounds", TestCaseStatus.Success),
     ],
 )
 def test_data_quality(

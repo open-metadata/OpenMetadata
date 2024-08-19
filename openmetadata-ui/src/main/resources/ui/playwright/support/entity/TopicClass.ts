@@ -33,6 +33,51 @@ export class TopicClass extends EntityClass {
   };
   private topicName = `pw-topic-${uuid()}`;
   private fqn = `${this.service.name}.${this.topicName}`;
+
+  children = [
+    {
+      name: 'default',
+      dataType: 'RECORD',
+      fullyQualifiedName: `${this.fqn}.default`,
+      tags: [],
+      children: [
+        {
+          name: 'name',
+          dataType: 'RECORD',
+          fullyQualifiedName: `${this.fqn}.default.name`,
+          tags: [],
+          children: [
+            {
+              name: 'first_name',
+              dataType: 'STRING',
+              description: 'Description for schema field first_name',
+              fullyQualifiedName: `${this.fqn}.default.name.first_name`,
+              tags: [],
+            },
+            {
+              name: 'last_name',
+              dataType: 'STRING',
+              fullyQualifiedName: `${this.fqn}.default.name.last_name`,
+              tags: [],
+            },
+          ],
+        },
+        {
+          name: 'age',
+          dataType: 'INT',
+          fullyQualifiedName: `${this.fqn}.default.age`,
+          tags: [],
+        },
+        {
+          name: 'club_name',
+          dataType: 'STRING',
+          fullyQualifiedName: `${this.fqn}.default.club_name`,
+          tags: [],
+        },
+      ],
+    },
+  ];
+
   entity = {
     name: this.topicName,
     service: this.service.name,
@@ -40,49 +85,7 @@ export class TopicClass extends EntityClass {
       schemaText: `{"type":"object","required":["name","age","club_name"],"properties":{"name":{"type":"object","required":["first_name","last_name"],
     "properties":{"first_name":{"type":"string"},"last_name":{"type":"string"}}},"age":{"type":"integer"},"club_name":{"type":"string"}}}`,
       schemaType: 'JSON',
-      schemaFields: [
-        {
-          name: 'default',
-          dataType: 'RECORD',
-          fullyQualifiedName: `${this.fqn}.default`,
-          tags: [],
-          children: [
-            {
-              name: 'name',
-              dataType: 'RECORD',
-              fullyQualifiedName: `${this.fqn}.default.name`,
-              tags: [],
-              children: [
-                {
-                  name: 'first_name',
-                  dataType: 'STRING',
-                  description: 'Description for schema field first_name',
-                  fullyQualifiedName: `${this.fqn}.default.name.first_name`,
-                  tags: [],
-                },
-                {
-                  name: 'last_name',
-                  dataType: 'STRING',
-                  fullyQualifiedName: `${this.fqn}.default.name.last_name`,
-                  tags: [],
-                },
-              ],
-            },
-            {
-              name: 'age',
-              dataType: 'INT',
-              fullyQualifiedName: `${this.fqn}.default.age`,
-              tags: [],
-            },
-            {
-              name: 'club_name',
-              dataType: 'STRING',
-              fullyQualifiedName: `${this.fqn}.default.club_name`,
-              tags: [],
-            },
-          ],
-        },
-      ],
+      schemaFields: this.children,
     },
     partitions: 128,
   };
@@ -94,6 +97,8 @@ export class TopicClass extends EntityClass {
     super(EntityTypeEndpoint.Topic);
     this.service.name = name ?? this.service.name;
     this.type = 'Topic';
+    this.childrenTabId = 'schema';
+    this.childrenSelectorId = this.children[0].name;
   }
 
   async create(apiContext: APIRequestContext) {

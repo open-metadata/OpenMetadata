@@ -12,8 +12,7 @@
 """
 Validator for column value length to be between test case
 """
-
-
+import math
 from typing import Optional
 
 from sqlalchemy import Column, inspect
@@ -65,14 +64,16 @@ class ColumnValueLengthsToBeBetweenValidator(
             NotImplementedError:
         """
         row_count = self._compute_row_count(self.runner, column)
+        filters = []
+        if min_bound > -math.inf:
+            filters.append((LenFn(column), "lt", min_bound))
+        if max_bound < math.inf:
+            filters.append((LenFn(column), "gt", max_bound))
         failed_rows = self._compute_row_count_between(
             self.runner,
             column,
             {
-                "filters": [
-                    (LenFn(column), "gt", max_bound),
-                    (LenFn(column), "lt", min_bound),
-                ],
+                "filters": filters,
                 "or_filter": True,
             },
         )

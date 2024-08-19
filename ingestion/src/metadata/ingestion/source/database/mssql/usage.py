@@ -61,8 +61,8 @@ class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
         Override if we have specific parameters
         """
         return self.sql_stmt.format(
-            start_time=start_time.replace(tzinfo=None).strftime(self.dt_format),
-            end_time=end_time.replace(tzinfo=None).strftime(self.dt_format),
+            start_time=start_time.strftime(self.dt_format),
+            end_time=end_time.strftime(self.dt_format),
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,
         )

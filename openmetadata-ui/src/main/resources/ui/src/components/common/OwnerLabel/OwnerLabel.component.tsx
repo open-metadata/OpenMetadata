@@ -134,7 +134,7 @@ export const OwnerLabel = ({
             })}
             {remainingOwnersCount > 0 && (
               <Button
-                className="more-owners-button text-xs"
+                className="more-owners-button text-xs h-auto"
                 size="small"
                 type="link"
                 onClick={() => setShowAllOwners(!showAllOwners)}>
