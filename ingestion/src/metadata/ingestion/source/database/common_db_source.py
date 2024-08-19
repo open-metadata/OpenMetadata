@@ -408,7 +408,7 @@ class CommonDbSourceService(
                 schema_definition = inspector.get_view_definition(
                     table_name, schema_name
                 )
-            elif hasattr(inspector, "get_table_ddl"):
+            elif hasattr(inspector, "get_table_ddl") and self.source_config.includeDDL:
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name
                 )
