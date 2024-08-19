@@ -33,7 +33,6 @@ def run_app(config_path: Path) -> None:
     try:
         config_dict = load_config_file(config_path)
         workflow = ApplicationWorkflow.create(config_dict)
-        logger.debug(f"Using config: {workflow.config}")
     except Exception as exc:
         logger.error(f"Error running the application {exc}")
         logger.debug(traceback.format_exc())
