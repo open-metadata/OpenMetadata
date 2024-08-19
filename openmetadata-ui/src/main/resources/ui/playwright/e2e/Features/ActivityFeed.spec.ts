@@ -28,18 +28,23 @@ import {
 import { updateDescription } from '../../utils/entity';
 import { clickOnLogo } from '../../utils/sidebar';
 import {
+  checkTaskCount,
   createDescriptionTask,
   createTagTask,
   TaskDetails,
+  TASK_OPEN_FETCH_LINK,
 } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
 const entity = new TableClass();
 const entity2 = new TableClass();
+const entity3 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
 
 test.describe('Activity feed', () => {
+  test.slow();
+
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -48,6 +53,7 @@ test.describe('Activity feed', () => {
 
     await entity.create(apiContext);
     await entity2.create(apiContext);
+    await entity3.create(apiContext);
     await user1.create(apiContext);
 
     await afterAction();
@@ -61,6 +67,7 @@ test.describe('Activity feed', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await entity.delete(apiContext);
     await entity2.delete(apiContext);
+    await entity3.delete(apiContext);
     await user1.delete(apiContext);
 
     await afterAction();
@@ -101,7 +108,7 @@ test.describe('Activity feed', () => {
       )
     ).not.toBeVisible();
 
-    const entityPageTaskTab = page.waitForResponse('/api/v1/feed?*&type=Task');
+    const entityPageTaskTab = page.waitForResponse(TASK_OPEN_FETCH_LINK);
 
     const tagsTask = page.getByTestId('redirect-task-button-link').first();
     const tagsTaskContent = await tagsTask.innerText();
@@ -135,9 +142,7 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, /Task resolved successfully/);
 
-    const closedTask = await page.getByTestId('closed-task').textContent();
-
-    expect(closedTask).toContain('2 Closed');
+    await checkTaskCount(page, 0, 2);
   });
 
   test('User should be able to reply and delete comment in feeds in ActivityFeed', async ({
@@ -289,9 +294,7 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, /Task resolved successfully/);
 
-    const closedTask = await page.getByTestId('closed-task').textContent();
-
-    expect(closedTask).toContain('2 Closed');
+    await checkTaskCount(page, 0, 2);
   });
 
   test('Comment and Close Task should work in Task Flow', async ({ page }) => {
@@ -351,13 +354,75 @@ test.describe('Activity feed', () => {
 
     await toastNotification(page, 'Task closed successfully.');
 
-    const openTask = await page.getByTestId('open-task').textContent();
+    await checkTaskCount(page, 0, 1);
+  });
 
-    expect(openTask).toContain('0 Open');
+  test('Open and Closed Task tab', async ({ page }) => {
+    const value: TaskDetails = {
+      term: entity3.entity.name,
+      assignee: user1.responseData.name,
+    };
+    await entity3.visitEntityPage(page);
 
-    const closedTask = await page.getByTestId('closed-task').textContent();
+    await page.getByTestId('request-description').click();
 
-    expect(closedTask).toContain('1 Closed');
+    // create description task
+    const openTaskAfterDescriptionResponse =
+      page.waitForResponse(TASK_OPEN_FETCH_LINK);
+    await createDescriptionTask(page, value);
+    await openTaskAfterDescriptionResponse;
+
+    // open task count after description
+    const openTask1 = await page.getByTestId('open-task').textContent();
+
+    expect(openTask1).toContain('1 Open');
+
+    await page.getByTestId('schema').click();
+
+    await page.getByTestId('request-entity-tags').click();
+
+    // create tag task
+    const openTaskAfterTagResponse = page.waitForResponse(TASK_OPEN_FETCH_LINK);
+    await createTagTask(page, { ...value, tag: 'PII.None' });
+    await openTaskAfterTagResponse;
+
+    // open task count after description
+    await checkTaskCount(page, 2, 0);
+
+    // Close one task.
+    await page.fill(
+      '[data-testid="editor-wrapper"] .ql-editor',
+      'Closing the task with comment'
+    );
+    const commentWithCloseTask = page.waitForResponse(
+      '/api/v1/feed/tasks/*/close'
+    );
+    await page.getByRole('button', { name: 'down' }).click();
+    await page.waitForSelector('.ant-dropdown', {
+      state: 'visible',
+    });
+    await page.getByRole('menuitem', { name: 'close' }).click();
+    await commentWithCloseTask;
+
+    const waitForCountFetch = page.waitForResponse('/api/v1/feed/count?*');
+
+    await toastNotification(page, 'Task closed successfully.');
+
+    await waitForCountFetch;
+
+    // open task count after closing one task
+    await checkTaskCount(page, 1, 1);
+
+    // switch to closed task tab
+    const closedTaskResponse = page.waitForResponse(
+      '/api/v1/feed?*&type=Task&taskStatus=Closed'
+    );
+    await page.getByTestId('closed-task').click();
+    await closedTaskResponse;
+
+    expect(page.getByTestId('markdown-parser')).toContainText(
+      'Closing the task with comment'
+    );
   });
 });
 
@@ -467,9 +532,7 @@ test.describe('Activity feed with Data Steward User', () => {
         )
       ).not.toBeVisible();
 
-      const entityPageTaskTab = page2.waitForResponse(
-        '/api/v1/feed?*&type=Task'
-      );
+      const entityPageTaskTab = page2.waitForResponse(TASK_OPEN_FETCH_LINK);
 
       const tagsTask = page2.getByTestId('redirect-task-button-link').first();
       const tagsTaskContent = await tagsTask.innerText();
@@ -583,9 +646,7 @@ test.describe('Activity feed with Data Steward User', () => {
           )
         ).not.toBeVisible();
 
-        const entityPageTaskTab = page2.waitForResponse(
-          '/api/v1/feed?*&type=Task'
-        );
+        const entityPageTaskTab = page2.waitForResponse(TASK_OPEN_FETCH_LINK);
 
         const tagsTask = page2.getByTestId('redirect-task-button-link').first();
         const tagsTaskContent = await tagsTask.innerText();

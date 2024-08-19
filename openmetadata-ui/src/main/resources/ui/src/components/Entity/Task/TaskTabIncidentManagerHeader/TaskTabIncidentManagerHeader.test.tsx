@@ -151,9 +151,6 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => {
       .mockImplementation(() => <div>OwnerLabel.component</div>),
   };
 });
-jest.mock('../../../common/AssigneeList/AssigneeList', () => {
-  return jest.fn().mockImplementation(() => <div>AssigneeList.component</div>);
-});
 jest.mock(
   '../../../DataQuality/IncidentManager/Severity/Severity.component',
   () => {
@@ -177,10 +174,7 @@ describe('Test TaskTabIncidentManagerHeader component', () => {
       await screen.findByTestId('task-resolution-steps')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('failure-reason')).toBeInTheDocument();
-    expect(await screen.findByText('OwnerLabel.component')).toBeInTheDocument();
-    expect(
-      await screen.findByText('AssigneeList.component')
-    ).toBeInTheDocument();
+    expect(await screen.findAllByText('OwnerLabel.component')).toHaveLength(2);
     expect(await screen.findByText('Severity.component')).toBeInTheDocument();
     expect(
       await screen.findByText('RichTextEditorPreviewer.component')
