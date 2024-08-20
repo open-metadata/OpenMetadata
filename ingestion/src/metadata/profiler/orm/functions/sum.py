@@ -45,7 +45,7 @@ def _(element, compiler, **kw):
 def _(element, compiler, **kw):
     """Cast to DECIMAL to address cannot cast nan to bigint"""
     proc = compiler.process(element.clauses, **kw)
-    return f"SUM(TRY_CAST({proc} AS DECIMAL))"
+    return f"COALESCE(SUM(CAST({proc} AS DECIMAL)),0)"
 
 
 @compiles(SumFn, Dialects.BigQuery)

@@ -42,7 +42,14 @@ def usage_config(sink_config, workflow_config, db_service):
     }
 
 
-def test_usage(run_workflow, ingestion_config, usage_config, metadata, db_service):
+def test_usage(
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    usage_config,
+    metadata,
+    db_service,
+):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
     run_workflow(UsageWorkflow, usage_config)
@@ -54,7 +61,12 @@ def test_usage(run_workflow, ingestion_config, usage_config, metadata, db_servic
     strict=True,
 )
 def test_usage_delete_usage(
-    run_workflow, ingestion_config, usage_config, metadata, db_service
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    usage_config,
+    metadata,
+    db_service,
 ):
     search_cache.clear()
     run_workflow(MetadataWorkflow, ingestion_config)
