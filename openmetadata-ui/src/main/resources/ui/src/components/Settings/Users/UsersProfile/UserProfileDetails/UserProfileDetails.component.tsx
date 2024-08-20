@@ -117,71 +117,6 @@ const UserProfileDetails = ({
     setIsDisplayNameEdit(false);
   }, [userData.displayName]);
 
-  const displayNameRenderComponent = useMemo(() => {
-    const displayNamePlaceHolder = isEmpty(userData.displayName)
-      ? t('label.add-entity', { entity: t('label.display-name') })
-      : userData.displayName;
-
-    const displayNameText = hasEditPermission
-      ? displayNamePlaceHolder
-      : getEntityName(userData);
-
-    return isDisplayNameEdit ? (
-      <InlineEdit
-        isLoading={isLoading}
-        onCancel={handleCloseEditDisplayName}
-        onSave={handleDisplayNameSave}>
-        <Input
-          className="w-full"
-          data-testid="displayName"
-          id="displayName"
-          name="displayName"
-          placeholder={t('label.display-name')}
-          type="text"
-          value={displayName}
-          onChange={onDisplayNameChange}
-        />
-      </InlineEdit>
-    ) : (
-      <Space align="center">
-        <Typography.Text
-          className="font-medium text-md"
-          data-testid="user-name"
-          ellipsis={{ tooltip: true }}
-          style={{ maxWidth: '400px' }}>
-          {displayNameText}
-        </Typography.Text>
-        {hasEditPermission && (
-          <Tooltip
-            title={t('label.edit-entity', {
-              entity: t('label.display-name'),
-            })}>
-            <EditIcon
-              className="cursor-pointer align-middle"
-              color={DE_ACTIVE_COLOR}
-              data-testid="edit-displayName"
-              {...ICON_DIMENSION}
-              onClick={(e) => {
-                // Used to stop click propagation event to parent User.component collapsible panel
-                e.stopPropagation();
-                setIsDisplayNameEdit(true);
-              }}
-            />
-          </Tooltip>
-        )}
-      </Space>
-    );
-  }, [
-    userData,
-    displayName,
-    isDisplayNameEdit,
-    hasEditPermission,
-    getEntityName,
-    onDisplayNameChange,
-    handleDisplayNameSave,
-    handleCloseEditDisplayName,
-  ]);
-
   const changePasswordRenderComponent = useMemo(
     () =>
       showChangePasswordComponent && (
@@ -343,7 +278,58 @@ const UserProfileDetails = ({
         size="middle">
         <Space className="w-full">
           <UserProfileImage userData={userData} />
-          {displayNameRenderComponent}
+          {isDisplayNameEdit ? (
+            <InlineEdit
+              isLoading={isLoading}
+              onCancel={handleCloseEditDisplayName}
+              onSave={handleDisplayNameSave}>
+              <Input
+                className="w-full"
+                data-testid="displayName"
+                id="displayName"
+                name="displayName"
+                placeholder={t('label.display-name')}
+                type="text"
+                value={displayName}
+                onChange={onDisplayNameChange}
+              />
+            </InlineEdit>
+          ) : (
+            <Space align="center">
+              {userData.displayName && (
+                <Typography.Text
+                  className="font-medium text-md"
+                  data-testid="user-name"
+                  ellipsis={{ tooltip: true }}
+                  style={{ maxWidth: '400px' }}>
+                  {userData.displayName}
+                </Typography.Text>
+              )}
+              {isLoggedInUser && !userData.deleted && (
+                <Tooltip
+                  title={t(
+                    `label.${
+                      isEmpty(userData.displayName) ? 'add' : 'edit'
+                    }-entity`,
+                    {
+                      entity: t('label.display-name'),
+                    }
+                  )}>
+                  <EditIcon
+                    className="cursor-pointer align-middle"
+                    color={DE_ACTIVE_COLOR}
+                    data-testid="edit-displayName"
+                    {...ICON_DIMENSION}
+                    onClick={(e) => {
+                      /* Used to stop click propagation event to parent User.component collapsible panel*/
+                      e.stopPropagation();
+                      setIsDisplayNameEdit(true);
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Space>
+          )}
           {userData.deleted && (
             <span className="deleted-badge-button" data-testid="deleted-badge">
               <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
