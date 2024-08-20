@@ -559,7 +559,8 @@
         }
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "descriptionStatus": {
         "type": "keyword"

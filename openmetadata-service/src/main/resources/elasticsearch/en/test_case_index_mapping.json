@@ -87,7 +87,8 @@
         "analyzer": "om_analyzer"
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "votes" : {
         "type": "object"
