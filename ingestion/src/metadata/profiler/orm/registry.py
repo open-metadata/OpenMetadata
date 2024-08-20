@@ -13,6 +13,8 @@
 Custom types' registry for easy access
 without having an import mess
 """
+import math
+
 import sqlalchemy
 from sqlalchemy import Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, Enum
@@ -171,3 +173,12 @@ def is_concatenable(_type) -> bool:
     if isinstance(_type, DataType):
         return _type.value in CONCATENABLE_SET
     return issubclass(_type.__class__, Concatenable)
+
+
+def is_value_non_numeric(value) -> bool:
+    try:
+        if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+            return True
+        return False
+    except Exception:
+        return False
