@@ -185,7 +185,7 @@ class DomodashboardSource(DashboardServiceSource):
             pages = self.client.domo.page_get(page_id)
             return DomoDashboardDetails(
                 name=pages["name"],
-                id=pages["id"],
+                id=str(pages["id"]),
                 cardIds=pages.get("cardIds", []),
                 description=pages.get("description", ""),
                 collectionIds=pages.get("collectionIds", []),
@@ -227,7 +227,7 @@ class DomodashboardSource(DashboardServiceSource):
                 if chart.name:
                     yield Either(
                         right=CreateChartRequest(
-                            name=EntityName(chart_id),
+                            name=EntityName(str(chart_id)),
                             description=Markdown(chart.description)
                             if chart.description
                             else None,
