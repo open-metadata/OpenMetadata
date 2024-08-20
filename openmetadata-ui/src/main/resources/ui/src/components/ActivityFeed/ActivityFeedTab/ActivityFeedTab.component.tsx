@@ -480,7 +480,10 @@ export const ActivityFeedTab = ({
                   hidePopover={false}
                   isForFeedTab={isForFeedTab}
                 />
-                <ActivityFeedEditor className="m-t-md" onSave={onSave} />
+                <ActivityFeedEditor
+                  className="m-t-md feed-editor"
+                  onSave={onSave}
+                />
               </div>
             </div>
           ) : (
