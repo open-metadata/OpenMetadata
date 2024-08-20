@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { findByTestId, queryByTestId, render } from '@testing-library/react';
+import {
+  findByTestId,
+  getByText,
+  queryByTestId,
+  render,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockThreadData } from './ActivityThread.mock';
@@ -49,6 +54,10 @@ jest.mock('../FeedListSeparator/FeedListSeparator', () => {
 jest.mock('../ActivityFeedCard/FeedCardFooter/FeedCardFooter', () => {
   return jest.fn().mockReturnValue(<p>FeedCardFooter</p>);
 });
+
+jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
+}));
 
 describe('Test ActivityThreadList Component', () => {
   it('Check if it has all child elements', async () => {
@@ -144,5 +153,17 @@ describe('Test ActivityThreadList Component', () => {
     expect(thread2).toBeInTheDocument();
     expect(thread2MainMessage).toBeInTheDocument();
     expect(thread2QuickReplyEditor).toBeInTheDocument();
+  });
+
+  it('should render task assignee when there is task', async () => {
+    const { container } = render(
+      <ActivityThreadList {...mockActivityThreadListProp} />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(getByText(container, 'label.assignee-plural:')).toBeInTheDocument();
+    expect(getByText(container, 'OwnerLabel')).toBeInTheDocument();
   });
 });

@@ -47,7 +47,6 @@ ENTITY_TYPE
     | 'searchService'
     | 'webhook'
     | 'mlmodel'
-    | 'type'
     | 'team'
     | 'user'
     | 'bot'

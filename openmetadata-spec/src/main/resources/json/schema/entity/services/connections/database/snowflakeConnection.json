@@ -84,7 +84,7 @@
       "title": "Include Transient Tables",
       "description": "Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "clientSessionKeepAlive": {
       "title": "Client Session Keep Alive",
