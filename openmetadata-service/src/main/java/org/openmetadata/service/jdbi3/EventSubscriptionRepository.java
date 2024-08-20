@@ -68,32 +68,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                                   entity.getId(), destination.getId()))));
       entity.withDestinations(destinations);
     }
-
-    // encrypt the secretKey on the fly
-    if (!entity.getDestinations().isEmpty()) {
-      List<SubscriptionDestination> updatedDestinations = new ArrayList<>();
-
-      entity
-          .getDestinations()
-          .forEach(
-              destination -> {
-                if (SubscriptionDestination.SubscriptionType.WEBHOOK.equals(
-                    destination.getType())) {
-                  Webhook webhook = JsonUtils.convertValue(destination.getConfig(), Webhook.class);
-
-                  if (webhook != null && !nullOrEmpty(webhook.getSecretKey())) {
-                    String encryptedSecretKey = encryptSecretKey(webhook.getSecretKey());
-                    webhook.withSecretKey(encryptedSecretKey);
-
-                    Map<String, Object> config = JsonUtils.convertValue(webhook, Map.class);
-                    destination.withConfig(config);
-                  }
-                }
-                updatedDestinations.add(destination);
-              });
-
-      entity.withDestinations(updatedDestinations);
-    }
   }
 
   @SneakyThrows
@@ -134,6 +108,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
               entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
     }
 
+    EventSubscriptionUpdater.encryptWebhookSecretKey(entity.getDestinations());
     validateFilterRules(entity);
   }
 
@@ -179,7 +154,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         recordChange(
             "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
         recordChange("enabled", original.getEnabled(), updated.getEnabled());
-        recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
+        recordChange(
+            "destinations",
+            original.getDestinations(),
+            encryptWebhookSecretKey(updated.getDestinations()),
+            true);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
       }
     }
