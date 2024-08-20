@@ -86,7 +86,7 @@ public final class CsvUtil {
 
   public static List<String> fieldToStrings(String field) {
     // Split a field that contains multiple strings separated by FIELD_SEPARATOR
-    return field == null ? null : listOf(field.split(FIELD_SEPARATOR));
+    return field == null || field.isBlank() ? null : listOf(field.split(FIELD_SEPARATOR));
   }
 
   public static List<String> fieldToEntities(String field) {
@@ -187,6 +187,15 @@ public final class CsvUtil {
             ? null
             : owners.stream()
                 .map(owner -> (owner.getType() + ENTITY_TYPE_SEPARATOR + owner.getName()))
+                .collect(Collectors.joining(FIELD_SEPARATOR)));
+  }
+
+  public static void addReviewers(List<String> csvRecord, List<EntityReference> reviewers) {
+    csvRecord.add(
+        nullOrEmpty(reviewers)
+            ? null
+            : reviewers.stream()
+                .map(reviewer -> (reviewer.getType() + ENTITY_TYPE_SEPARATOR + reviewer.getName()))
                 .collect(Collectors.joining(FIELD_SEPARATOR)));
   }
 
