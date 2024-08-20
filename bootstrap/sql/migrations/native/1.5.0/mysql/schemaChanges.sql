@@ -209,16 +209,13 @@ WHERE JSON_CONTAINS_PATH(json, 'one', '$.feedInfo.entitySpecificInfo.updatedOwne
 AND JSON_TYPE(JSON_EXTRACT(json, '$.feedInfo.entitySpecificInfo.updatedOwner')) <> 'ARRAY';
 
 -- Update entity_extension to move owner to array
-UPDATE entity_extension
-SET json = JSON_SET(
-    json,
-    '$.owner',
+update entity_extension set json = JSON_SET(
+    JSON_REMOVE(json, '$.owner'),
+    '$.owners',
     JSON_ARRAY(
         JSON_EXTRACT(json, '$.owner')
     )
-)
-WHERE JSON_CONTAINS_PATH(json, 'one', '$.owner')
-AND JSON_TYPE(JSON_EXTRACT(json, '$.owner')) <> 'ARRAY';
+) where json -> '$.owner' is not null;
 
 ALTER TABLE test_case MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
 
@@ -299,7 +296,10 @@ update table_entity set json = JSON_SET(
     )
 ) where json -> '$.dataModel.owner' is not null;
 
+
 ALTER TABLE automations_workflow DROP COLUMN status, DROP COLUMN workflowType;
 ALTER TABLE automations_workflow
   ADD COLUMN status VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.status') STORED,
   ADD COLUMN workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.workflowType') STORED NOT NULL;
+
+ALTER TABLE entity_extension ADD INDEX extension_index(extension);

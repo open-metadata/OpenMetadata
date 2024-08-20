@@ -136,6 +136,7 @@ export const ROUTES = {
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
+  UNAUTHORISED: '/unauthorised',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
