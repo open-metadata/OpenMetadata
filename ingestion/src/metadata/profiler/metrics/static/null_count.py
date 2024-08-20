@@ -16,6 +16,7 @@ Null Count Metric definition
 
 
 from sqlalchemy import case, column
+from sqlalchemy.sql.functions import coalesce
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import StaticMetric, _label
@@ -48,8 +49,9 @@ class NullCount(StaticMetric):
     @_label
     def fn(self):
         """sqlalchemy function"""
-        return SumFn(
-            case([(column(self.col.name, self.col.type).is_(None), 1)], else_=0)
+        return coalesce(
+            SumFn(case([(column(self.col.name, self.col.type).is_(None), 1)], else_=0)),
+            0,
         )
 
     def df_fn(self, dfs=None):
