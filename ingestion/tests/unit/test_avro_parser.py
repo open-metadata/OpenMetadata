@@ -134,6 +134,56 @@ RECURSIVE_AVRO_SCHEMA = """
 }
 """
 
+CIRCULAR_REF_RECURSIVE_AVRO = """
+{
+  "type": "record",
+  "name": "RecursionIssue",
+  "namespace": "com.issue.recursion",
+  "doc": "Schema with recursion issue",
+  "fields": [
+    {
+      "name": "issue",
+      "type": {
+        "type": "record",
+        "name": "Issue",
+        "doc": "Global Schema Name",
+        "fields": [
+          {
+            "name": "itemList",
+            "default": null,
+            "type": [
+              "null",
+              {
+                "type": "array",
+                "items": {
+                  "type": "record",
+                  "name": "Item",
+                  "doc": "Item List  - Array of Sub Schema",
+                  "fields": [
+                    {
+                      "name": "itemList2",
+                      "type": [
+                        "null",
+                        {
+                          "type": "array",
+                          "items": "Item"
+                        },
+                        "int"
+                      ],
+                      "default": null
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+"""
+
 
 ARRAY_OF_STR = """
 {
@@ -746,4 +796,38 @@ class AvroParserTests(TestCase):
             .children[2]
             .children[0]
             .children
+        )
+
+    def test_circular_recursive_record_parsing(self):
+        parsed_circular_schema = parse_avro_schema(CIRCULAR_REF_RECURSIVE_AVRO)
+
+        self.assertEqual(parsed_circular_schema[0].children[0].name.root, "issue")
+        self.assertEqual(
+            parsed_circular_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .name.root,
+            "Item",
+        )
+        self.assertEqual(
+            parsed_circular_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .name.root,
+            "itemList2",
+        )
+        self.assertIsNone(
+            parsed_circular_schema[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children[0]
+            .children,
+            "issue",
         )
