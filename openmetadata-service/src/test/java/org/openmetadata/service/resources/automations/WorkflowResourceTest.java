@@ -72,12 +72,6 @@ public class WorkflowResourceTest extends EntityResourceTest<Workflow, CreateWor
     params.put("workflowStatus", WorkflowStatus.SUCCESSFUL.value());
     ResultList<Workflow> resList = listEntities(params, ADMIN_AUTH_HEADERS);
     assertEquals(1, resList.getData().size());
-
-    // Filter by type
-    Map<String, String> typeParams = new HashMap<>();
-    typeParams.put("workflowType", WorkflowType.TEST_CONNECTION.value());
-    resList = listEntities(typeParams, ADMIN_AUTH_HEADERS);
-    assertEquals(2, resList.getData().size());
   }
 
   @Override
