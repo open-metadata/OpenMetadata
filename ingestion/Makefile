@@ -65,7 +65,10 @@ unit_ingestion:  ## Run Python unit tests
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
 	coverage run --rcfile $(INGESTION_DIR)/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(INGESTION_DIR)/junit/test-results-integration.xml $(INGESTION_DIR)/tests/integration
-	nox -f $(INGESTION_DIR)/noxfile.py -k 'not unit'
+	nox -f $(INGESTION_DIR)/noxfile.py -k 'integration'
+
+run_e2e_tests:
+	nox -f $(INGESTION_DIR)/noxfile.py -k $(E2E_TEST)
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
@@ -103,6 +106,6 @@ coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" $(INGESTION_DIR)/coverage.xml >> $(INGESTION_DIR)/ci-coverage.xml
-
+	
 run_nox:
 	nox -f $(INGESTION_DIR)/noxfile.py
