@@ -1498,6 +1498,7 @@
     "entity-size-in-between": "Размер {{entity}} должен быть между {{min}} и {{max}}",
     "entity-size-must-be-between-2-and-64": "Размер {{entity}} должен быть от 2 до 64",
     "entity-transfer-message": "Нажмите «Подтвердить», если вы хотите переместить <0>{{from}}</0> {{entity}} в <0>{{to}}</0> {{entity}}.",
+    "error-self-signup-disabled": "Self-signup is currently disabled. To proceed, please reach out to your administrator for further assistance or to request access.",
     "error-team-transfer-message": "You cannot move to this team as Team Type {{dragTeam}} can't be {{dropTeam}} children",
     "error-while-fetching-access-token": "Ошибка при получении токена доступа.",
     "explore-our-guide-here": "explore our guide here.",

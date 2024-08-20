@@ -10,12 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { ReactComponent as NoAccessPlaceHolderIcon } from '../../assets/svg/no-access-placeholder.svg';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 
 const AccessNotAllowedPage = () => {
-  return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  const { t } = useTranslation();
+
+  return (
+    <ErrorPlaceHolder
+      icon={
+        <NoAccessPlaceHolderIcon
+          data-testid="no-data-image"
+          height={SIZE.LARGE}
+          width={SIZE.LARGE}
+        />
+      }
+      size={SIZE.LARGE}
+      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+      <Typography.Paragraph className="w-80" style={{ marginBottom: '0' }}>
+        {t('message.error-self-signup-disabled')}
+      </Typography.Paragraph>
+    </ErrorPlaceHolder>
+  );
 };
 
 export default AccessNotAllowedPage;
