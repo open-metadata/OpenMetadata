@@ -449,10 +449,14 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
-      searchSourceBuilder.sort(
+      FieldSortBuilder fieldSortBuilder =
           new FieldSortBuilder(request.getSortFieldParam())
-              .order(SortOrder.fromString(request.getSortOrder()))
-              .unmappedType("integer"));
+              .order(SortOrder.fromString(request.getSortOrder()));
+      // Score is an internal ES Field
+      if (!request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        fieldSortBuilder.unmappedType("integer");
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
 
     if (request
