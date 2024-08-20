@@ -13,9 +13,9 @@
 import { Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString } from 'lodash';
+import { isString, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
@@ -30,6 +30,7 @@ import {
   getAggregations,
   getQuickFilterObject,
   getSubLevelHierarchyKey,
+  updateCountsInTreeData,
   updateTreeData,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -45,18 +46,22 @@ import {
 } from './ExploreTree.interface';
 
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <Typography.Text
-    className={classNames({
-      'm-l-xss': node.data?.isRoot || node.data?.isStatic,
-    })}
-    data-testid={`explore-tree-title-${node.data?.dataId}`}>
-    {node.title}
-  </Typography.Text>
+  <div className="d-flex justify-between">
+    <Typography.Text
+      className={classNames({
+        'm-l-xss': node.data?.isRoot,
+      })}
+      data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+      {node.title}
+    </Typography.Text>
+    {!isUndefined(node.count) && <span>{getCountBadge(node.count)}</span>}
+  </div>
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
+  const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
@@ -162,20 +167,11 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             setSelectedKeys([id]);
           }
 
-          const title = (
-            <div className="d-flex justify-between">
-              <Typography.Text
-                className={classNames({
-                  'm-l-xss': !logo,
-                })}>
-                {isEntityType ? getPluralizeEntityName(bucket.key) : bucket.key}
-              </Typography.Text>
-              {isEntityType && <span>{getCountBadge(bucket.doc_count)}</span>}
-            </div>
-          );
-
           return {
-            title: title,
+            title: isEntityType
+              ? getPluralizeEntityName(bucket.key)
+              : bucket.key,
+            count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             icon: logo,
             isLeaf: bucketToFind === EntityFields.ENTITY_TYPE,
@@ -221,6 +217,39 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     },
     [onFieldValueSelect]
   );
+
+  const fetchEntityCounts = useCallback(async () => {
+    try {
+      const res = await searchQuery({
+        query: searchQueryParam ?? '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: {},
+        searchIndex: SearchIndex.DATA_ASSET,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+
+      const buckets = res.aggregations['entityType'].buckets;
+      const counts: Record<string, number> = {};
+
+      buckets.forEach((item) => {
+        counts[item.key] = item.doc_count;
+        if (staticKeysHavingCounts.includes(item.key)) {
+          setTreeData((origin) =>
+            updateCountsInTreeData(origin, item.key, item.doc_count)
+          );
+        }
+      });
+    } catch (error) {
+      // Do nothing
+    }
+  }, [staticKeysHavingCounts]);
+
+  useEffect(() => {
+    fetchEntityCounts();
+  }, []);
 
   return (
     <Tree

@@ -228,6 +228,28 @@ export const updateTreeData = (
     return node;
   });
 
+export const updateCountsInTreeData = (
+  list: ExploreTreeNode[],
+  key: React.Key,
+  count: number
+): ExploreTreeNode[] =>
+  list.map((node) => {
+    if (node.key === key) {
+      return {
+        ...node,
+        count: count ?? 0,
+      };
+    }
+    if (node.children) {
+      return {
+        ...node,
+        children: updateCountsInTreeData(node.children, key, count),
+      };
+    }
+
+    return node;
+  });
+
 export const getQuickFilterObject = (
   bucketKey: EntityFields,
   bucketValue: string

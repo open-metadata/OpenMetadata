@@ -248,7 +248,7 @@ class SearchClassBase {
         children: [
           {
             title: i18n.t('label.glossary-plural'),
-            key: '3',
+            key: EntityType.GLOSSARY_TERM,
             isLeaf: true,
             icon: GlossaryIcon,
             data: {
@@ -259,7 +259,7 @@ class SearchClassBase {
           },
           {
             title: i18n.t('label.tag-plural'),
-            key: '4',
+            key: EntityType.TAG,
             isLeaf: true,
             icon: ClassificationIcon,
             data: {
@@ -278,7 +278,7 @@ class SearchClassBase {
         children: [
           {
             title: i18n.t('label.data-product-plural'),
-            key: '6',
+            key: EntityType.DATA_PRODUCT,
             isLeaf: true,
             icon: DataProductIcon,
             data: {
@@ -573,6 +573,10 @@ class SearchClassBase {
 
   public notIncludeAggregationExploreTree() {
     return [EntityType.CHART, EntityType.INGESTION_PIPELINE];
+  }
+
+  public staticKeysHavingCounts(): string[] {
+    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
   }
 }
 
