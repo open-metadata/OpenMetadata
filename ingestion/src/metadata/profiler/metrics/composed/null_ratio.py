@@ -52,7 +52,6 @@ class NullRatio(ComposedMetric):
 
         count = res.get(Count.name())
         null_count = res.get(NullCount.name())
-        # Return None if count or null_count is None, or if their sum is zero
-        if count is None or null_count is None or count + null_count == 0:
+        if count + null_count == 0:
             return None
         return null_count / (null_count + count)

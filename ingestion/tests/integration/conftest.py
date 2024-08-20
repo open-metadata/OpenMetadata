@@ -5,7 +5,7 @@ from typing import List, Tuple, Type
 import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
-from ingestion.src.metadata.ingestion.api.common import Entity
+from metadata.ingestion.api.common import Entity
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
