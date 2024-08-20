@@ -391,11 +391,16 @@ export const AuthProvider = ({
         }
       } catch (error) {
         const err = error as AxiosError;
-        if (err?.response?.status === 404 && authConfig?.enableSelfSignup) {
-          setNewUserProfile(user.profile);
-          setCurrentUser({} as User);
-          setIsSigningUp(true);
-          history.push(ROUTES.SIGNUP);
+        if (err?.response?.status === 404) {
+          if (!authConfig?.enableSelfSignup) {
+            resetUserDetails();
+            history.push(ROUTES.UNAUTHORISED);
+          } else {
+            setNewUserProfile(user.profile);
+            setCurrentUser({} as User);
+            setIsSigningUp(true);
+            history.push(ROUTES.SIGNUP);
+          }
         } else {
           // eslint-disable-next-line no-console
           console.error(err);
