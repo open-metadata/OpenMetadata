@@ -42,6 +42,12 @@
         "autoCompleteType": "database_search_index"
       }
     },
+    "patchIfEmpty": {
+      "title": "Patch Description If Empty",
+      "description": "Patch the description if it is empty, instead of raising a suggestion",
+      "type": "boolean",
+      "default": false
+    },
     "defaultScope": {
       "title": "Default Chatbot Database Scope",
       "description": "Default database scope for the chatbot.",
