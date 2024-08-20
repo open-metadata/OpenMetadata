@@ -115,19 +115,10 @@ public class EventSubscriptionResourceTest
     fieldUpdated(change, "enabled", false, true);
     fieldUpdated(change, "batchSize", 10, 50);
 
-    // checking -> issue is
-    /*
-    1. POST will be called and it will encrypt the secret key
-    2. After that in changeUpdate, PUT will be called -> again encrypting the secret key.
-        In order to handle this, I added ENCRYPTED_ and handling it (reconsider)
-    3. Still the tests are failing -> eventually in change secret key is getting added which is the problem
-     */
-    // Retrieve the existing destinations
+    // attach the encryptedKey from the alert to the genericWebhookActionRequest (reason: causing
+    // the destination to come to the changeDescription)
     List<SubscriptionDestination> destinations = genericWebhookActionRequest.getDestinations();
-
     Webhook webhook = JsonUtils.convertValue(destinations.get(0).getConfig(), Webhook.class);
-
-    // Update the secretKey in the Webhook object
     String secretKEY =
         JsonUtils.convertValue(alert.getDestinations().get(0).getConfig(), Webhook.class)
             .getSecretKey();
@@ -135,7 +126,6 @@ public class EventSubscriptionResourceTest
     webhook.setSecretKey(secretKEY);
     Map<String, Object> updatedConfig = JsonUtils.convertValue(webhook, Map.class);
     destinations.get(0).setConfig(updatedConfig);
-
     genericWebhookActionRequest.withEnabled(true).withBatchSize(50).withDestinations(destinations);
 
     alert =
