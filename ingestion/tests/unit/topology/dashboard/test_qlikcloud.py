@@ -157,7 +157,11 @@ class QlikCloudUnitTest(TestCase):
     """
 
     def __init__(self, methodName) -> None:
-        with patch.object(QlikCloudClient, "get_dashboards_list", return_value=None):
+        with patch.object(
+            QlikCloudClient, "get_dashboards_list", return_value=None
+        ), patch.object(
+            QlikCloudClient, "get_dashboards_list_test_conn", return_value=None
+        ):
             super().__init__(methodName)
             # test_connection.return_value = False
             self.config = OpenMetadataWorkflowConfig.model_validate(
