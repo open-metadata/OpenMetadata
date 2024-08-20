@@ -4614,18 +4614,13 @@ public interface CollectionDAO {
     }
 
     @Override
-    default String getNameHashColumn() {
-      return "nameHash";
-    }
-
-    @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {
       String workflowType = filter.getQueryParam("workflowType");
-      String status = filter.getQueryParam("status");
+      String workflowStatus = filter.getQueryParam("workflowStatus");
       String condition = filter.getCondition();
 
-      if (workflowType == null && status == null) {
+      if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
       }
 
@@ -4636,8 +4631,8 @@ public interface CollectionDAO {
         sqlCondition.append("AND workflowType=:workflowType ");
       }
 
-      if (status != null) {
-        sqlCondition.append("AND status=:status ");
+      if (workflowStatus != null) {
+        sqlCondition.append("AND status=:workflowStatus ");
       }
 
       return listBefore(
@@ -4652,10 +4647,10 @@ public interface CollectionDAO {
     @Override
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       String workflowType = filter.getQueryParam("workflowType");
-      String status = filter.getQueryParam("status");
+      String workflowStatus = filter.getQueryParam("workflowStatus");
       String condition = filter.getCondition();
 
-      if (workflowType == null && status == null) {
+      if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
       }
 
@@ -4666,8 +4661,8 @@ public interface CollectionDAO {
         sqlCondition.append("AND workflowType=:workflowType ");
       }
 
-      if (status != null) {
-        sqlCondition.append("AND status=:status ");
+      if (workflowStatus != null) {
+        sqlCondition.append("AND status=:workflowStatus ");
       }
 
       return listAfter(
@@ -4682,10 +4677,10 @@ public interface CollectionDAO {
     @Override
     default int listCount(ListFilter filter) {
       String workflowType = filter.getQueryParam("workflowType");
-      String status = filter.getQueryParam("status");
+      String workflowStatus = filter.getQueryParam("workflowStatus");
       String condition = filter.getCondition();
 
-      if (workflowType == null && status == null) {
+      if (workflowType == null && workflowStatus == null) {
         return EntityDAO.super.listCount(filter);
       }
 
@@ -4696,8 +4691,8 @@ public interface CollectionDAO {
         sqlCondition.append("AND workflowType=:workflowType ");
       }
 
-      if (status != null) {
-        sqlCondition.append("AND status=:status ");
+      if (workflowStatus != null) {
+        sqlCondition.append("AND status=:workflowStatus ");
       }
 
       return listCount(getTableName(), filter.getQueryParams(), sqlCondition.toString());
