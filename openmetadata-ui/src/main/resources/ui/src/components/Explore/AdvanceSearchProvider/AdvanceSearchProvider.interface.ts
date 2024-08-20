@@ -21,6 +21,7 @@ export interface AdvanceSearchProviderProps {
     title?: string;
     subTitle?: string;
   };
+  updateURL?: boolean;
 }
 
 export interface AdvanceSearchContext {
