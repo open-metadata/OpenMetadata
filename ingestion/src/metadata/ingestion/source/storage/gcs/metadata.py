@@ -259,6 +259,10 @@ class GcsSource(StorageServiceSource):
             try:
                 bucket = client.get_bucket(bucket_name)
             except NotFound:
+                logger.warning(
+                    f"Bucket {bucket_name} not found in project {project_id}"
+                )
+                self.status.warning(f"{project_id}.{bucket_name}", "Bucket Not Found")
                 continue
             return GCSBucketResponse(
                 name=bucket.name,

@@ -16,8 +16,6 @@ from google import auth
 from google.cloud.monitoring_v3 import MetricServiceClient
 from google.cloud.storage import Client
 
-NoProject = object()
-
 
 class MultiProjectClient:
     """Google Cloud Client does not support ad-hoc project switching. This class wraps the client and allows
@@ -37,19 +35,16 @@ class MultiProjectClient:
         project_ids: Optional[List[str]] = None,
         **client_kwargs,
     ):
+        self.default_project = None
         if project_ids:
             self.clients = {
                 project_id: client_class(project=project_id, **client_kwargs)
                 for project_id in project_ids
             }
         else:
-            self.clients = {NoProject: client_class(**client_kwargs)}
-
-    def project_ids(self):
-        if NoProject in self.clients:
             _, project_id = auth.default()
-            return [project_id]
-        return list(self.clients.keys())
+            self.default_project = project_id
+            self.clients = {project_id: client_class(**client_kwargs)}
 
     def __getattr__(self, client_method):
         """Return the underlying client method as a partial function so we can inject the project_id."""
@@ -57,7 +52,7 @@ class MultiProjectClient:
 
     def _call(self, method, project_id, *args, **kwargs):
         """Call the method on the client for the given project_id. The args and kwargs are passed through."""
-        client = self.clients.get(project_id, self.clients.get(NoProject))
+        client = self.clients.get(project_id, self.clients.get(self.default_project))
         if not client:
             raise ValueError(f"Project {project_id} not found")
         return getattr(client, method)(*args, **kwargs)

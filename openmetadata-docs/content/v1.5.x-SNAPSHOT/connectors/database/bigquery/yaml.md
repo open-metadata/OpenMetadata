@@ -199,7 +199,7 @@ source:
             Super secret key
             -----END PRIVATE KEY-----
           clientEmail: role@project.iam.gserviceaccount.com
-          clientId: 1234
+          clientId: "1234"
           # authUri: https://accounts.google.com/o/oauth2/auth (default)
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
