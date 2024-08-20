@@ -93,7 +93,7 @@
     "includeDDL": {
       "description": "Optional configuration to toggle the DDL Statements ingestion.",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "title": "Include DDL Statements"
     },
     "overrideMetadata":{
