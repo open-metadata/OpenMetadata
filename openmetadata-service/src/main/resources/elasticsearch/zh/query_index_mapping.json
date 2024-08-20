@@ -397,6 +397,12 @@
             "normalizer": "lowercase_normalizer"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

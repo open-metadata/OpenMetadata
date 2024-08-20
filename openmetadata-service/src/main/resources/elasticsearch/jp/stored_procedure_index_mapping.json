@@ -558,6 +558,9 @@
           }
         }
       },
+      "totalVotes": {
+        "type": "long"
+      },
       "descriptionStatus": {
         "type": "keyword"
       }

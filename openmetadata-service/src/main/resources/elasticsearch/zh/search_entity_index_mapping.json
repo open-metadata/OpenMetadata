@@ -421,6 +421,12 @@
           }
         }
       },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
+      },
       "descriptionStatus": {
         "type": "keyword"
       }

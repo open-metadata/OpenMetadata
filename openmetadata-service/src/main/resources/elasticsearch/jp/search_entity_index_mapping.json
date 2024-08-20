@@ -445,6 +445,12 @@
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

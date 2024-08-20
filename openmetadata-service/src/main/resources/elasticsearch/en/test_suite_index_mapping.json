@@ -66,6 +66,12 @@
         "type": "text",
         "analyzer": "om_analyzer"
       },
+      "totalVotes": {
+        "type": "long"
+      },
+      "votes" : {
+        "type": "object"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer",
