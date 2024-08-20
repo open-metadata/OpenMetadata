@@ -161,14 +161,14 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(
               description = "Filter by status",
               schema = @Schema(implementation = WorkflowStatus.class))
-          @QueryParam("status")
+          @QueryParam("workflowStatus")
           String status) {
     ListFilter filter = new ListFilter(include);
     if (workflowType != null) {
       filter.addQueryParam("workflowType", workflowType);
     }
     if (status != null) {
-      filter.addQueryParam("status", status);
+      filter.addQueryParam("workflowStatus", status);
     }
     ResultList<Workflow> workflows =
         super.listInternal(
