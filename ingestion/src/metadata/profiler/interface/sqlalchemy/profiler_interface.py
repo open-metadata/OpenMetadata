@@ -451,16 +451,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     column=metric_func.column,
                     sample=sample,
                 )
-                # Replace NaN values with None
-                logger.warning(
-                    "NaN Data Type Not Supported: NaN values will be cast to null in OpenMetadata"
-                    " to maintain database parity. Ensure your data handling processes account for this conversion."
-                )
-
-                row = {
-                    k: None if isinstance(v, float) and math.isnan(v) else v
-                    for k, v in dict(row).items()
-                }
+                if row:
+                    for k, v in row.items():
+                        # Replace NaN values with None
+                        if isinstance(v, float) and math.isnan(v):
+                            logger.warning(
+                                "NaN data detected and will be cast to null in OpenMetadata to maintain database parity"
+                            )
+                            row[k] = None
             except Exception as exc:
                 error = (
                     f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
