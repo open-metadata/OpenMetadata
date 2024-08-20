@@ -89,7 +89,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         setPipelineIdToFetchStatus(id);
       } catch (err) {
         showErrorToast(
-          t('message.ingestion-workflow-operation-error', {
+          t('server.ingestion-workflow-operation-error', {
             operation: t('label.triggering-lowercase'),
             displayName,
           })
@@ -114,7 +114,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         }, 500);
       } catch (error) {
         showErrorToast(
-          t('message.ingestion-workflow-operation-error', {
+          t('server.ingestion-workflow-operation-error', {
             operation: t('label.deploying-lowercase'),
             displayName,
           })
