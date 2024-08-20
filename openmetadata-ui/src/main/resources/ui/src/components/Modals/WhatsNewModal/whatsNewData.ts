@@ -700,7 +700,7 @@ API:
   {
     id: 33,
     version: 'v1.4.8',
-    description: `Released on 19th August 2024.`,
+    description: `Released on 21st August 2024.`,
     features: [],
     changeLogs: {
       Improvements: `-   Fix Entity listing API.
