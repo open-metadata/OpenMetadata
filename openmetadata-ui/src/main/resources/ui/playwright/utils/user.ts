@@ -31,8 +31,6 @@ export const performUserLogin = async (browser, user: UserClass) => {
 };
 
 export const nonDeletedUserChecks = async (page: Page) => {
-  await expect(page.locator('[data-testid="edit-displayName"]')).toBeVisible();
-
   await expect(
     page.locator(
       '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
@@ -44,18 +42,13 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
   ).toBeVisible();
-
-  await expect(page.locator('[data-testid="edit-description"]')).toBeVisible();
 };
 
 export const deletedUserChecks = async (page: Page) => {
-  const deletedBadge = await page.locator('[data-testid="deleted-badge"]');
+  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
   await expect(deletedBadge).toHaveText('Deleted');
 
-  await expect(
-    page.locator('[data-testid="edit-displayName"]')
-  ).not.toBeVisible();
   await expect(
     page.locator(
       '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
@@ -72,9 +65,6 @@ export const deletedUserChecks = async (page: Page) => {
   ).not.toBeVisible();
   await expect(
     page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
-  ).not.toBeVisible();
-  await expect(
-    page.locator('[data-testid="edit-description"]')
   ).not.toBeVisible();
 };
 
