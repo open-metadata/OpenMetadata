@@ -113,7 +113,7 @@ test.describe('User with different Roles', () => {
     // Check if the display name is removed
     await expect(
       userPage.getByTestId('user-profile-details').getByTestId('user-name')
-    ).toHaveText('');
+    ).not.toBeVisible();
 
     // Description edit checks
     await userPage
