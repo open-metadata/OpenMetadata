@@ -149,9 +149,15 @@
       "entityType": {
         "type": "keyword"
       },
-      "descriptionStatus": {
-        "type": "keyword"
-      }
+        "totalVotes": {
+          "type": "long"
+        },
+        "votes" : {
+          "type": "object"
+        },
+        "descriptionStatus": {
+          "type": "keyword"
+        }
     }
   }
 }
