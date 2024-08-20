@@ -10,7 +10,7 @@
 #  limitations under the License.
 """Db2 source module"""
 import traceback
-from typing import Optional
+from typing import Iterable, Optional
 
 from ibm_db_sa.base import ischema_names
 from sqlalchemy.engine.reflection import Inspector
@@ -51,6 +51,13 @@ class Db2Source(CommonDbSourceService):
                 f"Expected Db2Connection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+        else:
+            for schema_name in self.inspector.get_schema_names():
+                yield schema_name.rstrip()
 
     @staticmethod
     def get_table_description(
