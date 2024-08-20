@@ -2211,13 +2211,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     long teamCount = owners.stream().filter(owner -> owner.getType().equals(Entity.TEAM)).count();
     long userCount = owners.size() - teamCount;
 
-    if (teamCount > 1 || userCount > 5 || (teamCount > 0 && userCount > 0)) {
+    if (teamCount > 1 || (teamCount > 0 && userCount > 0)) {
       throw new IllegalArgumentException(
           teamCount > 1
               ? CatalogExceptionMessage.onlyOneTeamAllowed()
-              : userCount > 5
-                  ? CatalogExceptionMessage.maxUserLimitExceeded()
-                  : CatalogExceptionMessage.noTeamAndUserComboAllowed());
+              : CatalogExceptionMessage.noTeamAndUserComboAllowed());
     }
 
     return owners.stream()

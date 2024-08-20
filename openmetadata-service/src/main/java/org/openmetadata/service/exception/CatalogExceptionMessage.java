@@ -284,10 +284,6 @@ public final class CatalogExceptionMessage {
     return "Only One Team is allowed to own Data Assets.";
   }
 
-  public static String maxUserLimitExceeded() {
-    return "Data Assets can have up to 5 users as the Data Asset owners.";
-  }
-
   public static String noTeamAndUserComboAllowed() {
     return "Data Assets can have up to 5 users or a Team but not both as owners.";
   }
