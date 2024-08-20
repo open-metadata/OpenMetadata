@@ -380,7 +380,8 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
           parentMatch = new ImmutablePair<>("service.id", entityId);
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
