@@ -205,7 +205,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  private final RestHighLevelClient client;
+  protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
 

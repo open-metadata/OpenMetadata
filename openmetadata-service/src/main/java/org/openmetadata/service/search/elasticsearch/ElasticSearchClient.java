@@ -208,7 +208,7 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
-  private final RestHighLevelClient client;
+  protected final RestHighLevelClient client;
 
   private final boolean isClientAvailable;
   public static final NamedXContentRegistry xContentRegistry;
