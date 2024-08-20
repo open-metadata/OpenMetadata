@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -97,6 +98,7 @@ export class SearchIndexClass extends EntityClass {
     this.type = 'SearchIndex';
     this.childrenTabId = 'fields';
     this.childrenSelectorId = this.children[0].fullyQualifiedName;
+    this.serviceCategory = SERVICE_TYPE.Search;
   }
 
   async create(apiContext: APIRequestContext) {
