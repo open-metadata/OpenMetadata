@@ -14,8 +14,6 @@ import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAg
 import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.ParsedDateHistogram;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedCardinality;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedMax;
-import es.org.elasticsearch.search.aggregations.metrics.ParsedMin;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedValueCount;
 import es.org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder;
@@ -263,15 +261,15 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
   }
 
   private void addProcessedSubResult(
-          ParsedCardinality aggregation,
-          List<DataInsightCustomChartResult> diChartResults,
-          Double day,
-          String group) {
+      ParsedCardinality aggregation,
+      List<DataInsightCustomChartResult> diChartResults,
+      Double day,
+      String group) {
     ParsedCardinality parsedValueCount = aggregation;
     Double value = Double.valueOf((double) parsedValueCount.getValue());
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
-              new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
+          new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
       diChartResults.add(diChartResult);
     }
   }
