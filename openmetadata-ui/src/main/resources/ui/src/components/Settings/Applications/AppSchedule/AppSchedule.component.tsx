@@ -28,11 +28,11 @@ import {
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
 import Loader from '../../../common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
@@ -146,15 +146,11 @@ const AppSchedule = ({
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
 
   const initialOptions = useMemo(() => {
-    if (appData.name === 'DataInsightsReportApplication') {
-      return ['week'];
-    } else if (appData.appType === AppType.External) {
-      return ['day'];
-    }
-
-    return pipelineSchedules
-      ? getScheduleOptionsFromSchedules(pipelineSchedules)
-      : undefined;
+    return applicationsClassBase.getScheduleOptionsForApp(
+      appData.name,
+      appData.appType,
+      pipelineSchedules
+    );
   }, [appData.name, appData.appType, pipelineSchedules]);
 
   useEffect(() => {
