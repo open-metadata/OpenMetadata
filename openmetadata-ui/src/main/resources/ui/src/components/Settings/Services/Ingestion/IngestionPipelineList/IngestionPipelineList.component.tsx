@@ -39,7 +39,6 @@ import {
 } from '../../../../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Loader from '../../../../common/Loader/Loader';
-import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
 import IngestionListTable from '../IngestionListTable/IngestionListTable';
@@ -66,15 +65,7 @@ export const IngestionPipelineList = ({
 
   const pagingInfo = usePaging();
 
-  const {
-    currentPage,
-    handlePageChange,
-    paging,
-    handlePagingChange,
-    pageSize,
-    handlePageSizeChange,
-    showPagination,
-  } = useMemo(() => pagingInfo, [pagingInfo]);
+  const { handlePageChange, paging, handlePagingChange, pageSize } = pagingInfo;
 
   const { t } = useTranslation();
 
@@ -229,14 +220,6 @@ export const IngestionPipelineList = ({
     [handleRowChange, selectedRowKeys]
   );
 
-  const handlePipelinePageSizeChange = useCallback(
-    (size: number) => {
-      handlePageSizeChange(size);
-      fetchPipelines({ pipelineType: pipelineTypeFilter, limit: size });
-    },
-    [handlePageSizeChange, fetchPipelines, pipelineTypeFilter]
-  );
-
   if (isFetchingStatus) {
     return <Loader />;
   }
@@ -271,17 +254,6 @@ export const IngestionPipelineList = ({
           serviceName={serviceName}
           onPageChange={handlePipelinePageChange}
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handlePipelinePageChange}
-            onShowSizeChange={handlePipelinePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );
