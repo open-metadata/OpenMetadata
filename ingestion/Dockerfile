@@ -68,6 +68,14 @@ RUN apt-get -qq update \
     expat \
     bind9 \
     && rm -rf /var/lib/apt/lists/*
+#
+# Install DB2 iAccess Driver
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
+  && apt update \
+  && apt install ibm-iaccess; \
+  fi
 
 # Required for Starting Ingestion Container in Docker Compose
 COPY --chown=airflow:0 --chmod=775 ingestion/ingestion_dependency.sh /opt/airflow
@@ -90,11 +98,10 @@ RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https:/
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) != "aarch64" ]]; \
- then \
- pip install "ibm-db-sa~=0.4"; \
- fi
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  pip install "openmetadata-ingestion[db2]~=${RI_VERSION}"; \
+  fi
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"

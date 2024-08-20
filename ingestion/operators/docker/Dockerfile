@@ -72,6 +72,14 @@ RUN apt-get -qq update \
     postgresql-common \
     expat \
     bind9
+#
+# Install DB2 iAccess driver
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
+  && apt update \
+  && apt install ibm-iaccess; \
+  fi
 
 WORKDIR ingestion/
 
@@ -92,12 +100,12 @@ RUN pip install --upgrade pip
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
+
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) == "arm64" ]]; \
-    then \
-    pip install "ibm-db-sa~=0.4"; \
-    fi
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  pip install "openmetadata-ingestion[db2]~=${RI_VERSION}"; \
+  fi
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error
