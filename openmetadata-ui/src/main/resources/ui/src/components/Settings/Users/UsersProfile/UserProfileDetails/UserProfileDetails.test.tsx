@@ -153,9 +153,7 @@ describe('Test User Profile Details Component', () => {
     expect(screen.getByTestId('user-profile-details')).toBeInTheDocument();
 
     // if user doesn't have displayname
-    expect(screen.getByTestId('user-name')).not.toContainHTML(
-      'label.add-entity'
-    );
+    expect(screen.queryByTestId('user-name')).not.toBeInTheDocument();
     expect(screen.getByTestId('edit-displayName')).toBeInTheDocument();
 
     // user email
@@ -222,14 +220,20 @@ describe('Test User Profile Details Component', () => {
       })
     );
 
-    render(<UserProfileDetails {...mockPropsData} />, {
-      wrapper: MemoryRouter,
-    });
+    render(
+      <UserProfileDetails
+        {...mockPropsData}
+        userData={{ ...USER_DATA, displayName: 'Test User' }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
 
     expect(screen.getByTestId('user-profile-details')).toBeInTheDocument();
 
     // render user name with no edit if doesn't have edit access
-    expect(screen.getByTestId('user-name')).not.toContainHTML('entityName');
+    expect(screen.getByTestId('user-name')).toContainHTML('Test User');
     expect(screen.queryByTestId('edit-displayName')).not.toBeInTheDocument();
 
     // render chip in case of no default persona to other user
@@ -280,9 +284,7 @@ describe('Test User Profile Details Component', () => {
 
     expect(screen.getByTestId('user-profile-details')).toBeInTheDocument();
 
-    expect(screen.getByTestId('user-name')).not.toContainHTML(
-      'label.add-entity'
-    );
+    expect(screen.queryByTestId('user-name')).not.toBeInTheDocument();
 
     const editButton = screen.getByTestId('edit-displayName');
 

@@ -296,13 +296,15 @@ const UserProfileDetails = ({
             </InlineEdit>
           ) : (
             <Space align="center">
-              <Typography.Text
-                className="font-medium text-md"
-                data-testid="user-name"
-                ellipsis={{ tooltip: true }}
-                style={{ maxWidth: '400px' }}>
-                {userData.displayName}
-              </Typography.Text>
+              {userData.displayName && (
+                <Typography.Text
+                  className="font-medium text-md"
+                  data-testid="user-name"
+                  ellipsis={{ tooltip: true }}
+                  style={{ maxWidth: '400px' }}>
+                  {userData.displayName}
+                </Typography.Text>
+              )}
               {isLoggedInUser && !userData.deleted && (
                 <Tooltip
                   title={t(
