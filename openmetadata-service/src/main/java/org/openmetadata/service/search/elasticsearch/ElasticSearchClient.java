@@ -450,7 +450,9 @@ public class ElasticSearchClient implements SearchClient {
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
       searchSourceBuilder.sort(
-          request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
+          new FieldSortBuilder(request.getSortFieldParam())
+              .order(SortOrder.fromString(request.getSortOrder()))
+              .unmappedType("integer"));
     }
 
     if (request
