@@ -65,6 +65,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -164,9 +165,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
 
-    // initialize Search Repository, all repositories use SearchRepository this line should always
-    // before initializing repository
-    new SearchRepository(catalogConfig.getElasticSearchConfiguration());
+    installSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -300,6 +299,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               .addServlet("auth_refresh", new AuthRefreshServlet(authenticationCodeFlowHandler));
       refreshServlet.addMapping("/api/v1/auth/refresh");
     }
+  }
+
+  protected void installSearchRepository(ElasticSearchConfiguration esConfig) {
+    // initialize Search Repository, all repositories use SearchRepository this line should always
+    // before initializing repository
+    SearchRepository searchRepository = new SearchRepository(esConfig);
+    Entity.setSearchRepository(searchRepository);
   }
 
   private void registerHealthCheck(Environment environment) {

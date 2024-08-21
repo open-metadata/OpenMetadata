@@ -122,7 +122,8 @@ describe(
     });
 
     if (Cypress.env('isOss')) {
-      it('Run application', () => {
+      // We are running it for DataInsight page tests
+      it.skip('Run application', () => {
         interceptURL(
           'GET',
           '/api/v1/apps/name/DataInsightsApplication?fields=*',

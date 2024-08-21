@@ -26,10 +26,33 @@ def native_lineage_config(db_service, workflow_config, sink_config):
     }
 
 
+@pytest.mark.parametrize(
+    "source_config,expected_nodes",
+    [
+        ({"includeDDL": False}, 0),
+        ({"includeDDL": True}, 3),
+    ],
+    ids=lambda config: (
+        "".join([f"{k}={str(v)}" for k, v in config.items()])
+        if isinstance(config, dict)
+        else ""
+    ),
+)
 def test_native_lineage(
-    run_workflow, ingestion_config, native_lineage_config, metadata, db_service
+    source_config,
+    expected_nodes,
+    run_workflow,
+    ingestion_config,
+    native_lineage_config,
+    metadata,
+    db_service,
 ):
+    ingestion_config["source"]["sourceConfig"]["config"].update(source_config)
     run_workflow(MetadataWorkflow, ingestion_config)
+    film_actor_edges = metadata.get_lineage_by_name(
+        Table, f"{db_service.fullyQualifiedName.root}.dvdrental.public.film_actor"
+    )
+    assert len(film_actor_edges["nodes"]) == expected_nodes
     run_workflow(MetadataWorkflow, native_lineage_config)
 
 
@@ -97,12 +120,15 @@ def test_log_lineage(
 
 def reindex_search(metadata: OpenMetadata, timeout=60):
     start = time.time()
-    status = None
-    while status is None or status == "running":
+    # wait for previous reindexing to finish (if any)
+    while True:
         response = metadata.client.get(
             "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"
         )
-        status = response["data"][0]["status"]
+        if len(response["data"]) == 0:
+            break
+        if response["data"][0]["status"] != "running":
+            break
         if time.time() - start > timeout:
             raise TimeoutError("Timed out waiting for reindexing to start")
         time.sleep(1)
@@ -111,6 +137,7 @@ def reindex_search(metadata: OpenMetadata, timeout=60):
     )  # app interactivity is not immediate (probably bc async operations), so we wait a bit
     metadata.client.post("/apps/trigger/SearchIndexingApplication")
     time.sleep(0.5)  # here too
+    status = None
     while status != "success":
         response = metadata.client.get(
             "/apps/name/SearchIndexingApplication/status?offset=0&limit=1"

@@ -89,7 +89,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "domain",
           "storedProcedure",
           "storageService",
-          "testCaseResolutionStatus");
+          "testCaseResolutionStatus",
+          "apiService",
+          "apiEndpoint",
+          "apiCollection");
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
@@ -142,8 +145,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
       // Run ReIndexing
       performReindex(jobExecutionContext);
-      // Mark Job as Completed
-      updateJobStatus();
     } catch (Exception ex) {
       IndexingError indexingError =
           new IndexingError()
@@ -153,7 +154,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                       "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
                       jobData.toString(), ExceptionUtils.getStackTrace(ex)));
       LOG.error(indexingError.getMessage());
-      jobData.setStatus(EventPublisherJob.Status.FAILED);
+      jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
       jobData.setFailure(indexingError);
     } finally {
       // Send update
@@ -257,7 +258,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           }
 
         } catch (SearchIndexException rx) {
-          jobData.setStatus(EventPublisherJob.Status.FAILED);
+          jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
           jobData.setFailure(rx.getIndexingError());
           paginatedSource.updateStats(
               rx.getIndexingError().getSuccessCount(), rx.getIndexingError().getFailedCount());
@@ -394,18 +395,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
     searchRepository.deleteIndex(indexType);
     // Create index
     searchRepository.createIndex(indexType);
-  }
-
-  private void updateJobStatus() {
-    if (stopped) {
-      jobData.setStatus(EventPublisherJob.Status.STOPPED);
-    } else {
-      if (jobData.getFailure() != null) {
-        jobData.setStatus(EventPublisherJob.Status.FAILED);
-      } else {
-        jobData.setStatus(EventPublisherJob.Status.COMPLETED);
-      }
-    }
   }
 
   public void stopJob() {

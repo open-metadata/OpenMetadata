@@ -232,7 +232,9 @@ public abstract class OpenMetadataApplicationTest {
             pipelineServiceClientConfiguration,
             forceMigrations);
     // Initialize search repository
-    new SearchRepository(config.getElasticSearchConfiguration());
+    SearchRepository searchRepository =
+        new SearchRepository(config.getElasticSearchConfiguration());
+    Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();

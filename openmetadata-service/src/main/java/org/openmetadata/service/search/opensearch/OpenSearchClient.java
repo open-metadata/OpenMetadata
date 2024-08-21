@@ -205,7 +205,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  private final RestHighLevelClient client;
+  protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
 
@@ -280,11 +280,7 @@ public class OpenSearchClient implements SearchClient {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
-      // Get the child aliases
-      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
 
-      // Add the child aliases to the set of aliases
-      aliases.addAll(childAliases);
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
               .index(indexMapping.getIndexName(clusterAlias))
@@ -446,8 +442,14 @@ public class OpenSearchClient implements SearchClient {
     }
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
-      searchSourceBuilder.sort(
-          request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
+      FieldSortBuilder fieldSortBuilder =
+          new FieldSortBuilder(request.getSortFieldParam())
+              .order(SortOrder.fromString(request.getSortOrder()));
+      // Score is an internal ES Field
+      if (!request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        fieldSortBuilder.unmappedType("integer");
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
 
     if (request
