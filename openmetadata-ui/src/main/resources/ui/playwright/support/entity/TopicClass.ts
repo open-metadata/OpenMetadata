@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -99,6 +100,7 @@ export class TopicClass extends EntityClass {
     this.type = 'Topic';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].name;
+    this.serviceCategory = SERVICE_TYPE.Messaging;
   }
 
   async create(apiContext: APIRequestContext) {

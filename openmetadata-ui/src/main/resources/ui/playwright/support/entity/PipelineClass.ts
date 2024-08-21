@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -49,6 +50,7 @@ export class PipelineClass extends EntityClass {
     this.type = 'Pipeline';
     this.childrenTabId = 'tasks';
     this.childrenSelectorId = this.children[0].name;
+    this.serviceCategory = SERVICE_TYPE.Pipeline;
   }
 
   async create(apiContext: APIRequestContext) {

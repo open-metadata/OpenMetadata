@@ -12,9 +12,12 @@
  */
 import { ExploreQuickFilterField } from '../components/Explore/ExplorePage.interface';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   extractTermKeys,
+  getExploreQueryFilterMust,
+  getQuickFilterObjectForEntities,
   getQuickFilterQuery,
   getSelectedValuesFromQuickFilter,
   getSubLevelHierarchyKey,
@@ -178,6 +181,7 @@ describe('Explore Utils', () => {
     it('returns the correct bucket and queryFilter when isDatabaseHierarchy is true', () => {
       const result = getSubLevelHierarchyKey(
         true,
+        undefined,
         EntityFields.SERVICE,
         'testValue'
       );
@@ -201,6 +205,7 @@ describe('Explore Utils', () => {
     it('returns the correct bucket and queryFilter when isDatabaseHierarchy is false', () => {
       const result = getSubLevelHierarchyKey(
         false,
+        undefined,
         EntityFields.SERVICE,
         'testValue'
       );
@@ -232,6 +237,391 @@ describe('Explore Utils', () => {
           },
         },
       });
+    });
+
+    it('returns the correct bucket and queryFilter when filterType provided', () => {
+      const result = getSubLevelHierarchyKey(true, [
+        {
+          label: 'serviceType',
+          key: 'serviceType',
+          value: [
+            {
+              key: 'athena',
+              label: 'athena',
+            },
+          ],
+        },
+      ]);
+
+      expect(result).toEqual({
+        bucket: 'serviceType',
+        queryFilter: {
+          query: {
+            bool: {
+              must: [
+                { bool: { should: [{ term: { serviceType: 'athena' } }] } },
+              ],
+            },
+          },
+        },
+      });
+    });
+  });
+
+  describe('getExploreQueryFilterMust', () => {
+    it('return the must for the serviceType filter field provided', () => {
+      const response = getExploreQueryFilterMust([
+        {
+          label: 'serviceType',
+          key: 'serviceType',
+          value: [
+            {
+              key: 'athena',
+              label: 'athena',
+            },
+          ],
+        },
+      ]);
+
+      expect(response).toEqual([
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  serviceType: 'athena',
+                },
+              },
+            ],
+          },
+        },
+      ]);
+    });
+
+    it('return the must for the service filter field provided', () => {
+      const response = getExploreQueryFilterMust([
+        {
+          label: 'serviceType',
+          key: 'serviceType',
+          value: [
+            {
+              key: 'athena',
+              label: 'athena',
+            },
+          ],
+        },
+        {
+          label: 'service.displayName.keyword',
+          key: 'service.displayName.keyword',
+          value: [
+            {
+              key: 'athena_prod',
+              label: 'athena_prod',
+            },
+          ],
+        },
+      ]);
+
+      expect(response).toEqual([
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  serviceType: 'athena',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'service.displayName.keyword': 'athena_prod',
+                },
+              },
+            ],
+          },
+        },
+      ]);
+    });
+
+    it('return the must for the database filter field provided', () => {
+      const response = getExploreQueryFilterMust([
+        {
+          label: 'serviceType',
+          key: 'serviceType',
+          value: [
+            {
+              key: 'athena',
+              label: 'athena',
+            },
+          ],
+        },
+        {
+          label: 'service.displayName.keyword',
+          key: 'service.displayName.keyword',
+          value: [
+            {
+              key: 'athena_prod',
+              label: 'athena_prod',
+            },
+          ],
+        },
+        {
+          label: 'database.name.keyword',
+          key: 'database.name.keyword',
+          value: [
+            {
+              key: 'default',
+              label: 'default',
+            },
+          ],
+        },
+      ]);
+
+      expect(response).toEqual([
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  serviceType: 'athena',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'service.displayName.keyword': 'athena_prod',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'database.name.keyword': 'default',
+                },
+              },
+            ],
+          },
+        },
+      ]);
+    });
+
+    it('return the must for the databaseSchema filter field provided', () => {
+      const response = getExploreQueryFilterMust([
+        {
+          label: 'serviceType',
+          key: 'serviceType',
+          value: [
+            {
+              key: 'athena',
+              label: 'athena',
+            },
+          ],
+        },
+        {
+          label: 'service.displayName.keyword',
+          key: 'service.displayName.keyword',
+          value: [
+            {
+              key: 'athena_prod',
+              label: 'athena_prod',
+            },
+          ],
+        },
+        {
+          label: 'database.name.keyword',
+          key: 'database.name.keyword',
+          value: [
+            {
+              key: 'default',
+              label: 'default',
+            },
+          ],
+        },
+        {
+          label: 'databaseSchema.name.keyword',
+          key: 'databaseSchema.name.keyword',
+          value: [
+            {
+              key: 'default',
+              label: 'default',
+            },
+          ],
+        },
+      ]);
+
+      expect(response).toEqual([
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  serviceType: 'athena',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'service.displayName.keyword': 'athena_prod',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'database.name.keyword': 'default',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'databaseSchema.name.keyword': 'default',
+                },
+              },
+            ],
+          },
+        },
+      ]);
+    });
+
+    it('return the must for the entity type filter field provided', () => {
+      const response = getExploreQueryFilterMust([
+        {
+          label: 'serviceType',
+          key: 'serviceType',
+          value: [
+            {
+              key: 'athena',
+              label: 'athena',
+            },
+          ],
+        },
+        {
+          label: 'service.displayName.keyword',
+          key: 'service.displayName.keyword',
+          value: [
+            {
+              key: 'athena_prod',
+              label: 'athena_prod',
+            },
+          ],
+        },
+        {
+          label: 'database.name.keyword',
+          key: 'database.name.keyword',
+          value: [
+            {
+              key: 'default',
+              label: 'default',
+            },
+          ],
+        },
+        {
+          label: 'databaseSchema.name.keyword',
+          key: 'databaseSchema.name.keyword',
+          value: [
+            {
+              key: 'default',
+              label: 'default',
+            },
+          ],
+        },
+        {
+          label: 'entityType',
+          key: 'entityType',
+          value: [
+            {
+              key: 'table',
+              label: 'table',
+            },
+          ],
+        },
+      ]);
+
+      expect(response).toEqual([
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  serviceType: 'athena',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'service.displayName.keyword': 'athena_prod',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'database.name.keyword': 'default',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  'databaseSchema.name.keyword': 'default',
+                },
+              },
+            ],
+          },
+        },
+        {
+          bool: {
+            should: [
+              {
+                term: {
+                  entityType: 'table',
+                },
+              },
+            ],
+          },
+        },
+      ]);
     });
   });
 
@@ -267,6 +657,37 @@ describe('Explore Utils', () => {
       const updatedTreeData = updateTreeData(treeData, '3', newChildren);
 
       expect(updatedTreeData).toEqual(treeData);
+    });
+  });
+
+  describe('getQuickFilterObjectForEntities', () => {
+    it('return the filterObject having single entity as bucketValues', () => {
+      const updatedTreeData = getQuickFilterObjectForEntities(
+        EntityFields.ENTITY_TYPE,
+        [EntityType.PIPELINE]
+      );
+
+      expect(updatedTreeData).toEqual({
+        key: 'entityType',
+        label: 'entityType',
+        value: [{ key: 'pipeline', label: 'pipeline' }],
+      });
+    });
+
+    it('return the filterObject having multiple entity as bucketValues', () => {
+      const updatedTreeData = getQuickFilterObjectForEntities(
+        EntityFields.ENTITY_TYPE,
+        [EntityType.TABLE, EntityType.STORED_PROCEDURE]
+      );
+
+      expect(updatedTreeData).toEqual({
+        key: 'entityType',
+        label: 'entityType',
+        value: [
+          { key: 'table', label: 'table' },
+          { key: 'storedProcedure', label: 'storedProcedure' },
+        ],
+      });
     });
   });
 });

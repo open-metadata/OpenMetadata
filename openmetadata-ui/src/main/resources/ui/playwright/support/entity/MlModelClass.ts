@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -64,6 +65,7 @@ export class MlModelClass extends EntityClass {
     this.type = 'MlModel';
     this.childrenTabId = 'features';
     this.childrenSelectorId = `feature-card-${this.children[0].name}`;
+    this.serviceCategory = SERVICE_TYPE.MLModels;
   }
 
   async create(apiContext: APIRequestContext) {

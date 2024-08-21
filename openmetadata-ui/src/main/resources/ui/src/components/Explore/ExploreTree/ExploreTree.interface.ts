@@ -12,6 +12,7 @@
  */
 import { ReactNode } from 'react';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { ExploreQuickFilterField } from '../ExplorePage.interface';
 
 export type ExploreTreeNode = {
@@ -21,6 +22,7 @@ export type ExploreTreeNode = {
   isLeaf?: boolean;
   icon?: JSX.Element | SvgComponent;
   data?: TreeNodeData;
+  count?: number;
 };
 
 export type ExploreTreeProps = {
@@ -37,6 +39,7 @@ export type TreeNodeData = {
   rootIndex?: string;
   entityType?: string;
   dataId?: string;
+  childEntities?: EntityType[];
 };
 
 export type DatabaseFields =

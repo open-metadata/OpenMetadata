@@ -25,13 +25,17 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
+  assignDomain,
   createNewPage,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
+  removeDomain,
+  verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = [
   ApiEndpointClass,
@@ -73,6 +77,37 @@ entities.forEach((EntityClass) => {
         EntityDataClass.domain1.responseData,
         EntityDataClass.domain2.responseData
       );
+    });
+
+    test('Domain Propagation', async ({ page }) => {
+      const serviceCategory = entity.serviceCategory;
+      if (serviceCategory) {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: entity.service.name,
+            type: serviceCategory,
+          },
+          false
+        );
+
+        await assignDomain(page, EntityDataClass.domain1.responseData);
+        await verifyDomainPropagation(
+          page,
+          EntityDataClass.domain1.responseData,
+          entity.entityResponseData?.['fullyQualifiedName']
+        );
+
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: entity.service.name,
+            type: serviceCategory,
+          },
+          false
+        );
+        await removeDomain(page);
+      }
     });
 
     test('User as Owner Add, Update and Remove', async ({ page }) => {

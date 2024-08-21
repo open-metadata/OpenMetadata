@@ -219,19 +219,13 @@ export const getSuggestionElement = (
     FqnPart.Service,
   ])}-${name}`.replaceAll(`"`, '');
 
-  let displayText =
+  const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : searchClassBase.getEntityName(entitySource);
+      : entitySource.fullyQualifiedName ??
+        searchClassBase.getEntityName(entitySource);
 
-  if (index === SearchIndex.GLOSSARY_TERM) {
-    // Show Fqn for Glossary Term. Adding this to avoid confusion for nested terms
-    displayText =
-      entitySource.fullyQualifiedName ??
-      searchClassBase.getEntityName(entitySource);
-  }
-
-  const retn = (
+  return (
     <Button
       block
       className="text-left truncate p-0"
@@ -258,8 +252,6 @@ export const getSuggestionElement = (
       </Link>
     </Button>
   );
-
-  return retn;
 };
 
 export const filterOptionsByIndex = (

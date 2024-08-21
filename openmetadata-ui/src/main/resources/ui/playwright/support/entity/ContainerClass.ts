@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -46,6 +47,7 @@ export class ContainerClass extends EntityClass {
     super(EntityTypeEndpoint.Container);
     this.service.name = name ?? this.service.name;
     this.type = 'Container';
+    this.serviceCategory = SERVICE_TYPE.Storage;
   }
 
   async create(apiContext: APIRequestContext) {

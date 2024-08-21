@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -61,6 +62,7 @@ export class DashboardDataModelClass extends EntityClass {
     this.type = 'Dashboard Data Model';
     this.childrenTabId = 'model';
     this.childrenSelectorId = this.children[0].name;
+    this.serviceCategory = SERVICE_TYPE.Dashboard;
   }
 
   async create(apiContext: APIRequestContext) {
