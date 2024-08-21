@@ -721,7 +721,7 @@ API:
     description: `Released on 23rd August 2024.`,
     features: [
       {
-        title: `Data Observability`,
+        title: `Data Observability with Anomaly Detection (Collate)`,
         description: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
 
 1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
@@ -737,6 +737,18 @@ In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an an
 We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume`,
         isImage: false,
         path: 'https://www.youtube.com/embed/BPuNC8vPcsw',
+      },
+      {
+        title: 'Enhanced Data Quality Dashboard (Collate)',
+        description: `We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/bXcQBtZuyoU',
+      },
+      {
+        title: 'Freshness Data Quality Tests (Collate)',
+        description: `Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/QRcR3m9cCGo',
       },
       {
         title: 'Data Diff',
@@ -858,6 +870,8 @@ Include DDL:
 In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents
 
 We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume.`,
+      [`Enhanced Data Quality Dashboard ${CollateIconWithLinkMD}`]: `We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.`,
+      [`Freshness Data Quality Tests ${CollateIconWithLinkMD}`]: `Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.`,
       ['Data Diff']: `Data quality checks are important not only within a single table but also between different tables. These data diff checks can ensure key data remains unchanged after transformation, or conversely, ensure that the transformations were actually performed.
 
 We are introducing the table difference data quality test to validate that multiple appearances of the same information remain consistent. Note that the test allows you to specify which column to use as a key and which columns you want to compare, and even add filters in the data to give you more control over multiple use cases.`,
