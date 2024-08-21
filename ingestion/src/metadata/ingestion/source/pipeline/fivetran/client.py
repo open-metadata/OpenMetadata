@@ -36,7 +36,7 @@ class FivetranClient:
         )
 
         client_config: ClientConfig = ClientConfig(
-            base_url=str(self.config.hostPort),
+            base_url=str(self.config.hostPort)[:-1],  # remove trailing slash
             api_version="v1",
             auth_header="Authorization",
             auth_token=lambda: (api_token[2:-1], 0),
