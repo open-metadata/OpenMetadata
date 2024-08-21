@@ -2,7 +2,7 @@
 
 This workflow allows you to profile your table assets and gain insights into their structure (e.g. of metrics computed: `max`, `min`, `mean`, etc. The full list can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/metrics)).
 
-We recommend to check the [best practices](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow#profiler-best-practices) before creating a profiler workflow to avoid long-running pipelines and unexpected costs.
+We recommend to check the [best practices](https://docs.open-metadata.org/latest/how-to-guides/data-quality-observability/profiler/workflow#profiler-best-practices) before creating a profiler workflow to avoid long-running pipelines and unexpected costs.
 
 ## Configuration
 
