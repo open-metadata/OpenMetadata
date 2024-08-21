@@ -109,30 +109,14 @@ public class SearchRepository {
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
-    if (config != null
-        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
-      searchClient = new OpenSearchClient(config);
-    } else {
-      searchClient = new ElasticSearchClient(config);
-    }
-    try {
-      if (config != null && (!nullOrEmpty(config.getSearchIndexFactoryClassName()))) {
-        this.searchIndexFactory =
-            Class.forName(config.getSearchIndexFactoryClassName())
-                .asSubclass(SearchIndexFactory.class)
-                .getDeclaredConstructor()
-                .newInstance();
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize search index factory using default one", e);
-    }
+    searchClient = buildSearchClient(config);
+    searchIndexFactory = buildIndexFactory();
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
-    Entity.setSearchRepository(this);
   }
 
   private void loadIndexMappings() {
@@ -162,6 +146,21 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.warn("Failed to load indexMapping.json");
     }
+  }
+
+  public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
+    SearchClient sc;
+    if (config != null
+        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+      sc = new OpenSearchClient(config);
+    } else {
+      sc = new ElasticSearchClient(config);
+    }
+    return sc;
+  }
+
+  public SearchIndexFactory buildIndexFactory() {
+    return new SearchIndexFactory();
   }
 
   public ElasticSearchConfiguration.SearchType getSearchType() {
@@ -430,22 +429,32 @@ public class SearchRepository {
       ChangeDescription changeDescription, EntityInterface entity) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
+
     if (changeDescription != null) {
+      EntityRepository<?> entityRepository =
+          Entity.getEntityRepository(entity.getEntityReference().getType());
+      EntityInterface entityBeforeUpdate =
+          entityRepository.get(null, entity.getId(), entityRepository.getFields("*"));
+
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            if (field.getName().equals(FIELD_OWNERS)
-                && entity.getEntityReference().getType().equalsIgnoreCase(Entity.TEST_CASE)) {
+            if (field.getName().equals(FIELD_OWNERS)) {
               List<EntityReference> inheritedOwners = entity.getOwners();
-              fieldData.put(field.getName(), inheritedOwners);
+              fieldData.put("updatedOwners", inheritedOwners);
               scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
               scriptTxt.append(
                   String.format(
-                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT, field.getName(), field.getName()));
-              fieldData = JsonUtils.getMap(entityReference);
+                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
+                      field.getName(),
+                      field.getName(),
+                      field.getName()));
+              fieldData.put(field.getName(), entityReference);
             }
           } catch (UnhandledServerException e) {
             scriptTxt.append(
@@ -456,18 +465,20 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference oldEntityReference =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
             EntityReference newEntityReference =
                 JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            fieldData.put(
+                "entityBeforeUpdate",
+                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
             scriptTxt.append(
                 String.format(
                     UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
                     field.getName(),
                     field.getName(),
-                    oldEntityReference.getId().toString(),
+                    field.getName(),
+                    field.getName(),
                     field.getName()));
-            fieldData = JsonUtils.getMap(newEntityReference);
+            fieldData.put(field.getName(), newEntityReference);
           } catch (UnhandledServerException e) {
             scriptTxt.append(
                 String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
@@ -477,10 +488,9 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            if (field.getName().equals(FIELD_OWNERS)
-                && entity.getEntityReference().getType().equalsIgnoreCase(Entity.TEST_CASE)) {
+            if (field.getName().equals(FIELD_OWNERS)) {
               List<EntityReference> inheritedOwners = entity.getOwners();
-              fieldData.put(field.getName(), inheritedOwners);
+              fieldData.put("updatedOwners", inheritedOwners);
               scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
@@ -490,9 +500,8 @@ public class SearchRepository {
                       REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
                       field.getName(),
                       field.getName(),
-                      entityReference.getId().toString(),
                       field.getName()));
-              fieldData = JsonUtils.getMap(entityReference);
+              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
             }
           } catch (UnhandledServerException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
@@ -870,5 +879,9 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
+  }
+
+  public <T> T getRestHighLevelClient() {
+    return (T) searchClient;
   }
 }

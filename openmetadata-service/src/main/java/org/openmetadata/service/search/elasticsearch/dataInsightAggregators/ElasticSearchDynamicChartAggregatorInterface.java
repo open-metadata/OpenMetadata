@@ -13,6 +13,7 @@ import es.org.elasticsearch.search.aggregations.bucket.filter.ParsedFilter;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.ParsedDateHistogram;
+import es.org.elasticsearch.search.aggregations.metrics.ParsedCardinality;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedValueCount;
 import es.org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder;
@@ -54,6 +55,8 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
         return AggregationBuilders.min(field + index).field(field);
       case MAX:
         return AggregationBuilders.max(field + index).field(field);
+      case UNIQUE:
+        return AggregationBuilders.cardinality(field + index).field(field);
     }
     return null;
   }
@@ -70,23 +73,28 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       FormulaHolder holder = new FormulaHolder();
       holder.setFormula(matcher.group());
       holder.setFunction(Function.valueOf(matcher.group(1).toUpperCase()));
-      holder.setField(matcher.group(2));
+      String field;
+      if (matcher.group(3) != null) {
+        field = matcher.group(3);
+      } else {
+        field = "id.keyword";
+      }
       ValuesSourceAggregationBuilder subAgg =
           getSubAggregationsByFunction(
-              Function.valueOf(matcher.group(1).toUpperCase()), matcher.group(2), index);
-      if (matcher.group(4) != null) {
+              Function.valueOf(matcher.group(1).toUpperCase()), field, index);
+      if (matcher.group(5) != null) {
         QueryBuilder queryBuilder;
         if (filter != null) {
           queryBuilder =
               QueryBuilders.boolQuery()
-                  .must(QueryBuilders.queryStringQuery(matcher.group(4)))
+                  .must(QueryBuilders.queryStringQuery(matcher.group(5)))
                   .must(filter);
         } else {
-          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(4));
+          queryBuilder = QueryBuilders.queryStringQuery(matcher.group(5));
         }
         dateHistogramAggregationBuilder.subAggregation(
             AggregationBuilders.filter("filer" + index, queryBuilder).subAggregation(subAgg));
-        holder.setQuery(matcher.group(4));
+        holder.setQuery(matcher.group(5));
       } else {
         if (filter != null) {
           dateHistogramAggregationBuilder.subAggregation(
@@ -127,11 +135,10 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
           && day != null) {
         Expression expression = CompiledRule.parseExpression(formulaCopy);
         Double value = (Double) expression.getValue();
-        if (value.isNaN() || value.isInfinite()) {
-          value = null;
+        if (!value.isNaN() && !value.isInfinite()) {
+          finalList.add(
+              new DataInsightCustomChartResult().withCount(value).withGroup(group).withDay(day));
         }
-        finalList.add(
-            new DataInsightCustomChartResult().withCount(value).withGroup(group).withDay(day));
       }
     }
     return finalList;
@@ -230,6 +237,8 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       String group) {
     if (subAggr instanceof ParsedValueCount)
       addProcessedSubResult((ParsedValueCount) subAggr, diChartResults, day, group);
+    else if (subAggr instanceof ParsedCardinality)
+      addProcessedSubResult((ParsedCardinality) subAggr, diChartResults, day, group);
     else if (subAggr instanceof ParsedSingleValueNumericMetricsAggregation)
       addProcessedSubResult(
           (ParsedSingleValueNumericMetricsAggregation) subAggr, diChartResults, day, group);
@@ -243,12 +252,26 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       Double day,
       String group) {
     ParsedValueCount parsedValueCount = aggregation;
-    DataInsightCustomChartResult diChartResult =
-        new DataInsightCustomChartResult()
-            .withCount((double) parsedValueCount.getValue())
-            .withDay(day)
-            .withGroup(group);
-    diChartResults.add(diChartResult);
+    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+      DataInsightCustomChartResult diChartResult =
+          new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
+      diChartResults.add(diChartResult);
+    }
+  }
+
+  private void addProcessedSubResult(
+      ParsedCardinality aggregation,
+      List<DataInsightCustomChartResult> diChartResults,
+      Double day,
+      String group) {
+    ParsedCardinality parsedValueCount = aggregation;
+    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+      DataInsightCustomChartResult diChartResult =
+          new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
+      diChartResults.add(diChartResult);
+    }
   }
 
   private void addProcessedSubResult(
@@ -258,12 +281,11 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       String group) {
     ParsedSingleValueNumericMetricsAggregation parsedValueCount = aggregation;
     Double value = parsedValueCount.value();
-    if (Double.isInfinite(value) || Double.isNaN(value)) {
-      value = null;
+    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+      DataInsightCustomChartResult diChartResult =
+          new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
+      diChartResults.add(diChartResult);
     }
-    DataInsightCustomChartResult diChartResult =
-        new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
-    diChartResults.add(diChartResult);
   }
 
   private void addProcessedSubResult(

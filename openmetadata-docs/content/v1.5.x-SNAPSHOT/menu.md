@@ -143,6 +143,8 @@ site_menu:
     url: /deployment/security/saml
   - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
+  - category: Deployment / Enable Security / Saml / Azure
+    url: /deployment/security/saml/azure
   - category: Deployment / Enable Security / Saml / Docker 
     url: /deployment/security/saml/docker
   - category: Deployment / Enable Security / Saml / Bare Metal 
@@ -799,12 +801,6 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
-  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
-    url: /how-to-guides/data-insights/airflow-sdk
-  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
-    url: /how-to-guides/data-insights/metadata-cli   
-  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
-    url: /how-to-guides/data-insights/elasticsearch-reindex 
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
   - category: How-to Guides / Data Insights / Cost Analysis
@@ -957,6 +953,8 @@ site_menu:
     icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
+  - category: Main Concepts / Backend DB
+    url: /main-concepts/backend-db
   - category: Main Concepts / Metadata Standard
     url: /main-concepts/metadata-standard
   - category: Main Concepts / Metadata Standard / Schemas

@@ -126,7 +126,7 @@ def get_start_and_end(duration: int = 0) -> Tuple[datetime, datetime]:
     Method to return start and end time based on duration
     """
 
-    today = datetime.now(timezone.utc)
+    today = datetime.now(timezone.utc).replace(tzinfo=None)
     start = (today + timedelta(0 - duration)).replace(
         hour=0, minute=0, second=0, microsecond=0
     )

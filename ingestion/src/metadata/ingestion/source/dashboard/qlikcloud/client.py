@@ -145,7 +145,7 @@ class QlikCloudClient:
         resp_apps = self.client.get("/v1/items?resourceType=app")
         if resp_apps:
             resp = QlikAppResponse(**resp_apps)
-            yield from resp.apps
+            return list(resp.apps)
 
     def get_dashboard_details(self, dashboard_id: str) -> Optional[QlikApp]:
         """

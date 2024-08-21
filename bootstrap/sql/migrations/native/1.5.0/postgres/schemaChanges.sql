@@ -191,15 +191,8 @@ WHERE jsonb_path_exists(json, '$.feedInfo.entitySpecificInfo.updatedOwner')
   AND jsonb_typeof(json->'feedInfo'->'entitySpecificInfo'->'updatedOwner') <> 'array';
 
 -- Update entity_extension to move owner to array
-UPDATE entity_extension
-SET json = jsonb_set(
-    json,
-    '{owner}',
-    to_jsonb(ARRAY[jsonb_path_query_first(json, '$.owner')])
-)
-WHERE jsonb_path_exists(json, '$.owner')
-  AND jsonb_path_query_first(json, '$.owner ? (@ != null)') IS NOT null
-  AND jsonb_typeof(json->'owner') <> 'array';
+update entity_extension set json = jsonb_set(json#-'{owner}', '{owners}', 
+jsonb_build_array(json#>'{owner}')) where json #>> '{owner}' is not null;
 
 ALTER TABLE test_case ALTER COLUMN name TYPE VARCHAR(512);
 
@@ -280,3 +273,11 @@ update automations_workflow set json = json#-'{owner}' where json #>> '{owner}' 
 
 update table_entity set json = jsonb_set(json#-'{dataModel,owner}', '{dataModel,owners}', 
 jsonb_build_array(json#>'{dataModel,owner}')) where json #>> '{dataModel,owner}' is not null;
+
+CREATE INDEX IF NOT EXISTS  extension_index  ON entity_extension (extension);
+
+-- Remove SearchIndexing for api Service, collection and endpoint
+DELETE FROM entity_relationship er USING installed_apps ia WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name = 'SearchIndexingApplication';
+DELETE FROM entity_relationship er USING apps_marketplace ia WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name = 'SearchIndexingApplication';
+DELETE from installed_apps where name = 'SearchIndexingApplication';
+DELETE from apps_marketplace where name = 'SearchIndexingApplication';
