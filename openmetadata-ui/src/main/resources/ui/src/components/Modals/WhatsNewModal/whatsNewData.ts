@@ -730,7 +730,8 @@ API:
 
 3.  Create alerts and get notified of Test results through email, Slack, NSteams, GChat, and Webhook
 
-4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream\
+4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream
+
 In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents.`,
         isImage: false,
         path: 'https://www.youtube.com/embed/BPuNC8vPcsw',
@@ -757,10 +758,15 @@ We are introducing the table difference data quality test to validate that multi
       },
       {
         title: 'Domains RBAC & Subdomains',
-        description: `OpenMetadata introduced Domains & Data Products in 1.3.0. Many large organizations since then start using Domains and Data Products to achieve better ownership  and collaboration around domains that can span multiple teams.
+        description: `OpenMetadata introduced Domains & Data Products in 1.3.0. Since then, many large organizations have started using Domains & Data Products to achieve better ownership and collaboration around domains that can span multiple teams.
 
 In the 1.5.0 release, we added support for subdomains. This will help teams to organize into multiple subdomains within each domain.
-`,
+
+**RBAC for Domains:**
+
+With the 1.5.0 release, we are adding more stricter controls around Domain. Now teams/data assets/glossaries and classification can have domain concepts and can get a policy such that only users within a domain can access the data within a domain. Domain owners can use data products as a way to publish data products and showcase publicly available data assets from a specific domain.
+
+This will help large companies to use a single OpenMetadata platform to unify all of their data and teams but also provide more stringent controls to segment the data between domains.`,
         isImage: false,
         path: 'https://www.youtube.com/embed/r-_HaewjgTQ',
       },
@@ -776,12 +782,11 @@ We are also making the discovery of data more accessible for users introducing a
       },
       {
         title: 'API as Data Asset',
-        description: `The Internet runs on using APIs. All data is either consumed or produced by APIs. Organizations of today run many microservices, REST APIs to capture data from their user and update a transaction database in the backend.
+        description: `The Internet runs using APIs, both producing and consuming data. Organizations today run many microservices and REST APIs to capture data from their users and update a transaction database in the backend.
 
-OpenMetadata has many connectors that help capture the metadata from databases, warehouses, pipelines, storage services, ML models, etc. We believe that providing support API services as data assets will help the team to get the full picture of how the data is coming through from various services and landing into databases from there, going to warehouses and dashboards
+On top of the many supported connectors across Databases, Dashboards, ML Models, etc. We believe that providing support for API Services as data assets will help to get the full picture of how the data is coming through from various services and landing into databases, going to warehouses and BI tools.
 
-In 1.5.0 we are introducing API as another first-class entity, teams can now capture API request/response and type of the API Method. They can also use our column level lineage to capture the relation between APIs and databases/storage services/ message queues etc.. 
-`,
+In 1.5.0 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.`,
         isImage: false,
         path: 'https://www.youtube.com/embed/b9wrVnM3u80',
       },
@@ -807,8 +812,8 @@ In 1.5.0 we are introducing API as another first-class entity, teams can now cap
         
 **Deployment Related Changes (OSS only):**
         
-- \`./bootstrap/bootstrap_storage.sh\` removed      
-- OpenMetadata community has built rolling upgrades to database schema and the data to make upgrades easier. This tool is now called as ./bootstrap/openmetadata-ops.sh and has been part of our releases since 1.3. The bootstrap_storage.sh doesn't support new native schemas in OpenMetadata. Hence, we have deleted this tool from this release.
+- **\`./bootstrap/bootstrap_storage.sh\` removed**
+- OpenMetadata community has built rolling upgrades to database schema and the data to make upgrades easier. This tool is now called as \`./bootstrap/openmetadata-ops.sh\` and has been part of our releases since 1.3. The bootstrap_storage.sh doesn't support new native schemas in OpenMetadata. Hence, we have deleted this tool from this release.
 - While upgrading, please refer to our Upgrade Notes in the documentation. Always follow the best practices provided there.
         
 **Database Connection Pooling:**
@@ -822,7 +827,7 @@ In 1.5.0 we are introducing API as another first-class entity, teams can now cap
 **Data Insights:**
         
 - The Data Insights application is meant to give you a quick glance at your data's state and allow you to take action based on the information you receive. To continue pursuing this objective, the application was completely refactored to allow customizability.
-- Part of this refactor was making Data Insights an internal application, no longer relying on an external pipeline. This means triggering Data Insights from the Python SDK will no longer be possible.\
+- Part of this refactor was making Data Insights an internal application, no longer relying on an external pipeline. This means triggering Data Insights from the Python SDK will no longer be possible.
 - With this change you will need to **run a backfill on the Data Insights** for the last couple of days since the Data Assets data changed.
         
 **New Explore Page:**
@@ -833,15 +838,15 @@ In 1.5.0 we are introducing API as another first-class entity, teams can now cap
 
 In the latest release, several updates and enhancements have been made to the JSON schema across various connectors. These changes aim to improve security, configurability, and expand integration capabilities. Here's a detailed breakdown of the updates.
         
--   **KafkaConnect:** Added schemaRegistryTopicSuffixName to enhance topic configuration flexibility for schema registries.
--   **GCS Datalake:** Introduced bucketNames field, allowing users to specify targeted storage buckets within the Google Cloud Storage environment.
--   **OpenLineage:** Added saslConfig to enhance security by enabling SASL (Simple Authentication and Security Layer) configuration.
--   **Salesforce:** Added sslConfig to strengthen the security layer for Salesforce connections by supporting SSL.
--   **DeltaLake:** Updated schema by moving metastoreConnection to a newly created metastoreConfig.json file. Additionally, introduced configSource to better define source configurations, with new support for metastoreConfig.json and storageConfig.json.
--   **Iceberg:** RestCatalog: Removed clientId and clientSecret as mandatory fields, making the schema more flexible for different authentication methods.
+-   **KafkaConnect:** Added \`schemaRegistryTopicSuffixName\` to enhance topic configuration flexibility for schema registries.
+-   **GCS Datalake:** Introduced \`bucketNames\` field, allowing users to specify targeted storage buckets within the Google Cloud Storage environment.
+-   **OpenLineage:** Added \`saslConfig\` to enhance security by enabling SASL (Simple Authentication and Security Layer) configuration.
+-   **Salesforce:** Added \`sslConfig\` to strengthen the security layer for Salesforce connections by supporting SSL.
+-   **DeltaLake:** Updated schema by moving \`metastoreConnection\` to a newly created \`metastoreConfig.json\` file. Additionally, introduced \`configSource\` to better define source configurations, with new support for \`metastoreConfig.json\` and \`storageConfig.json\`.
+-   **Iceberg:** RestCatalog: Removed \`clientId\` and \`clientSecret\` as mandatory fields, making the schema more flexible for different authentication methods.
 -   **DBT:** Cloud Pipelines: Added as a new connector to support cloud-native data transformation workflows using DBT.
 -   **Looker:** Expanded support to include connections using GitLab integration, offering more flexible and secure version control.
--   **Tableau:** Enhanced support by adding capabilities for connecting with TableauPublishedDatasource and TableauEmbeddedDatasource, providing more granular control over data visualization and reporting.
+-   **Tableau:** Enhanced support by adding capabilities for connecting with \`TableauPublishedDatasource\` and \`TableauEmbeddedDatasource\`, providing more granular control over data visualization and reporting.
 
 **Include DDL:**
         
@@ -855,11 +860,8 @@ In the latest release, several updates and enhancements have been made to the JS
 
 3.  Create alerts and get notified of Test results through email, Slack, NSteams, GChat, and Webhook
 
-4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream
-
-In 1.5.0, we are bringing in **Anomaly Detection** based on AI to **predict** when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents
-
-We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume.`,
+4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream\
+In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents.`,
       [`Enhanced Data Quality Dashboard ${CollateIconWithLinkMD}`]: `We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.`,
       [`Freshness Data Quality Tests ${CollateIconWithLinkMD}`]: `Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.`,
       ['Data Diff Data Quality Tests']: `Data quality checks are important not only within a single table but also between different tables. These data diff checks can ensure key data remains unchanged after transformation, or conversely, ensure that the transformations were actually performed.
@@ -882,11 +884,11 @@ We are also making the discovery of data more accessible for users introducing a
       [`Pipeline Status Widget ${CollateIconWithLinkMD}`]: `We are also adding another widget you can use to customize the Landing Page of the User Personas in your organization.
 
 With the Pipeline Status widget, Data Engineers can easily track the pipelines that are not behaving as expected. This widget, together with the obervability alerts that are already in place, will help your teams jump even faster to solving any issues in the platform.`,
-      ['API as Data Asset']: `The Internet runs using APIs. All data is either consumed or produced by APIs. Organizations today run many microservices and REST APIs to capture data from their users and update a transaction database in the backend.
+      ['API as Data Asset']: `The Internet runs using APIs, both producing and consuming data. Organizations today run many microservices and REST APIs to capture data from their users and update a transaction database in the backend.
 
-OpenMetadata has many connectors that help capture the metadata from databases, warehouses, pipelines, storage services, ML models, etc. We believe that providing support API services as data assets will help the team to get the full picture of how the data is coming through from various services and landing into databases from there, going to warehouses and dashboards
+On top of the many supported connectors across Databases, Dashboards, ML Models, etc. We believe that providing support for API Services as data assets will help to get the full picture of how the data is coming through from various services and landing into databases, going to warehouses and BI tools.
 
-In 1.5.0 we are introducing API as another first-class entity, teams can now capture API request/response and type of the API Method. They can also use our column level lineage to capture the relation between APIs and databases/storage services/ message queues etc..`,
+In 1.5.0 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.`,
       ['Glossary Improvements']: `OpenMetadata supports multiple glossaries, an import/export and review process, and bulk asset tagging with glossary terms. Many teams are taking advantage of these features, and with an amazing open-source community, we are receiving great feedback on improving glossary functionality.
 
 Here are some of the improvements coming in 1.5.0
