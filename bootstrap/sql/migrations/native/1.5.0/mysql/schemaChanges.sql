@@ -303,3 +303,22 @@ ALTER TABLE automations_workflow
   ADD COLUMN workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.workflowType') STORED NOT NULL;
 
 ALTER TABLE entity_extension ADD INDEX extension_index(extension);
+
+
+-- Drop the existing taskAssigneesIds
+DROP INDEX taskAssigneesIds_index ON thread_entity;
+
+ALTER TABLE thread_entity DROP COLUMN taskAssigneesIds;
+
+ALTER TABLE thread_entity
+ADD COLUMN taskAssigneesIds TEXT GENERATED ALWAYS AS (
+    REPLACE(
+        REPLACE(
+            JSON_UNQUOTE(
+                JSON_EXTRACT(taskAssignees, '$[*].id')
+            ), '[', ''
+        ), ']', ''
+    )
+) STORED;
+
+CREATE FULLTEXT INDEX taskAssigneesIds_index ON thread_entity(taskAssigneesIds);
