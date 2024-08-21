@@ -487,6 +487,18 @@ public final class JsonUtils {
     return OBJECT_MAPPER.readValue(json, clazz);
   }
 
+  @SneakyThrows
+  public static <T> List<T> deepCopyList(List<T> original, Class<T> clazz) {
+    List<T> list = new ArrayList<>();
+    for (T t : original) {
+      // Serialize the original object to JSON
+      String json = pojoToJson(t);
+      // Deserialize the JSON back into a new object of the specified class
+      list.add(OBJECT_MAPPER.readValue(json, clazz));
+    }
+    return list;
+  }
+
   static class SortedNodeFactory extends JsonNodeFactory {
     @Override
     public ObjectNode objectNode() {
