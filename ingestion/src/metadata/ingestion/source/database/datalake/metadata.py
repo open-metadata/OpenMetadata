@@ -156,7 +156,7 @@ class DatalakeSource(DatabaseServiceSource):
         Prepare a database request and pass it to the sink
         """
         if isinstance(self.config_source, GCSConfig):
-            database_name = self.client._client.project
+            database_name = self.client.project
         yield Either(
             right=CreateDatabaseRequest(
                 name=EntityName(database_name),
