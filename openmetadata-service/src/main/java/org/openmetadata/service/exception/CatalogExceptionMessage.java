@@ -280,6 +280,14 @@ public final class CatalogExceptionMessage {
         entityType);
   }
 
+  public static String onlyOneTeamAllowed() {
+    return "Only One Team is allowed to own Data Assets.";
+  }
+
+  public static String noTeamAndUserComboAllowed() {
+    return "Data Assets can have up to 5 users or a Team but not both as owners.";
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }
