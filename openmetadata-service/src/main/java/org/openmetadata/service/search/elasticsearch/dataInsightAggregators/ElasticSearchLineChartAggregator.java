@@ -6,6 +6,7 @@ import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.search.aggregations.Aggregation;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -90,9 +92,13 @@ public class ElasticSearchLineChartAggregator
       List<FormulaHolder> formulas) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
+    List<Aggregation> aggregationList =
+        Optional.ofNullable(searchResponse.getAggregations())
+            .orElse(new Aggregations(new ArrayList<>()))
+            .asList();
     if (lineChart.getGroupBy() != null) {
       List<DataInsightCustomChartResult> diChartResults = new ArrayList<>();
-      for (Aggregation arg : searchResponse.getAggregations().asList()) {
+      for (Aggregation arg : aggregationList) {
         ParsedTerms parsedTerms = (ParsedTerms) arg;
         for (Terms.Bucket bucket : parsedTerms.getBuckets()) {
           diChartResults.addAll(
@@ -107,8 +113,7 @@ public class ElasticSearchLineChartAggregator
       return resultList;
     }
     List<DataInsightCustomChartResult> results =
-        processAggregations(
-            searchResponse.getAggregations().asList(), lineChart.getFormula(), null, formulas);
+        processAggregations(aggregationList, lineChart.getFormula(), null, formulas);
     resultList.setResults(results);
     if (lineChart.getKpiDetails() != null) {
       resultList.setKpiDetails(lineChart.getKpiDetails());
