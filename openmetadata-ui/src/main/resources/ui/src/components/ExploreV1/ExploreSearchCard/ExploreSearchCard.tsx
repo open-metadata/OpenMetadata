@@ -218,7 +218,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
                 <Link
                   className={classNames('no-underline line-height-22 ', {
-                    'w-full': !hasGlossaryTermStatus,
+                    'w-max-full': !hasGlossaryTermStatus,
                     'm-r-xs': hasGlossaryTermStatus,
                   })}
                   data-testid="entity-link"

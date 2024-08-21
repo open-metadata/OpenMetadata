@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -144,6 +145,7 @@ export class ApiEndpointClass extends EntityClass {
   constructor(name?: string) {
     super(EntityTypeEndpoint.API_ENDPOINT);
     this.service.name = name ?? this.service.name;
+    this.serviceCategory = SERVICE_TYPE.ApiService;
     this.type = 'ApiEndpoint';
     this.childrenTabId = 'schema';
     this.childrenSelectorId = this.children[0].name;
