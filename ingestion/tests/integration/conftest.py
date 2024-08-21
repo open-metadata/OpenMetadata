@@ -5,9 +5,9 @@ from typing import List, Tuple, Type
 import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
-from ingestion.src.metadata.ingestion.api.common import Entity
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
 
@@ -59,7 +59,7 @@ def workflow_config(metadata):
     }
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def profiler_config(db_service, workflow_config, sink_config):
     return {
         "source": {
@@ -82,7 +82,7 @@ def profiler_config(db_service, workflow_config, sink_config):
     }
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def run_workflow():
     def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
@@ -152,8 +152,14 @@ def create_service_request():
     raise NotImplementedError("Implement in the test module")
 
 
-@pytest.fixture()
-def patch_passwords_for_db_services(db_service, unmask_password, monkeypatch):
+@pytest.fixture(scope="module")
+def monkeymodule():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
+
+
+@pytest.fixture(scope="module")
+def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
     """Patch the password for all db services returned by the metadata service.
 
     Usage:
@@ -178,12 +184,12 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeypatch):
 
         return inner
 
-    monkeypatch.setattr(
+    monkeymodule.setattr(
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name",
         override_password(OpenMetadata.get_by_name),
     )
 
-    monkeypatch.setattr(
+    monkeymodule.setattr(
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id",
         override_password(OpenMetadata.get_by_id),
     )
