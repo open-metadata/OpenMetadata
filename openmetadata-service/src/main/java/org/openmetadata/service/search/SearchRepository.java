@@ -109,30 +109,14 @@ public class SearchRepository {
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
-    if (config != null
-        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
-      searchClient = new OpenSearchClient(config);
-    } else {
-      searchClient = new ElasticSearchClient(config);
-    }
-    try {
-      if (config != null && (!nullOrEmpty(config.getSearchIndexFactoryClassName()))) {
-        this.searchIndexFactory =
-            Class.forName(config.getSearchIndexFactoryClassName())
-                .asSubclass(SearchIndexFactory.class)
-                .getDeclaredConstructor()
-                .newInstance();
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize search index factory using default one", e);
-    }
+    searchClient = buildSearchClient(config);
+    searchIndexFactory = buildIndexFactory();
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
-    Entity.setSearchRepository(this);
   }
 
   private void loadIndexMappings() {
@@ -162,6 +146,21 @@ public class SearchRepository {
     } catch (Exception e) {
       LOG.warn("Failed to load indexMapping.json");
     }
+  }
+
+  public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
+    SearchClient sc;
+    if (config != null
+        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+      sc = new OpenSearchClient(config);
+    } else {
+      sc = new ElasticSearchClient(config);
+    }
+    return sc;
+  }
+
+  public SearchIndexFactory buildIndexFactory() {
+    return new SearchIndexFactory();
   }
 
   public ElasticSearchConfiguration.SearchType getSearchType() {
@@ -880,5 +879,9 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
+  }
+
+  public <T> T getRestHighLevelClient() {
+    return (T) searchClient;
   }
 }

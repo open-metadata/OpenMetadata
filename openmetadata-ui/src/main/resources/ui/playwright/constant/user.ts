@@ -60,3 +60,7 @@ export const nouns = [
   'Horse',
   'Deer',
 ];
+
+export const USER_DESCRIPTION = `# Name of the User
+This is a profile of a user created for testing purposes.
+The description can be used to store additional information about the user.`;

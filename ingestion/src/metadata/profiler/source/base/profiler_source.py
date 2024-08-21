@@ -277,6 +277,7 @@ class ProfilerSource(ProfilerSourceInterface):
                 include_columns=self._get_include_columns(entity, table_config),
                 exclude_columns=self._get_exclude_columns(entity, table_config),
                 global_profiler_configuration=self.global_profiler_configuration,
+                db_service=db_service,
             )
 
         metrics = (
