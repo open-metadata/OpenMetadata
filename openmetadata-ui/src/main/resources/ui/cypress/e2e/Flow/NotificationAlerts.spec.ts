@@ -267,6 +267,11 @@ describe(
           .click();
       });
 
+      cy.get('[data-testid="connection-timeout-input"]')
+        .scrollIntoView()
+        .clear()
+        .type('26');
+
       addInternalDestination(0, 'Owners', 'G Chat');
       addInternalDestination(
         1,
