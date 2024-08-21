@@ -317,7 +317,9 @@ export const isProtectedRoute = (pathname: string) => {
 };
 
 export const isTourRoute = (pathname: string) => {
-  return pathname === ROUTES.TOUR;
+  const cleanedPathname = pathname.replace(process.env.APP_SUB_PATH ?? '', '');
+
+  return cleanedPathname === ROUTES.TOUR;
 };
 
 export const getUrlPathnameExpiry = () => {
