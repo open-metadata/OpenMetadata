@@ -556,7 +556,7 @@ public class FeedRepository {
         List<String> teamIds = getTeamIds(user);
         List<String> teamNames = getTeamNames(user);
         String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
-        List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+        String userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
         result =
             dao.feedDAO()
                 .listCountByOwner(
@@ -1087,14 +1087,14 @@ public class FeedRepository {
     return result.toString();
   }
 
-  private List<String> getUserTeamJsonPostgres(UUID userId, List<String> teamIds) {
-    // Build a list of objects like this for the tasks filter
-    // [{"id":"9e78b924-b75c-4141-9845-1b3eb81fdc1b","type":"team"}]','[{"id":"fe21e1ba-ce00-49fa-8b62-3c9a6669a11b","type":"user"}]
-    List<String> result = new ArrayList<>();
-    JSONObject json = getUserTeamJson(userId, "user");
-    result.add(List.of(json.toString()).toString());
-    teamIds.forEach(id -> result.add(List.of(getUserTeamJson(id, "team").toString()).toString()));
-    return result;
+  private String getUserTeamJsonPostgres(UUID userId, List<String> teamIds) {
+    StringBuilder result = new StringBuilder();
+    result.append(userId.toString());
+    for (String id : teamIds) {
+      result.append(" | ").append(id);
+    }
+    LOG.info("result {}", result.toString());
+    return result.toString();
   }
 
   private JSONObject getUserTeamJson(UUID userId, String type) {
@@ -1108,7 +1108,7 @@ public class FeedRepository {
   /** Return the tasks assigned to the user. */
   private FilteredThreads getTasksAssignedTo(FeedFilter filter, UUID userId, int limit) {
     List<String> teamIds = getTeamIds(userId);
-    List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+    String userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
     List<String> jsons =
         dao.feedDAO()
@@ -1155,7 +1155,7 @@ public class FeedRepository {
   private FilteredThreads getTasksOfUser(FeedFilter filter, UUID userId, int limit) {
     String username = Entity.getEntityReferenceById(Entity.USER, userId, ALL).getName();
     List<String> teamIds = getTeamIds(userId);
-    List<String> userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
+    String userTeamJsonPostgres = getUserTeamJsonPostgres(userId, teamIds);
     String userTeamJsonMysql = getUserTeamJsonMysql(userId, teamIds);
     List<String> jsons =
         dao.feedDAO()

@@ -311,3 +311,21 @@ DELETE er FROM entity_relationship er JOIN installed_apps ia ON er.fromId = ia.i
 DELETE er FROM entity_relationship er JOIN apps_marketplace ia ON er.fromId = ia.id OR er.toId = ia.id WHERE ia.name = 'SearchIndexingApplication';
 DELETE from installed_apps where name = 'SearchIndexingApplication';
 DELETE from apps_marketplace where name = 'SearchIndexingApplication';
+
+-- Drop the existing taskAssigneesIds
+DROP INDEX taskAssigneesIds_index ON thread_entity;
+
+ALTER TABLE thread_entity DROP COLUMN taskAssigneesIds;
+
+ALTER TABLE thread_entity
+ADD COLUMN taskAssigneesIds TEXT GENERATED ALWAYS AS (
+    REPLACE(
+        REPLACE(
+            JSON_UNQUOTE(
+                JSON_EXTRACT(taskAssignees, '$[*].id')
+            ), '[', ''
+        ), ']', ''
+    )
+) STORED;
+
+CREATE FULLTEXT INDEX taskAssigneesIds_index ON thread_entity(taskAssigneesIds);
