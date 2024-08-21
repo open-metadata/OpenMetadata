@@ -584,6 +584,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             config.getSecretsManagerConfiguration(), config.getClusterName());
 
     collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(collectionDAO);
     Entity.initializeRepositories(config, jdbi);
   }
