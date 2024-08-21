@@ -57,7 +57,7 @@
       "apiEndpoint",
       "apiCollection"
     ],
-    "recreateIndex": true,
+    "recreateIndex": false,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
   }
