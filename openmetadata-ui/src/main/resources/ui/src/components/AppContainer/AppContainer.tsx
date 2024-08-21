@@ -79,6 +79,7 @@ const AppContainer = () => {
         className={classNames('app-container', {
           ['extra-banner']: Boolean(bannerDetails),
           ['alert-banner']: Boolean(alert),
+          ['reserve-right-sidebar']: Boolean(ApplicationExtras),
         })}>
         <Sider
           className={classNames('left-sidebar-col', {

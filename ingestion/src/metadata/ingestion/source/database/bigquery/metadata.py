@@ -11,6 +11,7 @@
 """
 Bigquery source module
 """
+import ast
 import os
 import traceback
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -412,7 +413,10 @@ class BigquerySource(
             )
 
             query_result = [result.schema_description for result in query_resp.result()]
-            return fqn.unquote_name(query_result[0])
+
+            return str(
+                ast.literal_eval(query_result[0])
+            )  # To safely evaluate the string, unquote and interpret escaped characters
         except IndexError:
             logger.debug(f"No dataset description found for {schema_name}")
         except Exception as err:
