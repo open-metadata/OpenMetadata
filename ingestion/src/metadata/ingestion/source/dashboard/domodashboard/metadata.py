@@ -217,7 +217,7 @@ class DomodashboardSource(DashboardServiceSource):
             try:
                 chart = self.client.custom.get_chart_details(page_id=chart_id)
                 chart_url = (
-                    f"{self.service_connection.instanceDomain}/page/"
+                    f"{self.service_connection.instanceDomain}page/"
                     f"{dashboard_details.id}/kpis/details/{chart_id}"
                 )
 
