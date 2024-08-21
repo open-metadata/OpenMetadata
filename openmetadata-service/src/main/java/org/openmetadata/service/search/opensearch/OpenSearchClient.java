@@ -280,11 +280,7 @@ public class OpenSearchClient implements SearchClient {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
-      // Get the child aliases
-      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
 
-      // Add the child aliases to the set of aliases
-      aliases.addAll(childAliases);
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
               .index(indexMapping.getIndexName(clusterAlias))

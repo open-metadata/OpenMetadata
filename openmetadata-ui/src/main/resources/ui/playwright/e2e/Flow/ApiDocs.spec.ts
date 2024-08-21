@@ -27,7 +27,7 @@ test.describe('API docs should work properly', () => {
 
     await expect(
       page.getByRole('link', {
-        name: 'openmetadata-dev@googlegroups.com',
+        name: 'openmetadata-dev@googlegroups',
       })
     ).toBeVisible();
 

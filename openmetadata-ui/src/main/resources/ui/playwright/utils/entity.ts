@@ -1202,8 +1202,6 @@ export const checkDataAssetWidget = async (
   index: string,
   serviceType: string
 ) => {
-  await page.click('[data-testid="welcome-screen-close-btn"]');
-
   const quickFilterResponse = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
   );
