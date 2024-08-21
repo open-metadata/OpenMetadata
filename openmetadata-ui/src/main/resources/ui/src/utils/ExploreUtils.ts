@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { get, isEmpty } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import {
   ExploreQuickFilterField,
   ExploreSearchIndex,
@@ -25,6 +25,7 @@ import {
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
 import { NULL_OPTION_KEY } from '../constants/AdvancedSearch.constants';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { Aggregations } from '../interface/search.interface';
 import {
   EsBoolQuery,
@@ -177,6 +178,7 @@ export const extractTermKeys = (objects: QueryFieldInterface[]): string[] => {
 
 export const getSubLevelHierarchyKey = (
   isDatabaseHierarchy = false,
+  filterField?: ExploreQuickFilterField[],
   key?: EntityFields,
   value?: string
 ) => {
@@ -184,8 +186,10 @@ export const getSubLevelHierarchyKey = (
     query: { bool: {} },
   };
 
-  if (key && value) {
-    (queryFilter.query.bool as EsBoolQuery).must = { term: { [key]: value } };
+  if ((key && value) || filterField) {
+    (queryFilter.query.bool as EsBoolQuery).must = isUndefined(filterField)
+      ? { term: { [key ?? '']: value } }
+      : getExploreQueryFilterMust(filterField);
   }
 
   const bucketMapping = isDatabaseHierarchy
@@ -204,6 +208,39 @@ export const getSubLevelHierarchyKey = (
     bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
     queryFilter,
   };
+};
+
+export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
+  const must = [] as Array<QueryFieldInterface>;
+
+  // Mapping the selected advanced search quick filter dropdown values
+  // to form a queryFilter to pass as a search parameter
+  data.forEach((filter) => {
+    if (!isEmpty(filter.value)) {
+      const should = [] as Array<QueryFieldInterface>;
+      filter.value?.forEach((filterValue) => {
+        const term = {
+          [filter.key]: filterValue.key,
+        };
+
+        if (filterValue.key === NULL_OPTION_KEY) {
+          should.push({
+            bool: {
+              must_not: { exists: { field: filter.key } },
+            },
+          });
+        } else {
+          should.push({ term });
+        }
+      });
+
+      if (should.length > 0) {
+        must.push({ bool: { should } });
+      }
+    }
+  });
+
+  return must;
 };
 
 export const updateTreeData = (
@@ -263,5 +300,19 @@ export const getQuickFilterObject = (
         label: bucketValue,
       },
     ],
+  };
+};
+
+export const getQuickFilterObjectForEntities = (
+  bucketKey: EntityFields,
+  bucketValues: EntityType[]
+) => {
+  return {
+    label: bucketKey,
+    key: bucketKey,
+    value: bucketValues.map((value) => ({
+      key: value,
+      label: value,
+    })),
   };
 };

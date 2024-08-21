@@ -29,6 +29,7 @@ import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
   getQuickFilterObject,
+  getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
   updateCountsInTreeData,
   updateTreeData,
@@ -114,6 +115,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               }
             : getSubLevelHierarchyKey(
                 rootIndex === SearchIndex.DATABASE,
+                treeNode?.data?.filterField,
                 currentBucketKey as EntityFields,
                 currentBucketValue
               );
@@ -212,6 +214,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           getQuickFilterObject(EntityFields.ENTITY_TYPE, node.data?.entityType),
         ];
         onFieldValueSelect(filterField);
+      } else if (node.data?.childEntities) {
+        onFieldValueSelect([
+          getQuickFilterObjectForEntities(
+            EntityFields.ENTITY_TYPE,
+            node.data?.childEntities
+          ),
+        ]);
       }
       setSelectedKeys([node.key]);
     },
