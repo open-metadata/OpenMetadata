@@ -13,6 +13,7 @@ import es.org.elasticsearch.search.aggregations.bucket.filter.ParsedFilter;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.Histogram;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.ParsedDateHistogram;
+import es.org.elasticsearch.search.aggregations.metrics.ParsedCardinality;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedSingleValueNumericMetricsAggregation;
 import es.org.elasticsearch.search.aggregations.metrics.ParsedValueCount;
 import es.org.elasticsearch.search.aggregations.support.ValuesSourceAggregationBuilder;
@@ -54,6 +55,8 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
         return AggregationBuilders.min(field + index).field(field);
       case MAX:
         return AggregationBuilders.max(field + index).field(field);
+      case UNIQUE:
+        return AggregationBuilders.cardinality(field + index).field(field);
     }
     return null;
   }
@@ -234,6 +237,8 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       String group) {
     if (subAggr instanceof ParsedValueCount)
       addProcessedSubResult((ParsedValueCount) subAggr, diChartResults, day, group);
+    else if (subAggr instanceof ParsedCardinality)
+      addProcessedSubResult((ParsedCardinality) subAggr, diChartResults, day, group);
     else if (subAggr instanceof ParsedSingleValueNumericMetricsAggregation)
       addProcessedSubResult(
           (ParsedSingleValueNumericMetricsAggregation) subAggr, diChartResults, day, group);
@@ -247,6 +252,20 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       Double day,
       String group) {
     ParsedValueCount parsedValueCount = aggregation;
+    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    if (!Double.isInfinite(value) && !Double.isNaN(value)) {
+      DataInsightCustomChartResult diChartResult =
+          new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
+      diChartResults.add(diChartResult);
+    }
+  }
+
+  private void addProcessedSubResult(
+      ParsedCardinality aggregation,
+      List<DataInsightCustomChartResult> diChartResults,
+      Double day,
+      String group) {
+    ParsedCardinality parsedValueCount = aggregation;
     Double value = Double.valueOf((double) parsedValueCount.getValue());
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
