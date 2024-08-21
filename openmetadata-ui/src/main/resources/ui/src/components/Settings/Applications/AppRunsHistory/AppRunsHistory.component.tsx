@@ -13,7 +13,7 @@
 import { Button, Col, Row, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, isNull } from 'lodash';
+import { isNull } from 'lodash';
 import React, {
   forwardRef,
   useCallback,
@@ -24,7 +24,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  STATUS_LABEL,
+} from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { Status } from '../../../../generated/entity/applications/appRunRecord';
@@ -180,12 +183,14 @@ const AppRunsHistory = forwardRef(
               record.status ?? Status.Failed
             );
 
-            return (
+            return record.status ? (
               <StatusBadge
                 dataTestId="pipeline-status"
-                label={capitalize(record.status)}
+                label={STATUS_LABEL[record.status]}
                 status={status}
               />
+            ) : (
+              NO_DATA_PLACEHOLDER
             );
           },
         },
