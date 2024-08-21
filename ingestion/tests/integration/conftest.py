@@ -6,13 +6,16 @@ import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseMetadataConfigType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
 
 if not sys.version_info >= (3, 9):
-    collect_ignore = ["trino"]
+    collect_ignore = ["trino", "kafka"]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -215,7 +218,9 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
         "source": {
             "type": db_service.connection.config.type.value.lower(),
             "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+            "sourceConfig": {
+                "config": {"type": DatabaseMetadataConfigType.DatabaseMetadata.value}
+            },
             "serviceConnection": db_service.connection.model_dump(),
         },
         "sink": sink_config,

@@ -1,6 +1,6 @@
 ---
 title: External Profiler Workflow
-slug: /quality-and-observability/profiler/external-workflow
+slug: /how-to-guides/data-quality-observability/profiler/external-workflow
 ---
 
 # External Profiler Workflow
@@ -23,7 +23,7 @@ You might also want to check out how to configure external sample data. You can 
 {% tile
 title="External Sample Data"
 description="Configure OpenMetadata to store sample data in an external storage such as S3"
-link="/connectors/ingestion/workflows/profiler/external-sample-data"
+link="/how-to-guides/data-quality-observability/profiler/external-sample-data"
 / %}
 {% /tilesContainer %}
 
@@ -34,7 +34,7 @@ Note that running a single profiler workflow is only supported if you run the wo
 
 {% /note %}
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
 ### Requirements
 
@@ -54,7 +54,7 @@ pip install "openmetadata-ingestion[athena,datalake,trino]~=1.2.1"
 ```
 
 - The `athena` plugin will bring all the requirements to connect to the Athena Service
-- The `datalake` plugin helps us connect to S3 to manage the [sample data](/connectors/ingestion/workflows/profiler/external-sample-data)
+- The `datalake` plugin helps us connect to S3 to manage the [sample data](/how-to-guides/data-quality-observability/profiler/external-sample-data)
 - The `trino` plugin will only be needed temporarily
 
 ## 1. Define the YAML Config
@@ -169,7 +169,7 @@ If you'd rather have a Python script taking care of the execution, you can use:
 
 ```python
 from metadata.workflow.profiler import ProfilerWorkflow
- 
+from metadata.workflow.workflow_output_handler import print_status
 
 # Specify your YAML configuration
 CONFIG = """
@@ -188,7 +188,7 @@ def run():
     workflow = ProfilerWorkflow.create(workflow_config)
     workflow.execute()
     workflow.raise_from_status()
-    workflow.print_status()
+    print_status(workflow)
     workflow.stop()
 
 

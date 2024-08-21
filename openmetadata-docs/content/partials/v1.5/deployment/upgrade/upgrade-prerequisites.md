@@ -125,6 +125,14 @@ We believe this update will bring greater consistency and clarity to our version
 - `metadata insight` command removed.
   Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.
 
+### Database Connection Pooling
+
+- OpenMetadata leverages Jdbi for database operations like reading, writing, and deleting. In this release, we've introduced new configuration options to enhance connection pooling, enabling more efficient database usage, especially in resource-constrained environments.
+
+If your cluster operates at a large scale, consider updating these default settings to optimize connection management.
+
+For detailed information on the new configurations, please refer to the [documentation](/deployment/database-connection-pooling).
+
 ### UI
 
 ### API

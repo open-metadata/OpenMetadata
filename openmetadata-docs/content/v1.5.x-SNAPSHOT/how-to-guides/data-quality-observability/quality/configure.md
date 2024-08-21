@@ -1,9 +1,9 @@
 ---
-title: Data Quality
-slug: /quality-and-observability/data-quality
+title: Configure Data Quality
+slug: /how-to-guides/data-quality-observability/quality/configure
 ---
 
-# Data Quality
+# Configure Data Quality
 
 Learn how you can use OpenMetadata to define Data Quality tests and measure your data reliability.
 
@@ -61,7 +61,7 @@ Tests cases are actual test that will be ran and executed against your entity. T
 Navigate to the entity you want to add a test to (we currently support quality test only for database entity). Go to `Profiler & Data Quality` tab. From there, click on the `Add Test` button in the upper right corner and select the type of test you want to implement
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/add-test-case.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/add-test-case.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
@@ -72,24 +72,24 @@ Select the type of test you want to run and set the parameters (if any) for your
 **Note:** if you have a profiler workflow running, you will be able to visualize some context around your column or table data.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/add-test-defintion.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/add-test-defintion.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
 
 ## Step 3: Set an Execution Schedule (Optional)
-If it is the first test you are creating for this entity, you'll need to set an execution time. click on `Add Ingestion` button and select a schedule. Note that the time is shown in UTC.
+Starting in 1.5 it is possible to create multiple pipeline for your test cases. If you want to execute all of your test cases within the same pipeline you can simply toggle on the `Select All` on the ingestion configuration page. Otherwise you can select the specific test cases the pipeline will execute. The second options allows you to orchestrate pipelines at different times for different test cases.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/add-ingestion.png"
-  alt="Write your first test"
-  caption="Write your first test"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/add-ingestion.png"
+  alt="Create an ingestion pipeline"
+  caption="Create an ingestion pipeline"
  /%}
 
 {% image
   src="/images/v1.5/features/ingestion/workflows/data-quality/ingestion-page.png"
-  alt="Write your first test"
-  caption="Write your first test"
+  alt="Schedule you test execution"
+  caption="Schedule you test execution"
  /%}
 
 ## Adding Test Suites Through the UI
@@ -100,7 +100,7 @@ Test Suites are logical container allowing you to group related Test Cases toget
 From the vertical navigation bar, click on `Quality` and navigate to the `By Test Suites` tab. From there click on `Add Test Suite` button on the top right corner.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/profiler-tab-view.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/profiler-tab-view.png"
   alt="Write your first test"
   caption="Write your first test"
  /%}
@@ -109,7 +109,7 @@ From the vertical navigation bar, click on `Quality` and navigate to the `By Tes
 On the next page, enter the name and description (optional) of your test suite.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/test-suite-page.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-suite-page.png"
   alt="Create test suite"
   caption="Create test suite"
  /%}
@@ -121,13 +121,13 @@ On the next page, you will be able to add existing test cases from different ent
 **Note:** Test Case name needs to be unique across the whole platform. A warning message will show if your Test Case name is not unique.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/test-case-page.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-case-page.png"
   alt="Create test case"
   caption="Create test case"
  /%}
 
 
-{% partial file="/v1.5/connectors/yaml/data-quality.md" /%}
+{% partial file="/v1.4/connectors/yaml/data-quality.md" /%}
 
 ## How to Visualize Test Results
 ### From the Quality Page
@@ -139,7 +139,7 @@ From the home page click on the `Quality` menu item on the vertical navigation. 
 If you want to look at your tests grouped by Test Suites, navigate to the `By Test Suites` tab. This will bring you to the Test Suite page where you can select a specific Test Suite.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/test-suite-home-page.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-suite-home-page.png"
   alt="Test suite home page"
   caption="Test suite home page"
  /%}
@@ -148,7 +148,7 @@ If you want to look at your tests grouped by Test Suites, navigate to the `By Te
 From there you can select a Test Suite and visualize the results associated with this specific Test Suite.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/test-suite-results.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/test-suite-results.png"
   alt="Test suite results page"
   caption="Test suite results page"
  /%}
@@ -160,7 +160,7 @@ Navigate to your table and click on the `profiler & Data Quality` tab. From ther
 In the top panel, click on the white background `Data Quality` button. This will bring you to a summary of all your quality tests at the table level
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/table-results-entity.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/table-results-entity.png"
   alt="Test suite results table"
   caption="Test suite results table"
  /%}
