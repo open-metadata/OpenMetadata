@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.fivetranConn
     FivetranConnection,
 )
 from metadata.ingestion.ometa.client import REST, ClientConfig
+from metadata.utils.helpers import clean_uri
 
 
 class FivetranClient:
@@ -36,7 +37,7 @@ class FivetranClient:
         )
 
         client_config: ClientConfig = ClientConfig(
-            base_url=str(self.config.hostPort)[:-1],  # remove trailing slash
+            base_url=clean_uri(str(self.config.hostPort)),
             api_version="v1",
             auth_header="Authorization",
             auth_token=lambda: (api_token[2:-1], 0),
