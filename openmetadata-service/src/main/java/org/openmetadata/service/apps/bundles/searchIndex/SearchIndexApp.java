@@ -89,7 +89,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
           "domain",
           "storedProcedure",
           "storageService",
-          "testCaseResolutionStatus");
+          "testCaseResolutionStatus",
+          "apiService",
+          "apiEndpoint",
+          "apiCollection");
   public static final Set<String> TIME_SERIES_ENTITIES =
       Set.of(
           ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),

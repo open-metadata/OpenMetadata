@@ -277,3 +277,9 @@ jsonb_build_array(json#>'{dataModel,owner}')) where json #>> '{dataModel,owner}'
 CREATE INDEX IF NOT EXISTS  extension_index  ON entity_extension (extension);
 
 ALTER TABLE test_definition ALTER COLUMN name TYPE VARCHAR(512);
+
+-- Remove SearchIndexing for api Service, collection and endpoint
+DELETE FROM entity_relationship er USING installed_apps ia WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name = 'SearchIndexingApplication';
+DELETE FROM entity_relationship er USING apps_marketplace ia WHERE (er.fromId = ia.id OR er.toId = ia.id) AND ia.name = 'SearchIndexingApplication';
+DELETE from installed_apps where name = 'SearchIndexingApplication';
+DELETE from apps_marketplace where name = 'SearchIndexingApplication';
