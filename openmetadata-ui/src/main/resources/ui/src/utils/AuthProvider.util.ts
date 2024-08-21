@@ -41,9 +41,9 @@ export const EXPIRY_THRESHOLD_MILLES = 25 * 1000;
 // 2 minutes for client auth approach
 export const EXPIRY_THRESHOLD_MILLES_PUBLIC = 2 * 60 * 1000;
 
-export const getRedirectUri = (callbackUrl: string) => {
-  const subPath = process.env.APP_SUB_PATH ?? '';
+const subPath = process.env.APP_SUB_PATH ?? '';
 
+export const getRedirectUri = (callbackUrl: string) => {
   return isDev()
     ? `http://localhost:3000${subPath}/callback`
     : !isNil(callbackUrl)
@@ -52,8 +52,6 @@ export const getRedirectUri = (callbackUrl: string) => {
 };
 
 export const getSilentRedirectUri = () => {
-  const subPath = process.env.APP_SUB_PATH ?? '';
-
   return isDev()
     ? `http://localhost:3000${subPath}/silent-callback`
     : `${window.location.origin}${subPath}/silent-callback`;
