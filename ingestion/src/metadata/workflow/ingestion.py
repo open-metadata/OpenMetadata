@@ -66,22 +66,33 @@ class IngestionWorkflow(BaseWorkflow, ABC):
     steps: Tuple[Step]
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
-        self.config = config
-
-        self.service_type: ServiceType = get_service_type_from_source_type(
-            self.config.source.type
-        )
-
-        metadata_config: OpenMetadataConnection = (
-            self.config.workflowConfig.openMetadataServerConfig
-        )
-
-        super().__init__(
+        super().__init__(  # Mova a chamada para super() antes de inicializar atributos
             config=config,
             log_level=config.workflowConfig.loggerLevel,
-            metadata_config=metadata_config,
-            service_type=self.service_type,
+            metadata_config=config.workflowConfig.openMetadataServerConfig,
+            service_type=get_service_type_from_source_type(config.source.type),
         )
+
+        self.config = config
+        self.service_type = get_service_type_from_source_type(
+            self.config.source.type
+        )
+        # self.config = config
+
+        # self.service_type: ServiceType = get_service_type_from_source_type(
+        #     self.config.source.type
+        # )
+
+        # metadata_config: OpenMetadataConnection = (
+        #     self.config.workflowConfig.openMetadataServerConfig
+        # )
+
+        # super().__init__(
+        #     config=config,
+        #     log_level=config.workflowConfig.loggerLevel,
+        #     metadata_config=metadata_config,
+        #     service_type=self.service_type,
+        # )
 
     @abstractmethod
     def set_steps(self):

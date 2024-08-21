@@ -46,7 +46,7 @@ class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
     def __init__(
-        self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable
+        self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable, cache
     ):
         """Instantiate base table computer"""
         self._runner = runner
@@ -55,6 +55,7 @@ class AbstractTableMetricComputer(ABC):
         self._database = self._runner._session.get_bind().url.database
         self._table = self._runner.table
         self._entity = entity
+        self._cache = cache
 
     @property
     def database(self):
@@ -277,14 +278,45 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
 
     def compute(self):
         """compute table metrics for bigquery"""
+        # Read table metrics from cache
+        tables_metrics = self._cache.get('tables_metrics')
+        if not tables_metrics:
+            tables_metrics = self.get_tables_metrics()
+            # Store table metrics in cache
+            #cache_metadata(object_id, data)
+            self._cache['tables_metrics'] = tables_metrics
+            
+
+        if not tables_metrics:
+            return None
+        
+        res = [table_metrics for table_metrics in tables_metrics if table_metrics.get('tableId') == self.table_name]
+
+        if not res:
+            return None
+        
+        get_view_rows = False
+
+        res = res[0]
+        if res.get('rowCount') is None or (
+            res.get('rowCount') == 0 and self._entity.tableType == TableType.View
+            and get_view_rows
+        ):
+            # if we don't have any row count, fallback to the base logic
+            return super().compute()
+        return res
+
+
+    def get_tables_metrics(self):
+        """Compute table metrics for all tables in Bigquery dataset"""
         try:
-            return self.tables()
+            return self.tables_metrics()
         except Exception as exc:
             # if an error occurs fetching data from `__TABLES__`, fallback to `TABLE_STORAGE`
             logger.debug(f"Error retrieving table metadata from `__TABLES__`: {exc}")
-            return self.table_storage()
+            return self.tables_storage()
 
-    def table_storage(self):
+    def tables_storage(self):
         """Fall back method if retrieving table metadata from`__TABLES__` fails"""
         columns = [
             Column("total_rows").label("rowCount"),
@@ -296,8 +328,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         where_clause = [
             Column("project_id")
             == self.conn_config.credentials.gcpConfig.projectId.root,
-            Column("table_schema") == self.schema_name,
-            Column("table_name") == self.table_name,
+            Column("table_schema") == self.schema_name
         ]
 
         query = self._build_query(
@@ -309,29 +340,25 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             where_clause,
         )
 
-        res = self.runner._session.execute(query).first()
+        res = self.runner._session.execute(query).mappings().all()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
-            # if we don't have any row count, fallback to the base logic
-            return super().compute()
+
         return res
 
-    def tables(self):
+    def tables_metrics(self):
         """retrieve table metadata from `__TABLES__`"""
         columns = [
             Column("row_count").label("rowCount"),
             Column("size_bytes").label("sizeInBytes"),
             func.TIMESTAMP_MILLIS(Column("creation_time")).label(CREATE_DATETIME),
+            Column("table_id").label("tableId"),
             *self._get_col_names_and_count(),
         ]
         where_clause = [
             Column("project_id")
             == self.conn_config.credentials.gcpConfig.projectId.root,
-            Column("dataset_id") == self.schema_name,
-            Column("table_id") == self.table_name,
+            Column("dataset_id") == self.schema_name
         ]
         query = self._build_query(
             columns,
@@ -341,16 +368,11 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             ),
             where_clause,
         )
-        res = self.runner._session.execute(query).first()
+        res = self.runner._session.execute(query).mappings().all()
         if not res:
             return None
-        if res.rowCount is None or (
-            res.rowCount == 0 and self._entity.tableType == TableType.View
-        ):
-            # if we don't have any row count, fallback to the base logic
-            return super().compute()
-        return res
 
+        return res
 
 class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
@@ -429,6 +451,7 @@ class TableMetricComputer:
         metrics: List[Metrics],
         conn_config,
         entity: OMTable,
+        cache
     ):
         """Instantiate table metric computer with a dialect computer"""
         self._entity = entity
@@ -436,6 +459,7 @@ class TableMetricComputer:
         self._runner = runner
         self._metrics = metrics
         self._conn_config = conn_config
+        self._cache = cache
         self.table_metric_computer: AbstractTableMetricComputer = (
             table_metric_computer_factory.construct(
                 self._dialect,
@@ -443,6 +467,7 @@ class TableMetricComputer:
                 metrics=self._metrics,
                 conn_config=self._conn_config,
                 entity=self._entity,
+                cache=self._cache
             )
         )
 

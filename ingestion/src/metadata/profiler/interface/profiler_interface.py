@@ -92,6 +92,7 @@ class ProfilerInterface(ABC):
         self,
         service_connection_config: Union[DatabaseConnection, DatalakeConnection],
         ometa_client: OpenMetadata,
+        cache,
         entity: Table,
         storage_config: DataStorageConfig,
         profile_sample_config: Optional[ProfileSampleConfig],
@@ -108,6 +109,7 @@ class ProfilerInterface(ABC):
         self.table_entity = entity
         self.storage_config = storage_config
         self.ometa_client = ometa_client
+        self.cache = cache
         self.source_config = source_config
         self.service_connection_config = service_connection_config
         self.connection = get_ssl_connection(self.service_connection_config)
@@ -153,6 +155,7 @@ class ProfilerInterface(ABC):
         source_config: DatabaseServiceProfilerPipeline,
         service_connection_config,
         ometa_client: Optional[OpenMetadata],
+        cache,
         **kwargs,
     ) -> "ProfilerInterface":
         """create class method is used to dispatch the profiler protocol to the
@@ -213,6 +216,7 @@ class ProfilerInterface(ABC):
         return cls(
             service_connection_config=service_connection_config,
             ometa_client=ometa_client,
+            cache=cache,
             entity=entity,
             storage_config=storage_config,
             profile_sample_config=profile_sample_config,

@@ -57,6 +57,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         self,
         service_connection_config,
         ometa_client,
+        cache,
         entity,
         storage_config,
         profile_sample_config,
@@ -73,6 +74,7 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         super().__init__(
             service_connection_config,
             ometa_client,
+            cache,
             entity,
             storage_config,
             profile_sample_config,

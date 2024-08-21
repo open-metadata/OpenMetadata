@@ -16,7 +16,6 @@ supporting sqlalchemy abstraction layer
 """
 
 import concurrent.futures
-import math
 import threading
 import traceback
 from collections import defaultdict
@@ -75,6 +74,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         self,
         service_connection_config,
         ometa_client,
+        cache,
         entity,
         storage_config,
         profile_sample_config,
@@ -92,6 +92,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         super().__init__(
             service_connection_config,
             ometa_client,
+            cache,
             entity,
             storage_config,
             profile_sample_config,
@@ -192,6 +193,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 metrics=metrics,
                 conn_config=self.service_connection_config,
                 entity=self.table_entity,
+                cache=self.cache
             )
             row = table_metric_computer.compute()
             if row:
@@ -451,14 +453,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     column=metric_func.column,
                     sample=sample,
                 )
-                if row:
-                    for k, v in row.items():
-                        # Replace NaN values with None
-                        if isinstance(v, float) and math.isnan(v):
-                            logger.warning(
-                                "NaN data detected and will be cast to null in OpenMetadata to maintain database parity"
-                            )
-                            row[k] = None
             except Exception as exc:
                 error = (
                     f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "

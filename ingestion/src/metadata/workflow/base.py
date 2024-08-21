@@ -15,6 +15,7 @@ Base workflow definition.
 import traceback
 import uuid
 from abc import ABC, abstractmethod
+from cachetools import TTLCache
 from datetime import datetime
 from typing import Any, Dict, List, Optional, TypeVar, Union
 
@@ -99,6 +100,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self._execution_time_tracker = ExecutionTimeTracker(
             log_level == LogLevels.DEBUG
         )
+        self._cache = TTLCache(maxsize=5, ttl=300)
 
         set_loggers_level(log_level.value)
 

@@ -82,11 +82,13 @@ class OpenMetadataSource(Source):
         self,
         config: OpenMetadataWorkflowConfig,
         metadata: OpenMetadata,
+        cache
     ):
         self.init_steps()
 
         self.config = config
         self.metadata = metadata
+        self.cache = cache
         self.test_connection()
 
         # Init and type the source config
@@ -133,6 +135,7 @@ class OpenMetadataSource(Source):
                     database,
                     self.metadata,
                     global_profiler_config,
+                    self.cache
                 )
                 for entity in self.get_table_entities(database=database):
                     yield Either(
@@ -155,10 +158,11 @@ class OpenMetadataSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
+        cache,
         pipeline_name: Optional[str] = None,
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
-        return cls(config=config, metadata=metadata)
+        return cls(config=config, metadata=metadata, cache=cache)
 
     def filter_databases(self, database: Database) -> Optional[Database]:
         """Returns filtered database entities"""

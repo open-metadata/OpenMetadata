@@ -59,6 +59,7 @@ class ProfilerSource(ProfilerSourceInterface):
         database: DatabaseService,
         ometa_client: OpenMetadata,
         global_profiler_configuration: ProfilerConfiguration,
+        cache
     ):
         self.service_conn_config = self._copy_service_config(config, database)
         self.source_config = config.source.sourceConfig.config
@@ -69,6 +70,7 @@ class ProfilerSource(ProfilerSourceInterface):
             config.processor.model_dump().get("config")
         )
         self.ometa_client = ometa_client
+        self.cache = cache
         self.profiler_interface_type: str = self._get_profiler_interface_type(config)
         self.sqa_metadata = self._set_sqa_metadata()
         self._interface = None
@@ -212,6 +214,7 @@ class ProfilerSource(ProfilerSourceInterface):
             self.service_conn_config,
             self.ometa_client,
             sqa_metadata=self.sqa_metadata,
+            cache=self.cache
         )  # type: ignore
 
         self.interface = profiler_interface
@@ -277,7 +280,6 @@ class ProfilerSource(ProfilerSourceInterface):
                 include_columns=self._get_include_columns(entity, table_config),
                 exclude_columns=self._get_exclude_columns(entity, table_config),
                 global_profiler_configuration=self.global_profiler_configuration,
-                db_service=db_service,
             )
 
         metrics = (

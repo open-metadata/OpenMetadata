@@ -54,7 +54,7 @@ class ProfilerWorkflow(IngestionWorkflow):
 
     def set_steps(self):
         source_class = self._get_source_class()
-        self.source = source_class.create(self.config.model_dump(), self.metadata)
+        self.source = source_class.create(self.config.model_dump(), self.metadata, self._cache)
 
         profiler_processor = self._get_profiler_processor()
         pii_processor = self._get_pii_processor()
