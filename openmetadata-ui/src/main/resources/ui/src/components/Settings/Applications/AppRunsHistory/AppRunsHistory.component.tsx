@@ -180,7 +180,7 @@ const AppRunsHistory = forwardRef(
           key: 'status',
           render: (_, record: AppRunRecordWithId) => {
             const status: StatusType = getStatusTypeForApplication(
-              record.status ?? Status.Failed
+              record.status ?? Status.Stopped
             );
 
             return record.status ? (

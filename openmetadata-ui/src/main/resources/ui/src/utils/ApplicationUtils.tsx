@@ -32,8 +32,14 @@ export const getStatusTypeForApplication = (status: Status) => {
     case Status.Running:
       return StatusType.Warning;
 
+    case Status.ActiveError:
+      return StatusType.ActiveError;
+
+    case Status.Started:
+      return StatusType.Started;
+
     default:
-      return StatusType.Failure;
+      return StatusType.Stopped;
   }
 };
 

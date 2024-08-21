@@ -36,4 +36,20 @@
     border-color: @yellow-2;
     background-color: @yellow-3;
   }
+  &.started,
+  &.running {
+    color: @purple-3;
+    background-color: @purple-1;
+    border: 1px solid @purple-3;
+  }
+  &.stopped {
+    color: @grey-3;
+    background-color: @grey-2;
+    border: 1px solid @grey-3;
+  }
+  &.activeError {
+    color: @severity-2;
+    background-color: @severity-2-background;
+    border: 1px solid @severity-2;
+  }
 }

@@ -594,7 +594,7 @@ export const STATUS_ICON = {
 
 export const STATUS_LABEL = {
   [Status.Active]: 'Active',
-  [Status.ActiveError]: 'Active Error',
+  [Status.ActiveError]: 'Active With Error',
   [Status.Completed]: 'Completed',
   [Status.Failed]: 'Failed',
   [Status.Running]: 'Running',
