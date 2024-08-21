@@ -11,28 +11,29 @@
  *  limitations under the License.
  */
 
-import {
-  findByRole,
-  findByTestId,
-  findByText,
-  fireEvent,
-  queryByTestId,
-  render,
-  screen,
-} from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProvider } from '../../../generated/settings/settings';
+import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
 import { mockAccessData, mockUserData, mockUserRole } from './mocks/User.mocks';
 import Users from './Users.component';
 import { UserPageTabs } from './Users.interface';
 
 const mockParams = {
-  fqn: 'test',
   tab: UserPageTabs.ACTIVITY,
 };
+
+jest.mock('../../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockReturnValue({ isAdminUser: false }),
+}));
+
+jest.mock('../../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: 'test' }),
+}));
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -147,14 +148,17 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
 );
 
 jest.mock('../../common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
-    <div>
-      <span>Description</span>
-      <button onClick={() => onDescriptionUpdate('testDescription')}>
-        SaveDescriptionButton
-      </button>
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ onDescriptionUpdate, hasEditAccess }) => (
+      <div>
+        <span>Description</span>
+        {hasEditAccess && <span>Edit Button</span>}
+        <button onClick={() => onDescriptionUpdate('testDescription')}>
+          SaveDescriptionButton
+        </button>
+      </div>
+    ));
 });
 
 const mockProp = {
@@ -189,60 +193,62 @@ jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
 
 describe('Test User Component', () => {
   it('Should render user component', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const UserProfileDetails = await findByText(
-      container,
-      'UserProfileDetails'
-    );
+    const UserProfileDetails = await screen.findByText('UserProfileDetails');
 
     expect(UserProfileDetails).toBeInTheDocument();
   });
 
   it('should trigger afterDeleteAction from UserProfileDetails', async () => {
-    render(<Users userData={mockUserData} {...mockProp} />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    fireEvent.click(screen.getByText('AfterDeleteActionButton'));
+    await act(async () => {
+      userEvent.click(screen.getByText('AfterDeleteActionButton'));
+    });
 
     expect(mockProp.afterDeleteAction).toHaveBeenCalled();
   });
 
   it('should trigger updateUserDetails from UserProfileDetails', async () => {
-    render(<Users userData={mockUserData} {...mockProp} />, {
-      wrapper: MemoryRouter,
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
     });
 
-    fireEvent.click(screen.getByText('UpdateUserDetailsButton'));
+    await act(async () => {
+      userEvent.click(screen.getByText('UpdateUserDetailsButton'));
+    });
 
     expect(mockProp.updateUserDetails).toHaveBeenCalled();
   });
 
   it('User profile should render when open collapsible header', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const collapsibleButton = await findByRole(container, 'img');
+    const collapsibleButton = await screen.findByRole('img');
 
     userEvent.click(collapsibleButton);
 
-    const UserProfileInheritedRoles = await findByText(
-      container,
+    const UserProfileInheritedRoles = await screen.findByText(
       'UserProfileInheritedRoles'
     );
-    const UserProfileRoles = await findByText(container, 'UserProfileRoles');
-    const UserProfileTeams = await findByText(container, 'UserProfileTeams');
-    const description = await findByText(container, 'Description');
+    const UserProfileRoles = await screen.findByText('UserProfileRoles');
+    const UserProfileTeams = await screen.findByText('UserProfileTeams');
+    const description = await screen.findByText('Description');
 
     expect(description).toBeInTheDocument();
     expect(UserProfileRoles).toBeInTheDocument();
@@ -251,23 +257,25 @@ describe('Test User Component', () => {
   });
 
   it('should call updateUserDetails on click of SaveDescriptionButton', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const collapsibleButton = await findByRole(container, 'img');
+    const collapsibleButton = await screen.findByRole('img');
 
-    userEvent.click(collapsibleButton);
+    await act(async () => {
+      userEvent.click(collapsibleButton);
+    });
 
-    const saveDescriptionButton = await findByText(
-      container,
+    const saveDescriptionButton = await screen.findByText(
       'SaveDescriptionButton'
     );
 
-    userEvent.click(saveDescriptionButton);
+    await act(async () => {
+      userEvent.click(saveDescriptionButton);
+    });
 
     expect(mockProp.updateUserDetails).toHaveBeenCalledWith(
       {
@@ -278,23 +286,25 @@ describe('Test User Component', () => {
   });
 
   it('should call updateUserDetails on click of SavePersonaSelectableListButton', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const collapsibleButton = await findByRole(container, 'img');
+    const collapsibleButton = await screen.findByRole('img');
 
-    userEvent.click(collapsibleButton);
+    await act(async () => {
+      userEvent.click(collapsibleButton);
+    });
 
-    const savePersonaSelectableListButton = await findByText(
-      container,
+    const savePersonaSelectableListButton = await screen.findByText(
       'SavePersonaSelectableListButton'
     );
 
-    userEvent.click(savePersonaSelectableListButton);
+    await act(async () => {
+      userEvent.click(savePersonaSelectableListButton);
+    });
 
     expect(mockProp.updateUserDetails).toHaveBeenCalledWith(
       {
@@ -305,54 +315,53 @@ describe('Test User Component', () => {
   });
 
   it('Tab should not visible to normal user', async () => {
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
+      });
+    });
 
-    const tabs = queryByTestId(container, 'tab');
+    const tabs = screen.queryByTestId('tab');
 
     expect(tabs).not.toBeInTheDocument();
   });
 
   it('Should check if cards are rendered', async () => {
     mockParams.tab = UserPageTabs.MY_DATA;
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
 
-    const datasetContainer = await findByTestId(container, 'user-profile');
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const datasetContainer = await screen.findByTestId('user-profile');
 
     expect(datasetContainer).toBeInTheDocument();
   });
 
   it('MyData tab should load asset component', async () => {
     mockParams.tab = UserPageTabs.MY_DATA;
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
-    const assetComponent = await findByText(container, 'AssetsTabs');
+      });
+    });
+    const assetComponent = await screen.findByText('AssetsTabs');
 
     expect(assetComponent).toBeInTheDocument();
   });
 
   it('Following tab should show load asset component', async () => {
     mockParams.tab = UserPageTabs.FOLLOWING;
-    const { container } = render(
-      <Users userData={mockUserData} {...mockProp} />,
-      {
+
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
         wrapper: MemoryRouter,
-      }
-    );
-    const assetComponent = await findByText(container, 'AssetsTabs');
+      });
+    });
+    const assetComponent = await screen.findByText('AssetsTabs');
 
     expect(assetComponent).toBeInTheDocument();
   });
@@ -366,16 +375,19 @@ describe('Test User Component', () => {
       })
     );
     mockParams.tab = UserPageTabs.ACCESS_TOKEN;
-    render(
-      <Users
-        authenticationMechanism={mockAccessData}
-        userData={mockUserData}
-        {...mockProp}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+
+    await act(async () => {
+      render(
+        <Users
+          authenticationMechanism={mockAccessData}
+          userData={mockUserData}
+          {...mockProp}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
     const assetComponent = await screen.findByTestId('center-panel');
 
     expect(assetComponent).toBeInTheDocument();
@@ -385,19 +397,70 @@ describe('Test User Component', () => {
     mockGetResourceLimit.mockResolvedValueOnce({
       configuredLimit: { disabledFields: ['personalAccessToken'] },
     });
-    render(
-      <Users
-        authenticationMechanism={mockAccessData}
-        userData={mockUserData}
-        {...mockProp}
-      />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+
+    await act(async () => {
+      render(
+        <Users
+          authenticationMechanism={mockAccessData}
+          userData={mockUserData}
+          {...mockProp}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
 
     expect(
       (await screen.findByTestId('access-token'))?.closest('.ant-tabs-tab')
     ).toHaveClass('ant-tabs-tab-disabled');
+  });
+
+  it('should show the edit description button for non admin logged in user profile', async () => {
+    await act(async () => {
+      render(
+        <Users
+          authenticationMechanism={mockAccessData}
+          userData={mockUserData}
+          {...mockProp}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    const collapsibleButton = await screen.findByRole('img');
+
+    userEvent.click(collapsibleButton);
+
+    expect(screen.getByText('Edit Button')).toBeInTheDocument();
+  });
+
+  it('should not show the edit description button for admins in user profile page', async () => {
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      isAdminUser: true,
+    }));
+    (useFqn as jest.Mock).mockImplementation(() => ({
+      fqn: 'test1',
+    }));
+    await act(async () => {
+      render(
+        <Users
+          authenticationMechanism={mockAccessData}
+          userData={mockUserData}
+          {...mockProp}
+        />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    const collapsibleButton = await screen.findByRole('img');
+
+    userEvent.click(collapsibleButton);
+
+    expect(screen.queryByText('Edit Button')).toBeNull();
   });
 });
