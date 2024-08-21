@@ -1,9 +1,9 @@
 ---
 title: Metrics
-slug: /quality-and-observability/profiler/metrics
+slug: /how-to-guides/data-quality-observability/profiler/metrics
 ---
 
-# Metrics
+# Profiler Metrics
 
 Here you can find information about the supported metrics for the different types.
 
@@ -16,7 +16,7 @@ On this page, you will learn all the metrics that we currently support and their
 
 {% note %}
 
-You can check the definition of the `columnProfile` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/data/table.json#L271). On the other hand, the metrics are implemented [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/orm\_profiler/metrics).
+You can check the definition of the `columnProfile` [here](https://github.com/open-metadata/OpenMetadata/blob/main/openmetadata-spec/src/main/resources/json/schema/entity/data/table.json#L271). On the other hand, the metrics are implemented [here](https://github.com/open-metadata/OpenMetadata/tree/main/ingestion/src/metadata/profiler/metrics).
 
 {% /note %}
 
@@ -38,7 +38,7 @@ Returns the number of columns in the Table.
 System metrics provide information related to DML operations performed on the table. These metrics present a concise view of your data freshness. In a typical data processing flow tables are updated at a certain frequency. Table freshness will be monitored by confirming a set of operations has been performed against the table. To increase trust in your data assets, OpenMetadata will monitor the `INSERT`, `UPDATE` and `DELETE` operations performed against your table to showcase 2 metrics related to freshness (see below for more details). With this information, you are able to see when a specific operation was last perform and how many rows it affected. 
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/profiler-freshness-metrics.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-freshness-metrics.png"
   alt="table profile freshness metrics"
   caption="table profile freshness metrics"
  /%}
