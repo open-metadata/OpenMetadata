@@ -15,6 +15,7 @@ import static org.openmetadata.schema.entity.events.SubscriptionStatus.Status.FA
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
+import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
@@ -57,6 +58,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.NotificationFilterOperation;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
@@ -69,6 +71,7 @@ import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
@@ -201,16 +204,12 @@ public class EventSubscriptionResourceTest
         "http://localhost:" + APP.getLocalPort() + "/api/v1/test/webhook/" + test.getDisplayName();
     List<SubscriptionDestination> genericWebhook2 = getWebhook(baseUri);
     genericWebhookActionRequest = genericWebhookActionRequest.withDestinations(genericWebhook2);
-    ChangeDescription change = getChangeDescription(alert, MINOR_UPDATE);
+    ChangeDescription change = getChangeDescription(alert, NO_CHANGE);
     fieldUpdated(change, "destinations", genericWebhook, genericWebhook2);
 
     alert =
         updateAndCheckEntity(
-            genericWebhookActionRequest,
-            Response.Status.OK,
-            ADMIN_AUTH_HEADERS,
-            MINOR_UPDATE,
-            change);
+            genericWebhookActionRequest, Response.Status.OK, ADMIN_AUTH_HEADERS, NO_CHANGE, change);
 
     // Wait for webhook to be marked as failed
     waitForAllEventToComplete(alert.getId());
@@ -2319,5 +2318,35 @@ public class EventSubscriptionResourceTest
     MSTeamsCallbackResource.EventDetails details = teamsCallbackResource.getEventDetails(endpoint);
     return new AtomicBoolean(
         details != null && details.getEvents() != null && details.getEvents().size() <= 0);
+  }
+
+  @Override
+  protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
+      throws IOException {
+    expectedList.sort(EntityUtil.compareFieldChange);
+    actualList.sort(EntityUtil.compareFieldChange);
+
+    // Destination field is not compared because the destination field will always have a change
+    // recordChange
+    List<FieldChange> expectedListCopy =
+        expectedList.stream().filter(f -> !f.getName().equals("destinations")).toList();
+    List<FieldChange> actualListCopy =
+        actualList.stream().filter(f -> !f.getName().equals("destinations")).toList();
+
+    // This is done because the actual list will have one extra field always because the Secret Key
+    // Encrytion always produces a change recordChange
+    assertEquals(expectedListCopy.size(), actualListCopy.size());
+
+    for (int i = 0; i < expectedListCopy.size(); i++) {
+      assertEquals(expectedListCopy.get(i).getName(), actualListCopy.get(i).getName());
+      assertFieldChange(
+          expectedListCopy.get(i).getName(),
+          expectedListCopy.get(i).getNewValue(),
+          actualListCopy.get(i).getNewValue());
+      assertFieldChange(
+          expectedListCopy.get(i).getName(),
+          expectedListCopy.get(i).getOldValue(),
+          actualListCopy.get(i).getOldValue());
+    }
   }
 }

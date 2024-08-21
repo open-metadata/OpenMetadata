@@ -3223,8 +3223,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected final void assertFieldLists(
-      List<FieldChange> expectedList, List<FieldChange> actualList) throws IOException {
+  protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
+      throws IOException {
     expectedList.sort(EntityUtil.compareFieldChange);
     actualList.sort(EntityUtil.compareFieldChange);
     assertEquals(expectedList.size(), actualList.size());

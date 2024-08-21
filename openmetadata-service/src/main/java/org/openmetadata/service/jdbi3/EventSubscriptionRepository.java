@@ -16,12 +16,12 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
+import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
+import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
@@ -29,14 +29,11 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class EventSubscriptionRepository extends EntityRepository<EventSubscription> {
@@ -70,15 +67,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
-  @SneakyThrows
-  public static String encryptSecretKey(String secretKey) {
-    String json = JsonUtils.pojoToJson(secretKey);
-    if (Fernet.getInstance().isKeyDefined()) {
-      return Fernet.getInstance().encryptIfApplies(json);
-    }
-    return json;
-  }
-
   @Override
   public void clearFields(EventSubscription entity, Fields fields) {}
 
@@ -108,7 +96,6 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
               entity.getFilteringRules().getResources(), entity.getAlertType(), entity.getInput()));
     }
 
-    EventSubscriptionUpdater.encryptWebhookSecretKey(entity.getDestinations());
     validateFilterRules(entity);
   }
 
@@ -158,35 +145,11 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "destinations",
             original.getDestinations(),
             encryptWebhookSecretKey(updated.getDestinations()),
-            true);
+            true,
+            objectMatch,
+            false);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
       }
-    }
-
-    private static List<SubscriptionDestination> encryptWebhookSecretKey(
-        List<SubscriptionDestination> subscriptions) {
-      List<SubscriptionDestination> result = new ArrayList<>();
-
-      subscriptions.forEach(
-          subscription -> {
-            if (SubscriptionDestination.SubscriptionType.WEBHOOK.equals(subscription.getType())) {
-              Webhook webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
-
-              if (webhook != null && !nullOrEmpty(webhook.getSecretKey())) {
-                String encryptedSecretKey = encryptSecretKey(webhook.getSecretKey());
-                webhook.withSecretKey(encryptedSecretKey);
-
-                Map<String, Object> config = (Map<String, Object>) subscription.getConfig();
-                if (config != null) {
-                  config.put("secretKey", encryptedSecretKey);
-                  subscription.withConfig(config);
-                }
-              }
-            }
-
-            result.add(subscription);
-          });
-      return result;
     }
   }
 }
