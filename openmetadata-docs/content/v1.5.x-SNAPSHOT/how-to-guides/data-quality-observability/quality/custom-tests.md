@@ -1,8 +1,7 @@
 ---
 title: Custom Tests
-slug: /quality-and-observability/data-quality/custom-tests
+slug: /how-to-guides/data-quality-observability/quality/custom-tests
 ---
-
 
 # Adding Custom Tests
 While OpenMetadata provides out of the box tests, you may want to write your test results from your own custom quality test suite or define your own data quality tests to be ran inside OpenMetadata.  This is very easy to do using the API and our Python SDK.
@@ -196,13 +195,13 @@ class ColumnEntropyToBeBetweenValidator(BaseTestValidator):
 Once you have completed A) and B) you should only need to `pip install` your package in the environment where openmetadata python SDK is install.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/custom-test-definition.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/custom-test-definition.png"
   alt="Create test case"
   caption="Create test case"
  /%}
 
  {% image
-  src="/images/v1.5/features/ingestion/workflows/data-quality/custom-test-result.png"
+  src="/images/v1.4/features/ingestion/workflows/data-quality/custom-test-result.png"
   alt="Create test case"
   caption="Create test case"
  /%}

@@ -24,10 +24,14 @@ Tests applied on top of a Table. Here is the list of all table tests:
 - [Table Column to Match Set](#table-column-to-match-set)
 - [Table Custom SQL Test](#table-custom-sql-test)
 - [Table Row Inserted Count To Be Between](#table-row-inserted-count-to-be-between)
-- [Compare 2 tables for differences](#compare-2-tables-for-differences)
+- [Compare 2 Tables for Differences](#compare-2-tables-for-differences)
+- [Table Data to Be Fresh [Collate]](#table-data-to-be-fresh-collate)
 
 ### Table Row Count to Equal
 Validate the total row count in the table is equal to the given value.
+
+**Dimension**:
+Integrity
 
 **Properties**:
 
@@ -69,6 +73,9 @@ Validate the total row count in the table is equal to the given value.
 
 ### Table Row Count to be Between
 Validate the total row count is within a given range of values.
+
+**Dimension**:
+Integrity
 
 **Properties**:
 
@@ -120,6 +127,9 @@ Any of those two need to be informed.
 ### Table Column Count to Equal
 Validate that the number of columns in a table is equal to a given value.
 
+**Dimension**:
+Integrity
+
 **Properties**
 
 * `columnCount`: Expected number of columns.
@@ -160,6 +170,9 @@ Validate that the number of columns in a table is equal to a given value.
 
 ### Table Column Count to be Between
 Validate the number of columns in a table is between the given value
+
+**Dimension**:
+Integrity
 
 **Properties**
 
@@ -209,6 +222,9 @@ Validate the number of columns in a table is between the given value
 ### Table Column Name to Exist
 Validate a column name is present in the table
 
+**Dimension**:
+Integrity
+
 **Properties**
 
 * `columnName`: the name of the column to check for
@@ -248,6 +264,9 @@ Validate a column name is present in the table
 
 ### Table Column to Match Set
 Validate a list of table column name matches an expected set of columns
+
+**Dimension**:
+Integrity
 
 **Properties**
 
@@ -372,6 +391,9 @@ The Table Row Inserted Count To Be Between cannot be executed against tables tha
 
 {% /note %}
 
+**Dimension**:
+Integrity
+
 **Properties**
 
 * `Min Row Count`: Lower bound
@@ -437,97 +459,133 @@ The Table Row Inserted Count To Be Between cannot be executed against tables tha
     ]
 }
 ```
+
 ### Compare 2 Tables for Differences
+Compare 2 tables for differences. Allows a user to check for integrity.
 
-Supported connectors:
-- Snowflake
-- BigQuery
-- Athena
-- Redshift
-- Postgres
-- MySQL
-- MSSQL
-- Oracle
-- Trino
-- SAP Hana
-
-Compare 2 tables and report any column or row differences. The test will fail for any column differences or row differences that
-are over the threshold.
-
-The comparison will be scoped by:
-1. The partition configuration (as in other test cases).
-2. The "use columns" properties. 
-3. The "where" can be used to filter the rows to compare.
-
+**Dimension**:
+Consistency
 
 **Properties**
 
-* `Table 2`: Fully qualified name of the table to compare against.
-* `Key Columns`: The columns to use as the key for the comparison. If not provided, it will be resolved from the primary key or unique columns. The tuples created from the key columns must be unique.
-* `Threshold`: Threshold to use to determine if the test passes or fails (defaults to 0).
-* `Use Columns`:Limits the scope of the test to this list of columns. If not provided, all columns will be used except the key columns.
-* `Where`: Use this where clause to filter the rows to compare.
+* `keyColumns`: The key column to use as the key for the comparison. Resolves to the primary key (if defined) if not set
+* `useColumns`: The columns against which the comparison will done. If not provided it will use all the columns
+* `table2`: The table against which the comparison will be done. Must be the fully qualified name as defined in OpenMetadata
+* `threshold`: The threshold of different rows above which the test should fail -- default to 0
+* `where`: Any `where` clause to pass 
 
 **Behavior**
 
-| Condition                                                                                                   | Status |
-|-------------------------------------------------------------------------------------------------------------| ----------- |
-| Column diff is **greater** than 0                                                                           | Failed ❌ |
-| Number of row differences is **greater** than the threshold                                                 | Failed ❌ |
-| Column diff is **equal** to 0 and number of row differences is **less than or equal to** the threshold | Success ✅ |
+| Condition      | Status |
+| ----------- | ----------- |
+|Number of rows **is greater** than the threshold (default to 0) | Failed ❌|
+|Number of rows **is less than or equal** to the threshold | Success ✅|
 
 **YAML Config**
 
 ```yaml
-- name: myTableDiff
-  description: compare table a and b
-  testDefinitionName: tableDiff
-  parameterValues:
-    - name: table2
-      value: dbservice.database.schema.my_table
-#   optional parameters:
-    - name: threshold
-      value: "10"
-    - name: keyColumns
-      value: '["id"]'
-    - name: useColumns
-      value: '["first_name","last_name"]'
-    - name: where
-      value: "country = 'US'"
+name: myName
+entityLink: '<#E::table::postgres_rds.TESTDB.snowflake_db_test.dim_data_columns>'
+testDefinition: tableDiff
+testSuite: postgres_rds.TESTDB.snowflake_db_test.dim_data_columns.testSuite
+parameterValues:
+  - name: keyColumns
+    value: '["id"]'
+  - name: useColumns
+    value: '["name_column_name"]'
+  - name: table2
+    value: redshift_dbt.dev.dbt_jaffle.boolean_test
+  - name: threshold
+    value: 10
+  - name: where
+    value: id != 999
 ```
 
 **JSON Config**
 
 ```json
-[
-  {
-    "name": "myTableDiff",
-    "description": "compare table a and b",
-    "testDefinitionName": "tableDiff",
-    "parameterValues": [
-      {
-        "name": "table2",
-        "value": "dbservice.database.schema.my_table"
-      },
-      {
-        "name": "threshold",
-        "value": "10"
-      },
-      {
-        "name": "keyColumns",
-        "value": "[\"id\"]"
-      },
-      {
-        "name": "useColumns",
-        "value": "[\"first_name\",\"last_name\"]"
-      },
-      {
-        "name": "where",
-        "value": "country = 'US'"
-      }
-    ]
-  }
-]
+{
+  "name": "myName",
+  "entityLink": "<#E::table::postgres_rds.TESTDB.snowflake_db_test.dim_data_columns>",
+  "testDefinition": "tableDiff",
+  "testSuite": "postgres_rds.TESTDB.snowflake_db_test.dim_data_columns.testSuite",
+  "parameterValues": [
+    {
+      "name": "keyColumns",
+      "value": "[\"id\"]"
+    },
+    {
+      "name": "useColumns",
+      "value": "[\"name_column_name\"]"
+    },
+    {
+      "name": "table2",
+      "value": "redshift_dbt.dev.dbt_jaffle.boolean_test"
+    },
+    {
+      "name": "threshold",
+      "value": 10
+    },
+    {
+      "name": "where",
+      "value": "id != 999"
+    }
+  ]
+}
+```
+
+### Table Data to Be Fresh [Collate]
+Validate the freshness of a table's data. 
+
+**Dimension**:
+Accuracy
+
+**Properties**
+
+* `column`: the colummn that will be used to chech the table freshness
+* `timeSinceUpdate`: (in seconds) The data is expected to be updated within this number of seconds. If the time since the last update is greater than this value, the test will fail.
+
+**Behavior**
+
+| Condition      | Status |
+| ----------- | ----------- |
+|Time since update is greater than **timeSinceUpdate** | Failed ❌|
+|Time since update is less than or equal to **timeSinceUpdate** | Success ✅|
+
+**YAML Config**
+
+```yaml
+name: myName
+entityLink: '<#E::table::postgres_rds.TESTDB.snowflake_db_test.dim_data_columns>'
+testDefinition: tableDataToBeFresh
+testSuite: postgres_rds.TESTDB.snowflake_db_test.dim_data_columns.testSuite
+parameterValues:
+  - name: column
+    value: id
+  - name: timeSinceUpdate
+    value: 30
+```
+
+**JSON Config**
+
+```json
+{
+  "name": "myName",
+  "displayName": "dim_data_columns_table_data_to_be_fresh_NeUs",
+  "entityLink": "<#E::table::postgres_rds.TESTDB.snowflake_db_test.dim_data_columns>",
+  "testDefinition": "tableDataToBeFresh",
+  "testSuite": "postgres_rds.TESTDB.snowflake_db_test.dim_data_columns.testSuite",
+  "parameterValues": [
+    {
+      "name": "column",
+      "value": "id"
+    },
+    {
+      "name": "timeSinceUpdate",
+      "value": 30
+    }
+  ]
+}
 ```
 
 ## Column Tests
@@ -550,6 +608,9 @@ Tests applied on top of Column metrics. Here is the list of all column tests:
 
 ### Column Values to Be Unique
 Makes sure that there are no duplicate values in a given column.
+
+**Dimension**:
+Uniqueness
 
 **Behavior**
 
@@ -594,6 +655,9 @@ Makes sure that there are no duplicate values in a given column.
 
 ### Column Values to Be Not Null
 Validates that there are no null values in the column.
+
+**Dimension**:
+Completeness
 
 **Properties**
 
@@ -649,6 +713,9 @@ This test allows us to specify how many values in a column we expect that will m
 
 The other databases will fall back to the `LIKE` expression
 
+**Dimension**:
+Validity
+
 **Properties**
 
 * `regex`: expression to match a regex pattern. E.g., `[a-zA-Z0-9]{5}`.
@@ -703,6 +770,9 @@ This test allows us to specify values in a column we expect that will not match 
 
 The other databases will fall back to the `LIKE` expression
 
+**Dimension**:
+Validity
+
 **Properties**
 
 * `regex`: expression to match a regex pattern. E.g., `[a-zA-Z0-9]{5}`.
@@ -746,6 +816,9 @@ The other databases will fall back to the `LIKE` expression
 
 ### Column Values to Be in Set
 Validate values form a set are present in a column.
+
+**Dimension**:
+Validity
 
 **Properties**
 
@@ -821,6 +894,9 @@ Validate values form a set are present in a column.
 ### Column Values to Be Not In Set
 Validate that there are no values in a column in a set of forbidden values.
 
+**Dimension**:
+Validity
+
 **Properties**
 
 * `forbiddenValues`: List of forbidden strings or numbers.
@@ -868,6 +944,9 @@ Validate that there are no values in a column in a set of forbidden values.
 ### Column Values to Be Between
 Validate that the values of a column are within a given range.
 > Only supports numerical types.
+
+**Dimension**:
+Accuracy
 
 **Properties**
 
@@ -922,6 +1001,9 @@ Any of those two need to be informed.
 
 ### Column Values Missing Count to Be Equal
 Validates that the number of missing values matches a given number. Missing values are the sum of nulls, plus the sum of values in a given list which we need to consider as missing data. A clear example of that would be `NA` or `N/A`.
+
+**Dimension**:
+Completeness
 
 **Properties**
 
@@ -1001,6 +1083,9 @@ Validates that the number of missing values matches a given number. Missing valu
 Validates that the lengths of the strings in a column are within a given range.
 > Only supports concatenable types.
 
+**Dimension**:
+Accuracy
+
 **Properties**
 
 * `minLength`: Lower bound of the interval. If informed, the string length should be bigger than this number.
@@ -1059,6 +1144,9 @@ Any of those two need to be informed.
 Validate the maximum value of a column is between a specific range
 > Only supports numerical types.
 
+**Dimension**:
+Accuracy
+
 **Properties**
 
 * `minValueForMaxInCol`: lower bound
@@ -1113,6 +1201,9 @@ Validate the maximum value of a column is between a specific range
 ### Column Value Min to Be Between
 Validate the minimum value of a column is between a specific range
 > Only supports numerical types.
+
+**Dimension**:
+Accuracy
 
 **Properties**
 
@@ -1169,6 +1260,9 @@ Validate the minimum value of a column is between a specific range
 Validate the mean of a column is between a specific range
 > Only supports numerical types.
 
+**Dimension**:
+Accuracy
+
 **Properties**
 
 * `minValueForMeanInCol`: lower bound
@@ -1223,6 +1317,9 @@ Validate the mean of a column is between a specific range
 ### Column Value Median to Be Between
 Validate the median of a column is between a specific range
 > Only supports numerical types.
+
+**Dimension**:
+Accuracy
 
 **Properties**
 
@@ -1279,6 +1376,9 @@ Validate the median of a column is between a specific range
 Validate the sum of a column is between a specific range
 > Only supports numerical types.
 
+**Dimension**:
+Accuracy
+
 **Properties**
 
 * `minValueForColSum`: lower bound
@@ -1333,6 +1433,9 @@ Validate the sum of a column is between a specific range
 ### Column Values Standard Deviation to Be Between
 Validate the standard deviation of a column is between a specific range
 > Only supports numerical types.
+
+**Dimension**:
+Accuracy
 
 **Properties**
 

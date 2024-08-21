@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { assignDomain, removeDomain, updateDomain } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
@@ -54,6 +55,7 @@ import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
   type: string;
+  serviceCategory?: GlobalSettingOptions;
   childrenTabId?: string;
   childrenSelectorId?: string;
   endpoint: EntityTypeEndpoint;

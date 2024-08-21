@@ -14,6 +14,7 @@ import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
+import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
@@ -216,4 +217,19 @@ export const generateRandomUsername = () => {
     email: `${firstName}.${lastName}@example.com`,
     password: 'User@OMD123',
   };
+};
+
+export const verifyDomainPropagation = async (
+  page: Page,
+  domain: Domain['responseData'],
+  childFqnSearchTerm: string
+) => {
+  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
+  await page.getByTestId('searchBox').press('Enter');
+
+  await expect(
+    page
+      .getByTestId(`table-data-card_${childFqnSearchTerm}`)
+      .getByTestId('domain-link')
+  ).toContainText(domain.displayName);
 };
