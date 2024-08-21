@@ -106,8 +106,11 @@ def pretty_print_time_duration(duration: Union[int, float]) -> str:
     """
 
     days = divmod(duration, 86400)[0]
+    duration = duration - days * 86400
     hours = divmod(duration, 3600)[0]
+    duration = duration - hours * 3600
     minutes = divmod(duration, 60)[0]
+    duration = duration - minutes * 60
     seconds = round(divmod(duration, 60)[1], 2)
     if days:
         return f"{days}day(s) {hours}h {minutes}m {seconds}s"
