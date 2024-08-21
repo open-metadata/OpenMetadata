@@ -303,3 +303,5 @@ ALTER TABLE automations_workflow
   ADD COLUMN workflowType VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.workflowType') STORED NOT NULL;
 
 ALTER TABLE entity_extension ADD INDEX extension_index(extension);
+
+ALTER TABLE test_definition MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;

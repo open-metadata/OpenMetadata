@@ -275,3 +275,5 @@ update table_entity set json = jsonb_set(json#-'{dataModel,owner}', '{dataModel,
 jsonb_build_array(json#>'{dataModel,owner}')) where json #>> '{dataModel,owner}' is not null;
 
 CREATE INDEX IF NOT EXISTS  extension_index  ON entity_extension (extension);
+
+ALTER TABLE test_definition ALTER COLUMN name TYPE VARCHAR(512);
