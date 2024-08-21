@@ -183,6 +183,8 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
+  - category: Deployment / Database Connection Pooling
+    url: /deployment/database-connection-pooling
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
