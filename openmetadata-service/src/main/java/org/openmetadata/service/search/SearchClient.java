@@ -80,15 +80,16 @@ public interface SearchClient {
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
-  String ADD_REMOVE_OWNERS_SCRIPT =
+  String ADD_OWNERS_SCRIPT =
       "if (ctx._source.owners == null || ctx._source.owners.isEmpty() || "
           + "(ctx._source.owners.size() > 0 && ctx._source.owners[0] != null && ctx._source.owners[0].inherited == true)) { "
-          + "ctx._source.owners = []; "
-          + "for (int i = 0; i < params.updatedOwners.size(); i++) { "
-          + "def newOwner = params.updatedOwners[i]; "
-          + "newOwner.inherited = true; "
-          + "ctx._source.owners.add(newOwner); "
-          + "} "
+          + "ctx._source.owners = params.updatedOwners; "
+          + "}";
+
+  String REMOVE_OWNERS_SCRIPT =
+      "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
+          + "ctx._source.owners.removeIf(owner -> "
+          + "params.deletedOwners.stream().anyMatch(deletedOwner -> deletedOwner.id == owner.id) && owner.inherited == true); "
           + "}";
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";

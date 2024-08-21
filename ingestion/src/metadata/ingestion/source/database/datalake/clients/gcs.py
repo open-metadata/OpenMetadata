@@ -38,6 +38,10 @@ class DatalakeGcsClient(DatalakeBaseClient):
         self._client = client
         self._temp_credentials_file_path_list = temp_credentials_file_path_list
 
+    @property
+    def project(self):
+        return self._client.project
+
     @staticmethod
     def get_gcs_client(config: GCSConfig) -> storage.Client:
         gcs_config = deepcopy(config)
