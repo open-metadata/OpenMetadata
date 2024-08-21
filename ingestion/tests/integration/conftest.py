@@ -15,7 +15,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
 
 if not sys.version_info >= (3, 9):
-    collect_ignore = ["trino"]
+    collect_ignore = ["trino", "kafka"]
 
 
 @pytest.fixture(scope="session", autouse=True)
