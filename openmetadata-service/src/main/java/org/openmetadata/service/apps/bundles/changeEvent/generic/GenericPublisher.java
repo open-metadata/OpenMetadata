@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.service.apps.bundles.changeEvent.Destination;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -70,7 +71,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       String json = JsonUtils.pojoToJson(event);
       if (webhook.getEndpoint() != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
           postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
         } else {
           postWebhookMessage(this, getTarget(), json);
@@ -113,7 +116,9 @@ public class GenericPublisher implements Destination<ChangeEvent> {
           "This is a test message from OpenMetadata to confirm your webhook destination is configured correctly.";
       if (webhook.getEndpoint() != null) {
         if (webhook.getSecretKey() != null && !webhook.getSecretKey().isEmpty()) {
-          String hmac = "sha256=" + CommonUtil.calculateHMAC(webhook.getSecretKey(), json);
+          String hmac =
+              "sha256="
+                  + CommonUtil.calculateHMAC(decryptWebhookSecretKey(webhook.getSecretKey()), json);
           postWebhookMessage(this, getTarget().header(RestUtil.SIGNATURE_HEADER, hmac), json);
         } else {
           postWebhookMessage(this, getTarget(), json);
@@ -156,5 +161,12 @@ public class GenericPublisher implements Destination<ChangeEvent> {
     if (null != client) {
       client.close();
     }
+  }
+
+  public static String decryptWebhookSecretKey(String encryptedSecretkey) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSecretkey = Fernet.getInstance().decryptIfApplies(encryptedSecretkey);
+    }
+    return encryptedSecretkey;
   }
 }

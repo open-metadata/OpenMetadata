@@ -25,6 +25,9 @@ jest.mock('../../../utils/Alerts/AlertsUtil', () => ({
   getFilteredDestinationOptions: jest
     .fn()
     .mockImplementation((key) => DESTINATION_SOURCE_ITEMS[key]),
+  getConnectionTimeoutField: jest
+    .fn()
+    .mockReturnValue(<div data-testid="connection-timeout" />),
 }));
 
 jest.mock('../../../utils/ObservabilityUtils', () => ({
@@ -106,5 +109,24 @@ describe('DestinationFormItem', () => {
     render(<DestinationFormItem />);
 
     expect(screen.getByTestId('add-destination-button')).toBeEnabled();
+  });
+
+  it('should display the connection timeout field', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn();
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
+
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation(() => ['container']);
+
+    render(<DestinationFormItem />);
+
+    expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
   });
 });

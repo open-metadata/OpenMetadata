@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   Destination,
   EventSubscription,
@@ -24,4 +25,10 @@ export interface ModifiedDestination extends Destination {
 
 export interface ModifiedEventSubscription extends EventSubscription {
   destinations: ModifiedDestination[];
+  timeout: number;
+}
+
+export interface ModifiedCreateEventSubscription
+  extends CreateEventSubscription {
+  timeout: number;
 }

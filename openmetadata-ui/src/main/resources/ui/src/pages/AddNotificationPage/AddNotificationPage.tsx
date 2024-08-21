@@ -48,14 +48,17 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ModifiedEventSubscription } from '../AddObservabilityPage/AddObservabilityPage.interface';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from '../AddObservabilityPage/AddObservabilityPage.interface';
 import AlertFormSourceItem from '../AddObservabilityPage/AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../AddObservabilityPage/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../AddObservabilityPage/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 
 const AddNotificationPage = () => {
   const { t } = useTranslation();
-  const [form] = useForm<CreateEventSubscription>();
+  const [form] = useForm<ModifiedCreateEventSubscription>();
   const history = useHistory();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
@@ -95,6 +98,7 @@ const AddNotificationPage = () => {
       const response: EventSubscription = await getAlertsFromName(fqn);
       const modifiedAlertData: ModifiedEventSubscription = {
         ...response,
+        timeout: response.destinations[0].timeout ?? 10,
         destinations: response.destinations.map((destination) => {
           const isExternalDestination =
             destination.category === SubscriptionCategory.External;
@@ -146,7 +150,7 @@ const AddNotificationPage = () => {
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
 
   const handleSave = useCallback(
-    async (data: CreateEventSubscription) => {
+    async (data: ModifiedCreateEventSubscription) => {
       try {
         setIsButtonLoading(true);
 
@@ -214,7 +218,7 @@ const AddNotificationPage = () => {
                 </Typography.Text>
               </Col>
               <Col span={24}>
-                <Form<CreateEventSubscription>
+                <Form<ModifiedCreateEventSubscription>
                   className="alerts-notification-form"
                   form={form}
                   initialValues={{

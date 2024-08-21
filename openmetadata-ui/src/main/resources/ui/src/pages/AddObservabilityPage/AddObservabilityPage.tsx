@@ -43,7 +43,10 @@ import {
 import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from './AddObservabilityPage.interface';
 import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
@@ -52,7 +55,7 @@ import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem/Observa
 function AddObservabilityPage() {
   const { t } = useTranslation();
   const history = useHistory();
-  const [form] = useForm<CreateEventSubscription>();
+  const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
   const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
 
@@ -74,6 +77,7 @@ function AddObservabilityPage() {
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
       const modifiedAlertData: ModifiedEventSubscription = {
         ...observabilityAlert,
+        timeout: observabilityAlert.destinations[0].timeout ?? 10,
         destinations: observabilityAlert.destinations.map((destination) => {
           const isExternalDestination =
             destination.category === SubscriptionCategory.External;
@@ -139,7 +143,7 @@ function AddObservabilityPage() {
   );
 
   const handleSave = useCallback(
-    async (data: CreateEventSubscription) => {
+    async (data: ModifiedCreateEventSubscription) => {
       try {
         setSaving(true);
 
@@ -220,7 +224,7 @@ function AddObservabilityPage() {
               </Col>
 
               <Col span={24}>
-                <Form<CreateEventSubscription>
+                <Form<ModifiedCreateEventSubscription>
                   form={form}
                   initialValues={{
                     ...alert,

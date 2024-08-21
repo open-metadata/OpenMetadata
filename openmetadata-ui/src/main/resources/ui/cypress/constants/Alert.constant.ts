@@ -42,6 +42,7 @@ interface ObservabilityCreationDetails {
       type?: string;
       inputValue?: string;
       inputSelector?: string;
+      secretKey?: string;
     }>;
   };
 }
@@ -98,6 +99,12 @@ export const OBSERVABILITY_CREATION_DETAILS: ObservabilityCreationDetails = {
         mode: 'external',
         category: 'Email',
         inputValue: 'test@example.com',
+      },
+      {
+        mode: 'external',
+        category: 'Webhook',
+        inputValue: 'https://webhook.com',
+        secretKey: 'secret_key',
       },
     ],
   },
