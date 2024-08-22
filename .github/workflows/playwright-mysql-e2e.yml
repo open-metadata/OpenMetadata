@@ -98,6 +98,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: npx playwright test
         env:
+          IS_OSS: true
           CYPRESS_BASE_URL: "http://localhost:8585"
           CYPRESS_RECORD_KEY: ${{ steps.cypress-project-id.outputs.CYPRESS_RECORD_KEY }}
           CYPRESS_grepTags: ${{ steps.getCypresse2eLabels.outputs.e2eLabels }}
