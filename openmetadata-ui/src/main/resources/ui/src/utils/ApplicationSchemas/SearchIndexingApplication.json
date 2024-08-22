@@ -52,7 +52,10 @@
           "domain",
           "storedProcedure",
           "dataProduct",
-          "testCaseResolutionStatus"
+          "testCaseResolutionStatus",
+          "apiService",
+          "apiEndpoint",
+          "apiCollection"
         ]
       },
       "default": ["all"],
@@ -62,7 +65,7 @@
     "recreateIndex": {
       "title": "Recreate Indexes",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "searchIndexMappingLanguage": {
       "description": "Recreate Indexes with updated Language",

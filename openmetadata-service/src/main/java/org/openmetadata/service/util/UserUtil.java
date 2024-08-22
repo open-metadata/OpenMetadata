@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import javax.json.JsonPatch;
 import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -161,14 +162,8 @@ public final class UserUtil {
   }
 
   public static User user(String name, String domain, String updatedBy) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(name)
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
-        .withEmail(name + "@" + domain)
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsBot(false);
+    return getUser(
+        updatedBy, new CreateUser().withName(name).withEmail(name + "@" + domain).withIsBot(false));
   }
 
   /**
@@ -329,5 +324,26 @@ public final class UserUtil {
     }
 
     return syncUser;
+  }
+
+  public static User getUser(String updatedBy, CreateUser create) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(create.getName().toLowerCase())
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
+        .withEmail(create.getEmail().toLowerCase())
+        .withDescription(create.getDescription())
+        .withDisplayName(create.getDisplayName())
+        .withIsBot(create.getIsBot())
+        .withIsAdmin(create.getIsAdmin())
+        .withProfile(create.getProfile())
+        .withPersonas(create.getPersonas())
+        .withDefaultPersona(create.getDefaultPersona())
+        .withTimezone(create.getTimezone())
+        .withUpdatedBy(updatedBy.toLowerCase())
+        .withUpdatedAt(System.currentTimeMillis())
+        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
+        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()));
   }
 }

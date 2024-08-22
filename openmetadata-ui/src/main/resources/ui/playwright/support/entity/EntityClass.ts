@@ -12,17 +12,21 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
+import { GlobalSettingOptions } from '../../constant/settings';
+import { assignDomain, removeDomain, updateDomain } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomProperty,
   setValueForProperty,
   validateValueForProperty,
 } from '../../utils/customProperty';
-import { assignDomain, removeDomain, updateDomain } from '../../utils/domain';
 import {
+  addMultiOwner,
   addOwner,
   assignGlossaryTerm,
+  assignGlossaryTermToChildren,
   assignTag,
+  assignTagToChildren,
   assignTier,
   createAnnouncement,
   createInactiveAnnouncement,
@@ -31,8 +35,10 @@ import {
   followEntity,
   hardDeleteEntity,
   removeGlossaryTerm,
+  removeGlossaryTermFromChildren,
   removeOwner,
   removeTag,
+  removeTagsFromChildren,
   removeTier,
   replyAnnouncement,
   softDeleteEntity,
@@ -49,6 +55,9 @@ import { EntityTypeEndpoint, ENTITY_PATH } from './Entity.interface';
 
 export class EntityClass {
   type: string;
+  serviceCategory?: GlobalSettingOptions;
+  childrenTabId?: string;
+  childrenSelectorId?: string;
   endpoint: EntityTypeEndpoint;
   cleanupUser: (apiContext: APIRequestContext) => Promise<void>;
 
@@ -117,18 +126,67 @@ export class EntityClass {
 
   async owner(
     page: Page,
-    owner1: string,
-    owner2: string,
-    type: 'Teams' | 'Users' = 'Users'
+    owner1: string[],
+    owner2: string[],
+    type: 'Teams' | 'Users' = 'Users',
+    isEditPermission = true
   ) {
-    await addOwner(page, owner1, type, this.endpoint, 'data-assets-header');
-    await updateOwner(page, owner2, type, this.endpoint, 'data-assets-header');
-    await removeOwner(page, this.endpoint, owner2, 'data-assets-header');
+    if (type === 'Teams') {
+      await addOwner({
+        page,
+        owner: owner1[0],
+        type,
+        endpoint: this.endpoint,
+        dataTestId: 'data-assets-header',
+      });
+      if (isEditPermission) {
+        await updateOwner({
+          page,
+          owner: owner2[0],
+          type,
+          endpoint: this.endpoint,
+          dataTestId: 'data-assets-header',
+        });
+        await removeOwner({
+          page,
+          endpoint: this.endpoint,
+          ownerName: owner2[0],
+          type,
+          dataTestId: 'data-assets-header',
+        });
+      }
+    } else {
+      await addMultiOwner({
+        page,
+        ownerNames: owner1,
+        activatorBtnDataTestId: 'edit-owner',
+        resultTestId: 'data-assets-header',
+        endpoint: this.endpoint,
+        type,
+      });
+      if (isEditPermission) {
+        await addMultiOwner({
+          page,
+          ownerNames: owner2,
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'data-assets-header',
+          endpoint: this.endpoint,
+          type,
+        });
+        await removeOwner({
+          page,
+          endpoint: this.endpoint,
+          ownerName: owner2[0],
+          type,
+          dataTestId: 'data-assets-header',
+        });
+      }
+    }
   }
 
   async tier(page: Page, tier1: string, tier2: string) {
-    await assignTier(page, tier1);
-    await assignTier(page, tier2);
+    await assignTier(page, tier1, this.endpoint);
+    await assignTier(page, tier2, this.endpoint);
     await removeTier(page);
   }
 
@@ -152,6 +210,41 @@ export class EntityClass {
       .isVisible();
   }
 
+  async tagChildren({
+    page,
+    tag1,
+    tag2,
+    rowId,
+    rowSelector = 'data-row-key',
+  }: {
+    page: Page;
+    tag1: string;
+    tag2: string;
+    rowId: string;
+    rowSelector?: string;
+  }) {
+    await assignTagToChildren({ page, tag: tag1, rowId, rowSelector });
+    await assignTagToChildren({
+      page,
+      tag: tag2,
+      rowId,
+      rowSelector,
+      action: 'Edit',
+    });
+    await removeTagsFromChildren({
+      page,
+      tags: [tag1, tag2],
+      rowId,
+      rowSelector,
+    });
+
+    await page
+      .locator(`[${rowSelector}="${rowId}"]`)
+      .getByTestId('tags-container')
+      .getByTestId('Add')
+      .isVisible();
+  }
+
   async glossaryTerm(
     page: Page,
     glossaryTerm1: GlossaryTerm['responseData'],
@@ -163,6 +256,46 @@ export class EntityClass {
 
     await page
       .getByTestId('entity-right-panel')
+      .getByTestId('glossary-container')
+      .getByTestId('Add')
+      .isVisible();
+  }
+
+  async glossaryTermChildren({
+    page,
+    glossaryTerm1,
+    glossaryTerm2,
+    rowId,
+    rowSelector = 'data-row-key',
+  }: {
+    page: Page;
+    glossaryTerm1: GlossaryTerm['responseData'];
+    glossaryTerm2: GlossaryTerm['responseData'];
+    rowId: string;
+    rowSelector?: string;
+  }) {
+    await assignGlossaryTermToChildren({
+      page,
+      glossaryTerm: glossaryTerm1,
+      rowId,
+      rowSelector,
+    });
+    await assignGlossaryTermToChildren({
+      page,
+      glossaryTerm: glossaryTerm2,
+      rowId,
+      rowSelector,
+      action: 'Edit',
+    });
+    await removeGlossaryTermFromChildren({
+      page,
+      glossaryTerms: [glossaryTerm1, glossaryTerm2],
+      rowId,
+      rowSelector,
+    });
+
+    await page
+      .locator(`[${rowSelector}="${rowId}"]`)
       .getByTestId('glossary-container')
       .getByTestId('Add')
       .isVisible();
@@ -220,26 +353,6 @@ export class EntityClass {
 
   async hardDeleteEntity(page: Page, entityName: string, displayName?: string) {
     await hardDeleteEntity(page, displayName ?? entityName, this.endpoint);
-  }
-
-  async setCustomProperty(
-    page: Page,
-    propertydetails: CustomProperty,
-    value: string
-  ) {
-    await setValueForProperty({
-      page,
-      propertyName: propertydetails.name,
-      value,
-      propertyType: propertydetails.propertyType.name,
-      endpoint: this.endpoint,
-    });
-    await validateValueForProperty({
-      page,
-      propertyName: propertydetails.name,
-      value,
-      propertyType: propertydetails.propertyType.name,
-    });
   }
 
   async updateCustomProperty(

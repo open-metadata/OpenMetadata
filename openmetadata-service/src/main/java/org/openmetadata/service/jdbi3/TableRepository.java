@@ -19,13 +19,13 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
-import static org.openmetadata.csv.CsvUtil.addOwner;
+import static org.openmetadata.csv.CsvUtil.addOwners;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.csv.CsvUtil.addTagTiers;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -189,8 +189,8 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void setInheritedFields(Table table, Fields fields) {
     DatabaseSchema schema =
-        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owner,domain", ALL);
-    inheritOwner(table, fields, schema);
+        Entity.getEntity(DATABASE_SCHEMA, table.getDatabaseSchema().getId(), "owners,domain", ALL);
+    inheritOwners(table, fields, schema);
     inheritDomain(table, fields, schema);
     // If table does not have retention period, then inherit it from parent databaseSchema
     table.withRetentionPeriod(
@@ -618,9 +618,9 @@ public class TableRepository extends EntityRepository<Table> {
     }
     table.withDataModel(dataModel);
 
-    // Carry forward the table owner from the model to table entity, if empty
-    if (table.getOwner() == null) {
-      storeOwner(table, dataModel.getOwner());
+    // Carry forward the table owners from the model to table entity, if empty
+    if (table.getOwners() == null) {
+      storeOwners(table, dataModel.getOwners());
     }
 
     table.setTags(dataModel.getTags());
@@ -640,7 +640,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
-    setFieldsInternal(table, new Fields(Set.of(FIELD_OWNER), FIELD_OWNER));
+    setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
   }
@@ -765,7 +765,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public String exportToCsv(String name, String user) throws IOException {
     // Validate table
-    Table table = getByName(null, name, new Fields(allowedFields, "owner,domain,tags,columns"));
+    Table table = getByName(null, name, new Fields(allowedFields, "owners,domain,tags,columns"));
     return new TableCsv(table, user).exportCsv(listOf(table));
   }
 
@@ -777,7 +777,8 @@ public class TableRepository extends EntityRepository<Table> {
         getByName(
             null,
             name,
-            new Fields(allowedFields, "owner,domain,tags,columns,database,service,databaseSchema"));
+            new Fields(
+                allowedFields, "owners,domain,tags,columns,database,service,databaseSchema"));
     return new TableCsv(table, user).importCsv(csv, dryRun);
   }
 
@@ -1151,44 +1152,47 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
-      // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers retentionPeriod,
+      // Headers: name, displayName, description, owners, tags, glossaryTerms, tiers
+      // retentionPeriod,
       // sourceUrl, domain, column.fullyQualifiedName, column.displayName, column.description,
       // column.dataTypeDisplay,
       // column.tags, column.glossaryTerms
-      if (processRecord) {
-        // fields tags(4), glossaryTerms(5), tiers(6)
-        List<TagLabel> tagLabels =
-            getTagLabels(
-                printer,
-                csvRecord,
-                List.of(
-                    Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
-                    Pair.of(5, TagLabel.TagSource.GLOSSARY),
-                    Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
-        table
-            .withName(csvRecord.get(0))
-            .withDisplayName(csvRecord.get(1))
-            .withDescription(csvRecord.get(2))
-            .withOwner(getOwner(printer, csvRecord, 3))
-            .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
-            .withRetentionPeriod(csvRecord.get(7))
-            .withSourceUrl(csvRecord.get(8))
-            .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
-        ImportResult importResult = updateColumn(printer, csvRecord);
-        if (importResult.result().equals(IMPORT_FAILED)) {
-          importFailure(printer, importResult.details(), csvRecord);
+      if (csvRecord != null) {
+        if (processRecord) {
+          // fields tags(4), glossaryTerms(5), tiers(6)
+          List<TagLabel> tagLabels =
+              getTagLabels(
+                  printer,
+                  csvRecord,
+                  List.of(
+                      Pair.of(4, TagLabel.TagSource.CLASSIFICATION),
+                      Pair.of(5, TagLabel.TagSource.GLOSSARY),
+                      Pair.of(6, TagLabel.TagSource.CLASSIFICATION)));
+          table
+              .withName(csvRecord.get(0))
+              .withDisplayName(csvRecord.get(1))
+              .withDescription(csvRecord.get(2))
+              .withOwners(getOwners(printer, csvRecord, 3))
+              .withTags(tagLabels != null && tagLabels.isEmpty() ? null : tagLabels)
+              .withRetentionPeriod(csvRecord.get(7))
+              .withSourceUrl(csvRecord.get(8))
+              .withDomain(getEntityReference(printer, csvRecord, 9, Entity.DOMAIN));
+          ImportResult importResult = updateColumn(printer, csvRecord);
+          if (importResult.result().equals(IMPORT_FAILED)) {
+            importFailure(printer, importResult.details(), csvRecord);
+          }
         }
-      }
-      List<ImportResult> importResults = new ArrayList<>();
-      updateColumns(printer, csvRecords, importResults);
-      if (processRecord) {
-        createEntity(printer, csvRecord, table);
-      }
-      for (ImportResult importResult : importResults) {
-        if (importResult.result().equals(IMPORT_SUCCESS)) {
-          importSuccess(printer, importResult.record(), importResult.details());
-        } else {
-          importFailure(printer, importResult.details(), importResult.record());
+        List<ImportResult> importResults = new ArrayList<>();
+        updateColumns(printer, csvRecords, importResults);
+        if (processRecord) {
+          createEntity(printer, csvRecord, table);
+        }
+        for (ImportResult importResult : importResults) {
+          if (importResult.result().equals(IMPORT_SUCCESS)) {
+            importSuccess(printer, importResult.record(), importResult.details());
+          } else {
+            importFailure(printer, importResult.details(), importResult.record());
+          }
         }
       }
     }
@@ -1198,14 +1202,18 @@ public class TableRepository extends EntityRepository<Table> {
         throws IOException {
       while (recordIndex < csvRecords.size() && csvRecords.get(0) != null) { // Column records
         CSVRecord csvRecord = getNextRecord(printer, COLUMN_HEADERS, csvRecords);
-        results.add(updateColumn(printer, csvRecord));
+        if (csvRecord == null) {
+          // Since the processing failed for a particular csvRecord get the previous one
+          CSVRecord failedRecord = csvRecords.get(recordIndex - 1);
+          results.add(
+              new ImportResult(IMPORT_SKIPPED, failedRecord, super.importResult.getAbortReason()));
+        } else {
+          results.add(updateColumn(printer, csvRecord));
+        }
       }
     }
 
     public ImportResult updateColumn(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
-      if (!processRecord) {
-        return new ImportResult(IMPORT_SKIPPED, csvRecord, "");
-      }
       String columnFqn = csvRecord.get(10);
       Column column = findColumn(table.getColumns(), columnFqn);
       boolean columnExists = column != null;
@@ -1283,7 +1291,7 @@ public class TableRepository extends EntityRepository<Table> {
       addField(recordList, entity.getName());
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
-      addOwner(recordList, entity.getOwner());
+      addOwners(recordList, entity.getOwners());
       addTagLabels(recordList, entity.getTags());
       addGlossaryTerms(recordList, entity.getTags());
       addTagTiers(recordList, entity.getTags());

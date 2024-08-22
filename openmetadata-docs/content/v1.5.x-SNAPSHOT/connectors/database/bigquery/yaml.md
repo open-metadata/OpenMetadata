@@ -71,7 +71,7 @@ If the user has `External Tables`, please attach relevant permissions needed for
 icon="manage_accounts"
 title="Create Custom GCP Role"
 description="Checkout this documentation on how to create a custom role and assign it to the service account."
-link="/connectors/database/bigquery/roles"
+link="/connectors/database/bigquery/create-credentials"
   / %}
 {% /tilesContainer %}
 
@@ -136,7 +136,8 @@ Location used to query `INFORMATION_SCHEMA.JOBS_BY_PROJECT` to fetch usage data.
 - If you prefer to pass the credentials file, you can do so as follows:
 ```yaml
 credentials:
-  gcpConfig: <path to file>
+  gcpConfig: 
+    path: <path to file>
 ```
 
 - If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for BigQuery you can just leave
@@ -198,7 +199,7 @@ source:
             Super secret key
             -----END PRIVATE KEY-----
           clientEmail: role@project.iam.gserviceaccount.com
-          clientId: 1234
+          clientId: "1234"
           # authUri: https://accounts.google.com/o/oauth2/auth (default)
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)

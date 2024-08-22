@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -30,11 +31,14 @@ export class PipelineClass extends EntityClass {
       },
     },
   };
+
+  children = [{ name: 'snowflake_task' }];
+
   entity = {
     name: `pw-pipeline-${uuid()}`,
     displayName: `pw-pipeline-${uuid()}`,
     service: this.service.name,
-    tasks: [{ name: 'snowflake_task' }],
+    tasks: this.children,
   };
 
   serviceResponseData: unknown;
@@ -44,6 +48,9 @@ export class PipelineClass extends EntityClass {
     super(EntityTypeEndpoint.Pipeline);
     this.service.name = name ?? this.service.name;
     this.type = 'Pipeline';
+    this.childrenTabId = 'tasks';
+    this.childrenSelectorId = this.children[0].name;
+    this.serviceCategory = SERVICE_TYPE.Pipeline;
   }
 
   async create(apiContext: APIRequestContext) {

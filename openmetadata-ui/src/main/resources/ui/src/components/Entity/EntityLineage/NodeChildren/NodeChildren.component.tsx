@@ -26,7 +26,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { Column, Table } from '../../../../generated/entity/data/table';
 import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityIcon } from '../../../../utils/TableUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import { getColumnContent } from '../CustomNode.utils';
 import TestSuiteSummaryWidget from '../TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 import { EntityChildren, NodeChildrenProps } from './NodeChildren.interface';
@@ -45,6 +45,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
   const { entityType } = node;
   const [searchValue, setSearchValue] = useState('');
   const [filteredColumns, setFilteredColumns] = useState<EntityChildren>([]);
+  const [showAllColumns, setShowAllColumns] = useState(false);
   const [isExpanded, setIsExpanded] = useState<boolean>(true);
 
   const { showColumns, showDataObservability } = useMemo(() => {
@@ -89,15 +90,20 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
     [children]
   );
 
+  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    setShowAllColumns(true);
+  };
+
   const isColumnVisible = useCallback(
     (record: Column) => {
-      if (expandAllColumns || isEditMode) {
+      if (expandAllColumns || isEditMode || showAllColumns) {
         return true;
       }
 
       return columnsHavingLineage.includes(record.fullyQualifiedName ?? '');
     },
-    [isEditMode, columnsHavingLineage, expandAllColumns]
+    [isEditMode, columnsHavingLineage, expandAllColumns, showAllColumns]
   );
 
   useEffect(() => {
@@ -126,6 +132,34 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
         return headerContent;
       }
 
+      const childRecords = record?.children?.map((child) => {
+        const { fullyQualifiedName, dataType } = child;
+        if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
+          return renderRecord(child);
+        } else {
+          const isColumnTraced = tracedColumns.includes(
+            fullyQualifiedName ?? ''
+          );
+
+          if (!isColumnVisible(child)) {
+            return null;
+          }
+
+          return getColumnContent(
+            child,
+            isColumnTraced,
+            isConnectable,
+            onColumnClick
+          );
+        }
+      });
+
+      const result = childRecords.filter((child) => child !== null);
+
+      if (result.length === 0) {
+        return null;
+      }
+
       return (
         <Collapse
           destroyInactivePanel
@@ -134,27 +168,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
           expandIcon={() => null}
           key={record.fullyQualifiedName}>
           <Panel header={headerContent} key={record.fullyQualifiedName ?? ''}>
-            {record?.children?.map((child) => {
-              const { fullyQualifiedName, dataType } = child;
-              if (DATATYPES_HAVING_SUBFIELDS.includes(dataType)) {
-                return renderRecord(child);
-              } else {
-                const isColumnTraced = tracedColumns.includes(
-                  fullyQualifiedName ?? ''
-                );
-
-                if (!isColumnVisible(child)) {
-                  return null;
-                }
-
-                return getColumnContent(
-                  child,
-                  isColumnTraced,
-                  isConnectable,
-                  onColumnClick
-                );
-              }
-            })}
+            {result}
           </Panel>
         </Collapse>
       );
@@ -200,7 +214,7 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 }}>
                 <Space>
                   <div className=" w-5 h-5 text-base-color">
-                    {getEntityIcon(node.entityType ?? '')}
+                    {searchClassBase.getEntityIcon(node.entityType ?? '')}
                   </div>
                   {childrenHeading}
                   {isExpanded ? (
@@ -239,6 +253,17 @@ const NodeChildren = ({ node, isConnectable }: NodeChildrenProps) => {
                 )}
               </div>
             </section>
+
+            {!showAllColumns && (
+              <Button
+                className="m-t-xs text-primary"
+                type="text"
+                onClick={handleShowMoreClick}>
+                {t('label.show-more-entity', {
+                  entity: t('label.column-plural'),
+                })}
+              </Button>
+            )}
           </div>
         )}
       </div>

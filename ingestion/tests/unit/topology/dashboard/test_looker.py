@@ -280,7 +280,7 @@ class LookerUnitTest(TestCase):
                 charts=[],
                 sourceUrl="https://my-looker.com/dashboards/1",
                 service=self.looker.context.get().dashboard_service,
-                owner=None,
+                owners=None,
             )
 
             self.assertEqual(

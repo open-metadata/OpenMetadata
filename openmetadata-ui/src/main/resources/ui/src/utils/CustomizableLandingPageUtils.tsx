@@ -34,6 +34,47 @@ import { EntityReference } from '../generated/entity/type';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import customizePageClassBase from './CustomizePageClassBase';
 
+const getNewWidgetPlacement = (
+  currentLayout: WidgetConfig[],
+  widgetWidth: number
+) => {
+  const lowestWidgetLayout = currentLayout.reduce(
+    (acc, widget) => {
+      if (
+        widget.y >= acc.y &&
+        widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+      ) {
+        if (widget.y === acc.y && widget.x < acc.x) {
+          return acc;
+        }
+
+        return widget;
+      }
+
+      return acc;
+    },
+    { y: 0, x: 0, w: 0 }
+  );
+
+  // Check if there's enough space to place the new widget on the same row
+  if (
+    customizePageClassBase.landingPageMaxGridSize -
+      (lowestWidgetLayout.x + lowestWidgetLayout.w) >=
+    widgetWidth
+  ) {
+    return {
+      x: lowestWidgetLayout.x + lowestWidgetLayout.w,
+      y: lowestWidgetLayout.y,
+    };
+  }
+
+  // Otherwise, move to the next row
+  return {
+    x: 0,
+    y: lowestWidgetLayout.y + 1,
+  };
+};
+
 export const getAddWidgetHandler =
   (
     newWidgetData: Document,
@@ -60,10 +101,9 @@ export const getAddWidgetHandler =
         {
           w: widgetWidth,
           h: widgetHeight,
-          x: 0,
-          y: 0,
           i: widgetFQN,
           static: false,
+          ...getNewWidgetPlacement(currentLayout, widgetWidth),
         },
       ];
     } else {

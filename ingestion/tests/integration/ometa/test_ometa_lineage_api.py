@@ -31,6 +31,7 @@ from metadata.generated.schema.type.entityLineage import (
     EntityLineage,
     LineageDetails,
 )
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 
 from ..integration_base import generate_name, get_create_entity, get_create_service
@@ -285,6 +286,29 @@ class OMetaLineageTest(TestCase):
         self.assertEqual(
             len(res["downstreamEdges"][0]["lineageDetails"]["columnsLineage"]), 2
         )
+
+    def test_delete_by_source(self):
+        """
+        Test case for deleting lineage by source.
+
+        This method tests the functionality of deleting lineage by source. It retrieves the lineage
+        information for a specific table entity using its ID. Then, it records the original length of
+        the upstream edges in the lineage. After that, it deletes the lineage by specifying the source
+        type, table ID, and lineage source. Finally, it asserts that the length of the upstream edges
+        in the lineage has decreased by 1.
+        """
+        lineage = self.metadata.get_lineage_by_id(
+            entity="table", entity_id=self.table2_entity.id.root
+        )
+        original_len = len(lineage.get("upstreamEdges") or [])
+        self.metadata.delete_lineage_by_source(
+            "table", self.table2_entity.id.root, LineageSource.Manual.value
+        )
+        lineage = self.metadata.get_lineage_by_id(
+            entity="table", entity_id=self.table2_entity.id.root
+        )
+        updated_len = len(lineage.get("upstreamEdges") or [])
+        self.assertEqual(updated_len, original_len - 1)
 
     def test_table_datamodel_lineage(self):
         """We can create and get lineage for a table to a dashboard datamodel"""

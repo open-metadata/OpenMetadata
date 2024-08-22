@@ -1,15 +1,15 @@
 """Test fixtures for PostgreSQL. It uses a testcontainer to start a PostgreSQL instance with the dvdrental database."""
 
-import contextlib
 import logging
 import os
-import tarfile
 import zipfile
 from subprocess import CalledProcessError
 
-import docker
 import pytest
+from sqlalchemy import create_engine
 from testcontainers.postgres import PostgresContainer
+
+from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bind
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -18,19 +18,7 @@ def config_logging():
     logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
 
 
-@contextlib.contextmanager
-def try_bind(container, container_port, host_port):
-    """Try to bind a port to the container, if it is already in use try another port."""
-    try:
-        with container.with_bind_ports(container_port, host_port) as container:
-            yield container
-    except docker.errors.APIError:
-        logging.warning("Port %s is already in use, trying another port", host_port)
-        with container.with_bind_ports(container_port, None) as container:
-            yield container
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def postgres_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     data_dir = tmp_path_factory.mktemp("data")
@@ -38,9 +26,6 @@ def postgres_container(tmp_path_factory):
         os.path.dirname(os.path.dirname(__file__)), "data", "dvdrental.zip"
     )
     zipfile.ZipFile(dvd_rental_zip, "r").extractall(str(data_dir))
-    with tarfile.open(data_dir / "dvdrental_data.tar", "w") as tar:
-        tar.add(data_dir / "dvdrental.tar", arcname="dvdrental.tar")
-
     container = PostgresContainer("postgres:15", dbname="dvdrental")
     container._command = [
         "-c",
@@ -57,10 +42,7 @@ def postgres_container(tmp_path_factory):
         try_bind(container, 5432, 5432) if not os.getenv("CI") else container
     ) as container:
         docker_container = container.get_wrapped_container()
-        docker_container.exec_run(["mkdir", "/data"])
-        docker_container.put_archive(
-            "/data/", open(data_dir / "dvdrental_data.tar", "rb")
-        )
+        copy_dir_to_container(str(data_dir), docker_container, "/data")
         for query in (
             "CREATE USER postgres SUPERUSER;",
             "CREATE EXTENSION pg_stat_statements;",
@@ -86,4 +68,8 @@ def postgres_container(tmp_path_factory):
             raise CalledProcessError(
                 returncode=res[0], cmd=res, output=res[1].decode("utf-8")
             )
+        engine = create_engine(container.get_connection_url())
+        engine.execute(
+            "ALTER TABLE customer ADD COLUMN json_field JSONB DEFAULT '{}'::JSONB;"
+        )
         yield container

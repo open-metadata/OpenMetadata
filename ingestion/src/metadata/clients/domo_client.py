@@ -126,7 +126,7 @@ class DomoClient:
 
             if isinstance(response, list) and len(response) > 0:
                 return DomoChartDetails(
-                    id=response[0]["id"],
+                    id=str(response[0]["id"]),
                     name=response[0]["title"],
                     metadata=DomoChartMetadataDetails(
                         chartType=response[0].get("metadata", {}).get("chartType", "")

@@ -671,7 +671,7 @@ Validate values form a set are present in a column.
   computePassedFailedRowCount: <true or false>
   parameterValues:
       - name: allowedValues
-        value: ["forbidden1", "forbidden2"]
+        value: '["allowed1","allowed2"]'
 ```
 
 **JSON Config**
@@ -685,10 +685,7 @@ Validate values form a set are present in a column.
     "parameterValues": [
         {
             "name": "allowedValues",
-            "value": [
-                "forbidden1",
-                "forbidden2"
-            ]
+            "value": '["allowed1","allowed2"]'
         }
     ]
 }
@@ -718,7 +715,7 @@ Validate that there are no values in a column in a set of forbidden values.
   computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: forbiddenValues
-      value: ["forbidden1", "forbidden2"]
+      value: '["forbidden1", "forbidden2"]'
 ```
 
 **JSON Config**
@@ -743,14 +740,14 @@ Validate that there are no values in a column in a set of forbidden values.
 
 ### Column Values to Be Between
 Validate that the values of a column are within a given range.
-> Only supports numerical types.
+> For date types, the range should be in an epoch seconds or milliseconds format.
 
 **Properties**
 
 * `minValue`: Lower bound of the interval. If informed, the column values should be bigger than this number.
 * `maxValue`: Upper bound of the interval. If informed, the column values should be lower than this number.
 
-Any of those two need to be informed.
+Zero, one or both of those two need to be informed.
 
 **Behavior**
 
@@ -773,7 +770,18 @@ Any of those two need to be informed.
   computePassedFailedRowCount: <true or false>
   parameterValues:
     - name: minValue
-      value: ["forbidden1", "forbidden2"]
+      value: '10'
+```
+
+```yaml
+- name: myTestName
+  description: test description
+  columnName: dateColumn
+  testDefinitionName: columnValuesToBeBetween
+  computePassedFailedRowCount: <true or false>
+  parameterValues:
+    - name: minValue
+      value: '1704067200' # 2020-01-01
 ```
 
 **JSON Config**
@@ -787,10 +795,7 @@ Any of those two need to be informed.
     "parameterValues": [
         {
             "name": "minValue",
-            "value": [
-                "forbidden1",
-                "forbidden2"
-            ]
+            "value": '10'
         }
     ]
 }

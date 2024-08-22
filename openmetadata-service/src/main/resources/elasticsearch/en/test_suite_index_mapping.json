@@ -66,6 +66,13 @@
         "type": "text",
         "analyzer": "om_analyzer"
       },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "om_analyzer",
@@ -107,7 +114,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

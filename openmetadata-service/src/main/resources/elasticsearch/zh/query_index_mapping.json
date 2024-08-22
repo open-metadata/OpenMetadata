@@ -209,7 +209,7 @@
       "queryDate": {
         "type": "long"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -397,6 +397,13 @@
             "normalizer": "lowercase_normalizer"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

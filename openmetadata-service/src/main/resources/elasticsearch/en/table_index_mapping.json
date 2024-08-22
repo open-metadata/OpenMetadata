@@ -304,7 +304,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -601,7 +601,8 @@
         "type": "completion"
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "votes" : {
         "type": "object"

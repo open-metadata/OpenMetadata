@@ -39,6 +39,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_E
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.getUser;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -56,7 +57,6 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
-import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -73,15 +73,14 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.EntityUtil;
@@ -98,7 +97,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private TokenRepository tokenRepository;
   private LoginAttemptCache loginAttemptCache;
   private AuthorizerConfiguration authorizerConfiguration;
-  private LoginConfiguration loginConfiguration;
   private boolean isEmailServiceEnabled;
   private boolean isSelfSignUpAvailable;
 
@@ -111,8 +109,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
-    this.loginConfiguration =
-        SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   @Override
@@ -343,12 +339,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         templatePopulator.put(EmailUtil.APPLICATION_LOGIN_LINK, EmailUtil.getOMUrl());
         try {
           EmailUtil.sendMail(
-              subject,
-              templatePopulator,
-              user.getEmail(),
-              EmailUtil.EMAIL_TEMPLATE_BASEPATH,
-              EmailUtil.INVITE_RANDOM_PWD,
-              true);
+              subject, templatePopulator, user.getEmail(), EmailUtil.INVITE_RANDOM_PWD, true);
         } catch (TemplateException ex) {
           LOG.error(
               "Failed in sending Mail to user [{}]. Reason : {}",
@@ -393,7 +384,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
                 getRoleListFromUser(storedUser),
                 !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
-                loginConfiguration.getJwtTokenExpiryTime(),
+                SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime(),
                 false,
                 ServiceTokenType.OM_USER);
     JwtResponse response = new JwtResponse();
@@ -449,17 +440,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         BCrypt.withDefaults().hashToString(HASHING_COST, create.getPassword().toCharArray());
 
     BasicAuthMechanism newAuthMechanism = new BasicAuthMechanism().withPassword(hashedPwd);
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(username)
-        .withFullyQualifiedName(username)
-        .withEmail(create.getEmail())
-        .withDisplayName(create.getFirstName() + create.getLastName())
-        .withIsBot(false)
-        .withIsAdmin(false)
-        .withUpdatedBy(username)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsEmailVerified(false)
+    return getUser(
+            username,
+            new CreateUser()
+                .withName(username)
+                .withEmail(create.getEmail())
+                .withDisplayName(String.format("%s%s", create.getFirstName(), create.getLastName()))
+                .withIsBot(false)
+                .withIsAdmin(false))
         .withAuthenticationMechanism(
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.BASIC)
@@ -478,7 +466,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     checkIfLoginBlocked(userName);
     User storedUser = lookUserInProvider(userName);
     validatePassword(userName, storedUser, loginRequest.getPassword());
-    return getJwtResponse(storedUser, loginConfiguration.getJwtTokenExpiryTime());
+    return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
   @Override
@@ -493,13 +481,13 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       throws TemplateException, IOException {
     loginAttemptCache.recordFailedLogin(providedIdentity);
     int failedLoginAttempt = loginAttemptCache.getUserFailedLoginCount(providedIdentity);
-    if (failedLoginAttempt == loginConfiguration.getMaxLoginFailAttempts()) {
+    if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       EmailUtil.sendAccountStatus(
           storedUser,
           "Multiple Failed Login Attempts.",
           String.format(
               "Someone is trying to access your account. Login is Blocked for %s minutes. Please change your password.",
-              loginConfiguration.getAccessBlockTime()));
+              SecurityUtil.getLoginConfiguration().getAccessBlockTime()));
     }
   }
 

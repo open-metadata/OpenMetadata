@@ -26,12 +26,16 @@ import Loader from '../../components/common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../components/DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import applicationSchemaClassBase from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
+import {
+  default as applicationSchemaClassBase,
+  default as applicationsClassBase,
+} from '../../components/Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppInstallVerifyCard from '../../components/Settings/Applications/AppInstallVerifyCard/AppInstallVerifyCard.component';
 import IngestionStepper from '../../components/Settings/Services/Ingestion/IngestionStepper/IngestionStepper.component';
 import { STEPS_FOR_APP_INSTALL } from '../../constants/Applications.constant';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { AppType } from '../../generated/entity/applications/app';
 import {
@@ -49,7 +53,6 @@ import {
   getMarketPlaceAppDetailsPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getScheduleOptionsFromSchedules } from '../../utils/ScheduleUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './app-install.less';
 
@@ -80,15 +83,15 @@ const AppInstall = () => {
   );
 
   const { initialOptions, initialValue } = useMemo(() => {
-    let initialOptions;
-
-    if (appData?.name === 'DataInsightsReportApplication') {
-      initialOptions = ['week'];
-    } else if (appData?.appType === AppType.External) {
-      initialOptions = ['day'];
-    } else if (pipelineSchedules && !isEmpty(pipelineSchedules)) {
-      initialOptions = getScheduleOptionsFromSchedules(pipelineSchedules);
+    if (!appData) {
+      return {};
     }
+
+    const initialOptions = applicationsClassBase.getScheduleOptionsForApp(
+      appData?.name,
+      appData?.appType,
+      pipelineSchedules
+    );
 
     return {
       initialOptions,
@@ -107,7 +110,7 @@ const AppInstall = () => {
     setIsLoading(true);
     try {
       const data = await getMarketPlaceApplicationByFqn(fqn, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setAppData(data);
 

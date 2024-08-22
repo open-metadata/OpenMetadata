@@ -16,7 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
@@ -34,6 +34,7 @@ import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityAction, TabSpecificField } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -59,6 +60,7 @@ const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const history = useHistory();
+  const { action } = useParams<{ action: EntityAction }>();
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -73,6 +75,11 @@ const GlossaryPage = () => {
     setActiveGlossary,
     updateActiveGlossary,
   } = useGlossaryStore();
+
+  const isImportAction = useMemo(
+    () => action === EntityAction.IMPORT,
+    [action]
+  );
 
   const isGlossaryActive = useMemo(() => {
     setIsRightPanelLoading(true);
@@ -130,7 +137,14 @@ const GlossaryPage = () => {
     setIsLoading(true);
     try {
       const { data } = await getGlossariesList({
-        fields: 'owner,tags,reviewers,votes,domain',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.VOTES,
+          TabSpecificField.DOMAIN,
+        ],
+
         limit: PAGE_SIZE_LARGE,
       });
       setGlossaries(data);
@@ -149,8 +163,16 @@ const GlossaryPage = () => {
     setIsRightPanelLoading(true);
     try {
       const response = await getGlossaryTermByFQN(glossaryFqn, {
-        fields:
-          'relatedTerms,reviewers,tags,owner,children,votes,domain,extension',
+        fields: [
+          TabSpecificField.RELATED_TERMS,
+          TabSpecificField.REVIEWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.OWNERS,
+          TabSpecificField.CHILDREN,
+          TabSpecificField.VOTES,
+          TabSpecificField.DOMAIN,
+          TabSpecificField.EXTENSION,
+        ],
       });
       setActiveGlossary(response as ModifiedGlossary);
     } catch (error) {
@@ -344,7 +366,8 @@ const GlossaryPage = () => {
     <PageLayoutV1
       className="glossary-page-layout"
       leftPanel={
-        isGlossaryActive && <GlossaryLeftPanel glossaries={glossaries} />
+        isGlossaryActive &&
+        !isImportAction && <GlossaryLeftPanel glossaries={glossaries} />
       }
       pageTitle={t('label.glossary')}
       rightPanel={

@@ -12,10 +12,19 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
+
+type ResponseDataType = {
+  name: string;
+  displayName: string;
+  description: string;
+  id: string;
+  fullyQualifiedName: string;
+};
 
 export class MlModelClass extends EntityClass {
   service = {
@@ -30,27 +39,33 @@ export class MlModelClass extends EntityClass {
       },
     },
   };
+
+  children = [
+    {
+      name: 'sales',
+      dataType: 'numerical',
+      description: 'Sales amount',
+    },
+  ];
+
   entity = {
     name: `pw-mlmodel-${uuid()}`,
     displayName: `pw-mlmodel-${uuid()}`,
     service: this.service.name,
     algorithm: 'Time Series',
-    mlFeatures: [
-      {
-        name: 'sales',
-        dataType: 'numerical',
-        description: 'Sales amount',
-      },
-    ],
+    mlFeatures: this.children,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType;
+  entityResponseData: ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.MlModel);
     this.service.name = name ?? this.service.name;
     this.type = 'MlModel';
+    this.childrenTabId = 'features';
+    this.childrenSelectorId = `feature-card-${this.children[0].name}`;
+    this.serviceCategory = SERVICE_TYPE.MLModels;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -81,9 +96,7 @@ export class MlModelClass extends EntityClass {
     patchData: Operation[];
   }) {
     const response = await apiContext.patch(
-      `/api/v1/mlmodels/${
-        (this.entityResponseData as { id: string })?.id ?? ''
-      }`,
+      `/api/v1/mlmodels/${this.entityResponseData.id}`,
       {
         data: patchData,
         headers: {

@@ -45,6 +45,6 @@
     }
   ],
   "provider": "system",
-  "datatQualityDimension": "Consistency"
+  "dataQualityDimension": "Consistency"
 }
   

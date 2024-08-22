@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.StepStats;
@@ -39,6 +40,7 @@ import org.openmetadata.service.util.JsonUtils;
 import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkResponse;
 
+@Slf4j
 public class ReindexingUtil {
   private ReindexingUtil() {
     /*unused*/
@@ -46,6 +48,7 @@ public class ReindexingUtil {
 
   public static final String ENTITY_TYPE_KEY = "entityType";
   public static final String ENTITY_NAME_LIST_KEY = "entityNameList";
+  public static final String TIMESTAMP_KEY = "@timestamp";
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
@@ -58,20 +61,25 @@ public class ReindexingUtil {
 
   public static int getTotalRequestToProcess(Set<String> entities, CollectionDAO dao) {
     int total = 0;
+
     for (String entityType : entities) {
-      if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-        total += repository.getDao().listTotalCount();
-      } else {
-        EntityTimeSeriesRepository<?> repository;
-        ListFilter listFilter = new ListFilter(null);
-        if (isDataInsightIndex(entityType)) {
-          listFilter.addQueryParam("entityFQNHash", entityType);
-          repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+      try {
+        if (!TIME_SERIES_ENTITIES.contains(entityType)) {
+          EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+          total += repository.getDao().listTotalCount();
         } else {
-          repository = Entity.getEntityTimeSeriesRepository(entityType);
+          EntityTimeSeriesRepository<?> repository;
+          ListFilter listFilter = new ListFilter(null);
+          if (isDataInsightIndex(entityType)) {
+            listFilter.addQueryParam("entityFQNHash", entityType);
+            repository = Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA);
+          } else {
+            repository = Entity.getEntityTimeSeriesRepository(entityType);
+          }
+          total += repository.getTimeSeriesDao().listCount(listFilter);
         }
-        total += repository.getTimeSeriesDao().listCount(listFilter);
+      } catch (Exception e) {
+        LOG.debug("Error while getting total entities to index", e);
       }
     }
     return total;
@@ -163,5 +171,9 @@ public class ReindexingUtil {
     }
 
     return entities;
+  }
+
+  public static String escapeDoubleQuotes(String str) {
+    return str.replace("\"", "\\\"");
   }
 }

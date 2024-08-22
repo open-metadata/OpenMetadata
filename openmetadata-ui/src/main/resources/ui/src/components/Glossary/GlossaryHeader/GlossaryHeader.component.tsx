@@ -38,6 +38,8 @@ import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/Enti
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityAction, EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
@@ -45,6 +47,7 @@ import {
   GlossaryTerm,
   Status,
 } from '../../../generated/entity/data/glossaryTerm';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
@@ -57,6 +60,7 @@ import {
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
+import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getGlossaryPath,
   getGlossaryPathWithAction,
@@ -104,6 +108,32 @@ const GlossaryHeader = ({
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [openChangeParentHierarchyModal, setOpenChangeParentHierarchyModal] =
     useState(false);
+  const { permissions: globalPermissions } = usePermissionProvider();
+
+  const createGlossaryTermPermission = useMemo(
+    () =>
+      checkPermission(
+        Operation.Create,
+        ResourceEntity.GLOSSARY_TERM,
+        globalPermissions
+      ),
+    [globalPermissions]
+  );
+
+  const importExportPermissions = useMemo(
+    () =>
+      checkPermission(
+        Operation.All,
+        ResourceEntity.GLOSSARY_TERM,
+        globalPermissions
+      ) ||
+      checkPermission(
+        Operation.EditAll,
+        ResourceEntity.GLOSSARY_TERM,
+        globalPermissions
+      ),
+    [globalPermissions]
+  );
 
   // To fetch the latest glossary data
   // necessary to handle back click functionality to work properly in version page
@@ -283,7 +313,7 @@ const GlossaryHeader = ({
   }, [selectedData]);
 
   const manageButtonContent: ItemType[] = [
-    ...(isGlossary
+    ...(isGlossary && importExportPermissions
       ? ([
           {
             label: (
@@ -436,7 +466,7 @@ const GlossaryHeader = ({
   }, [isGlossary, selectedData]);
 
   const createButtons = useMemo(() => {
-    if (permissions.Create) {
+    if (permissions.Create || createGlossaryTermPermission) {
       return isGlossary ? (
         <Button
           className="m-l-xs"
@@ -471,7 +501,13 @@ const GlossaryHeader = ({
     }
 
     return null;
-  }, [isGlossary, permissions, addButtonContent, glossaryTermStatus]);
+  }, [
+    isGlossary,
+    permissions,
+    createGlossaryTermPermission,
+    addButtonContent,
+    glossaryTermStatus,
+  ]);
 
   /**
    * To create breadcrumb from the fqn

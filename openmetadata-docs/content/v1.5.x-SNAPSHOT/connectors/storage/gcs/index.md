@@ -6,9 +6,9 @@ slug: /connectors/storage/gcs
 {% connectorDetailsHeader
 name="GCS"
 stage="PROD"
-platform="Collate"
-availableFeatures=["Metadata"]
-unavailableFeatures=[]
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Structured Containers"]
+unavailableFeatures=["Unstructured Containers"]
 / %}
 
 This page contains the setup guide and reference information for the GCS connector.

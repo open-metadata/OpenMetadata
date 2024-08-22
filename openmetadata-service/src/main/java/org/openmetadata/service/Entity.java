@@ -98,7 +98,7 @@ public final class Entity {
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
-  public static final String FIELD_OWNER = "owner";
+  public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_FOLLOWERS = "followers";
@@ -114,6 +114,7 @@ public final class Entity {
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_EXPERTS = "experts";
   public static final String FIELD_DOMAIN = "domain";
+  public static final String FIELD_DOMAINS = "domains";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
 
@@ -174,6 +175,7 @@ public final class Entity {
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
+  public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
 
   //
@@ -347,9 +349,10 @@ public final class Entity {
     return repository.getReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) {
-    EntityRepository<?> repository = getEntityRepository(reference.getType());
-    return repository.getOwner(reference);
+  public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
+    EntityRepository<? extends EntityInterface> repository =
+        getEntityRepository(reference.getType());
+    return repository.getOwners(reference);
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
@@ -592,5 +595,9 @@ public final class Entity {
 
   public static <T> T getDao() {
     return (T) collectionDAO;
+  }
+
+  public static <T> T getSearchRepo() {
+    return (T) searchRepository;
   }
 }

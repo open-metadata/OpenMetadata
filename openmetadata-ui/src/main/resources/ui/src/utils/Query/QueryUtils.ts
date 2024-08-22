@@ -17,7 +17,6 @@ import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDrop
 import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { SearchIndex } from '../../enums/search.enum';
 import { searchQuery } from '../../rest/searchAPI';
-import { getEntityName } from '../EntityUtils';
 
 export const createQueryFilter = ({
   tableId,
@@ -46,7 +45,9 @@ export const createQueryFilter = ({
         {
           bool: {
             should: owners.map((data) => ({
-              term: { 'owner.fullyQualifiedName': data.key },
+              term: {
+                'owners.name': data.key,
+              },
             })),
           },
         },
@@ -102,10 +103,6 @@ export const fetchFilterOptions = async (
     pageSize: PAGE_SIZE_BASE,
     searchIndex,
   });
-  const options = response.hits.hits.map((hit) => ({
-    key: hit._source.fullyQualifiedName ?? hit._source.name,
-    label: getEntityName(hit._source),
-  }));
 
-  return options;
+  return response;
 };

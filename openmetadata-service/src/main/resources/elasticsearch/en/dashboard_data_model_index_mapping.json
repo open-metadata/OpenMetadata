@@ -157,7 +157,7 @@
       "column_suggest": {
         "type": "completion"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -426,7 +426,8 @@
         "type": "object"
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "votes" : {
         "type": "object"

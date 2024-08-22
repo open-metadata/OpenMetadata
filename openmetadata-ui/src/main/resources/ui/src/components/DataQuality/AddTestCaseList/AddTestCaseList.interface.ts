@@ -14,10 +14,12 @@ import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 
 export interface AddTestCaseModalProps {
   onCancel?: () => void;
-  onSubmit: (testCases: TestCase[]) => void;
+  onSubmit?: (testCases: TestCase[]) => void;
+  onChange?: (testCases: TestCase[]) => void;
   existingTest?: EntityReference[];
   cancelText?: string;
   submitText?: string;
   filters?: string;
   selectedTest?: string[];
+  showButton?: boolean;
 }

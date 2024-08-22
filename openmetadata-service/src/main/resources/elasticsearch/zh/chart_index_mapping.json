@@ -98,7 +98,7 @@
         "href": {
           "type": "text"
         },
-        "owner": {
+        "owners": {
           "properties": {
             "id": {
               "type": "keyword",
@@ -238,7 +238,8 @@
           }
         },
         "serviceType": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
         },
         "deleted": {
           "type": "text"
@@ -329,6 +330,12 @@
               "type": "text"
             }
           }
+        },
+        "totalVotes": {
+          "type": "long"
+        },
+        "votes" : {
+          "type": "object"
         },
         "descriptionStatus": {
           "type": "keyword"

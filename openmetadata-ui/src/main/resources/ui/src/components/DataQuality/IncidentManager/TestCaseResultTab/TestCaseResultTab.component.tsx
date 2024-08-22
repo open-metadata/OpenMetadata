@@ -45,7 +45,11 @@ import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
 
 const TestCaseResultTab = () => {
   const { t } = useTranslation();
-  const { testCase: testCaseData, setTestCase } = useTestCaseStore();
+  const {
+    testCase: testCaseData,
+    setTestCase,
+    showAILearningBanner,
+  } = useTestCaseStore();
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
@@ -113,6 +117,11 @@ const TestCaseResultTab = () => {
 
   const handleCancelParameter = useCallback(
     () => setIsParameterEdit(false),
+    []
+  );
+
+  const AlertComponent = useMemo(
+    () => testCaseResultTabClassBase.getAlertBanner(),
     []
   );
 
@@ -211,6 +220,7 @@ const TestCaseResultTab = () => {
               </Col>
               <Col span={24}>
                 <SchemaEditor
+                  className="query-editor-min-h-60"
                   editorClass="table-query-editor"
                   mode={{ name: CSMode.SQL }}
                   options={{
@@ -224,6 +234,13 @@ const TestCaseResultTab = () => {
         </Col>
       ) : null}
 
+      {showAILearningBanner &&
+        testCaseData?.useDynamicAssertion &&
+        AlertComponent && (
+          <Col span={24}>
+            <AlertComponent />
+          </Col>
+        )}
       {testCaseData && (
         <Col className="test-case-result-tab-graph" span={24}>
           <TestSummary data={testCaseData} />

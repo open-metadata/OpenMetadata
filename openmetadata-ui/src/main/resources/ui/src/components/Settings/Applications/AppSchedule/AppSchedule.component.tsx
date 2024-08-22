@@ -25,13 +25,14 @@ import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore
 import {
   AppScheduleClass,
   AppType,
+  ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { getIngestionPipelineByFqn } from '../../../../rest/ingestionPipelineAPI';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getWeekCron } from '../../../common/CronEditor/CronEditor.constant';
 import Loader from '../../../common/Loader/Loader';
 import { TestSuiteIngestionDataType } from '../../../DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import TestSuiteScheduler from '../../../DataQuality/AddDataQualityTest/components/TestSuiteScheduler';
+import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import AppRunsHistory from '../AppRunsHistory/AppRunsHistory.component';
 import { AppRunsHistoryRef } from '../AppRunsHistory/AppRunsHistory.interface';
 import { AppScheduleProps } from './AppScheduleProps.interface';
@@ -50,6 +51,14 @@ const AppSchedule = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const { config } = useLimitStore();
+
+  const showRunNowButton = useMemo(() => {
+    if (appData && appData.scheduleType === ScheduleType.ScheduledOrManual) {
+      return true;
+    }
+
+    return false;
+  }, [appData]);
 
   const { pipelineSchedules } =
     config?.limits?.config.featureLimits.find(
@@ -137,15 +146,11 @@ const AppSchedule = ({
   }, [appData, isPipelineDeployed, appRunsHistoryRef]);
 
   const initialOptions = useMemo(() => {
-    if (appData.name === 'DataInsightsReportApplication') {
-      return ['week'];
-    } else if (appData.appType === AppType.External) {
-      return ['day'];
-    }
-
-    return pipelineSchedules
-      ? getScheduleOptionsFromSchedules(pipelineSchedules)
-      : undefined;
+    return applicationsClassBase.getScheduleOptionsForApp(
+      appData.name,
+      appData.appType,
+      pipelineSchedules
+    );
   }, [appData.name, appData.appType, pipelineSchedules]);
 
   useEffect(() => {
@@ -203,22 +208,26 @@ const AppSchedule = ({
                 </Button>
               )}
 
-              <Button
-                data-testid="edit-button"
-                disabled={appData.deleted}
-                type="primary"
-                onClick={() => setShowModal(true)}>
-                {t('label.edit')}
-              </Button>
+              {!appData.system && (
+                <Button
+                  data-testid="edit-button"
+                  disabled={appData.deleted}
+                  type="primary"
+                  onClick={() => setShowModal(true)}>
+                  {t('label.edit')}
+                </Button>
+              )}
 
-              <Button
-                data-testid="run-now-button"
-                disabled={appData.deleted}
-                loading={isRunLoading}
-                type="primary"
-                onClick={onAppTrigger}>
-                {t('label.run-now')}
-              </Button>
+              {showRunNowButton && (
+                <Button
+                  data-testid="run-now-button"
+                  disabled={appData.deleted}
+                  loading={isRunLoading}
+                  type="primary"
+                  onClick={onAppTrigger}>
+                  {t('label.run-now')}
+                </Button>
+              )}
             </Space>
           </Col>
         )}

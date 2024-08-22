@@ -120,9 +120,9 @@
       "$ref": "#/definitions/topicSampleData",
       "default": null
     },
-    "owner": {
-      "description": "Owner of this topic.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this topic.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "followers": {
       "description": "Followers of this table.",

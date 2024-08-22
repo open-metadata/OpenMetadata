@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getCurrentMillis } from '../../../src/utils/date-time/DateTimeUtils';
 import { uuid } from '../../constants/constants';
 import { EntityType } from '../../constants/Entity.interface';
 import {
@@ -118,10 +119,10 @@ const verifyPipelineSuccessStatus = (time = 20000) => {
   cy.wait('@pipelineStatus');
   cy.get('[data-testid="pipeline-status"]').then(($el) => {
     const text = $el.text();
-    if (text !== 'Success' && text !== 'Failed' && newTime > 500) {
+    if (text !== 'SUCCESS' && text !== 'FAILED' && newTime > 500) {
       verifyPipelineSuccessStatus(newTime);
-    } else if (text === 'Success') {
-      cy.get('[data-testid="pipeline-status"]').should('contain', 'Success');
+    } else if (text === 'SUCCESS') {
+      cy.get('[data-testid="pipeline-status"]').should('contain', 'SUCCESS');
     }
   });
 };
@@ -149,6 +150,9 @@ export const triggerTestCasePipeline = ({
   verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
+  cy.get('[data-testid="profiler-tab-left-panel"]')
+    .contains('Table Profile')
+    .click();
 
   interceptURL(
     'GET',
@@ -175,7 +179,11 @@ export const triggerTestCasePipeline = ({
   );
   cy.get('[id*="tab-pipeline"]').click();
   verifyResponseStatusCode('@getPipelineStatus', 200);
-  cy.get('[data-testid="run"]').click();
+  cy.get('[data-testid="more-actions"]').click();
+
+  cy.get(
+    '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
+  ).click();
   cy.wait('@triggerPipeline');
   verifyPipelineSuccessStatus();
 };
@@ -210,6 +218,30 @@ const prepareDataQualityTestCasesViaREST = ({
           testDefinition: 'tableColumnCountToBeBetween',
           testSuite: testSuite.name,
         },
+      }).then((response) => {
+        const testCaseFqn = response.body.fullyQualifiedName;
+
+        cy.request({
+          method: 'PUT',
+          url: `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: {
+            result:
+              'Found min=10001, max=27809 vs. the expected min=90001, max=96162.',
+            testCaseStatus: 'Failed',
+            testResultValue: [
+              {
+                name: 'minValueForMaxInCol',
+                value: '10001',
+              },
+              {
+                name: 'maxValueForMaxInCol',
+                value: '27809',
+              },
+            ],
+            timestamp: getCurrentMillis(),
+          },
+        });
       });
     });
     cy.request({
@@ -238,11 +270,6 @@ const prepareDataQualityTestCasesViaREST = ({
         headers: { Authorization: `Bearer ${token}` },
       })
     );
-  });
-
-  triggerTestCasePipeline({
-    serviceName: serviceName,
-    tableName: tableName,
   });
 };
 

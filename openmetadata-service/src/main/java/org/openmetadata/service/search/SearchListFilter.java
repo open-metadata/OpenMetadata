@@ -105,11 +105,11 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   }
 
   private String getOwnerCondition() {
-    String owner = getQueryParam("owner");
-    if (!nullOrEmpty(owner)) {
-      String ownerList =
-          Arrays.stream(owner.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
-      return String.format("{\"terms\": {\"owner.id\": [%s]}}", ownerList);
+    String owners = getQueryParam("owners");
+    if (!nullOrEmpty(owners)) {
+      String ownersList =
+          Arrays.stream(owners.split(",")).collect(Collectors.joining("\", \"", "\"", "\""));
+      return String.format("{\"terms\": {\"owners.id\": [%s]}}", ownersList);
     }
     return "";
   }
@@ -141,6 +141,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String tags = getQueryParam("tags");
     String tier = getQueryParam("tier");
     String serviceName = getQueryParam("serviceName");
+    String dataQualityDimension = getQueryParam("dataQualityDimension");
 
     if (tags != null) {
       String tagsList =
@@ -207,6 +208,11 @@ public class SearchListFilter extends Filter<SearchListFilter> {
           getTimestampFilter("testCaseResult.timestamp", "gte", Long.parseLong(startTimestamp)));
       conditions.add(
           getTimestampFilter("testCaseResult.timestamp", "lte", Long.parseLong(endTimestamp)));
+    }
+
+    if (dataQualityDimension != null) {
+      conditions.add(
+          String.format("{\"term\": {\"dataQualityDimension\": \"%s\"}}", dataQualityDimension));
     }
 
     return addCondition(conditions);

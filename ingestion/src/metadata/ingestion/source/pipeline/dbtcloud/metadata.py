@@ -111,6 +111,7 @@ class DbtcloudSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to get tasks list due to : {exc}")
+        return None
 
     def yield_pipeline(
         self, pipeline_details: DBTJob
@@ -119,16 +120,22 @@ class DbtcloudSource(PipelineServiceSource):
         Method to Get Pipeline Entity
         """
         try:
-            connection_url = f"{clean_uri(self.service_connection.host)}/deploy/{self.service_connection.accountId}/projects/{pipeline_details.project_id}/jobs/{pipeline_details.id}"
+            connection_url = (
+                f"{clean_uri(self.service_connection.host)}/deploy/"
+                f"{self.service_connection.accountId}/projects/"
+                f"{pipeline_details.project_id}/jobs/{pipeline_details.id}"
+            )
 
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.name),
                 description=Markdown(pipeline_details.description),
                 sourceUrl=SourceUrl(connection_url),
                 tasks=self._get_task_list(job_id=int(pipeline_details.id)),
-                scheduleInterval=str(pipeline_details.schedule.cron)
-                if pipeline_details.schedule
-                else None,
+                scheduleInterval=(
+                    str(pipeline_details.schedule.cron)
+                    if pipeline_details.schedule
+                    else None
+                ),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             )
             yield Either(right=pipeline_request)
@@ -148,77 +155,88 @@ class DbtcloudSource(PipelineServiceSource):
         """
         Get lineage between pipeline and data sources
         """
-        try:
-            pipeline_fqn = fqn.build(
-                metadata=self.metadata,
-                entity_type=Pipeline,
-                service_name=self.context.get().pipeline_service,
-                pipeline_name=self.context.get().pipeline,
-            )
+        try:  # pylint: disable=too-many-nested-blocks
+            if self.source_config.lineageInformation:
+                pipeline_fqn = fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Pipeline,
+                    service_name=self.context.get().pipeline_service,
+                    pipeline_name=self.context.get().pipeline,
+                )
 
-            pipeline_entity = self.metadata.get_by_name(
-                entity=Pipeline, fqn=pipeline_fqn
-            )
+                pipeline_entity = self.metadata.get_by_name(
+                    entity=Pipeline, fqn=pipeline_fqn
+                )
 
-            lineage_details = LineageDetails(
-                pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
-                source=LineageSource.PipelineLineage,
-            )
+                lineage_details = LineageDetails(
+                    pipeline=EntityReference(
+                        id=pipeline_entity.id.root, type="pipeline"
+                    ),
+                    source=LineageSource.PipelineLineage,
+                )
 
-            dbt_models = self.client.get_model_details(
-                job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
-            )
+                dbt_models = self.client.get_model_details(
+                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
+                )
 
-            for model in dbt_models or []:
-                for dbservicename in (
-                    self.source_config.lineageInformation.dbServiceNames or []
-                ):
-                    to_entity = self.metadata.get_by_name(
-                        entity=Table,
-                        fqn=fqn.build(
-                            metadata=self.metadata,
-                            entity_type=Table,
-                            table_name=model.alias,
-                            database_name=model.database,
-                            schema_name=model.dbtschema,
-                            service_name=dbservicename,
-                        ),
-                    )
+                dbt_parents = self.client.get_models_and_seeds_details(
+                    job_id=pipeline_details.id, run_id=self.context.get().latest_run_id
+                )
 
-                    if to_entity is None:
-                        continue
-
-                    for dest in model.parentsSources or []:
-                        from_entity = self.metadata.get_by_name(
+                for model in dbt_models or []:
+                    for dbservicename in (
+                        self.source_config.lineageInformation.dbServiceNames or []
+                    ):
+                        to_entity = self.metadata.get_by_name(
                             entity=Table,
                             fqn=fqn.build(
                                 metadata=self.metadata,
                                 entity_type=Table,
-                                table_name=dest.name,
-                                database_name=dest.database,
-                                schema_name=dest.dbtschema,
+                                table_name=model.name,
+                                database_name=model.database,
+                                schema_name=model.dbtschema,
                                 service_name=dbservicename,
                             ),
                         )
 
-                        if from_entity is None:
+                        if to_entity is None:
                             continue
 
-                        yield Either(
-                            right=AddLineageRequest(
-                                edge=EntitiesEdge(
-                                    fromEntity=EntityReference(
-                                        id=from_entity.id,
-                                        type="table",
+                        for unique_id in model.dependsOn or []:
+                            parents = [
+                                d for d in dbt_parents if d.uniqueId == unique_id
+                            ]
+                            if parents:
+                                from_entity = self.metadata.get_by_name(
+                                    entity=Table,
+                                    fqn=fqn.build(
+                                        metadata=self.metadata,
+                                        entity_type=Table,
+                                        table_name=parents[0].name,
+                                        database_name=parents[0].database,
+                                        schema_name=parents[0].dbtschema,
+                                        service_name=dbservicename,
                                     ),
-                                    toEntity=EntityReference(
-                                        id=to_entity.id,
-                                        type="table",
-                                    ),
-                                    lineageDetails=lineage_details,
                                 )
-                            )
-                        )
+
+                                if from_entity is None:
+                                    continue
+
+                                yield Either(
+                                    right=AddLineageRequest(
+                                        edge=EntitiesEdge(
+                                            fromEntity=EntityReference(
+                                                id=from_entity.id,
+                                                type="table",
+                                            ),
+                                            toEntity=EntityReference(
+                                                id=to_entity.id,
+                                                type="table",
+                                            ),
+                                            lineageDetails=lineage_details,
+                                        )
+                                    )
+                                )
 
         except Exception as exc:
             yield Either(
@@ -238,7 +256,6 @@ class DbtcloudSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to get pipeline list due to : {exc}")
-        return None
 
     def get_pipeline_name(self, pipeline_details: DBTJob) -> str:
         """
@@ -263,21 +280,27 @@ class DbtcloudSource(PipelineServiceSource):
                 TaskStatus(
                     name=str(task.id),
                     executionStatus=STATUS_MAP.get(task.state, StatusType.Pending),
-                    startTime=Timestamp(
-                        datetime_to_ts(
-                            datetime.strptime(task.started_at, "%Y-%m-%d %H:%M:%S.%f%z")
-                            if task.started_at
-                            else datetime.now()
-                        )
-                    ),
-                    endTime=Timestamp(
-                        datetime_to_ts(
-                            datetime.strptime(
-                                task.finished_at, "%Y-%m-%d %H:%M:%S.%f%z"
+                    startTime=(
+                        Timestamp(
+                            datetime_to_ts(
+                                datetime.strptime(
+                                    task.started_at, "%Y-%m-%d %H:%M:%S.%f%z"
+                                )
                             )
-                            if task.finished_at
-                            else datetime.now()
                         )
+                        if task.started_at
+                        else None
+                    ),
+                    endTime=(
+                        Timestamp(
+                            datetime_to_ts(
+                                datetime.strptime(
+                                    task.finished_at, "%Y-%m-%d %H:%M:%S.%f%z"
+                                )
+                            )
+                        )
+                        if task.finished_at
+                        else None
                     ),
                 )
                 for task in self.client.get_runs(job_id=int(pipeline_details.id)) or []
@@ -294,7 +317,7 @@ class DbtcloudSource(PipelineServiceSource):
                             pipeline_details.created_at, "%Y-%m-%dT%H:%M:%S.%f%z"
                         )
                         if pipeline_details.created_at
-                        else datetime.now()
+                        else None
                     )
                 ),
             )

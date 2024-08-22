@@ -14,7 +14,6 @@
 package org.openmetadata.service;
 
 import static java.lang.String.format;
-import static org.openmetadata.service.util.TablesInitializer.validateAndRunSystemDataMigrations;
 
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -48,11 +47,15 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.events.MSTeamsCallbackResource;
 import org.openmetadata.service.resources.events.SlackCallbackResource;
 import org.openmetadata.service.resources.events.WebhookCallbackResource;
@@ -75,6 +78,7 @@ public abstract class OpenMetadataApplicationTest {
   public static final Integer ELASTIC_BATCH_SIZE = 10;
   public static final IndexMappingLanguage ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE =
       IndexMappingLanguage.EN;
+  public static final String ELASTIC_SEARCH_CLUSTER_ALIAS = "openmetadata";
   public static final ElasticSearchConfiguration.SearchType ELASTIC_SEARCH_TYPE =
       ElasticSearchConfiguration.SearchType.ELASTICSEARCH;
   public static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
@@ -203,10 +207,39 @@ public abstract class OpenMetadataApplicationTest {
         ConnectionType.from(sqlContainer.getDriverClassName()),
         nativeMigrationScriptsLocation,
         extensionMigrationScripsLocation,
+        null,
         false);
     createIndices();
     APP.before();
     createClient();
+  }
+
+  public static void validateAndRunSystemDataMigrations(
+      Jdbi jdbi,
+      OpenMetadataApplicationConfig config,
+      ConnectionType connType,
+      String nativeMigrationSQLPath,
+      String extensionSQLScriptRootPath,
+      PipelineServiceClientConfiguration pipelineServiceClientConfiguration,
+      boolean forceMigrations) {
+    DatasourceConfig.initialize(connType.label);
+    MigrationWorkflow workflow =
+        new MigrationWorkflow(
+            jdbi,
+            nativeMigrationSQLPath,
+            connType,
+            extensionSQLScriptRootPath,
+            pipelineServiceClientConfiguration,
+            forceMigrations);
+    // Initialize search repository
+    SearchRepository searchRepository =
+        new SearchRepository(config.getElasticSearchConfiguration());
+    Entity.setSearchRepository(searchRepository);
+    Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+    Entity.initializeRepositories(config, jdbi);
+    workflow.loadMigrations();
+    workflow.runMigrationWorkflows();
+    Entity.cleanup();
   }
 
   @NotNull
@@ -255,6 +288,7 @@ public abstract class OpenMetadataApplicationTest {
         .withKeepAliveTimeoutSecs(ELASTIC_KEEP_ALIVE_TIMEOUT)
         .withBatchSize(ELASTIC_BATCH_SIZE)
         .withSearchIndexMappingLanguage(ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE)
+        .withClusterAlias(ELASTIC_SEARCH_CLUSTER_ALIAS)
         .withSearchType(ELASTIC_SEARCH_TYPE);
     SearchRepository searchRepository = new SearchRepository(esConfig);
     LOG.info("creating indexes.");
@@ -312,6 +346,8 @@ public abstract class OpenMetadataApplicationTest {
         ConfigOverride.config(
             "elasticsearch.searchIndexMappingLanguage",
             ELASTIC_SEARCH_INDEX_MAPPING_LANGUAGE.value()));
+    configOverrides.add(
+        ConfigOverride.config("elasticsearch.clusterAlias", ELASTIC_SEARCH_CLUSTER_ALIAS));
     configOverrides.add(
         ConfigOverride.config("elasticsearch.searchType", ELASTIC_SEARCH_TYPE.value()));
   }

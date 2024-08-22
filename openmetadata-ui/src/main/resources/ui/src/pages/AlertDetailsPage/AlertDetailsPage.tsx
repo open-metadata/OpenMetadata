@@ -46,6 +46,7 @@ import {
   ArgumentsInput,
   EventSubscription,
   ProviderType,
+  SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
@@ -55,7 +56,7 @@ import {
   getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
+import searchClassBase from '../../utils/SearchClassBase';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -201,6 +202,16 @@ function AlertDetailsPage({
   const destinationDetails = useMemo(
     () => (
       <div className="p-md">
+        <Row gutter={[0, 8]}>
+          <Col className="font-medium" span={3}>
+            {`${t('label.connection-timeout')} (${t('label.second-plural')})`}
+          </Col>
+          <Col span={1}>:</Col>
+          <Col data-testid="connection-timeout" span={20}>
+            {destinations?.[0].timeout}
+          </Col>
+        </Row>
+        <Divider className="m-y-sm" />
         {destinations?.map((destination, index) => (
           <Fragment key={`${destination.category}-${destination.type}`}>
             <Row
@@ -220,6 +231,18 @@ function AlertDetailsPage({
               <Col data-testid="destination-type" span={20}>
                 {startCase(destination.type)}
               </Col>
+              {destination.type === SubscriptionType.Webhook &&
+                destination.config?.secretKey && (
+                  <>
+                    <Col className="font-medium" span={3}>
+                      {t('label.secret-key')}
+                    </Col>
+                    <Col span={1}>:</Col>
+                    <Col data-testid="secret-key" span={20}>
+                      {destination.config.secretKey}
+                    </Col>
+                  </>
+                )}
               {!isEmpty(destination.config?.receivers) &&
                 !isNil(destination.config?.receivers) && (
                   <>
@@ -264,6 +287,11 @@ function AlertDetailsPage({
       </div>
     ),
     [destinations]
+  );
+
+  const resourceIcon = useMemo(
+    () => searchClassBase.getEntityIcon(resource ?? ''),
+    [resource]
   );
 
   useEffect(() => {
@@ -315,6 +343,9 @@ function AlertDetailsPage({
                           <Button
                             className="flex flex-center"
                             data-testid="edit-button"
+                            disabled={
+                              alertDetails?.provider === ProviderType.System
+                            }
                             icon={<EditIcon height={16} width={16} />}
                           />
                         </Tooltip>
@@ -365,9 +396,9 @@ function AlertDetailsPage({
                   heading={t('label.source')}
                   subHeading={t('message.alerts-source-description')}>
                   <div className="d-flex items-center gap-2 m-l-sm">
-                    <div className="d-flex h-4 w-4">
-                      {getEntityIcon(resource ?? '')}
-                    </div>
+                    {resourceIcon && (
+                      <div className="d-flex h-4 w-4">{resourceIcon}</div>
+                    )}
                     <span data-testid="resource-name">
                       {startCase(resource)}
                     </span>

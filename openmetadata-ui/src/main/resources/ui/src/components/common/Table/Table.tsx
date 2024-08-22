@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton, SpinProps, Table as AntdTable, TableProps } from 'antd';
+import { SpinProps, Table as AntdTable, TableProps } from 'antd';
 import React, { useMemo } from 'react';
-import { SMALL_TABLE_LOADER_SIZE } from '../../../constants/constants';
-import { getUniqueArray } from '../../../utils/CommonUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import Loader from '../Loader/Loader';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
 const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
@@ -23,42 +22,52 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
     [loading]
   );
 
-  const dataSource = useMemo(
-    () => getUniqueArray(SMALL_TABLE_LOADER_SIZE) as T[],
-    []
-  );
+  // TODO: Need to remove the skeleton loading to fix: https://github.com/open-metadata/OpenMetadata/issues/16655
+  // Let's circle back once we have a better solution for this.
+  //   const dataSource = useMemo(
+  //     () => getUniqueArray(SMALL_TABLE_LOADER_SIZE) as T[],
+  //     []
+  //   );
 
-  if (isLoading) {
-    const { columns } = { ...rest };
-    const column = columns?.map((column) => {
-      return {
-        ...column,
-        render: () => (
-          <Skeleton
-            title
-            active={isLoading}
-            key={column.key}
-            paragraph={false}
-          />
-        ),
-      };
-    });
+  //   if (isLoading) {
+  //     const { columns } = { ...rest };
+  //     const column = columns?.map((column) => {
+  //       return {
+  //         ...column,
+  //         render: () => (
+  //           <Skeleton
+  //             title
+  //             active={isLoading}
+  //             key={column.key}
+  //             paragraph={false}
+  //           />
+  //         ),
+  //       };
+  //     });
 
-    return (
-      <AntdTable
-        {...rest}
-        columns={column}
-        data-testid="skeleton-table"
-        dataSource={dataSource}
-        expandable={undefined}
-      />
-    );
-  }
+  //     return (
+  //       <AntdTable
+  //         {...rest}
+  //         columns={column}
+  //         data-testid="skeleton-table"
+  //         dataSource={isEmpty(rest.dataSource) ? dataSource : rest.dataSource}
+  //         expandable={undefined}
+  //       />
+  //     );
+  //   }
 
   return (
     <AntdTable
       {...rest}
       expandable={{ ...getTableExpandableConfig<T>(), ...rest.expandable }}
+      loading={{
+        spinning: isLoading,
+        indicator: <Loader />,
+      }}
+      locale={{
+        ...rest.locale,
+        emptyText: isLoading ? null : rest.locale?.emptyText,
+      }}
     />
   );
 };

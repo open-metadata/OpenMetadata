@@ -15,7 +15,14 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
-import { TASK_COLUMNS, TASK_FEED } from '../../../../mocks/Task.mock';
+import { useAuth } from '../../../../hooks/authHooks';
+import {
+  MOCK_TASK,
+  MOCK_TASK_2,
+  MOCK_TASK_3,
+  TASK_COLUMNS,
+  TASK_FEED,
+} from '../../../../mocks/Task.mock';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import { TaskTab } from './TaskTab.component';
 import { TaskTabProps } from './TaskTab.interface';
@@ -39,11 +46,12 @@ jest.mock('../../../ActivityFeed/ActivityFeedCardV2/ActivityFeedCardV2', () => {
 });
 
 jest.mock('../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor', () => {
-  return jest.fn().mockImplementation(() => <p>ActivityFeedEditor</p>);
-});
-
-jest.mock('../../../common/AssigneeList/AssigneeList', () => {
-  return jest.fn().mockImplementation(() => <p>AssigneeList</p>);
+  return jest.fn().mockImplementation(({ editAction }) => (
+    <div>
+      <p>ActivityFeedEditor</p>
+      {editAction}
+    </div>
+  ));
 });
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
@@ -133,11 +141,7 @@ jest.mock(
 );
 
 jest.mock('../../../../hooks/authHooks', () => ({
-  useAuth: () => {
-    return {
-      isAdminUser: false,
-    };
-  },
+  useAuth: jest.fn().mockReturnValue({ isAdminUser: false }),
 }));
 
 const mockOnAfterClose = jest.fn();
@@ -163,11 +167,123 @@ describe('Test TaskFeedCard component', () => {
     expect(activityFeedCard).toBeInTheDocument();
   });
 
+  it('Should render the assignee and creator of task', async () => {
+    render(<TaskTab {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.getByText('label.assignee-plural:')).toBeInTheDocument();
+    expect(screen.getByText('label.created-by:')).toBeInTheDocument();
+    expect(screen.getAllByText('OwnerLabel')).toHaveLength(2);
+  });
+
   it('should not render task action button to the task owner if task has reviewer', async () => {
     render(<TaskTab {...mockProps} hasGlossaryReviewer />, {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.getByTestId('task-cta-buttons')).toBeEmptyDOMElement();
+    expect(screen.getByTestId('task-cta-buttons')).toHaveTextContent(
+      'label.comment'
+    );
+    expect(screen.getByTestId('task-cta-buttons')).not.toHaveTextContent(
+      'label.accept-suggestion'
+    );
+    expect(screen.getByTestId('task-cta-buttons')).not.toHaveTextContent(
+      'label.add-entity'
+    );
+    expect(screen.getByTestId('task-cta-buttons')).not.toHaveTextContent(
+      'label.add-suggestion'
+    );
+  });
+
+  it('should render close button if the user is creator task', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{
+          ...TASK_FEED,
+          createdBy: 'xyz',
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByText('label.close')).toBeInTheDocument();
+  });
+
+  it('should not render close button if the user is not a creator of task', async () => {
+    render(<TaskTab {...mockProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.queryByText('label.close')).not.toBeInTheDocument();
+  });
+
+  it('should not render close button if the user is a creator and even have hasEditAccess of task', async () => {
+    (useAuth as jest.Mock).mockImplementation(() => ({
+      isAdminUser: true,
+    }));
+
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, createdBy: 'xyz' }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.queryByText('label.close')).not.toBeInTheDocument();
+  });
+
+  it('should not render close button if the user is a creator and assignee of task', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, createdBy: 'xyz', task: MOCK_TASK }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.queryByText('label.close')).not.toBeInTheDocument();
+  });
+
+  it('should render dropdown button with add and close tag if task created with no tags', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, createdBy: 'xyz', task: MOCK_TASK_2 }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(screen.getByTestId('add-close-task-dropdown')).toBeInTheDocument();
+    expect(screen.getByText('label.add-entity')).toBeInTheDocument();
+    expect(screen.getByText('label.comment')).toBeInTheDocument();
+  });
+
+  it('should render dropdown button with resolve and reject tag if task is Glossary approval', async () => {
+    render(
+      <TaskTab
+        {...mockProps}
+        taskThread={{ ...TASK_FEED, task: MOCK_TASK_3 }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    expect(
+      screen.getByTestId('glossary-accept-reject-task-dropdown')
+    ).toBeInTheDocument();
+    expect(screen.getByText('label.approve')).toBeInTheDocument();
+    expect(screen.getByText('label.comment')).toBeInTheDocument();
   });
 });

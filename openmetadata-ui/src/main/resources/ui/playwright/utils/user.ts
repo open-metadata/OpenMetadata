@@ -12,32 +12,25 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { adjectives, nouns } from '../constant/user';
-import { toastNotification, uuid } from './common';
+import { GlobalSettingOptions } from '../constant/settings';
+import { UserClass } from '../support/user/UserClass';
+import { getAuthContext, getToken, toastNotification } from './common';
+import { settingClick } from './sidebar';
 
-export const getRandomFirstName = () => {
-  return `${
-    adjectives[Math.floor(Math.random() * adjectives.length)]
-  }${uuid()}`;
-};
-export const getRandomLastName = () => {
-  return `${nouns[Math.floor(Math.random() * nouns.length)]}${uuid()}`;
-};
-export const generateRandomUsername = () => {
-  const firstName = getRandomFirstName();
-  const lastName = getRandomLastName();
-
-  return {
-    firstName,
-    lastName,
-    email: `${firstName}.${lastName}@example.com`,
-    password: 'User@OMD123',
+export const performUserLogin = async (browser, user: UserClass) => {
+  const page = await browser.newPage();
+  await user.login(page);
+  const token = await getToken(page);
+  const apiContext = await getAuthContext(token);
+  const afterAction = async () => {
+    await apiContext.dispose();
+    await page.close();
   };
+
+  return { page, apiContext, afterAction };
 };
 
 export const nonDeletedUserChecks = async (page: Page) => {
-  await expect(page.locator('[data-testid="edit-displayName"]')).toBeVisible();
-
   await expect(
     page.locator(
       '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
@@ -49,18 +42,13 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
   ).toBeVisible();
-
-  await expect(page.locator('[data-testid="edit-description"]')).toBeVisible();
 };
 
 export const deletedUserChecks = async (page: Page) => {
-  const deletedBadge = await page.locator('[data-testid="deleted-badge"]');
+  const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 
   await expect(deletedBadge).toHaveText('Deleted');
 
-  await expect(
-    page.locator('[data-testid="edit-displayName"]')
-  ).not.toBeVisible();
   await expect(
     page.locator(
       '[data-testid="user-profile-details"] [data-testid="edit-persona"]'
@@ -78,9 +66,16 @@ export const deletedUserChecks = async (page: Page) => {
   await expect(
     page.locator('[data-testid="persona-list"] [data-testid="edit-persona"]')
   ).not.toBeVisible();
-  await expect(
-    page.locator('[data-testid="edit-description"]')
-  ).not.toBeVisible();
+};
+
+export const visitUserProfilePage = async (page: Page, userName: string) => {
+  await settingClick(page, GlobalSettingOptions.USERS);
+  const userResponse = page.waitForResponse(
+    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+  );
+  await page.getByTestId('searchbar').fill(userName);
+  await userResponse;
+  await page.getByTestId(userName).click();
 };
 
 export const softDeleteUserProfilePage = async (

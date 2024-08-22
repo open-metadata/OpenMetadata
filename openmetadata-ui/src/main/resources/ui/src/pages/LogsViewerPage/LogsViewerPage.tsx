@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Space, Typography } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
+import { Button, Col, Progress, Row, Space, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil, isUndefined, toNumber } from 'lodash';
+import { isEmpty, isNil, isUndefined, round, toNumber } from 'lodash';
 import React, {
   Fragment,
   useCallback,
@@ -31,6 +32,7 @@ import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadc
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionRecentRuns } from '../../components/Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { PipelineType } from '../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { App, AppScheduleClass } from '../../generated/entity/applications/app';
 import {
@@ -39,6 +41,7 @@ import {
 } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
+import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApplicationByName,
@@ -50,6 +53,8 @@ import {
   getIngestionPipelineLogById,
 } from '../../rest/ingestionPipelineAPI';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../utils/EntityUtils';
+import { downloadIngestionLog } from '../../utils/IngestionLogs/LogsUtils';
 import logsClassBase from '../../utils/LogsClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './logs-viewer-page.style.less';
@@ -61,7 +66,7 @@ const LogsViewerPage = () => {
   const { fqn: ingestionName } = useFqn();
 
   const { t } = useTranslation();
-
+  const { progress, reset, updateProgress } = useDownloadProgressStore();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [logs, setLogs] = useState<string>('');
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
@@ -158,7 +163,7 @@ const LogsViewerPage = () => {
     try {
       setIsLoading(true);
       const res = await getIngestionPipelineByFqn(ingestionName, {
-        fields: 'owner,pipelineStatuses',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINE_STATUSES],
       });
       if (res) {
         setIngestionDetails(res);
@@ -176,7 +181,7 @@ const LogsViewerPage = () => {
     setIsLoading(true);
     try {
       const data = await getApplicationByName(ingestionName, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
         include: Include.All,
       });
       setAppData(data);
@@ -298,6 +303,37 @@ const LogsViewerPage = () => {
     };
   }, [ingestionDetails, appData, recentRuns]);
 
+  const handleIngestionDownloadClick = async () => {
+    try {
+      reset();
+      const progress = round(
+        (Number(paging?.after) * 100) / Number(paging?.total)
+      );
+
+      updateProgress(paging?.after ? progress : 1);
+
+      const logs = await downloadIngestionLog(
+        ingestionDetails?.id,
+        ingestionDetails?.pipelineType
+      );
+
+      const element = document.createElement('a');
+      const file = new Blob([logs || ''], { type: 'text/plain' });
+      element.href = URL.createObjectURL(file);
+      element.download = `${getEntityName(ingestionDetails)}-${
+        ingestionDetails?.pipelineType
+      }.log`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsLoading(false);
+      reset();
+    }
+  };
+
   if (isLoading) {
     return <Loader />;
   }
@@ -338,6 +374,32 @@ const LogsViewerPage = () => {
                   </Col>
                   <Col>
                     <CopyToClipboardButton copyText={logs} />
+                  </Col>
+                  <Col>
+                    {progress ? (
+                      <Tooltip title={`${progress}%`}>
+                        <Progress
+                          className="h-8 m-l-md relative flex-center"
+                          percent={progress}
+                          strokeWidth={5}
+                          type="circle"
+                          width={32}
+                        />
+                      </Tooltip>
+                    ) : (
+                      <Button
+                        className="h-8 m-l-md relative flex-center"
+                        data-testid="download"
+                        icon={
+                          <DownloadOutlined
+                            data-testid="download-icon"
+                            width="16"
+                          />
+                        }
+                        type="text"
+                        onClick={handleIngestionDownloadClick}
+                      />
+                    )}
                   </Col>
                 </Row>
               </Col>

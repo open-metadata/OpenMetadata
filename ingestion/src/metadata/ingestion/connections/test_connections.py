@@ -38,6 +38,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import kill_active_connections
 from metadata.profiler.orm.functions.conn_test import ConnTestFn
 from metadata.utils.logger import cli_logger
 from metadata.utils.timeout import timeout
@@ -277,7 +278,9 @@ def test_connection_engine_step(connection: Engine) -> None:
     Generic step to validate the connection against a db
     """
     with connection.connect() as conn:
-        conn.execute(ConnTestFn())
+        result = conn.execute(ConnTestFn())
+        if result:
+            result.fetchone()
 
 
 def test_connection_db_common(
@@ -326,6 +329,8 @@ def test_connection_db_common(
         automation_workflow=automation_workflow,
         timeout_seconds=timeout_seconds,
     )
+
+    kill_active_connections(engine)
 
 
 def test_connection_db_schema_sources(
@@ -389,6 +394,8 @@ def test_connection_db_schema_sources(
         service_type=service_connection.type.value,
         automation_workflow=automation_workflow,
     )
+
+    kill_active_connections(engine)
 
 
 def test_query(engine: Engine, statement: str):

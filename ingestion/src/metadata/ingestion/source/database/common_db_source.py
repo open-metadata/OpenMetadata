@@ -59,8 +59,12 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    get_connection,
+    kill_active_connections,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
@@ -141,6 +145,8 @@ class CommonDbSourceService(
         to setup multiple inspectors. They can use this function.
         :param database_name: new database to set
         """
+
+        kill_active_connections(self.engine)
         logger.info(f"Ingesting from database: {database_name}")
 
         new_service_connection = deepcopy(self.service_connection)
@@ -402,7 +408,7 @@ class CommonDbSourceService(
                 schema_definition = inspector.get_view_definition(
                     table_name, schema_name
                 )
-            elif hasattr(inspector, "get_table_ddl"):
+            elif hasattr(inspector, "get_table_ddl") and self.source_config.includeDDL:
                 schema_definition = inspector.get_table_ddl(
                     self.connection, table_name, schema_name
                 )
@@ -414,11 +420,11 @@ class CommonDbSourceService(
             return schema_definition
 
         except NotImplementedError:
-            logger.warning("Schema definition not implemented")
+            logger.debug("Schema definition not implemented")
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch schema definition for {table_name}: {exc}")
+            logger.debug(f"Failed to fetch schema definition for {table_name}: {exc}")
         return None
 
     def is_partition(  # pylint: disable=unused-argument
@@ -541,7 +547,7 @@ class CommonDbSourceService(
                     database_name=self.context.get().database,
                     table_type=table_type,
                 ),
-                owner=self.get_owner_ref(table_name=table_name),
+                owners=self.get_owner_ref(table_name=table_name),
             )
 
             is_partitioned, partition_details = self.get_table_partition_details(
@@ -578,18 +584,27 @@ class CommonDbSourceService(
             )
 
     @calculate_execution_time_generator()
-    def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+    def yield_view_lineage(self) -> Iterable[Either[OMetaLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
             v for v in self.context.get().table_views if v.view_definition is not None
         ]:
-            yield from get_view_lineage(
+            for lineage in get_view_lineage(
                 view=view,
                 metadata=self.metadata,
                 service_name=self.context.get().database_service,
                 connection_type=self.service_connection.type.value,
                 timeout_seconds=self.source_config.queryParsingTimeoutLimit,
-            )
+            ):
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideViewLineage,
+                        )
+                    )
+                else:
+                    yield lineage
 
     def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
         """

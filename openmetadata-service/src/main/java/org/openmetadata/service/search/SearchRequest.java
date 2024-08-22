@@ -1,8 +1,10 @@
 package org.openmetadata.service.search;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Setter;
+import org.openmetadata.schema.type.EntityReference;
 
 @Getter
 @Setter
@@ -20,6 +22,8 @@ public class SearchRequest {
   private final String fieldName;
   private final String sortOrder;
   private final List<String> includeSourceFields;
+  private final boolean applyDomainFilter;
+  private final List<String> domains;
   private final boolean getHierarchy;
 
   public SearchRequest(ElasticSearchRequestBuilder builder) {
@@ -37,6 +41,8 @@ public class SearchRequest {
     this.includeSourceFields = builder.includeSourceFields;
     this.fieldName = builder.fieldName;
     this.getHierarchy = builder.getHierarchy;
+    this.domains = builder.domains;
+    this.applyDomainFilter = builder.applyDomainFilter;
   }
 
   // Builder class for ElasticSearchRequest
@@ -56,6 +62,8 @@ public class SearchRequest {
     private String sortOrder;
     private List<String> includeSourceFields;
     private boolean getHierarchy;
+    private boolean applyDomainFilter;
+    private List<String> domains;
 
     public ElasticSearchRequestBuilder(String query, int size, String index) {
       this.query = query;
@@ -98,6 +106,11 @@ public class SearchRequest {
       return this;
     }
 
+    public ElasticSearchRequestBuilder applyDomainFilter(boolean applyDomainFilter) {
+      this.applyDomainFilter = applyDomainFilter;
+      return this;
+    }
+
     public ElasticSearchRequestBuilder sortOrder(String sortOrder) {
       this.sortOrder = sortOrder;
       return this;
@@ -115,6 +128,14 @@ public class SearchRequest {
 
     public ElasticSearchRequestBuilder getHierarchy(boolean getHierarchy) {
       this.getHierarchy = getHierarchy;
+      return this;
+    }
+
+    public ElasticSearchRequestBuilder domains(List<EntityReference> references) {
+      this.domains =
+          references.stream()
+              .map(EntityReference::getFullyQualifiedName)
+              .collect(Collectors.toList());
       return this;
     }
 

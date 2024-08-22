@@ -113,7 +113,7 @@
       "entityType": {
         "type": "keyword"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -232,7 +232,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "deleted": {
         "type": "text"
@@ -335,7 +336,8 @@
         }
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "votes" : {
         "type": "object"

@@ -30,6 +30,11 @@ test('TestSuite multi pipeline support', async ({ page }) => {
 
   await test.step('Create a new pipeline', async () => {
     await page.getByText('Profiler & Data Quality').click();
+    await page
+      .getByRole('menuitem', {
+        name: 'Table Profile',
+      })
+      .click();
     await page.getByTestId('profiler-add-table-test-btn').click();
     await page.getByTestId('test-case').click();
     await page.getByTestId('test-case-name').clear();
@@ -45,6 +50,7 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     );
 
     await page.getByTestId('add-ingestion-button').click();
+    await page.getByTestId('select-all-test-cases').click();
     await page.getByTestId('cron-type').getByText('Hour').click();
     await page.getByTitle('Day').click();
     await page.getByTestId('deploy-button').click();
@@ -64,12 +70,10 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     await page.getByRole('tab', { name: 'Pipeline' }).click();
     await page.getByTestId('add-pipeline-button').click();
 
-    await page.fill('#name', pipelineName);
+    await page.fill('[data-testid="pipeline-name"]', pipelineName);
+
     await page.getByTestId(testCaseName).click();
 
-    await expect(page.getByTestId('submit')).toBeVisible();
-
-    await page.getByTestId('submit').click();
     await page.getByTestId('cron-type').locator('div').click();
     await page.getByTitle('Week').click();
 
@@ -98,12 +102,17 @@ test('TestSuite multi pipeline support', async ({ page }) => {
       .getByRole('row', {
         name: new RegExp(pipelineName),
       })
-      .getByTestId('edit')
+      .getByTestId('more-actions')
+      .click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+      )
       .click();
 
     await expect(page.getByRole('checkbox').first()).toBeVisible();
 
-    await page.getByTestId('submit').click();
     await page
       .getByTestId('week-segment-day-option-container')
       .getByText('W')
@@ -126,8 +135,15 @@ test('TestSuite multi pipeline support', async ({ page }) => {
       .getByRole('row', {
         name: new RegExp(pipelineName),
       })
-      .getByTestId('delete')
+      .getByTestId('more-actions')
       .click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+      )
+      .click();
+
     await page.getByTestId('confirmation-text-input').fill('DELETE');
     const deleteRes = page.waitForResponse(
       '/api/v1/services/ingestionPipelines/*?hardDelete=true'
@@ -135,7 +151,13 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     await page.getByTestId('confirm-button').click();
     await deleteRes;
 
-    await page.getByTestId('delete').click();
+    await page.getByTestId('more-actions').click();
+
+    await page
+      .locator(
+        '[data-testid="actions-dropdown"]:visible [data-testid="delete-button"]'
+      )
+      .click();
     await page.getByTestId('confirmation-text-input').fill('DELETE');
     await page.getByTestId('confirm-button').click();
     await deleteRes;
@@ -179,7 +201,13 @@ test("Edit the pipeline's test case", async ({ page }) => {
     .getByRole('row', {
       name: new RegExp(pipeline?.['name']),
     })
-    .getByTestId('edit')
+    .getByTestId('more-actions')
+    .click({ force: true });
+
+  await page
+    .locator(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    )
     .click();
 
   for (const testCaseName of testCaseNames) {
@@ -192,7 +220,6 @@ test("Edit the pipeline's test case", async ({ page }) => {
     page.getByTestId(`checkbox-${testCaseNames[0]}`)
   ).not.toBeChecked();
 
-  await page.getByTestId('submit').click();
   await page.getByTestId('deploy-button').click();
   await page.waitForSelector('[data-testid="body-text"]', {
     state: 'detached',
@@ -209,7 +236,13 @@ test("Edit the pipeline's test case", async ({ page }) => {
     .getByRole('row', {
       name: new RegExp(pipeline?.['name']),
     })
-    .getByTestId('edit')
+    .getByTestId('more-actions')
+    .click();
+
+  await page
+    .locator(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    )
     .click();
 
   await expect(

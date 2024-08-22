@@ -54,8 +54,13 @@ import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
+import es.org.elasticsearch.client.indices.GetMappingsRequest;
+import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
+import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
+import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
+import es.org.elasticsearch.common.lucene.search.function.FunctionScoreQuery;
 import es.org.elasticsearch.common.settings.Settings;
 import es.org.elasticsearch.common.unit.Fuzziness;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
@@ -70,9 +75,9 @@ import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
+import es.org.elasticsearch.index.query.TermsQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
-import es.org.elasticsearch.index.query.functionscore.ScriptScoreFunctionBuilder;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
@@ -89,6 +94,7 @@ import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramIn
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.AvgAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
@@ -117,6 +123,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
@@ -126,6 +133,7 @@ import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
@@ -133,11 +141,16 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SearchException;
@@ -145,7 +158,9 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
@@ -154,6 +169,8 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorFactory;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
@@ -191,10 +208,10 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
-  private final RestHighLevelClient client;
+  protected final RestHighLevelClient client;
 
   private final boolean isClientAvailable;
-  private static final NamedXContentRegistry xContentRegistry;
+  public static final NamedXContentRegistry xContentRegistry;
 
   private final String clusterAlias;
 
@@ -270,6 +287,7 @@ public class ElasticSearchClient implements SearchClient {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
+
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
               .index(indexMapping.getIndexName(clusterAlias))
@@ -322,6 +340,24 @@ public class ElasticSearchClient implements SearchClient {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+
+    // Add Domain filter
+    if (request.isApplyDomainFilter()) {
+      if (!nullOrEmpty(request.getDomains())) {
+        TermsQueryBuilder domainFilter =
+            QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
+      } else {
+        // Else condition to list entries where domain field is null
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .mustNot(QueryBuilders.existsQuery("domain.fullyQualifiedName")));
+      }
+    }
+
+    // Add Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
@@ -409,8 +445,14 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
-      searchSourceBuilder.sort(
-          request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
+      FieldSortBuilder fieldSortBuilder =
+          new FieldSortBuilder(request.getSortFieldParam())
+              .order(SortOrder.fromString(request.getSortOrder()));
+      // Score is an internal ES Field
+      if (!request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        fieldSortBuilder.unmappedType("integer");
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
 
     if (request
@@ -799,14 +841,16 @@ public class ElasticSearchClient implements SearchClient {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         new es.org.elasticsearch.action.search.SearchRequest(
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
+    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    boolQueryBuilder.should(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(boolQueryBuilder);
     if (CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn))
+              .must(boolQueryBuilder)
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
@@ -856,6 +900,11 @@ public class ElasticSearchClient implements SearchClient {
         }
       }
     }
+    getLineage(
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+
     // TODO: Fix this , this is hack
     if (edges.isEmpty()) {
       es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
@@ -955,6 +1004,12 @@ public class ElasticSearchClient implements SearchClient {
                 AggregationBuilders.terms(key).field(termAggregation.getString("field"));
             aggregationBuilders.add(termsAggregationBuilder);
             break;
+          case "avg":
+            JsonObject avgAggregation = aggregation.getJsonObject(aggregationType);
+            AvgAggregationBuilder avgAggregationBuilder =
+                AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
+            aggregationBuilders.add(avgAggregationBuilder);
+            break;
           case "nested":
             JsonObject nestedAggregation = aggregation.getJsonObject("nested");
             AggregationBuilder nestedAggregationBuilder =
@@ -993,6 +1048,45 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+    String aggregationStr = (String) aggregationMetadata.get("aggregationStr");
+    JsonObject aggregationObj = JsonUtils.readJson("{%s}".formatted(aggregationStr)).asJsonObject();
+    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregationObj);
+
+    // Create search request
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+
+    // Create search source builder
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (query != null) {
+      XContentParser queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
+      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
+      searchSourceBuilder.query(boolQueryBuilder);
+    }
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    for (AggregationBuilder aggregation : aggregationBuilder) {
+      searchSourceBuilder.aggregation(aggregation);
+    }
+
+    searchRequest.source(searchSourceBuilder);
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+    Optional<JsonObject> aggregationResults =
+        Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
+    return SearchIndexUtils.parseAggregationResults(
+        aggregationResults,
+        (List<List<Map<String, String>>>) aggregationMetadata.get("aggregationMapList"));
+  }
+
+  @Override
   public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
       throws IOException {
     JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
@@ -1028,14 +1122,67 @@ public class ElasticSearchClient implements SearchClient {
     return jsonResponse.getJsonObject("aggregations");
   }
 
-  private static ScriptScoreFunctionBuilder boostScore() {
-    return ScoreFunctionBuilders.scriptFunction(
-        "double score = _score;"
-            + "if (doc.containsKey('totalVotes') && doc['totalVotes'].value != null) { score = score + doc['totalVotes'].value; }"
-            + "if (doc.containsKey('usageSummary') && doc['usageSummary.weeklyStats.count'].value != null) { score = score + doc['usageSummary.weeklyStats.count'].value; }"
-            + "if (doc.containsKey('tier.tagFQN') && !doc['tier.tagFQN'].empty) { if (doc['tier.tagFQN'].value == 'Tier.Tier2') { score = score + 10; }"
-            + " else if (doc['tier.tagFQN'].value == 'Tier.Tier1') { score = score + 20; }}"
-            + "return score;");
+  private static FunctionScoreQueryBuilder boostScore(
+      QueryStringQueryBuilder queryBuilder, String query) {
+    FunctionScoreQueryBuilder.FilterFunctionBuilder displayNameBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.existsQuery("displayName.keyword"), // If displayName exists
+            ScoreFunctionBuilders.weightFactorFunction(10.0f)); // Give it a high weight
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder nameBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.boolQuery()
+                .mustNot(
+                    QueryBuilders.existsQuery(
+                        "displayName.keyword")) // Only use name if displayName doesn't exist
+                .must(QueryBuilders.matchQuery("name.keyword", query)),
+            ScoreFunctionBuilders.weightFactorFunction(8.0f)); //
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier1"),
+            ScoreFunctionBuilders.weightFactorFunction(5.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier2Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier2"),
+            ScoreFunctionBuilders.weightFactorFunction(3.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier3Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier3"),
+            ScoreFunctionBuilders.weightFactorFunction(1.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder weeklyStatsBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.rangeQuery("usageSummary.weeklyStats.count").gt(0),
+            ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
+                .factor(1.5f)
+                .modifier(FieldValueFactorFunction.Modifier.SQRT)
+                .missing(1));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder totalVotesBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.rangeQuery("totalVotes").gt(0),
+            ScoreFunctionBuilders.fieldValueFactorFunction("totalVotes")
+                .factor(2.0f)
+                .modifier(FieldValueFactorFunction.Modifier.LN1P)
+                .missing(0));
+
+    // FunctionScoreQueryBuilder with an array of score functions
+    return QueryBuilders.functionScoreQuery(
+            queryBuilder,
+            new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
+              displayNameBoost,
+              nameBoost,
+              tier1Boost,
+              tier2Boost,
+              tier3Boost,
+              weeklyStatsBoost,
+              totalVotesBoost
+            })
+        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
+        .boostMode(CombineFunction.SUM);
   }
 
   private static HighlightBuilder buildHighlights(List<String> fields) {
@@ -1098,8 +1245,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, PipelineIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("tasks.name", "tasks.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder.aggregation(
@@ -1110,8 +1256,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, MlModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("mlFeatures.name", "mlFeatures.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
@@ -1120,8 +1265,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TopicIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
@@ -1135,8 +1279,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("charts.name", "charts.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
@@ -1154,10 +1297,16 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.name.keyword")
+            .field("database.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.name.keyword")
+            .field("databaseSchema.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -1165,8 +1314,7 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
@@ -1175,10 +1323,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TableIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
-
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb =
         buildHighlights(List.of("columns.name", "columns.description", "columns.children.name"));
     SearchSourceBuilder searchSourceBuilder =
@@ -1206,9 +1351,7 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("synonyms"));
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1223,9 +1366,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TagIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1238,9 +1379,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, ContainerIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb =
         buildHighlights(
             List.of(
@@ -1260,9 +1399,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, QueryIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -1277,8 +1414,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
@@ -1290,9 +1426,7 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1307,9 +1441,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DomainIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -1323,9 +1455,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1352,8 +1482,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DataProductIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
@@ -1368,7 +1497,8 @@ public class ElasticSearchClient implements SearchClient {
         .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
         .defaultOperator(Operator.AND)
         .fuzziness(Fuzziness.AUTO)
-        .tieBreaker(0.9f);
+        .fuzzyPrefixLength(3)
+        .tieBreaker(0.5f);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
@@ -1537,7 +1667,9 @@ public class ElasticSearchClient implements SearchClient {
                   while (hasMoreResults) {
                     List<EntityReference> entities =
                         ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
-                            matchingKey, sourceRef.getFullyQualifiedName(), from);
+                            matchingKey,
+                            ReindexingUtil.escapeDoubleQuotes(sourceRef.getFullyQualifiedName()),
+                            from);
 
                     // Async Re-index the entities which matched
                     processEntitiesForReindex(entities);
@@ -1594,7 +1726,8 @@ public class ElasticSearchClient implements SearchClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
@@ -1644,7 +1777,7 @@ public class ElasticSearchClient implements SearchClient {
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
+      LOG.info(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
       client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
@@ -1667,6 +1800,17 @@ public class ElasticSearchClient implements SearchClient {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
       client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
+  }
+
+  @SneakyThrows
+  public void deleteByQuery(String index, String query) throws IOException {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser parser = createXContentParser(query);
+    parser.nextToken();
+    deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
+    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
   }
 
   @SneakyThrows
@@ -1893,6 +2037,68 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
+  }
+
+  @Override
+  public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    List<Map<String, String>> fields = new ArrayList<>();
+    GetMappingsRequest request =
+        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+
+    // Execute request
+    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+
+    // Get mappings for the index
+    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+      // Get fields for the index
+      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+    }
+    return fields;
+  }
+
+  void getFieldNames(
+      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
+    for (Map.Entry<String, Object> entry : fields.entrySet()) {
+      String postfix = "";
+      String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
+      if (type != null && type.equals("text")) {
+        postfix = ".keyword";
+      }
+
+      String fieldName = prefix + entry.getKey() + postfix;
+      String fieldNameOriginal = WordUtils.capitalize((prefix + entry.getKey()).replace(".", " "));
+
+      if (entry.getValue() instanceof Map) {
+        Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
+        if (subFields.containsKey("properties")) {
+          getFieldNames(
+              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+        } else {
+          if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
+            Map<String, String> map = new HashMap<>();
+            map.put("name", fieldName);
+            map.put("displayName", fieldNameOriginal);
+            map.put("type", type);
+            fieldList.add(map);
+          }
+        }
+      }
+    }
+  }
+
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end) throws IOException {
+    ElasticSearchDynamicChartAggregatorInterface aggregator =
+        ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
+    if (aggregator != null) {
+      List<FormulaHolder> formulas = new ArrayList<>();
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+    }
+    return null;
   }
 
   private static AggregationBuilder buildQueryAggregation(
@@ -2193,5 +2399,9 @@ public class ElasticSearchClient implements SearchClient {
       LOG.error("Failed to create XContentParser", e);
       throw e;
     }
+  }
+
+  public Object getLowLevelClient() {
+    return client.getLowLevelClient();
   }
 }

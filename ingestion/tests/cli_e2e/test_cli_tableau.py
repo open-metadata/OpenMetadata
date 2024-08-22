@@ -64,10 +64,10 @@ class TableauCliTest(CliCommonDashboard.TestSuite):
         return 1
 
     def expected_datamodel_lineage(self) -> int:
-        return 5
+        return 6
 
     def expected_datamodels(self) -> int:
-        return 5
+        return 6
 
     def expected_filtered_mix(self) -> int:
         return 2

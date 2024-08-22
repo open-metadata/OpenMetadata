@@ -31,9 +31,9 @@
       "description": "FullyQualifiedName same as `name`.",
       "$ref": "../../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "owner": {
-      "description": "Owner of this workflow.",
-      "$ref": "../../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this workflow.",
+      "$ref": "../../../type/entityReferenceList.json",
       "default": null
     },
     "version": {
@@ -140,6 +140,10 @@
       "type": "boolean",
       "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../../type/entityReference.json"
     }
   },
   "additionalProperties": false,

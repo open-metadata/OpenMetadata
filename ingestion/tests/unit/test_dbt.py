@@ -16,6 +16,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -99,17 +100,21 @@ EXPECTED_DATA_MODELS = [
         resourceType="model",
         sql="sample customers compile code",
         upstream=[],
-        owner=EntityReference(
-            id="cb2a92f5-e935-4ad7-911c-654280046538",
-            type="user",
-            name=None,
-            fullyQualifiedName="aaron_johnson0",
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=AnyUrl(
-                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-            ),
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    name=None,
+                    fullyQualifiedName="aaron_johnson0",
+                    description=None,
+                    displayName=None,
+                    deleted=None,
+                    href=AnyUrl(
+                        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+                    ),
+                )
+            ]
         ),
         tags=[
             TagLabel(
@@ -162,17 +167,21 @@ EXPECTED_DATA_MODEL_NULL_DB = [
         resourceType="model",
         sql="sample customers_null_db compiled code",
         upstream=[],
-        owner=EntityReference(
-            id="cb2a92f5-e935-4ad7-911c-654280046538",
-            type="user",
-            name=None,
-            fullyQualifiedName="aaron_johnson0",
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=AnyUrl(
-                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-            ),
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    name=None,
+                    fullyQualifiedName="aaron_johnson0",
+                    description=None,
+                    displayName=None,
+                    deleted=None,
+                    href=AnyUrl(
+                        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+                    ),
+                )
+            ]
         ),
         tags=None,
         columns=[
@@ -188,17 +197,21 @@ EXPECTED_DATA_MODEL_NULL_DB = [
     ),
 ]
 
-MOCK_OWNER = EntityReference(
-    id="cb2a92f5-e935-4ad7-911c-654280046538",
-    type="user",
-    name=None,
-    fullyQualifiedName="aaron_johnson0",
-    description=None,
-    displayName=None,
-    deleted=None,
-    href=AnyUrl(
-        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-    ),
+MOCK_OWNER = EntityReferenceList(
+    root=[
+        EntityReference(
+            id="cb2a92f5-e935-4ad7-911c-654280046538",
+            type="user",
+            name=None,
+            fullyQualifiedName="aaron_johnson0",
+            description=None,
+            displayName=None,
+            deleted=None,
+            href=AnyUrl(
+                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+            ),
+        )
+    ]
 )
 
 MOCK_USER = EntityReference(
@@ -495,7 +508,7 @@ class DbtUnitTest(TestCase):
             if dbt_files.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(dbt_files.dbt_manifest),
-            dbt_run_results=parse_run_results(dbt_files.dbt_run_results)
+            dbt_run_results=[parse_run_results(dbt_files.dbt_run_results)]
             if dbt_files.dbt_run_results
             else None,
         )

@@ -22,6 +22,7 @@ export type ExploreTreeNode = {
   isLeaf?: boolean;
   icon?: JSX.Element | SvgComponent;
   data?: TreeNodeData;
+  count?: number;
 };
 
 export type ExploreTreeProps = {
@@ -30,12 +31,15 @@ export type ExploreTreeProps = {
 
 export type TreeNodeData = {
   isRoot?: boolean;
+  isStatic?: boolean;
   currentBucketKey?: string;
   currentBucketValue?: string;
   filterField?: ExploreQuickFilterField[];
   parentSearchIndex?: string;
   rootIndex?: string;
-  entityType?: EntityType;
+  entityType?: string;
+  dataId?: string;
+  childEntities?: EntityType[];
 };
 
 export type DatabaseFields =

@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Col, Input, Select, Switch, Tooltip } from 'antd';
+import {
+  Checkbox,
+  Col,
+  Divider,
+  Input,
+  Row,
+  Select,
+  Switch,
+  Tooltip,
+} from 'antd';
 import Form, { RuleObject } from 'antd/lib/form';
 import { AxiosError } from 'axios';
 import i18next, { t } from 'i18next';
@@ -44,13 +53,13 @@ import {
 } from '../../generated/events/eventSubscription';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
+import { ModifiedCreateEventSubscription } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import TeamAndUserSelectItem from '../../pages/AddObservabilityPage/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem';
 import { searchData } from '../../rest/miscAPI';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
 import { handleEntityCreationError } from '../formUtils';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
-import { getEntityIcon } from '../TableUtils';
 import { showSuccessToast } from '../ToastUtils';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
@@ -293,6 +302,30 @@ export const getSupportedFilterOptions = (
     disabled: selectedFilters?.some((d) => d.name === func.name),
   }));
 
+export const getConnectionTimeoutField = () => (
+  <>
+    <Row align="middle">
+      <Col span={7}>{`${t('label.connection-timeout')} (${t(
+        'label.second-plural'
+      )})`}</Col>
+      <Col span={1}>:</Col>
+      <Col data-testid="connection-timeout" span={16}>
+        <Form.Item name="timeout">
+          <Input
+            data-testid="connection-timeout-input"
+            defaultValue={10}
+            placeholder={`${t('label.connection-timeout')} (${t(
+              'label.second-plural'
+            )})`}
+            type="number"
+          />
+        </Form.Item>
+      </Col>
+    </Row>
+    <Divider className="p-x-xs" />
+  </>
+);
+
 export const getDestinationConfigField = (
   type: SubscriptionType | SubscriptionCategory,
   fieldName: number
@@ -303,23 +336,43 @@ export const getDestinationConfigField = (
     case SubscriptionType.GChat:
     case SubscriptionType.Webhook:
       return (
-        <Col span={12}>
-          <Form.Item
-            name={[fieldName, 'config', 'endpoint']}
-            rules={[
-              {
-                required: true,
-                message: t('message.field-text-is-required', {
-                  fieldText: t('label.endpoint-url'),
-                }),
-              },
-            ]}>
-            <Input
-              data-testid={`endpoint-input-${fieldName}`}
-              placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
-            />
-          </Form.Item>
-        </Col>
+        <>
+          <Col span={12}>
+            <Form.Item
+              name={[fieldName, 'config', 'endpoint']}
+              rules={[
+                {
+                  required: true,
+                  message: t('message.field-text-is-required', {
+                    fieldText: t('label.endpoint-url'),
+                  }),
+                },
+              ]}>
+              <Input
+                data-testid={`endpoint-input-${fieldName}`}
+                placeholder={DESTINATION_TYPE_BASED_PLACEHOLDERS[type] ?? ''}
+              />
+            </Form.Item>
+          </Col>
+          {type === SubscriptionType.Webhook && (
+            <Col span={24}>
+              <Row align="middle">
+                <Col span={7}>{t('label.secret-key')}</Col>
+                <Col span={1}>:</Col>
+                <Col data-testid="secret-key" span={16}>
+                  <Form.Item name={[fieldName, 'config', 'secretKey']}>
+                    <Input.Password
+                      data-testid={`secret-key-input-${fieldName}`}
+                      placeholder={`${t('label.secret-key')} (${t(
+                        'label.optional'
+                      )})`}
+                    />
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Col>
+          )}
+        </>
       );
     case SubscriptionType.Email:
       return (
@@ -756,14 +809,14 @@ export const handleAlertSave = async ({
   afterSaveAction,
   setInlineAlertDetails,
 }: {
-  data: CreateEventSubscription;
+  data: ModifiedCreateEventSubscription;
   createAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
   updateAlertAPI: (
     alert: CreateEventSubscription
   ) => Promise<EventSubscription>;
-  afterSaveAction: () => void;
+  afterSaveAction: () => Promise<void>;
   setInlineAlertDetails: (alertDetails?: InlineAlertProps | undefined) => void;
   fqn?: string;
 }) => {
@@ -772,6 +825,7 @@ export const handleAlertSave = async ({
       type: d.type,
       config: d.config,
       category: d.category,
+      timeout: data.timeout,
     }));
 
     if (fqn && !isUndefined(alert)) {
@@ -782,7 +836,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -796,7 +850,7 @@ export const handleAlertSave = async ({
         enabled,
         input,
         name,
-        owner,
+        owners,
         provider,
         resources,
         trigger,
@@ -804,8 +858,10 @@ export const handleAlertSave = async ({
 
       await updateAlertAPI(newData);
     } else {
+      // Remove timeout from alert object since it's only for UI
+      const { timeout, ...finalData } = data;
       await createAlertAPI({
-        ...data,
+        ...finalData,
         destinations,
       });
     }
@@ -879,17 +935,21 @@ export const getSourceOptionsFromResourceList = (
   showCheckbox?: boolean,
   selectedResource?: string[]
 ) =>
-  resources.map((resource) => ({
-    label: (
-      <div
-        className="d-flex items-center gap-2"
-        data-testid={`${resource}-option`}>
-        {showCheckbox && (
-          <Checkbox checked={selectedResource?.includes(resource)} />
-        )}
-        <div className="d-flex h-4 w-4">{getEntityIcon(resource ?? '')}</div>
-        <span>{getEntityNameLabel(resource ?? '')}</span>
-      </div>
-    ),
-    value: resource ?? '',
-  }));
+  resources.map((resource) => {
+    const sourceIcon = searchClassBase.getEntityIcon(resource ?? '');
+
+    return {
+      label: (
+        <div
+          className="d-flex items-center gap-2"
+          data-testid={`${resource}-option`}>
+          {showCheckbox && (
+            <Checkbox checked={selectedResource?.includes(resource)} />
+          )}
+          {sourceIcon && <div className="d-flex h-4 w-4">{sourceIcon}</div>}
+          <span>{getEntityNameLabel(resource ?? '')}</span>
+        </div>
+      ),
+      value: resource ?? '',
+    };
+  });

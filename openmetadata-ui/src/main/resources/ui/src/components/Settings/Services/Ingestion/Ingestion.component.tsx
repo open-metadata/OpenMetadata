@@ -11,152 +11,127 @@
  *  limitations under the License.
  */
 
-import { Alert, Col, Row } from 'antd';
+import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { isEmpty, isUndefined, lowerCase } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DISABLED } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import {
-  IngestionServicePermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import LimitWrapper from '../../../../hoc/LimitWrapper';
-import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+  deployIngestionPipelineById,
+  enableDisableIngestionPipelineById,
+  triggerIngestionPipelineById,
+} from '../../../../rest/ingestionPipelineAPI';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Searchbar from '../../../common/SearchBarComponent/SearchBar.component';
 import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import AddIngestionButton from './AddIngestionButton.component';
-import { IngestionProps, SelectedRowDetails } from './ingestion.interface';
-import IngestionListTable from './IngestionListTable.component';
+import { IngestionProps } from './ingestion.interface';
+import IngestionListTable from './IngestionListTable/IngestionListTable';
 
 const Ingestion: React.FC<IngestionProps> = ({
-  airflowEndpoint,
   serviceName,
   serviceCategory,
   serviceDetails,
-  ingestionList,
-  isRequiredDetailsAvailable,
-  deleteIngestion,
-  triggerIngestion,
-  deployIngestion,
-  paging,
-  handleEnableDisableIngestion,
+  ingestionPipelineList,
+  ingestionPagingInfo,
   onIngestionWorkflowsUpdate,
-  permissions,
   pipelineType,
-  displayAddIngestionButton = true,
-  handleIngestionDataChange,
-  pipelineNameColWidth,
-  containerClassName,
-  isAirflowAvailable = true,
   isLoading,
+  handleIngestionListUpdate,
+  searchText,
+  handleSearchChange,
+  onPageChange,
+  airflowInformation,
 }: IngestionProps) => {
   const { t } = useTranslation();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { isFetchingStatus, platform } = useAirflowStatus();
-  const [searchText, setSearchText] = useState('');
-  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
-    id: '',
-    name: '',
-    state: '',
-  });
+  const { permissions } = usePermissionProvider();
+  const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
+    useState<string>();
 
-  const handleDeleteSelection = useCallback(
-    (row: SelectedRowDetails) => setDeleteSelection(row),
-    [setDeleteSelection]
+  const ingestionPermissions = useMemo(
+    () => permissions['ingestionPipeline'],
+    [permissions]
   );
 
-  const handleIsConfirmationModalOpen = useCallback(
-    (value: boolean) => setIsConfirmationModalOpen(value),
-    [setDeleteSelection]
+  const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
+    setPipelineIdToFetchStatus(pipelineId);
+  }, []);
+
+  const handleEnableDisableIngestion = useCallback(async (id: string) => {
+    try {
+      const { data } = await enableDisableIngestionPipelineById(id);
+
+      if (data.id) {
+        handleIngestionListUpdate((list) =>
+          list.map((row) =>
+            row.id === id ? { ...row, enabled: data.enabled } : row
+          )
+        );
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-response'));
+    }
+  }, []);
+
+  const triggerIngestion = useCallback(
+    async (id: string, displayName: string) => {
+      try {
+        await triggerIngestionPipelineById(id);
+        showSuccessToast(
+          t('message.pipeline-action-success-message', {
+            action: t('label.triggered-lowercase'),
+          })
+        );
+
+        setPipelineIdToFetchStatus(id);
+      } catch (err) {
+        showErrorToast(
+          t('server.ingestion-workflow-operation-error', {
+            operation: t('label.triggering-lowercase'),
+            displayName,
+          })
+        );
+      }
+    },
+    []
   );
 
-  const handleSearchAction = (searchValue: string) => {
-    setSearchText(searchValue);
-  };
+  const deployIngestion = useCallback(
+    async (id: string, displayName: string) => {
+      try {
+        await deployIngestionPipelineById(id);
+        showSuccessToast(
+          t('message.pipeline-action-success-message', {
+            action: t('label.deployed-lowercase'),
+          })
+        );
 
-  const [ingestionData, setIngestionData] =
-    useState<Array<IngestionPipeline>>(ingestionList);
-  const [ingestionPipelinesPermission, setIngestionPipelinesPermission] =
-    useState<IngestionServicePermission>();
+        setTimeout(() => {
+          setPipelineIdToFetchStatus(id);
+        }, 500);
+      } catch (error) {
+        showErrorToast(
+          t('server.ingestion-workflow-operation-error', {
+            operation: t('label.deploying-lowercase'),
+            displayName,
+          })
+        );
+      }
+    },
+    []
+  );
 
-  const fetchIngestionPipelinesPermission = async () => {
-    try {
-      const promises = ingestionList.map((item) =>
-        getEntityPermissionByFqn(ResourceEntity.INGESTION_PIPELINE, item.name)
-      );
-      const response = await Promise.allSettled(promises);
-
-      const permissionData = response.reduce((acc, cv, index) => {
-        return {
-          ...acc,
-          [ingestionList?.[index].name]:
-            cv.status === 'fulfilled' ? cv.value : {},
-        };
-      }, {});
-
-      setIngestionPipelinesPermission(permissionData);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleCancelConfirmationModal = () => {
-    setIsConfirmationModalOpen(false);
-    setDeleteSelection({
-      id: '',
-      name: '',
-      state: '',
-    });
-  };
-
-  const handleDelete = async (id: string, displayName: string) => {
-    setDeleteSelection({ id, name: displayName, state: 'waiting' });
-    try {
-      await deleteIngestion(id, displayName);
-
-      setTimeout(() => {
-        setDeleteSelection({ id, name: displayName, state: 'success' });
-        handleCancelConfirmationModal();
-      }, 500);
-    } catch (error) {
-      handleCancelConfirmationModal();
-    }
-  };
-
-  const getSearchedIngestions = () => {
-    const sText = lowerCase(searchText);
-    const data = sText
-      ? ingestionList.filter(
-          (ing) =>
-            lowerCase(ing.displayName).includes(sText) ||
-            lowerCase(ing.name).includes(sText)
-        )
-      : ingestionList;
-
-    setIngestionData(data);
-    !isUndefined(handleIngestionDataChange) && handleIngestionDataChange(data);
-  };
+  const { isAirflowAvailable, isFetchingStatus, platform } = useMemo(
+    () => airflowInformation,
+    [airflowInformation]
+  );
 
   const showAddIngestionButton = useMemo(
-    () =>
-      isRequiredDetailsAvailable &&
-      permissions.EditAll &&
-      displayAddIngestionButton &&
-      platform !== DISABLED,
-    [
-      isRequiredDetailsAvailable,
-      permissions,
-      displayAddIngestionButton,
-      platform,
-    ]
+    () => ingestionPermissions.Create && platform !== DISABLED,
+    [ingestionPermissions, platform]
   );
 
   const renderAddIngestionButton = useMemo(() => {
@@ -166,17 +141,13 @@ const Ingestion: React.FC<IngestionProps> = ({
 
     if (showAddIngestionButton) {
       return (
-        <LimitWrapper resource="ingestionPipeline">
-          <AddIngestionButton
-            ingestionData={ingestionData}
-            ingestionList={ingestionList}
-            permissions={permissions}
-            pipelineType={pipelineType}
-            serviceCategory={serviceCategory}
-            serviceDetails={serviceDetails}
-            serviceName={serviceName}
-          />
-        </LimitWrapper>
+        <AddIngestionButton
+          ingestionList={ingestionPipelineList}
+          pipelineType={pipelineType}
+          serviceCategory={serviceCategory}
+          serviceDetails={serviceDetails}
+          serviceName={serviceName}
+        />
       );
     }
 
@@ -184,94 +155,51 @@ const Ingestion: React.FC<IngestionProps> = ({
   }, [
     isFetchingStatus,
     showAddIngestionButton,
-    ingestionData,
-    ingestionList,
-    permissions,
+    ingestionPipelineList,
     pipelineType,
     serviceCategory,
     serviceDetails,
     serviceName,
   ]);
 
-  useEffect(() => {
-    getSearchedIngestions();
-  }, [searchText, ingestionList]);
-
-  useEffect(() => {
-    fetchIngestionPipelinesPermission();
-  }, [ingestionList]);
-
-  const getIngestionTab = () => {
-    return (
-      <Row
-        className={classNames('mt-4', containerClassName ?? '')}
-        data-testid="ingestion-details-container">
-        <Col span={24}>
-          {!isRequiredDetailsAvailable && (
-            <Alert
-              showIcon
-              className="mb-4"
-              message={t('message.no-service-connection-details-message', {
-                serviceName,
-              })}
-              type="error"
-            />
-          )}
-        </Col>
-        <Col className="d-flex justify-between" span={24}>
-          <div className="w-max-400 w-full">
-            {searchText || !isEmpty(ingestionData) ? (
-              <Searchbar
-                placeholder={`${t('message.search-for-ingestion')}...`}
-                searchValue={searchText}
-                typingInterval={500}
-                onSearch={handleSearchAction}
-              />
-            ) : null}
-          </div>
-          <div className="relative">{renderAddIngestionButton}</div>
-        </Col>
-        <Col span={24}>
-          <IngestionListTable
-            airflowEndpoint={airflowEndpoint}
-            deleteSelection={deleteSelection}
-            deployIngestion={deployIngestion}
-            handleDeleteSelection={handleDeleteSelection}
-            handleEnableDisableIngestion={handleEnableDisableIngestion}
-            handleIsConfirmationModalOpen={handleIsConfirmationModalOpen}
-            ingestionData={ingestionData}
-            ingestionPipelinesPermission={ingestionPipelinesPermission}
-            isLoading={isLoading}
-            isRequiredDetailsAvailable={isRequiredDetailsAvailable}
-            paging={paging}
-            permissions={permissions}
-            pipelineNameColWidth={pipelineNameColWidth}
-            pipelineType={pipelineType}
-            serviceCategory={serviceCategory}
-            serviceName={serviceName}
-            triggerIngestion={triggerIngestion}
-            onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
-          />
-        </Col>
-      </Row>
-    );
-  };
-
   if (!isAirflowAvailable) {
     return <ErrorPlaceHolderIngestion />;
   }
 
   return (
-    <div data-testid="ingestion-container">
-      {getIngestionTab()}
-      <EntityDeleteModal
-        entityName={deleteSelection.name}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
-        onCancel={handleCancelConfirmationModal}
-        onConfirm={() => handleDelete(deleteSelection.id, deleteSelection.name)}
-      />
-    </div>
+    <Row className="mt-4" data-testid="ingestion-details-container">
+      <Col className="d-flex justify-between" span={24}>
+        <div className="w-max-400 w-full">
+          <Searchbar
+            placeholder={`${t('message.search-for-ingestion')}...`}
+            searchValue={searchText}
+            typingInterval={500}
+            onSearch={handleSearchChange}
+          />
+        </div>
+        <div className="relative">{renderAddIngestionButton}</div>
+      </Col>
+      <Col span={24}>
+        <IngestionListTable
+          airflowInformation={airflowInformation}
+          deployIngestion={deployIngestion}
+          handleEnableDisableIngestion={handleEnableDisableIngestion}
+          handleIngestionListUpdate={handleIngestionListUpdate}
+          handlePipelineIdToFetchStatus={handlePipelineIdToFetchStatus}
+          ingestionData={ingestionPipelineList}
+          ingestionPagingInfo={ingestionPagingInfo}
+          isLoading={isLoading}
+          isNumberBasedPaging={!isEmpty(searchText)}
+          pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+          pipelineType={pipelineType}
+          serviceCategory={serviceCategory}
+          serviceName={serviceName}
+          triggerIngestion={triggerIngestion}
+          onIngestionWorkflowsUpdate={onIngestionWorkflowsUpdate}
+          onPageChange={onPageChange}
+        />
+      </Col>
+    </Row>
   );
 };
 
