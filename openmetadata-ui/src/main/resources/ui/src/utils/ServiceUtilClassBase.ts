@@ -25,6 +25,7 @@ import {
   BIGTABLE,
   CLICKHOUSE,
   COUCHBASE,
+  CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
@@ -477,6 +478,9 @@ class ServiceUtilClassBase {
       case this.StorageServiceTypeSmallCase.Gcs:
         return GCS;
 
+      case this.SearchServiceTypeSmallCase.CustomSearch:
+        return CUSTOM_SEARCH_DEFAULT;
+
       case this.SearchServiceTypeSmallCase.ElasticSearch:
         return ELASTIC_SEARCH;
 
@@ -500,6 +504,8 @@ class ServiceUtilClassBase {
           logo = ML_MODEL_DEFAULT;
         } else if (serviceTypes.storageServices.includes(type)) {
           logo = CUSTOM_STORAGE_DEFAULT;
+        } else if (serviceTypes.searchServices.includes(type)) {
+          logo = CUSTOM_SEARCH_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }
