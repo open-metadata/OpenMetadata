@@ -289,9 +289,7 @@ public class MigrationUtil {
     String exclude_tags_filter =
         "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"dataProduct\"}}}}]}}}";
 
-    String exclude_tier_filter =
-        "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"tag\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"glossaryTerm\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"entityType.keyword\":\"dataProduct\"}}}},{\"bool\":{\"must_not\":{\"term\":{\"tier.keyword\":\"NoTier\"}}}}]}}}";
-    // total data assets
+   // total data assets
     List<String> excludeList = List.of("tag", "glossaryTerm");
     createChart(
         "total_data_assets",
@@ -361,8 +359,8 @@ public class MigrationUtil {
     createChart(
         "total_data_assets_with_tier_summary_card",
         new SummaryCard()
-            .withFormula("(count(k='id.keyword',q='tier.keyword: *')/count(k='id.keyword'))*100")
-            .withFilter(exclude_tier_filter));
+            .withFormula("(count(k='id.keyword',q='NOT tier.keyword:\"NoTier\"')/count(k='id.keyword'))*100")
+            .withFilter(exclude_tags_filter));
 
     // percentage of Data Asset with Description KPI
     createChart(
