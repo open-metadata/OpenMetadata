@@ -37,10 +37,6 @@ test.describe('Login flow should work properly', () => {
     await expect(page).toHaveURL(`/signin`);
 
     // Click on create account button
-    await page.locator('[data-testid="signup"]').scrollIntoViewIfNeeded();
-
-    await expect(page.locator('[data-testid="signup"]')).toBeVisible();
-
     await page.locator('[data-testid="signup"]').click();
 
     // Enter credentials
@@ -62,14 +58,14 @@ test.describe('Login flow should work properly', () => {
 
     await page.locator('#confirmPassword').fill(CREDENTIALS.password);
     // Click on create account button
-    await page.locator('.ant-btn:has-text("Create Account")').click();
+    await page.getByRole('button', { name: 'Create Account' }).click();
 
     await expect(page).toHaveURL(`/signin`);
 
     // Login with the created user
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', CREDENTIALS.password);
-    await page.locator('.ant-btn:has-text("Login")').click();
+    await page.locator('[data-testid="login"]').click();
 
     await expect(page).toHaveURL(`/my-data`);
 
@@ -86,11 +82,8 @@ test.describe('Login flow should work properly', () => {
     // Login with invalid email
     await page.fill('#email', invalidEmail);
     await page.fill('#password', CREDENTIALS.password);
-    await page.locator('.ant-btn:has-text("Login")').click();
+    await page.locator('[data-testid="login"]').click();
 
-    await expect(
-      page.locator('[data-testid="login-error-container"]')
-    ).toBeVisible();
     await expect(
       page.locator('[data-testid="login-error-container"]')
     ).toHaveText(LOGIN_ERROR_MESSAGE);
@@ -98,20 +91,16 @@ test.describe('Login flow should work properly', () => {
     // Login with invalid password
     await page.fill('#email', CREDENTIALS.email);
     await page.fill('#password', invalidPassword);
-    await page.locator('.ant-btn:has-text("Login")').click();
+    await page.locator('[data-testid="login"]').click();
 
     await expect(
       page.locator('[data-testid="login-error-container"]')
-    ).toBeVisible();
-    await expect(page.getByTestId('success-line')).toHaveText(
-      LOGIN_ERROR_MESSAGE
-    );
+    ).toHaveText(LOGIN_ERROR_MESSAGE);
   });
 
   test('Forgot password and login with new password', async ({ page }) => {
     await page.goto('/');
     // Click on Forgot button
-    await page.locator('[data-testid="forgot-password"]').hover();
     await page.locator('[data-testid="forgot-password"]').click();
 
     await expect(page).toHaveURL(`/forgot-password`);
@@ -119,10 +108,7 @@ test.describe('Login flow should work properly', () => {
     // Enter email
     await page.locator('#email').fill(CREDENTIALS.email);
     // Click on Forgot button
-    await page.locator('.ant-btn:has-text("Submit")').click();
-    await page
-      .locator('[data-testid="go-back-button"]')
-      .scrollIntoViewIfNeeded();
+    await page.getByRole('button', { name: 'Submit' }).click();
     await page.locator('[data-testid="go-back-button"]').click();
   });
 });
