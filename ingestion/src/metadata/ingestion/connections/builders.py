@@ -152,6 +152,7 @@ def _add_password(url: str, connection) -> str:
                         Region=connection.authType.awsConfig.awsRegion,
                     )
                 )
+    password = password if password else SecretStr("")
     url += f":{quote_plus(password.get_secret_value())}"
     return url
 
