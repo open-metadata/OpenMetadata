@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
@@ -19,7 +19,6 @@ import {
 } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  createNewPage,
   descriptionBox,
   redirectToHomePage,
   toastNotification,
@@ -41,16 +40,24 @@ const entity2 = new TableClass();
 const entity3 = new TableClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
+const adminUser = new UserClass();
+
+const test = base.extend<{ page: Page }>({
+  page: async ({ browser }, use) => {
+    const adminPage = await browser.newPage();
+    await adminUser.login(adminPage);
+    await use(adminPage);
+    await adminPage.close();
+  },
+});
 
 test.describe('Activity feed', () => {
-  test.slow();
-
-  // use the admin user to login
-  test.use({ storageState: 'playwright/.auth/admin.json' });
+  test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
     await entity.create(apiContext);
     await entity2.create(apiContext);
     await entity3.create(apiContext);
@@ -59,16 +66,13 @@ test.describe('Activity feed', () => {
     await afterAction();
   });
 
-  test.beforeEach('Visit on landing page', async ({ page }) => {
-    await redirectToHomePage(page);
-  });
-
   test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await entity.delete(apiContext);
     await entity2.delete(apiContext);
     await entity3.delete(apiContext);
     await user1.delete(apiContext);
+    await adminUser.delete(apiContext);
 
     await afterAction();
   });
@@ -78,6 +82,8 @@ test.describe('Activity feed', () => {
       term: entity.entity.name,
       assignee: user1.responseData.name,
     };
+    await redirectToHomePage(page);
+
     await entity.visitEntityPage(page);
 
     await page.getByTestId('request-description').click();
@@ -148,6 +154,8 @@ test.describe('Activity feed', () => {
   test('User should be able to reply and delete comment in feeds in ActivityFeed', async ({
     page,
   }) => {
+    await redirectToHomePage(page);
+
     await visitUserProfilePage(page);
 
     const secondFeedConversation = page
@@ -249,6 +257,9 @@ test.describe('Activity feed', () => {
       columnName: entity.entity.columns[1].name,
       oldDescription: entity.entity.columns[1].description,
     };
+
+    await redirectToHomePage(page);
+
     await entity.visitEntityPage(page);
 
     await page
@@ -302,6 +313,8 @@ test.describe('Activity feed', () => {
       term: entity2.entity.name,
       assignee: user1.responseData.name,
     };
+    await redirectToHomePage(page);
+
     await entity2.visitEntityPage(page);
 
     await page.getByTestId('request-description').click();
@@ -362,6 +375,8 @@ test.describe('Activity feed', () => {
       term: entity3.entity.name,
       assignee: user1.responseData.name,
     };
+    await redirectToHomePage(page);
+
     await entity3.visitEntityPage(page);
 
     await page.getByTestId('request-description').click();
@@ -426,10 +441,10 @@ test.describe('Activity feed', () => {
   });
 });
 
-test.describe('Activity feed with Data Steward User', () => {
-  test.slow(true);
+base.describe('Activity feed with Data Steward User', () => {
+  base.slow(true);
 
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  base.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
 
     await entity.create(apiContext);
@@ -439,7 +454,7 @@ test.describe('Activity feed with Data Steward User', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
+  base.afterAll('Cleanup', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await entity.delete(apiContext);
     await entity2.delete(apiContext);
@@ -449,7 +464,7 @@ test.describe('Activity feed with Data Steward User', () => {
     await afterAction();
   });
 
-  test('Create and Assign Task with Suggestions', async ({ browser }) => {
+  base('Create and Assign Task with Suggestions', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const { page: page2, afterAction: afterActionUser2 } =
@@ -460,7 +475,7 @@ test.describe('Activity feed with Data Steward User', () => {
       assignee: user2.responseData.name,
     };
 
-    await test.step('Create, Close and Assign Task to User 2', async () => {
+    await base.step('Create, Close and Assign Task to User 2', async () => {
       await redirectToHomePage(page1);
       await entity.visitEntityPage(page1);
 
@@ -512,7 +527,7 @@ test.describe('Activity feed with Data Steward User', () => {
       await afterActionUser1();
     });
 
-    await test.step('Accept Task By User 2', async () => {
+    await base.step('Accept Task By User 2', async () => {
       await redirectToHomePage(page2);
 
       const taskResponse = page2.waitForResponse(
@@ -580,7 +595,7 @@ test.describe('Activity feed with Data Steward User', () => {
     });
   });
 
-  test('Create and Assign Task without Suggestions', async ({ browser }) => {
+  base('Create and Assign Task without Suggestions', async ({ browser }) => {
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const { page: page2, afterAction: afterActionUser2 } =
@@ -591,7 +606,7 @@ test.describe('Activity feed with Data Steward User', () => {
       assignee: user2.responseData.name,
     };
 
-    await test.step('Create, Close and Assign Task to user 2', async () => {
+    await base.step('Create, Close and Assign Task to user 2', async () => {
       await redirectToHomePage(page1);
       await entity2.visitEntityPage(page1);
 
@@ -624,7 +639,7 @@ test.describe('Activity feed with Data Steward User', () => {
       await afterActionUser1();
     });
 
-    await test.step(
+    await base.step(
       'Accept Task By user 2 with adding suggestions',
       async () => {
         await redirectToHomePage(page2);
