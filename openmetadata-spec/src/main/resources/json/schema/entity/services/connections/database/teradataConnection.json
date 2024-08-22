@@ -51,7 +51,7 @@
       "title": "LOGMECH",
       "description": "Specifies the logon authentication method. Possible values are TD2 (the default), JWT, LDAP, KRB5 for Kerberos, or TDNEGO",
       "type": "string",
-      "enum": ["TD2", "JWT", "KRB5", "CUSTOM", "TDNEGO"],
+      "enum": ["TD2", "LDAP", "JWT", "KRB5", "CUSTOM", "TDNEGO"],
       "default": "TD2"
     },
     "logdata": {
