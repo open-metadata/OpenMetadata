@@ -72,8 +72,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     // Calculate time config
     long currentTime = System.currentTimeMillis();
-    long startTime = TimestampUtils.subtractDays(currentTime, 7);
-    long endTime = TimestampUtils.subtractDays(currentTime, 1);
+    long startTime =
+        TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(currentTime, 6));
+    long endTime = TimestampUtils.getStartOfDayTimestamp(currentTime);
     TimeConfig timeConfig =
         new TimeConfig(
             startTime,
