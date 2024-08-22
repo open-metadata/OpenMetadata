@@ -217,7 +217,6 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         )}
         {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
           <Alert
-            className="self-center"
             data-testid="ip-address"
             description={
               <Transi18next
