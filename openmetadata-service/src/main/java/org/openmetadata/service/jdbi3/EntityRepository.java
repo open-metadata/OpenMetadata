@@ -655,7 +655,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<T> listAll(Fields fields, ListFilter filter) {
     // forward scrolling, if after == null then first page is being asked
-    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
+    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "", "");
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
@@ -672,8 +672,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
-      List<String> jsons =
-          dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
+      Map<String, String> cursorMap =
+          parseCursorMap(after == null ? "" : RestUtil.decodeCursor(after));
+      String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+      String afterId = cursorMap.get("id");
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
       for (String json : jsons) {
         T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
@@ -731,10 +734,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  Map<String, String> parseCursorMap(String param) {
+    Map<String, String> cursorMap;
+    if (param == null) {
+      cursorMap = Map.of("name", null, "id", null);
+    } else if (nullOrEmpty(param)) {
+      cursorMap = Map.of("name", "", "id", "");
+    } else {
+      cursorMap = JsonUtils.readValue(param, Map.class);
+    }
+    return cursorMap;
+  }
+
   public ResultList<T> listBefore(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(before));
+    String beforeName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+    String beforeId = cursorMap.get("id");
+    List<String> jsons = dao.listBefore(filter, limitParam + 1, beforeName, beforeId);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -763,7 +782,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * The id is always unique, which helps to avoid pagination issues caused by duplicate names and have unique ordering.
    */
   public String getCursorValue(T entity) {
-    return entity.getName();
+    Map<String, String> cursorMap =
+        Map.of("name", entity.getName(), "id", String.valueOf(entity.getId()));
+    return JsonUtils.pojoToJson(cursorMap);
   }
 
   public final T getVersion(UUID id, String version) {
@@ -1958,8 +1979,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return;
     }
+    // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
-    owners = new ArrayList<>(refs);
+    for (int i = 0; i < owners.size(); i++) {
+      EntityUtil.copy(refs.get(i), owners.get(i));
+    }
   }
 
   @Transaction
@@ -2183,23 +2207,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return null;
     }
-    List<EntityReference> validatedOwners = new ArrayList<>();
-    for (EntityReference owner : owners) {
-      if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidOwnerType(owner.getType()));
-      } else if (owner
-          .getType()
-          .equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
-        if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
-        }
-      }
-      validatedOwners.add(Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL));
+
+    long teamCount = owners.stream().filter(owner -> owner.getType().equals(Entity.TEAM)).count();
+    long userCount = owners.size() - teamCount;
+
+    if (teamCount > 1 || (teamCount > 0 && userCount > 0)) {
+      throw new IllegalArgumentException(
+          teamCount > 1
+              ? CatalogExceptionMessage.onlyOneTeamAllowed()
+              : CatalogExceptionMessage.noTeamAndUserComboAllowed());
     }
-    return validatedOwners;
+
+    return owners.stream()
+        .map(
+            owner -> {
+              if (owner.getType().equals(Entity.TEAM)) {
+                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
+                if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
+                  throw new IllegalArgumentException(
+                      CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+                }
+              } else if (!owner.getType().equals(Entity.USER)) {
+                throw new IllegalArgumentException(
+                    CatalogExceptionMessage.invalidOwnerType(owner.getType()));
+              }
+              return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+            })
+        .collect(Collectors.toList());
   }
 
   protected void validateTags(T entity) {

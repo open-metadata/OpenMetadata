@@ -323,7 +323,8 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_RULE_NAME, ruleName);
+    // rule name is same as entity fqn so we need to encode it to pass it as a param
+    .replace(PLACEHOLDER_RULE_NAME, getEncodedFqn(ruleName));
 
   return path;
 };

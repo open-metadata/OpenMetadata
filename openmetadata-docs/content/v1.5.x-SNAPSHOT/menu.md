@@ -143,6 +143,8 @@ site_menu:
     url: /deployment/security/saml
   - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
+  - category: Deployment / Enable Security / Saml / Azure
+    url: /deployment/security/saml/azure
   - category: Deployment / Enable Security / Saml / Docker 
     url: /deployment/security/saml/docker
   - category: Deployment / Enable Security / Saml / Bare Metal 
@@ -181,6 +183,8 @@ site_menu:
     url: /deployment/rds-iam-auth
   - category: Deployment / Server Configuration Reference
     url: /deployment/configuration
+  - category: Deployment / Database Connection Pooling
+    url: /deployment/database-connection-pooling
 
   - category: Deployment / Upgrade OpenMetadata
     url: /deployment/upgrade
@@ -771,14 +775,50 @@ site_menu:
   - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
     url: /how-to-guides/data-collaboration/knowledge-center
 
-  - category: How-to Guides / Data Quality and Profiler
-    url: /how-to-guides/data-quality-profiler
-  - category: How-to Guides / Data Quality and Profiler / Profiler and Data Quality Tab
-    url: /how-to-guides/data-quality-profiler/tab
-  - category: How-to Guides / Data Quality and Profiler / How to Write and Deploy No-Code Test Cases
-    url: /how-to-guides/data-quality-profiler/test
-  - category: How-to Guides / Data Quality and Profiler / How to Set Alerts for Test Case Fails
-    url: /how-to-guides/data-quality-profiler/alerts
+  - category: How-to Guides / Data Quality and Observability
+    url: /how-to-guides/data-quality-observability
+  - category: How-to Guides / Data Quality and Observability / Data Quality
+    url: /how-to-guides/data-quality-observability/quality
+  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Tab
+    url: /how-to-guides/data-quality-observability/quality/tab
+  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Overview Section
+    url: /how-to-guides/data-quality-observability/quality/overview
+    isCollateOnly: true
+  - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
+    url: /how-to-guides/data-quality-observability/quality/test
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
+    url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
+    url: /how-to-guides/data-quality-observability/quality/tests-yaml
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
+    url: /how-to-guides/data-quality-observability/quality/custom-tests
+  - category: How-to Guides / Data Quality and Observability / Data Profiler
+    url: /how-to-guides/data-quality-observability/profiler
+  - category: How-to Guides / Data Quality and Profiler / Data Profiler/ Profiler Tab
+    url: /how-to-guides/data-quality-observability/profiler/tab
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Profiler Workflow
+    url: /how-to-guides/data-quality-observability/profiler/workflow
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
+    url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
+    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
+    url: /how-to-guides/data-quality-observability/profiler/external-workflow
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Auto PII Tagging
+    url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
+  - category: How-to Guides / Data Quality and Observability / Data Observability
+    url: /how-to-guides/data-quality-observability/observability
+  - category: How-to Guides / Data Quality and Observability / Data Observability / Observability Alerts
+    url: /how-to-guides/data-quality-observability/observability/alerts
+  - category: How-to Guides / Data Quality and Observability / Data Observability / Webhooks
+    url: /how-to-guides/data-quality-observability/observability/webhooks
+  - category: How-to Guides / Data Quality and Observability / Incident Manager
+    url: /how-to-guides/data-quality-observability/incident-manager
+  - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
+    url: /how-to-guides/data-quality-observability/incident-manager/workflow
+  - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
+    url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
+    isCollateOnly: true
 
   - category: How-to Guides / Data Lineage
     url: /how-to-guides/data-lineage
@@ -799,12 +839,6 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
-  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
-    url: /how-to-guides/data-insights/airflow-sdk
-  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
-    url: /how-to-guides/data-insights/metadata-cli   
-  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
-    url: /how-to-guides/data-insights/elasticsearch-reindex 
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
   - category: How-to Guides / Data Insights / Cost Analysis
@@ -813,6 +847,8 @@ site_menu:
     url: /how-to-guides/data-insights/email-report
   - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
     url: /how-to-guides/data-insights/data-culture
+  - category: How-to Guides / Data Insights / Custom Data Insight Dashboards
+    url: /how-to-guides/data-insights/custom-dashboard
 
   - category: How-to Guides / Data Governance
     url: /how-to-guides/data-governance
@@ -919,42 +955,14 @@ site_menu:
   - category: Roadmap
     url: /roadmap
 
-  - category: Quality & Observability
-    url: /quality-and-observability
-    color: violet-70
-    icon: openmetadata
-
-  - category: Quality & Observability / Profiler
-    url: /quality-and-observability/profiler
-  - category: Quality & Observability / Profiler / Metrics
-    url: /quality-and-observability/profiler/metrics
-  - category: Quality & Observability / Profiler / Sample Data
-    url: /quality-and-observability/profiler/external-sample-data
-  - category: Quality & Observability / Profiler / External Workflow
-    url: /quality-and-observability/profiler/external-workflow
-  - category: Quality & Observability / Profiler / Auto PII Tagging
-    url: /quality-and-observability/profiler/auto-pii-tagging
-  - category: Quality & Observability / Data Quality
-    url: /quality-and-observability/data-quality
-  - category: Quality & Observability / Data Quality / Tests
-    url: /quality-and-observability/data-quality/tests
-  - category: Quality & Observability / Data Quality / Custom Tests
-    url: /quality-and-observability/data-quality/custom-tests
-  - category: Quality & Observability / Data Quality / Incident Manager
-    url: /quality-and-observability/data-quality/incident-manager
-  - category: Quality & Observability / Data Quality / Alerts
-    url: /quality-and-observability/data-quality/alerts
-  - category: Quality & Observability / Data Quality / Root Cause Analysis
-    url: /quality-and-observability/data-quality/root-cause-analysis
-    isCollateOnly: true
-
-
   - category: Main Concepts
     url: /main-concepts
     color: violet-70
     icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
+  - category: Main Concepts / Backend DB
+    url: /main-concepts/backend-db
   - category: Main Concepts / Metadata Standard
     url: /main-concepts/metadata-standard
   - category: Main Concepts / Metadata Standard / Schemas
@@ -1762,6 +1770,8 @@ site_menu:
     url: /main-concepts/metadata-standard/schemas/security/credentials/gitcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GithubCredentials
     url: /main-concepts/metadata-standard/schemas/security/credentials/githubcredentials
+  - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials / GitlabCredentials
+    url: /main-concepts/metadata-standard/schemas/security/credentials/gitlabcredentials
   - category: Main Concepts / Metadata Standard / Schemas / Security / Credentials
     url: /main-concepts/metadata-standard/schemas/security/credentials
   - category: Main Concepts / Metadata Standard / Schemas / Security

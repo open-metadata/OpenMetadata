@@ -34,7 +34,14 @@ test('Table difference test case', async ({ page }) => {
   };
 
   await table1.visitEntityPage(page);
+  const profileResponse = page.waitForResponse(
+    `/api/v1/tables/${encodeURIComponent(
+      table1.entityResponseData?.['fullyQualifiedName']
+    )}/tableProfile/latest`
+  );
   await page.getByText('Profiler & Data Quality').click();
+  await profileResponse;
+  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
   try {
     await test.step('Create', async () => {
@@ -141,7 +148,14 @@ test('Custom SQL Query', async ({ page }) => {
   };
 
   await table.visitEntityPage(page);
+  const profileResponse = page.waitForResponse(
+    `/api/v1/tables/${encodeURIComponent(
+      table.entityResponseData?.['fullyQualifiedName']
+    )}/tableProfile/latest`
+  );
   await page.getByText('Profiler & Data Quality').click();
+  await profileResponse;
+  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
 
   try {
     await test.step('Create', async () => {

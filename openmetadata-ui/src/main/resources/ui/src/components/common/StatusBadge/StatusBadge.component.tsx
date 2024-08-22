@@ -18,7 +18,7 @@ import { StatusBadgeProps } from './StatusBadge.interface';
 const StatusBadge = ({ label, status, dataTestId }: StatusBadgeProps) => {
   return (
     <div
-      className={classNames('w-16 status-badge', status)}
+      className={classNames('status-badge', status)}
       data-testid={dataTestId}>
       {label}
     </div>

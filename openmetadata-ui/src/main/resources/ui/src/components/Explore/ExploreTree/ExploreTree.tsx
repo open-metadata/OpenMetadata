@@ -13,28 +13,34 @@
 import { Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString, uniqueId } from 'lodash';
+import { isString, isUndefined } from 'lodash';
 import Qs from 'qs';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as IconDown } from '../../../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../../../assets/svg/ic-arrow-right.svg';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge } from '../../../utils/CommonUtils';
-import { getEntityNameLabel } from '../../../utils/EntityUtils';
+import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
   getAggregations,
   getQuickFilterObject,
+  getQuickFilterObjectForEntities,
   getSubLevelHierarchyKey,
+  updateCountsInTreeData,
   updateTreeData,
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { UrlParams } from '../ExplorePage.interface';
+import './explore-tree.less';
 import {
   ExploreTreeNode,
   ExploreTreeProps,
@@ -42,18 +48,24 @@ import {
 } from './ExploreTree.interface';
 
 const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
-  <Typography.Text
-    className={classNames({
-      'm-l-xss': node.data?.isRoot || node.data?.isStatic,
-    })}
-    data-testid={`explore-tree-title-${node.data?.dataId}`}>
-    {node.title}
-  </Typography.Text>
+  <div className="d-flex justify-between">
+    <Typography.Text
+      className={classNames({
+        'm-l-xss': node.data?.isRoot,
+      })}
+      data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
+      {node.title}
+    </Typography.Text>
+    {!isUndefined(node.count) && (
+      <span className="explore-node-count">{getCountBadge(node.count)}</span>
+    )}
+  </div>
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { tab } = useParams<UrlParams>();
   const initTreeData = searchClassBase.getExploreTree();
+  const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
 
@@ -106,6 +118,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
               }
             : getSubLevelHierarchyKey(
                 rootIndex === SearchIndex.DATABASE,
+                treeNode?.data?.filterField,
                 currentBucketKey as EntityFields,
                 currentBucketValue
               );
@@ -122,7 +135,12 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         });
 
         const aggregations = getAggregations(res.aggregations);
-        const buckets = aggregations[bucketToFind].buckets;
+        const buckets = aggregations[bucketToFind].buckets.filter(
+          (item) =>
+            !searchClassBase
+              .notIncludeAggregationExploreTree()
+              .includes(item.key as EntityType)
+        );
         const isServiceType = bucketToFind === EntityFields.SERVICE_TYPE;
         const isEntityType = bucketToFind === EntityFields.ENTITY_TYPE;
 
@@ -131,7 +149,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
         );
 
         const children = sortedBuckets.map((bucket) => {
-          const id = uniqueId();
+          const id = generateUUID();
 
           let logo = undefined;
           if (isEntityType) {
@@ -154,20 +172,11 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
             setSelectedKeys([id]);
           }
 
-          const title = (
-            <div className="d-flex justify-between">
-              <Typography.Text
-                className={classNames({
-                  'm-l-xss': !logo,
-                })}>
-                {isEntityType ? getEntityNameLabel(bucket.key) : bucket.key}
-              </Typography.Text>
-              {isEntityType && <span>{getCountBadge(bucket.doc_count)}</span>}
-            </div>
-          );
-
           return {
-            title: title,
+            title: isEntityType
+              ? getPluralizeEntityName(bucket.key)
+              : bucket.key,
+            count: isEntityType ? bucket.doc_count : undefined,
             key: id,
             icon: logo,
             isLeaf: bucketToFind === EntityFields.ENTITY_TYPE,
@@ -180,7 +189,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
                 getQuickFilterObject(bucketToFind, bucket.key),
               ],
               isRoot: false,
-              rootIndex: treeNode.data?.rootIndex,
+              rootIndex: isRoot ? treeNode.key : treeNode.data?.rootIndex,
               dataId: bucket.key,
             },
           };
@@ -208,11 +217,51 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           getQuickFilterObject(EntityFields.ENTITY_TYPE, node.data?.entityType),
         ];
         onFieldValueSelect(filterField);
+      } else if (node.data?.childEntities) {
+        onFieldValueSelect([
+          getQuickFilterObjectForEntities(
+            EntityFields.ENTITY_TYPE,
+            node.data?.childEntities
+          ),
+        ]);
       }
       setSelectedKeys([node.key]);
     },
     [onFieldValueSelect]
   );
+
+  const fetchEntityCounts = useCallback(async () => {
+    try {
+      const res = await searchQuery({
+        query: searchQueryParam ?? '',
+        pageNumber: 0,
+        pageSize: 0,
+        queryFilter: {},
+        searchIndex: SearchIndex.DATA_ASSET,
+        includeDeleted: false,
+        trackTotalHits: true,
+        fetchSource: false,
+      });
+
+      const buckets = res.aggregations['entityType'].buckets;
+      const counts: Record<string, number> = {};
+
+      buckets.forEach((item) => {
+        counts[item.key] = item.doc_count;
+        if (staticKeysHavingCounts.includes(item.key)) {
+          setTreeData((origin) =>
+            updateCountsInTreeData(origin, item.key, item.doc_count)
+          );
+        }
+      });
+    } catch (error) {
+      // Do nothing
+    }
+  }, [staticKeysHavingCounts]);
+
+  useEffect(() => {
+    fetchEntityCounts();
+  }, []);
 
   return (
     <Tree

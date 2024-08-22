@@ -596,4 +596,8 @@ public final class Entity {
   public static <T> T getDao() {
     return (T) collectionDAO;
   }
+
+  public static <T> T getSearchRepo() {
+    return (T) searchRepository;
+  }
 }

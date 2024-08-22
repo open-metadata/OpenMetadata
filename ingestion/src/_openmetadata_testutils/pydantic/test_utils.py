@@ -43,7 +43,6 @@ def assert_equal_pydantic_objects(
     """
     errors = []
     queue = deque([(expected, actual, "")])
-
     while queue:
         expected, actual, current_key_prefix = queue.popleft()
         if not isinstance(expected, actual.__class__):
@@ -52,11 +51,13 @@ def assert_equal_pydantic_objects(
                 f"expected: [{type(expected).__name__}], actual: [{type(actual).__name__}]"
             )
             continue
-        if issubclass(expected.__class__, BaseModel):
-            for key, expected_value in expected.dict().items():
+        if issubclass(expected.__class__, BaseModel) and isinstance(
+            expected.model_dump(), dict
+        ):
+            for key, expected_value in expected.model_dump().items():
                 if expected_value is None and ignore_none:
                     continue
-                actual_value = actual.dict().get(key)
+                actual_value = actual.model_dump().get(key)
                 new_key_prefix = (
                     f"{current_key_prefix}.{key}" if current_key_prefix else key
                 )

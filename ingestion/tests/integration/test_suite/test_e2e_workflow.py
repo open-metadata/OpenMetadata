@@ -238,7 +238,7 @@ class TestE2EWorkflow(unittest.TestCase):
         """test cli workflow e2e"""
         parameters = [
             {"table_name": "users", "status": "Success"},
-            {"table_name": "empty_users", "status": "Aborted"},
+            {"table_name": "empty_users", "status": "Success"},
         ]
 
         for param in parameters:

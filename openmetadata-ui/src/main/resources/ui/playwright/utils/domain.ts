@@ -14,6 +14,7 @@ import { expect, Page } from '@playwright/test';
 import { get, isEmpty, isUndefined } from 'lodash';
 import { DataProduct } from '../support/domain/DataProduct';
 import { Domain } from '../support/domain/Domain';
+import { SubDomain } from '../support/domain/SubDomain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
@@ -31,13 +32,14 @@ import { addOwner } from './entity';
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
   await page
     .getByTestId('selectable-list')
     .getByTestId('searchbar')
     .fill(domain.name);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -49,13 +51,14 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
   await page
     .getByTestId('selectable-list')
     .getByTestId('searchbar')
     .fill(domain.name);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -104,6 +107,20 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     .click();
 };
 
+export const selectSubDomain = async (
+  page: Page,
+  domain: Domain['data'],
+  subDomain: SubDomain['data']
+) => {
+  await page
+    .getByRole('menuitem', { name: domain.displayName })
+    .locator('span')
+    .click();
+
+  await page.getByTestId('subdomains').getByText('Sub Domains').click();
+  await page.getByTestId(subDomain.name).click();
+};
+
 export const selectDataProduct = async (
   page: Page,
   domain: Domain['data'],
@@ -129,28 +146,38 @@ const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
 
 const fillCommonFormItems = async (
   page: Page,
-  entity: Domain['data'] | DataProduct['data']
+  entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
   await page.locator('[data-testid="name"]').fill(entity.name);
   await page.locator('[data-testid="display-name"]').fill(entity.displayName);
   await page.fill(descriptionBox, entity.description);
-  await page.click('[data-testid="add-owner"]');
-
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
-    await addOwner(
+    await addOwner({
       page,
-      entity.owners[0].name,
-      entity.owners[0].type as 'Users' | 'Teams',
-      EntityTypeEndpoint.Domain,
-      'owner-container',
-      'add-owner'
-    );
+      owner: entity.owners[0].name,
+      type: entity.owners[0].type as 'Users' | 'Teams',
+      endpoint: EntityTypeEndpoint.Domain,
+      dataTestId: 'owner-container',
+      initiatorId: 'add-owner',
+    });
   }
 };
 
-const fillDomainForm = async (page: Page, entity: Domain['data']) => {
+const fillDomainForm = async (
+  page: Page,
+  entity: Domain['data'] | SubDomain['data'],
+  isDomain = true
+) => {
   await fillCommonFormItems(page, entity);
-  await page.click('[data-testid="domainType"]');
+  if (isDomain) {
+    await page.click('[data-testid="domainType"]');
+  } else {
+    await page
+      .getByLabel('Add Sub Domain')
+      .getByTestId('domainType')
+      .locator('div')
+      .click();
+  }
   await page.getByTitle(entity.domainType).locator('div').click();
 };
 
@@ -175,7 +202,12 @@ export const checkDataProductCount = async (page: Page, count: number) => {
   ).toContainText(count.toString());
 };
 
-export const verifyDomain = async (page: Page, domain: Domain['data']) => {
+export const verifyDomain = async (
+  page: Page,
+  domain: Domain['data'] | SubDomain['data'],
+  parentDomain?: Domain['data'],
+  isDomain = true
+) => {
   await checkDomainDisplayName(page, domain.displayName);
 
   const viewerContainerText = await page.textContent(
@@ -193,6 +225,13 @@ export const verifyDomain = async (page: Page, domain: Domain['data']) => {
   await expect(
     page.getByTestId('domain-type-label').locator('div')
   ).toContainText(domain.domainType);
+
+  // Check breadcrumbs
+  if (!isDomain && parentDomain) {
+    await expect(
+      page.getByRole('link', { name: parentDomain.fullyQualifiedName })
+    ).toBeVisible();
+  }
 };
 
 export const createDomain = async (
@@ -223,6 +262,21 @@ export const createDomain = async (
   await checkDataProductCount(page, 0);
 };
 
+export const createSubDomain = async (
+  page: Page,
+  subDomain: SubDomain['data']
+) => {
+  await page.getByTestId('domain-details-add-button').click();
+  await page.getByRole('menuitem', { name: 'Sub Domains' }).click();
+
+  await expect(page.getByText('Add Sub Domain')).toBeVisible();
+
+  await fillDomainForm(page, subDomain, false);
+  const saveRes = page.waitForResponse('/api/v1/domains');
+  await page.getByTestId('save-sub-domain').click();
+  await saveRes;
+};
+
 export const addAssetsToDomain = async (
   page: Page,
   domain: Domain['data'],
@@ -236,7 +290,7 @@ export const addAssetsToDomain = async (
   );
 
   await page.getByTestId('domain-details-add-button').click();
-  await page.getByRole('menuitem', { name: 'Assets' }).click();
+  await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
 
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');

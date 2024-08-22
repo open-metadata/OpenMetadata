@@ -19,7 +19,6 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +35,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
@@ -50,13 +48,6 @@ public class TagRepository extends EntityRepository<Tag> {
         "");
     supportsSearch = true;
     renameAllowed = true;
-  }
-
-  @Override
-  public String getCursorValue(Tag tag) {
-    Map<String, String> cursorMap =
-        Map.of("name", tag.getName(), "id", String.valueOf(tag.getId()));
-    return JsonUtils.pojoToJson(cursorMap);
   }
 
   @Override

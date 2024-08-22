@@ -21,16 +21,21 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import java.io.IOException;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
+import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.client.Invocation;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 @Slf4j
 public final class SecurityUtil {
@@ -41,6 +46,10 @@ public final class SecurityUtil {
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
+  }
+
+  public static LoginConfiguration getLoginConfiguration() {
+    return SettingsCache.getSetting(SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class);
   }
 
   public static Map<String, String> authHeaders(String username) {
@@ -197,6 +206,15 @@ public final class SecurityUtil {
           String.format(
               "Not Authorized! Email does not match the principal domain %s", principalDomain));
     }
+  }
+
+  public static void writeJsonResponse(HttpServletResponse response, String message)
+      throws IOException {
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.getOutputStream().print(message);
+    response.getOutputStream().flush();
+    response.setStatus(HttpServletResponse.SC_OK);
   }
 
   public static boolean isBot(Map<String, Claim> claims) {

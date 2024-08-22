@@ -93,6 +93,7 @@ import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
+import searchDefault from '../assets/svg/ic-custom-search.svg';
 import storageDefault from '../assets/svg/ic-custom-storage.svg';
 import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
@@ -210,6 +211,7 @@ export const COUCHBASE = couchbase;
 export const GREENPLUM = greenplum;
 export const ELASTIC_SEARCH = elasticSearch;
 export const OPEN_SEARCH = openSearch;
+export const CUSTOM_SEARCH_DEFAULT = searchDefault;
 export const PLUS = plus;
 export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
@@ -409,18 +411,16 @@ export const SERVICE_TYPES_ENUM = {
 export const BETA_SERVICES = [
   DatabaseServiceType.BigTable,
   DatabaseServiceType.SAS,
-  DatabaseServiceType.Doris,
   PipelineServiceType.Spline,
-  PipelineServiceType.Spark,
   PipelineServiceType.OpenLineage,
   PipelineServiceType.Flink,
-  DashboardServiceType.QlikSense,
-  DashboardServiceType.QlikCloud,
-  DatabaseServiceType.Couchbase,
-  DatabaseServiceType.Greenplum,
-  DatabaseServiceType.Iceberg,
   DatabaseServiceType.Teradata,
   APIServiceType.REST,
+  StorageServiceType.Gcs,
+  DatabaseServiceType.SapERP,
+  PipelineServiceType.Flink,
+  MetadataServiceType.AlationSink,
+  DatabaseServiceType.Synapse,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

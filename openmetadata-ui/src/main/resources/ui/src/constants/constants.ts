@@ -15,8 +15,12 @@ import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import Qs from 'qs';
 import { CSSProperties } from 'react';
+import { ReactComponent as IconCompleteBadge } from '../assets/svg/complete.svg';
+import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { Status } from '../generated/entity/applications/appRunRecord';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
@@ -46,6 +50,7 @@ export const HOVER_CHART_OPACITY = 0.3;
 export const LOGGED_IN_USER_STORAGE_KEY = 'loggedInUsers';
 export const DOMAIN_STORAGE_KEY = 'om_domains';
 export const DEFAULT_DOMAIN_VALUE = 'All Domains';
+export const REFRESH_TOKEN_KEY = 'refreshToken';
 
 export const USER_DATA_SIZE = 5;
 export const INITIAL_PAGING_VALUE = 1;
@@ -131,6 +136,8 @@ export const ROUTES = {
   SAML_CALLBACK: '/saml/callback',
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
+  FORBIDDEN: '/403',
+  UNAUTHORISED: '/unauthorised',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -577,4 +584,21 @@ export const COMMON_ICON_STYLES: CSSProperties = {
 
 export const APPLICATION_JSON_CONTENT_TYPE_HEADER = {
   headers: { 'Content-type': 'application/json' },
+};
+
+export const STATUS_ICON = {
+  success: IconSuccessBadge,
+  failed: IconFailedBadge,
+  completed: IconCompleteBadge,
+};
+
+export const STATUS_LABEL = {
+  [Status.Active]: 'Active',
+  [Status.ActiveError]: 'Active With Error',
+  [Status.Completed]: 'Completed',
+  [Status.Failed]: 'Failed',
+  [Status.Running]: 'Running',
+  [Status.Started]: 'Started',
+  [Status.Stopped]: 'Stopped',
+  [Status.Success]: 'Success',
 };

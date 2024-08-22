@@ -18,7 +18,8 @@
                 "sum",
                 "avg",
                 "min",
-                "max"
+                "max",
+                "unique"
             ]
         },
         "kpiDetails": {

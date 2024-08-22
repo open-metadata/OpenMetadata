@@ -65,6 +65,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
+import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
@@ -117,6 +118,7 @@ import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
+import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
 import org.openmetadata.service.socket.FeedServlet;
 import org.openmetadata.service.socket.OpenMetadataAssetServlet;
 import org.openmetadata.service.socket.SocketAddressFilter;
@@ -163,9 +165,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     jdbi = createAndSetupJDBI(environment, catalogConfig.getDataSourceFactory());
     Entity.setCollectionDAO(getDao(jdbi));
 
-    // initialize Search Repository, all repositories use SearchRepository this line should always
-    // before initializing repository
-    new SearchRepository(catalogConfig.getElasticSearchConfiguration());
+    installSearchRepository(catalogConfig.getElasticSearchConfiguration());
     // Initialize the MigrationValidationClient, used in the Settings Repository
     MigrationValidationClient.initialize(jdbi.onDemand(MigrationDAO.class), catalogConfig);
     // as first step register all the repositories
@@ -301,6 +301,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
   }
 
+  protected void installSearchRepository(ElasticSearchConfiguration esConfig) {
+    // initialize Search Repository, all repositories use SearchRepository this line should always
+    // before initializing repository
+    SearchRepository searchRepository = new SearchRepository(esConfig);
+    Entity.setSearchRepository(searchRepository);
+  }
+
   private void registerHealthCheck(Environment environment) {
     environment
         .healthChecks()
@@ -357,6 +364,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ServletRegistration.Dynamic samlMetadataServlet =
           environment.servlets().addServlet("saml_metadata", new SamlMetadataServlet());
       samlMetadataServlet.addMapping("/api/v1/saml/metadata");
+
+      ServletRegistration.Dynamic samlRefreshServlet =
+          environment.servlets().addServlet("saml_refresh_token", new SamlTokenRefreshServlet());
+      samlRefreshServlet.addMapping("/api/v1/saml/refresh");
     }
   }
 

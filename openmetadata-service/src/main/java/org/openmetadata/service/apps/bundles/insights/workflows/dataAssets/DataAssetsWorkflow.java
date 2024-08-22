@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.READER;
+import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
@@ -38,7 +39,7 @@ import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 
 @Slf4j
 public class DataAssetsWorkflow {
-  public static final String DATA_ASSETS_DATA_STREAM = "di-data-assets";
+  public static final String DATA_STREAM_KEY = "DataStreamKey";
   private final int retentionDays = 30;
   private final Long startTimestamp;
   private final Long endTimestamp;
@@ -46,33 +47,18 @@ public class DataAssetsWorkflow {
   private final SearchRepository searchRepository;
   private final CollectionDAO collectionDAO;
   private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
-  private final Set<String> entityTypes =
-      Set.of(
-          "table",
-          "storedProcedure",
-          "databaseSchema",
-          "database",
-          "chart",
-          "dashboard",
-          "dashboardDataModel",
-          "pipeline",
-          "topic",
-          "container",
-          "searchIndex",
-          "mlmodel",
-          "dataProduct",
-          "glossaryTerm",
-          "tag");
+  private final Set<String> entityTypes;
 
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
-  @Getter private final WorkflowStats workflowStats = new WorkflowStats();
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataAssetsWorkflow");
 
   public DataAssetsWorkflow(
       Long timestamp,
       int batchSize,
       Optional<DataInsightsApp.Backfill> backfill,
+      Set<String> entityTypes,
       CollectionDAO collectionDAO,
       SearchRepository searchRepository) {
     if (backfill.isPresent()) {
@@ -97,7 +83,7 @@ public class DataAssetsWorkflow {
             oldestPossibleTimestamp);
       }
     } else {
-      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(TimestampUtils.addDays(timestamp, 1));
+      this.endTimestamp = TimestampUtils.getEndOfDayTimestamp(timestamp);
       this.startTimestamp =
           TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(timestamp, 1));
     }
@@ -105,6 +91,7 @@ public class DataAssetsWorkflow {
     this.batchSize = batchSize;
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
+    this.entityTypes = entityTypes;
   }
 
   private void initialize() {
@@ -115,17 +102,25 @@ public class DataAssetsWorkflow {
           List<String> fields = List.of("*");
           PaginatedEntitiesSource source =
               new PaginatedEntitiesSource(entityType, batchSize, fields)
-                  .withName(String.format("PaginatedEntitiesSource-%s", entityType));
+                  .withName(String.format("[DataAssetsWorkflow] %s", entityType));
           sources.add(source);
         });
 
     this.entityEnricher = new DataInsightsEntityEnricherProcessor(totalRecords);
     if (searchRepository.getSearchType().equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
       this.entityProcessor = new DataInsightsOpenSearchProcessor(totalRecords);
-      this.searchIndexSink = new OpenSearchIndexSink(searchRepository, totalRecords);
+      this.searchIndexSink =
+          new OpenSearchIndexSink(
+              searchRepository,
+              totalRecords,
+              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
     } else {
       this.entityProcessor = new DataInsightsElasticSearchProcessor(totalRecords);
-      this.searchIndexSink = new ElasticSearchIndexSink(searchRepository, totalRecords);
+      this.searchIndexSink =
+          new ElasticSearchIndexSink(
+              searchRepository,
+              totalRecords,
+              searchRepository.getElasticSearchConfiguration().getPayLoadSize());
     }
   }
 
@@ -136,9 +131,9 @@ public class DataAssetsWorkflow {
     contextData.put(START_TIMESTAMP_KEY, startTimestamp);
     contextData.put(END_TIMESTAMP_KEY, endTimestamp);
 
-    deleteDataBeforeInserting();
-
     for (PaginatedEntitiesSource source : sources) {
+      deleteDataBeforeInserting(getDataStreamName(source.getEntityType()));
+      contextData.put(DATA_STREAM_KEY, getDataStreamName(source.getEntityType()));
       contextData.put(ENTITY_TYPE_KEY, source.getEntityType());
 
       while (!source.isDone()) {
@@ -147,9 +142,9 @@ public class DataAssetsWorkflow {
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage = String.format("Failed processing Data from %s", source.getName());
+          String errorMessage =
+              String.format("Failed processing Data from %s: %s", source.getName(), ex);
           workflowStats.addFailure(errorMessage);
-          break;
         } finally {
           updateWorkflowStats(source.getName(), source.getStats());
         }
@@ -175,19 +170,20 @@ public class DataAssetsWorkflow {
                 .withSuccessCount(resultList.getData().size())
                 .withFailedCount(resultList.getErrors().size())
                 .withMessage(
-                    "Issues in Reading A Batch For Entities. Check Errors Corresponding to Entities.")
+                    String.format(
+                        "Issues in Reading A Batch For Entities: %s", resultList.getErrors()))
                 .withFailedEntities(resultList.getErrors()));
       }
       paginatedSource.updateStats(resultList.getData().size(), 0);
     }
   }
 
-  private void deleteDataBeforeInserting() throws SearchIndexException {
+  private void deleteDataBeforeInserting(String dataStreamName) throws SearchIndexException {
     try {
       searchRepository
           .getSearchClient()
           .deleteByQuery(
-              DATA_ASSETS_DATA_STREAM,
+              dataStreamName,
               String.format(
                   "{\"@timestamp\": {\"gte\": %s, \"lte\": %s}}", startTimestamp, endTimestamp));
     } catch (Exception rx) {

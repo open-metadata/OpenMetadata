@@ -25,17 +25,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.analytics.EntityReportData;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.analytics.ReportDataResource.ReportDataResultList;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@Slf4j
 class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
   public static final String JSON_QUERY =
@@ -228,7 +231,12 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private JsonNode runSearchQuery(String query, String index) throws IOException {
     RestClient searchClient = getSearchClient();
     Response response;
-    Request request = new Request("POST", String.format("/%s/_search", index));
+    Request request =
+        new Request(
+            "POST",
+            String.format(
+                "/%s/_search",
+                Entity.getSearchRepository().getIndexOrAliasName(String.valueOf(index))));
     request.setJsonEntity(query);
     try {
       response = searchClient.performRequest(request);

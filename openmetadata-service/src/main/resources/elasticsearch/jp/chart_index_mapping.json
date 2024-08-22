@@ -255,7 +255,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "deleted": {
         "type": "text"
@@ -346,6 +347,13 @@
             "type": "text"
           }
         }
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

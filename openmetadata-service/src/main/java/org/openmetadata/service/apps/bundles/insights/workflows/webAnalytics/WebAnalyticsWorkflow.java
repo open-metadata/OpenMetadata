@@ -53,7 +53,7 @@ public class WebAnalyticsWorkflow {
       Long lastSession) {}
   ;
 
-  @Getter private final WorkflowStats workflowStats = new WorkflowStats();
+  @Getter private final WorkflowStats workflowStats = new WorkflowStats("WebAnalyticsWorkflow");
   public static final String USER_ACTIVITY_DATA_KEY = "userActivityData";
   public static final String USER_ACTIVITY_REPORT_DATA_KEY = "userActivityReportData";
   public static final String ENTITY_VIEW_REPORT_DATA_KEY = "entityViewReportData";
@@ -178,9 +178,10 @@ public class WebAnalyticsWorkflow {
       } catch (SearchIndexException ex) {
         source.updateStats(
             ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-        error = Optional.of(String.format("Failed processing events from %s", source.getName()));
+        error =
+            Optional.of(
+                String.format("Failed processing events from %s: %s", source.getName(), ex));
         workflowStats.addFailure(error.get());
-        break;
       } finally {
         updateWorkflowStats(source.getName(), source.getStats());
       }
@@ -198,7 +199,8 @@ public class WebAnalyticsWorkflow {
         REPORT_DATA_TYPE_KEY, ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA);
     CreateReportDataProcessor createReportDataProcessor =
         new CreateReportDataProcessor(
-            entityViewReportData.values().size(), "EntityViewReportDataProcessor");
+            entityViewReportData.values().size(),
+            "[WebAnalyticsWorkflow] Entity View Report Data Processor");
 
     Optional<List<ReportData>> entityViewReportDataList = Optional.empty();
 
@@ -219,7 +221,9 @@ public class WebAnalyticsWorkflow {
     // Sink EntityView ReportData
     if (entityViewReportDataList.isPresent()) {
       ReportDataSink reportDataSink =
-          new ReportDataSink(entityViewReportDataList.get().size(), "EntityViewReportDataSink");
+          new ReportDataSink(
+              entityViewReportDataList.get().size(),
+              "[WebAnalyticsWorkflow] Entity View Report Data Sink");
 
       try {
         reportDataSink.write(entityViewReportDataList.get(), contextData);
@@ -261,7 +265,8 @@ public class WebAnalyticsWorkflow {
 
     CreateReportDataProcessor createReportdataProcessor =
         new CreateReportDataProcessor(
-            userActivityReportData.values().size(), "UserActivityReportDataProcessor");
+            userActivityReportData.values().size(),
+            "[WebAnalyticsWorkflow] User Activity Report Data Processor");
     Optional<List<ReportData>> userActivityReportDataList = Optional.empty();
 
     // Process UserActivity ReportData
@@ -283,7 +288,9 @@ public class WebAnalyticsWorkflow {
 
     if (userActivityReportDataList.isPresent()) {
       ReportDataSink reportDataSink =
-          new ReportDataSink(userActivityReportDataList.get().size(), "UserActivityReportDataSink");
+          new ReportDataSink(
+              userActivityReportDataList.get().size(),
+              "[WebAnalyticsWorkflow] User Activity Report Data Sink");
       try {
         reportDataSink.write(userActivityReportDataList.get(), contextData);
       } catch (SearchIndexException ex) {
