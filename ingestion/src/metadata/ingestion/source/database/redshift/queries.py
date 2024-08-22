@@ -222,11 +222,10 @@ SELECT datname FROM pg_database
 """
 
 REDSHIFT_TEST_GET_QUERIES = """
-(select 1 from pg_catalog.svv_table_info limit 1)
-UNION
-(select 1 from pg_catalog.stl_querytext limit 1)
-UNION
-(select 1 from pg_catalog.stl_query limit 1)
+SELECT 
+    has_table_privilege('svv_table_info', 'SELECT') as can_access_svv_table_info,
+    has_table_privilege('stl_querytext', 'SELECT') as can_access_stl_querytext,
+    has_table_privilege('stl_query', 'SELECT') as can_access_stl_query;
 """
 
 
