@@ -9,7 +9,6 @@ import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 
 import java.io.IOException;
 import java.text.ParseException;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -72,7 +71,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     App app = collectionDAO.applicationDAO().findEntityByName(appName);
 
     // Calculate time config
-    long currentTime = Instant.now().toEpochMilli();
+    long currentTime = System.currentTimeMillis();
     long startTime = TimestampUtils.subtractDays(currentTime, 7);
     long endTime = TimestampUtils.subtractDays(currentTime, 1);
     TimeConfig timeConfig =

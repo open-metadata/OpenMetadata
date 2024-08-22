@@ -11,7 +11,6 @@ import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAg
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -44,13 +43,7 @@ public class ElasticSearchSummaryCardAggregator
         dateHistogramAggregationBuilder,
         formulas);
 
-    Timestamp endTimeStamp = new Timestamp(end + MILLISECONDS_IN_DAY);
-    Timestamp startTimeStamp = new Timestamp(end - MILLISECONDS_IN_DAY);
-
-    QueryBuilder queryFilter =
-        new RangeQueryBuilder("@timestamp")
-            .gte(startTimeStamp.toLocalDateTime().toString() + "Z")
-            .lte(endTimeStamp.toLocalDateTime().toString() + "Z");
+    QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
