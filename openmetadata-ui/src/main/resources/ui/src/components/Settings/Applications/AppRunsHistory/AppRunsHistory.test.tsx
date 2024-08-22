@@ -20,6 +20,7 @@ import userEvent from '@testing-library/user-event';
 import { Table as AntdTable } from 'antd';
 import React from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
+import { Status } from '../../../../generated/entity/applications/appRunRecord';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import AppRunsHistory from './AppRunsHistory.component';
 
@@ -122,6 +123,9 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../../constants/constants', () => ({
   NO_DATA_PLACEHOLDER: '--',
+  STATUS_LABEL: {
+    [Status.Success]: 'Success',
+  },
 }));
 
 const mockProps1 = {

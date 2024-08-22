@@ -29,11 +29,15 @@ export const getStatusTypeForApplication = (status: Status) => {
     case Status.Completed:
       return StatusType.Success;
 
+    case Status.Active:
     case Status.Running:
       return StatusType.Warning;
 
+    case Status.Started:
+      return StatusType.Started;
+
     default:
-      return StatusType.Failure;
+      return StatusType.Stopped;
   }
 };
 

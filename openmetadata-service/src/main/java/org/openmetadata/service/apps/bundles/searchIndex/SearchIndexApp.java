@@ -154,7 +154,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
                       "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
                       jobData.toString(), ExceptionUtils.getStackTrace(ex)));
       LOG.error(indexingError.getMessage());
-      jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+      jobData.setStatus(EventPublisherJob.Status.RUNNING);
       jobData.setFailure(indexingError);
     } finally {
       // Send update
@@ -258,7 +258,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
           }
 
         } catch (SearchIndexException rx) {
-          jobData.setStatus(EventPublisherJob.Status.ACTIVE_ERROR);
+          jobData.setStatus(EventPublisherJob.Status.RUNNING);
           jobData.setFailure(rx.getIndexingError());
           paginatedSource.updateStats(
               rx.getIndexingError().getSuccessCount(), rx.getIndexingError().getFailedCount());

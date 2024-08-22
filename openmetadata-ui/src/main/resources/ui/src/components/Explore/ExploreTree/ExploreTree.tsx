@@ -40,6 +40,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { UrlParams } from '../ExplorePage.interface';
+import './explore-tree.less';
 import {
   ExploreTreeNode,
   ExploreTreeProps,
@@ -55,7 +56,9 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
       data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
       {node.title}
     </Typography.Text>
-    {!isUndefined(node.count) && <span>{getCountBadge(node.count)}</span>}
+    {!isUndefined(node.count) && (
+      <span className="explore-node-count">{getCountBadge(node.count)}</span>
+    )}
   </div>
 );
 
