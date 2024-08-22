@@ -1337,7 +1337,7 @@
     "advanced-search-message": "Découvrez les bonnes données à l'aide de l'éditeur de syntaxe avec des conditions et/ou.",
     "aggregate-domain-type-description": "Domaines s'apparentant à des services en ligne et des bases de données transactionnelles incluant évènements et données transactionnelles.",
     "airflow-guide-message": "OpenMetadata utilise Airflow pour exécuter les connecteurs d'ingestion. Nous avons développé des API gérées pour déployer les connecteurs d'ingestion. Veuillez utiliser l'instance Airflow OpenMetadata ou vous référer au guide ci-dessous pour installer les API gérées dans votre installation Airflow.",
-    "airflow-host-ip-address": "OpenMetadata utilisera l'adresse IP {{hostIp}} pour se connecter à votre ressource. Assurez-vous d'autoriser le trafic entrant dans les paramètres de sécurité de votre réseau.",
+    "airflow-host-ip-address": "OpenMetadata utilisera l'adresse IP <0>{{hostIp}}</0> pour se connecter à votre ressource. Assurez-vous d'autoriser le trafic entrant dans les paramètres de sécurité de votre réseau.",
     "alerts-description": "Rester informé avec des alertes en temps réel à l'aide de webhooks.",
     "alerts-destination-description": "Envoyer des notifications à Slack, MS Teams, Email, ou utiliser des Webhooks.",
     "alerts-filter-description": "Spécifiez les événements de modification pour réduire le périmètre de vos alertes.",

@@ -1337,7 +1337,7 @@
     "advanced-search-message": "Откройте для себя нужные объекты данных, используя редактор синтаксиса с условиями и/или.",
     "aggregate-domain-type-description": "Domains closer to online services and transactional databases that include events, and transactional data.",
     "airflow-guide-message": "OpenMetadata использует Airflow для запуска Ingestion Connectors. Мы разработали управляемые API для развертывания коннекторов приема. Пожалуйста, используйте экземпляр OpenMetadata Airflow или обратитесь к приведенному ниже руководству, чтобы установить управляемые API в вашей установке Airflow.",
-    "airflow-host-ip-address": "OpenMetadata подключится к вашему ресурсу с IP-адреса {{hostIp}}. Обязательно разрешите входящий трафик в настройках сетевой безопасности.",
+    "airflow-host-ip-address": "OpenMetadata подключится к вашему ресурсу с IP-адреса <0>{{hostIp}}</0>. Обязательно разрешите входящий трафик в настройках сетевой безопасности.",
     "alerts-description": "Будьте в курсе благодаря своевременным оповещениям с помощью веб-перехватчиков.",
     "alerts-destination-description": "Отправляйте уведомления в Slack, MS Teams, по электронной почте или используйте Webhooks.",
     "alerts-filter-description": "Укажите события изменений, чтобы сузить область оповещений.",
