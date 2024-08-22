@@ -36,7 +36,9 @@ OpenMetadata currently supports the following table level test types:
 5. Custom SQL Query: Define a SQL expression. Select a strategy if it should apply for Rows or for Count. Define a threshold to determine if the test passes or fails.
 6. Table Row Count to be Between: Define the Min. and Max.
 7. Table Row Count to Equal: Define a number.
-8. Table Row Inserted Count to be Between: : Define the Min. and Max. row count. This test will work for columns whose values are of the type Timestamp, Date, and Date Time field. Specify the range type in terms of Hour, Day, Month, or Year. Define the interval based on the range type selected.
+8. Table Row Inserted Count to be Between: Define the Min. and Max. row count. This test will work for columns whose values are of the type Timestamp, Date, and Date Time field. Specify the range type in terms of Hour, Day, Month, or Year. Define the interval based on the range type selected.
+9. Compare 2 Tables for Differences: Compare 2 tables for differences. Allows a user to check for integrity.
+10. Table Data to Be Fresh: Validate the freshness of a table's data.
 
 {% image
 src="/images/v1.4/how-to-guides/quality/test4.png"

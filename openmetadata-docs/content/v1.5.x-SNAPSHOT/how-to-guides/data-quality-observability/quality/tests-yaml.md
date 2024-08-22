@@ -463,6 +463,18 @@ Integrity
 ### Compare 2 Tables for Differences
 Compare 2 tables for differences. Allows a user to check for integrity.
 
+Supported connectors:
+ - Snowflake
+ - BigQuery
+ - Athena
+ - Redshift
+ - Postgres
+ - MySQL
+ - MSSQL
+ - Oracle
+ - Trino
+ - SAP Hana
+
 **Dimension**:
 Consistency
 
