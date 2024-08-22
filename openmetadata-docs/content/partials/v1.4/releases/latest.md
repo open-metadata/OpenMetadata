@@ -1,7 +1,7 @@
-# 1.4.6 Release 🎉
+# 1.4.8 Release 🎉
 
 {% note noteType="Tip" %} 
-**August 2nd, 2024**
+**August 21st, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,21 +10,13 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.4.6!
+Learn how to upgrade your OpenMetadata instance to 1.4.8!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.6-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.8-release).
 
 ## Improvements
 
-- Fix lineage PATCH API for ingestion.
-- Fix Trino Azure config secret masking.
-- Fix setuptools version due to yanked setuptools release.
-- Fix MSSQL busy connection error during test connection.
-- Fixed test case summary updates.
-- Fixed Test Suite indexing.
-- Fix repeated alerts being sent after no changes in the Entity.
-- Fixed an issue handling users with capital letters.
-- Centralize OIDC flow handling.
-- Fixed Ingestion Pipeline alert URL.
+- Made DDL configuration consistent with views.
+- Made Include ddl disabled by default.
