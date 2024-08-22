@@ -215,22 +215,24 @@ const MyDataPage = () => {
             <Loader />
           </div>
         ) : (
-          <ReactGridLayout
-            className="bg-white"
-            cols={4}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={100}>
-            {widgets}
-          </ReactGridLayout>
+          <>
+            <ReactGridLayout
+              className="bg-white"
+              cols={4}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={100}>
+              {widgets}
+            </ReactGridLayout>
+            <LimitWrapper resource="dataAssets">
+              <br />
+            </LimitWrapper>
+          </>
         )}
-        <LimitWrapper resource="dataAssets">
-          <br />
-        </LimitWrapper>
       </PageLayoutV1>
     </ActivityFeedProvider>
   );

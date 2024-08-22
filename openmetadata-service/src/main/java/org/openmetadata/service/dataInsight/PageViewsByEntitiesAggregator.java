@@ -18,8 +18,7 @@ public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
     M timestampBuckets = getTimestampBuckets(this.aggregations);
     List<Object> data = new ArrayList<>();
     for (B timestampBucket : getBuckets(timestampBuckets)) {
-      String dateTimeString = getKeyAsString(timestampBucket);
-      Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
+      Long timestamp = getKeyAsEpochTimestamp(timestampBucket);
       M entityTypeBuckets = getEntityBuckets(timestampBucket);
       for (B entityTypeBucket : getBuckets(entityTypeBuckets)) {
         String entityType = getKeyAsString(entityTypeBucket);
@@ -42,6 +41,8 @@ public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
   protected abstract M getEntityBuckets(B bucket);
 
   protected abstract String getKeyAsString(B bucket);
+
+  protected abstract long getKeyAsEpochTimestamp(B bucket);
 
   protected abstract List<? extends B> getBuckets(M multiBucketsAggregation);
 

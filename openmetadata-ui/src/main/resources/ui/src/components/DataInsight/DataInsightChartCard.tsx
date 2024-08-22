@@ -136,7 +136,7 @@ export const DataInsightChartCard = ({
         .map(([key]) => key);
 
       const changeInValue = firstRecordTotal
-        ? (total - firstRecordTotal) / firstRecordTotal
+        ? ((total - firstRecordTotal) / firstRecordTotal) * 100
         : 0;
 
       return {
@@ -241,6 +241,55 @@ export const DataInsightChartCard = ({
     fetchData();
   }, [chartFilter]);
 
+  const rightSidePanelLabel = useMemo(() => {
+    switch (type) {
+      case SystemChartType.TotalDataAssets:
+        return (
+          t('label.total-entity', {
+            entity: t('label.asset-plural'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfDataAssetWithDescription:
+        return (
+          t('label.completed-entity', {
+            entity: t('label.description'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfDataAssetWithOwner:
+        return (
+          t('label.assigned-entity', {
+            entity: t('label.owner'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfServiceWithDescription:
+        return (
+          t('label.completed-entity', {
+            entity: t('label.description'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfServiceWithOwner:
+        return (
+          t('label.assigned-entity', {
+            entity: t('label.owner'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.TotalDataAssetsByTier:
+        return (
+          t('label.assigned-entity', {
+            entity: t('label.tier'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      default:
+        return '';
+    }
+  }, [type, isPercentageGraph]);
+
   if (isLoading || kpi.isLoading || chartData.results.length === 0) {
     return (
       <Card
@@ -292,9 +341,7 @@ export const DataInsightChartCard = ({
               <DataInsightProgressBar
                 changeInValue={changeInValue}
                 duration={selectedDays}
-                label={`${t('label.completed-entity', {
-                  entity: t('label.description'),
-                })}${isPercentageGraph ? ' %' : ''}`}
+                label={rightSidePanelLabel}
                 progress={round(totalValue, 2)}
                 showProgress={isPercentageGraph}
                 suffix={isPercentageGraph ? '%' : ''}
