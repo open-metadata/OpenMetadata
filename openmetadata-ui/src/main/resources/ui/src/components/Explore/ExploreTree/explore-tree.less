@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export const JWT_EXPIRY_TIME_MAP = {
-  '1 hour': 3600,
-  '2 hours': 7200,
-  '3 hours': 10800,
-  '4 hours': 14400,
-};
+@import (reference) url('../../../styles/variables.less');
 
-export const LOGIN_ERROR_MESSAGE =
-  'You have entered an invalid username or password.';
+.ant-tree-treenode-selected {
+  .explore-node-count {
+    span {
+      color: @white;
+      background: @primary-color;
+    }
+  }
+}
