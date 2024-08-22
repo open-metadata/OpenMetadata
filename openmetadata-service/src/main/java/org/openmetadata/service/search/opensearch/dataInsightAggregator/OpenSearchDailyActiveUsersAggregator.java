@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.histogram.Histogram;
@@ -22,8 +23,9 @@ public class OpenSearchDailyActiveUsersAggregator
   }
 
   @Override
-  protected String getKeyAsString(Histogram.Bucket bucket) {
-    return bucket.getKeyAsString();
+  protected long getKeyAsEpochTimestamp(Histogram.Bucket bucket) {
+
+    return ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli();
   }
 
   @Override
