@@ -211,27 +211,31 @@ const MyDataPage = () => {
     );
   }
 
-  if (isLoading) {
-    return <Loader />;
-  }
-
   const pageContent = (
     <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
-      <ReactGridLayout
-        className="bg-white"
-        cols={4}
-        isDraggable={false}
-        isResizable={false}
-        margin={[
-          customizePageClassBase.landingPageWidgetMargin,
-          customizePageClassBase.landingPageWidgetMargin,
-        ]}
-        rowHeight={100}>
-        {widgets}
-      </ReactGridLayout>
-      <LimitWrapper resource="dataAssets">
-        <br />
-      </LimitWrapper>
+      {isLoading ? (
+        <div className="ant-layout-content flex-center">
+          <Loader />
+        </div>
+      ) : (
+        <>
+          <ReactGridLayout
+            className="bg-white"
+            cols={4}
+            isDraggable={false}
+            isResizable={false}
+            margin={[
+              customizePageClassBase.landingPageWidgetMargin,
+              customizePageClassBase.landingPageWidgetMargin,
+            ]}
+            rowHeight={100}>
+            {widgets}
+          </ReactGridLayout>
+          <LimitWrapper resource="dataAssets">
+            <br />
+          </LimitWrapper>
+        </>
+      )}
     </PageLayoutV1>
   );
 
