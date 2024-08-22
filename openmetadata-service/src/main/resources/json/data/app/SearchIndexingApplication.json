@@ -29,21 +29,26 @@
       "dashboardService",
       "pipelineService",
       "mlmodelService",
+      "storageService",
+      "metadataService",
       "searchService",
       "entityReportData",
       "webAnalyticEntityViewReportData",
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
-      "storageService",
-      "dataProduct"
+      "dataProduct",
+      "testCaseResolutionStatus",
+      "apiService",
+      "apiEndpoint",
+      "apiCollection"
     ],
-    "recreateIndex": true,
+    "recreateIndex": false,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
   },
   "appSchedule": {
-    "scheduleType": "Custom",
+    "scheduleTimeline": "Custom",
     "cronExpression": "0 0 * * *"
   }
 }

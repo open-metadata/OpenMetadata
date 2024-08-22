@@ -16,6 +16,7 @@ package org.openmetadata.service.security;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
+import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 
 import java.util.List;
 import javax.ws.rs.core.SecurityContext;
@@ -80,6 +81,14 @@ public class DefaultAuthorizer implements Authorizer {
     if (isReviewer(resourceContext, subjectContext)) {
       return; // Reviewer of a resource gets admin level privilege on the resource
     }
+
+    // Domain access needs to be evaluated separately, user should not get any other domain data via
+    // one of the roles
+    if (subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+      PolicyEvaluator.hasDomainPermission(subjectContext, resourceContext, operationContext);
+    }
+
+    // Check if the user has resource level permission
     PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
   }
 
@@ -109,9 +118,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   /** In 1.2, evaluate policies here instead of just checking the subject */
   @Override
-  public boolean authorizePII(SecurityContext securityContext, EntityReference owner) {
+  public boolean authorizePII(SecurityContext securityContext, List<EntityReference> owners) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owner);
+    return subjectContext.isAdmin() || subjectContext.isBot() || subjectContext.isOwner(owners);
   }
 
   public static SubjectContext getSubjectContext(SecurityContext securityContext) {

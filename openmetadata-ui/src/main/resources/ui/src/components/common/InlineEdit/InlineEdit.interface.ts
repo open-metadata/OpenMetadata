@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SpaceProps } from 'antd';
+import { ButtonProps, SpaceProps } from 'antd';
 import { ReactNode } from 'react';
 
 export interface InlineEditProps {
@@ -21,4 +21,6 @@ export interface InlineEditProps {
   onSave: () => void | Promise<void>;
   direction?: SpaceProps['direction'];
   isLoading?: boolean;
+  cancelButtonProps?: ButtonProps;
+  saveButtonProps?: ButtonProps;
 }

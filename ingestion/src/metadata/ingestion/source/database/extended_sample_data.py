@@ -13,7 +13,7 @@ Sample Data source ingestion
 """
 import json
 from collections import namedtuple
-from typing import Iterable
+from typing import Iterable, Optional
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -89,7 +89,7 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         self.database_service_json = {}
         self.dashboard_service_json = {}
         self.config = config
-        self.service_connection = config.serviceConnection.__root__.config
+        self.service_connection = config.serviceConnection.root.config
         self.metadata = metadata
         self.list_policies = []
         self.store_table_fqn = set()
@@ -98,19 +98,19 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         self.main_glossary = None
         self.glossary_term_list = []
 
-        sample_data_folder = self.service_connection.connectionOptions.__root__.get(
+        sample_data_folder = self.service_connection.connectionOptions.root.get(
             "sampleDataFolder"
         )
-        self.include_glossary = self.service_connection.connectionOptions.__root__.get(
+        self.include_glossary = self.service_connection.connectionOptions.root.get(
             "includeGlossary"
         )
         self.include_lineage_stress_testing = (
-            self.service_connection.connectionOptions.__root__.get(
+            self.service_connection.connectionOptions.root.get(
                 "includeLineageStressTesting"
             )
         )
         extneded_sample_data_folder = (
-            self.service_connection.connectionOptions.__root__.get(
+            self.service_connection.connectionOptions.root.get(
                 "extendedSampleDataFolder"
             )
         )
@@ -194,10 +194,12 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         self.db_name = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
         """Create class instance"""
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: CustomDatabaseConnection = config.serviceConnection.__root__.config
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: CustomDatabaseConnection = config.serviceConnection.root.config
         if not isinstance(connection, CustomDatabaseConnection):
             raise InvalidSourceException(
                 f"Expected CustomDatabaseConnection, but got {connection}"
@@ -220,14 +222,14 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         """Create Depth Nodes"""
         from_col_list = []
         for col in from_table.columns:
-            from_col_list.append(col.fullyQualifiedName.__root__)
-        to_col = to_table.columns[0].fullyQualifiedName.__root__
+            from_col_list.append(col.fullyQualifiedName.root)
+        to_col = to_table.columns[0].fullyQualifiedName.root
         yield Either(
             right=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=from_table.id.__root__, type="table"),
+                    fromEntity=EntityReference(id=from_table.id.root, type="table"),
                     toEntity=EntityReference(
-                        id=to_table.id.__root__,
+                        id=to_table.id.root,
                         type="table",
                     ),
                     lineageDetails=LineageDetails(
@@ -268,10 +270,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                 downstream_node_fqn_table = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.database_service.name.__root__,
-                    database_name=db.name.__root__,
-                    schema_name=schema.name.__root__,
-                    table_name=table_request.name.__root__,
+                    service_name=self.database_service.name.root,
+                    database_name=db.name.root,
+                    schema_name=schema.name.root,
+                    table_name=table_request.name.root,
                 )
                 to_table = self.metadata.get_by_name(
                     entity=Table, fqn=downstream_node_fqn_table
@@ -287,10 +289,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                     upstream_node_fqn_table = fqn.build(
                         self.metadata,
                         entity_type=Table,
-                        service_name=self.database_service.name.__root__,
-                        database_name=db.name.__root__,
-                        schema_name=schema.name.__root__,
-                        table_name=table_request.name.__root__,
+                        service_name=self.database_service.name.root,
+                        database_name=db.name.root,
+                        schema_name=schema.name.root,
+                        table_name=table_request.name.root,
                     )
                     from_table = self.metadata.get_by_name(
                         entity=Table, fqn=upstream_node_fqn_table
@@ -308,10 +310,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                 upstream_node_fqn_table = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.database_service.name.__root__,
-                    database_name=db.name.__root__,
-                    schema_name=schema.name.__root__,
-                    table_name=table_request.name.__root__,
+                    service_name=self.database_service.name.root,
+                    database_name=db.name.root,
+                    schema_name=schema.name.root,
+                    table_name=table_request.name.root,
                 )
                 from_table = self.metadata.get_by_name(
                     entity=Table, fqn=upstream_node_fqn_table
@@ -329,10 +331,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                 table_entity_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.database_service.name.__root__,
-                    database_name=db.name.__root__,
-                    schema_name=schema.name.__root__,
-                    table_name=table_request.name.__root__,
+                    service_name=self.database_service.name.root,
+                    database_name=db.name.root,
+                    schema_name=schema.name.root,
+                    table_name=table_request.name.root,
                 )
                 from_table = self.metadata.get_by_name(
                     entity=Table, fqn=table_entity_fqn
@@ -365,8 +367,8 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                 data_model_entity_fqn = fqn.build(
                     self.metadata,
                     entity_type=DashboardDataModel,
-                    service_name=self.dashboard_service.name.__root__,
-                    data_model_name=data_model_request.name.__root__,
+                    service_name=self.dashboard_service.name.root,
+                    data_model_name=data_model_request.name.root,
                 )
                 self.store_data_model_fqn.append(data_model_entity_fqn)
 
@@ -381,10 +383,10 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(
-                                    id=from_table.id.__root__, type="table"
+                                    id=from_table.id.root, type="table"
                                 ),
                                 toEntity=EntityReference(
-                                    id=to_datamodel.id.__root__,
+                                    id=to_datamodel.id.root,
                                     type="dashboardDataModel",
                                 ),
                                 lineageDetails=LineageDetails(
@@ -406,8 +408,8 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                         dashboard_fqn = fqn.build(
                             self.metadata,
                             entity_type=Dashboard,
-                            service_name=self.dashboard_service.name.__root__,
-                            dashboard_name=dashboard_request.name.__root__,
+                            service_name=self.dashboard_service.name.root,
+                            dashboard_name=dashboard_request.name.root,
                         )
                         to_dashboard = self.metadata.get_by_name(
                             entity=Dashboard, fqn=dashboard_fqn
@@ -416,11 +418,11 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
                             right=AddLineageRequest(
                                 edge=EntitiesEdge(
                                     fromEntity=EntityReference(
-                                        id=to_datamodel.id.__root__,
+                                        id=to_datamodel.id.root,
                                         type="dashboardDataModel",
                                     ),
                                     toEntity=EntityReference(
-                                        id=to_dashboard.id.__root__, type="dashboard"
+                                        id=to_dashboard.id.root, type="dashboard"
                                     ),
                                     lineageDetails=LineageDetails(
                                         source=LineageSource.DashboardLineage
@@ -482,17 +484,17 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         db = CreateDatabaseRequest(
             name=name,
             description=text,
-            service=self.database_service.fullyQualifiedName.__root__,
+            service=self.database_service.fullyQualifiedName.root,
         )
         return db
 
     def create_database_schema_request(self, name, text, db):
-        self.db_name = db.name.__root__
+        self.db_name = db.name.root
         db_fqn = fqn.build(
             self.metadata,
             entity_type=Database,
-            service_name=self.database_service.name.__root__,
-            database_name=db.name.__root__,
+            service_name=self.database_service.name.root,
+            database_name=db.name.root,
         )
         schema = CreateDatabaseSchemaRequest(
             name=name,
@@ -505,9 +507,9 @@ class ExtendedSampleDataSource(Source):  # pylint: disable=too-many-instance-att
         dbschema_fqn = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.database_service.name.__root__,
+            service_name=self.database_service.name.root,
             database_name=self.db_name,
-            schema_name=schema.name.__root__,
+            schema_name=schema.name.root,
         )
         table_request = CreateTableRequest(
             name=name,

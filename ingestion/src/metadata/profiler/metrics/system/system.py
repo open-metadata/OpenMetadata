@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
@@ -430,7 +431,7 @@ class System(SystemMetric):
 
     @classmethod
     def name(cls):
-        return "system"
+        return MetricType.system.value
 
     def _manage_cache(self, max_size_in_bytes: int = MAX_SIZE_IN_BYTES) -> None:
         """manage cache and clears it if it exceeds the max size

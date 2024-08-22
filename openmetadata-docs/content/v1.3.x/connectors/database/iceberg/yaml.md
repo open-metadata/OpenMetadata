@@ -3,31 +3,13 @@ title: Run the Iceberg Connector Externally
 slug: /connectors/database/iceberg/yaml
 ---
 
-# Run the Iceberg Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | BETA                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="cross" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="check" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions |  -                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%} |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
-
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Iceberg"
+stage="BETA"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Owners"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Tags", "Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the Iceberg connector.
 
@@ -39,10 +21,6 @@ Configure and schedule Greenplum metadata and profiler workflows from the OpenMe
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 The requirements actually depend on the Catalog and the FileSystem used. In a nutshell, the used credentials must have access to reading the Catalog and the Metadata File.
 
@@ -128,7 +106,7 @@ The workflow is modeled around the following
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test
@@ -216,7 +194,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test
@@ -290,7 +268,9 @@ source:
         * **clientId** : Client ID of the data storage account
         * **clientSecret** : Client Secret of the account
         * **tenantId** : Tenant ID under which the data storage account falls
-        * **accountName** : Account Name of the data Storage
+        * **accountName** : Account Name of the Data Storage
+        * **vaultName**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
+
 
 {% /codeInfo %}
 
@@ -316,7 +296,7 @@ source:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test
@@ -429,7 +409,8 @@ source:
         * **clientId** : Client ID of the data storage account
         * **clientSecret** : Client Secret of the account
         * **tenantId** : Tenant ID under which the data storage account falls
-        * **accountName** : Account Name of the data Storage
+        * **accountName** : Account Name of the Data Storage
+        * **vaultName**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
 
 {% /codeInfo %}
 
@@ -463,7 +444,7 @@ Most Catalogs should have a working default warehouse location.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: iceberg
   serviceName: glue_test

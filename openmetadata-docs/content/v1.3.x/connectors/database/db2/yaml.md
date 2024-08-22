@@ -3,30 +3,13 @@ title: Run the DB2 Connector Externally
 slug: /connectors/database/db2/yaml
 ---
 
-# Run the DB2 Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="DB2"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Data Profiler", "Data Quality", "View Lineage", "View Column-level Lineage", "dbt"]
+unavailableFeatures=["Query Usage", "Owners", "Tags", "Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the DB2 connector.
 
@@ -35,17 +18,12 @@ Configure and schedule DB2 metadata and profiler workflows from the OpenMetadata
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 To create a new Db2 user please follow the guidelines mentioned [here](https://www.ibm.com/docs/ko/samfess/8.2.0?topic=schema-creating-users-manually)
 
@@ -70,7 +48,7 @@ GRANT SELECT ON SYSCAT.VIEWS TO USER_NAME;
 ```
 
 ### Profiler & Data Quality
-Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/connectors/ingestion/workflows/profiler) and data quality tests [here](/connectors/ingestion/workflows/data-quality).
 
 ### Python Requirements
 
@@ -138,13 +116,13 @@ This is a sample config for DB2:
 
 {% codeInfo srNumber=5 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -154,7 +132,7 @@ This is a sample config for DB2:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: db2
   serviceName: local_db2
@@ -197,6 +175,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "db2"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

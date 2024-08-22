@@ -3,7 +3,13 @@ title: Run the Atlas Connector Externally
 slug: /connectors/metadata/atlas/yaml
 ---
 
-# Run the Atlas Connector Externally
+{% connectorDetailsHeader
+name="Atlas"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Atlas connector.
 
@@ -18,13 +24,7 @@ Configure and schedule Atlas metadata and profiler workflows from the OpenMetada
 ## Requirements
 
 Before this, you must ingest the database / messaging service you want to get metadata for. 
-For more details click [here](/connectors/metadata/atlas#create-database-service)
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
+For more details click [here](/connectors/metadata/atlas#1.-create-database-&-messaging-services)
 
 ### Python Requirements
 
@@ -104,7 +104,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: Atlas
   serviceName: local_atlas

@@ -3,30 +3,13 @@ title: Run the Unity Catalog Connector Externally
 slug: /connectors/database/unity-catalog/yaml
 ---
 
-# Run the Unity Catalog Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="cross" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Databricks Runtime Version 9+|
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Unity Catalog"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt"]
+unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the Unity Catalog connector.
 
@@ -41,13 +24,6 @@ Configure and schedule Unity Catalog metadata workflow from the OpenMetadata UI:
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 
 ### Python Requirements
 
@@ -127,13 +103,13 @@ This is a sample config for Unity Catalog:
 
 {% codeInfo srNumber=7 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=8 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -143,7 +119,7 @@ This is a sample config for Unity Catalog:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: unitycatalog
   serviceName: local_unitycatalog

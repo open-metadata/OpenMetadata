@@ -48,7 +48,7 @@ WORKDIR /home/
 COPY <my-organization-certs> .
 RUN update-ca-certificates
 ```
-where `docker.getcollate.io/openmetadata/server:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/server:1.3.0`.
+where `docker.getcollate.io/openmetadata/server:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/server:1.3.3`.
 This image needs to be built and published to the container registry of your choice.
 
 ### 2. Update your openmetadata helm values yaml
@@ -95,7 +95,7 @@ COPY setup.py .
 RUN pip install --no-deps .
 ```
   
-where `docker.getcollate.io/openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/ingestion:1.3.0`.
+where `docker.getcollate.io/openmetadata/ingestion:x.y.z` needs to point to the same version of the OpenMetadata server, for example `docker.getcollate.io/openmetadata/ingestion:1.3.3`.
 This image needs to be built and published to the container registry of your choice.
 
 ### 2. Update the airflow in openmetadata dependencies values YAML
@@ -212,3 +212,15 @@ MountVolume.SetUp failed for volume "openmetadata-dependencies-dags-pv" : rpc er
 This error is typically related to EKS Cluster not able to reach to EFS File systems. You can check the security groups associated between the connectivity EFS and EKS. [Here is an article](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/docs/efs-create-filesystem.md) which further describes the steps required to create Security Group Rules for EKS to use EFS over `port 2049`.
 
 It can also happen if the mount targets are already available for EKS Nodes but the Nodes do not pick that up. In such cases, you can do an [AWS AutoScaling Group instance refresh](https://docs.aws.amazon.com/autoscaling/ec2/userguide/start-instance-refresh.html) in order for EKS nodes to get the available mount targets.
+
+# How to customize OpenMetadata Dependencies Helm Chart with custom helm values
+
+Our OpenMetadata Dependencies Helm Charts are internally depends on three sub-charts -
+
+- [Bitnami MySQL](https://artifacthub.io/packages/helm/bitnami/mysql/9.7.2) (helm chart version 9.7.2)
+- [OpenSearch](https://artifacthub.io/packages/helm/opensearch-project-helm-charts/opensearch/2.12.2) (helm chart version 2.12.2)
+- [Airflow](https://artifacthub.io/packages/helm/airflow-helm/airflow/8.8.0) (helm chart version 8.8.0)
+
+If you are looking to customize the deployments of any of the above dependencies, please refer to the above links for customizations of helm values for further references.
+
+By default, OpenMetadata Dependencies helm chart provides initial generic customization of these helm values in order to get you started quickly. You can refer to the openmetadata-dependencies helm charts default values [here](https://github.com/open-metadata/openmetadata-helm-charts/blob/main/charts/deps/values.yaml).

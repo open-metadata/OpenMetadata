@@ -1,10 +1,14 @@
 package org.openmetadata.service.util;
 
 import static org.flywaydb.core.internal.info.MigrationInfoDumper.dumpToAsciiTable;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.formatter.decorators.MessageDecorator.getDateStringEpochMilli;
+import static org.openmetadata.service.util.AsciiTable.printOpenMetadataText;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import com.codahale.metrics.NoopMetricRegistry;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -20,46 +24,54 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.Callable;
+import javax.json.JsonPatch;
 import javax.validation.Validator;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
-import org.openmetadata.schema.entity.app.AppSchedule;
-import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -99,7 +111,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'migrate', 'reindex', 'deploy-pipelines'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines'");
     return 0;
   }
 
@@ -152,6 +164,26 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   @Command(
+      name = "syncEmailFromEnv",
+      description = "Sync the email configuration from environment variables")
+  public Integer syncEmailFromEnv() {
+    try {
+      parseConfig();
+      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
+      SystemRepository systemRepository = new SystemRepository();
+      Settings updatedSettings =
+          new Settings()
+              .withConfigType(SettingsType.EMAIL_CONFIGURATION)
+              .withConfigValue(config.getSmtpSettings());
+      systemRepository.createOrUpdate(updatedSettings);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Email Sync failed due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
       name = "check-connection",
       description =
           "Checks if a connection can be successfully " + "obtained for the target database")
@@ -183,6 +215,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("OpenMetadata Database Schema is Updated.");
       LOG.info("create indexes.");
       searchRepository.createIndexes();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop create due to ", e);
@@ -207,6 +240,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Update Search Indexes.");
       searchRepository.updateIndexes();
       printChangeLog();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
+      Entity.cleanup();
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to db migration due to ", e);
@@ -233,36 +269,138 @@ public class OpenMetadataOperations implements Callable<Integer> {
               defaultValue = "100")
           int batchSize,
       @Option(
+              names = {"-p", "--payload-size"},
+              defaultValue = "10485760")
+          int payloadSize,
+      @Option(
               names = {"--recreate-indexes"},
               defaultValue = "true")
           boolean recreateIndexes) {
     try {
       parseConfig();
-      AppScheduler.initialize(collectionDAO, searchRepository);
-      App searchIndexApp =
-          new App()
-              .withId(UUID.randomUUID())
-              .withName("SearchIndexApp")
-              .withClassName("org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp")
-              .withAppSchedule(
-                  new AppSchedule().withScheduleType(AppSchedule.ScheduleTimeline.DAILY))
-              .withAppConfiguration(
-                  new EventPublisherJob()
-                      .withEntities(new HashSet<>(List.of("all")))
-                      .withRecreateIndex(recreateIndexes)
-                      .withBatchSize(batchSize)
-                      .withSearchIndexMappingLanguage(
-                          config.getElasticSearchConfiguration().getSearchIndexMappingLanguage()))
-              .withRuntime(new ScheduledExecutionContext().withEnabled(true));
-      AppScheduler.getInstance().triggerOnDemandApplication(searchIndexApp);
-      do {
-        Thread.sleep(3000l);
-      } while (!AppScheduler.getInstance().getScheduler().getCurrentlyExecutingJobs().isEmpty());
-      return 0;
+      CollectionRegistry.initialize();
+      ApplicationHandler.initialize(config);
+      // load seed data so that repositories are initialized
+      CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
+      ApplicationHandler.initialize(config);
+      // creates the default search index application
+      AppScheduler.initialize(config, collectionDAO, searchRepository);
+
+      String appName = "SearchIndexingApplication";
+      return executeSearchReindexApp(appName, batchSize, payloadSize, recreateIndexes);
     } catch (Exception e) {
       LOG.error("Failed to reindex due to ", e);
       return 1;
     }
+  }
+
+  private int executeSearchReindexApp(
+      String appName, int batchSize, int payloadSize, boolean recreateIndexes) {
+    AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+    App originalSearchIndexApp =
+        appRepository.getByName(null, appName, appRepository.getFields("id"));
+
+    EventPublisherJob storedJob =
+        JsonUtils.convertValue(
+            originalSearchIndexApp.getAppConfiguration(), EventPublisherJob.class);
+
+    EventPublisherJob updatedJob = JsonUtils.deepCopy(storedJob, EventPublisherJob.class);
+    updatedJob
+        .withBatchSize(batchSize)
+        .withPayLoadSize(payloadSize)
+        .withRecreateIndex(recreateIndexes)
+        .withEntities(Set.of("all"));
+
+    // Update the search index app with the new batch size, payload size and recreate index flag
+    App updatedSearchIndexApp = JsonUtils.deepCopy(originalSearchIndexApp, App.class);
+    updatedSearchIndexApp.withAppConfiguration(updatedJob);
+    JsonPatch patch = JsonUtils.getJsonPatch(originalSearchIndexApp, updatedSearchIndexApp);
+
+    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", patch);
+
+    // Trigger Application
+    long currentTime = System.currentTimeMillis();
+    AppScheduler.getInstance().triggerOnDemandApplication(updatedSearchIndexApp);
+
+    int result = waitAndReturnReindexingAppStatus(updatedSearchIndexApp, currentTime);
+
+    // Repatch with original
+    JsonPatch repatch = JsonUtils.getJsonPatch(updatedSearchIndexApp, originalSearchIndexApp);
+    appRepository.patch(null, originalSearchIndexApp.getId(), "admin", repatch);
+
+    return result;
+  }
+
+  @SneakyThrows
+  private int waitAndReturnReindexingAppStatus(App searchIndexApp, long startTime) {
+    AppRunRecord appRunRecord = null;
+    do {
+      try {
+        AppRepository appRepository =
+            (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+        appRunRecord =
+            appRepository.getLatestAppRunsAfterStartTime(searchIndexApp.getId(), startTime);
+        if (isRunCompleted(appRunRecord)) {
+          List<String> columns =
+              new ArrayList<>(
+                  List.of(
+                      "jobStatus",
+                      "startTime",
+                      "endTime",
+                      "executionTime",
+                      "successContext",
+                      "failureContext"));
+          List<List<String>> rows = new ArrayList<>();
+
+          String startTimeofJob =
+              nullOrEmpty(appRunRecord.getStartTime())
+                  ? "Unavailable"
+                  : getDateStringEpochMilli(appRunRecord.getStartTime());
+          String endTimeOfJob =
+              nullOrEmpty(appRunRecord.getEndTime())
+                  ? "Unavailable"
+                  : getDateStringEpochMilli(appRunRecord.getEndTime());
+          String executionTime =
+              nullOrEmpty(appRunRecord.getExecutionTime())
+                  ? "Unavailable"
+                  : String.format("%d seconds", appRunRecord.getExecutionTime() / 1000);
+          rows.add(
+              Arrays.asList(
+                  getValueOrUnavailable(appRunRecord.getStatus().value()),
+                  getValueOrUnavailable(startTimeofJob),
+                  getValueOrUnavailable(endTimeOfJob),
+                  getValueOrUnavailable(executionTime),
+                  getValueOrUnavailable(appRunRecord.getSuccessContext()),
+                  getValueOrUnavailable(appRunRecord.getFailureContext())));
+          printToAsciiTable(columns, rows, "Failed to run Search Reindexing");
+        }
+      } catch (Exception ignored) {
+      }
+      LOG.info(
+          "[Reindexing] Current Available Status : {}. Reindexing is still, waiting for 10 seconds to fetch the latest status again.",
+          JsonUtils.pojoToJson(appRunRecord));
+      Thread.sleep(10000);
+    } while (!isRunCompleted(appRunRecord));
+
+    if (appRunRecord.getStatus().equals(AppRunRecord.Status.SUCCESS)
+        || appRunRecord.getStatus().equals(AppRunRecord.Status.COMPLETED)) {
+      LOG.debug("Reindexing Completed Successfully.");
+      return 0;
+    }
+    LOG.error("Reindexing completed in Failure.");
+    return 1;
+  }
+
+  public String getValueOrUnavailable(Object obj) {
+    return nullOrEmpty(obj) ? "Unavailable" : JsonUtils.pojoToJson(obj);
+  }
+
+  boolean isRunCompleted(AppRunRecord appRunRecord) {
+    if (appRunRecord == null) {
+      return false;
+    }
+
+    return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
@@ -270,14 +408,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Deploying Pipelines");
       parseConfig();
-      PipelineServiceClient pipelineServiceClient =
+      PipelineServiceClientInterface pipelineServiceClient =
           PipelineServiceClientFactory.createPipelineServiceClient(
               config.getPipelineServiceClientConfiguration());
       IngestionPipelineRepository pipelineRepository =
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       List<IngestionPipeline> pipelines =
           pipelineRepository.listAll(
-              new EntityUtil.Fields(Set.of(FIELD_OWNER, "service")),
+              new EntityUtil.Fields(Set.of(FIELD_OWNERS, "service")),
               new ListFilter(Include.NON_DELETED));
       LOG.debug(String.format("Pipelines %d", pipelines.size()));
       List<String> columns = Arrays.asList("Name", "Type", "Service Name", "Status");
@@ -293,18 +431,61 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  @Command(
+      name = "migrate-secrets",
+      description =
+          "Migrate secrets from DB to the configured Secrets Manager. "
+              + "Note that this does not support migrating between external Secrets Managers")
+  public Integer migrateSecrets() {
+    try {
+      LOG.info("Migrating Secrets from DB...");
+      parseConfig();
+      // update entities secrets if required
+      new SecretsManagerUpdateService(secretsManager, config.getClusterName()).updateEntities();
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to migrate secrets due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "analyze-tables",
+      description =
+          "Migrate secrets from DB to the configured Secrets Manager. "
+              + "Note that this does not support migrating between external Secrets Managers")
+  public Integer analyzeTables() {
+    try {
+      LOG.info("Analyzing Tables...");
+      parseConfig();
+      Entity.getEntityList().forEach(this::analyzeEntityTable);
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to analyze tables due to ", e);
+      return 1;
+    }
+  }
+
+  private void analyzeEntityTable(String entity) {
+    try {
+      EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entity);
+      LOG.info("Analyzing table for [{}] Entity", entity);
+      repository.getDao().analyzeTable();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("No repository for [{}] Entity", entity);
+    }
+  }
+
   private void deployPipeline(
       IngestionPipeline pipeline,
-      PipelineServiceClient pipelineServiceClient,
+      PipelineServiceClientInterface pipelineServiceClient,
       List<List<String>> pipelineStatuses) {
     try {
+      // TODO: IS THIS OK?
       LOG.debug(String.format("deploying pipeline %s", pipeline.getName()));
-      pipeline.setOpenMetadataServerConnection(new OpenMetadataConnectionBuilder(config).build());
-      secretsManager.decryptIngestionPipeline(pipeline);
-      OpenMetadataConnection openMetadataServerConnection =
-          new OpenMetadataConnectionBuilder(config).build();
       pipeline.setOpenMetadataServerConnection(
-          secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
+          new OpenMetadataConnectionBuilder(config, pipeline).build());
+      secretsManager.decryptIngestionPipeline(pipeline);
       ServiceEntityInterface service =
           Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
       pipelineServiceClient.deployPipeline(pipeline, service);
@@ -388,7 +569,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             .load();
     nativeSQLScriptRootPath = config.getMigrationConfiguration().getNativePath();
     extensionSQLScriptRootPath = config.getMigrationConfiguration().getExtensionPath();
-    jdbi = Jdbi.create(jdbcUrl, user, password);
+    jdbi = Jdbi.create(dataSourceFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
     jdbi.installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlObjects.class)
         .setSqlLocator(
@@ -403,6 +584,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             config.getSecretsManagerConfiguration(), config.getClusterName());
 
     collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(collectionDAO);
     Entity.initializeRepositories(config, jdbi);
   }
@@ -431,13 +613,19 @@ public class OpenMetadataOperations implements Callable<Integer> {
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
-            jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, force);
+            jdbi,
+            nativeSQLScriptRootPath,
+            connType,
+            extensionSQLScriptRootPath,
+            config.getPipelineServiceClientConfiguration(),
+            force);
     workflow.loadMigrations();
+    workflow.printMigrationInfo();
     workflow.runMigrationWorkflows();
-    Entity.cleanup();
   }
 
-  private void printToAsciiTable(List<String> columns, List<List<String>> rows, String emptyText) {
+  public static void printToAsciiTable(
+      List<String> columns, List<List<String>> rows, String emptyText) {
     LOG.info(new AsciiTable(columns, rows, true, "", emptyText).render());
   }
 
@@ -472,6 +660,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   public static void main(String... args) {
+    LOG.info(printOpenMetadataText());
     int exitCode =
         new CommandLine(new org.openmetadata.service.util.OpenMetadataOperations()).execute(args);
     System.exit(exitCode);

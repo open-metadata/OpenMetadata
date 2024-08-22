@@ -14,34 +14,54 @@ on:
   schedule:
     - cron:  '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      e2e-tests:
+        description: "E2E Tests to run"
+        required: True
+        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]'
+      debug:
+        description: "If Debugging the Pipeline, Slack and Sonar events won't be triggered"
+        required: False
+        default: "false"
+
+env:
+  DEBUG: ${{ inputs.debug || 'false' }}
 
 permissions:
   id-token: write
   contents: read
 
 jobs:
+  # Needed since env is not available on the job context: https://github.com/actions/runner/issues/2372
+  check-debug:
+    runs-on: ubuntu-latest
+    outputs:
+      DEBUG: ${{ env.DEBUG }}
+    steps:
+      - run: echo "null"
+
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ['bigquery', 'dbt_redshift', 'metabase', 'mssql', 'mysql', 'redash', 'snowflake', 'tableau', 'powerbi', 'vertica', 'python', 'redshift', 'quicksight', 'datalake_s3', 'postgres', 'oracle', 'athena', 'bigquery_multiple_project']
+        e2e-test: ${{ fromJSON(inputs.e2e-tests || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "powerbi", "vertica", "python", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project"]') }}
     environment: test
 
     steps:
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: false
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: false
+        swap-storage: true
+        docker-images: false
+
     - name: Checkout
       uses: actions/checkout@v3
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v3
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
 
     - name: configure aws credentials
       if: contains('quicksight', matrix.e2e-test) || contains('datalake_s3', matrix.e2e-test) || contains('athena', matrix.e2e-test)
@@ -51,32 +71,11 @@ jobs:
         role-session-name: github-ci-aws-e2e-tests
         aws-region: ${{ secrets.E2E_AWS_REGION }}
 
-    - name: Install Ubuntu dependencies
-      run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        unixodbc-dev libevent-dev python3-dev libkrb5-dev
-
-    - name: Generate models
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        sudo make install_antlr_cli
-        make install_dev generate
-
-    - name: Install open-metadata dependencies
-      run: |
-        source env/bin/activate
-        make install_all install_test
-
-    - name: Start Server and Ingest Sample Data
-      uses: nick-fields/retry@v2.8.3
-      env:
-        INGESTION_DEPENDENCY: "mysql,elasticsearch"
+    - name: Setup Openmetadata Test Environment
+      uses: ./.github/actions/setup-openmetadata-test-environment
       with:
-        timeout_minutes: 60
-        max_attempts: 2
-        retry_on: error
-        command: ./docker/run_local_docker.sh -m no-ui
+        python-version: 3.9
+
 
     - name: Run Python Tests & record coverage
       if: matrix.e2e-test == 'python'
@@ -160,25 +159,25 @@ jobs:
         echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
         echo "    pass" >> $SITE_CUSTOMIZE_PATH
         coverage run --rcfile ingestion/pyproject.toml -a --branch -m pytest -c ingestion/pyproject.toml --junitxml=ingestion/junit/test-results-$E2E_TEST.xml --ignore=ingestion/tests/unit/source ingestion/tests/cli_e2e/test_cli_$E2E_TEST.py
-        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*   
+        coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
 
     - name: Upload coverage artifact for Python tests
-      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success'
+      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage
 
     - name: Upload coverage artifact for CLI E2E tests
-      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success'
+      if: matrix.e2e-test != 'python' && steps.e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: coverage-${{ matrix.e2e-test }}
         path: .coverage.${{ matrix.e2e-test }}
 
     - name: Upload tests artifact
-      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success'
+      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
       with:
         name: tests-${{ matrix.e2e-test }}
@@ -191,7 +190,7 @@ jobs:
         sudo rm -rf ${PWD}/docker-volume
 
     - name: Slack on Failure
-      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success'
+      if: steps.e2e-test.outcome != 'success' && steps.python-e2e-test.outcome != 'success' && env.DEBUG == 'false'
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
@@ -209,8 +208,10 @@ jobs:
 
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
-    needs: py-cli-e2e-tests
-
+    needs:
+      - py-cli-e2e-tests
+      - check-debug
+    if: needs.check-debug.outputs.DEBUG == 'false'
     steps:
 
       - name: Checkout
@@ -239,11 +240,11 @@ jobs:
 
       - name: Generate report
         run: |
-          for folder in artifacts/coverage-*; do 
+          for folder in artifacts/coverage-*; do
             cp -rT $folder/ . ;
           done
           mkdir ingestion/junit
-          for folder in artifacts/tests-*; do 
+          for folder in artifacts/tests-*; do
             cp -rT $folder/ ingestion/junit ;
           done
           source env/bin/activate

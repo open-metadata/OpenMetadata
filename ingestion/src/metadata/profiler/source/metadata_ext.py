@@ -41,7 +41,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.profiler.source.metadata import (
     OpenMetadataSource,
     ProfilerSourceAndEntity,
@@ -52,6 +51,7 @@ from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.importer import import_source_class
 from metadata.utils.logger import profiler_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_logger()
 
@@ -79,7 +79,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         self.test_connection()
 
         # Init and type the source config
-        self.service_connection = self.config.source.serviceConnection.__root__.config
+        self.service_connection = self.config.source.serviceConnection.root.config
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
@@ -91,7 +91,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         database_source_config = DatabaseServiceMetadataPipeline()
         new_config = deepcopy(self.config.source)
         new_config.sourceConfig.config = database_source_config
-        self.source = source_class.create(new_config.dict(), self.metadata)
+        self.source = source_class.create(new_config.model_dump(), self.metadata)
         self.engine = None
         self.inspector = None
         self._connection = None
@@ -112,11 +112,12 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         if database_name:
             logger.info(f"Ingesting from database: {database_name}")
             new_service_connection.database = database_name
-        self.engine = get_connection(new_service_connection)
+        self.engine = get_ssl_connection(new_service_connection)
         self.inspector = inspect(self.engine)
         self._connection = None  # Lazy init as well
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
+        global_profiler_config = self.metadata.get_profiler_config_settings()
         for database_name in self.get_database_names():
             try:
                 database_entity = fqn.search_database_from_es(
@@ -150,6 +151,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             self.config,
                             database_entity,
                             self.metadata,
+                            global_profiler_config,
                         )
                         yield Either(
                             right=ProfilerSourceAndEntity(
@@ -251,7 +253,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                     self.metadata,
                     entity_type=Database,
                     service_name=self.config.source.serviceName,
-                    database_name=database.name.__root__,
+                    database_name=database.name.root,
                 ),
             },  # type: ignore
         )

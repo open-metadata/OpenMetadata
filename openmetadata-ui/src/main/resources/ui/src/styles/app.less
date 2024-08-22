@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-// common css utils file
 @import (reference) url('./variables.less');
 
 /* Generic */
@@ -91,7 +90,7 @@ a.ant-typography {
   }
 
   &:focus {
-    color: @link-color;
+    color: @primary-color;
     text-decoration: underline;
     cursor: pointer;
   }
@@ -112,6 +111,24 @@ a[href].link-text-grey,
   }
 }
 
+.remove-button-default-styling {
+  padding: 0;
+  border: none;
+  height: auto;
+  color: initial;
+  overflow: initial;
+  text-align: inherit;
+  background: initial;
+  touch-action: none;
+
+  &:hover {
+    background: initial;
+  }
+  &:focus {
+    background: initial;
+  }
+}
+
 // used in glossary + query right panel, to keep both consistent
 .right-panel-label {
   font-size: 14px;
@@ -129,6 +146,9 @@ a[href].link-text-grey,
 }
 .text-right {
   text-align: right;
+}
+.text-wrap {
+  text-wrap: wrap;
 }
 
 .text-underline {
@@ -178,6 +198,10 @@ a[href].link-text-grey,
 }
 
 // Line height
+
+.line-height-normal {
+  line-height: normal;
+}
 
 .line-height-0 {
   line-height: 0;
@@ -243,13 +267,13 @@ a[href].link-text-grey,
   background: @body-bg-color;
 }
 .bg-primary-lite {
-  background: @primary-color-hover;
+  background: @primary-1;
 }
 .bg-primary {
   background: @primary-color;
 }
 .bg-primary-hover-lite {
-  background-color: @primary-color-hover;
+  background-color: @primary-1;
 }
 .bg-grey {
   background-color: @border-color;
@@ -262,6 +286,9 @@ a[href].link-text-grey,
 }
 .bg-grey-4 {
   background-color: @grey-4;
+}
+.bg-grey-5 {
+  background-color: @grey-5;
 }
 
 .bg-grey-1-hover:hover {
@@ -277,7 +304,7 @@ a[href].link-text-grey,
 
 .activeCategory {
   border-left: 2px solid @primary-color;
-  background: @primary-color-hover;
+  background: @primary-1;
   padding-left: 10px;
   font-weight: 600;
 
@@ -386,6 +413,9 @@ a[href].link-text-grey,
 .opacity-0 {
   opacity: 0;
 }
+.opacity-30 {
+  opacity: 0.3;
+}
 .opacity-50 {
   opacity: 0.5;
 }
@@ -459,6 +489,7 @@ a[href].link-text-grey,
 // breadcrumb
 
 .breadcrumb-item {
+  max-width: 100%;
   font-size: 12px;
   .link-title {
     font-size: inherit !important;
@@ -505,9 +536,13 @@ a[href].link-text-grey,
 // beta tag for service page
 .service-beta-tag {
   sup {
+    height: auto;
     padding: 0 4px;
     margin-left: 2px;
     font-size: 10px;
+    background: @primary-1;
+    border: 1px solid @primary-color;
+    color: @primary-color;
   }
 }
 
@@ -535,7 +570,7 @@ a[href].link-text-grey,
 }
 
 .full-height {
-  height: calc(100vh - 64px); // removing only navbar height
+  height: calc(100vh - @om-navbar-height); // removing only navbar height
 }
 
 .tab-content-height {
@@ -732,4 +767,42 @@ a[href].link-text-grey,
   bottom: 20px;
   right: 20px;
   z-index: 1001;
+}
+
+// Task Feed Message Container
+
+.task-feed-message-container {
+  .task-feed-message {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+
+    &:hover {
+      .ant-typography {
+        color: @primary-color;
+      }
+    }
+  }
+}
+
+.error-boundary-result {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  height: 100%;
+}
+
+.alert-icon {
+  .anticon {
+    font-size: 18px;
+  }
+}
+
+.reserve-right-sidebar {
+  .feed-editor {
+    // Right side padding 20 + 64 width of sidebar
+    margin-right: 84px;
+  }
 }

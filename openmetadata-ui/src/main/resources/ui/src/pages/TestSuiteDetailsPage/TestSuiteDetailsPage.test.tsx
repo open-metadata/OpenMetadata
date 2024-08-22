@@ -55,7 +55,7 @@ jest.mock(
       .mockImplementation(() => <div>ManageButton.component</div>);
   }
 );
-jest.mock('../../components/common/EntityDescription/Description', () => {
+jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>Description.component</div>);
 });
 jest.mock(
@@ -66,18 +66,14 @@ jest.mock(
       .mockImplementation(() => <div>DataQualityTab.component</div>);
   }
 );
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => {
+jest.mock('../../hooks/useApplicationStore', () => {
   return {
-    useAuthContext: jest
+    useApplicationStore: jest
       .fn()
       .mockImplementation(() => ({ isAuthDisabled: true })),
   };
 });
-jest.mock('../../hooks/authHooks', () => {
-  return {
-    useAuth: jest.fn().mockImplementation(() => ({ isAdminUser: true })),
-  };
-});
+
 jest.mock('react-router-dom', () => {
   return {
     useHistory: jest.fn().mockImplementation(() => ({ push: jest.fn() })),
@@ -133,7 +129,7 @@ describe('TestSuiteDetailsPage component', () => {
     });
 
     expect(mockGetTestSuiteByName).toHaveBeenCalledWith('testSuiteFQN', {
-      fields: 'owner',
+      fields: 'owners',
       include: 'all',
     });
   });

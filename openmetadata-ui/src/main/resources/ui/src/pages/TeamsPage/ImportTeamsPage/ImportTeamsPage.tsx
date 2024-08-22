@@ -22,6 +22,7 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { TeamImportResult } from '../../../components/Settings/Team/TeamImportResult/TeamImportResult.component';
 import { UserImportResult } from '../../../components/Settings/Team/UserImportResult/UserImportResult.component';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -178,33 +179,41 @@ const ImportTeamsPage = () => {
   }
 
   return (
-    <Row
-      className="import-teams w-full"
-      data-testid="import-teams"
-      gutter={[16, 8]}>
-      <Col span={24}>
-        <TitleBreadcrumb titleLinks={breadcrumb} />
-      </Col>
-      <Col span={24}>
-        <Typography.Title data-testid="title" level={5}>
-          {t('label.import-entity', {
-            entity:
-              type === ImportType.USERS
-                ? t('label.user-plural')
-                : t('label.team-plural'),
-          })}
-        </Typography.Title>
-      </Col>
-      <Col span={24}>
-        <EntityImport
-          entityName={team.name}
-          onCancel={handleViewClick}
-          onImport={handleImportCsv}
-          onSuccess={handleViewClick}>
-          {importResult}
-        </EntityImport>
-      </Col>
-    </Row>
+    <PageLayoutV1
+      pageTitle={t('label.import-entity', {
+        entity:
+          type === ImportType.USERS
+            ? t('label.user-plural')
+            : t('label.team-plural'),
+      })}>
+      <Row
+        className="import-teams w-full page-container"
+        data-testid="import-teams"
+        gutter={[16, 8]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumb} />
+        </Col>
+        <Col span={24}>
+          <Typography.Title data-testid="title" level={5}>
+            {t('label.import-entity', {
+              entity:
+                type === ImportType.USERS
+                  ? t('label.user-plural')
+                  : t('label.team-plural'),
+            })}
+          </Typography.Title>
+        </Col>
+        <Col span={24}>
+          <EntityImport
+            entityName={team.name}
+            onCancel={handleViewClick}
+            onImport={handleImportCsv}
+            onSuccess={handleViewClick}>
+            {importResult}
+          </EntityImport>
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

@@ -103,16 +103,14 @@ def _clean(source_type: str):
     return source_type
 
 
-def get_pipeline_type_from_source_config(
-    source_config_type: SourceConfig.__fields__["config"].type_,
-) -> PipelineType:
+def get_pipeline_type_from_source_config(source_config: SourceConfig) -> PipelineType:
     """From the YAML serviceType, get the Ingestion Pipeline Type"""
     pipeline_type = SOURCE_CONFIG_TYPE_INGESTION.get(
-        source_config_type.__class__.__name__
+        source_config.config.__class__.__name__
     )
     if not pipeline_type:
         raise ValueError(
-            f"Cannot find Pipeline Type for SourceConfig {source_config_type}"
+            f"Cannot find Pipeline Type for SourceConfig {source_config.config}"
         )
     return pipeline_type
 

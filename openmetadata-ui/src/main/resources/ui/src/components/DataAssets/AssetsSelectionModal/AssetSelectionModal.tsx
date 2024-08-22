@@ -14,7 +14,6 @@ import {
   CheckOutlined,
   CloseOutlined,
   ExclamationCircleOutlined,
-  PlusOutlined,
 } from '@ant-design/icons';
 import {
   Alert,
@@ -41,7 +40,9 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_COLOR, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -50,6 +51,7 @@ import {
   BulkOperationResult,
   Status,
 } from '../../../generated/type/bulkOperationResult';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -64,12 +66,11 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
+import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
-  getSelectedValuesFromQuickFilter,
-} from '../../../utils/Explore.utils';
-import { getCombinedQueryFilterObject } from '../../../utils/ExplorePage/ExplorePageUtils';
+} from '../../../utils/ExploreUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -91,6 +92,7 @@ export const AssetSelectionModal = ({
   queryFilter,
   emptyPlaceHolderText,
 }: AssetSelectionModalProps) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const ES_UPDATE_DELAY = 500;
   const [search, setSearch] = useState('');
@@ -173,11 +175,13 @@ export const AssetSelectionModal = ({
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.DATA_PRODUCT) {
       const data = await getDataProductByName(entityFqn, {
-        fields: 'domain,assets',
+        fields: [TabSpecificField.DOMAIN, TabSpecificField.ASSETS],
       });
       setActiveEntity(data);
     } else if (type === AssetsOfEntity.GLOSSARY) {
-      const data = await getGlossaryTermByFQN(entityFqn, { fields: 'tags' });
+      const data = await getGlossaryTermByFQN(entityFqn, {
+        fields: TabSpecificField.TAGS,
+      });
       setActiveEntity(data);
     }
   }, [type, entityFqn]);
@@ -188,11 +192,7 @@ export const AssetSelectionModal = ({
     setFilters(
       dropdownItems.map((item) => ({
         ...item,
-        value: getSelectedValuesFromQuickFilter(
-          item,
-          dropdownItems,
-          undefined // pass in state variable
-        ),
+        value: [],
       }))
     );
   }, [type]);
@@ -508,7 +508,7 @@ export const AssetSelectionModal = ({
               selectedKeys: selectedFilter,
             }}
             trigger={['click']}>
-            <Button icon={<PlusOutlined />} size="small" type="primary" />
+            <Button className="flex-center" icon={<FilterIcon height={16} />} />
           </Dropdown>
           <div className="flex-1">
             <Searchbar
@@ -558,7 +558,10 @@ export const AssetSelectionModal = ({
             message={
               <div className="d-flex items-center gap-3">
                 <ExclamationCircleOutlined
-                  style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                  style={{
+                    color: theme.errorColor,
+                    fontSize: '24px',
+                  }}
                 />
                 <Typography.Text className="font-semibold text-sm">
                   {t('label.validation-error-plural')}
@@ -614,7 +617,10 @@ export const AssetSelectionModal = ({
                           </div>
                           <div className="d-flex gap-3 p-x-sm p-b-sm">
                             <ExclamationCircleOutlined
-                              style={{ color: ERROR_COLOR, fontSize: '24px' }}
+                              style={{
+                                color: theme.errorColor,
+                                fontSize: '24px',
+                              }}
                             />
                             <Typography.Text className="break-all">
                               {errorMessage}

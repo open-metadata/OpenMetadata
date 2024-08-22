@@ -3,17 +3,13 @@ title: Run the QuickSight Connector Externally
 slug: /connectors/dashboard/quicksight/yaml
 ---
 
-# Run the QuickSight Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="QuickSight"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Lineage"]
+  unavailableFeatures=["Owners", "Tags", "Datamodels", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the QuickSight connector.
 
@@ -25,10 +21,6 @@ Configure and schedule QuickSight metadata and profiler workflows from the OpenM
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 AWS QuickSight Permissions
 To execute metadata extraction and usage workflow successfully the IAM User should have enough access to fetch required data. Following table describes the minimum required permissions
@@ -148,7 +140,7 @@ This is a sample config for QuickSight:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: quicksight
   serviceName: local_quicksight

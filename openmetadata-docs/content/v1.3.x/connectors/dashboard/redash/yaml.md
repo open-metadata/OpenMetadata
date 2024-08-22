@@ -3,17 +3,13 @@ title: Run the Redash Connector Externally
 slug: /connectors/dashboard/redash/yaml
 ---
 
-# Run the Redash Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="check" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Redash"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Tags"]
+  unavailableFeatures=["Datamodels", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Redash connector.
 
@@ -25,11 +21,6 @@ Configure and schedule Redash metadata and profiler workflows from the OpenMetad
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 
 ### Python Requirements
 
@@ -95,7 +86,7 @@ Can be found on a user profile page.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: redash
   serviceName: local_redash

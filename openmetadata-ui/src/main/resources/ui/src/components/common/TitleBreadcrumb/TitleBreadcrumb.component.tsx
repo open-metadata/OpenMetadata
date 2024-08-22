@@ -22,7 +22,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
-import { TitleBreadcrumbProps } from './TitleBreadcrumb.interface';
+import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
@@ -53,12 +53,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
 
   const renderBreadcrumb = (
     index: number,
-    link: {
-      name: string;
-      url: string;
-      imgSrc?: string;
-      activeTitle?: boolean;
-    },
+    link: TitleLink,
     classes: string
   ) => {
     if (link.url) {

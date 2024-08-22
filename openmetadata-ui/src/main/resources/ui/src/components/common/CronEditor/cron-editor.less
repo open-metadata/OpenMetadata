@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) url('../../../styles/variables.less');
+
 .form-field.cron-field select {
   background: white;
   border: 1px solid #ccc;
@@ -25,7 +27,7 @@
   background: #7147e840;
   color: #37352f;
   padding: 7px 10px;
-  border-left: 3px solid #0968da;
+  border-left: 3px solid @primary-color;
 }
 .cron-badge-option-container {
   display: inline-block;
@@ -53,7 +55,7 @@
   background: #f5f5f5;
 }
 .cron-badge-option.active {
-  background: #0968da;
+  background: @primary-color;
   color: white;
 }
 .month-opt-container .cron-badge-option {
@@ -62,4 +64,9 @@
   border-radius: 18px;
   font-size: 12px;
   padding: 8px 5px;
+}
+.cron-row {
+  .ant-form-item {
+    margin: 0px;
+  }
 }

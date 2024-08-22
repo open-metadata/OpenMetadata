@@ -3,30 +3,13 @@ title: Redshift
 slug: /connectors/database/redshift
 ---
 
-# Redshift
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Redshift"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+unavailableFeatures=["Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the Redshift connector.
 
@@ -44,10 +27,6 @@ Configure and schedule Redshift metadata and profiler workflows from the OpenMet
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
 ### Metadata
 Redshift user must grant `SELECT` privilege on table [SVV_TABLE_INFO](https://docs.aws.amazon.com/redshift/latest/dg/r_SVV_TABLE_INFO.html) to fetch the metadata of tables and views. For more information visit [here](https://docs.aws.amazon.com/redshift/latest/dg/c_visibility-of-data.html).
 
@@ -61,10 +40,10 @@ GRANT SELECT ON TABLE svv_table_info to test_user;
 ```
 
 ### Profiler & Data Quality
-Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/connectors/ingestion/workflows/profiler) and data quality tests [here](/connectors/ingestion/workflows/data-quality).
 
 ### Usage & Lineage
-For the usage and lineage workflow, the user will need `SELECT` privilege on `STL_QUERY` table. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+For the usage and lineage workflow, the user will need `SELECT` privilege on `STL_QUERY` table. You can find more information on the usage workflow [here](/connectors/ingestion/workflows/usage) and the lineage workflow [here](/connectors/ingestion/workflows/lineage).
 
 ## Metadata Ingestion
 

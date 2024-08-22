@@ -12,28 +12,67 @@
  */
 
 import Qs from 'qs';
-import {
-  QuerySearchFilterType,
-  QuerySearchParams,
-} from '../../components/Database/TableQueries/TableQueries.interface';
+import { QuerySearchParams } from '../../components/Database/TableQueries/TableQueries.interface';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
+import { searchQuery } from '../../rest/searchAPI';
 
-export const createQueryFilter = (
-  allFilter: SearchDropdownOption[],
-  tableId: string
-): QuerySearchFilterType => {
+export const createQueryFilter = ({
+  tableId,
+  tags,
+  owners,
+  timeRange,
+}: {
+  tableId: string;
+  tags?: SearchDropdownOption[];
+  owners?: SearchDropdownOption[];
+  timeRange?: { startTs: number; endTs: number };
+}) => {
+  const tagFilter = tags?.length
+    ? [
+        {
+          bool: {
+            should: tags.map((data) => ({
+              term: { 'tags.tagFQN': data.key },
+            })),
+          },
+        },
+      ]
+    : [];
+  const ownerFilter = owners?.length
+    ? [
+        {
+          bool: {
+            should: owners.map((data) => ({
+              term: {
+                'owners.name': data.key,
+              },
+            })),
+          },
+        },
+      ]
+    : [];
+  const timeRangeFilter = timeRange
+    ? [
+        {
+          range: {
+            queryDate: {
+              gte: timeRange.startTs,
+              lte: timeRange.endTs,
+            },
+          },
+        },
+      ]
+    : [];
   const filter = {
     query: {
       bool: {
         must: [
-          {
-            bool: {
-              should: allFilter.map((data) => ({
-                term: { 'owner.id': data.key },
-              })),
-            },
-          },
           { term: { 'queryUsedIn.id': tableId } },
+          ...tagFilter,
+          ...ownerFilter,
+          ...timeRangeFilter,
         ],
       },
     },
@@ -50,4 +89,20 @@ export const parseSearchParams = (param: string) => {
 };
 export const stringifySearchParams = (param: QuerySearchParams) => {
   return Qs.stringify(param);
+};
+
+export const fetchFilterOptions = async (
+  searchText: string,
+  filters: string,
+  searchIndex: SearchIndex | SearchIndex[]
+) => {
+  const response = await searchQuery({
+    query: `*${searchText}*`,
+    filters,
+    pageNumber: 1,
+    pageSize: PAGE_SIZE_BASE,
+    searchIndex,
+  });
+
+  return response;
 };

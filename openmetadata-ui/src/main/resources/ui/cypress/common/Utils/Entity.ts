@@ -138,10 +138,10 @@ export const deleteEntityViaREST = ({
   token,
 }: {
   entityName: string;
-  endPoint: EntityType;
+  endPoint: EntityType | string;
   token: Cypress.Storable;
 }) => {
-  // Create entity
+  // Delete entity
   cy.request({
     method: 'DELETE',
     url: `/api/v1/${endPoint}/name/${entityName}?recursive=true&hardDelete=true`,
@@ -163,7 +163,7 @@ export const visitEntityDetailsPage = ({
   serviceName: string;
   entity: EntityType;
   dataTestId?: string;
-  entityType?: EntityType;
+  entityType?: string;
   entityFqn?: string;
 }) => {
   if (entity === EntityType.DataModel) {
@@ -300,13 +300,16 @@ export const checkForEditActions = ({ entityType, deleted }) => {
 };
 
 export const checkForTableSpecificFields = ({ deleted }) => {
-  interceptURL('GET', `/api/v1/queries*`, 'getQueryData');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?q=*&index=query_search_index*`,
+    'getQueryData'
+  );
 
   cy.get('[data-testid="table_queries"]').click();
 
-  verifyResponseStatusCode('@getQueryData', 200);
-
   if (!deleted) {
+    verifyResponseStatusCode('@getQueryData', 200);
     cy.get('[data-testid="add-query-btn"]').should('be.enabled');
   } else {
     cy.get('[data-testid="no-data-placeholder"]').should(
@@ -349,9 +352,6 @@ export const deletedEntityCommonChecks = ({
 
   if (isTableEntity) {
     checkLineageTabActions({ deleted });
-  }
-
-  if (isTableEntity) {
     checkForTableSpecificFields({ deleted });
   }
 
@@ -392,6 +392,7 @@ export const deletedEntityCommonChecks = ({
       '[data-testid="manage-dropdown-list-container"] [data-testid="delete-button"]'
     ).should('be.visible');
   }
+
   cy.clickOutside();
 };
 
@@ -412,17 +413,14 @@ export const deleteEntity = (
   displayName: string
 ) => {
   deletedEntityCommonChecks({ entityType: endPoint, deleted: false });
-
+  cy.clickOutside();
   cy.get('[data-testid="manage-button"]').click();
   cy.get('[data-testid="delete-button"]').scrollIntoView().click();
   cy.get('[data-testid="delete-modal"]').then(() => {
     cy.get('[role="dialog"]').should('be.visible');
   });
 
-  cy.get('[data-testid="delete-modal"] .ant-modal-title').should(
-    'contain',
-    displayName
-  );
+  cy.get('.ant-modal-title').should('contain', displayName);
 
   cy.get('[data-testid="confirmation-text-input"]').type(DELETE_TERM);
 
@@ -446,6 +444,7 @@ export const deleteEntity = (
   );
 
   deletedEntityCommonChecks({ entityType: endPoint, deleted: true });
+  cy.clickOutside();
 
   if (endPoint === EntityType.Table) {
     interceptURL(
@@ -459,7 +458,9 @@ export const deleteEntity = (
       'getDatabaseSchemas'
     );
 
-    cy.get('[data-testid="breadcrumb-link"]').last().click();
+    cy.get('[data-testid="entity-page-header"] [data-testid="breadcrumb-link"]')
+      .last()
+      .click();
     verifyResponseStatusCode('@getDatabaseSchemas', 200);
 
     cy.get('[data-testid="show-deleted"]')

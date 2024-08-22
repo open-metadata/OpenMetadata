@@ -33,7 +33,13 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
@@ -68,9 +74,14 @@ class RedashSource(DashboardServiceSource):
         self.tags = []  # To create the tags before yielding final entities
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedashConnection = config.serviceConnection.__root__.config
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedashConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedashConnection):
             raise InvalidSourceException(
                 f"Expected RedashConnection, but got {connection}"
@@ -106,7 +117,7 @@ class RedashSource(DashboardServiceSource):
     def get_dashboard_details(self, dashboard: dict) -> dict:
         return self.client.get_dashboard(dashboard["slug"])
 
-    def get_owner_ref(self, dashboard_details) -> Optional[EntityReference]:
+    def get_owner_ref(self, dashboard_details) -> Optional[EntityReferenceList]:
         """
         Get owner from email
         """
@@ -147,27 +158,31 @@ class RedashSource(DashboardServiceSource):
                 dashboard_description = widgets.get("text")
 
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details["id"],
+                name=EntityName(str(dashboard_details["id"])),
                 displayName=dashboard_details.get("name"),
-                description=dashboard_description,
+                description=Markdown(dashboard_description)
+                if dashboard_description
+                else None,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
-                    for chart in self.context.charts or []
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
-                sourceUrl=self.get_dashboard_url(dashboard_details),
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
                 tags=get_tag_labels(
                     metadata=self.metadata,
                     tags=dashboard_details.get("tags"),
                     classification_name=REDASH_TAG_CATEGORY,
                     include_tags=self.source_config.includeTags,
                 ),
-                owner=self.get_owner_ref(dashboard_details=dashboard_details),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -259,18 +274,20 @@ class RedashSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=widgets["id"],
+                        name=EntityName(str(widgets["id"])),
                         displayName=chart_display_name
                         if visualization and visualization["query"]
                         else "",
                         chartType=get_standard_chart_type(
                             visualization["type"] if visualization else ""
                         ),
-                        service=self.context.dashboard_service,
-                        sourceUrl=self.get_dashboard_url(dashboard_details),
-                        description=visualization["description"]
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
+                        sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
+                        description=Markdown(visualization["description"])
                         if visualization
-                        else "",
+                        else None,
                     )
                 )
             except Exception as exc:

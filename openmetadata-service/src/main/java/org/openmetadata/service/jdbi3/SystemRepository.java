@@ -4,6 +4,10 @@ import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
+import com.slack.api.bolt.model.builtin.DefaultBot;
+import com.slack.api.bolt.model.builtin.DefaultInstaller;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import javax.json.JsonPatch;
 import javax.json.JsonValue;
@@ -11,18 +15,29 @@ import javax.ws.rs.core.Response;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
-import org.openmetadata.schema.api.configuration.SlackAppConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.email.SmtpSettings;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
+import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.StepValidation;
+import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
+import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -32,10 +47,28 @@ public class SystemRepository {
   private static final String FAILED_TO_UPDATE_SETTINGS = "Failed to Update Settings";
   public static final String INTERNAL_SERVER_ERROR_WITH_REASON = "Internal Server Error. Reason :";
   private final SystemDAO dao;
+  private final MigrationValidationClient migrationValidationClient;
+
+  private enum ValidationStepDescription {
+    DATABASE("Validate that we can properly run a query against the configured database."),
+    SEARCH("Validate that the search client is available."),
+    PIPELINE_SERVICE_CLIENT("Validate that the pipeline service client is available."),
+    JWT_TOKEN("Validate that the ingestion-bot JWT token can be properly decoded."),
+    MIGRATION("Validate that all the necessary migrations have been properly executed.");
+
+    public final String key;
+
+    ValidationStepDescription(String param) {
+      this.key = param;
+    }
+  }
+
+  private static final String INDEX_NAME = "table_search_index";
 
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
     Entity.setSystemRepository(this);
+    migrationValidationClient = MigrationValidationClient.getInstance();
   }
 
   public EntitiesCount getAllEntitiesCount(ListFilter filter) {
@@ -100,7 +133,7 @@ public class SystemRepository {
       setting.setConfigValue(slackAppConfiguration);
       return setting;
     } catch (Exception ex) {
-      LOG.error("Error while trying fetch EMAIL Settings " + ex.getMessage());
+      LOG.error("Error while trying fetch Slack Settings " + ex.getMessage());
     }
     return null;
   }
@@ -164,6 +197,19 @@ public class SystemRepository {
         SlackAppConfiguration appConfiguration =
             JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
         setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
+        DefaultBot appConfiguration =
+            JsonUtils.convertValue(setting.getConfigValue(), DefaultBot.class);
+        setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
+        DefaultInstaller appConfiguration =
+            JsonUtils.convertValue(setting.getConfigValue(), DefaultInstaller.class);
+        setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
+      } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
+        String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+        setting.setConfigValue(encryptSlackStateSetting(slackState));
+      } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
+        JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
       }
       dao.insertSettings(
           setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
@@ -176,6 +222,96 @@ public class SystemRepository {
           "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
           ex.getMessage());
     }
+  }
+
+  public Settings getSlackbotConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.SLACK_BOT.value());
+      DefaultBot slackBotConfiguration =
+          SystemRepository.decryptSlackDefaultBotSetting((String) setting.getConfigValue());
+      setting.setConfigValue(slackBotConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying fetch Slack bot Settings " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getSlackInstallerConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.SLACK_INSTALLER.value());
+      DefaultInstaller slackInstallerConfiguration =
+          SystemRepository.decryptSlackDefaultInstallerSetting((String) setting.getConfigValue());
+      setting.setConfigValue(slackInstallerConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying to fetch slack installer setting " + ex.getMessage());
+    }
+    return null;
+  }
+
+  public Settings getSlackStateConfigInternal() {
+    try {
+      Settings setting = dao.getConfigWithKey(SettingsType.SLACK_STATE.value());
+      String slackStateConfiguration =
+          SystemRepository.decryptSlackStateSetting((String) setting.getConfigValue());
+      setting.setConfigValue(slackStateConfiguration);
+      return setting;
+    } catch (Exception ex) {
+      LOG.error("Error while trying to fetch slack state setting " + ex.getMessage());
+    }
+    return null;
+  }
+
+  @SneakyThrows
+  public static String encryptSlackDefaultBotSetting(DefaultBot decryptedSetting) {
+    String json = JsonUtils.pojoToJson(decryptedSetting);
+    if (Fernet.getInstance().isKeyDefined()) {
+      return Fernet.getInstance().encryptIfApplies(json);
+    }
+    return json;
+  }
+
+  @SneakyThrows
+  public static DefaultBot decryptSlackDefaultBotSetting(String encryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
+    }
+    return JsonUtils.readValue(encryptedSetting, DefaultBot.class);
+  }
+
+  @SneakyThrows
+  public static String encryptSlackDefaultInstallerSetting(DefaultInstaller decryptedSetting) {
+    String json = JsonUtils.pojoToJson(decryptedSetting);
+    if (Fernet.getInstance().isKeyDefined()) {
+      return Fernet.getInstance().encryptIfApplies(json);
+    }
+    return json;
+  }
+
+  @SneakyThrows
+  public static DefaultInstaller decryptSlackDefaultInstallerSetting(String encryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
+    }
+    return JsonUtils.readValue(encryptedSetting, DefaultInstaller.class);
+  }
+
+  @SneakyThrows
+  public static String encryptSlackStateSetting(String decryptedSetting) {
+    String json = JsonUtils.pojoToJson(decryptedSetting);
+    if (Fernet.getInstance().isKeyDefined()) {
+      return Fernet.getInstance().encryptIfApplies(json);
+    }
+    return json;
+  }
+
+  @SneakyThrows
+  public static String decryptSlackStateSetting(String encryptedSetting) {
+    if (Fernet.getInstance().isKeyDefined()) {
+      encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
+    }
+    return JsonUtils.readValue(encryptedSetting, String.class);
   }
 
   public static SmtpSettings encryptEmailSetting(SmtpSettings decryptedSetting) {
@@ -209,5 +345,124 @@ public class SystemRepository {
       encryptedSetting = Fernet.getInstance().decryptIfApplies(encryptedSetting);
     }
     return JsonUtils.readValue(encryptedSetting, SlackAppConfiguration.class);
+  }
+
+  public ValidationResponse validateSystem(
+      OpenMetadataApplicationConfig applicationConfig,
+      PipelineServiceClientInterface pipelineServiceClient,
+      JwtFilter jwtFilter) {
+    ValidationResponse validation = new ValidationResponse();
+
+    validation.setDatabase(getDatabaseValidation(applicationConfig));
+    validation.setSearchInstance(getSearchValidation(applicationConfig));
+    validation.setPipelineServiceClient(
+        getPipelineServiceClientValidation(applicationConfig, pipelineServiceClient));
+    validation.setJwks(getJWKsValidation(applicationConfig, jwtFilter));
+    validation.setMigrations(getMigrationValidation(migrationValidationClient));
+
+    return validation;
+  }
+
+  private StepValidation getDatabaseValidation(OpenMetadataApplicationConfig applicationConfig) {
+    try {
+      dao.testConnection();
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.DATABASE.key)
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format("Connected to %s", applicationConfig.getDataSourceFactory().getUrl()));
+    } catch (Exception exc) {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.DATABASE.key)
+          .withPassed(Boolean.FALSE)
+          .withMessage(exc.getMessage());
+    }
+  }
+
+  private StepValidation getSearchValidation(OpenMetadataApplicationConfig applicationConfig) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (Boolean.TRUE.equals(searchRepository.getSearchClient().isClientAvailable())
+        && searchRepository
+            .getSearchClient()
+            .indexExists(Entity.getSearchRepository().getIndexOrAliasName(INDEX_NAME))) {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.SEARCH.key)
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format(
+                  "Connected to %s", applicationConfig.getElasticSearchConfiguration().getHost()));
+    } else {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.SEARCH.key)
+          .withPassed(Boolean.FALSE)
+          .withMessage("Search instance is not reachable or available");
+    }
+  }
+
+  private StepValidation getPipelineServiceClientValidation(
+      OpenMetadataApplicationConfig applicationConfig,
+      PipelineServiceClientInterface pipelineServiceClient) {
+    PipelineServiceClientResponse pipelineResponse = pipelineServiceClient.getServiceStatus();
+    if (pipelineResponse.getCode() == 200) {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+          .withPassed(Boolean.TRUE)
+          .withMessage(
+              String.format(
+                  "%s is available at %s",
+                  pipelineServiceClient.getPlatform(),
+                  applicationConfig.getPipelineServiceClientConfiguration().getApiEndpoint()));
+    } else {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.PIPELINE_SERVICE_CLIENT.key)
+          .withPassed(Boolean.FALSE)
+          .withMessage(pipelineResponse.getReason());
+    }
+  }
+
+  private StepValidation getJWKsValidation(
+      OpenMetadataApplicationConfig applicationConfig, JwtFilter jwtFilter) {
+    OpenMetadataConnection openMetadataServerConnection =
+        new OpenMetadataConnectionBuilder(applicationConfig).build();
+    try {
+      jwtFilter.validateJwtAndGetClaims(
+          openMetadataServerConnection.getSecurityConfig().getJwtToken());
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.JWT_TOKEN.key)
+          .withPassed(Boolean.TRUE)
+          .withMessage("Ingestion Bot token has been validated");
+    } catch (Exception e) {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.JWT_TOKEN.key)
+          .withPassed(Boolean.FALSE)
+          .withMessage(e.getMessage());
+    }
+  }
+
+  private StepValidation getMigrationValidation(
+      MigrationValidationClient migrationValidationClient) {
+    List<String> currentVersions = migrationValidationClient.getCurrentVersions();
+    // Compare regardless of ordering
+    if (new HashSet<>(currentVersions)
+        .equals(new HashSet<>(migrationValidationClient.getExpectedMigrationList()))) {
+      return new StepValidation()
+          .withDescription(ValidationStepDescription.MIGRATION.key)
+          .withPassed(Boolean.TRUE)
+          .withMessage(String.format("Executed migrations: %s", currentVersions));
+    }
+    List<String> missingVersions =
+        new ArrayList<>(migrationValidationClient.getExpectedMigrationList());
+    missingVersions.removeAll(currentVersions);
+
+    List<String> unexpectedVersions = new ArrayList<>(currentVersions);
+    unexpectedVersions.removeAll(migrationValidationClient.getExpectedMigrationList());
+
+    return new StepValidation()
+        .withDescription(ValidationStepDescription.MIGRATION.key)
+        .withPassed(Boolean.FALSE)
+        .withMessage(
+            String.format(
+                "Missing migrations that were not executed %s. Unexpected executed migrations %s",
+                missingVersions, unexpectedVersions));
   }
 }

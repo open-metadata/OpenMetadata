@@ -71,8 +71,16 @@ class UsersTestClass {
     cy.get(
       ':nth-child(3) > [data-testid="glossary-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
     ).should('be.exist');
-    // check edit tier permission
-    cy.get('[data-testid="manage-button"]').should('not.be.exist');
+    if (Cypress.env('isOss')) {
+      cy.get('[data-testid="manage-button"]').should('not.be.exist');
+    } else {
+      cy.get('[data-testid="manage-button"]').should('be.visible');
+      cy.get('[data-testid="manage-button"]').click();
+      cy.get('[data-testid="export-button"]').should('be.visible');
+      cy.get('[data-testid="import-button"]').should('not.be.exist');
+      cy.get('[data-testid="announcement-button"]').should('not.be.exist');
+      cy.get('[data-testid="delete-button"]').should('not.be.exist');
+    }
     cy.get('[data-testid="lineage"] > .ant-space-item').click();
     cy.get('[data-testid="edit-lineage"]').should('be.disabled');
   }
@@ -138,7 +146,16 @@ class UsersTestClass {
       cy.get('[data-testid="add-service-button"] > span').should('not.exist');
     });
     cy.sidebarClick(SidebarItem.EXPLORE);
-    cy.get('[data-testid="tables-tab"]').click();
+
+    interceptURL('GET', `/api/v1/search/query?q=*`, 'getSearchResult');
+
+    cy.get('[data-testid="search-dropdown-Data Assets"]').click();
+    cy.get('[data-testid="table-checkbox"]').scrollIntoView();
+    cy.get('[data-testid="table-checkbox"]').click();
+    cy.get('[data-testid="update-btn"]').click();
+
+    verifyResponseStatusCode('@getSearchResult', 200);
+
     cy.get(
       '.ant-drawer-title > [data-testid="entity-link"] > .ant-typography'
     ).click();
@@ -170,18 +187,24 @@ class UsersTestClass {
   }
 
   restoreAdminDetails() {
+    interceptURL('GET', '/api/v1/users/name/*?fields=*', 'fetchUserData');
+    interceptURL('GET', '/api/v1/feed?type=Conversation', 'fetchFeedData');
     cy.get('[data-testid="dropdown-profile"]').click({ force: true });
     cy.get('[data-testid="user-name"] > .ant-typography').click({
       force: true,
     });
+    verifyResponseStatusCode('@fetchUserData', 200);
+    verifyResponseStatusCode('@fetchFeedData', 200);
+
     cy.get('[data-testid="edit-displayName"]').should('be.visible');
     cy.get('[data-testid="edit-displayName"]').click();
     cy.get('[data-testid="displayName"]').clear();
     interceptURL('PATCH', '/api/v1/users/*', 'updateName');
     cy.get('[data-testid="inline-save-btn"]').click();
-    cy.get('[data-testid="edit-displayName"]').scrollIntoView();
     verifyResponseStatusCode('@updateName', 200);
-
+    cy.get(
+      '[data-testid="user-profile-details"] [data-testid="user-name"]'
+    ).should('not.exist');
     cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
     cy.get('[data-testid="edit-teams-button"]').click();
     interceptURL('PATCH', '/api/v1/users/*', 'updateTeam');
@@ -189,14 +212,11 @@ class UsersTestClass {
     cy.get('[data-testid="inline-save-btn"]').click();
     verifyResponseStatusCode('@updateTeam', 200);
 
-    cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
     cy.get('[data-testid="edit-description"]').click();
     cy.get(descriptionBox).clear();
     interceptURL('PATCH', '/api/v1/users/*', 'patchDescription');
     cy.get('[data-testid="save"]').should('be.visible').click();
     verifyResponseStatusCode('@patchDescription', 200);
-    cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-    cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
   }
 }
 

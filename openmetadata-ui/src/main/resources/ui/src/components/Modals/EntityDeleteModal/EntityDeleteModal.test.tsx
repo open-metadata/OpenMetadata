@@ -63,38 +63,6 @@ describe('Test EntityDelete Modal Component', () => {
     expect(confirmButton).toBeDisabled();
   });
 
-  it('Should render discard button and input box as disable if loading state is wating', async () => {
-    await act(async () => {
-      render(
-        <EntityDeleteModal {...mockProp} visible loadingState="waiting" />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const discardButton = await screen.findByTestId('discard-button');
-    const inputBox = await screen.findByTestId('confirmation-text-input');
-
-    expect(discardButton).toBeDisabled();
-    expect(inputBox).toBeDisabled();
-  });
-
-  it('Should show loading button if loading state is waiting', async () => {
-    await act(async () => {
-      render(
-        <EntityDeleteModal {...mockProp} visible loadingState="waiting" />,
-        {
-          wrapper: MemoryRouter,
-        }
-      );
-    });
-
-    const loadingButton = await screen.findByTestId('loading-button');
-
-    expect(loadingButton).toBeDisabled();
-  });
-
   it('Confirm button should be enable if confirm text matches', async () => {
     await act(async () => {
       render(<EntityDeleteModal {...mockProp} visible />, {
@@ -131,5 +99,36 @@ describe('Test EntityDelete Modal Component', () => {
     fireEvent.click(discardButton);
 
     expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('should show soft delete label in case of soft delete', async () => {
+    await act(async () => {
+      render(<EntityDeleteModal {...mockProp} softDelete visible />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(await screen.findByText('label.soft-delete')).toBeInTheDocument();
+  });
+
+  it('should focus the input box on open', async () => {
+    // since the focus is set using setTimeout, we need to use fake timers
+    jest.useFakeTimers();
+    await act(async () => {
+      render(<EntityDeleteModal {...mockProp} visible />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await act(async () => {
+      jest.runAllTimers();
+    });
+
+    const inputBox = await screen.findByTestId('confirmation-text-input');
+
+    // Check if element is focused
+    expect(inputBox).toHaveFocus();
+
+    jest.useRealTimers();
   });
 });

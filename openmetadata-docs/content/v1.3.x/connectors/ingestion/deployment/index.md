@@ -341,7 +341,7 @@ print_status(workflow)
 workflow.stop()
 ```
 
-Where the YAML config shape is defined in each [Connector](https://docs.open-metadata.org/connectors) and
+Where the YAML config shape is defined in each [Connector](/connectors) and
 the workflow class depends on our goal: Ingestion, Profiling, Testing...
 
 You can follow this logic deeper in the source code of the managed APIs package, but the important thought here is that we

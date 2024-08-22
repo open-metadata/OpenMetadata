@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -43,7 +44,7 @@ import org.openmetadata.service.util.ResultList;
 public class StoredProcedureResource
     extends EntityResource<StoredProcedure, StoredProcedureRepository> {
   public static final String COLLECTION_PATH = "v1/storedProcedures/";
-  static final String FIELDS = "owner,tags,followers,extension,domain,sourceHash";
+  static final String FIELDS = "owners,tags,followers,extension,domain,sourceHash";
 
   @Override
   public StoredProcedure addHref(UriInfo uriInfo, StoredProcedure storedProcedure) {
@@ -54,8 +55,8 @@ public class StoredProcedureResource
     return storedProcedure;
   }
 
-  public StoredProcedureResource(Authorizer authorizer) {
-    super(Entity.STORED_PROCEDURE, authorizer);
+  public StoredProcedureResource(Authorizer authorizer, Limits limits) {
+    super(Entity.STORED_PROCEDURE, authorizer, limits);
   }
 
   public static class StoredProcedureList extends ResultList<StoredProcedure> {
@@ -302,6 +303,35 @@ public class StoredProcedureResource
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchStoredProcedure",
+      summary = "Update a Stored Procedure by name.",
+      description = "Update an existing StoredProcedure using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Stored Procedure name", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT

@@ -237,6 +237,30 @@ REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
 # hence we are appending "create view <schema>.<table> as " to select query
 # to generate the column level lineage
 REDSHIFT_GET_ALL_RELATIONS = """
+  WITH view_defs AS (
+      SELECT
+          c.oid,
+          pg_catalog.pg_get_viewdef(c.oid, true) AS view_definition,
+          n.nspname,
+          c.relname
+      FROM
+          pg_catalog.pg_class c
+          LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+      WHERE
+          c.relkind = 'v'
+    ),
+    adjusted_view_defs AS (
+        SELECT
+            oid,
+            CASE
+                WHEN view_definition LIKE '%WITH NO SCHEMA BINDING%' THEN
+                  REGEXP_REPLACE(view_definition, 'create view [^ ]+ as (.*WITH NO SCHEMA BINDING;?)', '\\1')
+                ELSE
+                  'CREATE VIEW ' || nspname || '.' || relname || ' AS ' || view_definition
+            END AS view_definition
+        FROM
+            view_defs
+    )
     SELECT
         c.relkind,
         n.oid as "schema_oid",
@@ -248,13 +272,13 @@ REDSHIFT_GET_ALL_RELATIONS = """
         AS "diststyle",
         c.relowner AS "owner_id",
         u.usename AS "owner_name",
-        TRIM(TRAILING ';' FROM 
-        'create view ' || n.nspname || '.' || c.relname || ' as ' ||pg_catalog.pg_get_viewdef(c.oid, true))
+        avd.view_definition 
         AS "view_definition",
         pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
     FROM pg_catalog.pg_class c
             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
+            LEFT JOIN adjusted_view_defs avd ON avd.oid = c.oid
     WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
         AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
     UNION
@@ -345,7 +369,7 @@ select
 from SP_HISTORY sp
   join Q_HISTORY q
     on sp.procedure_session_id = q.query_session_id
-   and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time 
+   and q.query_start_time between sp.procedure_start_time and sp.procedure_end_time
    and q.query_end_time between sp.procedure_start_time and sp.procedure_end_time
 order by procedure_start_time DESC
     """
@@ -360,3 +384,18 @@ where o.schema = '{schema_name}'
 and o.database = '{database_name}'
 """
 )
+
+REDSHIFT_TABLE_CHANGES_QUERY = """
+SELECT
+    query_text
+FROM SYS_QUERY_HISTORY
+WHERE status = 'success'
+  AND (
+    query_type = 'DDL' OR
+    (query_type = 'UTILITY' AND query_text ilike '%%COMMENT ON%%') OR
+    (query_type = 'CTAS' AND query_text ilike '%%CREATE TABLE%%')
+  )
+  and database_name = '{database}'
+  and end_time >= '{start_date}'
+ORDER BY end_time DESC
+"""

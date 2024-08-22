@@ -18,13 +18,14 @@
   - '@mohityadav766'
   - '@sureshms'
   - '@akash-jain-10'
-  - '@dhruvinmaniar123'
-  - '@ShilpaVernekar'
   - '@tutte'
   - '@IceS2'
   - '@sushi30'
   - '@snyk-bot'
   - '@dependabot'
+  - '@harshsoni2024'
+  - '@SumanMaharana'
+  - '@Prajwal214'
 
 ingestion:
   - '@ayush-shah'
@@ -34,6 +35,8 @@ ingestion:
   - '@pmbrull'
   - '@IceS2'
   - '@sushi30'
+  - '@harshsoni2024'
+  - '@SumanMaharana'
 
 UI:
   - '@aniketkatkar97'
@@ -51,8 +54,4 @@ backend:
 
 devops:
   - '@akash-jain-10'
-  - '@dhruvinmaniar123'
   - '@tutte'
-
-documentation:
-  - '@ShilpaVernekar'

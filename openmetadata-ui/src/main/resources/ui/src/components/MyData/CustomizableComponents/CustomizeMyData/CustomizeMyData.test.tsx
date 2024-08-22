@@ -81,10 +81,13 @@ jest.mock('../../../PageLayoutV1/PageLayoutV1', () => {
   ));
 });
 
-jest.mock('../../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest
-    .fn()
-    .mockImplementation(() => ({ currentUser: mockUserData })),
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    currentUser: mockUserData,
+    theme: {
+      primaryColor: '#00ff00',
+    },
+  })),
 }));
 
 jest.mock('../../../../rest/feedsAPI', () => ({
@@ -154,7 +157,7 @@ describe('CustomizeMyData component', () => {
     await act(async () => userEvent.click(cancelButton));
 
     expect(mockPush).toHaveBeenCalledWith(
-      '/settings/openMetadata/customizeLandingPage'
+      '/settings/preferences/customizeLandingPage'
     );
   });
 

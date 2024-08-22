@@ -119,7 +119,7 @@ MOCK_USER = User(email="user@mail.com")
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="looker_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("looker_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Looker,
 )
@@ -136,7 +136,7 @@ class LookerUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(MOCK_LOOKER_CONFIG)
+        self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_LOOKER_CONFIG)
 
         # This already validates that the source can be initialized
         self.looker: LookerSource = LookerSource.create(
@@ -144,9 +144,9 @@ class LookerUnitTest(TestCase):
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
 
-        self.looker.context.__dict__[
+        self.looker.context.get().__dict__[
             "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     def test_create(self):
         """
@@ -279,8 +279,8 @@ class LookerUnitTest(TestCase):
                 description="description",
                 charts=[],
                 sourceUrl="https://my-looker.com/dashboards/1",
-                service=self.looker.context.dashboard_service,
-                owner=None,
+                service=self.looker.context.get().dashboard_service,
+                owners=None,
             )
 
             self.assertEqual(
@@ -352,9 +352,9 @@ class LookerUnitTest(TestCase):
                 ).right,
                 AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=table.id.__root__, type="table"),
+                        fromEntity=EntityReference(id=table.id.root, type="table"),
                         toEntity=EntityReference(
-                            id=to_entity.id.__root__, type="dashboard"
+                            id=to_entity.id.root, type="dashboard"
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage
@@ -374,7 +374,7 @@ class LookerUnitTest(TestCase):
             description="subtitle; Some body text; Some note",
             chartType=ChartType.Line,
             sourceUrl="https://my-looker.com/hello",
-            service=self.looker.context.dashboard_service,
+            service=self.looker.context.get().dashboard_service,
         )
 
         self.assertEqual(
@@ -397,7 +397,7 @@ class LookerUnitTest(TestCase):
         Validate the logic for existing or new usage
         """
 
-        self.looker.context.__dict__["dashboard"] = "dashboard_name"
+        self.looker.context.get().__dict__["dashboard"] = "dashboard_name"
         MOCK_LOOKER_DASHBOARD.view_count = 10
 
         # Start checking dashboard without usage

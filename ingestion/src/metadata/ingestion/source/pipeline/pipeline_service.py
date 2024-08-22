@@ -14,9 +14,13 @@ Base class for ingesting database services
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
+from pydantic import Field
+from typing_extensions import Annotated
+
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -33,15 +37,18 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContext,
+    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
+from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
@@ -57,7 +64,9 @@ class PipelineServiceTopology(ServiceTopology):
     data that has been produced by any parent node.
     """
 
-    root = TopologyNode(
+    root: Annotated[
+        TopologyNode, Field(description="Root node for the topology")
+    ] = TopologyNode(
         producer="get_services",
         stages=[
             NodeStage(
@@ -72,7 +81,9 @@ class PipelineServiceTopology(ServiceTopology):
         children=["pipeline"],
         post_process=["mark_pipelines_as_deleted"],
     )
-    pipeline = TopologyNode(
+    pipeline: Annotated[
+        TopologyNode, Field(description="Processing Pipelines Node")
+    ] = TopologyNode(
         producer="get_pipeline",
         stages=[
             NodeStage(
@@ -113,10 +124,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: PipelineConnection.__fields__["config"].type_
+    service_connection: PipelineConnection.model_fields["config"].annotation
 
     topology = PipelineServiceTopology()
-    context = TopologyContext.create(topology)
+    context = TopologyContextManager(topology)
     pipeline_source_state: Set = set()
 
     def __init__(
@@ -127,7 +138,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
@@ -170,10 +181,43 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """Yields lineage if config is enabled"""
         if self.source_config.includeLineage:
-            yield from self.yield_pipeline_lineage_details(pipeline_details) or []
+            for lineage in self.yield_pipeline_lineage_details(pipeline_details) or []:
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideLineage,
+                        )
+                    )
+                else:
+                    yield lineage
+
+    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
+        """
+        Based on partial schema and table names look for matching table object in open metadata.
+        :param schema: schema name
+        :param table: table name
+        :return: fully qualified name of a Table in Open Metadata
+        """
+        result = None
+        services = self.get_db_service_names()
+        for db_service in services:
+            result = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=db_service,
+                database_name=None,
+                schema_name=table_details.schema,
+                table_name=table_details.name,
+            )
+            if result:
+                return result
+        raise FQNNotFoundException(
+            f"Table FQN not found for table: {table_details} within services: {services}"
+        )
 
     def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""
@@ -214,8 +258,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         pipeline_fqn = fqn.build(
             self.metadata,
             entity_type=Pipeline,
-            service_name=pipeline_request.service.__root__,
-            pipeline_name=pipeline_request.name.__root__,
+            service_name=pipeline_request.service.root,
+            pipeline_name=pipeline_request.name.root,
         )
 
         self.pipeline_source_state.add(pipeline_fqn)
@@ -228,8 +272,18 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_type=Pipeline,
                 entity_source_state=self.pipeline_source_state,
                 mark_deleted_entity=self.source_config.markDeletedPipelines,
-                params={"service": self.context.pipeline_service},
+                params={"service": self.context.get().pipeline_service},
             )
+
+    def get_db_service_names(self) -> List[str]:
+        """
+        Get the list of db service names
+        """
+        return (
+            self.source_config.lineageInformation.dbServiceNames or []
+            if self.source_config.lineageInformation
+            else []
+        )
 
     def prepare(self):
         """

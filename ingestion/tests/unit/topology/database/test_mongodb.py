@@ -195,18 +195,18 @@ class MongoDBUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_mongo_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mongo_config)
         self.mongo_source = MongodbSource.create(
             mock_mongo_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.mongo_source.context.__dict__[
+        self.mongo_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.mongo_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.mongo_source.context.__dict__[
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.mongo_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mongo_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())

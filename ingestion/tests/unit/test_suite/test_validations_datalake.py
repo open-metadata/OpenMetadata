@@ -20,7 +20,6 @@ from datetime import datetime, timedelta
 import pytest
 from pandas import DataFrame
 
-from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.utils.importer import import_test_case_class
 
@@ -509,8 +508,7 @@ def test_suite_validation_datalake(
         execution_date=EXECUTION_DATE.timestamp(),
     )
 
-    validator = Validator(test_handler)
-    res = validator.validate()
+    res = test_handler.run_validation()
 
     assert isinstance(res, type_)
     if val_1:

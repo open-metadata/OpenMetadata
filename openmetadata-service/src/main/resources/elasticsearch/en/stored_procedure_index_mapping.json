@@ -297,7 +297,7 @@
       "deleted": {
         "type": "text"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -361,7 +361,8 @@
         "type": "keyword"
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "votes" : {
        "type": "object"
@@ -463,6 +464,9 @@
             "type": "text"
           }
         }
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

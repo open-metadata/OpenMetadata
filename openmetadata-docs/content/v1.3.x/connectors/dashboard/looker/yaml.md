@@ -3,17 +3,13 @@ title: Run the Looker Connector Externally
 slug: /connectors/dashboard/looker/yaml
 ---
 
-# Run the Looker Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Looker"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Owners", "Datamodels", "Lineage"]
+  unavailableFeatures=["Tags", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Looker connector.
 
@@ -25,10 +21,6 @@ Configure and schedule Looker metadata and profiler workflows from the OpenMetad
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 There are two types of metadata we ingest from Looker:
 - Dashboards & Charts
@@ -130,7 +122,7 @@ When configuring, give repository access to `Only select repositories` and choos
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: looker
   serviceName: local_looker

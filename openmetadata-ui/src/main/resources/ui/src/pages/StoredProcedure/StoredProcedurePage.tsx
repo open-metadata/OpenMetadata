@@ -21,11 +21,13 @@ import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityF
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
+import { isEmpty } from 'lodash';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
@@ -36,8 +38,9 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import {
-  getStoredProcedureDetailPath,
+  getEntityDetailsPath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -46,6 +49,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { CSMode } from '../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -60,6 +64,8 @@ import {
 } from '../../generated/entity/data/storedProcedure';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
@@ -85,7 +91,7 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const StoredProcedurePage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USER_ID = currentUser?.id ?? '';
   const history = useHistory();
   const { tab: activeTab = EntityTabs.CODE } = useParams<{ tab: string }>();
@@ -113,7 +119,7 @@ const StoredProcedurePage = () => {
   const {
     id: storedProcedureId = '',
     followers,
-    owner,
+    owners,
     tags,
     tier,
     version,
@@ -194,7 +200,9 @@ const StoredProcedurePage = () => {
         id: response.id ?? '',
       });
     } catch (error) {
-      // Error here
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -317,22 +325,17 @@ const StoredProcedurePage = () => {
   }, [isFollowing]);
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: StoredProcedure['owner']) => {
+    async (newOwner?: StoredProcedure['owners']) => {
       if (!storedProcedure) {
         return;
       }
       const updatedEntityDetails = {
         ...storedProcedure,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owners: newOwner,
       };
-      await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
+      await handleStoreProcedureUpdate(updatedEntityDetails, 'owners');
     },
-    [owner, storedProcedure]
+    [owners, storedProcedure]
   );
 
   const handleToggleDelete = (version?: number) => {
@@ -404,7 +407,11 @@ const StoredProcedurePage = () => {
   const handleTabChange = (activeKey: EntityTabs) => {
     if (activeKey !== activeTab) {
       history.push(
-        getStoredProcedureDetailPath(decodedStoredProcedureFQN, activeKey)
+        getEntityDetailsPath(
+          EntityType.STORED_PROCEDURE,
+          decodedStoredProcedureFQN,
+          activeKey
+        )
       );
     }
   };
@@ -535,54 +542,71 @@ const StoredProcedurePage = () => {
         key: EntityTabs.CODE,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col
-              className="p-t-sm m-l-lg tab-content-height p-r-lg"
-              flex="auto">
-              <div className="d-flex flex-col gap-4">
-                <DescriptionV1
-                  description={description}
-                  entityFqn={decodedStoredProcedureFQN}
-                  entityName={entityName}
-                  entityType={EntityType.STORED_PROCEDURE}
-                  hasEditAccess={editDescriptionPermission}
-                  isEdit={isEdit}
-                  owner={owner}
-                  showActions={!deleted}
-                  onCancel={onCancel}
-                  onDescriptionEdit={onDescriptionEdit}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                  onThreadLinkSelect={onThreadLinkSelect}
-                />
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
+                      <DescriptionV1
+                        description={description}
+                        entityFqn={decodedStoredProcedureFQN}
+                        entityName={entityName}
+                        entityType={EntityType.STORED_PROCEDURE}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(code)}
+                        isEdit={isEdit}
+                        owner={owners}
+                        showActions={!deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
 
-                <Card className="m-b-md" data-testid="code-component">
-                  <SchemaEditor
-                    editorClass="custom-code-mirror-theme full-screen-editor-height"
-                    mode={{ name: CSMode.SQL }}
-                    options={{
-                      styleActiveLine: false,
-                      readOnly: 'nocursor',
-                    }}
-                    value={code}
-                  />
-                </Card>
-              </div>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="320px">
-              <EntityRightPanel
-                customProperties={storedProcedure}
-                dataProducts={storedProcedure?.dataProducts ?? []}
-                domain={storedProcedure?.domain}
-                editTagPermission={editTagsPermission}
-                entityFQN={decodedStoredProcedureFQN}
-                entityId={storedProcedure?.id ?? ''}
-                entityType={EntityType.STORED_PROCEDURE}
-                selectedTags={tags}
-                viewAllPermission={viewAllPermission}
-                onTagSelectionChange={handleTagSelection}
-                onThreadLinkSelect={onThreadLinkSelect}
+                      <Card className="m-b-md" data-testid="code-component">
+                        <SchemaEditor
+                          editorClass="custom-code-mirror-theme full-screen-editor-height"
+                          mode={{ name: CSMode.SQL }}
+                          options={{
+                            styleActiveLine: false,
+                            readOnly: true,
+                          }}
+                          value={code}
+                        />
+                      </Card>
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.STORED_PROCEDURE>
+                        customProperties={storedProcedure}
+                        dataProducts={storedProcedure?.dataProducts ?? []}
+                        domain={storedProcedure?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedStoredProcedureFQN}
+                        entityId={storedProcedure?.id ?? ''}
+                        entityType={EntityType.STORED_PROCEDURE}
+                        selectedTags={tags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
               />
             </Col>
           </Row>
@@ -742,6 +766,10 @@ const StoredProcedurePage = () => {
             }
           />
         </Col>
+
+        <LimitWrapper resource="storedProcedure">
+          <></>
+        </LimitWrapper>
 
         {threadLink ? (
           <ActivityThreadPanel

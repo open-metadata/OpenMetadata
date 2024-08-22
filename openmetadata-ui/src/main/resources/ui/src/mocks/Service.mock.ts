@@ -340,15 +340,17 @@ export const MOCK_METADATA_SERVICE: MetadataService = {
   updatedAt: 1698077526246,
   updatedBy: 'mayur',
   tags: [],
-  owner: {
-    id: '7a12b462-36c7-488a-b4c2-9756918704cb',
-    type: 'user',
-    name: 'mayur',
-    fullyQualifiedName: 'mayur',
-    displayName: 'Mayur Singal',
-    deleted: false,
-    href: 'http://sandbox-beta.open-metadata.org/api/v1/users/7a12b462-36c7-488a-b4c2-9756918704cb',
-  },
+  owners: [
+    {
+      id: '7a12b462-36c7-488a-b4c2-9756918704cb',
+      type: 'user',
+      name: 'mayur',
+      fullyQualifiedName: 'mayur',
+      displayName: 'Mayur Singal',
+      deleted: false,
+      href: 'http://sandbox-beta.open-metadata.org/api/v1/users/7a12b462-36c7-488a-b4c2-9756918704cb',
+    },
+  ],
   href: 'http://sandbox-beta.open-metadata.org/api/v1/services/databaseServices/9b09f404-7713-4f04-b7db-95111bac0c59',
   changeDescription: {
     fieldsAdded: [],
@@ -659,4 +661,145 @@ export const MOCK_ATHENA_SERVICE = {
   },
   additionalProperties: false,
   required: ['s3StagingDir', 'awsConfig', 'workgroup'],
+};
+
+export const AIR_BYTE_CONNECTION = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  title: 'AirbyteConnection',
+  description: 'Airbyte Metadata Database Connection Config',
+  type: 'object',
+  javaType:
+    'org.openmetadata.schema.services.connections.pipeline.AirbyteConnection',
+  definitions: {
+    AirbyteType: {
+      description: 'Service type.',
+      type: 'string',
+      enum: ['Airbyte'],
+      default: 'Airbyte',
+    },
+  },
+  properties: {
+    type: {
+      title: 'Service Type',
+      description: 'Service Type',
+      default: 'Airbyte',
+      type: 'string',
+      enum: ['Airbyte'],
+    },
+    hostPort: {
+      expose: true,
+      description: 'Pipeline Service Management/UI URL.',
+      type: 'string',
+      format: 'uri',
+    },
+    username: {
+      title: 'Username',
+      description: 'Username to connect to Airbyte.',
+      type: 'string',
+    },
+    password: {
+      title: 'Password',
+      description: 'Password to connect to Airbyte.',
+      type: 'string',
+      format: 'password',
+    },
+    supportsMetadataExtraction: {
+      title: 'Supports Metadata Extraction',
+      description: 'Supports Metadata Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+  },
+  additionalProperties: false,
+  required: ['hostPort'],
+};
+
+export const ATLAS_CONNECTION = {
+  $schema: 'http://json-schema.org/draft-07/schema#',
+  title: 'AtlasConnection',
+  description: 'Atlas Connection Config',
+  type: 'object',
+  javaType:
+    'org.openmetadata.schema.services.connections.metadata.AtlasConnection',
+  definitions: {
+    atlasType: {
+      description: 'Service type.',
+      type: 'string',
+      enum: ['Atlas'],
+      default: 'Atlas',
+    },
+  },
+  properties: {
+    type: {
+      description: 'Service Type',
+      default: 'Atlas',
+      type: 'string',
+      enum: ['Atlas'],
+    },
+    username: {
+      description:
+        'username to connect  to the Atlas. This user should have privileges to read all the metadata in Atlas.',
+      type: 'string',
+    },
+    password: {
+      description: 'password to connect  to the Atlas.',
+      type: 'string',
+      format: 'password',
+    },
+    hostPort: {
+      description: 'Host and port of the Atlas service.',
+      title: 'Host and Port',
+      type: 'string',
+      format: 'uri',
+      expose: true,
+    },
+    databaseServiceName: {
+      description: 'service type of the data source.',
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    messagingServiceName: {
+      description: 'service type of the messaging source',
+      type: 'array',
+      items: {
+        type: 'string',
+      },
+    },
+    entity_type: {
+      title: 'Entity Type',
+      description: 'Name of the Entity Type available in Atlas.',
+      type: 'string',
+    },
+    connectionOptions: {
+      javaType:
+        'org.openmetadata.schema.services.connections.database.ConnectionOptions',
+      description:
+        'Additional connection options to build the URL that can be sent to service during the connection.',
+      type: 'object',
+      additionalProperties: {
+        type: 'string',
+      },
+    },
+    connectionArguments: {
+      javaType:
+        'org.openmetadata.schema.services.connections.database.ConnectionArguments',
+      description:
+        'Additional connection arguments such as security or protocol configs that can be sent to service during connection.',
+      type: 'object',
+      additionalProperties: {
+        '.{1,}': {
+          type: 'string',
+        },
+      },
+    },
+    supportsMetadataExtraction: {
+      description: 'Supports Metadata Extraction.',
+      type: 'boolean',
+      default: true,
+    },
+  },
+  required: ['entity_type', 'username', 'password'],
+  additionalProperties: false,
 };

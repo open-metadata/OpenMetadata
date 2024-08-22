@@ -3,15 +3,13 @@ title: Run the Fivetran Connector Externally
 slug: /connectors/pipeline/fivetran/yaml
 ---
 
-# Run the Fivetran Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Fivetran"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+unavailableFeatures=["Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the Fivetran connector.
 
@@ -23,12 +21,6 @@ Configure and schedule Fivetran metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
 
 To access Fivetran APIs, a Fivetran account on a Standard, Enterprise, or Business Critical plan is required.
 
@@ -113,7 +105,7 @@ This refers to the maximum number of records that can be returned in a single pa
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: fivetran
   serviceName: local_fivetran

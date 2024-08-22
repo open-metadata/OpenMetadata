@@ -46,8 +46,8 @@ const mockUpdateTierTag = jest.fn();
 const mockShowErrorToast = jest.fn();
 const ENTITY_MISSING_ERROR = 'Entity missing error.';
 
-jest.mock('../../components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     currentUser: mockUserData,
   })),
 }));

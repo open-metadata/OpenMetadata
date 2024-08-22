@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FilterOutlined } from '@ant-design/icons';
 import { Tooltip, Typography } from 'antd';
 import Table, { ColumnsType } from 'antd/lib/table';
 import {
@@ -27,6 +28,7 @@ import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TagLabel } from '../../../generated/entity/data/container';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
@@ -36,10 +38,7 @@ import {
   getAllTags,
   searchTagInData,
 } from '../../../utils/TableTags/TableTags.utils';
-import {
-  getFilterIcon,
-  getTableExpandableConfig,
-} from '../../../utils/TableUtils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
@@ -56,6 +55,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
   entityFqn,
   onThreadLinkSelect,
 }) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   const [editContainerColumnDescription, setEditContainerColumnDescription] =
@@ -172,7 +172,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -197,7 +204,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
         onFilter: searchTagInData,
@@ -237,6 +251,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     <>
       <Table
         bordered
+        className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
         dataSource={dataModel?.columns}

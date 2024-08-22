@@ -17,9 +17,9 @@ from pydantic import BaseModel, Field
 
 
 class ExecutionEvent(BaseModel):
-    executionEventId: Optional[str]
-    executionPlanId: Optional[str]
-    applicationName: Optional[str]
+    executionEventId: Optional[str] = None
+    executionPlanId: Optional[str] = None
+    applicationName: Optional[str] = None
 
 
 class ExecutionEvents(BaseModel):
@@ -30,15 +30,15 @@ class ExecutionEvents(BaseModel):
 
 
 class Inputs(BaseModel):
-    source: Optional[str]
+    source: Optional[str] = None
 
 
 class Output(BaseModel):
-    source: Optional[str]
+    source: Optional[str] = None
 
 
 class AttributesNames(BaseModel):
-    id: Optional[str]
+    id: Optional[str] = None
 
 
 class Extra(BaseModel):
@@ -46,8 +46,8 @@ class Extra(BaseModel):
 
 
 class ExecutionPlan(BaseModel):
-    id: Optional[str] = Field(..., alias="_id")
-    name: Optional[str]
+    id: Optional[str] = Field(None, alias="_id")
+    name: Optional[str] = None
     inputs: Optional[List[Inputs]] = []
     output: Optional[Output] = None
     extra: Optional[Extra] = None
@@ -58,13 +58,13 @@ class ExecutionDetail(BaseModel):
 
 
 class ColNodes(BaseModel):
-    id: Optional[str] = Field(..., alias="_id")
-    name: Optional[str]
+    id: Optional[str] = Field(None, alias="_id")
+    name: Optional[str] = None
 
 
 class ColLineage(BaseModel):
-    source: Optional[str]
-    target: Optional[str]
+    source: Optional[str] = None
+    target: Optional[str] = None
 
 
 class Lineage(BaseModel):

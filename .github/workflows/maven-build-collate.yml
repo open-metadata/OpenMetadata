@@ -67,9 +67,11 @@ jobs:
         uses: aurelien-baudet/workflow-dispatch@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SHA: ${{ github.event_name == 'push' && github.event.after || github.event.pull_request.head.sha }}
         with:
           workflow: OpenMetadata Collate Test
           ref: main
           repo: open-metadata/openmetadata-collate
           token: ${{ secrets.COLLATE_PAT }}
           wait-for-completion: true
+          inputs: '{ "sha": "${{ env.SHA }}" }'

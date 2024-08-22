@@ -18,8 +18,11 @@ from __future__ import annotations
 import reprlib
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Callable, List, Optional, TypeVar, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
 
+from metadata.data_quality.validations.runtime_param_setter.param_setter import (
+    RuntimeParameterSetter,
+)
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -28,16 +31,24 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.profiler.processor.runner import QueryRunner
 
+if TYPE_CHECKING:
+    from pandas import DataFrame
+
 T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
 
 
 class BaseTestValidator(ABC):
-    """Abstract class for test case handlers"""
+    """Abstract class for test case handlers
+    The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
+    This can be useful to resolve complex test parameters based on the parameters gibven by the user.
+    """
+
+    runtime_parameter_setter: Optional[Type[RuntimeParameterSetter]] = None
 
     def __init__(
         self,
-        runner: QueryRunner,
+        runner: Union[QueryRunner, List["DataFrame"]],
         test_case: TestCase,
         execution_date: Union[datetime, float],
     ) -> None:
@@ -94,6 +105,8 @@ class BaseTestValidator(ABC):
         row_count: Optional[int] = None,
         failed_rows: Optional[int] = None,
         passed_rows: Optional[int] = None,
+        min_bound: Optional[float] = None,
+        max_bound: Optional[float] = None,
     ) -> TestCaseResult:
         """Returns a TestCaseResult object with the given args
 
@@ -111,9 +124,12 @@ class BaseTestValidator(ABC):
             result=result,
             testResultValue=test_result_value,
             sampleData=None,
+            # if users don't set the min/max bound, we'll change the inf/-inf (used for computation) to None
+            minBound=None if min_bound == float("-inf") else min_bound,
+            maxBound=None if max_bound == float("inf") else max_bound,
         )
 
-        if (row_count is not None) and (
+        if (row_count is not None and row_count != 0) and (
             # we'll need at least one of these to be not None to compute the other
             (failed_rows is not None)
             or (passed_rows is not None)
@@ -149,7 +165,7 @@ class BaseTestValidator(ABC):
         """
         return TestCaseStatus.Success if condition else TestCaseStatus.Failed
 
-    def get_min_bound(self, param_name: str):
+    def get_min_bound(self, param_name: str) -> Optional[float]:
         """get min value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -158,7 +174,7 @@ class BaseTestValidator(ABC):
             default=float("-inf"),
         )
 
-    def get_max_bound(self, param_name: str):
+    def get_max_bound(self, param_name: str) -> Optional[float]:
         """get max value for max value in column test case"""
         return self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -166,3 +182,7 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_predicted_value(self) -> Optional[str]:
+        """Get predicted value"""
+        return None

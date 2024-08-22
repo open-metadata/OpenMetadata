@@ -51,16 +51,18 @@ site_menu:
     url: /deployment/ingestion
   - category: Deployment / Ingestion / OpenMetadata
     url: /deployment/ingestion/openmetadata
-  - category: Deployment / Ingestion / Airflow
-    url: /deployment/ingestion/airflow
-  - category: Deployment / Ingestion / MWAA
-    url: /deployment/ingestion/mwaa
-  - category: Deployment / Ingestion / GCS Composer
-    url: /deployment/ingestion/gcs-composer
-  - category: Deployment / Ingestion / GitHub Actions
-    url: /deployment/ingestion/github-actions
-  - category: Deployment / Ingestion / Credentials
-    url: /deployment/ingestion/credentials
+  - category: Deployment / Ingestion / External Ingestion
+    url: /deployment/ingestion/external
+  - category: Deployment / Ingestion / External / Airflow
+    url: /deployment/ingestion/external/airflow
+  - category: Deployment / Ingestion / External / MWAA
+    url: /deployment/ingestion/external/mwaa
+  - category: Deployment / Ingestion / External / GCS Composer
+    url: /deployment/ingestion/external/gcs-composer
+  - category: Deployment / Ingestion / External / GitHub Actions
+    url: /deployment/ingestion/external/github-actions
+  - category: Deployment / Ingestion / External / Credentials
+    url: /deployment/ingestion/external/credentials
 
   - category: Deployment / Enable Security
     url: /deployment/security
@@ -96,6 +98,8 @@ site_menu:
     url: /deployment/security/custom-oidc/bare-metal
   - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
     url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / OIDC SSO
+    url: /deployment/security/oidc
   - category: Deployment / Enable Security / Google SSO
     url: /deployment/security/google
   - category: Deployment / Enable Security / Google SSO / Docker
@@ -154,8 +158,6 @@ site_menu:
     url: /deployment/security/enable-jwt-tokens
   - category: Deployment / Enable Security / JWT Troubleshooting
     url: /deployment/security/jwt-troubleshooting
-  - category: Deployment / Enable Security / Enable Password Masking
-    url: /deployment/security/enable-password-masking
 
   - category: Deployment / Enable Secrets Manager
     url: /deployment/secrets-manager
@@ -165,6 +167,8 @@ site_menu:
     url: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
   - category: Deployment / Enable Secrets Manager / Supported Implementations / AWS SSM Parameter Store
     url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / Azure Key Vault
+    url: /deployment/secrets-manager/supported-implementations/azure-key-vault
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
@@ -195,10 +199,16 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
+  - category: Deployment / Metrics
+    url: /deployment/metrics
+
   - category: How-to Guides
     url: /how-to-guides
     color: violet-70
     icon: openmetadata
+
+  - category: How-to Guides / OpenMetadata Features in a Nutshell
+    url: /how-to-guides/features
 
   - category: How-to Guides / Admin Guide
     url: /how-to-guides/admin-guide
@@ -224,10 +234,14 @@ site_menu:
     url: /how-to-guides/admin-guide/roles-policies/authorization
   - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
     url: /how-to-guides/admin-guide/roles-policies/use-cases
+  - category: How-to Guides / Admin Guide / Set up Data Observability Alerts and Notifications
+    url: /how-to-guides/admin-guide/alerts
   - category: How-to Guides / Admin Guide / CLI Ingestion with Basic Auth
     url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
   - category: How-to Guides / Admin Guide / How to Add Custom Logo
     url: /how-to-guides/admin-guide/how-to-add-custom-logo
+  - category: How-to Guides / Admin Guide / Reindexing Search
+    url: /how-to-guides/admin-guide/Reindexing-Search  
 
   - category: How-to Guides / Guide for Data Users
     url: /how-to-guides/guide-for-data-users
@@ -277,10 +291,14 @@ site_menu:
     url: /how-to-guides/data-collaboration
   - category: How-to Guides / Data Collaboration / Understanding Activity Feeds
     url: /how-to-guides/data-collaboration/activity-feeds
+  - category: How-to Guides / Data Collaboration / Conversation Threads
+    url: /how-to-guides/data-collaboration/conversation
+  - category: How-to Guides / Data Collaboration / Tasks
+    url: /how-to-guides/data-collaboration/tasks
   - category: How-to Guides / Data Collaboration / How to Request for Description
     url: /how-to-guides/data-collaboration/request-description
   - category: How-to Guides / Data Collaboration / How to Request for Tags
-    url: /how-to-guides/data-collaboration/request-tags
+    url: /how-to-guides/data-collaboration/request-tags 
   - category: How-to Guides / Data Collaboration / Overview of Announcements
     url: /how-to-guides/data-collaboration/announcements
   - category: How-to Guides / Data Collaboration / How to Create an Announcement
@@ -316,6 +334,12 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
+  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
+    url: /how-to-guides/data-insights/airflow-sdk
+  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
+    url: /how-to-guides/data-insights/metadata-cli   
+  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
+    url: /how-to-guides/data-insights/elasticsearch-reindex 
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
   - category: How-to Guides / Data Insights / Cost Analysis
@@ -337,6 +361,8 @@ site_menu:
     url: /how-to-guides/data-governance/glossary/create-terms
   - category: How-to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
     url: /how-to-guides/data-governance/glossary/import
+  - category: How-to Guides / Data Governance / Glossary / Glossary Export
+    url: /how-to-guides/data-governance/glossary/export
   - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
     url: /how-to-guides/data-governance/glossary/approval
   - category: How-to Guides / Data Governance / Glossary / Glossary Styling
@@ -368,10 +394,16 @@ site_menu:
     url: /releases/latest-release
   - category: Releases / Supported Releases
     url: /releases/supported
-  - category: Releases / Roadmap
-    url: /releases/roadmap
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
+  - category: Releases / All Releases / 1.3.1 Release
+    url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release
     url: /releases/all-releases/#1.3.0-release
   - category: Releases / All Releases / 1.2.0 Release
@@ -418,6 +450,9 @@ site_menu:
     url: /releases/all-releases/#0.5.0-release
   - category: Releases / All Releases / 0.4.0 Release
     url: /releases/all-releases/#0.4.0-release
+  
+  - category: Roadmap
+    url: /roadmap
 
   - category: Connectors
     url: /connectors
@@ -442,6 +477,12 @@ site_menu:
     url: /connectors/database/bigquery/yaml
   - category: Connectors / Database / BigQuery / Roles
     url: /connectors/database/bigquery/roles
+  - category: Connectors / Database / BigTable
+    url: /connectors/database/bigtable
+  - category: Connectors / Database / BigTable / Run Externally
+    url: /connectors/database/bigtable/yaml
+  - category: Connectors / Database / BigTable / Roles
+    url: /connectors/database/bigtable/roles
   - category: Connectors / Database / Clickhouse
     url: /connectors/database/clickhouse
   - category: Connectors / Database / Clickhouse / Run Externally
@@ -677,6 +718,10 @@ site_menu:
     url: /connectors/pipeline/dagster
   - category: Connectors / Pipeline / Dagster / Run Externally
     url: /connectors/pipeline/dagster/yaml
+  - category: Connectors / Pipeline / KafkaConnect
+    url: /connectors/pipeline/kafkaconnect
+  - category: Connectors / Pipeline / KafkaConnect / Run Externally
+    url: /connectors/pipeline/kafkaconnect/yaml
   - category: Connectors / Pipeline / Databricks Pipeline
     url: /connectors/pipeline/databricks-pipeline
   - category: Connectors / Pipeline / Databricks Pipeline / Run Externally
@@ -699,6 +744,8 @@ site_menu:
     url: /connectors/pipeline/nifi/yaml
   - category: Connectors / Pipeline / Nifi / Troubleshooting
     url: /connectors/pipeline/nifi/troubleshooting
+  - category: Connectors / Pipeline / Openlineage
+    url: /connectors/pipeline/openlineage
   - category: Connectors / Pipeline / Spline
     url: /connectors/pipeline/spline
   - category: Connectors / Pipeline / Spline / Run Externally
@@ -721,6 +768,14 @@ site_menu:
     url: /connectors/storage/s3
   - category: Connectors / Storage / S3 / Run Externally
     url: /connectors/storage/s3/yaml
+  - category: Connectors / Storage / GCS
+    url: /connectors/storage/gcs
+  - category: Connectors / Storage / GCS / Run Externally
+    url: /connectors/storage/gcs/yaml
+  - category: Connectors / Storage / ADLS
+    url: /connectors/storage/adls
+  - category: Connectors / Storage / ADLS / Run Externally
+    url: /connectors/storage/adls/yaml
 
   - category: Connectors / Search
     url: /connectors/search
@@ -738,7 +793,7 @@ site_menu:
   - category: Connectors / Metadata / Atlas
     url: /connectors/metadata/atlas
   - category: Connectors / Metadata / Atlas / Run Externally
-    url: /connectors/metadata/atlas/external
+    url: /connectors/metadata/atlas/yaml
   - category: Connectors / Metadata / Alation
     url: /connectors/metadata/alation
   - category: Connectors / Metadata / Alation / Run Externally
@@ -773,10 +828,10 @@ site_menu:
     url: /connectors/ingestion/workflows/lineage/filter-query-set
   - category: Connectors / Ingestion / Workflows / dbt
     url: /connectors/ingestion/workflows/dbt
-  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt UI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-ui
-  - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt CLI
-    url: /connectors/ingestion/workflows/dbt/ingest-dbt-cli
+  - category: Connectors / Ingestion / Workflows / dbt / Configure dbt workflow from OpenMetadata UI
+    url: /connectors/ingestion/workflows/dbt/configure-dbt-workflow-from-ui
+  - category: Connectors / Ingestion / Workflows / dbt / Run Externally
+    url: /connectors/ingestion/workflows/dbt/run-dbt-workflow-externally
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Owner
     url: /connectors/ingestion/workflows/dbt/ingest-dbt-owner
   - category: Connectors / Ingestion / Workflows / dbt / Ingest dbt Descriptions
@@ -819,30 +874,12 @@ site_menu:
     url: /connectors/ingestion/versioning/change-events
   - category: Connectors / Ingestion / Versioning / Event Notification via Webhooks
     url: /connectors/ingestion/versioning/event-notification-via-webhooks
+  - category: Connectors / Ingestion / Great Expectations
+    url: /connectors/ingestion/great-expectations
   - category: Connectors / Ingestion / Ingestion Pipeline UI Deployment
     url: /connectors/ingestion/deployment
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
-
-  - category: Features
-    url: /features
-    color: violet-70
-    icon: openmetadata
-
-  - category: Features / Discovery & Collaboration
-    url: /features/discovery-collaboration
-
-  - category: Features / Integrations
-    url: /features/integrations
-  - category: Features / Integrations / Great Expectations
-    url: /features/integrations/great-expectations
-  - category: Features / Integrations / Prefect
-    url: /features/integrations/prefect
-  - category: Features / Data Insights
-    url: /features/data-insight
-
-  - category: Features / Alerts & Notifications
-    url: /features/alerts-notifications
 
   - category: Main Concepts
     url: /main-concepts
@@ -1797,6 +1834,20 @@ site_menu:
     url: /developers/contribute/build-code-and-run-tests/openmetadata-ui
   - category: Developers / Contribute / Build the Code and Run Tests / Cypress Integration Tests
     url: /developers/contribute/build-code-and-run-tests/cypress-integration-tests
+  - category: Developers / Contribute / Developing a New Connector
+    url: /developers/contribute/developing-a-new-connector
+  - category: Developers / Contribute / Developing a New Connector / 1. Define the JSON Schema
+    url: /developers/contribute/developing-a-new-connector/define-json-schema
+  - category: Developers / Contribute / Developing a New Connector / 2. Develop the Ingestion Code
+    url: /developers/contribute/developing-a-new-connector/develop-ingestion-code
+  - category: Developers / Contribute / Developing a New Connector / 3. Apply UI Changes
+    url: /developers/contribute/developing-a-new-connector/apply-ui-changes
+  - category: Developers / Contribute / Developing a New Connector / 4. Create the Java ClassConverter
+    url: /developers/contribute/developing-a-new-connector/create-java-class-converter
+  - category: Developers / Contribute / Developing a New Connector / 5. Test it
+    url: /developers/contribute/developing-a-new-connector/test-it
+  - category: Developers / Contribute / Developing a New Connector / 6. Update the Documentation
+    url: /developers/contribute/developing-a-new-connector/update-documentation
   - category: Developers / Contribute / UX Style Guide
     url: /developers/contribute/ux-style-guide
   - category: Developers / Webhooks
@@ -1820,8 +1871,6 @@ site_menu:
     url: /sdk/python/entities/ml-model
   - category: SDK / Python SDK / Ingestion
     url: /sdk/python/ingestion
-  - category: SDK / Python SDK / Ingestion / dbt
-    url: /sdk/python/ingestion/dbt
   - category: SDK / Python SDK / Ingestion / Lineage
     url: /sdk/python/ingestion/lineage
   - category: SDK / Python SDK / Ingestion / Tags

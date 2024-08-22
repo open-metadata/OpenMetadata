@@ -11,21 +11,31 @@
  *  limitations under the License.
  */
 
-.executions-date-picker {
+.ant-picker-range.executions-date-picker {
+  padding: 0 6px 0 0;
+  max-width: 200px;
   .ant-picker-range-separator {
     display: none;
   }
   .ant-picker-clear {
-    right: 4px;
+    right: -6px;
+  }
+
+  .ant-picker-active-bar {
+    margin-left: 0;
+    width: 85px !important;
   }
 }
 
 .range-picker-button-width {
-  @apply delay-100;
   max-width: 130px;
   position: relative;
 }
 
 .range-picker-button {
   padding: 0px 8px;
+
+  .date-container {
+    display: inline-flex;
+  }
 }

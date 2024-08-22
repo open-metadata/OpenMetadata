@@ -3,30 +3,13 @@ title: MSSQL
 slug: /connectors/database/mssql
 ---
 
-# MSSQL
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="MSSQL"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+unavailableFeatures=["Owners", "Tags", "SSIS packages"]
+/ %}
 
 In this section, we provide guides and references to use the MSSQL connector.
 
@@ -44,10 +27,6 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/mssql/yaml"} /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 MSSQL User must grant `SELECT` privilege to fetch the metadata of tables and views.
 
@@ -126,7 +105,8 @@ For details step please refer to this [link](https://docs.microsoft.com/en-us/sq
 - **Password**: Password to connect to MSSQL.
 - **Host and Port**: Enter the fully qualified hostname and port number for your MSSQL deployment in the Host and Port field.
 - **URI String**: In case of a `pyodbc` connection.
-- **Database (Optional)**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+- **Database**: The initial database to establish a connection to the data source.
+- **Ingest All Databases**: If you need to ingest multiple databases - aside from the initial one above - you can enable this option.
 
 {% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
 

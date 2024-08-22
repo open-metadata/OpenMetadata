@@ -12,7 +12,7 @@
  */
 
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
-import { EntityLineageReponse } from '../components/Lineage/Lineage.interface';
+import { EntityLineageResponse } from '../components/Lineage/Lineage.interface';
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import APIClient from './index';
 
@@ -29,7 +29,7 @@ export const getLineageDataByFQN = async (
   queryFilter?: string
 ) => {
   const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
-  const response = await APIClient.get<EntityLineageReponse>(
+  const response = await APIClient.get<EntityLineageResponse>(
     `lineage/getLineage`,
     {
       params: {
@@ -42,6 +42,27 @@ export const getLineageDataByFQN = async (
       },
     }
   );
+
+  return response.data;
+};
+
+export const exportLineage = async (
+  fqn: string,
+  entityType: string,
+  config?: LineageConfig,
+  queryFilter?: string
+) => {
+  const { upstreamDepth = 1, downstreamDepth = 1 } = config ?? {};
+  const response = await APIClient.get<string>(`lineage/export`, {
+    params: {
+      fqn,
+      type: entityType,
+      upstreamDepth,
+      downstreamDepth,
+      query_filter: queryFilter,
+      includeDeleted: false,
+    },
+  });
 
   return response.data;
 };

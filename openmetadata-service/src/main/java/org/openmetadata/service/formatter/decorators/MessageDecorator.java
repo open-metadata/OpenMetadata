@@ -17,6 +17,8 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
+import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
+import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -32,8 +34,8 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -60,11 +62,13 @@ public interface MessageDecorator<T> {
 
   String getRemoveMarkerClose();
 
-  String getEntityUrl(String entityType, String fqn, String additionalInput);
+  String getEntityUrl(String prefix, String fqn, String additionalInput);
 
-  T buildEntityMessage(ChangeEvent event);
+  T buildEntityMessage(String publisherName, ChangeEvent event);
 
-  T buildThreadMessage(ChangeEvent event);
+  T buildTestMessage(String publisherName);
+
+  T buildThreadMessage(String publisherName, ChangeEvent event);
 
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
     String fqn = entityInterface.getFullyQualifiedName();
@@ -77,24 +81,80 @@ public interface MessageDecorator<T> {
     // Hande Test Case
     if (entityType.equals(Entity.TEST_CASE)) {
       TestCase testCase = (TestCase) entityInterface;
-      MessageParser.EntityLink link = MessageParser.EntityLink.parse(testCase.getEntityLink());
-      // TODO: this needs to be fixed no way to know the UI redirection
       return getEntityUrl(
-          link.getEntityType(), link.getEntityFQN(), "profiler?activeTab=Data%20Quality");
+          "incident-manager", testCase.getFullyQualifiedName(), "test-case-results");
+    }
+
+    // Glossary Term
+    if (entityType.equals(Entity.GLOSSARY_TERM)) {
+      // Glossary Term is a special case where the URL is different
+      return getEntityUrl(Entity.GLOSSARY, fqn, "");
+    }
+
+    // Tag
+    if (entityType.equals(Entity.TAG)) {
+      // Tags need to be redirected to Classification Page
+      return getEntityUrl("tags", fqn.split("\\.")[0], "");
+    }
+
+    // IngestionPipeline
+    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
+      return getIngestionPipelineUrl(this, entityType, entityInterface);
     }
 
     return getEntityUrl(entityType, fqn, "");
   }
 
-  default T buildOutgoingMessage(ChangeEvent event) {
+  default String buildThreadUrl(
+      ThreadType threadType, String entityType, EntityInterface entityInterface) {
+    String activeTab =
+        threadType.equals(ThreadType.Task) ? "activity_feed/tasks" : "activity_feed/all";
+    String fqn = entityInterface.getFullyQualifiedName();
+    if (CommonUtil.nullOrEmpty(fqn)) {
+      EntityInterface result =
+          Entity.getEntity(entityType, entityInterface.getId(), "id", Include.NON_DELETED);
+      fqn = result.getFullyQualifiedName();
+    }
+
+    // Hande Test Case
+    if (entityType.equals(Entity.TEST_CASE)) {
+      TestCase testCase = (TestCase) entityInterface;
+      return getEntityUrl("incident-manager", testCase.getFullyQualifiedName(), "issues");
+    }
+
+    // Glossary Term
+    if (entityType.equals(Entity.GLOSSARY_TERM)) {
+      // Glossary Term is a special case where the URL is different
+      return getEntityUrl(Entity.GLOSSARY, fqn, activeTab);
+    }
+
+    // Tag
+    if (entityType.equals(Entity.TAG)) {
+      // Tags need to be redirected to Classification Page
+      return getEntityUrl("tags", fqn.split("\\.")[0], "");
+    }
+
+    // IngestionPipeline
+    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
+      return getIngestionPipelineUrl(this, entityType, entityInterface);
+    }
+
+    return getEntityUrl(entityType, fqn, activeTab);
+  }
+
+  default T buildOutgoingMessage(String publisherName, ChangeEvent event) {
     if (event.getEntityType().equals(Entity.THREAD)) {
-      return buildThreadMessage(event);
+      return buildThreadMessage(publisherName, event);
     } else if (Entity.getEntityList().contains(event.getEntityType())) {
-      return buildEntityMessage(event);
+      return buildEntityMessage(publisherName, event);
     } else {
       throw new IllegalArgumentException(
           "Cannot Build Message, Unsupported Entity Type: " + event.getEntityType());
     }
+  }
+
+  default T buildOutgoingTestMessage(String publisherName) {
+    return buildTestMessage(publisherName);
   }
 
   default String getPlaintextDiff(String oldValue, String newValue) {
@@ -141,7 +201,7 @@ public interface MessageDecorator<T> {
     return diff;
   }
 
-  default OutgoingMessage createEntityMessage(ChangeEvent event) {
+  default OutgoingMessage createEntityMessage(String publisherName, ChangeEvent event) {
     OutgoingMessage message = new OutgoingMessage();
     message.setUserName(event.getUserName());
     EntityInterface entityInterface = getEntity(event);
@@ -155,54 +215,70 @@ public interface MessageDecorator<T> {
       String headerTxt;
       String headerText;
       if (eventType.equals(Entity.QUERY)) {
-        headerTxt = "%s posted on " + eventType;
-        headerText = String.format(headerTxt, event.getUserName());
+        headerTxt = "[%s] %s posted on " + eventType;
+        headerText = String.format(headerTxt, publisherName, event.getUserName());
       } else {
         String entityUrl = this.buildEntityUrl(event.getEntityType(), entityInterface);
         message.setEntityUrl(entityUrl);
-        headerTxt = "%s posted on " + eventType + " %s";
-        headerText = String.format(headerTxt, event.getUserName(), entityUrl);
+        headerTxt = "[%s] %s posted on " + eventType + " %s";
+        headerText = String.format(headerTxt, publisherName, event.getUserName(), entityUrl);
       }
       message.setHeader(headerText);
     }
-    List<Thread> thread = FeedUtils.getThreadWithMessage(this, event, "admin");
+    List<Thread> thread = FeedUtils.getThreadWithMessage(this, event);
     List<String> messages = new ArrayList<>();
     thread.forEach(entry -> messages.add(entry.getMessage()));
     message.setMessages(messages);
     return message;
   }
 
-  default OutgoingMessage createThreadMessage(ChangeEvent event) {
+  default OutgoingMessage createThreadMessage(String publisherName, ChangeEvent event) {
     OutgoingMessage message = new OutgoingMessage();
     message.setUserName(event.getUserName());
     Thread thread = getThread(event);
+
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(thread.getAbout());
+    EntityInterface entityInterface = Entity.getEntity(entityLink, "", Include.ALL);
+    String entityUrl = buildEntityUrl(entityLink.getEntityType(), entityInterface);
+
     String headerMessage = "";
     List<String> attachmentList = new ArrayList<>();
+
+    String assetUrl =
+        getThreadAssetsUrl(thread.getType(), MessageParser.EntityLink.parse(thread.getAbout()));
     switch (thread.getType()) {
       case Conversation -> {
         switch (event.getEventType()) {
           case THREAD_CREATED -> {
             headerMessage =
                 String.format(
-                    "%s started a conversation for asset %s",
-                    thread.getCreatedBy(), thread.getAbout());
-            attachmentList.add(thread.getMessage());
+                    "[%s] @%s started a conversation for asset %s",
+                    publisherName, thread.getCreatedBy(), assetUrl);
+            attachmentList.add(replaceEntityLinks(thread.getMessage()));
           }
           case POST_CREATED -> {
-            headerMessage = String.format("%s posted a message", thread.getCreatedBy());
+            headerMessage =
+                String.format(
+                    "[%s] @%s posted a message on asset %s",
+                    publisherName, thread.getCreatedBy(), assetUrl);
             attachmentList.add(
-                String.format("%s : %s", thread.getCreatedBy(), thread.getMessage()));
+                String.format(
+                    "@%s : %s", thread.getCreatedBy(), replaceEntityLinks(thread.getMessage())));
             thread
                 .getPosts()
                 .forEach(
                     post ->
                         attachmentList.add(
-                            String.format("%s : %s", post.getFrom(), post.getMessage())));
+                            String.format(
+                                "@%s : %s",
+                                post.getFrom(), replaceEntityLinks(post.getMessage()))));
           }
           case THREAD_UPDATED -> {
             headerMessage =
-                String.format("%s posted update on Conversation", thread.getUpdatedBy());
-            attachmentList.add(thread.getMessage());
+                String.format(
+                    "[%s] @%s posted update on Conversation for asset %s",
+                    publisherName, thread.getUpdatedBy(), assetUrl);
+            attachmentList.add(replaceEntityLinks(thread.getMessage()));
           }
         }
       }
@@ -211,56 +287,59 @@ public interface MessageDecorator<T> {
           case THREAD_CREATED -> {
             headerMessage =
                 String.format(
-                    "%s created a Task with Id : %s",
-                    thread.getCreatedBy(), thread.getTask().getId());
+                    "[%s] @%s created a Task for %s %s",
+                    publisherName, thread.getCreatedBy(), entityLink.getEntityType(), assetUrl);
             attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
             attachmentList.add(
                 String.format(
                     "Assignees : %s",
                     convertInputListToString(
                         thread.getTask().getAssignees().stream()
-                            .map(EntityReference::getName)
+                            .map(assignee -> String.format("@%s", assignee.getName()))
                             .toList())));
             attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
           }
           case POST_CREATED -> {
             headerMessage =
                 String.format(
-                    "%s posted a message on the Task with Id : %s",
-                    thread.getCreatedBy(), thread.getTask().getId());
+                    "[%s] @%s posted a message on the Task with Id : %s for Asset %s",
+                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
             thread
                 .getPosts()
                 .forEach(
                     post ->
                         attachmentList.add(
-                            String.format("%s : %s", post.getFrom(), post.getMessage())));
+                            String.format(
+                                "@%s : %s",
+                                post.getFrom(), replaceEntityLinks(post.getMessage()))));
           }
           case THREAD_UPDATED -> {
             headerMessage =
                 String.format(
-                    "%s posted update on the Task with Id : %s",
-                    thread.getUpdatedBy(), thread.getTask().getId());
+                    "[%s] @%s posted update on the Task with Id : %s for Asset %s",
+                    publisherName, thread.getUpdatedBy(), thread.getTask().getId(), assetUrl);
             attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
             attachmentList.add(
                 String.format(
                     "Assignees : %s",
                     convertInputListToString(
                         thread.getTask().getAssignees().stream()
-                            .map(EntityReference::getName)
+                            .map(assignee -> String.format("@%s", assignee.getName()))
                             .toList())));
             attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
           }
           case TASK_CLOSED -> {
             headerMessage =
                 String.format(
-                    "%s closed Task with Id : %s", thread.getCreatedBy(), thread.getTask().getId());
+                    "[%s] @%s closed Task with Id : %s for Asset %s",
+                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
             attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
           }
           case TASK_RESOLVED -> {
             headerMessage =
                 String.format(
-                    "%s resolved Task with Id : %s",
-                    thread.getCreatedBy(), thread.getTask().getId());
+                    "[%s] @%s resolved Task with Id : %s for Asset %s",
+                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
             attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
           }
         }
@@ -269,7 +348,9 @@ public interface MessageDecorator<T> {
         switch (event.getEventType()) {
           case THREAD_CREATED -> {
             headerMessage =
-                String.format("**%s** posted an **Announcement**", thread.getCreatedBy());
+                String.format(
+                    "[%s] **@%s** posted an **Announcement**",
+                    publisherName, thread.getCreatedBy());
             attachmentList.add(
                 String.format("Description : %s", thread.getAnnouncement().getDescription()));
             attachmentList.add(
@@ -281,18 +362,22 @@ public interface MessageDecorator<T> {
           }
           case POST_CREATED -> {
             headerMessage =
-                String.format("**%s** posted a message on **Announcement**", thread.getCreatedBy());
+                String.format(
+                    "**@%s** posted a message on **Announcement**", thread.getCreatedBy());
             thread
                 .getPosts()
                 .forEach(
                     post ->
                         attachmentList.add(
-                            String.format("%s : %s", post.getFrom(), post.getMessage())));
+                            String.format(
+                                "@%s : %s",
+                                post.getFrom(), replaceEntityLinks(post.getMessage()))));
           }
           case THREAD_UPDATED -> {
             headerMessage =
                 String.format(
-                    "**%s** posted an update on  **Announcement**", thread.getUpdatedBy());
+                    "[%s] **@%s** posted an update on  **Announcement**",
+                    publisherName, thread.getUpdatedBy());
             attachmentList.add(
                 String.format("Description : %s", thread.getAnnouncement().getDescription()));
             attachmentList.add(
@@ -310,11 +395,34 @@ public interface MessageDecorator<T> {
     }
     message.setHeader(headerMessage);
     message.setMessages(attachmentList);
+
+    message.setEntityUrl(entityUrl);
     return message;
   }
 
-  private String getDateString(long epochTimestamp) {
+  default String getThreadAssetsUrl(
+      ThreadType threadType, MessageParser.EntityLink aboutEntityLink) {
+    try {
+      return this.buildThreadUrl(
+          threadType,
+          aboutEntityLink.getEntityType(),
+          Entity.getEntity(aboutEntityLink, "id", Include.ALL));
+    } catch (Exception ex) {
+      return "";
+    }
+  }
+
+  static String getDateString(long epochTimestamp) {
     Instant instant = Instant.ofEpochSecond(epochTimestamp);
+    return getDateString(instant);
+  }
+
+  static String getDateStringEpochMilli(long epochTimestamp) {
+    Instant instant = Instant.ofEpochMilli(epochTimestamp);
+    return getDateString(instant);
+  }
+
+  private static String getDateString(Instant instant) {
     LocalDateTime localDateTime = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
 
     // Format LocalDateTime to a specific date and time format

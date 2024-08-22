@@ -3,7 +3,13 @@ title: Amundsen
 slug: /connectors/metadata/amundsen
 ---
 
-# Amundsen
+{% connectorDetailsHeader
+name="Amundsen"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/metadata/amundsen/yaml"} /%}
 

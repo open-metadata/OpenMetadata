@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FilterOutlined } from '@ant-design/icons';
 import {
   Col,
   Radio,
@@ -32,6 +33,7 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataTypeTopic, Field } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getAllTags,
@@ -39,7 +41,6 @@ import {
 } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,
-  getFilterIcon,
   getTableExpandableConfig,
   updateFieldDescription,
   updateFieldTags,
@@ -69,6 +70,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   isVersionView = false,
   schemaTypePlaceholder,
 }) => {
+  const { theme } = useApplicationStore();
   const { t } = useTranslation();
   const [editFieldDescription, setEditFieldDescription] = useState<Field>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
@@ -212,7 +214,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'tags',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('tag-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="tag-filter"
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -237,7 +246,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: 'glossary',
         accessor: 'tags',
         width: 300,
-        filterIcon: getFilterIcon('glossary-filter'),
+        filterIcon: (filtered) => (
+          <FilterOutlined
+            data-testid="glossary-filter"
+            style={{
+              color: filtered ? theme.primaryColor : undefined,
+            }}
+          />
+        ),
         render: (tags: TagLabel[], record: Field, index: number) => (
           <TableTags<Field>
             entityFqn={entityFqn}
@@ -338,7 +354,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             ) : (
               <Table
                 bordered
-                className={className}
+                className={classNames('align-table-filter-left', className)}
                 columns={columns}
                 data-testid="topic-schema-fields-table"
                 dataSource={messageSchema?.schemaFields}

@@ -14,8 +14,8 @@ import { defineConfig } from 'cypress';
 import plugins from './cypress/plugins/index.js';
 
 export default defineConfig({
-  viewportWidth: 1240,
-  viewportHeight: 660,
+  viewportWidth: 1440,
+  viewportHeight: 768,
   watchForFileChanges: false,
   videoUploadOnPasses: false,
   defaultCommandTimeout: 5000,
@@ -35,5 +35,8 @@ export default defineConfig({
       return config;
     },
     specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
+    env: {
+      isOss: true,
+    },
   },
 });

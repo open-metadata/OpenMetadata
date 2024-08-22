@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.events;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -44,22 +46,26 @@ public class EventFilter implements ContainerResponseFilter {
     registerEventHandlers(config);
   }
 
+  @SuppressWarnings("unchecked")
   private void registerEventHandlers(OpenMetadataApplicationConfig config) {
-    try {
+    if (!nullOrEmpty(config.getEventHandlerConfiguration())) {
       Set<String> eventHandlerClassNames =
           new HashSet<>(config.getEventHandlerConfiguration().getEventHandlerClassNames());
       for (String eventHandlerClassName : eventHandlerClassNames) {
-        @SuppressWarnings("unchecked")
-        EventHandler eventHandler =
-            ((Class<EventHandler>) Class.forName(eventHandlerClassName))
-                .getConstructor()
-                .newInstance();
-        eventHandler.init(config);
-        eventHandlers.add(eventHandler);
-        LOG.info("Added event handler {}", eventHandlerClassName);
+        try {
+          EventHandler eventHandler =
+              ((Class<EventHandler>) Class.forName(eventHandlerClassName))
+                  .getConstructor()
+                  .newInstance();
+          eventHandler.init(config);
+          eventHandlers.add(eventHandler);
+          LOG.info("Added event handler {}", eventHandlerClassName);
+        } catch (Exception e) {
+          LOG.info("Exception ", e);
+        }
       }
-    } catch (Exception e) {
-      LOG.info("Exception ", e);
+    } else {
+      LOG.info("Event handler configuration is empty");
     }
   }
 

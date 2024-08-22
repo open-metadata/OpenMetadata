@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { HelperTextType } from '../../../interface/FormUtils.interface';
 import { FormItemLabelProps } from './Form.interface';
 import FormItemLabel from './FormItemLabel';
 
@@ -40,8 +41,32 @@ describe('Test FormItemLabel Component', () => {
     expect(helpIcon).not.toBeInTheDocument();
   });
 
-  it('Should render helper icon if helper text passed', async () => {
-    render(<FormItemLabel {...mockProps} helperText="help" />);
+  it('Should not render helper icon if type is not tooltip', async () => {
+    render(
+      <FormItemLabel {...mockProps} helperTextType={HelperTextType.ALERT} />
+    );
+
+    const label = screen.getByTestId('form-item-label');
+
+    const helpIcon = screen.queryByTestId('helper-icon');
+
+    expect(label).toContainHTML(mockProps.label as string);
+    expect(helpIcon).not.toBeInTheDocument();
+  });
+
+  it('Should not render helper icon if showHelperText is false', async () => {
+    render(<FormItemLabel {...mockProps} />);
+
+    const label = screen.getByTestId('form-item-label');
+
+    const helpIcon = screen.queryByTestId('helper-icon');
+
+    expect(label).toContainHTML(mockProps.label as string);
+    expect(helpIcon).not.toBeInTheDocument();
+  });
+
+  it('Should render helper icon if helper text is passed and type is tooltip', async () => {
+    render(<FormItemLabel {...mockProps} showHelperText helperText="help" />);
 
     const label = screen.getByTestId('form-item-label');
 
@@ -49,5 +74,27 @@ describe('Test FormItemLabel Component', () => {
 
     expect(label).toContainHTML(mockProps.label as string);
     expect(helpIcon).toBeInTheDocument();
+  });
+
+  it('Should render beta badge if isBeta is true', async () => {
+    render(<FormItemLabel {...mockProps} isBeta />);
+
+    const label = screen.getByTestId('form-item-label');
+
+    const betaBadge = screen.getByText('label.beta');
+
+    expect(label).toContainHTML(mockProps.label as string);
+    expect(betaBadge).toBeInTheDocument();
+  });
+
+  it('Should not render beta badge if isBeta is false', async () => {
+    render(<FormItemLabel {...mockProps} />);
+
+    const label = screen.getByTestId('form-item-label');
+
+    const betaBadge = screen.queryByText('label.beta');
+
+    expect(label).toContainHTML(mockProps.label as string);
+    expect(betaBadge).not.toBeInTheDocument();
   });
 });

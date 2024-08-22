@@ -12,31 +12,31 @@
  */
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Col, Dropdown, Form, Row, Select, Space, Tabs } from 'antd';
-import { AxiosError } from 'axios';
-import { isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty } from 'lodash';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
-import { getTableTabPath } from '../../../../../constants/constants';
+import { getEntityDetailsPath } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
   TEST_CASE_STATUS_OPTION,
   TEST_CASE_TYPE_OPTION,
 } from '../../../../../constants/profiler.constant';
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
-import { EntityTabs, TabSpecificField } from '../../../../../enums/entity.enum';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
+import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
-import { Table } from '../../../../../generated/entity/data/table';
-import { TestCase } from '../../../../../generated/tests/testCase';
-import { EntityType as TestType } from '../../../../../generated/tests/testDefinition';
+import { TestCaseStatus } from '../../../../../generated/tests/testCase';
+import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import { useFqn } from '../../../../../hooks/useFqn';
-import { getTableDetailsByFQN } from '../../../../../rest/tableAPI';
+import { TestCaseType } from '../../../../../rest/testAPI';
 import {
   getBreadcrumbForTable,
   getEntityName,
 } from '../../../../../utils/EntityUtils';
 import { getAddDataQualityTableTestPath } from '../../../../../utils/RouterUtils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
+import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
+import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { SummaryPanel } from '../../../../DataQuality/SummaryPannel/SummaryPanel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
@@ -51,10 +51,22 @@ export const QualityTab = () => {
     fetchAllTests,
     onTestCaseUpdate,
     allTestCases,
-    splitTestCases,
     isTestsLoading,
     isTableDeleted,
+    testCasePaging,
+    table,
+    testCaseSummary,
   } = useTableProfiler();
+  const { getResourceLimit } = useLimitStore();
+
+  const {
+    currentPage,
+    pageSize,
+    paging,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+  } = testCasePaging;
 
   const editTest = permissions.EditAll || permissions.EditTests;
   const { fqn: datasetFQN } = useFqn();
@@ -62,11 +74,25 @@ export const QualityTab = () => {
   const { t } = useTranslation();
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
-    useState<string>('');
-  const [selectedTestType, setSelectedTestType] = useState('');
-  const [table, setTable] = useState<Table>();
-  const [isTestSuiteLoading, setIsTestSuiteLoading] = useState(true);
+    useState<TestCaseStatus>('' as TestCaseStatus);
+  const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
   const testSuite = useMemo(() => table?.testSuite, [table]);
+
+  const handleTestCasePageChange: NextPreviousProps['pagingHandler'] = ({
+    cursorType,
+    currentPage,
+  }) => {
+    if (cursorType) {
+      fetchAllTests({
+        [cursorType]: paging[cursorType],
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+      });
+    }
+    handlePageChange(currentPage);
+  };
 
   const tableBreadcrumb = useMemo(() => {
     return table
@@ -75,7 +101,8 @@ export const QualityTab = () => {
           {
             name: getEntityName(table),
             url:
-              getTableTabPath(
+              getEntityDetailsPath(
+                EntityType.TABLE,
                 table.fullyQualifiedName ?? '',
                 EntityTabs.PROFILER
               ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
@@ -84,37 +111,40 @@ export const QualityTab = () => {
       : undefined;
   }, [table]);
 
-  const filteredTestCase = useMemo(() => {
-    let tests: TestCase[] = allTestCases ?? [];
-    if (selectedTestType === TestType.Table) {
-      tests = splitTestCases.table;
-    } else if (selectedTestType === TestType.Column) {
-      tests = splitTestCases.column;
-    }
-
-    return tests.filter(
-      (data) =>
-        selectedTestCaseStatus === '' ||
-        data.testCaseResult?.testCaseStatus === selectedTestCaseStatus
-    );
-  }, [selectedTestCaseStatus, selectedTestType, allTestCases, splitTestCases]);
   const tabs = useMemo(
     () => [
       {
         label: t('label.test-case-plural'),
         key: EntityTabs.TEST_CASES,
         children: (
-          <div className="p-t-md">
-            <DataQualityTab
-              afterDeleteAction={fetchAllTests}
-              breadcrumbData={tableBreadcrumb}
-              isLoading={isTestsLoading}
-              showTableColumn={false}
-              testCases={filteredTestCase}
-              onTestCaseResultUpdate={onTestCaseUpdate}
-              onTestUpdate={onTestCaseUpdate}
-            />
-          </div>
+          <Row className="p-t-md">
+            <Col span={24}>
+              <DataQualityTab
+                afterDeleteAction={async (...params) => {
+                  await fetchAllTests(...params); // Update current count when Create / Delete operation performed
+                  params?.length &&
+                    (await getResourceLimit('dataQuality', true, true));
+                }}
+                breadcrumbData={tableBreadcrumb}
+                isLoading={isTestsLoading}
+                showTableColumn={false}
+                testCases={allTestCases}
+                onTestCaseResultUpdate={onTestCaseUpdate}
+                onTestUpdate={onTestCaseUpdate}
+              />
+            </Col>
+            <Col span={24}>
+              {showPagination && (
+                <NextPrevious
+                  currentPage={currentPage}
+                  pageSize={pageSize}
+                  paging={paging}
+                  pagingHandler={handleTestCasePageChange}
+                  onShowSizeChange={handlePageSizeChange}
+                />
+              )}
+            </Col>
+          </Row>
         ),
       },
       {
@@ -125,23 +155,35 @@ export const QualityTab = () => {
     ],
     [
       isTestsLoading,
-      filteredTestCase,
+      allTestCases,
       onTestCaseUpdate,
       testSuite,
       fetchAllTests,
+      getResourceLimit,
       tableBreadcrumb,
+      testCasePaging,
     ]
   );
 
-  const handleTestCaseStatusChange = (value: string) => {
+  const handleTestCaseStatusChange = (value: TestCaseStatus) => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
+      fetchAllTests({
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(value) ? undefined : value,
+      });
     }
   };
 
-  const handleTestCaseTypeChange = (value: string) => {
+  const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
       setSelectedTestType(value);
+      fetchAllTests({
+        testCaseType: value,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+      });
     }
   };
 
@@ -164,28 +206,6 @@ export const QualityTab = () => {
     ],
     []
   );
-
-  const fetchTestSuiteDetails = async () => {
-    setIsTestSuiteLoading(true);
-    try {
-      const details = await getTableDetailsByFQN(datasetFQN, {
-        fields: TabSpecificField.TESTSUITE,
-      });
-      setTable(details);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsTestSuiteLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isUndefined(testSuite)) {
-      fetchTestSuiteDetails();
-    } else {
-      setIsTestSuiteLoading(false);
-    }
-  }, [testSuite]);
 
   return (
     <Row gutter={[0, 16]}>
@@ -214,21 +234,23 @@ export const QualityTab = () => {
 
                 {editTest && !isTableDeleted && (
                   <Form.Item noStyle>
-                    <Dropdown
-                      menu={{
-                        items: addButtonContent,
-                      }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Button
-                        data-testid="profiler-add-table-test-btn"
-                        type="primary">
-                        <Space>
-                          {t('label.add-entity', { entity: t('label.test') })}
-                          <DownOutlined />
-                        </Space>
-                      </Button>
-                    </Dropdown>
+                    <LimitWrapper resource="dataQuality">
+                      <Dropdown
+                        menu={{
+                          items: addButtonContent,
+                        }}
+                        placement="bottomRight"
+                        trigger={['click']}>
+                        <Button
+                          data-testid="profiler-add-table-test-btn"
+                          type="primary">
+                          <Space>
+                            {t('label.add-entity', { entity: t('label.test') })}
+                            <DownOutlined />
+                          </Space>
+                        </Button>
+                      </Dropdown>
+                    </LimitWrapper>
                   </Form.Item>
                 )}
               </Space>
@@ -237,10 +259,7 @@ export const QualityTab = () => {
         </Row>
       </Col>
       <Col span={24}>
-        <SummaryPanel
-          isLoading={isTestSuiteLoading}
-          testSummary={testSuite?.summary ?? INITIAL_TEST_SUMMARY}
-        />
+        <SummaryPanel testSummary={testCaseSummary ?? INITIAL_TEST_SUMMARY} />
       </Col>
       <Col span={24}>
         <Tabs items={tabs} />

@@ -157,7 +157,7 @@ MOCK_CREATE_TABLE = CreateTableRequest(
     ],
     databaseSchema="local_bigtable.my-gcp-project.my_instance",
     sourceUrl=SourceUrl(
-        __root__="https://console.cloud.google.com/bigtable/instances/my_instance/tables/random_table/overview?project=my-gcp-project"
+        "https://console.cloud.google.com/bigtable/instances/my_instance/tables/random_table/overview?project=my-gcp-project"
     ),
 )
 
@@ -240,18 +240,20 @@ class BigTableUnitTest(TestCase):
         mock_bigtable_instance,
         mock_bigtable_table,
     ):
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_bigtable_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigtable_config)
         self.bigtable_source = BigtableSource.create(
             mock_bigtable_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.bigtable_source.context.__dict__[
+        self.bigtable_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        self.bigtable_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.bigtable_source.context.__dict__[
+        ] = MOCK_DATABASE_SERVICE.name.root
+        self.bigtable_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.root
+        self.bigtable_source.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
         self.bigtable_source.instances = {
             "my-gcp-project": {
                 mock_bigtable_instance.instance_id: mock_bigtable_instance
@@ -286,5 +288,5 @@ class BigTableUnitTest(TestCase):
         Column.__eq__ = custom_column_compare
         result = next(self.bigtable_source.yield_table(EXPECTED_TABLE_NAMES[0]))
         assert result.left is None
-        assert result.right.name.__root__ == "random_table"
+        assert result.right.name.root == "random_table"
         assert result.right == MOCK_CREATE_TABLE

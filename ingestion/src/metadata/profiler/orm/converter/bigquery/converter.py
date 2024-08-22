@@ -15,6 +15,10 @@ to an SQLAlchemy ORM class.
 """
 
 
+from typing import Dict, Set
+
+from sqlalchemy.sql.sqltypes import TypeEngine
+
 from metadata.generated.schema.entity.data.database import databaseService
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.profiler.orm.converter.common import CommonMapTypes
@@ -29,3 +33,14 @@ class BigqueryMapTypes(CommonMapTypes):
         ):
             return bigquery_type_mapper(self._TYPE_MAP, col)
         return super().return_custom_type(col, table_service_type)
+
+    @staticmethod
+    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:
+        """returns an ORM type"""
+        # pylint: disable=import-outside-toplevel
+        from sqlalchemy_bigquery import STRUCT
+
+        return {
+            **CommonMapTypes.map_sqa_to_om_types(),
+            STRUCT: {DataType.STRUCT},
+        }

@@ -16,14 +16,13 @@ import { REDSHIFT } from '../../constants/service.constants';
 import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   checkServiceFieldSectionHighlighting,
-  handleIngestionRetry,
   interceptURL,
-  scheduleIngestion,
   verifyResponseStatusCode,
 } from '../common';
 import ServiceBaseClass from '../Entities/ServiceBaseClass';
 import { searchServiceFromSettingPage } from '../serviceUtils';
 import { visitEntityDetailsPage } from '../Utils/Entity';
+import { handleIngestionRetry, scheduleIngestion } from '../Utils/Ingestion';
 import { Services } from '../Utils/Services';
 
 class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
@@ -75,8 +74,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     cy.get('#root\\/schemaFilterPattern\\/includes')
       .scrollIntoView()
       .type('dbt_jaffle{enter}');
-
-    cy.get('#root\\/includeViews').click();
   }
 
   runAdditionalTests() {
@@ -105,11 +102,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       );
       interceptURL(
         'GET',
-        '/api/v1/system/config/pipeline-service-client',
-        'airflow'
-      );
-      interceptURL(
-        'GET',
         '/api/v1/permissions/ingestionPipeline/name/*',
         'ingestionPermissions'
       );
@@ -129,7 +121,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         responseTimeout: 50000,
       });
       verifyResponseStatusCode('@serviceDetails', 200);
-      verifyResponseStatusCode('@airflow', 200);
       verifyResponseStatusCode('@databases', 200);
       cy.get('[data-testid="tabs"]').should('exist');
       cy.get('[data-testid="ingestions"]')
@@ -188,7 +179,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         verifyResponseStatusCode('@getIngestionPipelineStatus', 200);
         verifyResponseStatusCode('@serviceDetails', 200);
         verifyResponseStatusCode('@ingestionPipelines', 200);
-        handleIngestionRetry('database', true, 0, 'dbt');
+        handleIngestionRetry(0, 'dbt');
       });
     });
 

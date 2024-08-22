@@ -27,6 +27,10 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({ pathname: '/explore' }),
 }));
 
+jest.mock('../../../constants/constants', () => ({
+  ROUTES: {},
+}));
+
 describe('QueryCount test', () => {
   it('component should render', async () => {
     render(<QueryCount tableId="testID" />);

@@ -10,18 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Popover, Space, Typography } from 'antd';
+import { Col, Popover, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import { isArray, isUndefined, slice, uniqBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
-  getTableDetailsPath,
+  getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
 import { QUERY_USED_BY_TABLE_VIEW_CAP } from '../../../../constants/Query.constant';
+import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
@@ -68,7 +69,11 @@ const QueryUsedByOtherTable = ({
         {topThreeTable.length
           ? topThreeTable.map((table, index) => (
               <Text className="m-r-xss" key={table.name}>
-                <Link to={getTableDetailsPath(table.fullyQualifiedName || '')}>
+                <Link
+                  to={getEntityDetailsPath(
+                    EntityType.TABLE,
+                    table.fullyQualifiedName || ''
+                  )}>
                   {getEntityName(table)}
                 </Link>
                 {topThreeTable.length - 1 !== index && ','}
@@ -84,7 +89,10 @@ const QueryUsedByOtherTable = ({
                   {remainingTable.map((table) => (
                     <Link
                       key={table.id}
-                      to={getTableDetailsPath(table.fullyQualifiedName || '')}>
+                      to={getEntityDetailsPath(
+                        EntityType.TABLE,
+                        table.fullyQualifiedName || ''
+                      )}>
                       {getEntityName(table)}
                     </Link>
                   ))}
@@ -163,7 +171,7 @@ const QueryUsedByOtherTable = ({
     ) : (
       <AsyncSelect
         api={fetchTableEntity}
-        className="w-min-15"
+        className="w-min-15 w-full"
         data-testid="edit-query-used-in"
         defaultValue={defaultValue}
         mode="multiple"
@@ -184,10 +192,12 @@ const QueryUsedByOtherTable = ({
   }, [isEditMode]);
 
   return (
-    <Space className="m-b-0" data-testid="para-container">
-      <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
-      {isEditMode ? selectList : tableNames}
-    </Space>
+    <Row wrap data-testid="para-container">
+      <Col flex="200px">
+        <Text>{`${t('message.query-used-by-other-tables')}:`}</Text>
+      </Col>
+      <Col>{isEditMode ? selectList : tableNames}</Col>
+    </Row>
   );
 };
 

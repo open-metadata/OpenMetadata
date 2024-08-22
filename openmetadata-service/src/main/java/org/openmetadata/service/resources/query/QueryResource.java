@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -64,10 +65,10 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
   public static final String COLLECTION_PATH = "v1/queries/";
-  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
+  static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
 
-  public QueryResource(Authorizer authorizer) {
-    super(Entity.QUERY, authorizer);
+  public QueryResource(Authorizer authorizer, Limits limits) {
+    super(Entity.QUERY, authorizer, limits);
   }
 
   @Override
@@ -340,6 +341,35 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchQuery",
+      summary = "Update a query using name.",
+      description = "Update an existing query using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the query", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -608,6 +638,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     return repository
         .copy(new Query(), create, user)
         .withQuery(create.getQuery())
+        .withChecksum(EntityUtil.hash(create.getQuery()))
         .withService(getEntityReference(Entity.DATABASE_SERVICE, create.getService()))
         .withDuration(create.getDuration())
         .withVotes(new Votes().withUpVotes(0).withDownVotes(0))

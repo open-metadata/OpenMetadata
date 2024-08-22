@@ -3,15 +3,13 @@ title: Run the Spline Connector Externally
 slug: /connectors/pipeline/spline/yaml
 ---
 
-# Run the Spline Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Spline"
+stage="BETA"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status"]
+unavailableFeatures=["Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Spline connector.
 
@@ -23,12 +21,6 @@ Configure and schedule Spline metadata and profiler workflows from the OpenMetad
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
 
 The Spline connector support lineage of data source of type `jdbc` or `dbfs` i.e. The spline connector would be able to extract lineage if the data source is either a jdbc connection or the data source is databricks instance.
 
@@ -93,7 +85,7 @@ This is a sample config for Spline:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: spline
   serviceName: spline_source

@@ -30,7 +30,7 @@ class WorkflowBuilder:
 
     def __init__(self, ingestion_pipeline: IngestionPipeline) -> None:
         self.airflow_pipeline = ingestion_pipeline
-        self.dag_name: str = self.airflow_pipeline.name.__root__
+        self.dag_name: str = self.airflow_pipeline.name.root
 
     def build(self) -> DAG:
         """

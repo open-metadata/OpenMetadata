@@ -184,7 +184,9 @@ const TotalDataAssetsWidget = ({
             </div>
           </Col>
           {isWidgetSizeLarge && (
-            <Col className="overflow-y-scroll h-max-full" span={10}>
+            <Col
+              className="overflow-y-scroll overflow-x-hidden h-max-full"
+              span={10}>
               <TotalEntityInsightSummary
                 entities={entities}
                 latestData={latestData}

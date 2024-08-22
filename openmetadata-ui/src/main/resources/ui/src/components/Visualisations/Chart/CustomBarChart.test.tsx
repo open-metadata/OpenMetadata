@@ -13,14 +13,19 @@
 
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-import { INITIAL_OPERATION_METRIC_VALUE } from '../../../constants/profiler.constant';
 import '../../../test/unit/mocks/recharts.mock';
 import { CustomBarChartProps } from './Chart.interface';
 import CustomBarChart from './CustomBarChart';
 
 const mockCustomBarChartProp: CustomBarChartProps = {
   chartCollection: {
-    ...INITIAL_OPERATION_METRIC_VALUE,
+    information: [
+      {
+        title: 'insert',
+        dataKey: 'INSERT',
+        color: '#00ff00',
+      },
+    ],
     data: [
       {
         name: '07/Dec 14:32',
@@ -52,7 +57,7 @@ describe('CustomBarChart component test', () => {
       <CustomBarChart
         {...mockCustomBarChartProp}
         chartCollection={{
-          ...INITIAL_OPERATION_METRIC_VALUE,
+          information: [],
           data: [],
         }}
       />

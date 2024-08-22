@@ -20,6 +20,7 @@ import { ReactComponent as IconExternalLink } from '../../../assets/svg/external
 import { TEXT_COLOR } from '../../../constants/Color.constants';
 import { ROUTES } from '../../../constants/constants';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
 const EntityHeaderTitle = ({
@@ -52,7 +53,10 @@ const EntityHeaderTitle = ({
       gutter={12}
       wrap={false}>
       <Col>{icon}</Col>
-      <Col className={deleted || badge ? 'w-max-full-140' : ''}>
+      <Col
+        className={
+          deleted || badge ? 'w-max-full-140' : 'entity-header-content'
+        }>
         {/* If we do not have displayName name only be shown in the bold from the below code */}
         {!isEmpty(displayName) && showName ? (
           <Typography.Text
@@ -86,7 +90,7 @@ const EntityHeaderTitle = ({
         />
       )}
       {deleted && (
-        <Col className="text-xs">
+        <Col className="text-xs" flex="100px">
           <span className="deleted-badge-button" data-testid="deleted-badge">
             <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
             {t('label.deleted')}
@@ -99,7 +103,7 @@ const EntityHeaderTitle = ({
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block"
+      className="no-underline d-inline-block w-full"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}>

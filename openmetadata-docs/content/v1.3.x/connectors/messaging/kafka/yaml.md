@@ -3,12 +3,13 @@ title: Run the Kafka Connector Externally
 slug: /connectors/messaging/kafka/yaml
 ---
 
-# Run the Kafka Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Topics     | {% icon iconName="check" /%} |
-| Sample Data| {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Kafka"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Topics", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Kafka connector.
 
@@ -20,12 +21,6 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 
@@ -130,7 +125,7 @@ following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: kafka
   serviceName: local_kafka

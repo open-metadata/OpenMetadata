@@ -25,7 +25,20 @@ const visitSearchApplicationPage = () => {
   verifyResponseStatusCode('@getSearchIndexingApplication', 200);
 };
 
-describe('Search Index Application', () => {
+const verifyLastExecutionRun = (interceptedUrlLabel: string) => {
+  cy.wait(`@${interceptedUrlLabel}`).then((interception) => {
+    expect(interception.response.statusCode).to.eq(200);
+
+    // Validate the last execution run response
+    const responseData = interception.response.body;
+    if (responseData.data.length > 0) {
+      expect(responseData.data).to.have.length(1);
+      expect(responseData.data[0].status).to.equal('success');
+    }
+  });
+};
+
+describe('Search Index Application', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
 
@@ -36,22 +49,33 @@ describe('Search Index Application', () => {
     verifyResponseStatusCode('@getApplications', 200);
   });
 
+  it('Verify last execution run', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1',
+      'lastExecutionRun'
+    );
+    visitSearchApplicationPage();
+    verifyLastExecutionRun('lastExecutionRun');
+  });
+
   it('Edit application', () => {
     interceptURL('PATCH', '/api/v1/apps/*', 'updateApplication');
     visitSearchApplicationPage();
     cy.get('[data-testid="edit-button"]').click();
     cy.get('[data-testid="cron-type"]').click();
-    cy.get('[title="Day"]').click();
-    cy.get('[data-testid="hour-options"]').click();
-    cy.get('[title="01"]').click();
+    cy.get('.rc-virtual-list [title="None"]').click();
     cy.get('.ant-modal-body [data-testid="deploy-button"]').click();
     verifyResponseStatusCode('@updateApplication', 200);
-    cy.get('[data-testid="cron-string"]').should('contain', 'At 01:00 AM');
+    cy.get('[data-testid="schedule-type"]').should('contain', 'None');
 
     cy.get('[data-testid="configuration"]').click();
 
     cy.get('#root\\/batchSize').type('0');
-    cy.get('form [title="Chart"] [role="img"]').click();
+    cy.get(
+      '[data-testid="select-widget"] > .ant-select-selector > .ant-select-selection-item'
+    ).click();
+    cy.get('[data-testid="select-option-JP"]').click();
 
     cy.get('[data-testid="submit-btn"]').click();
     verifyResponseStatusCode('@updateApplication', 200);
@@ -87,8 +111,8 @@ describe('Search Index Application', () => {
     cy.get('[data-testid="save-button"]').scrollIntoView().click();
     cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
     cy.get('[data-testid="cron-type"]').click();
-    cy.get('.rc-virtual-list [title="Day"]').click();
-    cy.get('[data-testid="cron-type"]').should('contain', 'Day');
+    cy.get('.rc-virtual-list [title="None"]').click();
+    cy.get('[data-testid="cron-type"]').should('contain', 'None');
     cy.get('[data-testid="deploy-button"]').click();
     verifyResponseStatusCode('@installApplication', 201);
     verifyResponseStatusCode('@getApplications', 200);
@@ -97,22 +121,35 @@ describe('Search Index Application', () => {
     );
   });
 
-  it('Run application', () => {
-    interceptURL(
-      'GET',
-      '/api/v1/apps/name/SearchIndexingApplication?fields=*',
-      'getSearchIndexingApplication'
-    );
-    interceptURL(
-      'POST',
-      '/api/v1/apps/trigger/SearchIndexingApplication',
-      'triggerPipeline'
-    );
-    cy.get(
-      '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-    ).click();
-    verifyResponseStatusCode('@getSearchIndexingApplication', 200);
-    cy.get('[data-testid="run-now-button"]').click();
-    verifyResponseStatusCode('@triggerPipeline', 200);
-  });
+  if (Cypress.env('isOss')) {
+    it('Run application', () => {
+      interceptURL(
+        'GET',
+        '/api/v1/apps/name/SearchIndexingApplication?fields=*',
+        'getSearchIndexingApplication'
+      );
+      interceptURL(
+        'POST',
+        '/api/v1/apps/trigger/SearchIndexingApplication',
+        'triggerPipeline'
+      );
+      cy.get(
+        '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
+      ).click();
+      verifyResponseStatusCode('@getSearchIndexingApplication', 200);
+      cy.get('[data-testid="run-now-button"]').click();
+      verifyResponseStatusCode('@triggerPipeline', 200);
+
+      cy.wait(120000); // waiting for 2 minutes before we check if reindex was success
+
+      interceptURL(
+        'GET',
+        '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1',
+        'lastExecutionRun'
+      );
+
+      cy.reload();
+      verifyLastExecutionRun('lastExecutionRun');
+    });
+  }
 });

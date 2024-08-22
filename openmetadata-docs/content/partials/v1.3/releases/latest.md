@@ -1,4 +1,27 @@
-# 1.3.0 Release 🎉
+# 1.3.4 Release 🎉
+
+{% note noteType="Tip" %}
+**2024, May 7th**
+{% /note %}
+
+- Fixes reindex issues related to the `changeDescription` payload of some entities
+- Adds Cypress tests to validate reindex app execution
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.3-release...1.3.4-release)
+
+See below all the amazing features the community shipped in the 1.3 release!
+
+# 1.3.3 Release
+
+- Fix Application installation
+- Fix JWT Filter validation against personal token
+- Add Databricks SSL python dependencies
+- Fix postgres app migrations
+- Improve App UI preview
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.2-release...1.3.3-release)
+
+# 1.3.2 Release
 
 {% inlineCalloutContainer %}
 {% inlineCallout
@@ -6,13 +29,118 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.3.0!
+Learn how to upgrade your OpenMetadata instance to 1.3.3!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.0-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.2-release).
+
+## MetaPilot (Collate)
+- New MetaPilot application shipped in preview mode. Try it out in the [Sandbox](https://sandbox.open-metadata.org/)!
+- Get automatically generated descriptions with GenAI. Now it’s easier than ever to document your data assets.
+- Chat with the MetaPilot and get SQL queries to help you extract relevant information from your data assets.
+- Let the MetaPilot help you understand and improve the queries used on your tables.
+
+## Authentication Flow
+- Added generic support for OIDC Authentication. This is SSO provider-agnostic.
+- You can now integrate Confidential Clients to manage the server authentication.
+- Now, the session renewal happens automatically in the backend.
+
+## Data Quality
+- Pagination support was added for the Data Quality tab for data assets.
+- Fixed an issue with execution summary timeout issue for the data quality test.
+
+## Connectors
+- New Bigtable connector.
+- Now, users can configure the external sample data storage path.
+- Added lineage support for Snowflake materialized view and masking policies.
+- Fixed session invalidation on Databricks during long-running queries.
+- Fixed Ingestion Pipeline list for services with the same name.
+- Fixed an issue with ingesting lineage when data models are ingested from Tableau.
+- Fixed metrics computations for empty tables.
+- Improve PATCH generation for array fields.
+
+## Other Changes
+- Avoid creating duplicated queries.
+- Speed up the server start time by moving the Secrets Manager Migration to the migration container.
+- Fixed the issue with the date filter for the Incident Manager.
+- Fixed the issue with the Team filter for Data Insights.
+- Fixed an issue with Azure SSO related to the MSAL version.
+- Fixed an issue with search indexing.
+- Fixed the missing input field for conversation source for alerts and notifications.
+- Filter dashboards by a project on the Explore page.
+---
+
+**Full Changelog**: [link](https://github.com/open-metadata/OpenMetadata/compare/1.3.1-release...1.3.2-release)
+
+# 1.3.1 Release 🎉
+
+{% note noteType="Tip" %}
+**2024, February 29th**
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.1-release).
+{% /note %}
+
+
+## Knowledge Center (Collate)
+- Supports drag and drop for the hierarchy of knowledge articles.
+- Enhanced the layout and loading experience of the knowledge page.
 
 ## Lineage
+- When adding a new node in Lineage, the Display Name is supported in search.
+- Fixed the issues with displaying lineage from Metabase.
+
+## Glossary
+- Improved the automation of performance tests for Glossary.
+- Performance improvements to display a large Glossary.
+
+## Data Insights
+- Data Insights report has been improved.
+- The cost Analysis report has been optimized.
+
+## Notifications
+- The format for Slack notifications has been improved.
+
+## Custom Properties
+- Added enum type support for custom properties.
+
+## Connectors
+- Now BigQuery connector supports Primary, Foreign, and Unique Constraints. It fetches the column description for views.
+- Captures the SQL query that powers a Tableau DataModel.
+- Azure Key Vault is supported as a Secrets Manager.
+- Fixed an issue with ingestion from Sagemaker, Oracle, LDAP, DB2, dbt, Kafka, Metabase, and Databricks.
+- Fixed Looker projects and optional project filter patterns.
+- Fixed issues with ingestion pipelines.
+- Fixed an issue with the service display name after ingestion.
+
+## Other Changes
+- The functionality for mutually exclusive tags has been disabled.
+- PodGC set up for Argo workflows to delete the pods from the Kubernetes environment on a successful run of the pods.
+- Fixed the issue with the display of the personal access token.
+- Fixed the mentions in comments for Announcements.
+- Fixed the issue with setting a Group as a Domain Owner.
+- Fixed the issue with the tooltip in the data quality graph.
+- Fixed an issue about notifying the Reviewer of a Glossary Term.
+- Fixed the issues with testing the email settings.
+- Fixed an issue with adding tags.
+
+
+# 1.3.0 Release
+
+{% note noteType="Tip" %}
+**2024, February 5th**
+
+[OpenMetadata 1.3 Release - Intuitive Lineage UI, Data Observability Alerts, Data Quality Incident Manager, Custom Metrics for Profiler, Knowledge Center Improvements, and lots more](https://blog.open-metadata.org/openmetadata-release-1-3-ac801834ee80)
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.3.0-release).
+
+{%  youtube videoId="cVYP1HFXeRM" start="0:00" end="4:49" width="560px" height="315px" /%}
+
+## Lineage
+
+{%  youtube videoId="grwhvTWylbw" start="0:00" end="1:43" width="560px" height="315px" /%}
+
 - Revamped the lineage UI for an intuitive and comprehensive view of data flow and transformations.
 - Organized nodes for better visibility with pagination support.
 - Improved the display of circular dependencies.
@@ -24,6 +152,9 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Performance improvements for faster load of large graphs.
 
 ## Data Observability Alerts
+
+{%  youtube videoId="qc-3sZ_eU5Y" start="0:00" end="2:04" width="560px" height="315px" /%}
+
 - Data observability alerts have been distinguished from other general-purpose notifications, making it easy to get to the crucial alerts quickly.
 - Sends alerts for schema changes and test case failures for the data assets that you follow.
 - The overall flow has been simplified to let you easily create alerts for schema changes in your data.
@@ -31,6 +162,9 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Users will be alerted for all the changes to the data assets that they own.
 
 ## Incident Manager
+
+{%  youtube videoId="wz5vc1Al-b8" start="0:00" end="2:19" width="560px" height="315px" /%}
+
 - Introduced Incidents Manager to improve the data quality resolution flow.
 - Incidents Manager summarizes all the test case results with information about the failure severity and resolution flow.
 - Supports assigning a resolution task to the users in OpenMetadata.
@@ -39,6 +173,9 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - The Resolved Tab displays information on the Test case name, Execution date, Reason, Comments, and information on who Resolved the issue.
 
 ## Knowledge Center (Collate)
+
+{%  youtube videoId="atwTGm1hixg" start="0:00" end="1:22" width="560px" height="315px" /%}
+
 - Supports hierarchical pages to structure the articles.
 - You can easily associate knowledge articles with data assets.
 - The data assets page displays the related articles.
@@ -49,6 +186,9 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Supports preview for articles and Quicklinks.
 
 ## Custom Metrics for Profiler
+
+{%  youtube videoId="1sx5aQKMSBI" start="0:00" end="1:52" width="560px" height="315px" /%}
+
 - Supports custom metrics for the data profiler with custom SQL to keep track of your business metrics.
 - Custom metrics can be created at Table and Column levels.
 
@@ -79,10 +219,16 @@ You can find the GitHub release [here](https://github.com/open-metadata/OpenMeta
 - Version history displays the Username instead of the User ID.
 
 ## Localization
+
+{%  youtube videoId="MCjK6fZg3pw" start="0:00" end="0:36" width="560px" height="315px" /%}
+
 - Now supports RTL UI for the Hebrew language.
 - New Dutch language translation.
 
 ## Settings UI
+
+{%  youtube videoId="qE07HNFXyu8" start="0:00" end="0:48" width="560px" height="315px" /%}
+
 - The Settings page UI has been revamped.
 
 ## Data Insights

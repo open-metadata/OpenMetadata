@@ -3,17 +3,13 @@ title: Run the Domo Dashboard Connector Externally
 slug: /connectors/dashboard/domo-dashboard/yaml
 ---
 
-# Run the Domo Dashboard Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+  name="Domo"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Owners"]
+  unavailableFeatures=["Tags", "Datamodels", "Projects", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the DomoDashboard connector.
 
@@ -25,10 +21,6 @@ Configure and schedule DomoDashboard metadata and profiler workflows from the Op
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 **Note:** For metadata ingestion, kindly make sure add atleast `dashboard` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
@@ -104,7 +96,7 @@ This is a sample config for Domo-Dashboard:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: domodashboard
   serviceName: local_domodashboard

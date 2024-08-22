@@ -20,7 +20,7 @@ For Production Deployment using Docker, we recommend bringing your own Databases
 
 {% partial file="/v1.3/deployment/configure-external-orchestrator-for-ingestion-service.md" /%}
 
-### Docker (version 20.10.0 or greater)
+### Docker (version 20.10.0 or higher)
 
 [Docker](https://docs.docker.com/get-started/overview/) is an open-source platform for developing, shipping, and running applications. It enables you to separate your applications from your infrastructure, so you can deliver software quickly using OS-level virtualization. It helps deliver software in packages called Containers.
 
@@ -102,12 +102,12 @@ This docker compose file contains only the docker compose services for OpenMetad
 You can also run the below command to fetch the docker compose file directly from the terminal -
 
 ```bash
-wget https://github.com/open-metadata/OpenMetadata/releases/download/1.3.0-release/docker-compose-openmetadata.yml
+wget https://github.com/open-metadata/OpenMetadata/releases/download/1.3.3-release/docker-compose-openmetadata.yml
 ```
 
 ### 3. Update Environment Variables required for OpenMetadata Dependencies
 
-In the previous [step](#2-download-docker-compose-file-from-github-releases), we download the `docker-compose` file.
+In the previous [step](#2.-download-docker-compose-files-from-github-releases), we download the `docker-compose` file.
 
 Identify and update the environment variables in the file to prepare openmetadata configurations.
 
@@ -191,7 +191,7 @@ You can validate that all containers are up by running with command `docker ps`.
 ```commandline
 ❯ docker ps
 CONTAINER ID   IMAGE                                                  COMMAND                  CREATED          STATUS                    PORTS                                                            NAMES
-470cc8149826   openmetadata/server:1.3.0                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
+470cc8149826   openmetadata/server:1.3.3                              "./openmetadata-star…"   45 seconds ago   Up 43 seconds             3306/tcp, 9200/tcp, 9300/tcp, 0.0.0.0:8585-8586->8585-8586/tcp   openmetadata_server
 ```
 
 In a few seconds, you should be able to access the OpenMetadata UI at [http://localhost:8585](http://localhost:8585)
@@ -242,9 +242,9 @@ If you are running OpenMetadata in AWS, it is recommended to use [Amazon RDS](ht
 
 We support
 
-- Amazon RDS (MySQL) engine version 8 or greater
+- Amazon RDS (MySQL) engine version 8 or higher
 - Amazon OpenSearch (ElasticSearch) engine version up to 8.10.2 or Amazon OpenSearch engine version up to 2.7
-- Amazon RDS (PostgreSQL) engine version 12 or greater
+- Amazon RDS (PostgreSQL) engine version 12 or higher
 
 Note:-
 When using AWS Services the SearchType Configuration for elastic search should be `opensearch`, for both cases ElasticSearch and OpenSearch,
@@ -296,7 +296,9 @@ If you are not familiar with Docker Volumes with Docker Compose Services, Please
 
 For example, we would like to provide custom JWT Configuration Keys to be served to OpenMetadata Application. This requires the OpenMetadata Containers to have docker volumes sharing the private and public keys. Let's assume you have the keys available in `jwtkeys` directory in the same directory where your `docker-compose` file is available in the host machine.
 
-We add the volumes section to mount the keys onto the docker containers create with docker compose as follows -
+In scenarios where you need to provide a custom `openmetadata.yaml` configuration file to the OpenMetadata application, you can do so by mounting the file as a volume in the Docker container. This is especially useful for configurations that cannot be controlled through environment variables.
+
+We add the volumes section to mount the keys or `openmetadata.yaml` onto the docker containers create with docker compose as follows -
 
 ```yaml
 services:
@@ -304,6 +306,7 @@ services:
         ...
         volumes:
             - ./jwtkeys:/etc/openmetadata/jwtkeys
+            - ./openmetadata.yaml:/opt/openmetadata/conf/openmetadata.yaml
         ...
 ```
 
@@ -318,6 +321,8 @@ RSA_PUBLIC_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/public_key.der"
 RSA_PRIVATE_KEY_FILE_PATH="/etc/openmetadata/jwtkeys/private_key.der"
 ...
 ```
+ 
+ Ensure that the default environment variables are set appropriately to complement the settings in your `openmetadata.yaml`.
 
 Once the changes are updated, if there are any containers running remove them first using `docker compose down` command and then recreate the containers once again by below command
 

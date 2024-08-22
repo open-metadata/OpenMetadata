@@ -13,12 +13,15 @@
 
 package org.openmetadata.service.events.scheduled.template;
 
+import static org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate.getFormattedPercentChangeMessage;
+
 import java.util.Map;
 
 @SuppressWarnings("unused")
 public class DataInsightTotalAssetTemplate {
   private String totalDataAssets;
   private String percentChangeTotalAssets;
+  private String percentChangeMessage;
   private String completeMessage;
   private int numberOfDaysChange;
   private Map<String, Integer> dateMap;
@@ -30,6 +33,7 @@ public class DataInsightTotalAssetTemplate {
       Map<String, Integer> dateMap) {
     this.totalDataAssets = String.format("%.2f", totalDataAssets);
     this.percentChangeTotalAssets = String.format("%.2f", percentChangeTotalAssets);
+    this.percentChangeMessage = getFormattedPercentChangeMessage(percentChangeTotalAssets);
     this.numberOfDaysChange = numberOfDaysChange;
     this.dateMap = dateMap;
     String color = "#BF0000";
@@ -64,6 +68,14 @@ public class DataInsightTotalAssetTemplate {
 
   public void setCompleteMessage(String completeMessage) {
     this.completeMessage = completeMessage;
+  }
+
+  public String getPercentChangeMessage() {
+    return percentChangeMessage;
+  }
+
+  public void setPercentChangeMessage(String message) {
+    this.percentChangeMessage = message;
   }
 
   public int getNumberOfDaysChange() {

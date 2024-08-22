@@ -3,8 +3,15 @@ title: Alation
 slug: /connectors/metadata/alation
 ---
 
-# Alation (Collate Only)
-Alation connector is supported to run only externally and not via OpenMetadata UI.
+{% connectorDetailsHeader
+name="Alation"
+stage="PROD"
+platform="Collate"
+availableFeatures=[]
+unavailableFeatures=[]
+/ %}
+
+The Alation connector is supported to run only externally and not via OpenMetadata UI.
 Check the following docs to run the Ingestion Framework in any orchestrator externally.
 
 {% tilesContainer %}
@@ -27,7 +34,7 @@ Check the following docs to run the Ingestion Framework in any orchestrator exte
 
 ## Requirements
 
-Follow the official documentation to generate a API Access Token from [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis)
+Follow the official documentation to generate a API Access Token from [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-an-api-access-token)
 
 ## Data Mapping and Assumptions
 
@@ -44,6 +51,13 @@ Following entities are supported and will be mapped to the OpenMetadata entities
 | Columns                      | Columns                      |
 | Custom Fields                | Custom Properties            |
 | Tags                         | Tags                         |
+| BI Servers                   | Dashboard Services           |
+| Dashboard DataSource         | Dashboard DataModel          |
+| Folder                       | Dashboard                    |
+| Report                       | Chart                        |
+| Users/Groups                 | Users/Teams                  |
+| Domains/Subdomains           | Domains/Subdomains           |
+| Knowledge Articles           | Knowledge Center Articles    |
 
 {% /multiTablesWrapper %}
 

@@ -12,7 +12,7 @@
 """
 Secrets manager factory module
 """
-from typing import Any, Optional
+from typing import Optional
 
 from metadata.generated.schema.security.secrets.secretsManagerClientLoader import (
     SecretsManagerClientLoader,
@@ -22,17 +22,11 @@ from metadata.generated.schema.security.secrets.secretsManagerProvider import (
 )
 from metadata.utils.secrets.aws_secrets_manager import AWSSecretsManager
 from metadata.utils.secrets.aws_ssm_secrets_manager import AWSSSMSecretsManager
-from metadata.utils.secrets.client.loader import secrets_manager_client_loader
-from metadata.utils.secrets.noop_secrets_manager import DBSecretsManager
+from metadata.utils.secrets.azure_kv_secrets_manager import AzureKVSecretsManager
+from metadata.utils.secrets.db_secrets_manager import DBSecretsManager
+from metadata.utils.secrets.gcp_secrets_manager import GCPSecretsManager
 from metadata.utils.secrets.secrets_manager import SecretsManager
 from metadata.utils.singleton import Singleton
-
-
-class SecretsManagerConfigException(Exception):
-    """
-    Invalid config that does not allow us to create
-    the SecretsManagerFactory
-    """
 
 
 class SecretsManagerFactory(metaclass=Singleton):
@@ -56,11 +50,9 @@ class SecretsManagerFactory(metaclass=Singleton):
         self._secrets_manager_provider = secrets_manager_provider
         self._secrets_manager_loader = secrets_manager_loader
 
-        credentials = self._load_secrets_manager_credentials()
-
         self.secrets_manager = self._get_secrets_manager(
             secrets_manager_provider,
-            credentials,
+            secrets_manager_loader,
         )
 
     @property
@@ -74,13 +66,12 @@ class SecretsManagerFactory(metaclass=Singleton):
     def _get_secrets_manager(
         self,
         secrets_manager_provider: SecretsManagerProvider,
-        credentials: Any = None,
+        secrets_manager_loader: SecretsManagerClientLoader,
     ) -> SecretsManager:
         """
         Method to get the secrets manager based on the arguments passed
         :param secrets_manager_provider: the secrets' manager provider
-        :param credentials: optional credentials that could be required by the clients of the secrets' manager
-                            implementations
+        :param secrets_manager_loader: how to retrieve the secrets manager keys from the environment
         :return: a secrets manager
         """
         if (
@@ -92,25 +83,20 @@ class SecretsManagerFactory(metaclass=Singleton):
             SecretsManagerProvider.aws,
             SecretsManagerProvider.managed_aws,
         ):
-            return AWSSecretsManager(credentials)
+            return AWSSecretsManager(secrets_manager_loader)
         if secrets_manager_provider in (
             SecretsManagerProvider.aws_ssm,
             SecretsManagerProvider.managed_aws_ssm,
         ):
-            return AWSSSMSecretsManager(credentials)
+            return AWSSSMSecretsManager(secrets_manager_loader)
+        if secrets_manager_provider in (
+            SecretsManagerProvider.azure_kv,
+            SecretsManagerProvider.managed_azure_kv,
+        ):
+            return AzureKVSecretsManager(secrets_manager_loader)
+        if secrets_manager_provider in (SecretsManagerProvider.gcp,):
+            return GCPSecretsManager(secrets_manager_loader)
         raise NotImplementedError(f"[{secrets_manager_provider}] is not implemented.")
 
     def get_secrets_manager(self):
         return self.secrets_manager
-
-    def _load_secrets_manager_credentials(self) -> Optional["AWSCredentials"]:
-        if not self.secrets_manager_loader:
-            return None
-
-        try:
-            loader_fn = secrets_manager_client_loader.registry.get(
-                self.secrets_manager_loader.value
-            )
-            return loader_fn(self.secrets_manager_provider)
-        except Exception as err:
-            raise SecretsManagerConfigException(f"Error loading credentials - [{err}]")

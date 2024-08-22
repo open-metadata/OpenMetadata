@@ -16,6 +16,55 @@ This guide presumes you have an on premises Kubernetes cluster setup, and you ar
 
 ## Prerequisites
 
+### External Database and Search Engine as ElasticSearch / OpenSearch
+
+We support 
+
+- MySQL engine version 8 or higher
+- PostgreSQL engine version 12 or higher
+- ElasticSearch version 8.X (upto 8.10.2) or OpenSearch Version 2.X (upto 2.7)
+
+Once you have the External Database and Search Engine configured, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <SEARCH_ENGINE_ENDPOINT_WITHOUT_HTTPS>
+      searchType: elasticsearch # or `opensearch` if Search Engine is OpenSearch
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: true
+        username: <SEARCH_ENGINE_CLOUD_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <DATABSE_SQL_ENDPOINT>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      dbUseSSL: true
+      databaseName: <DATABASE_SQL_DATABASE_NAME>
+      auth:
+        username: <DATABASE_SQL_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
+```
+
+Make sure to create database and search engine credentials as Kubernetes Secrets mentioned [here](/quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
+
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
+
 ### Persistent Volumes with ReadWriteMany Access Modes
 
 OpenMetadata helm chart depends on Airflow and Airflow expects a persistent disk that support ReadWriteMany (the volume can be mounted as read-write by many nodes).

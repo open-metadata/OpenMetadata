@@ -21,7 +21,7 @@ from pyiceberg.catalog.hive import HiveCatalog
 from pyiceberg.partitioning import PartitionField
 from pyiceberg.schema import Schema
 from pyiceberg.table import Table as PyIcebergTable
-from pyiceberg.table.metadata import TableMetadataV1
+from pyiceberg.table.metadata import TableMetadataV2
 from pyiceberg.transforms import IdentityTransform
 from pyiceberg.types import (
     BinaryType,
@@ -53,10 +53,18 @@ from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
     DataType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -524,9 +532,9 @@ class IcebergUnitTest(TestCase):
                 OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
             )
 
-        self.iceberg.context.database_service = "test_iceberg"
-        self.iceberg.context.database = "default"
-        self.iceberg.context.database_schema = "schema"
+        self.iceberg.context.get().database_service = "test_iceberg"
+        self.iceberg.context.get().database = "default"
+        self.iceberg.context.get().database_schema = "schema"
 
     def test_create(self):
         """
@@ -586,7 +594,7 @@ class IcebergUnitTest(TestCase):
         database_name = "database"
 
         expected = CreateDatabaseRequest(
-            name="database", service=self.iceberg.context.database_service
+            name="database", service=self.iceberg.context.get().database_service
         )
         self.assertEqual(
             next(self.iceberg.yield_database(database_name)).right, expected
@@ -676,21 +684,40 @@ class IcebergUnitTest(TestCase):
 
         # When the Owner is present on the PyIceberg Table
         # Then EntityReference needs to be searched for
-        ref = EntityReference(id=uuid.uuid4(), type="user")
+        ref = EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), type="user")])
 
         iceberg_table_with_owner = {
             "identifier": (
-                self.iceberg.context.database,
-                self.iceberg.context.database_schema,
+                self.iceberg.context.get().database,
+                self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV1.parse_obj(
+            "metadata": TableMetadataV2.model_validate(
                 {
                     "location": "foo",
                     "last_column_id": 1,
-                    "format_version": 1,
-                    "schema": {},
+                    "format_version": 2,
+                    "schemas": [
+                        Schema(
+                            fields=tuple(
+                                MOCK_COLUMN_MAP[field]["iceberg"]
+                                for field in MOCK_COLUMN_MAP.keys()
+                            )
+                        )
+                    ],
                     "partition_spec": [],
+                    "partition_specs": [
+                        {
+                            "fields": (
+                                PartitionField(
+                                    source_id=1,
+                                    field_id=1000,
+                                    transform=IdentityTransform(),
+                                    name="boolean",
+                                ),
+                            )
+                        }
+                    ],
                     "properties": {"owner": "myself"},
                 }
             ),
@@ -699,7 +726,9 @@ class IcebergUnitTest(TestCase):
             "catalog": self.iceberg.connection_obj,
         }
 
-        self.iceberg.context.iceberg_table = PyIcebergTable(**iceberg_table_with_owner)
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(
+            **iceberg_table_with_owner
+        )
 
         with patch.object(OpenMetadata, "get_reference_by_email", return_value=ref):
             self.assertEqual(
@@ -711,17 +740,36 @@ class IcebergUnitTest(TestCase):
         # Then None is returned
         iceberg_table_without_owner = {
             "identifier": (
-                self.iceberg.context.database,
-                self.iceberg.context.database_schema,
+                self.iceberg.context.get().database,
+                self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV1.parse_obj(
+            "metadata": TableMetadataV2.model_validate(
                 {
                     "location": "foo",
                     "last_column_id": 1,
-                    "format_version": 1,
-                    "schema": {},
+                    "format_version": 2,
+                    "schemas": [
+                        Schema(
+                            fields=tuple(
+                                MOCK_COLUMN_MAP[field]["iceberg"]
+                                for field in MOCK_COLUMN_MAP.keys()
+                            )
+                        )
+                    ],
                     "partition_spec": [],
+                    "partition_specs": [
+                        {
+                            "fields": (
+                                PartitionField(
+                                    source_id=1,
+                                    field_id=1000,
+                                    transform=IdentityTransform(),
+                                    name="boolean",
+                                ),
+                            )
+                        }
+                    ],
                     "properties": {},
                 }
             ),
@@ -729,7 +777,7 @@ class IcebergUnitTest(TestCase):
             "io": "pyiceberg.io.pyarrow.PyArrowFileIO",
             "catalog": self.iceberg.connection_obj,
         }
-        self.iceberg.context.iceberg_table = PyIcebergTable(
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(
             **iceberg_table_without_owner
         )
 
@@ -743,21 +791,24 @@ class IcebergUnitTest(TestCase):
 
         iceberg_table = {
             "identifier": (
-                self.iceberg.context.database,
-                self.iceberg.context.database_schema,
+                self.iceberg.context.get().database,
+                self.iceberg.context.get().database_schema,
                 table_name,
             ),
-            "metadata": TableMetadataV1.parse_obj(
+            "metadata": TableMetadataV2.model_validate(
                 {
                     "location": "foo",
+                    "current-schema-id": 0,
                     "last_column_id": 1,
-                    "format_version": 1,
-                    "schema": Schema(
-                        fields=(
-                            MOCK_COLUMN_MAP[field]["iceberg"]
-                            for field in MOCK_COLUMN_MAP.keys()
+                    "format_version": 2,
+                    "schemas": [
+                        Schema(
+                            fields=tuple(
+                                MOCK_COLUMN_MAP[field]["iceberg"]
+                                for field in MOCK_COLUMN_MAP.keys()
+                            )
                         )
-                    ),
+                    ],
                     "partition_spec": [],
                     "partition_specs": [
                         {
@@ -781,19 +832,27 @@ class IcebergUnitTest(TestCase):
 
         fq_database_schema = "FullyQualifiedDatabaseSchema"
 
-        ref = EntityReference(id=uuid.uuid4(), type="user")
-        self.iceberg.context.iceberg_table = PyIcebergTable(**iceberg_table)
+        ref = EntityReferenceList(root=[EntityReference(id=uuid.uuid4(), type="user")])
+        self.iceberg.context.get().iceberg_table = PyIcebergTable(**iceberg_table)
 
         expected = CreateTableRequest(
-            name=table_name,
+            name=EntityName(table_name),
             tableType=table_type,
-            description="Table Description",
-            owner=ref,
+            description=Markdown("Table Description"),
+            owners=ref,
             columns=[
                 MOCK_COLUMN_MAP[field]["ometa"] for field in MOCK_COLUMN_MAP.keys()
             ],
-            tablePartition=TablePartition(columns=["binary"]),
-            databaseSchema=fq_database_schema,
+            tablePartition=TablePartition(
+                columns=[
+                    PartitionColumnDetails(
+                        columnName="binary",
+                        intervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                        interval=None,
+                    )
+                ]
+            ),
+            databaseSchema=FullyQualifiedEntityName(fq_database_schema),
         )
 
         with patch.object(

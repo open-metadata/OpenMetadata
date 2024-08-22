@@ -26,11 +26,13 @@ import {
   mockEntityDataWithNestingResponse,
   mockEntityDataWithoutNesting,
   mockEntityDataWithoutNestingResponse,
+  mockEntityReferenceDashboardData,
   mockGetHighlightOfListItemResponse,
   mockGetMapOfListHighlightsResponse,
   mockGetSummaryListItemTypeResponse,
   mockHighlights,
   mockInvalidDataResponse,
+  mockLinkBasedSummaryTitleDashboardResponse,
   mockLinkBasedSummaryTitleResponse,
   mockListItemNameHighlight,
   mockTagFQNsForHighlight,
@@ -85,6 +87,16 @@ describe('EntitySummaryPanelUtils tests', () => {
 
       expect(resultFormattedData).toEqual(mockInvalidDataResponse);
     });
+
+    it('getFormattedEntityData should render nesting for schema fields', () => {
+      const resultFormattedData = getFormattedEntityData(
+        SummaryEntityType.SCHEMAFIELD,
+        mockEntityDataWithNesting,
+        mockHighlights
+      );
+
+      expect(resultFormattedData).toEqual(mockEntityDataWithNestingResponse);
+    });
   });
 
   describe('getSortedTagsWithHighlight', () => {
@@ -123,6 +135,14 @@ describe('EntitySummaryPanelUtils tests', () => {
       const linkBasedTitle = getTitle(mockEntityDataWithoutNesting[0]);
 
       expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
+    });
+
+    it('getTitle should return title as link without icon if type: dashboard present in listItem', () => {
+      const linkBasedTitle = getTitle(mockEntityReferenceDashboardData);
+
+      expect(linkBasedTitle).toEqual(
+        mockLinkBasedSummaryTitleDashboardResponse
+      );
     });
   });
 

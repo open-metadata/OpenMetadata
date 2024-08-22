@@ -13,25 +13,18 @@
 
 import { ReactNode } from 'react';
 import { ThreadType } from '../../../generated/api/feed/createThread';
-import {
-  Column,
-  ColumnJoins,
-  Table,
-} from '../../../generated/entity/data/table';
+import { Column, Table } from '../../../generated/entity/data/table';
+import { TestSummary } from '../../../generated/tests/testCase';
 
 export interface SchemaTableProps {
-  tableColumns: Column[];
-  joins: Array<ColumnJoins>;
-  columnName: string;
   hasDescriptionEditAccess: boolean;
   hasTagEditAccess: boolean;
-  tableConstraints: Table['tableConstraints'];
-  tablePartitioned: Table['tablePartition'];
   searchText?: string;
   isReadOnly?: boolean;
-  entityFqn: string;
   onUpdate: (columns: Column[]) => Promise<void>;
   onThreadLinkSelect: (value: string, threadType?: ThreadType) => void;
+  table?: Table;
+  testCaseSummary?: TestSummary;
 }
 
 export type TableCellRendered<T, K extends keyof T> = (

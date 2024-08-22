@@ -31,7 +31,11 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
-import { EntityAction, EntityType } from '../../../../../enums/entity.enum';
+import {
+  EntityAction,
+  EntityType,
+  TabSpecificField,
+} from '../../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
@@ -45,7 +49,6 @@ import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../../../utils/StringsUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -93,9 +96,9 @@ export const UserTab = ({
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
     setIsLoading(true);
     getUsers({
-      fields: 'teams,roles',
+      fields: `${TabSpecificField.ROLES}`,
       limit: pageSize,
-      team: getDecodedFqn(team),
+      team,
       ...paging,
     })
       .then((res) => {
@@ -179,7 +182,8 @@ export const UserTab = ({
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
-      ...commonUserDetailColumns(),
+      // will not show teams column in the Team Page
+      ...commonUserDetailColumns().filter((item) => item.key !== 'teams'),
       {
         title: t('label.action-plural'),
         dataIndex: 'actions',
@@ -191,7 +195,7 @@ export const UserTab = ({
             className="w-full justify-center remove-icon"
             size={8}>
             <Tooltip
-              placement="bottomRight"
+              placement="left"
               title={
                 permission.EditAll
                   ? t('label.remove')
@@ -248,7 +252,7 @@ export const UserTab = ({
             description={t('message.export-entity-help', {
               entity: t('label.user-lowercase'),
             })}
-            icon={<ExportIcon width="18px" />}
+            icon={ExportIcon}
             id="export"
             name={t('label.export')}
           />
@@ -265,7 +269,7 @@ export const UserTab = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={<ImportIcon width="20px" />}
+            icon={ImportIcon}
             id="import-button"
             name={t('label.import')}
           />

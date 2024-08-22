@@ -3,12 +3,13 @@ title: Run the Kinesis Connector Externally
 slug: /connectors/messaging/kinesis/yaml
 ---
 
-# Run the Kinesis Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Topics     | {% icon iconName="check" /%} |
-| Sample Data| {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Kinesis"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Topics", "Sample Data"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Kinesis connector.
 
@@ -21,14 +22,8 @@ Configure and schedule Kinesis metadata workflows from the OpenMetadata UI:
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 OpenMetadata retrieves information about streams and sample data from the streams in the AWS account.
-The user must have following policy set to access the metadata from Kinesis.
+The user must have the following policy set to access the metadata from Kinesis.
 
 ```json
 {
@@ -182,7 +177,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: kinesis
   serviceName: local_kinesis

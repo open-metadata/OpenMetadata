@@ -69,6 +69,7 @@ EXPECTED_FIVETRAN_DETAILS = FivetranPipelineDetails(
     source=mock_data.get("source"),
     destination=mock_data.get("destination"),
     group=mock_data.get("group"),
+    connector_id=mock_data.get("source").get("id"),
 )
 
 
@@ -79,18 +80,21 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
         Task(
             name="wackiness_remote_aiding_pointless",
             displayName="test <> postgres_rds",
+            sourceUrl=SourceUrl(
+                "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
+            ),
         )
     ],
-    service=FullyQualifiedEntityName(__root__="fivetran_source"),
+    service=FullyQualifiedEntityName("fivetran_source"),
     sourceUrl=SourceUrl(
-        __root__="https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
+        "https://fivetran.com/dashboard/connectors/aiding_pointless/status?groupId=wackiness_remote&service=postgres_rds"
     ),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="fivetran_source",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="fivetran_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("fivetran_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Fivetran,
 )
@@ -120,15 +124,15 @@ class FivetranUnitTest(TestCase):
     def __init__(self, methodName, fivetran_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_fivetran_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_fivetran_config)
         self.fivetran = FivetranSource.create(
             mock_fivetran_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.fivetran.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.fivetran.context.__dict__[
+        self.fivetran.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.fivetran.context.get().__dict__[
             "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        ] = MOCK_PIPELINE_SERVICE.name.root
         self.client = fivetran_client.return_value
         self.client.list_groups.return_value = [mock_data.get("group")]
         self.client.list_group_connectors.return_value = [mock_data.get("source")]

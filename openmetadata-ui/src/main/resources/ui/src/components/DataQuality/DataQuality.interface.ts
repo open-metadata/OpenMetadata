@@ -1,3 +1,8 @@
+import { DateRangeObject } from 'Models';
+import { TestCaseStatus } from '../../generated/tests/testCase';
+import { TestPlatform } from '../../generated/tests/testDefinition';
+import { TestCaseType } from '../../rest/testAPI';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,8 +15,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type DataQualitySearchParams = {
+export type TestSuiteSearchParams = {
   searchValue: string;
   status: string;
   type: string;
+  owner: string;
+};
+
+export type TestCaseSearchParams = {
+  searchValue?: string;
+  tableFqn?: string;
+  testPlatforms?: TestPlatform[];
+  testCaseStatus?: TestCaseStatus;
+  testCaseType?: TestCaseType;
+  lastRunRange?: DateRangeObject;
+  tier?: string;
+  tags?: string;
+  serviceName?: string;
 };

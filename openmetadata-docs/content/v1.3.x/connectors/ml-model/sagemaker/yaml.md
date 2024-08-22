@@ -3,7 +3,13 @@ title: Run the Sagemaker Connector Externally
 slug: /connectors/ml-model/sagemaker/yaml
 ---
 
-# Run the Sagemaker Connector Externally
+{% connectorDetailsHeader
+name="Sagemaker"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["ML Store"]
+unavailableFeatures=["ML Features", "Hyperparameters"]
+/ %}
 
 In this section, we provide guides and references to use the Sagemaker connector.
 
@@ -16,14 +22,8 @@ Configure and schedule Sagemaker metadata and profiler workflows from the OpenMe
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 OpenMetadata retrieves information about models and tags associated with the models in the AWS account.
-The user must have following policy set to ingest the metadata from Sagemaker.
+The user must have the following policy set to ingest the metadata from Sagemaker.
 
 ```json
 {
@@ -175,7 +175,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: sagemaker
   serviceName: local_sagemaker

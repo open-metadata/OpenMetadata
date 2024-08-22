@@ -3,29 +3,13 @@ title: DeltaLake
 slug: /connectors/database/deltalake
 ---
 
-# Delta Lake
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="DeltaLake"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "dbt"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures"]
+/ %}
 
 
 In this section, we provide guides and references to use the Deltalake connector.
@@ -102,7 +86,7 @@ You can also connect to the metastore by directly pointing to the Hive Metastore
 
 Here, we will need to inform all the common database settings (url, username, password), and the driver class name for JDBC metastore.
 
-You will need to provide the driver to the ingestion image, and pass the `classpath` which will be used in the Spark Configuration under `sparks.driver.extraClassPath`.
+You will need to provide the driver to the ingestion image, and pass the `classpath` which will be used in the Spark Configuration under `spark.driver.extraClassPath`.
 
 {% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
 

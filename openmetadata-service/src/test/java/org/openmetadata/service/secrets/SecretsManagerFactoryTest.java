@@ -14,6 +14,7 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.secrets.Parameters;
@@ -86,6 +87,15 @@ public class SecretsManagerFactoryTest {
             instanceof AWSSSMSecretsManager);
   }
 
+  @Test
+  void testIsCreatedIfGCPSecretsManager() {
+    initConfigForAGCPSecretManager(SecretsManagerProvider.GCP);
+    config.setSecretsManager(SecretsManagerProvider.GCP);
+    Assertions.assertSame(
+        SecretsManagerFactory.createSecretsManager(config, CLUSTER_NAME).getClass(),
+        GCPSecretsManager.class);
+  }
+
   private void initConfigForAWSBasedSecretManager(SecretsManagerProvider secretManagerProvider) {
     config.setSecretsManager(secretManagerProvider);
     Parameters parameters = new Parameters();
@@ -93,5 +103,12 @@ public class SecretsManagerFactoryTest {
     config.getParameters().setAdditionalProperty("region", "eu-west-1");
     config.getParameters().setAdditionalProperty("accessKeyId", "123456");
     config.getParameters().setAdditionalProperty("secretAccessKey", "654321");
+  }
+
+  private void initConfigForAGCPSecretManager(SecretsManagerProvider secretManagerProvider) {
+    config.setSecretsManager(secretManagerProvider);
+    Parameters parameters = new Parameters();
+    config.setParameters(parameters);
+    config.getParameters().setAdditionalProperty("projectId", "123456");
   }
 }

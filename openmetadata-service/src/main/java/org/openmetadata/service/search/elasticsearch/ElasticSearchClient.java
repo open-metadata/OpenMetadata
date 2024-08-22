@@ -1,10 +1,18 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.Entity.DATA_PRODUCT;
+import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.GLOSSARY_TERM;
+import static org.openmetadata.service.Entity.QUERY;
+import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DATA_MODEL_COLUMNS_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
@@ -21,22 +29,23 @@ import static org.openmetadata.service.search.EntityBuilderConstant.PRE_TAG;
 import static org.openmetadata.service.search.EntityBuilderConstant.SCHEMA_FIELD_NAMES;
 import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH;
+import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitiesProcessor.getUpdateRequest;
+import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
-import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkItemResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
-import es.org.elasticsearch.action.delete.DeleteResponse;
+import es.org.elasticsearch.action.get.GetRequest;
+import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
-import es.org.elasticsearch.action.update.UpdateResponse;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
@@ -45,8 +54,13 @@ import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
+import es.org.elasticsearch.client.indices.GetMappingsRequest;
+import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
+import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
+import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
+import es.org.elasticsearch.common.lucene.search.function.FunctionScoreQuery;
 import es.org.elasticsearch.common.settings.Settings;
 import es.org.elasticsearch.common.unit.Fuzziness;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
@@ -61,15 +75,16 @@ import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
+import es.org.elasticsearch.index.query.TermsQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import es.org.elasticsearch.index.query.functionscore.ScoreFunctionBuilders;
-import es.org.elasticsearch.index.query.functionscore.ScriptScoreFunctionBuilder;
-import es.org.elasticsearch.index.reindex.BulkByScrollResponse;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.script.Script;
 import es.org.elasticsearch.script.ScriptType;
+import es.org.elasticsearch.search.SearchHit;
+import es.org.elasticsearch.search.SearchHits;
 import es.org.elasticsearch.search.SearchModule;
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
@@ -77,12 +92,18 @@ import es.org.elasticsearch.search.aggregations.BucketOrder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
+import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
+import es.org.elasticsearch.search.aggregations.metrics.AvgAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.MaxAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.metrics.SumAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
+import es.org.elasticsearch.search.sort.FieldSortBuilder;
+import es.org.elasticsearch.search.sort.NestedSortBuilder;
+import es.org.elasticsearch.search.sort.SortBuilders;
+import es.org.elasticsearch.search.sort.SortMode;
 import es.org.elasticsearch.search.sort.SortOrder;
 import es.org.elasticsearch.search.suggest.Suggest;
 import es.org.elasticsearch.search.suggest.SuggestBuilder;
@@ -99,15 +120,20 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import javax.json.JsonObject;
 import javax.net.ssl.SSLContext;
 import javax.ws.rs.core.Response;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
@@ -115,23 +141,36 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
+import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
+import org.openmetadata.schema.entity.data.EntityHierarchy__1;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.UpdateSearchEventsConstant;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDailyActiveUsersAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorFactory;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchDynamicChartAggregatorInterface;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesDescriptionAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchEntitiesOwnerAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostActiveUsersAggregator;
@@ -162,16 +201,17 @@ import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
-  private final RestHighLevelClient client;
+  protected final RestHighLevelClient client;
 
   private final boolean isClientAvailable;
-  private static final NamedXContentRegistry xContentRegistry;
+  public static final NamedXContentRegistry xContentRegistry;
 
   private final String clusterAlias;
 
@@ -247,6 +287,7 @@ public class ElasticSearchClient implements SearchClient {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
+
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
               .index(indexMapping.getIndexName(clusterAlias))
@@ -289,7 +330,7 @@ public class ElasticSearchClient implements SearchClient {
           "{} Deleted {}",
           indexMapping.getIndexName(clusterAlias),
           deleteIndexResponse.isAcknowledged());
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to delete Elastic Search indexes due to", e);
     }
   }
@@ -297,70 +338,26 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public Response search(SearchRequest request) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
-        switch (request.getIndex()) {
-          case "topic_search_index", "topic" -> buildTopicSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "table_search_index", "table" -> buildTableSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "database_schema_search_index",
-              "databaseSchema",
-              "database_search_index",
-              "database" -> buildGenericDataAssetSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "user_search_index",
-              "user",
-              "team_search_index",
-              "team" -> buildUserOrTeamSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "tag_search_index", "tag" -> buildTagSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "container_search_index", "container" -> buildContainerSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "query_search_index", "query" -> buildQuerySearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_search_index",
-              "testCase",
-              "test_suite_search_index",
-              "testSuite" -> buildTestCaseSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "dashboard_data_model_search_index",
-              "dashboardDataModel" -> buildDashboardDataModelsSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "domain_search_index", "domain" -> buildDomainsSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "raw_cost_analysis_report_data_index",
-              "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "data_product_search_index" -> buildDataProductSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "mlmodel_service_search_index",
-              "database_service_search_index",
-              "messaging_service_index",
-              "dashboard_service_index",
-              "pipeline_service_index",
-              "storage_service_index",
-              "search_service_index",
-              "metadata_service_index" -> buildServiceSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-          default -> buildAggregateSearchBuilder(
-              request.getQuery(), request.getFrom(), request.getSize());
-        };
+        getSearchSourceBuilder(
+            request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
+
+    // Add Domain filter
+    if (request.isApplyDomainFilter()) {
+      if (!nullOrEmpty(request.getDomains())) {
+        TermsQueryBuilder domainFilter =
+            QueryBuilders.termsQuery("domain.fullyQualifiedName", request.getDomains());
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(domainFilter));
+      } else {
+        // Else condition to list entries where domain field is null
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery()
+                .must(searchSourceBuilder.query())
+                .mustNot(QueryBuilders.existsQuery("domain.fullyQualifiedName")));
+      }
+    }
+
+    // Add Filter
     if (!nullOrEmpty(request.getQueryFilter()) && !request.getQueryFilter().equals("{}")) {
       try {
         XContentParser filterParser =
@@ -392,43 +389,124 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     /* For backward-compatibility we continue supporting the deleted argument, this should be removed in future versions */
-    if (request.getIndex().equalsIgnoreCase("all")
-        || request.getIndex().equalsIgnoreCase("dataAsset")) {
+    if (request
+            .getIndex()
+            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(Entity.getSearchRepository().getIndexOrAliasName("dataAsset"))) {
       BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .must(QueryBuilders.existsQuery("deleted"))
-              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
       boolQueryBuilder.should(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
               .mustNot(QueryBuilders.existsQuery("deleted")));
       searchSourceBuilder.query(boolQueryBuilder);
-    } else if (request.getIndex().equalsIgnoreCase("domain_search_index")
-        || request.getIndex().equalsIgnoreCase("data_product_search_index")
-        || request.getIndex().equalsIgnoreCase("query_search_index")
-        || request.getIndex().equalsIgnoreCase("knowledge_page_search_index")
-        || request.getIndex().equalsIgnoreCase("raw_cost_analysis_report_data_index")
-        || request.getIndex().equalsIgnoreCase("aggregated_cost_analysis_report_data_index")) {
+    } else if (request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository()
+                    .getIndexMapping(DATA_PRODUCT)
+                    .getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository().getIndexMapping(QUERY).getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository().getIndexOrAliasName("knowledge_page_search_index"))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository()
+                    .getIndexMapping(RAW_COST_ANALYSIS_REPORT_DATA)
+                    .getIndexName(clusterAlias))
+        || request
+            .getIndex()
+            .equalsIgnoreCase(
+                Entity.getSearchRepository()
+                    .getIndexMapping(AGGREGATED_COST_ANALYSIS_REPORT_DATA)
+                    .getIndexName(clusterAlias))) {
       searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
     } else {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
               .must(searchSourceBuilder.query())
-              .must(QueryBuilders.termQuery("deleted", request.deleted())));
+              .must(QueryBuilders.termQuery("deleted", request.isDeleted())));
     }
 
-    if (!nullOrEmpty(request.getSortFieldParam())) {
-      searchSourceBuilder.sort(
-          request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
+    if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
+      FieldSortBuilder fieldSortBuilder =
+          new FieldSortBuilder(request.getSortFieldParam())
+              .order(SortOrder.fromString(request.getSortOrder()));
+      // Score is an internal ES Field
+      if (!request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        fieldSortBuilder.unmappedType("integer");
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
 
-    if (request.getIndex().equalsIgnoreCase("glossary_term_search_index")) {
-      searchSourceBuilder.query(
-          QueryBuilders.boolQuery()
-              .must(searchSourceBuilder.query())
-              .must(QueryBuilders.matchQuery("status", "Approved")));
+    if (request
+        .getIndex()
+        .equalsIgnoreCase(
+            Entity.getSearchRepository()
+                .getIndexMapping(GLOSSARY_TERM)
+                .getIndexName(clusterAlias))) {
+      searchSourceBuilder.query(QueryBuilders.boolQuery().must(searchSourceBuilder.query()));
+
+      if (request.isGetHierarchy()) {
+        /*
+        Search for user input terms in name, fullyQualifiedName, displayName and glossary.fullyQualifiedName, glossary.displayName
+        */
+        QueryBuilder baseQuery =
+            QueryBuilders.boolQuery()
+                .should(searchSourceBuilder.query())
+                .should(QueryBuilders.matchPhraseQuery("fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("name", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("displayName", request.getQuery()))
+                .should(
+                    QueryBuilders.matchPhraseQuery(
+                        "glossary.fullyQualifiedName", request.getQuery()))
+                .should(QueryBuilders.matchPhraseQuery("glossary.displayName", request.getQuery()))
+                .must(QueryBuilders.matchQuery("status", "Approved"))
+                .minimumShouldMatch(1);
+        searchSourceBuilder.query(baseQuery);
+
+        SearchResponse searchResponse =
+            client.search(
+                new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                    .source(searchSourceBuilder),
+                RequestOptions.DEFAULT);
+
+        // Extract parent terms from aggregation
+        BoolQueryBuilder parentTermQueryBuilder = QueryBuilders.boolQuery();
+        Terms parentTerms = searchResponse.getAggregations().get("fqnParts_agg");
+
+        // Build  es query to get parent terms for the user input query , to build correct hierarchy
+        if (!parentTerms.getBuckets().isEmpty() && !request.getQuery().equals("*")) {
+          parentTerms.getBuckets().stream()
+              .map(Terms.Bucket::getKeyAsString)
+              .forEach(
+                  parentTerm ->
+                      parentTermQueryBuilder.should(
+                          QueryBuilders.matchQuery("fullyQualifiedName", parentTerm)));
+
+          searchSourceBuilder.query(
+              parentTermQueryBuilder
+                  .minimumShouldMatch(1)
+                  .must(QueryBuilders.matchQuery("status", "Approved")));
+        }
+        searchSourceBuilder.sort(SortBuilders.fieldSort("fullyQualifiedName").order(SortOrder.ASC));
+      }
     }
 
     /* for performance reasons ElasticSearch doesn't provide accurate hits
@@ -438,11 +516,11 @@ public class ElasticSearchClient implements SearchClient {
     https://github.com/elastic/elasticsearch/issues/33028 */
     searchSourceBuilder.fetchSource(
         new FetchSourceContext(
-            request.fetchSource(),
+            request.isFetchSource(),
             request.getIncludeSourceFields().toArray(String[]::new),
             new String[] {}));
 
-    if (request.trackTotalHits()) {
+    if (request.isTrackTotalHits()) {
       searchSourceBuilder.trackTotalHits(true);
     } else {
       searchSourceBuilder.trackTotalHitsUpTo(MAX_RESULT_HITS);
@@ -450,14 +528,21 @@ public class ElasticSearchClient implements SearchClient {
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
     try {
-      String response =
-          client
-              .search(
-                  new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
-                      .source(searchSourceBuilder),
-                  RequestOptions.DEFAULT)
-              .toString();
-      return Response.status(OK).entity(response).build();
+
+      SearchResponse searchResponse =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(request.getIndex())
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+
+      if (!request.isGetHierarchy()) {
+        return Response.status(OK).entity(searchResponse.toString()).build();
+      } else {
+        // Build the nested hierarchy from elastic search response
+        List<?> response = buildSearchHierarchy(request, searchResponse);
+        return Response.status(OK).entity(response).build();
+      }
+
     } catch (ElasticsearchStatusException e) {
       if (e.status() == RestStatus.NOT_FOUND) {
         throw new SearchIndexNotFoundException(
@@ -469,7 +554,162 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response searchLineage(
+  public Response getDocByID(String indexName, String entityId) throws IOException {
+    try {
+      GetRequest request =
+          new GetRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName), entityId);
+      GetResponse response = client.get(request, RequestOptions.DEFAULT);
+
+      if (response.isExists()) {
+        return Response.status(OK).entity(response.toString()).build();
+      }
+
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to to find doc with id %s", entityId));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
+    }
+    return getResponse(NOT_FOUND, "Document not found.");
+  }
+
+  public List<?> buildSearchHierarchy(SearchRequest request, SearchResponse searchResponse) {
+    List<?> response = new ArrayList<>();
+    if (request
+        .getIndex()
+        .equalsIgnoreCase(
+            Entity.getSearchRepository()
+                .getIndexMapping(GLOSSARY_TERM)
+                .getIndexName(clusterAlias))) {
+      response = buildGlossaryTermSearchHierarchy(searchResponse);
+    }
+    return response;
+  }
+
+  public List<EntityHierarchy__1> buildGlossaryTermSearchHierarchy(SearchResponse searchResponse) {
+    Map<String, EntityHierarchy__1> termMap =
+        new LinkedHashMap<>(); // termMap represent glossary terms
+    Map<String, EntityHierarchy__1> rootTerms =
+        new LinkedHashMap<>(); // rootTerms represent glossaries
+
+    for (var hit : searchResponse.getHits().getHits()) {
+      String jsonSource = hit.getSourceAsString();
+
+      EntityHierarchy__1 term = JsonUtils.readValue(jsonSource, EntityHierarchy__1.class);
+      EntityHierarchy__1 glossaryInfo =
+          JsonUtils.readTree(jsonSource).path("glossary").isMissingNode()
+              ? null
+              : JsonUtils.convertValue(
+                  JsonUtils.readTree(jsonSource).path("glossary"), EntityHierarchy__1.class);
+
+      if (glossaryInfo != null) {
+        rootTerms.putIfAbsent(glossaryInfo.getFullyQualifiedName(), glossaryInfo);
+      }
+
+      term.setChildren(new ArrayList<>());
+      termMap.putIfAbsent(term.getFullyQualifiedName(), term);
+    }
+
+    termMap.putAll(rootTerms);
+
+    termMap
+        .values()
+        .forEach(
+            term -> {
+              String parentFQN = getParentFQN(term.getFullyQualifiedName());
+              String termFQN = term.getFullyQualifiedName();
+
+              if (parentFQN != null && termMap.containsKey(parentFQN)) {
+                EntityHierarchy__1 parentTerm = termMap.get(parentFQN);
+                List<EntityHierarchy__1> children = parentTerm.getChildren();
+                children.removeIf(
+                    child -> child.getFullyQualifiedName().equals(term.getFullyQualifiedName()));
+                children.add(term);
+                parentTerm.setChildren(children);
+              } else {
+                if (rootTerms.containsKey(termFQN)) {
+                  EntityHierarchy__1 rootTerm = rootTerms.get(termFQN);
+                  rootTerm.setChildren(term.getChildren());
+                }
+              }
+            });
+
+    return new ArrayList<>(rootTerms.values());
+  }
+
+  @Override
+  public SearchResultListMapper listWithOffset(
+      String filter,
+      int limit,
+      int offset,
+      String index,
+      SearchSortFilter searchSortFilter,
+      String q)
+      throws IOException {
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (!nullOrEmpty(q)) {
+      searchSourceBuilder = getSearchSourceBuilder(index, q, offset, limit);
+    }
+
+    List<Map<String, Object>> results = new ArrayList<>();
+    if (!filter.isEmpty()) {
+      try {
+        XContentParser queryParser = createXContentParser(filter);
+        XContentParser sourceParser = createXContentParser(filter);
+        QueryBuilder queryFromXContent = SearchSourceBuilder.fromXContent(queryParser).query();
+        FetchSourceContext sourceFromXContent =
+            SearchSourceBuilder.fromXContent(sourceParser).fetchSource();
+        BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+        boolQuery =
+            nullOrEmpty(q)
+                ? boolQuery.filter(queryFromXContent)
+                : boolQuery.must(searchSourceBuilder.query()).filter(queryFromXContent);
+        searchSourceBuilder.query(boolQuery);
+        searchSourceBuilder.fetchSource(sourceFromXContent);
+      } catch (Exception e) {
+        throw new IOException("Failed to parse query filter: %s", e);
+      }
+    }
+
+    searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    searchSourceBuilder.from(offset);
+    searchSourceBuilder.size(limit);
+    if (searchSortFilter.isSorted()) {
+      FieldSortBuilder fieldSortBuilder =
+          SortBuilders.fieldSort(searchSortFilter.getSortField())
+              .order(SortOrder.fromString(searchSortFilter.getSortType()));
+      if (searchSortFilter.isNested()) {
+        NestedSortBuilder nestedSortBuilder =
+            new NestedSortBuilder(searchSortFilter.getSortNestedPath());
+        fieldSortBuilder.setNestedSort(nestedSortBuilder);
+        fieldSortBuilder.sortMode(
+            SortMode.valueOf(searchSortFilter.getSortNestedMode().toUpperCase()));
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
+    }
+    try {
+      SearchResponse response =
+          client.search(
+              new es.org.elasticsearch.action.search.SearchRequest(index)
+                  .source(searchSourceBuilder),
+              RequestOptions.DEFAULT);
+      SearchHits searchHits = response.getHits();
+      SearchHit[] hits = searchHits.getHits();
+      Arrays.stream(hits).forEach(hit -> results.add(hit.getSourceAsMap()));
+      return new SearchResultListMapper(results, searchHits.getTotalHits().value);
+    } catch (ElasticsearchStatusException e) {
+      if (e.status() == RestStatus.NOT_FOUND) {
+        throw new SearchIndexNotFoundException(String.format("Failed to to find index %s", index));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getDetailedMessage()));
+      }
+    }
+  }
+
+  @Override
+  public Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -486,7 +726,8 @@ public class ElasticSearchClient implements SearchClient {
           fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, responseMap);
     }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
@@ -503,6 +744,21 @@ public class ElasticSearchClient implements SearchClient {
         fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
+    return responseMap;
+  }
+
+  @Override
+  public Response searchLineage(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean deleted,
+      String entityType)
+      throws IOException {
+    Map<String, Object> responseMap =
+        searchLineageInternal(
+            fqn, upstreamDepth, downstreamDepth, queryFilter, deleted, entityType);
     return Response.status(OK).entity(responseMap).build();
   }
 
@@ -519,7 +775,8 @@ public class ElasticSearchClient implements SearchClient {
       return;
     }
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
         QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)));
@@ -571,7 +828,7 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  private Response searchPipelineLineage(
+  private Map<String, Object> searchPipelineLineage(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
@@ -581,17 +838,19 @@ public class ElasticSearchClient implements SearchClient {
       throws IOException {
     Set<Map<String, Object>> edges = new HashSet<>();
     Set<Map<String, Object>> nodes = new HashSet<>();
-    responseMap.put("entity", null);
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(GLOBAL_SEARCH_ALIAS);
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    searchSourceBuilder.query(
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+    BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
+    boolQueryBuilder.should(
         QueryBuilders.boolQuery()
             .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn)));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    searchSourceBuilder.query(boolQueryBuilder);
     if (CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery("lineage.pipeline.fullyQualifiedName.keyword", fqn))
+              .must(boolQueryBuilder)
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
@@ -641,9 +900,31 @@ public class ElasticSearchClient implements SearchClient {
         }
       }
     }
+    getLineage(
+        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+    getLineage(
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+
+    // TODO: Fix this , this is hack
+    if (edges.isEmpty()) {
+      es.org.elasticsearch.action.search.SearchRequest searchRequestForEntity =
+          new es.org.elasticsearch.action.search.SearchRequest(
+              Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
+      SearchSourceBuilder searchSourceBuilderForEntity = new SearchSourceBuilder();
+      searchSourceBuilderForEntity.query(
+          QueryBuilders.boolQuery().must(QueryBuilders.termQuery("fullyQualifiedName", fqn)));
+      searchRequestForEntity.source(searchSourceBuilderForEntity.size(1000));
+      SearchResponse searchResponseForEntity =
+          client.search(searchRequestForEntity, RequestOptions.DEFAULT);
+      for (var hit : searchResponseForEntity.getHits().getHits()) {
+        HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+        tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
+        responseMap.put("entity", tempMap);
+      }
+    }
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
-    return Response.status(OK).entity(responseMap).build();
+    return responseMap;
   }
 
   @Override
@@ -704,14 +985,204 @@ public class ElasticSearchClient implements SearchClient {
     return Response.status(OK).entity(response).build();
   }
 
-  private static ScriptScoreFunctionBuilder boostScore() {
-    return ScoreFunctionBuilders.scriptFunction(
-        "double score = _score;"
-            + "if (doc.containsKey('totalVotes') && doc['totalVotes'].value != null) { score = score + doc['totalVotes'].value; }"
-            + "if (doc.containsKey('usageSummary') && doc['usageSummary.weeklyStats.count'].value != null) { score = score + doc['usageSummary.weeklyStats.count'].value; }"
-            + "if (doc.containsKey('tier.tagFQN') && !doc['tier.tagFQN'].empty) { if (doc['tier.tagFQN'].value == 'Tier.Tier2') { score = score + 10; }"
-            + " else if (doc['tier.tagFQN'].value == 'Tier.Tier1') { score = score + 20; }}"
-            + "return score;");
+  /*
+  Build dynamic aggregation from elasticsearch JSON like aggregation query.
+  See TestSuiteResourceTest for example usage (ln. 506) for tested aggregation query.
+
+  @param aggregations - JsonObject containing the aggregation query
+   */
+  public static List<AggregationBuilder> buildAggregation(JsonObject aggregations) {
+    List<AggregationBuilder> aggregationBuilders = new ArrayList<>();
+    for (String key : aggregations.keySet()) {
+      JsonObject aggregation = aggregations.getJsonObject(key);
+      Set<String> keySet = aggregation.keySet();
+      for (String aggregationType : keySet) {
+        switch (aggregationType) {
+          case "terms":
+            JsonObject termAggregation = aggregation.getJsonObject(aggregationType);
+            TermsAggregationBuilder termsAggregationBuilder =
+                AggregationBuilders.terms(key).field(termAggregation.getString("field"));
+            aggregationBuilders.add(termsAggregationBuilder);
+            break;
+          case "avg":
+            JsonObject avgAggregation = aggregation.getJsonObject(aggregationType);
+            AvgAggregationBuilder avgAggregationBuilder =
+                AggregationBuilders.avg(key).field(avgAggregation.getString("field"));
+            aggregationBuilders.add(avgAggregationBuilder);
+            break;
+          case "nested":
+            JsonObject nestedAggregation = aggregation.getJsonObject("nested");
+            AggregationBuilder nestedAggregationBuilder =
+                AggregationBuilders.nested(
+                    nestedAggregation.getString("path"), nestedAggregation.getString("path"));
+            JsonObject nestedAggregations = aggregation.getJsonObject("aggs");
+
+            List<AggregationBuilder> nestedAggregationBuilders =
+                buildAggregation(nestedAggregations);
+            for (AggregationBuilder nestedAggregationBuilder1 : nestedAggregationBuilders) {
+              nestedAggregationBuilder.subAggregation(nestedAggregationBuilder1);
+            }
+            aggregationBuilders.add(nestedAggregationBuilder);
+            break;
+          case "aggs":
+            // Sub aggregation logic
+            if (!keySet.contains("nested")) {
+              JsonObject subAggregation = aggregation.getJsonObject("aggs");
+              if (!nullOrEmpty(aggregationBuilders)) {
+                AggregationBuilder aggregationBuilder =
+                    aggregationBuilders.get(aggregationBuilders.size() - 1);
+                List<AggregationBuilder> subAggregationBuilders = buildAggregation(subAggregation);
+                for (AggregationBuilder subAggregationBuilder : subAggregationBuilders) {
+                  aggregationBuilder.subAggregation(subAggregationBuilder);
+                }
+              }
+              break;
+            }
+            break;
+          default:
+            break;
+        }
+      }
+    }
+    return aggregationBuilders;
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+    String aggregationStr = (String) aggregationMetadata.get("aggregationStr");
+    JsonObject aggregationObj = JsonUtils.readJson("{%s}".formatted(aggregationStr)).asJsonObject();
+    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregationObj);
+
+    // Create search request
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+
+    // Create search source builder
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (query != null) {
+      XContentParser queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
+      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
+      searchSourceBuilder.query(boolQueryBuilder);
+    }
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    for (AggregationBuilder aggregation : aggregationBuilder) {
+      searchSourceBuilder.aggregation(aggregation);
+    }
+
+    searchRequest.source(searchSourceBuilder);
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+    Optional<JsonObject> aggregationResults =
+        Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
+    return SearchIndexUtils.parseAggregationResults(
+        aggregationResults,
+        (List<List<Map<String, String>>>) aggregationMetadata.get("aggregationMapList"));
+  }
+
+  @Override
+  public JsonObject aggregate(String query, String index, JsonObject aggregationJson)
+      throws IOException {
+    JsonObject aggregations = aggregationJson.getJsonObject("aggregations");
+    if (aggregations == null) {
+      return null;
+    }
+
+    List<AggregationBuilder> aggregationBuilder = buildAggregation(aggregations);
+    es.org.elasticsearch.action.search.SearchRequest searchRequest =
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(index));
+    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+    if (query != null) {
+      XContentParser queryParser =
+          XContentType.JSON
+              .xContent()
+              .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
+      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
+      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
+      searchSourceBuilder.query(boolQueryBuilder);
+    }
+
+    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
+
+    for (AggregationBuilder aggregation : aggregationBuilder) {
+      searchSourceBuilder.aggregation(aggregation);
+    }
+
+    searchRequest.source(searchSourceBuilder);
+
+    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
+    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+    return jsonResponse.getJsonObject("aggregations");
+  }
+
+  private static FunctionScoreQueryBuilder boostScore(
+      QueryStringQueryBuilder queryBuilder, String query) {
+    FunctionScoreQueryBuilder.FilterFunctionBuilder displayNameBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.existsQuery("displayName.keyword"), // If displayName exists
+            ScoreFunctionBuilders.weightFactorFunction(10.0f)); // Give it a high weight
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder nameBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.boolQuery()
+                .mustNot(
+                    QueryBuilders.existsQuery(
+                        "displayName.keyword")) // Only use name if displayName doesn't exist
+                .must(QueryBuilders.matchQuery("name.keyword", query)),
+            ScoreFunctionBuilders.weightFactorFunction(8.0f)); //
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier1"),
+            ScoreFunctionBuilders.weightFactorFunction(5.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier2Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier2"),
+            ScoreFunctionBuilders.weightFactorFunction(3.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier3Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier.Tier3"),
+            ScoreFunctionBuilders.weightFactorFunction(1.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder weeklyStatsBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.rangeQuery("usageSummary.weeklyStats.count").gt(0),
+            ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
+                .factor(1.5f)
+                .modifier(FieldValueFactorFunction.Modifier.SQRT)
+                .missing(1));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder totalVotesBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.rangeQuery("totalVotes").gt(0),
+            ScoreFunctionBuilders.fieldValueFactorFunction("totalVotes")
+                .factor(2.0f)
+                .modifier(FieldValueFactorFunction.Modifier.LN1P)
+                .missing(0));
+
+    // FunctionScoreQueryBuilder with an array of score functions
+    return QueryBuilders.functionScoreQuery(
+            queryBuilder,
+            new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
+              displayNameBoost,
+              nameBoost,
+              tier1Boost,
+              tier2Boost,
+              tier3Boost,
+              weeklyStatsBoost,
+              totalVotesBoost
+            })
+        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
+        .boostMode(CombineFunction.SUM);
   }
 
   private static HighlightBuilder buildHighlights(List<String> fields) {
@@ -749,7 +1220,7 @@ public class ElasticSearchClient implements SearchClient {
               "deleted",
               Collections.singletonList(
                   CategoryQueryContext.builder()
-                      .setCategory(String.valueOf(request.deleted()))
+                      .setCategory(String.valueOf(request.isDeleted()))
                       .build())));
     }
     SuggestBuilder suggestBuilder = new SuggestBuilder();
@@ -759,7 +1230,7 @@ public class ElasticSearchClient implements SearchClient {
         .timeout(new TimeValue(30, TimeUnit.SECONDS))
         .fetchSource(
             new FetchSourceContext(
-                request.fetchSource(),
+                request.isFetchSource(),
                 request.getIncludeSourceFields().toArray(String[]::new),
                 new String[] {}));
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
@@ -774,8 +1245,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, PipelineIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("tasks.name", "tasks.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder.aggregation(
@@ -786,8 +1256,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, MlModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("mlFeatures.name", "mlFeatures.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
@@ -796,8 +1265,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TopicIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
@@ -811,14 +1279,14 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("charts.name", "charts.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
         .aggregation(
             AggregationBuilders.terms("dataModels.displayName.keyword")
                 .field("dataModels.displayName.keyword"))
+        .aggregation(AggregationBuilders.terms("project.keyword").field("project.keyword"))
         .aggregation(
             AggregationBuilders.terms("charts.displayName.keyword")
                 .field("charts.displayName.keyword"));
@@ -829,10 +1297,16 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("database.name.keyword")
+            .field("database.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("databaseSchema.name.keyword")
+            .field("databaseSchema.name.keyword")
+            .size(MAX_AGGREGATE_SIZE));
     return addAggregation(searchSourceBuilder);
   }
 
@@ -840,8 +1314,7 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
@@ -850,10 +1323,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TableIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
-
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb =
         buildHighlights(List.of("columns.name", "columns.description", "columns.children.name"));
     SearchSourceBuilder searchSourceBuilder =
@@ -881,23 +1351,22 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("synonyms"));
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
         AggregationBuilders.terms("glossary.name.keyword").field("glossary.name.keyword"));
+    searchSourceBuilder.aggregation(
+        AggregationBuilders.terms("fqnParts_agg").field("fqnParts").size(1000));
+    searchSourceBuilder.aggregation(AggregationBuilders.terms("status").field("status"));
     return addAggregation(searchSourceBuilder);
   }
 
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TagIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -910,9 +1379,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, ContainerIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb =
         buildHighlights(
             List.of(
@@ -932,9 +1399,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, QueryIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -949,8 +1414,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
@@ -962,9 +1426,7 @@ public class ElasticSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -979,9 +1441,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DomainIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -995,9 +1455,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
-    queryBuilder.boostMode(CombineFunction.SUM);
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1024,8 +1482,7 @@ public class ElasticSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DataProductIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     queryBuilder.boostMode(CombineFunction.SUM);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
@@ -1040,7 +1497,8 @@ public class ElasticSearchClient implements SearchClient {
         .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
         .defaultOperator(Operator.AND)
         .fuzziness(Fuzziness.AUTO)
-        .tieBreaker(0.9f);
+        .fuzzyPrefixLength(3)
+        .tieBreaker(0.5f);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
@@ -1067,10 +1525,6 @@ public class ElasticSearchClient implements SearchClient {
         .aggregation(
             AggregationBuilders.terms(OWNER_DISPLAY_NAME_KEYWORD)
                 .field(OWNER_DISPLAY_NAME_KEYWORD)
-                .size(MAX_AGGREGATE_SIZE))
-        .aggregation(
-            AggregationBuilders.terms("owner.displayName")
-                .field("owner.displayName")
                 .size(MAX_AGGREGATE_SIZE))
         .aggregation(
             AggregationBuilders.terms(DOMAIN_DISPLAY_NAME_KEYWORD)
@@ -1142,10 +1596,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public void deleteEntityByFields(String indexName, List<Pair<String, String>> fieldAndValue) {
+  public void deleteEntityByFields(
+      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
+      DeleteByQueryRequest deleteByQueryRequest =
+          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1167,9 +1623,10 @@ public class ElasticSearchClient implements SearchClient {
 
   @Override
   public void softDeleteOrRestoreChildren(
-      String indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1197,23 +1654,93 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public void reindexAcrossIndices(String matchingKey, EntityReference sourceRef) {
+    if (isClientAvailable) {
+      getAsyncExecutor()
+          .submit(
+              () -> {
+                try {
+                  // Initialize the 'from' parameter to 0
+                  int from = 0;
+                  boolean hasMoreResults = true;
+
+                  while (hasMoreResults) {
+                    List<EntityReference> entities =
+                        ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
+                            matchingKey,
+                            ReindexingUtil.escapeDoubleQuotes(sourceRef.getFullyQualifiedName()),
+                            from);
+
+                    // Async Re-index the entities which matched
+                    processEntitiesForReindex(entities);
+
+                    // Update from
+                    from += entities.size();
+                    hasMoreResults = !entities.isEmpty();
+                  }
+                } catch (Exception ex) {
+                  LOG.error("Reindexing Across Entities Failed", ex);
+                }
+              });
+    }
+  }
+
+  private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
+    if (!references.isEmpty()) {
+      // Process entities for reindex
+      BulkRequest bulkRequests = new BulkRequest();
+      // Build Bulk request
+      for (EntityReference entityRef : references) {
+        // Reindex entity
+        UpdateRequest request =
+            getUpdateRequest(entityRef.getType(), Entity.getEntity(entityRef, "*", Include.ALL));
+        bulkRequests.add(request);
+      }
+
+      if (isClientAvailable) {
+        client.bulk(bulkRequests, RequestOptions.DEFAULT);
+      }
+    }
+  }
+
+  private void updateChildren(
+      UpdateByQueryRequest updateByQueryRequest,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    updateByQueryRequest.setQuery(
+        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
+            .operator(Operator.AND));
+    Script script =
+        new Script(
+            ScriptType.INLINE,
+            Script.DEFAULT_SCRIPT_LANG,
+            updates.getKey(),
+            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
+    updateByQueryRequest.setScript(script);
+    updateElasticSearchByQuery(updateByQueryRequest);
+  }
+
+  @Override
   public void updateChildren(
       String indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-              .operator(Operator.AND));
-      Script script =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              updates.getKey(),
-              JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
-      updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
+      updateChildren(updateByQueryRequest, fieldAndValue, updates);
+    }
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    if (isClientAvailable) {
+      UpdateByQueryRequest updateByQueryRequest =
+          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+      updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
 
@@ -1237,43 +1764,21 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   public void updateElasticSearch(UpdateRequest updateRequest) {
     if (updateRequest != null && isClientAvailable) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      ActionListener<UpdateResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(UpdateResponse updateResponse) {
-              LOG.debug("Created successfully: " + updateResponse.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Creation failed: " + e.getMessage());
-            }
-          };
-      client.updateAsync(updateRequest, RequestOptions.DEFAULT, listener);
+      client.update(updateRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Update by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Update by query failed: " + e.getMessage());
-            }
-          };
-      client.updateByQueryAsync(updateByQueryRequest, RequestOptions.DEFAULT, listener);
+      LOG.info(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
+      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1287,44 +1792,33 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
+  @SneakyThrows
   private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      ActionListener<DeleteResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(DeleteResponse response) {
-              LOG.debug("Delete succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete failed: " + e.getMessage());
-            }
-          };
       deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.deleteAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.delete(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
+  @SneakyThrows
+  public void deleteByQuery(String index, String query) throws IOException {
+    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
+    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
+    // first token from the Parser
+    XContentParser parser = createXContentParser(query);
+    parser.nextToken();
+    deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
+    client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
+  }
+
+  @SneakyThrows
   private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
     if (deleteRequest != null && isClientAvailable) {
       LOG.debug(UpdateSearchEventsConstant.SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
       deleteRequest.setRefresh(true);
-      ActionListener<BulkByScrollResponse> listener =
-          new ActionListener<>() {
-            @Override
-            public void onResponse(BulkByScrollResponse response) {
-              LOG.debug("Delete by query succeeded: " + response.toString());
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Delete by query failed: " + e.getMessage());
-            }
-          };
-      client.deleteByQueryAsync(deleteRequest, RequestOptions.DEFAULT, listener);
+      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
     }
   }
 
@@ -1474,7 +1968,8 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(dataReportIndex);
+        new es.org.elasticsearch.action.search.SearchRequest(
+            Entity.getSearchRepository().getIndexOrAliasName(dataReportIndex));
     searchRequest.source(searchSourceBuilder);
     return searchRequest;
   }
@@ -1542,6 +2037,68 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
+  }
+
+  @Override
+  public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    List<Map<String, String>> fields = new ArrayList<>();
+    GetMappingsRequest request =
+        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
+
+    // Execute request
+    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
+
+    // Get mappings for the index
+    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
+      // Get fields for the index
+      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
+      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
+    }
+    return fields;
+  }
+
+  void getFieldNames(
+      @NotNull Map<String, Object> fields, String prefix, List<Map<String, String>> fieldList) {
+    for (Map.Entry<String, Object> entry : fields.entrySet()) {
+      String postfix = "";
+      String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
+      if (type != null && type.equals("text")) {
+        postfix = ".keyword";
+      }
+
+      String fieldName = prefix + entry.getKey() + postfix;
+      String fieldNameOriginal = WordUtils.capitalize((prefix + entry.getKey()).replace(".", " "));
+
+      if (entry.getValue() instanceof Map) {
+        Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
+        if (subFields.containsKey("properties")) {
+          getFieldNames(
+              (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
+        } else {
+          if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
+            Map<String, String> map = new HashMap<>();
+            map.put("name", fieldName);
+            map.put("displayName", fieldNameOriginal);
+            map.put("type", type);
+            fieldList.add(map);
+          }
+        }
+      }
+    }
+  }
+
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart, long start, long end) throws IOException {
+    ElasticSearchDynamicChartAggregatorInterface aggregator =
+        ElasticSearchDynamicChartAggregatorFactory.getAggregator(diChart);
+    if (aggregator != null) {
+      List<FormulaHolder> formulas = new ArrayList<>();
+      es.org.elasticsearch.action.search.SearchRequest searchRequest =
+          aggregator.prepareSearchRequest(diChart, start, end, formulas);
+      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
+      return aggregator.processSearchResponse(diChart, searchResponse, formulas);
+    }
+    return null;
   }
 
   private static AggregationBuilder buildQueryAggregation(
@@ -1783,5 +2340,68 @@ public class ElasticSearchClient implements SearchClient {
     } else {
       return null;
     }
+  }
+
+  private static SearchSourceBuilder getSearchSourceBuilder(
+      String index, String q, int from, int size) {
+    return switch (Entity.getSearchRepository().getIndexNameWithoutAlias(index)) {
+      case "topic_search_index", "topic" -> buildTopicSearchBuilder(q, from, size);
+      case "dashboard_search_index", "dashboard" -> buildDashboardSearchBuilder(q, from, size);
+      case "pipeline_search_index", "pipeline" -> buildPipelineSearchBuilder(q, from, size);
+      case "mlmodel_search_index", "mlmodel" -> buildMlModelSearchBuilder(q, from, size);
+      case "table_search_index", "table" -> buildTableSearchBuilder(q, from, size);
+      case "database_schema_search_index",
+          "databaseSchema",
+          "database_search_index",
+          "database" -> buildGenericDataAssetSearchBuilder(q, from, size);
+      case "user_search_index", "user", "team_search_index", "team" -> buildUserOrTeamSearchBuilder(
+          q, from, size);
+      case "glossary_term_search_index", "glossaryTerm" -> buildGlossaryTermSearchBuilder(
+          q, from, size);
+      case "tag_search_index", "tag" -> buildTagSearchBuilder(q, from, size);
+      case "container_search_index", "container" -> buildContainerSearchBuilder(q, from, size);
+      case "query_search_index", "query" -> buildQuerySearchBuilder(q, from, size);
+      case "test_case_search_index",
+          "testCase",
+          "test_suite_search_index",
+          "testSuite" -> buildTestCaseSearch(q, from, size);
+      case "stored_procedure_search_index", "storedProcedure" -> buildStoredProcedureSearch(
+          q, from, size);
+      case "dashboard_data_model_search_index",
+          "dashboardDataModel" -> buildDashboardDataModelsSearch(q, from, size);
+      case "search_entity_search_index", "searchIndex" -> buildSearchEntitySearch(q, from, size);
+      case "domain_search_index", "domain" -> buildDomainsSearch(q, from, size);
+      case "raw_cost_analysis_report_data_index",
+          "aggregated_cost_analysis_report_data_index" -> buildCostAnalysisReportDataSearch(
+          q, from, size);
+      case "data_product_search_index" -> buildDataProductSearch(q, from, size);
+      case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
+          q, from, size);
+      case "mlmodel_service_search_index",
+          "database_service_search_index",
+          "messaging_service_index",
+          "dashboard_service_index",
+          "pipeline_service_index",
+          "storage_service_index",
+          "search_service_index",
+          "metadata_service_index" -> buildServiceSearchBuilder(q, from, size);
+      case "all", "dataAsset" -> buildSearchAcrossIndexesBuilder(q, from, size);
+      default -> buildAggregateSearchBuilder(q, from, size);
+    };
+  }
+
+  private XContentParser createXContentParser(String query) throws IOException {
+    try {
+      return XContentType.JSON
+          .xContent()
+          .createParser(xContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
+    } catch (IOException e) {
+      LOG.error("Failed to create XContentParser", e);
+      throw e;
+    }
+  }
+
+  public Object getLowLevelClient() {
+    return client.getLowLevelClient();
   }
 }

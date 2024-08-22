@@ -3,18 +3,22 @@ package org.openmetadata.service.search.indexes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
-  private static final List<String> excludeFields = List.of("changeDescription");
+  @Override
+  public Object getEntity() {
+    return testSuite;
+  }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(testSuite);
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     List<SearchSuggest> suggest = new ArrayList<>();
     suggest.add(SearchSuggest.builder().input(testSuite.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(testSuite.getName()).weight(10).build());
@@ -25,7 +29,29 @@ public record TestSuiteIndex(TestSuite testSuite) implements SearchIndex {
             suggest.stream().map(SearchSuggest::getInput).toList()));
     doc.put("suggest", suggest);
     doc.put("entityType", Entity.TEST_SUITE);
-    doc.put("owner", getEntityWithDisplayName(testSuite.getOwner()));
+    doc.put("owners", getEntitiesWithDisplayName(testSuite.getOwners()));
+    doc.put("followers", SearchIndexUtils.parseFollowers(testSuite.getFollowers()));
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TEST_SUITE, testSuite));
+    doc.put("tags", parseTags.getTags());
+    setParentRelationships(doc, testSuite);
     return doc;
+  }
+
+  private void setParentRelationships(Map<String, Object> doc, TestSuite testSuite) {
+    // denormalize the parent relationships for search
+    EntityReference entityReference = testSuite.getExecutableEntityReference();
+    if (entityReference == null) return;
+    addTestSuiteParentEntityRelations(entityReference, doc);
+  }
+
+  protected static void addTestSuiteParentEntityRelations(
+      EntityReference testSuiteRef, Map<String, Object> doc) {
+    if (testSuiteRef.getType().equals(Entity.TABLE)) {
+      Table table = Entity.getEntity(testSuiteRef, "", Include.ALL);
+      doc.put("table", table.getEntityReference());
+      doc.put("database", table.getDatabase());
+      doc.put("databaseSchema", table.getDatabaseSchema());
+      doc.put("service", table.getService());
+    }
   }
 }

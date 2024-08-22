@@ -51,9 +51,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this schema.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the database cluster/service where this schema is hosted in.",
@@ -105,11 +105,12 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "votes" : {
+    "votes": {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {

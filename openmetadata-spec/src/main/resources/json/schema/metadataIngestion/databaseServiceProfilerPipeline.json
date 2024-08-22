@@ -39,30 +39,14 @@
       "default": true,
       "title": "Include Views"
     },
-    "processPiiSensitive": {
-      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
+    "useFqnForFiltering": {
+      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
       "type": "boolean",
       "default": false,
-      "title": "Auto Tag PII"
-    },
-    "confidence": {
-      "description": "Set the Confidence value for which you want the column to be marked",
-      "type": "number",
-      "default": 80,
-      "title": "Confidence"
-    },
-    "profileSample": {
-      "description": "Percentage of data or no. of rows we want to execute the profiler and tests on",
-      "type": "number",
-      "default": null,
-      "title": "Profile Sample"
-    },
-    "profileSampleType": {
-      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
-      "title": "Profile Sample Type"
+      "title": "Use FQN For Filtering"
     },
     "generateSampleData": {
-      "description": "Option to turn on/off generating sample data.",
+      "description": "Option to turn on/off generating sample data. If enabled, profiler will ingest sample data for each table.",
       "type": "boolean",
       "default": true,
       "title": "Generate Sample Data"
@@ -73,8 +57,30 @@
       "default": true,
       "title": "Compute Metrics"
     },
+    "processPiiSensitive": {
+      "description": "Optional configuration to automatically tag columns that might contain sensitive information",
+      "type": "boolean",
+      "default": false,
+      "title": "Auto Tag PII"
+    },
+    "confidence": {
+      "description": "Set the Confidence value for which you want the column to be tagged as PII. Confidence value ranges from 0 to 100. A higher number will yield less false positives but more false negatives. A lower number will yield more false positives but less false negatives.",
+      "type": "number",
+      "default": 80,
+      "title": "PII Inference Confidence Level"
+    },
+    "profileSampleType": {
+      "$ref": "../entity/data/table.json#/definitions/profileSampleType",
+      "title": "Profile Sample Type"
+    },
+    "profileSample": {
+      "description": "Percentage of data or no. of rows used to compute the profiler metrics and run data quality tests",
+      "type": "number",
+      "default": null,
+      "title": "Profile Sample"
+    },
     "sampleDataCount": {
-      "description": "Number of row of sample data to be generated",
+      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
       "type": "integer",
       "default": 50,
       "title": "Sample Data Rows Count"
@@ -90,12 +96,6 @@
       "type": "integer",
       "default": 43200,
       "title": "Timeout (in sec.)"
-    },
-    "useFqnForFiltering": {
-      "description": "Regex will be applied on fully qualified name (e.g service_name.db_name.schema_name.table_name) instead of raw name (e.g. table_name)",
-      "type": "boolean",
-      "default": false,
-      "title": "Use FQN For Filtering"
     }
   },
   "additionalProperties": false

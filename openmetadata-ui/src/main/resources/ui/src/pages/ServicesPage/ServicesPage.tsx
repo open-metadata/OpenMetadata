@@ -15,6 +15,7 @@ import { Col, Row, Tabs } from 'antd';
 import { capitalize, isEmpty } from 'lodash';
 import qs from 'qs';
 import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -22,7 +23,10 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
 import Services from '../../components/Settings/Services/Services';
-import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { SERVICE_CATEGORY } from '../../constants/Services.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
@@ -36,16 +40,24 @@ const ServicesPage = () => {
   const { tab } = useParams<{ tab: string }>();
   const location = useLocation();
   const history = useHistory();
+  const { t } = useTranslation();
   const { isAdminUser } = useAuth();
+  const queryParams = qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substring(1)
+      : location.search
+  );
   const search =
-    qs.parse(
-      location.search.startsWith('?')
-        ? location.search.substring(1)
-        : location.search
-    ).tab ?? 'services';
+    queryParams.tab ??
+    (tab === GlobalSettingOptions.DATA_OBSERVABILITY
+      ? 'pipelines'
+      : 'services');
 
   const serviceName = useMemo(
-    () => SERVICE_CATEGORY[tab] ?? ServiceCategory.DATABASE_SERVICES,
+    () =>
+      tab === GlobalSettingOptions.DATA_OBSERVABILITY
+        ? 'dataObservabilityServices'
+        : SERVICE_CATEGORY[tab] ?? ServiceCategory.DATABASE_SERVICES,
     [tab]
   );
 
@@ -65,7 +77,9 @@ const ServicesPage = () => {
     () =>
       getSettingPageEntityBreadCrumb(
         GlobalSettingsMenuCategory.SERVICES,
-        capitalize(tab)
+        tab === GlobalSettingOptions.DATA_OBSERVABILITY
+          ? t('label.data-observability')
+          : capitalize(tab)
       ),
     []
   );
@@ -81,17 +95,28 @@ const ServicesPage = () => {
             destroyInactiveTabPane
             activeKey={search as string}
             items={[
-              {
-                key: 'services',
-                children: <Services serviceName={serviceName} />,
-                label: 'Services',
-              },
-              ...(isAdminUser
+              ...(serviceName === 'dataObservabilityServices'
+                ? []
+                : [
+                    {
+                      key: 'services',
+                      children: <Services serviceName={serviceName} />,
+                      label: 'Services',
+                    },
+                  ]),
+              // pipelines are not supported for apiServices so don't show pipelines tab for apiServices
+              ...(isAdminUser && serviceName !== 'apiServices'
                 ? [
                     {
                       key: 'pipelines',
                       children: (
-                        <IngestionPipelineList serviceName={serviceName} />
+                        <IngestionPipelineList
+                          serviceName={
+                            serviceName === 'dataObservabilityServices'
+                              ? 'testSuites'
+                              : serviceName
+                          }
+                        />
                       ),
                       label: 'Pipelines',
                     },

@@ -18,9 +18,9 @@ CREATE TABLE test_case_resolution_status_time_series (
   entityFQNHash varchar(768) COLLATE "C" DEFAULT NULL,
   CONSTRAINT test_case_resolution_status_unique_constraint UNIQUE (id, timestamp, entityFQNHash)
 );
-create index test_case_resolution_status_time_series_id on test_case_resolution_status_time_series (id);
-create index test_case_resolution_status_time_series_status_type on test_case_resolution_status_time_series  (testCaseResolutionStatusType);
-create index test_case_resolution_status_time_series_id_status_type  on test_case_resolution_status_time_series  (id, testCaseResolutionStatusType);
+CREATE INDEX IF NOT EXISTS test_case_resolution_status_time_series_id on test_case_resolution_status_time_series (id);
+CREATE INDEX IF NOT EXISTS test_case_resolution_status_time_series_status_type on test_case_resolution_status_time_series  (testCaseResolutionStatusType);
+CREATE INDEX IF NOT EXISTS test_case_resolution_status_time_series_id_status_type  on test_case_resolution_status_time_series  (id, testCaseResolutionStatusType);
 
 -- DataInsightsApplication should not allow configuration
 UPDATE apps_marketplace

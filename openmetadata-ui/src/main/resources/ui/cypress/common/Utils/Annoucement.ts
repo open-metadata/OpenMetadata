@@ -21,7 +21,7 @@ import {
   verifyResponseStatusCode,
 } from '../common';
 
-const annoucementForm = ({ title, description, startDate, endDate }) => {
+const announcementForm = ({ title, description, startDate, endDate }) => {
   cy.get('#title').type(title);
 
   cy.get('#startTime').click().type(`${startDate}{enter}`);
@@ -36,7 +36,7 @@ const annoucementForm = ({ title, description, startDate, endDate }) => {
   cy.get('[id="announcement-submit"]').scrollIntoView().click();
 };
 
-export const createAnnouncement = (announcement) => {
+export const createAnnouncement = (announcement, entityName, updatedName) => {
   interceptURL(
     'GET',
     '/api/v1/feed?entityLink=*type=Announcement',
@@ -60,7 +60,7 @@ export const createAnnouncement = (announcement) => {
   cy.get('[data-testid="add-announcement"]').click();
   cy.get('.ant-modal-header').should('contain', 'Make an announcement');
 
-  annoucementForm({ ...announcement, startDate, endDate });
+  announcementForm({ ...announcement, startDate, endDate });
 
   // wait time for success toast message
   verifyResponseStatusCode('@announcementFeed', 200);
@@ -74,9 +74,22 @@ export const createAnnouncement = (announcement) => {
     'contain',
     announcement.title
   );
+  // Todo: Need to check announcement flow on home page @Ashish8689
+  //   cy.goToHomePage();
+
+  //   cy.get('[data-testid="announcement-container"]')
+  //     .find(`a[href*="${encodeURIComponent(entityName)}"]`)
+  //     .filter(':visible')
+  //     .first()
+  //     .click();
+
+  //   cy.get('[data-testid="entity-header-display-name"]').should(
+  //     'contain',
+  //     `Cypress ${updatedName} updated`
+  //   );
 };
 
-export const deleteAnnoucement = () => {
+export const deleteAnnouncement = () => {
   interceptURL(
     'GET',
     '/api/v1/feed?entityLink=*type=Announcement',
@@ -103,6 +116,62 @@ export const deleteAnnoucement = () => {
     });
 };
 
+export const replyAnnouncementUtil = () => {
+  interceptURL(
+    'GET',
+    '/api/v1/feed?entityLink=*type=Announcement',
+    'announcementFeed'
+  );
+  interceptURL('GET', '/api/v1/feed/*', 'allAnnouncementFeed');
+  interceptURL('POST', '/api/v1/feed/*/posts', 'addAnnouncementReply');
+
+  cy.get('[data-testid="announcement-card"]').click();
+
+  cy.get(
+    '[data-testid="announcement-card"] [data-testid="main-message"]'
+  ).trigger('mouseover');
+
+  cy.get('[data-testid="add-reply"]').should('be.visible').click();
+
+  cy.get('[data-testid="send-button"]').should('be.disabled');
+
+  verifyResponseStatusCode('@allAnnouncementFeed', 200);
+
+  cy.get('[data-testid="editor-wrapper"] .ql-editor').type('Reply message');
+
+  cy.get('[data-testid="send-button"]').should('not.disabled').click();
+
+  verifyResponseStatusCode('@addAnnouncementReply', 201);
+  verifyResponseStatusCode('@announcementFeed', 200);
+  verifyResponseStatusCode('@allAnnouncementFeed', 200);
+
+  cy.get('[data-testid="replies"] [data-testid="viewer-container"]').should(
+    'contain',
+    'Reply message'
+  );
+  cy.get('[data-testid="show-reply-thread"]').should('contain', '1 replies');
+
+  // Edit the reply message
+  cy.get('[data-testid="replies"] > [data-testid="main-message"]').trigger(
+    'mouseover'
+  );
+
+  cy.get('[data-testid="edit-message"]').should('be.visible').click();
+
+  cy.get('.feed-message [data-testid="editor-wrapper"] .ql-editor')
+    .clear()
+    .type('Reply message edited');
+
+  cy.get('[data-testid="save-button"]').click();
+
+  cy.get('[data-testid="replies"] [data-testid="viewer-container"]').should(
+    'contain',
+    'Reply message edited'
+  );
+
+  cy.reload();
+};
+
 export const createInactiveAnnouncement = (announcement) => {
   // Create InActive Announcement
   interceptURL(
@@ -126,7 +195,7 @@ export const createInactiveAnnouncement = (announcement) => {
     'yyyy-MM-dd'
   );
 
-  annoucementForm({
+  announcementForm({
     ...announcement,
     startDate: InActiveStartDate,
     endDate: InActiveEndDate,

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Col, Collapse, Row, Space, Tabs, Typography } from 'antd';
+import { Col, Collapse, Row, Space, Tabs, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { isEmpty, noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -19,17 +19,18 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ReactComponent as PersonaIcon } from '../../../assets/svg/ic-personas.svg';
 import { getUserPath, ROUTES } from '../../../constants/constants';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityFeedProvider from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import Chip from '../../common/Chip/Chip.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -50,7 +51,12 @@ import UserProfileInheritedRoles from './UsersProfile/UserProfileInheritedRoles/
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
 
-const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
+const Users = ({
+  afterDeleteAction,
+  userData,
+  queryFilters,
+  updateUserDetails,
+}: Props) => {
   const { tab: activeTab = UserPageTabs.ACTIVITY } =
     useParams<{ tab: UserPageTabs }>();
   const { fqn: decodedUsername } = useFqn();
@@ -58,24 +64,22 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const { isAdminUser } = useAuth();
   const history = useHistory();
   const location = useLocation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
 
   const [isDescriptionEdit, setIsDescriptionEdit] = useState(false);
-
   const { t } = useTranslation();
+  const { getResourceLimit } = useLimitStore();
+
+  const [disableFields, setDisableFields] = useState<string[]>([]);
 
   const isLoggedInUser = useMemo(
     () => decodedUsername === currentUser?.name,
     [decodedUsername]
   );
 
-  const hasEditPermission = useMemo(
-    () => isAdminUser || isLoggedInUser,
-    [isAdminUser, isLoggedInUser]
-  );
   const fetchAssetsCount = async (query: string) => {
     try {
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
@@ -84,6 +88,12 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
     } catch (error) {
       setAssetCount(0);
     }
+  };
+
+  const initLimits = async () => {
+    const limits = await getResourceLimit('user', false);
+
+    setDisableFields(limits.configuredLimit.disabledFields ?? []);
   };
 
   const activeTabHandler = (activeKey: string) => {
@@ -112,13 +122,14 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   useEffect(() => {
     handleTabRedirection();
+    initLimits();
   }, []);
 
   const handlePersonaUpdate = useCallback(
     async (personas: EntityReference[]) => {
-      await updateUserDetails({ ...userData, personas });
+      await updateUserDetails({ personas }, 'personas');
     },
-    [updateUserDetails, userData]
+    [updateUserDetails]
   );
 
   const tabDataRender = useCallback(
@@ -216,24 +227,34 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
         ? [
             {
               label: (
-                <TabsLabel
-                  id={UserPageTabs.ACCESS_TOKEN}
-                  isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
-                  name={t('label.access-token')}
-                />
+                <Tooltip title="You have reached the limit">
+                  <TabsLabel
+                    id={UserPageTabs.ACCESS_TOKEN}
+                    isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
+                    name={t('label.access-token')}
+                  />
+                </Tooltip>
               ),
+              disabled: disableFields.includes('personalAccessToken'),
               key: UserPageTabs.ACCESS_TOKEN,
               children: <AccessTokenCard isBot={false} />,
             },
           ]
         : []),
     ],
-    [activeTab, userData, decodedUsername, setPreviewAsset, tabDataRender]
+    [
+      activeTab,
+      userData.id,
+      decodedUsername,
+      setPreviewAsset,
+      tabDataRender,
+      disableFields,
+    ]
   );
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
-      await updateUserDetails({ description });
+      await updateUserDetails({ description }, 'description');
 
       setIsDescriptionEdit(false);
     },
@@ -242,12 +263,12 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
 
   const descriptionRenderComponent = useMemo(
     () =>
-      hasEditPermission ? (
+      isLoggedInUser ? (
         <DescriptionV1
           description={userData.description ?? ''}
           entityName={getEntityName(userData as unknown as EntityReference)}
           entityType={EntityType.USER}
-          hasEditAccess={hasEditPermission}
+          hasEditAccess={isLoggedInUser}
           isEdit={isDescriptionEdit}
           showCommentsIcon={false}
           onCancel={() => setIsDescriptionEdit(false)}
@@ -272,7 +293,7 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
       userData,
       isAdminUser,
       isDescriptionEdit,
-      hasEditPermission,
+      isLoggedInUser,
       getEntityName,
       handleDescriptionChange,
     ]
@@ -281,11 +302,12 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
   const userProfileCollapseHeader = useMemo(
     () => (
       <UserProfileDetails
+        afterDeleteAction={afterDeleteAction}
         updateUserDetails={updateUserDetails}
         userData={userData}
       />
     ),
-    [userData, updateUserDetails]
+    [userData, afterDeleteAction, updateUserDetails]
   );
 
   useEffect(() => {
@@ -304,24 +326,24 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
         <Collapse
           accordion
           bordered={false}
-          className="header-collapse-custom-collapse user-profile-container"
-          expandIconPosition="end">
+          className="header-collapse-custom-collapse user-profile-container">
           <Collapse.Panel
             className="header-collapse-custom-panel"
-            collapsible="icon"
             header={userProfileCollapseHeader}
             key="1">
             <Row className="border-top p-y-lg" gutter={[0, 24]}>
               <Col span={24}>
-                <Row data-testid="user-profile-details">
+                <Row data-testid="user-profile-accessibility-details">
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileTeams
+                      isDeletedUser={userData.deleted}
                       teams={userData.teams}
                       updateUserDetails={updateUserDetails}
                     />
                   </Col>
                   <Col className="p-x-sm border-right" span={6}>
                     <UserProfileRoles
+                      isDeletedUser={userData.deleted}
                       isUserAdmin={userData.isAdmin}
                       updateUserDetails={updateUserDetails}
                       userRoles={userData.roles}
@@ -339,11 +361,13 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
                         title={
                           <Typography.Text
                             className="right-panel-label items-center d-flex gap-2"
-                            data-testid="inherited-roles">
+                            data-testid="persona-list">
                             {t('label.persona')}
                             <PersonaSelectableList
                               multiSelect
-                              hasPermission={Boolean(isAdminUser)}
+                              hasPermission={
+                                Boolean(isAdminUser) && !userData.deleted
+                              }
                               selectedPersonas={userData.personas ?? []}
                               onUpdate={handlePersonaUpdate}
                             />
@@ -352,7 +376,8 @@ const Users = ({ userData, queryFilters, updateUserDetails }: Props) => {
                         <Chip
                           showNoDataPlaceholder
                           data={userData.personas ?? []}
-                          icon={<PersonaIcon height={14} />}
+                          entityType={EntityType.PERSONA}
+                          icon={<PersonaIcon height={20} />}
                           noDataPlaceholder={t('message.no-persona-assigned')}
                         />
                       </Card>

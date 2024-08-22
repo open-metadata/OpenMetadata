@@ -3,17 +3,13 @@ title: Run the Qlik Sense Connector Externally
 slug: /connectors/dashboard/qliksense/yaml
 ---
 
-# Run the PowerBI Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Qlik Sense"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Datamodels", "Lineage"]
+  unavailableFeatures=["Owners", "Tags", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the PowerBI connector.
 
@@ -25,10 +21,6 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 ### Python Requirements
 
@@ -148,7 +140,7 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: qliksense
   serviceName: local_qliksense

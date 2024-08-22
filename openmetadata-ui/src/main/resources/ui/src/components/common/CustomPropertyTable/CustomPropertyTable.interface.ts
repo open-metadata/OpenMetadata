@@ -12,8 +12,11 @@
  */
 
 import { EntityType } from '../../../enums/entity.enum';
+import { APICollection } from '../../../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
+import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
 import { Database } from '../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../generated/entity/data/databaseSchema';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -23,6 +26,8 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { EntityReference } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
 
 export type ExtentionEntities = {
   [EntityType.TABLE]: Table;
@@ -36,6 +41,9 @@ export type ExtentionEntities = {
   [EntityType.GLOSSARY_TERM]: GlossaryTerm;
   [EntityType.DATABASE]: Database;
   [EntityType.DATABASE_SCHEMA]: DatabaseSchema;
+  [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
+  [EntityType.API_COLLECTION]: APICollection;
+  [EntityType.API_ENDPOINT]: APIEndpoint;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;
@@ -51,3 +59,26 @@ export interface CustomPropertyProps<T extends ExtentionEntitiesKeys> {
   maxDataCap?: number;
   isRenderedInRightPanel?: boolean;
 }
+
+export interface PropertyValueProps {
+  property: CustomProperty;
+  extension: Table['extension'];
+  hasEditPermissions: boolean;
+  versionDataKeys?: string[];
+  isVersionView?: boolean;
+  isRenderedInRightPanel?: boolean;
+  onExtensionUpdate: (updatedExtension: Table['extension']) => Promise<void>;
+}
+
+export type TimeIntervalType = {
+  start: number;
+  end: number;
+};
+
+export type PropertyValueType =
+  | string
+  | number
+  | string[]
+  | EntityReference
+  | EntityReference[]
+  | TimeIntervalType;

@@ -3,30 +3,13 @@ title: Run the Salesforce Connector Externally
 slug: /connectors/database/salesforce/yaml
 ---
 
-# Run the Salesforce Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="cross" /%} |
-| Data Quality       | {% icon iconName="cross" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%} |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Salesforce"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures", "Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the Salesforce connector.
 
@@ -38,10 +21,6 @@ Configure and schedule Salesforce metadata and profiler workflows from the OpenM
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 Following are the permissions you will require to fetch the metadata from Salesforce.
 
@@ -128,13 +107,13 @@ By default, the domain `login` is used for accessing Salesforce.
 
 {% codeInfo srNumber=8 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=9 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -144,7 +123,7 @@ By default, the domain `login` is used for accessing Salesforce.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: salesforce
   serviceName: local_salesforce

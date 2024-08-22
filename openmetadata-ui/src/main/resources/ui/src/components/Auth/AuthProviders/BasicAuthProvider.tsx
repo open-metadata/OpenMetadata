@@ -32,14 +32,14 @@ import {
   resetPassword,
 } from '../../../rest/auth-API';
 import { getBase64EncodedString } from '../../../utils/CommonUtils';
-import localState from '../../../utils/LocalStorageUtils';
 import {
   showErrorToast,
   showInfoToast,
   showSuccessToast,
 } from '../../../utils/ToastUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
-import { useAuthContext } from './AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
 
 export interface BasicAuthJWTPayload extends JwtPayload {
@@ -89,7 +89,13 @@ const BasicAuthProvider = ({
   onLoginFailure,
 }: BasicAuthProps) => {
   const { t } = useTranslation();
-  const { setLoadingIndicator } = useAuthContext();
+  const {
+    setRefreshToken,
+    setOidcToken,
+    getOidcToken,
+    removeOidcToken,
+    getRefreshToken,
+  } = useApplicationStore();
   const [loginError, setLoginError] = useState<string | null>(null);
   const history = useHistory();
 
@@ -103,13 +109,13 @@ const BasicAuthProvider = ({
         });
 
         if (response.accessToken) {
-          localState.setRefreshToken(response.refreshToken);
-          localState.setOidcToken(response.accessToken);
+          setRefreshToken(response.refreshToken);
+          setOidcToken(response.accessToken);
 
           onLoginSuccess({
             id_token: response.accessToken,
             profile: {
-              email,
+              email: response.email,
               name: '',
               picture: '',
               sub: '',
@@ -135,7 +141,6 @@ const BasicAuthProvider = ({
     try {
       const isEmailAlreadyExists = await checkEmailInUse(request.email);
       if (!isEmailAlreadyExists) {
-        setLoadingIndicator(true);
         await basicAuthRegister(request);
 
         showSuccessToast(
@@ -159,8 +164,6 @@ const BasicAuthProvider = ({
       } else {
         showErrorToast(err as AxiosError, t('server.unexpected-response'));
       }
-    } finally {
-      setLoadingIndicator(false);
     }
   };
 
@@ -180,23 +183,19 @@ const BasicAuthProvider = ({
   };
 
   const handleResetPassword = async (payload: PasswordResetRequest) => {
-    setLoadingIndicator(true);
-
     const response = await resetPassword(payload);
     if (response) {
       showSuccessToast(t('server.reset-password-success'));
     }
-
-    setLoadingIndicator(false);
   };
 
   const handleLogout = async () => {
-    const token = localState.getOidcToken();
-    const refreshToken = localState.getRefreshToken();
+    const token = getOidcToken();
+    const refreshToken = getRefreshToken();
     if (token) {
       try {
         await logoutUser({ token, refreshToken });
-        localState.removeOidcToken();
+        removeOidcToken();
         history.push(ROUTES.SIGNIN);
       } catch (error) {
         showErrorToast(error as AxiosError);

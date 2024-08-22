@@ -34,6 +34,7 @@ export interface ActivityFeedProviderContextType {
   focusReplyEditor: boolean;
   entityPaging: Paging;
   setActiveThread: (thread?: Thread) => void;
+  updateEntityThread: (thread: Thread) => void;
   userId: string;
   deleteFeed: (
     threadId: string,
@@ -55,7 +56,8 @@ export interface ActivityFeedProviderContextType {
     type?: ThreadType,
     entityType?: EntityType,
     fqn?: string,
-    taskStatus?: ThreadTaskStatus
+    taskStatus?: ThreadTaskStatus,
+    limit?: number
   ) => Promise<void>;
   showDrawer: (thread: Thread) => void;
   hideDrawer: () => void;
@@ -66,7 +68,7 @@ export interface ActivityFeedProviderContextType {
     isThread: boolean,
     reactionType: ReactionType,
     reactionOperation: ReactionOperation
-  ) => void;
+  ) => Promise<void>;
   testCaseResolutionStatus: TestCaseResolutionStatus[];
   updateTestCaseIncidentStatus: (status: TestCaseResolutionStatus[]) => void;
   initialAssignees: EntityReference[];

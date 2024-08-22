@@ -179,7 +179,7 @@ class ServiceBaseClass {
 
     cy.get('[data-testid="view-service-button"]').click();
     verifyResponseStatusCode('@serviceDetails', 200);
-    verifyResponseStatusCode('@ingestionPipelines', 200);
+    cy.wait('@ingestionPipelines');
 
     this.handleIngestionRetry();
   }
@@ -272,14 +272,30 @@ class ServiceBaseClass {
         cy.get('[data-testid="ingestions"]').click();
 
         if (ingestionType === 'metadata') {
-          verifyResponseStatusCode('@pipelineStatuses', 200, {
+          cy.wait('@pipelineStatuses', {
             responseTimeout: 50000,
           });
         }
 
+        cy.contains('td', `${ingestionType}`) // find the element with the text
+          .parent('tr') // find the parent 'tr'
+          .find('[data-testid="more-actions"]')
+          .click();
+
+        cy.get(
+          '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
+        ).click();
+
         // Check cron schedule for Hour here
         // Being set from this.scheduleIngestion method
-        cy.get('.ant-table-cell').should('contain', '0 * * * *');
+        cy.get('[data-testid="schedule-primary-details"]').should(
+          'contain',
+          'Every hour'
+        );
+        cy.get('[data-testid="schedule-secondary-details"]').should(
+          'contain',
+          'Every day'
+        );
       }
     };
     const checkSuccessState = () => {
@@ -288,8 +304,8 @@ class ServiceBaseClass {
       if (retryCount !== 0) {
         cy.wait('@allPermissions').then(() => {
           cy.wait('@serviceDetails').then(() => {
-            verifyResponseStatusCode('@ingestionPipelines', 200);
-            verifyResponseStatusCode('@pipelineStatuses', 200, {
+            cy.wait('@ingestionPipelines');
+            cy.wait('@pipelineStatuses', {
               responseTimeout: 50000,
             });
           });
@@ -298,15 +314,16 @@ class ServiceBaseClass {
 
       retryCount++;
 
-      cy.get(`[data-row-key*="${ingestionType}"]`)
-        .find('[data-testid="pipeline-status"]')
+      cy.contains('td', `${ingestionType}`) // find the element with the text
+        .parent('tr') // find the parent 'tr'
+        .find('[data-testid="pipeline-status"]') // find the element with '[data-testid="pipeline-status"]'
         .as('checkRun');
       // the latest run should be success
       cy.get('@checkRun').then(($ingestionStatus) => {
         const text = $ingestionStatus.text();
         if (
-          text !== 'Success' &&
-          text !== 'Failed' &&
+          text !== 'SUCCESS' &&
+          text !== 'FAILED' &&
           retryCount <= RETRY_TIMES
         ) {
           // retry after waiting with log1 method [20s,40s,80s,160s,320s]
@@ -315,7 +332,7 @@ class ServiceBaseClass {
           cy.reload();
           checkSuccessState();
         } else {
-          cy.get('@checkRun').should('contain', 'Success');
+          cy.get('@checkRun').should('contain', 'SUCCESS');
         }
       });
     };
@@ -345,7 +362,11 @@ class ServiceBaseClass {
 
     // click and edit pipeline schedule for Minutes
 
-    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="more-actions"]').click();
+
+    cy.get(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    ).click();
     cy.get('[data-testid="submit-btn"]').click();
 
     // select schedule
@@ -358,10 +379,21 @@ class ServiceBaseClass {
     cy.get('[data-testid="deploy-button"]').click();
     cy.get('[data-testid="view-service-button"]').click();
 
-    cy.get('.ant-table-cell').should('contain', '*/10 * * * *');
+    cy.get('[data-testid="schedule-primary-details"]').should(
+      'contain',
+      'Every 10 minutes'
+    );
+    cy.get('[data-testid="schedule-secondary-details"]').should(
+      'contain',
+      'Every hour, every day'
+    );
 
     // click and edit pipeline schedule for Day
-    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="more-actions"]').click();
+
+    cy.get(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    ).click();
     cy.get('[data-testid="submit-btn"]').click();
     cy.get('[data-testid="cron-type"]').click();
     cy.get('.ant-select-item-option-content').contains('Day').click();
@@ -378,10 +410,21 @@ class ServiceBaseClass {
     cy.get('[data-testid="deploy-button"]').click();
     cy.get('[data-testid="view-service-button"]').click();
 
-    cy.get('.ant-table-cell').should('contain', '4 4 * * *');
+    cy.get('[data-testid="schedule-primary-details"]').should(
+      'contain',
+      'At 04:04 AM'
+    );
+    cy.get('[data-testid="schedule-secondary-details"]').should(
+      'contain',
+      'Every day'
+    );
 
     // click and edit pipeline schedule for Week
-    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="more-actions"]').click();
+
+    cy.get(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    ).click();
     cy.get('[data-testid="submit-btn"]').click();
     cy.get('[data-testid="cron-type"]').click();
     cy.get('.ant-select-item-option-content').contains('Week').click();
@@ -398,10 +441,21 @@ class ServiceBaseClass {
     cy.get('[data-testid="deploy-button"]').click();
     cy.get('[data-testid="view-service-button"]').click();
 
-    cy.get('.ant-table-cell').should('contain', '5 5 * * 6');
+    cy.get('[data-testid="schedule-primary-details"]').should(
+      'contain',
+      'At 05:05 AM'
+    );
+    cy.get('[data-testid="schedule-secondary-details"]').should(
+      'contain',
+      'Only on saturday'
+    );
 
     // click and edit pipeline schedule for Custom
-    cy.get('[data-testid="edit"]').click();
+    cy.get('[data-testid="more-actions"]').click();
+
+    cy.get(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    ).click();
     cy.get('[data-testid="submit-btn"]').click();
     cy.get('[data-testid="cron-type"]').click();
     cy.get('.ant-select-item-option-content').contains('Custom').click();
@@ -409,7 +463,14 @@ class ServiceBaseClass {
 
     cy.get('[data-testid="deploy-button"]').click();
     cy.get('[data-testid="view-service-button"]').click();
-    cy.get('.ant-table-cell').should('contain', '* * * 2 6');
+    cy.get('[data-testid="schedule-primary-details"]').should(
+      'contain',
+      'Every minute'
+    );
+    cy.get('[data-testid="schedule-secondary-details"]').should(
+      'contain',
+      'Every hour, only on saturday, only in february'
+    );
   }
 
   updateDescriptionForIngestedTables() {
@@ -420,11 +481,6 @@ class ServiceBaseClass {
       'ingestionPipelines'
     );
     interceptURL('GET', `/api/v1/*?service=*&fields=*`, 'serviceDetails');
-    interceptURL(
-      'GET',
-      `/api/v1/system/config/pipeline-service-client`,
-      'pipelineServiceClient'
-    );
     interceptURL(
       'GET',
       `/api/v1/services/ingestionPipelines/*/pipelineStatus?*`,
@@ -461,7 +517,6 @@ class ServiceBaseClass {
 
     verifyResponseStatusCode('@serviceDetails', 200);
     verifyResponseStatusCode('@ingestionPipelines', 200);
-    verifyResponseStatusCode('@pipelineServiceClient', 200);
     cy.get('[data-testid="ingestions"]').click();
     verifyResponseStatusCode('@pipelineStatus', 200);
 
@@ -470,11 +525,19 @@ class ServiceBaseClass {
       '/api/v1/services/ingestionPipelines/trigger/*',
       'checkRun'
     );
+
+    cy.contains(
+      'td',
+      `${replaceAllSpacialCharWith_(this.serviceName)}_metadata`
+    ) // find the element with the text
+      .parent('tr') // find the parent 'tr'
+      .find('[data-testid="more-actions"]')
+      .click();
+
     cy.get(
-      `[data-row-key*="${replaceAllSpacialCharWith_(
-        this.serviceName
-      )}_metadata"] [data-testid="run"]`
+      '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
     ).click();
+
     verifyResponseStatusCode('@checkRun', 200);
 
     toastNotification(`Pipeline triggered successfully!`);

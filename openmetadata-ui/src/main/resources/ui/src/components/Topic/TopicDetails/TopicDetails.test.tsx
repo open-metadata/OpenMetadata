@@ -77,7 +77,7 @@ jest.mock('../../Lineage/Lineage.component', () => {
   return jest.fn().mockReturnValue(<p>EntityLineage.component</p>);
 });
 
-jest.mock('../../common/EntityDescription/Description', () => {
+jest.mock('../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 

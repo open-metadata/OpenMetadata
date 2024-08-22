@@ -3,30 +3,13 @@ title: Run the Snowflake Connector Externally
 slug: /connectors/database/snowflake/yaml
 ---
 
-# Run the Snowflake Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="check" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Snowflake"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags"]
+unavailableFeatures=["Owners"]
+/ %}
 
 In this section, we provide guides and references to use the Snowflake connector.
 
@@ -35,19 +18,14 @@ Configure and schedule Snowflake metadata and profiler workflows from the OpenMe
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 
@@ -90,6 +68,7 @@ GRANT USAGE ON SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL EXTERNAL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+GRANT SELECT ON ALL DYNAMIC TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 ```
 
 
@@ -210,13 +189,13 @@ This is a sample config for Snowflake:
 
 {% codeInfo srNumber=10 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=11 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -226,7 +205,7 @@ This is a sample config for Snowflake:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: snowflake
   serviceName: <service name>
@@ -289,11 +268,11 @@ source:
 
 {% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "snowflake"} /%}
 
+{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "snowflake"} /%}
+
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "snowflake"} /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

@@ -30,7 +30,7 @@ the shape of the database is tightly coupled to your OpenMetadata Server version
 
 {% note %}
 
-You can find all the necessary information on how to run the backups [here](https://docs.open-metadata.org/v1.0.0/deployment/backup-restore-metadata).
+You can find all the necessary information on how to run the backups [here](/deployment/backup-restore-metadata).
 
 {% /note %}
 
@@ -47,9 +47,9 @@ Now that we understand what is being backed up and how it looks like, when (and 
 - **Where**: We will restore the data to a clean database with the Flyway migrations at the same version as the backed up data.
   The usual process will be:
   - We start with a clean database (no tables in it).
-  - We run the migrations ([docs](https://docs.open-metadata.org/v1.0.0/deployment/bare-metal#4.-prepare-the-openmetadata-database-and-indexes))
+  - We run the migrations ([docs](/deployment/bare-metal#4.-prepare-the-openmetadata-database-and-indexes))
      or we start the OpenMetadata server, which will automatically run the migrations.
-  - With the server stopped, we [restore](https://docs.open-metadata.org/v1.0.0/deployment/backup-restore-metadata#restore-metadata) the data.
+  - With the server stopped, we [restore](/deployment/backup-restore-metadata#restore-metadata) the data.
 
 {% note %}
 

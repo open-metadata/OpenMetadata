@@ -45,39 +45,153 @@ SNOWFLAKE_FETCH_ALL_TAGS = textwrap.dedent(
 """
 )
 
-SNOWFLAKE_GET_TABLE_NAMES = """
-select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'BASE TABLE'
-"""
-
 SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES = """
-select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' AND TABLE_TYPE = 'EXTERNAL TABLE'
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}' AND TABLE_TYPE = 'EXTERNAL TABLE'
 """
 
+SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where TABLE_CATALOG = '{database}'
+      and TABLE_SCHEMA = '{schema}'
+      and TABLE_TYPE = 'EXTERNAL TABLE'
+      and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
 
 SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
-select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' 
-AND TABLE_TYPE = 'BASE TABLE' 
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
 AND IS_TRANSIENT != 'YES'
+AND IS_DYNAMIC != 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_TRANSIENT != 'YES'
+    AND IS_DYNAMIC != 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_VIEW_NAMES = """
-select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'VIEW'
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'VIEW'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where  TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'VIEW'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_MVIEW_NAMES = """
-select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' and TABLE_TYPE = 'MATERIALIZED VIEW'
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}' and TABLE_TYPE = 'MATERIALIZED VIEW'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where  TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'MATERIALIZED VIEW'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
-select TABLE_NAME from information_schema.tables 
-where TABLE_SCHEMA = '{}' 
-AND TABLE_TYPE = 'BASE TABLE' 
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
 AND IS_TRANSIENT = 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_TRANSIENT = 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
+"""
+
+SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, NULL from information_schema.tables
+where TABLE_SCHEMA = '{schema}'
+AND TABLE_TYPE = 'BASE TABLE'
+AND IS_DYNAMIC = 'YES'
+"""
+
+SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES = """
+select TABLE_NAME, DELETED
+from (
+    select
+        TABLE_NAME,
+        DELETED,
+        ROW_NUMBER() over (
+            partition by TABLE_NAME order by LAST_DDL desc
+        ) as ROW_NUMBER
+    from snowflake.account_usage.tables
+    where TABLE_CATALOG = '{database}'
+    and TABLE_SCHEMA = '{schema}'
+    and TABLE_TYPE = 'BASE TABLE'
+    and IS_DYNAMIC = 'YES'
+    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+)
+where ROW_NUMBER = 1
 """
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
@@ -96,23 +210,27 @@ SNOWFLAKE_GET_CLUSTER_KEY = """
   select CLUSTERING_KEY,
           TABLE_SCHEMA,
           TABLE_NAME
-  from   information_schema.tables 
+  from   information_schema.tables
   where  TABLE_TYPE = 'BASE TABLE'
   and CLUSTERING_KEY is not null
 """
 
 
 SNOWFLAKE_GET_SCHEMA_COMMENTS = """
-SELECT 
+SELECT
       catalog_name DATABASE_NAME,
       SCHEMA_NAME,
-      COMMENT 
+      COMMENT
 FROM information_schema.schemata
 """
 
 
 SNOWFLAKE_GET_DATABASE_COMMENTS = """
 select DATABASE_NAME,COMMENT from information_schema.databases
+"""
+
+SNOWFLAKE_GET_EXTERNAL_LOCATIONS = """
+SHOW EXTERNAL TABLES IN DATABASE "{database_name}"
 """
 
 SNOWFLAKE_TEST_FETCH_TAG = """
@@ -124,7 +242,7 @@ SELECT query_text from snowflake.account_usage.query_history limit 1
 """
 
 SNOWFLAKE_TEST_GET_TABLES = """
-SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1 
+SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1
 """
 
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
@@ -155,7 +273,7 @@ SNOWFLAKE_GET_CURRENT_ACCOUNT = "SELECT CURRENT_ACCOUNT_NAME() AS ACCOUNT"
 
 SNOWFLAKE_LIFE_CYCLE_QUERY = textwrap.dedent(
     """
-select 
+select
 table_name as table_name,
 created as created_at
 from snowflake.account_usage.tables
@@ -166,7 +284,7 @@ and table_catalog = '{database_name}'
 
 SNOWFLAKE_GET_STORED_PROCEDURES = textwrap.dedent(
     """
-SELECT 
+SELECT
   PROCEDURE_NAME AS name,
   PROCEDURE_OWNER AS owner,
   PROCEDURE_LANGUAGE AS language,
@@ -193,7 +311,7 @@ WITH SP_HISTORY AS (
       END_TIME
     FROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
-      AND START_TIME >= '{start_date}' 
+      AND START_TIME >= '{start_date}'
 ),
 Q_HISTORY AS (
     SELECT
@@ -210,7 +328,7 @@ Q_HISTORY AS (
     WHERE QUERY_TYPE <> 'CALL'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-      AND START_TIME >= '{start_date}' 
+      AND START_TIME >= '{start_date}'
 )
 SELECT
   Q.QUERY_TYPE AS QUERY_TYPE,
@@ -233,3 +351,7 @@ JOIN Q_HISTORY Q
 ORDER BY PROCEDURE_START_TIME DESC
     """
 )
+
+SNOWFLAKE_GET_TABLE_DDL = """
+SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
+"""

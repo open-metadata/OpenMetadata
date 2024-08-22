@@ -21,8 +21,9 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { ERROR_MESSAGE } from '../../../constants/constants';
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -56,11 +57,17 @@ const AddRolePage = () => {
   const [name, setName] = useState<string>('');
   const [description, setDescription] = useState<string>('');
   const [selectedPolicies, setSelectedPolicies] = useState<string[]>([]);
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
 
   const fetchPolicies = async () => {
     try {
       const data = await getPolicies(
-        'owner,location,roles,teams',
+        `${
+          (TabSpecificField.OWNERS,
+          TabSpecificField.LOCATION,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES)
+        }`,
         undefined,
         undefined,
         100
@@ -77,6 +84,7 @@ const AddRolePage = () => {
   };
 
   const handleSubmit = async () => {
+    setIsSaveLoading(true);
     const data = {
       name: trim(name),
       description,
@@ -99,6 +107,8 @@ const AddRolePage = () => {
             })
           : (error as AxiosError)
       );
+    } finally {
+      setIsSaveLoading(false);
     }
   };
 
@@ -108,7 +118,9 @@ const AddRolePage = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -128,22 +140,7 @@ const AddRolePage = () => {
                 <Form.Item
                   label={`${t('label.name')}:`}
                   name="name"
-                  rules={[
-                    {
-                      required: true,
-                      max: 128,
-                      min: 1,
-                      message: `${t('message.entity-size-in-between', {
-                        entity: `${t('label.name')}`,
-                        max: '128',
-                        min: '1',
-                      })}`,
-                    },
-                    {
-                      pattern: ENTITY_NAME_REGEX,
-                      message: t('message.entity-name-validation'),
-                    },
-                  ]}>
+                  rules={NAME_FIELD_RULES}>
                   <Input
                     data-testid="name"
                     placeholder={t('label.role-name')}
@@ -197,6 +194,7 @@ const AddRolePage = () => {
                     data-testid="submit-btn"
                     form="role-form"
                     htmlType="submit"
+                    loading={isSaveLoading}
                     type="primary">
                     {t('label.submit')}
                   </Button>
@@ -222,13 +220,9 @@ const AddRolePage = () => {
             <Typography.Text>{t('message.add-role-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

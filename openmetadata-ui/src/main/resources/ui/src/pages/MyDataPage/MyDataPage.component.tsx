@@ -23,16 +23,20 @@ import React, {
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import ActivityFeedProvider from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import { useApplicationConfigContext } from '../../context/ApplicationConfigProvider/ApplicationConfigProvider';
-import { AssetsType, EntityType } from '../../enums/entity.enum';
+import {
+  AssetsType,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
@@ -47,8 +51,7 @@ const ReactGridLayout = WidthProvider(RGL);
 
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
-  const { selectedPersona } = useApplicationConfigContext();
+  const { currentUser, selectedPersona } = useApplicationStore();
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
@@ -117,7 +120,7 @@ const MyDataPage = () => {
     setIsLoadingOwnedData(true);
     try {
       const userData = await getUserById(currentUser?.id, {
-        fields: 'follows,owns',
+        fields: [TabSpecificField.FOLLOWS, TabSpecificField.OWNS],
       });
 
       if (userData) {
@@ -225,6 +228,9 @@ const MyDataPage = () => {
             {widgets}
           </ReactGridLayout>
         )}
+        <LimitWrapper resource="dataAssets">
+          <br />
+        </LimitWrapper>
       </PageLayoutV1>
     </ActivityFeedProvider>
   );

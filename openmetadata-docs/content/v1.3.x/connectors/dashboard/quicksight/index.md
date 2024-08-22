@@ -3,17 +3,13 @@ title: QuickSight
 slug: /connectors/dashboard/quicksight
 ---
 
-# QuickSight
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="QuickSight"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Lineage"]
+  unavailableFeatures=["Owners", "Tags", "Datamodels", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the QuickSight connector.
 

@@ -3,30 +3,21 @@ title: Databricks Pipeline
 slug: /connectors/pipeline/databricks-pipeline
 ---
 
-# Databricks Pipeline
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Databricks"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status"]
+unavailableFeatures=["Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Databricks Pipeline connector.
 
 Configure and schedule Databricks Pipeline metadata workflows from the OpenMetadata UI:
 
-- [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/databricks-pipeline/yaml"} /%}
-
-## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides. 
-{% /inlineCallout %}
 
 ## Metadata Ingestion
 

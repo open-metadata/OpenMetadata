@@ -119,8 +119,8 @@ def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, An
     """
     tableau_server_config = {
         f"{connection.env}": {
-            "server": connection.hostPort,
-            "api_version": connection.apiVersion,
+            "server": str(connection.hostPort),
+            "api_version": str(connection.apiVersion),
             "site_name": connection.siteName if connection.siteName else "",
             "site_url": connection.siteUrl if connection.siteUrl else "",
         }

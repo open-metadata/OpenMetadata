@@ -49,6 +49,7 @@ function EditEmailConfigPage() {
   const history = useHistory();
   const [emailConfigValues, setEmailConfigValues] = useState<SMTPSettings>();
   const [loading, setLoading] = useState<boolean>(false);
+  const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
   const [activeField, setActiveField] = useState<string>('');
 
   const slashedBreadcrumb = useMemo(
@@ -60,7 +61,7 @@ function EditEmailConfigPage() {
       {
         name: t('label.email'),
         url: getSettingPath(
-          GlobalSettingsMenuCategory.OPEN_METADATA,
+          GlobalSettingsMenuCategory.PREFERENCES,
           GlobalSettingOptions.EMAIL
         ),
       },
@@ -98,7 +99,7 @@ function EditEmailConfigPage() {
   const handleRedirectionToSettingsPage = useCallback(() => {
     history.push(
       getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.EMAIL
       )
     );
@@ -107,7 +108,7 @@ function EditEmailConfigPage() {
   const updateEmailConfigValues = useCallback(
     async (configValues: SMTPSettings) => {
       try {
-        setLoading(true);
+        setIsSaveLoading(true);
         const settingsConfigData: Settings = {
           config_type: SettingType.EmailConfiguration,
           config_value: configValues,
@@ -128,7 +129,7 @@ function EditEmailConfigPage() {
           })
         );
       } finally {
-        setLoading(false);
+        setIsSaveLoading(false);
       }
     },
     []
@@ -151,6 +152,7 @@ function EditEmailConfigPage() {
         ) : (
           <EmailConfigForm
             emailConfigValues={emailConfigValues}
+            isLoading={isSaveLoading}
             onCancel={handleRedirectionToSettingsPage}
             onFocus={handleFieldFocus}
             onSubmit={updateEmailConfigValues}
@@ -170,17 +172,19 @@ function EditEmailConfigPage() {
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
       pageTitle={t('label.add-entity', { entity: t('label.service') })}
       secondPanel={{
         children: secondPanelChildren,
-        className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

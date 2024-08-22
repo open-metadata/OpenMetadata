@@ -14,7 +14,9 @@
 package org.openmetadata.service.resources.feeds;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_CREATED;
+import static org.openmetadata.schema.type.EventType.SUGGESTION_REJECTED;
 import static org.openmetadata.schema.type.EventType.SUGGESTION_UPDATED;
 import static org.openmetadata.service.util.RestUtil.CHANGE_CUSTOM_HEADER;
 
@@ -206,12 +208,12 @@ public class SuggestionsResource {
   @Path("/{id}/accept")
   @Operation(
       operationId = "acceptSuggestion",
-      summary = "Close a task",
-      description = "Close a task without making any changes to the entity.",
+      summary = "Accept a Suggestion",
+      description = "Accept a Suggestion and apply the changes to the entity.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The task thread.",
+            description = "The suggestion.",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -257,6 +259,107 @@ public class SuggestionsResource {
         suggestion, SuggestionStatus.Rejected, securityContext);
     return dao.rejectSuggestion(uriInfo, suggestion, securityContext.getUserPrincipal().getName())
         .toResponse();
+  }
+
+  @PUT
+  @Path("accept-all")
+  @Operation(
+      operationId = "acceptAllSuggestion",
+      summary = "Accept all Suggestions from a user and an Entity",
+      description = "Accept a Suggestion and apply the changes to the entity.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The suggestion.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Suggestion.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public RestUtil.PutResponse<List<Suggestion>> acceptAllSuggestions(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "user id", schema = @Schema(type = "string")) @QueryParam("userId")
+          UUID userId,
+      @Parameter(description = "fullyQualifiedName of entity", schema = @Schema(type = "string"))
+          @QueryParam("entityFQN")
+          String entityFQN,
+      @Parameter(description = "Suggestion type being accepted", schema = @Schema(type = "string"))
+          @QueryParam("suggestionType")
+          @DefaultValue("SuggestDescription")
+          SuggestionType suggestionType) {
+    SuggestionFilter filter =
+        SuggestionFilter.builder()
+            .suggestionStatus(SuggestionStatus.Open)
+            .entityFQN(entityFQN)
+            .createdBy(userId)
+            .suggestionType(suggestionType)
+            .build();
+    List<Suggestion> suggestions = dao.listAll(filter);
+    if (!nullOrEmpty(suggestions)) {
+      // Validate the permissions for one suggestion
+      Suggestion suggestion = dao.get(suggestions.get(0).getId());
+      dao.checkPermissionsForAcceptOrRejectSuggestion(
+          suggestion, SuggestionStatus.Rejected, securityContext);
+      dao.checkPermissionsForEditEntity(suggestion, suggestionType, securityContext, authorizer);
+      return dao.acceptSuggestionList(
+          uriInfo, suggestions, suggestionType, securityContext, authorizer);
+    } else {
+      // No suggestions found
+      return new RestUtil.PutResponse<>(
+          Response.Status.BAD_REQUEST, List.of(), SUGGESTION_REJECTED);
+    }
+  }
+
+  @PUT
+  @Path("reject-all")
+  @Operation(
+      operationId = "rejectAllSuggestion",
+      summary = "Reject all Suggestions from a user and an Entity",
+      description = "Reject all Suggestions from a user and an Entity",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The suggestion.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Suggestion.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public RestUtil.PutResponse<List<Suggestion>> rejectAllSuggestions(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "user id", schema = @Schema(type = "string")) @QueryParam("userId")
+          UUID userId,
+      @Parameter(description = "fullyQualifiedName of entity", schema = @Schema(type = "string"))
+          @QueryParam("entityFQN")
+          String entityFQN,
+      @Parameter(description = "Suggestion type being rejected", schema = @Schema(type = "string"))
+          @QueryParam("suggestionType")
+          @DefaultValue("SuggestDescription")
+          SuggestionType suggestionType) {
+    SuggestionFilter filter =
+        SuggestionFilter.builder()
+            .suggestionStatus(SuggestionStatus.Open)
+            .entityFQN(entityFQN)
+            .createdBy(userId)
+            .suggestionType(suggestionType)
+            .build();
+    List<Suggestion> suggestions = dao.listAll(filter);
+    if (!nullOrEmpty(suggestions)) {
+      // Validate the permissions for one suggestion
+      Suggestion suggestion = dao.get(suggestions.get(0).getId());
+      dao.checkPermissionsForAcceptOrRejectSuggestion(
+          suggestion, SuggestionStatus.Rejected, securityContext);
+      return dao.rejectSuggestionList(
+          uriInfo, suggestions, securityContext.getUserPrincipal().getName());
+    } else {
+      // No suggestions found
+      return new RestUtil.PutResponse<>(
+          Response.Status.BAD_REQUEST, List.of(), SUGGESTION_REJECTED);
+    }
   }
 
   @PUT
@@ -366,11 +469,12 @@ public class SuggestionsResource {
           String entityFQN) {
     // validate and get the thread
     EntityInterface entity =
-        Entity.getEntityByName(entityType, entityFQN, "owner", Include.NON_DELETED);
+        Entity.getEntityByName(entityType, entityFQN, "owners", Include.NON_DELETED);
     // delete thread only if the admin/bot/author tries to delete it
     OperationContext operationContext =
         new OperationContext(Entity.SUGGESTION, MetadataOperation.DELETE);
-    ResourceContextInterface resourceContext = new PostResourceContext(entity.getOwner().getName());
+    ResourceContextInterface resourceContext =
+        new PostResourceContext(entity.getOwners().get(0).getName());
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return dao.deleteSuggestionsForAnEntity(entity, securityContext.getUserPrincipal().getName())
         .toResponse();

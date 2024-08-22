@@ -14,7 +14,18 @@
 import { interceptURL, verifyResponseStatusCode } from '../../common/common';
 import UsersTestClass from '../../common/Entities/UserClass';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
-import { addOwner, removeOwner } from '../../common/Utils/Owner';
+import { getToken } from '../../common/Utils/LocalStorage';
+import {
+  addOwner,
+  generateRandomUser,
+  removeOwner,
+} from '../../common/Utils/Owner';
+import {
+  cleanupPolicies,
+  createRoleViaREST,
+  DATA_CONSUMER_ROLE,
+  DATA_STEWARD_ROLE,
+} from '../../common/Utils/Policy';
 import {
   addUser,
   editRole,
@@ -23,7 +34,6 @@ import {
   revokeToken,
   updateDetails,
   updateExpiration,
-  visitUserListPage,
 } from '../../common/Utils/Users';
 import {
   BASE_URL,
@@ -47,8 +57,10 @@ const expirationTime = {
   twomonths: '60',
   threemonths: '90',
 };
-const name = `Usercttest${uuid()}`;
-const ownerName = 'Aaron Warren';
+const name = `usercttest${uuid()}`;
+const owner = generateRandomUser();
+let userId = '';
+const ownerName = `${owner.firstName}${owner.lastName}`;
 const user = {
   name: name,
   email: `${name}@gmail.com`,
@@ -60,7 +72,40 @@ const user = {
   newStewardPassword: `StewUser@${uuid()}`,
 };
 
-describe('User with different Roles', () => {
+describe('User with different Roles', { tags: 'Settings' }, () => {
+  before(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+      createRoleViaREST({ token });
+
+      // Create a new user
+      cy.request({
+        method: 'POST',
+        url: `/api/v1/users/signup`,
+        headers: { Authorization: `Bearer ${token}` },
+        body: owner,
+      }).then((response) => {
+        userId = response.body.id;
+      });
+    });
+  });
+  after(() => {
+    cy.login();
+    cy.getAllLocalStorage().then((data) => {
+      const token = getToken(data);
+
+      cleanupPolicies({ token });
+
+      // Delete created user
+      cy.request({
+        method: 'DELETE',
+        url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    });
+  });
+
   it('Update own admin details', () => {
     cy.login();
     updateDetails({
@@ -72,8 +117,8 @@ describe('User with different Roles', () => {
 
   it('Create Data Consumer User', () => {
     cy.login();
-    visitUserListPage();
-    addUser({ ...user, role: 'Data Consumer' });
+    entity.visitUserListPage();
+    addUser({ ...user, role: DATA_CONSUMER_ROLE.name });
     cy.logout();
   });
 
@@ -99,7 +144,7 @@ describe('User with different Roles', () => {
 
   it(`Update token expiration`, () => {
     cy.login(user.email, user.newPassword);
-    visitUserListPage();
+    entity.visitUserListPage();
     Object.values(expirationTime).forEach((expiry) => {
       updateExpiration(expiry);
     });
@@ -179,8 +224,8 @@ describe('User with different Roles', () => {
   it('Update Data Steward details', () => {
     // change role from consumer to steward
     cy.login();
-    visitUserListPage();
-    editRole(user.name, 'Data Steward');
+    entity.visitUserListPage();
+    editRole(user.name, DATA_STEWARD_ROLE.name);
     cy.logout();
     // login to steward user
     cy.login(user.email, user.newPassword);
@@ -197,7 +242,7 @@ describe('User with different Roles', () => {
 
   it('Token generation & revocation for Data Steward', () => {
     cy.login(user.email, user.newStewardPassword);
-    visitUserListPage();
+    entity.visitUserListPage();
     cy.get('[data-testid="dropdown-profile"]').click({ force: true });
     cy.get('[data-testid="user-name"] > .ant-typography').click({
       force: true,
@@ -209,7 +254,7 @@ describe('User with different Roles', () => {
 
   it(`Update token expiration for Data Steward`, () => {
     cy.login(user.email, user.newStewardPassword);
-    visitUserListPage();
+    entity.visitUserListPage();
     Object.values(expirationTime).forEach((expiry) => {
       updateExpiration(expiry);
     });
@@ -261,19 +306,19 @@ describe('User with different Roles', () => {
 
   it('Admin Soft delete user', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.softDeleteUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Restore soft deleted user', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.restoreSoftDeletedUser(user.name, user.updatedDisplayName);
   });
 
   it('Admin Permanent Delete User', () => {
     cy.login();
-    visitUserListPage();
+    entity.visitUserListPage();
     entity.permanentDeleteUser(user.name, user.updatedDisplayName);
   });
 

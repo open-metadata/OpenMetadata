@@ -24,9 +24,10 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
-import { AssetsType } from '../../../../enums/entity.enum';
+import { AssetsType, TabSpecificField } from '../../../../enums/entity.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../../generated/entity/type';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
@@ -49,7 +50,6 @@ import {
 } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityFeedProvider from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import AddWidgetModal from '../AddWidgetModal/AddWidgetModal';
 import './customize-my-data.less';
@@ -65,7 +65,7 @@ function CustomizeMyData({
   handleSaveCurrentPageLayout,
 }: Readonly<CustomizeMyDataProps>) {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser, theme } = useApplicationStore();
   const history = useHistory();
   const { fqn: decodedPersonaFQN } = useFqn();
   const [layout, setLayout] = useState<Array<WidgetConfig>>(
@@ -145,7 +145,7 @@ function CustomizeMyData({
     setIsLoadingOwnedData(true);
     try {
       const userData = await getUserById(currentUser?.id, {
-        fields: 'follows, owns',
+        fields: [TabSpecificField.FOLLOWS, TabSpecificField.OWNS],
       });
 
       if (userData) {
@@ -214,7 +214,7 @@ function CustomizeMyData({
   const handleCancel = useCallback(() => {
     history.push(
       getSettingPath(
-        GlobalSettingsMenuCategory.OPEN_METADATA,
+        GlobalSettingsMenuCategory.PREFERENCES,
         GlobalSettingOptions.CUSTOMIZE_LANDING_PAGE
       )
     );
@@ -264,7 +264,7 @@ function CustomizeMyData({
                   i18nKey="message.customize-landing-page-header"
                   renderElement={
                     <Link
-                      style={{ color: '#1890ff', fontSize: '16px' }}
+                      style={{ color: theme.primaryColor, fontSize: '16px' }}
                       to={getPersonaDetailsPath(decodedPersonaFQN)}
                     />
                   }

@@ -125,13 +125,8 @@ EXPTECTED_TABLE = Table(
     updatedAt=1673413042524,
     updatedBy="admin",
     href=Href(
-        __root__=AnyUrl(
+        root=AnyUrl(
             "http://localhost:8585/api/v1/tables/124d078d-dcf2-43a8-b59e-33bc7953f680",
-            scheme="http",
-            host="localhost",
-            host_type="int_domain",
-            port="8585",
-            path="/api/v1/tables/124d078d-dcf2-43a8-b59e-33bc7953f680",
         )
     ),
     tableType="Regular",
@@ -216,7 +211,7 @@ EXPTECTED_TABLE = Table(
     ],
     tableConstraints=None,
     tablePartition=None,
-    owner=None,
+    owners=None,
     databaseSchema=EntityReference(
         id="4cf6ee7e-9d24-4153-9318-82aa1167259b",
         type="databaseSchema",
@@ -226,13 +221,8 @@ EXPTECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databaseSchemas/4cf6ee7e-9d24-4153-9318-82aa1167259b",
             )
         ),
     ),
@@ -245,13 +235,8 @@ EXPTECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/databases/367f53b5-d6c2-44be-bf5d-a0a1dc98a9dd",
             )
         ),
     ),
@@ -264,19 +249,14 @@ EXPTECTED_TABLE = Table(
         displayName=None,
         deleted=False,
         href=Href(
-            __root__=AnyUrl(
+            AnyUrl(
                 "http://localhost:8585/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/services/databaseServices/f2ab0e7a-5224-4acb-a189-74158851733f",
             )
         ),
     ),
     serviceType="Hive",
     location=None,
-    viewDefinition=None,
+    schemaDefinition=None,
     tags=[
         TagLabel(
             tagFQN="AtlasMetadata.atlas_table",
@@ -313,13 +293,13 @@ class AtlasUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_atlas_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)
         self.atlas_source = AtlasSource.create(
             mock_atlas_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
         self.metadata = OpenMetadata(
-            OpenMetadataConnection.parse_obj(
+            OpenMetadataConnection.model_validate(
                 mock_atlas_config["workflowConfig"]["openMetadataServerConfig"]
             )
         )
@@ -349,7 +329,7 @@ class AtlasUnitTest(TestCase):
                 displayName=None,
                 description=None,
                 tags=None,
-                owner=None,
+                owners=None,
                 service=mock_database_service_object.fullyQualifiedName,
             )
         )
@@ -475,13 +455,13 @@ class AtlasUnitTest(TestCase):
         updated_database = self.metadata.get_by_name(
             entity=Database, fqn="hive.Reporting"
         )
-        assert updated_database.description.__root__ == EXPECTED_DATABASE_DESCRIPTION
+        assert updated_database.description.root == EXPECTED_DATABASE_DESCRIPTION
 
         updated_database_schema = self.metadata.get_by_name(
             entity=DatabaseSchema, fqn="hive.Reporting.Reporting"
         )
         assert (
-            updated_database_schema.description.__root__
+            updated_database_schema.description.root
             == EXPTECTED_DATABASE_SCHEMA_DESCRIPTION
         )
 

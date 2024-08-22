@@ -13,16 +13,18 @@
 
 import { Button, Col, Form, Input, Row, Typography } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import InlineAlert from '../../components/common/InlineAlert/InlineAlert';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../constants/regex.constants';
+import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { NAME_FIELD_RULES } from '../../constants/Form.constants';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { CreateEventSubscription } from '../../generated/events/api/createEventSubscription';
 import {
   AlertType,
@@ -30,6 +32,7 @@ import {
   SubscriptionCategory,
 } from '../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../generated/events/filterResourceDescriptor';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createObservabilityAlert,
@@ -40,18 +43,21 @@ import {
 import { handleAlertSave } from '../../utils/Alerts/AlertsUtil';
 import { getObservabilityAlertDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './add-observability-page.less';
-import { ModifiedEventSubscription } from './AddObservabilityPage.interface';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedEventSubscription,
+} from './AddObservabilityPage.interface';
+import { default as AlertFormSourceItem } from './AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from './DestinationFormItem/DestinationFormItem.component';
-import ObservabilityFormActionItem from './ObservabilityFormActionItem/ObservabilityFormActionItem';
 import ObservabilityFormFiltersItem from './ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
-import { default as ObservabilityFormTriggerItem } from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
+import ObservabilityFormTriggerItem from './ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 
 function AddObservabilityPage() {
   const { t } = useTranslation();
   const history = useHistory();
-  const [form] = useForm<CreateEventSubscription>();
+  const [form] = useForm<ModifiedCreateEventSubscription>();
   const { fqn } = useFqn();
+  const { setInlineAlertDetails, inlineAlertDetails } = useApplicationStore();
 
   const [filterResources, setFilterResources] = useState<
     FilterResourceDescriptor[]
@@ -62,6 +68,7 @@ function AddObservabilityPage() {
   const [saving, setSaving] = useState<boolean>(false);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const { getResourceLimit } = useLimitStore();
 
   const fetchAlert = async () => {
     try {
@@ -70,6 +77,7 @@ function AddObservabilityPage() {
       const observabilityAlert = await getObservabilityAlertByFQN(fqn);
       const modifiedAlertData: ModifiedEventSubscription = {
         ...observabilityAlert,
+        timeout: observabilityAlert.destinations[0].timeout ?? 10,
         destinations: observabilityAlert.destinations.map((destination) => {
           const isExternalDestination =
             destination.category === SubscriptionCategory.External;
@@ -135,7 +143,7 @@ function AddObservabilityPage() {
   );
 
   const handleSave = useCallback(
-    async (data: CreateEventSubscription) => {
+    async (data: ModifiedCreateEventSubscription) => {
       try {
         setSaving(true);
 
@@ -144,9 +152,11 @@ function AddObservabilityPage() {
           fqn,
           createAlertAPI: createObservabilityAlert,
           updateAlertAPI: updateObservabilityAlertWithPut,
-          afterSaveAction: () => {
+          afterSaveAction: async () => {
+            !fqn && (await getResourceLimit('eventsubscription', true, true));
             history.push(getObservabilityAlertDetailsPath(data.name));
           },
+          setInlineAlertDetails,
         });
       } catch {
         // Error handling done in "handleAlertSave"
@@ -168,7 +178,7 @@ function AddObservabilityPage() {
     [filterResources, selectedTrigger]
   );
 
-  const supportedActions = useMemo(
+  const supportedTriggers = useMemo(
     () =>
       filterResources.find((resource) => resource.name === selectedTrigger)
         ?.supportedActions,
@@ -181,8 +191,8 @@ function AddObservabilityPage() {
   );
 
   const shouldShowActionsSection = useMemo(
-    () => (selectedTrigger ? !isEmpty(supportedActions) : true),
-    [selectedTrigger, supportedActions]
+    () => (selectedTrigger ? !isEmpty(supportedTriggers) : true),
+    [selectedTrigger, supportedTriggers]
   );
 
   if (fetching) {
@@ -192,9 +202,11 @@ function AddObservabilityPage() {
   return (
     <ResizablePanels
       hideSecondPanel
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
-          <div className="alert-page-container">
+          <div className="steps-form-container">
             <Row className="p-x-lg p-t-md" gutter={[16, 16]}>
               <Col span={24}>
                 <TitleBreadcrumb titleLinks={breadcrumb} />
@@ -212,12 +224,13 @@ function AddObservabilityPage() {
               </Col>
 
               <Col span={24}>
-                <Form<CreateEventSubscription>
+                <Form<ModifiedCreateEventSubscription>
                   form={form}
                   initialValues={{
                     ...alert,
                     resources: alert?.filteringRules?.resources,
                   }}
+                  validateMessages={VALIDATION_MESSAGES}
                   onFinish={handleSave}>
                   <Row gutter={[20, 20]}>
                     <Col span={24}>
@@ -225,13 +238,7 @@ function AddObservabilityPage() {
                         label={t('label.name')}
                         labelCol={{ span: 24 }}
                         name="name"
-                        rules={[
-                          { required: true },
-                          {
-                            pattern: ENTITY_NAME_REGEX,
-                            message: t('message.entity-name-validation'),
-                          },
-                        ]}>
+                        rules={NAME_FIELD_RULES}>
                         <Input
                           disabled={isEditMode}
                           placeholder={t('label.name')}
@@ -253,9 +260,7 @@ function AddObservabilityPage() {
                       </Form.Item>
                     </Col>
                     <Col span={24}>
-                      <ObservabilityFormTriggerItem
-                        filterResources={filterResources}
-                      />
+                      <AlertFormSourceItem filterResources={filterResources} />
                     </Col>
                     {shouldShowFiltersSection && (
                       <Col span={24}>
@@ -266,8 +271,8 @@ function AddObservabilityPage() {
                     )}
                     {shouldShowActionsSection && (
                       <Col span={24}>
-                        <ObservabilityFormActionItem
-                          supportedActions={supportedActions}
+                        <ObservabilityFormTriggerItem
+                          supportedTriggers={supportedTriggers}
                         />
                       </Col>
                     )}
@@ -282,14 +287,15 @@ function AddObservabilityPage() {
                       name="provider"
                     />
                     <Col span={24}>
-                      <DestinationFormItem
-                        buttonLabel={t('label.add-entity', {
-                          entity: t('label.destination'),
-                        })}
-                        heading={t('label.destination')}
-                        subHeading={t('message.alerts-destination-description')}
-                      />
+                      <DestinationFormItem />
                     </Col>
+
+                    {!isUndefined(inlineAlertDetails) && (
+                      <Col span={24}>
+                        <InlineAlert {...inlineAlertDetails} />
+                      </Col>
+                    )}
+
                     <Col flex="auto" />
                     <Col flex="300px" pull="right">
                       <Button
@@ -317,7 +323,11 @@ function AddObservabilityPage() {
         flex: 0.7,
       }}
       pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{ children: <></>, minWidth: 0 }}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
     />
   );
 }

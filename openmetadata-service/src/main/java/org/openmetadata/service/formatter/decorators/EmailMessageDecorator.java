@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
 import org.openmetadata.service.exception.UnhandledServerException;
@@ -53,24 +54,29 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "<a href = '%s/%s/%s%s'>%s</a>",
         getSmtpSettings().getOpenMetadataUrl(),
-        entityType,
+        prefix,
         fqn.trim(),
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());
   }
 
   @Override
-  public EmailMessage buildEntityMessage(ChangeEvent event) {
-    return getEmailMessage(createEntityMessage(event));
+  public EmailMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getEmailMessage(createEntityMessage(publisherName, event));
   }
 
   @Override
-  public EmailMessage buildThreadMessage(ChangeEvent event) {
-    return getEmailMessage(createThreadMessage(event));
+  public EmailMessage buildTestMessage(String publisherName) {
+    return getEmailTestMessage(publisherName);
+  }
+
+  @Override
+  public EmailMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getEmailMessage(createThreadMessage(publisherName, event));
   }
 
   public EmailMessage getEmailMessage(OutgoingMessage outgoingMessage) {
@@ -83,5 +89,23 @@ public class EmailMessageDecorator implements MessageDecorator<EmailMessage> {
       return emailMessage;
     }
     throw new UnhandledServerException("No messages found for the event");
+  }
+
+  public EmailMessage getEmailTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      EmailMessage emailMessage = new EmailMessage();
+      emailMessage.setUserName("test_user");
+      emailMessage.setUpdatedBy("system");
+      emailMessage.setChangeMessage(
+          new ArrayList<>(
+              Collections.singleton(
+                  "This is a test alert to verify the destination configuration for alerts. "
+                      + "Publisher: "
+                      + publisherName
+                      + ". If you received this message, your alert "
+                      + "configuration is correct.")));
+      return emailMessage;
+    }
+    throw new UnhandledServerException("Publisher name not found.");
   }
 }

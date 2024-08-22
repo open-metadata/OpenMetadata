@@ -22,7 +22,7 @@ global:
   authentication:
     provider: "custom-oidc"
     publicKeys:
-    - "http://{your openmetadata domain}/api/v1/config/jwks" # Update with your Domain and Make sure this "/api/v1/config/jwks" is always configured to enable JWT tokens
+    - "{your domain}/api/v1/system/config/jwks" # Update with your Domain and Make sure this "/api/v1/system/config/jwks" is always configured to enable JWT tokens
     - "http://localhost:8080/realms/myrealm/protocol/openid-connect/certs"
     authority: "http://localhost:8080/realms/myrealm"
     clientId: "{Client ID}"
@@ -30,3 +30,13 @@ global:
 ```
 
 {% partial file="/v1.3/deployment/configure-ingestion.md" /%}
+
+### Troubleshooting
+
+* If you are seeing the below trace in the logs, you need to add the discovery URL
+
+```
+org.pac4j.core.exception.TechnicalException: You must define either the discovery URL or directly the provider metadata
+```
+
+To resolve the error regarding the discovery URL, you need to set the `AUTHENTICATION_DISCOVERY_URI` in your configuration. This URI is used to discover the OpenID Connect provider's configuration.

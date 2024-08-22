@@ -21,13 +21,17 @@
         "GluePipeline",
         "Airbyte",
         "Fivetran",
+        "Flink",
         "Dagster",
         "Nifi",
         "DomoPipeline",
         "CustomPipeline",
         "DatabricksPipeline",
         "Spline",
-        "Spark"
+        "Spark",
+        "OpenLineage",
+        "KafkaConnect",
+        "DBTCloud"
       ],
       "javaEnums": [
         {
@@ -41,6 +45,9 @@
         },
         {
           "name": "Fivetran"
+        },
+        {
+          "name": "Flink"
         },
         {
           "name": "Dagster"
@@ -62,6 +69,15 @@
         },
         {
           "name": "Spark"
+        },
+        {
+          "name": "OpenLineage"
+        },
+        {
+          "name": "KafkaConnect"
+        },
+        {
+          "name": "DBTCloud"
         }
       ]
     },
@@ -89,6 +105,9 @@
               "$ref": "./connections/pipeline/fivetranConnection.json"
             },
             {
+              "$ref": "./connections/pipeline/flinkConnection.json"
+            },
+            {
               "$ref": "./connections/pipeline/dagsterConnection.json"
             },
             {
@@ -108,6 +127,15 @@
             },
             {
               "$ref": "./connections/pipeline/sparkConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/openLineageConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/kafkaConnectConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dbtCloudConnection.json"
             }
           ]
         }
@@ -171,9 +199,9 @@
     "connection": {
       "$ref": "#/definitions/pipelineConnection"
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this pipeline service.",

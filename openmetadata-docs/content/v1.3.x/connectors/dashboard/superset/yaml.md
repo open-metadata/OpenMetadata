@@ -3,17 +3,13 @@ title: Run the Superset Connector Externally
 slug: /connectors/dashboard/superset/yaml
 ---
 
-# Run the Superset Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Superset"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels"]
+unavailableFeatures=["Tags", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Superset connector.
 
@@ -25,10 +21,6 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 The ingestion also works with Superset 2.0.0 🎉
 
@@ -144,7 +136,7 @@ You can use Postgres Connection when you have SSO enabled and your Superset is b
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: superset
   serviceName: local_superset
@@ -153,7 +145,7 @@ source:
       type: Superset
 ```
 ```yaml {% srNumber=1 %}
-      hostPort: http://localhost:8080
+      hostPort: http://localhost:8088
       connection:
         # For Superset API Connection
         username: admin
@@ -165,7 +157,8 @@ source:
         # For MySQL Connection
         # type: Mysql
         # username: <username>
-        # password: <password>
+        # authType:
+        #   password: <password>
         # hostPort: <hostPort>
         # databaseSchema: superset
 
@@ -174,7 +167,8 @@ source:
         # For Postgres Connection
         # type: Postgres
         # username: username
-        # password: password
+        # authType:
+        #   password: <password>
         # hostPort: localhost:5432
         # database: superset
 ```

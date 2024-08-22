@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { interceptURL, uuid, verifyResponseStatusCode } from '../common';
+import { getToken } from './LocalStorage';
 
 const userURL =
   '/api/v1/search/query?q=**%20AND%20isBot:false&from=0&size=0&index=user_search_index';
@@ -28,7 +29,7 @@ export const generateRandomUser = () => {
 
 export const validateOwnerAndTeamCounts = () => {
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
 
     cy.request({
       method: 'GET',
@@ -63,13 +64,31 @@ export const validateOwnerAndTeamCounts = () => {
   cy.clickOutside();
 };
 
-export const addOwner = (ownerName: string, dataTestId?: string) => {
-  cy.get('[data-testid="edit-owner"]').click();
+export const addOwner = (
+  ownerName: string,
+  dataTestId?: string,
+  verifyPatchResponse = true
+) => {
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*&index=team_search_index*',
+    'getTeams'
+  );
+  interceptURL('GET', '/api/v1/users?*isBot=false*', 'getUsers');
+  cy.get('[data-testid="edit-owner"]')
+    .scrollIntoView()
+    .click({ waitForAnimations: false });
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.log('/api/v1/users?limit=*&isBot=false*');
-  cy.get('.ant-tabs [id*=tab-users]').click();
 
+  verifyResponseStatusCode('@getTeams', 200); // wait for teams to load before switching the tab
+
+  cy.get('[data-testid="select-owner-tabs"] [id*=tab-users]')
+    .scrollIntoView()
+    .click({ waitForAnimations: false });
+
+  verifyResponseStatusCode('@getUsers', 200);
+  cy.get('[data-testid="loader"]').should('not.exist');
   interceptURL(
     'GET',
     `api/v1/search/query?q=*&index=user_search_index*`,
@@ -83,7 +102,12 @@ export const addOwner = (ownerName: string, dataTestId?: string) => {
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
   cy.get(`.ant-popover [title="${ownerName}"]`).click();
-  verifyResponseStatusCode('@patchOwner', 200);
+
+  cy.get('[data-testid="selectable-list-update-btn"]').click();
+
+  if (verifyPatchResponse) {
+    verifyResponseStatusCode('@patchOwner', 200);
+  }
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
     'contain',
@@ -93,11 +117,9 @@ export const addOwner = (ownerName: string, dataTestId?: string) => {
 
 export const updateOwner = (ownerName: string, dataTestId?: string) => {
   cy.get('[data-testid="edit-owner"]').click();
-
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
-  cy.log('/api/v1/users?limit=*&isBot=false*');
   cy.get('.ant-tabs [id*=tab-users]').click();
-
+  cy.get('[data-testid="loader"]').should('not.exist');
   interceptURL(
     'GET',
     `api/v1/search/query?q=*${encodeURI(ownerName)}*&index=user_search_index`,
@@ -113,6 +135,8 @@ export const updateOwner = (ownerName: string, dataTestId?: string) => {
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
   cy.get(`.ant-popover [title="${ownerName}"]`).click();
+  cy.get('[data-testid="selectable-list-update-btn"]').click();
+
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(
@@ -121,18 +145,29 @@ export const updateOwner = (ownerName: string, dataTestId?: string) => {
   );
 };
 
-export const removeOwner = (ownerName: string, dataTestId?: string) => {
+export const removeOwner = (
+  ownerName: string,
+  type: 'Teams' | 'Users' = 'Users',
+  dataTestId?: string
+) => {
   cy.get('[data-testid="edit-owner"]').scrollIntoView().click();
 
   cy.get("[data-testid='select-owner-tabs']").should('be.visible');
 
   interceptURL('PATCH', `/api/v1/**`, 'patchOwner');
 
-  cy.get('[data-testid="select-owner-tabs"]').should('be.visible');
+  if (type === 'Teams') {
+    cy.get(
+      '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
+    ).should('be.visible');
 
-  cy.get(
-    '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
-  ).click();
+    cy.get(
+      '[data-testid="select-owner-tabs"] [data-testid="remove-owner"]'
+    ).click();
+  } else {
+    cy.get('[data-testid="clear-all-button"]').click();
+    cy.get('[data-testid="selectable-list-update-btn"]').click();
+  }
   verifyResponseStatusCode('@patchOwner', 200);
 
   cy.get(`[data-testid=${dataTestId ?? 'owner-link'}]`).should(

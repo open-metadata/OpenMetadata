@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button, Space, Tooltip, Typography } from 'antd';
+import { Badge, Button, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -41,7 +41,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { LOADING_STATE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateClassification } from '../../generated/api/classification/createClassification';
 import {
   CreateTag,
@@ -111,9 +111,6 @@ const TagsPage = () => {
       ),
     [permissions]
   );
-  const [deleteStatus, setDeleteStatus] = useState<LOADING_STATE>(
-    LOADING_STATE.INITIAL
-  );
 
   const isClassificationDisabled = useMemo(
     () => currentClassification?.disabled ?? false,
@@ -145,7 +142,7 @@ const TagsPage = () => {
 
     try {
       const response = await getAllClassifications({
-        fields: 'termCount',
+        fields: TabSpecificField.TERM_COUNT,
         limit: 1000,
       });
       setClassifications(response.data);
@@ -173,7 +170,7 @@ const TagsPage = () => {
       setIsLoading(true);
       try {
         const currentClassification = await getClassificationByName(fqn, {
-          fields: 'usageCount,termCount',
+          fields: [TabSpecificField.USAGE_COUNT, TabSpecificField.TERM_COUNT],
         });
         if (currentClassification) {
           setClassifications((prevClassifications) =>
@@ -267,56 +264,52 @@ const TagsPage = () => {
    * @param categoryName - tag category name
    * @param tagId -  tag id
    */
-  const handleDeleteTag = (tagId: string) => {
-    deleteTag(tagId)
-      .then((res) => {
-        if (res) {
-          if (currentClassification) {
-            setDeleteStatus(LOADING_STATE.SUCCESS);
-            setClassifications((prev) =>
-              prev.map((item) => {
-                if (
-                  item.fullyQualifiedName ===
-                  currentClassification.fullyQualifiedName
-                ) {
-                  return {
-                    ...item,
-                    termCount: (item.termCount ?? 0) - 1,
-                  };
-                }
+  const handleDeleteTag = async (tagId: string) => {
+    try {
+      const res = await deleteTag(tagId);
 
-                return item;
-              })
-            );
-          }
-          classificationDetailsRef.current?.refreshClassificationTags();
-        } else {
-          showErrorToast(
-            t('server.delete-entity-error', {
-              entity: t('label.tag-lowercase'),
+      if (res) {
+        if (currentClassification) {
+          setClassifications((prev) =>
+            prev.map((item) => {
+              if (
+                item.fullyQualifiedName ===
+                currentClassification.fullyQualifiedName
+              ) {
+                return {
+                  ...item,
+                  termCount: (item.termCount ?? 0) - 1,
+                };
+              }
+
+              return item;
             })
           );
         }
-      })
-      .catch((err: AxiosError) => {
+        classificationDetailsRef.current?.refreshClassificationTags();
+      } else {
         showErrorToast(
-          err,
-          t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+          t('server.delete-entity-error', {
+            entity: t('label.tag-lowercase'),
+          })
         );
-      })
-      .finally(() => {
-        setDeleteTags({ data: undefined, state: false });
-        setDeleteStatus(LOADING_STATE.INITIAL);
-      });
+      }
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.delete-entity-error', { entity: t('label.tag-lowercase') })
+      );
+    } finally {
+      setDeleteTags({ data: undefined, state: false });
+    }
   };
 
   /**
    * It redirects to respective function call based on tag/Classification
    */
-  const handleConfirmClick = () => {
+  const handleConfirmClick = async () => {
     if (deleteTags.data?.id) {
-      setDeleteStatus(LOADING_STATE.WAITING);
-      handleDeleteTag(deleteTags.data.id);
+      await handleDeleteTag(deleteTags.data.id);
     }
   };
 
@@ -434,6 +427,7 @@ const TagsPage = () => {
       const patchData = compare(editTag, updatedData);
       try {
         await patchTag(editTag.id ?? '', patchData);
+        classificationDetailsRef.current?.refreshClassificationTags();
       } catch (error) {
         if (
           (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
@@ -522,16 +516,16 @@ const TagsPage = () => {
     history.push(getTagPath(category.fullyQualifiedName));
   };
 
-  const handleAddTagSubmit = (data: SubmitProps) => {
+  const handleAddTagSubmit = async (data: SubmitProps) => {
     const updatedData = omit(data, 'color', 'iconURL');
     const style = {
       color: data.color,
       iconURL: data.iconURL,
     };
     if (editTag) {
-      handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
+      await handleUpdatePrimaryTag({ ...editTag, ...updatedData, style });
     } else {
-      handleCreatePrimaryTag({ ...updatedData, style });
+      await handleCreatePrimaryTag({ ...updatedData, style });
     }
   };
 
@@ -550,31 +544,24 @@ const TagsPage = () => {
               <Typography.Text className="text-sm font-semibold">
                 {t('label.classification-plural')}
               </Typography.Text>
-              <Tooltip
-                title={
-                  !createClassificationPermission &&
-                  t('message.no-permission-for-action')
-                }>
+              {createClassificationPermission && (
                 <Button
                   block
                   className=" text-primary"
                   data-testid="add-classification"
-                  disabled={!createClassificationPermission}
+                  icon={<PlusIcon className="align-middle" />}
                   onClick={() => {
                     setIsAddingClassification((prevState) => !prevState);
                   }}>
-                  <div className="d-flex items-center justify-center">
-                    <PlusIcon className="anticon" />
-                    <Typography.Text
-                      className="p-l-xss"
-                      ellipsis={{ tooltip: true }}>
-                      {t('label.add-entity', {
-                        entity: t('label.classification'),
-                      })}
-                    </Typography.Text>
-                  </div>
+                  <Typography.Text
+                    className="p-l-xss"
+                    ellipsis={{ tooltip: true }}>
+                    {t('label.add-entity', {
+                      entity: t('label.classification'),
+                    })}
+                  </Typography.Text>
                 </Button>
-              </Tooltip>
+              )}
             </Space>
 
             {classifications.map((category: Classification) => (
@@ -773,7 +760,6 @@ const TagsPage = () => {
         bodyText={getEntityDeleteMessage(deleteTags.data?.name ?? '', '')}
         entityName={deleteTags.data?.name ?? ''}
         entityType={t('label.classification')}
-        loadingState={deleteStatus}
         visible={deleteTags.state}
         onCancel={handleCancelClassificationDelete}
         onConfirm={handleConfirmClick}

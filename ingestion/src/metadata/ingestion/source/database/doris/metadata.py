@@ -21,7 +21,8 @@ from sqlalchemy.engine.reflection import Inspector
 
 from metadata.generated.schema.entity.data.table import (
     Column,
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TableConstraint,
     TablePartition,
     TableType,
@@ -49,6 +50,7 @@ from metadata.ingestion.source.database.doris.utils import (
 )
 from metadata.ingestion.source.database.mysql.utils import parse_column
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
@@ -143,12 +145,22 @@ class DorisSource(CommonDbSourceService):
     Database metadata from Mysql Source
     """
 
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        self.ssl_manager = None
+        service_connection = config.serviceConnection.root.config
+        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
+        if self.ssl_manager:
+            service_connection = self.ssl_manager.setup_ssl(service_connection)
+        super().__init__(config, metadata)
+
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         if config.serviceConnection is None:
             raise InvalidSourceException("Missing service connection")
-        connection = cast(DorisConnection, config.serviceConnection.__root__.config)
+        connection = cast(DorisConnection, config.serviceConnection.root.config)
         if not isinstance(connection, DorisConnection):
             raise InvalidSourceException(
                 f"Expected DorisConnection, but got {connection}"
@@ -306,9 +318,16 @@ class DorisSource(CommonDbSourceService):
 
             if result and result[0].PartitionKey != "":
                 partition_details = TablePartition(
-                    intervalType=IntervalType.TIME_UNIT.value,
-                    columns=result[0].PartitionKey.split(", "),
+                    columns=[
+                        PartitionColumnDetails(
+                            columnName=partition_key,
+                            intervalType=PartitionIntervalTypes.TIME_UNIT,
+                            interval=None,
+                        )
+                        for partition_key in result[0].PartitionKey.split(", ")
+                    ]
                 )
+
                 return True, partition_details
             return False, None
         except Exception:

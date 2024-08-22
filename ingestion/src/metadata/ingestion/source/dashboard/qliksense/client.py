@@ -40,8 +40,9 @@ from metadata.ingestion.source.dashboard.qliksense.models import (
     QlikTable,
 )
 from metadata.utils.constants import UTF_8
-from metadata.utils.helpers import clean_uri, delete_dir_content, init_staging_dir
+from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.ssl_manager import SSLManager
 
 logger = ingestion_logger()
 
@@ -72,35 +73,17 @@ class QlikSenseClient:
                 "ca_certs": self.config.certificates.rootCertificate,
                 "certfile": self.config.certificates.clientCertificate,
                 "keyfile": self.config.certificates.clientKeyCertificate,
+                "check_hostname": self.config.validateHostName,
             }
             return context
 
-        init_staging_dir(self.config.certificates.stagingDir)
-        root_path = Path(self.config.certificates.stagingDir, "root.pem")
-        client_path = Path(self.config.certificates.stagingDir, "client.pem")
-        client_key_path = Path(self.config.certificates.stagingDir, "client_key.pem")
-
-        self.write_data_to_file(
-            root_path, self.config.certificates.rootCertificateData.get_secret_value()
+        self.ssl_manager = SSLManager(
+            ca=self.config.certificates.sslConfig.root.caCertificate,
+            cert=self.config.certificates.sslConfig.root.sslCertificate,
+            key=self.config.certificates.sslConfig.root.sslKey,
         )
 
-        self.write_data_to_file(
-            client_path,
-            self.config.certificates.clientCertificateData.get_secret_value(),
-        )
-
-        self.write_data_to_file(
-            client_key_path,
-            self.config.certificates.clientKeyCertificateData.get_secret_value(),
-        )
-
-        context = {
-            "ca_certs": root_path,
-            "certfile": client_path,
-            "keyfile": client_key_path,
-        }
-
-        return context
+        return self.ssl_manager.setup_ssl(self.config)
 
     def connect_websocket(self, app_id: str = None) -> None:
         """
@@ -133,7 +116,7 @@ class QlikSenseClient:
             self.socket_connection.close()
 
         if isinstance(self.config.certificates, QlikCertificateValues):
-            delete_dir_content(self.config.certificates.stagingDir)
+            self.ssl_manager.cleanup_temp_files()
 
     def __init__(
         self,

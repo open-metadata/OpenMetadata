@@ -3,29 +3,17 @@ title: Run the Databricks Connector Externally
 slug: /connectors/database/databricks/yaml
 ---
 
-# Run the Databricks Connector Externally
+{% connectorDetailsHeader
+name="Databricks"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags"]
+unavailableFeatures=["Owners", "Stored Procedures"]
+/ %}
 
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Databricks Runtime Version 9+|
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% note %}
+As per the [documentation](https://docs.databricks.com/en/data-governance/unity-catalog/tags.html#manage-tags-with-sql-commands) here, note that we only support metadata `tag` extraction for databricks version 13.3 version and higher.
+{% /note %}
 
 In this section, we provide guides and references to use the Databricks connector.
 
@@ -34,20 +22,14 @@ Configure and schedule Databricks metadata and profiler workflows from the OpenM
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 
 ### Python Requirements
 
@@ -127,13 +109,13 @@ This is a sample config for Databricks:
 
 {% codeInfo srNumber=7 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=8 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -143,7 +125,7 @@ This is a sample config for Databricks:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: databricks
   serviceName: local_databricks
@@ -193,11 +175,11 @@ source:
 
 {% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "databricks"} /%}
 
+{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "databricks"} /%}
+
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "databricks"} /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

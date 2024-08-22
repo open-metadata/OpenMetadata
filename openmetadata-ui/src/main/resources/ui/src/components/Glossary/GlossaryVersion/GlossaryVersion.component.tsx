@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { noop, toString } from 'lodash';
+import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
-import { LOADING_STATE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { EntityHistory } from '../../../generated/type/entityHistory';
@@ -34,6 +34,7 @@ import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import GlossaryV1Component from '../GlossaryV1.component';
+import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 
 interface GlossaryVersionProps {
   isGlossary?: boolean;
@@ -51,6 +52,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
   );
   const [selectedData, setSelectedData] = useState<Glossary | GlossaryTerm>();
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
+  const { setActiveGlossary } = useGlossaryStore();
 
   const fetchVersionsInfo = async () => {
     try {
@@ -72,6 +74,7 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
         : await getGlossaryTermsVersion(id, version);
 
       setSelectedData(res);
+      setActiveGlossary(res as ModifiedGlossary);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -108,19 +111,19 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
         ) : (
           <GlossaryV1Component
             isVersionsView
-            deleteStatus={LOADING_STATE.INITIAL}
             isGlossaryActive={isGlossary}
             isSummaryPanelOpen={false}
             selectedData={selectedData as Glossary}
             updateGlossary={() => Promise.resolve()}
-            onGlossaryDelete={noop}
-            onGlossaryTermDelete={noop}
+            onGlossaryDelete={() => Promise.resolve()}
+            onGlossaryTermDelete={() => Promise.resolve()}
             onGlossaryTermUpdate={() => Promise.resolve()}
           />
         )}
       </div>
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.GLOSSARY}
         versionHandler={onVersionChange}
         versionList={versionList}
         onBack={onBackHandler}

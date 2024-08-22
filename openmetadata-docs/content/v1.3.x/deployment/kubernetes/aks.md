@@ -5,6 +5,62 @@ slug: /deployment/kubernetes/aks
 # Openmetadata Deployment on Azure Kubernetes Service Cluster
 Openmetadata can be deployed on Azure Kubernetes Service. It however requires certain cloud specific configurations with regards to setting up storage accounts for Airflow which is one of its dependencies.
 
+## Prerequisites
+
+### Azure Services for Database and Search Engine as Elastic Cloud
+
+It is recommended to use [Azure SQL](https://azure.microsoft.com/en-in/products/azure-sql/database) and [Elastic Cloud on Azure](https://www.elastic.co/partners/microsoft-azure) for Production Deployments.
+
+We support 
+
+- Azure SQL (MySQL) engine version 8 or higher
+- Azure SQL (PostgreSQL) engine version 12 or higher
+- Elastic Cloud (ElasticSearch version 8.10.2)
+
+Once you have the Azure SQL and Elastic Cloud on Azure configured, you can update the environment variables below for OpenMetadata kubernetes deployments to connect with Database and ElasticSearch.
+
+```yaml
+# openmetadata-values.prod.yaml
+...
+openmetadata:
+  config:
+    elasticsearch:
+      host: <ELASTIC_CLOUD_ENDPOINT_WITHOUT_HTTPS>
+      searchType: elasticsearch
+      port: 443
+      scheme: https
+      connectionTimeoutSecs: 5
+      socketTimeoutSecs: 60
+      keepAliveTimeoutSecs: 600
+      batchSize: 10
+      auth:
+        enabled: true
+        username: <ELASTIC_CLOUD_USERNAME>
+        password:
+          secretRef: elasticsearch-secrets
+          secretKey: openmetadata-elasticsearch-password
+    database:
+      host: <AZURE_SQL_ENDPOINT>
+      port: 3306
+      driverClass: com.mysql.cj.jdbc.Driver
+      dbScheme: mysql
+      dbUseSSL: true
+      databaseName: <AZURE_SQL_DATABASE_NAME>
+      auth:
+        username: <AZURE_SQL_DATABASE_USERNAME>
+        password:
+          secretRef: mysql-secrets
+          secretKey: openmetadata-mysql-password
+  ...
+```
+
+We recommend -
+- Azure SQL to be Multi Zone Available and Production Workload Environment
+- Elastic Cloud Environment with multiple zones and minimum 2 nodes
+
+Make sure to create database and elastic cloud credentials as Kubernetes Secrets mentioned [here](/quick-start/local-kubernetes-deployment#2.-create-kubernetes-secrets-required-for-helm-charts).
+
+Also, disable MySQL and ElasticSearch from OpenMetadata Dependencies Helm Charts as mentioned in the FAQs [here](/deployment/kubernetes/faqs#how-to-disable-mysql-and-elasticsearch-from-openmetadata-dependencies-helm-charts).
 
 ### Step 1 - Create a AKS cluster
 If you are deploying on a new cluster set the `EnableAzureDiskFileCSIDriver=true` to enable container storage interface storage drivers.
@@ -228,3 +284,50 @@ Give it again a few seconds for the pod to get ready. And when its ready, the se
 ```azure-cli
 kubectl port-forward service/openmetadata 8585:8585 -n openmetadata
 ```
+
+## Troubleshooting Airflow
+
+### JSONDecodeError: Unterminated string starting
+
+If you are using Airflow with Azure Blob Storage as `PersistentVolume` as explained in [Storage class using blobfuse](https://learn.microsoft.com/en-us/azure/aks/azure-csi-blob-storage-provision?tabs=mount-nfs%2Csecret),
+you may encounter the following error after a few days:
+
+```bash
+{dagbag.py:346} ERROR - Failed to import: /airflow-dags/dags/...py
+json.decoder.JSONDecodeError: Unterminated string starting at: line 1 column 3552
+```
+
+Moreover, the Executor pods would actually be using old files. This behaviour is caused by the recommended config by the 
+mentioned documentation:
+
+```yaml
+  - -o allow_other
+  - --file-cache-timeout-in-seconds=120
+  - --use-attr-cache=true
+  - --cancel-list-on-mount-seconds=10  # prevent billing charges on mounting
+  - -o attr_timeout=120
+  - -o entry_timeout=120
+  - -o negative_timeout=120
+  - --log-level=LOG_WARNING  # LOG_WARNING, LOG_INFO, LOG_DEBUG
+  - --cache-size-mb=1000  # Default will be 80% of available memory, eviction will happen beyond that.
+```
+
+**Disabling the cache** will help here. In this case it won't have any negative impact, since the `.py` and `.json`
+files are small enough and not heavily used.
+
+The same configuration without cache:
+
+```yaml
+  - --o direct_io
+  - --file-cache-timeout-in-seconds=0
+  - --use-attr-cache=false
+  - --cancel-list-on-mount-seconds=10
+  - --o attr_timeout=0
+  - --o entry_timeout=0
+  - --o negative_timeout=0
+  - --log-level=LOG_WARNING
+  - --cache-size-mb=0
+```
+
+You can find more information about this error [here](https://github.com/open-metadata/OpenMetadata/issues/15321), and similar
+discussions [here](https://github.com/Azure/azure-storage-fuse/issues/1171) and [here](https://github.com/Azure/azure-storage-fuse/issues/1139).

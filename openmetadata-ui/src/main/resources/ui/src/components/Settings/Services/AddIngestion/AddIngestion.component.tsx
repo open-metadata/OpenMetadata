@@ -16,6 +16,7 @@ import { isEmpty, isUndefined, omit, trim } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STEPS_FOR_ADD_INGESTION } from '../../../../constants/Ingestions.constant';
+import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { LOADING_STATE } from '../../../../enums/common.enum';
 import { FormSubmitType } from '../../../../enums/form.enum';
 import {
@@ -24,10 +25,17 @@ import {
   PipelineType,
 } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { IngestionWorkflowData } from '../../../../interface/service.interface';
-import { getIngestionFrequency } from '../../../../utils/CommonUtils';
+import { getSuccessMessage } from '../../../../utils/IngestionUtils';
+import { cleanWorkFlowData } from '../../../../utils/IngestionWorkflowUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import { getIngestionName } from '../../../../utils/ServiceUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
+import { generateUUID } from '../../../../utils/StringsUtils';
+import {
+  getDayCron,
+  getWeekCron,
+} from '../../../common/CronEditor/CronEditor.constant';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
 import IngestionStepper from '../Ingestion/IngestionStepper/IngestionStepper.component';
@@ -62,30 +70,46 @@ const AddIngestion = ({
   onFocus,
 }: AddIngestionProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
+  const { config: limitConfig } = useLimitStore();
+
+  const { pipelineSchedules } =
+    limitConfig?.limits?.config.featureLimits.find(
+      (limit) => limit.name === 'ingestionPipeline'
+    ) ?? {};
+
+  const periodOptions = pipelineSchedules
+    ? getScheduleOptionsFromSchedules(pipelineSchedules)
+    : undefined;
 
   // lazy initialization to initialize the data only once
   const [workflowData, setWorkflowData] = useState<IngestionWorkflowData>(
     () => ({
       ...(data?.sourceConfig.config ?? {}),
-      name: data?.name ?? getIngestionName(serviceData.name, pipelineType),
+      name: data?.name ?? generateUUID(),
+      displayName:
+        data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
     })
   );
 
-  const [scheduleInterval, setScheduleInterval] = useState(
-    () =>
-      data?.airflowConfig.scheduleInterval ??
-      getIngestionFrequency(pipelineType)
+  const [scheduleInterval, setScheduleInterval] = useState(() =>
+    data?.airflowConfig.scheduleInterval ?? limitConfig?.enable
+      ? getWeekCron({ hour: 0, min: 0, dow: 1 })
+      : getDayCron({
+          min: 0,
+          hour: 0,
+        })
   );
 
   const { ingestionName, retries } = useMemo(
     () => ({
       ingestionName:
-        data?.name ?? getIngestionName(serviceData.name, pipelineType),
+        workflowData?.displayName ??
+        getIngestionName(serviceData.name, pipelineType),
       retries: data?.airflowConfig.retries ?? 0,
     }),
-    [data, pipelineType, serviceData]
+    [data, pipelineType, serviceData, workflowData]
   );
 
   const isSettingsPipeline = useMemo(
@@ -153,17 +177,20 @@ const AddIngestion = ({
       loggerLevel: enableDebugLog ? LogLevels.Debug : LogLevels.Info,
       name: ingestionName,
       displayName: displayName,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: 'user',
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: 'user',
+        },
+      ],
       pipelineType: pipelineType,
       service: {
         id: serviceData.id as string,
         type: serviceCategory.slice(0, -1),
       },
       sourceConfig: {
-        config: { ...rest },
+        // clean the data to remove empty fields
+        config: { ...cleanWorkFlowData(rest) },
       },
     };
 
@@ -204,8 +231,11 @@ const AddIngestion = ({
           : LogLevels.Info,
         sourceConfig: {
           config: {
-            ...(omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
-              {}),
+            // clean the data to remove empty fields
+            ...cleanWorkFlowData(
+              omit(workflowData, ['name', 'enableDebugLog', 'displayName']) ??
+                {}
+            ),
           },
         },
       };
@@ -247,32 +277,6 @@ const AddIngestion = ({
     }
   };
 
-  const getSuccessMessage = () => {
-    const updateMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.updated-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.updated-lowercase'),
-        });
-    const createMessage = showDeployButton
-      ? t('message.action-has-been-done-but-failed-to-deploy', {
-          action: t('label.created-lowercase'),
-        })
-      : t('message.action-has-been-done-but-deploy-successfully', {
-          action: t('label.created-lowercase'),
-        });
-
-    return (
-      <span>
-        <span className="font-medium">{`"${ingestionName}"`}</span>
-        <span>
-          {status === FormSubmitType.ADD ? createMessage : updateMessage}
-        </span>
-      </span>
-    );
-  };
-
   return (
     <div data-testid="add-ingestion-container">
       <Typography.Title className="font-normal" level={5}>
@@ -304,7 +308,9 @@ const AddIngestion = ({
           <ScheduleInterval
             disabledCronChange={pipelineType === PipelineType.DataInsight}
             includePeriodOptions={
-              pipelineType === PipelineType.DataInsight ? ['day'] : undefined
+              pipelineType === PipelineType.DataInsight
+                ? ['day']
+                : periodOptions
             }
             scheduleInterval={scheduleInterval}
             status={saveState}
@@ -337,7 +343,11 @@ const AddIngestion = ({
             showDeployButton={showDeployButton}
             showIngestionButton={false}
             state={status}
-            successMessage={getSuccessMessage()}
+            successMessage={getSuccessMessage(
+              ingestionName,
+              status,
+              showDeployButton
+            )}
             viewServiceText={viewServiceText}
           />
         )}

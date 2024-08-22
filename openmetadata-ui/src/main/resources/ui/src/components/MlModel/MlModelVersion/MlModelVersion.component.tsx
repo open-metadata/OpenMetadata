@@ -25,7 +25,7 @@ import classNames from 'classnames';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPathWithTab } from '../../../constants/constants';
+import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/dashboard';
@@ -49,7 +49,6 @@ import DataProductsContainer from '../../DataProducts/DataProductsContainer/Data
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
-
 import SourceList from '../MlModelDetail/SourceList.component';
 import { MlModelVersionProp } from './MlModelVersion.interface';
 
@@ -57,7 +56,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -81,11 +80,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const mlFeaturesData = useMemo(
@@ -96,7 +95,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   const handleTabChange = useCallback(
     (activeKey: string) => {
       history.push(
-        getVersionPathWithTab(
+        getVersionPath(
           EntityType.MLMODEL,
           currentVersionData.fullyQualifiedName ?? '',
           String(version),
@@ -364,6 +363,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={version}
+        entityType={EntityType.MLMODEL}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

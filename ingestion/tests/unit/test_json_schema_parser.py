@@ -30,15 +30,18 @@ class JsonSchemaParserTests(TestCase):
         "properties": {
             "firstName": {
             "type": "string",
+            "title": "First Name",
             "description": "The person's first name."
             },
             "lastName": {
             "type": "string",
+            "title": "Last Name",
             "description": "The person's last name."
             },
             "age": {
             "description": "Age in years which must be equal to or greater than zero.",
             "type": "integer",
+            "title": "Person Age",
             "minimum": 0
             }
         }
@@ -47,16 +50,20 @@ class JsonSchemaParserTests(TestCase):
     parsed_schema = parse_json_schema(sample_json_schema)
 
     def test_schema_name(self):
-        self.assertEqual(self.parsed_schema[0].name.__root__, "Person")
+        self.assertEqual(self.parsed_schema[0].name.root, "Person")
 
     def test_schema_type(self):
         self.assertEqual(self.parsed_schema[0].dataType.name, "RECORD")
 
     def test_field_names(self):
-        field_names = {
-            str(field.name.__root__) for field in self.parsed_schema[0].children
-        }
+        field_names = {str(field.name.root) for field in self.parsed_schema[0].children}
         self.assertEqual(field_names, {"firstName", "lastName", "age"})
+
+        # validate display names
+        field_display_names = {
+            str(field.displayName) for field in self.parsed_schema[0].children
+        }
+        self.assertEqual(field_display_names, {"First Name", "Last Name", "Person Age"})
 
     def test_field_types(self):
         field_types = {
@@ -66,7 +73,7 @@ class JsonSchemaParserTests(TestCase):
 
     def test_field_descriptions(self):
         field_descriptions = {
-            str(field.description.__root__) for field in self.parsed_schema[0].children
+            str(field.description.root) for field in self.parsed_schema[0].children
         }
         self.assertEqual(
             field_descriptions,

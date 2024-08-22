@@ -3,30 +3,13 @@ title: Doris
 slug: /connectors/database/doris
 ---
 
-# Doris
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2 |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | Partially via Views          |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
-
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Doris"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "Tags", "Stored Procedures", "dbt"]
+/ %}
 
 In this section, we provide guides and references to use the Doris connector.
 
@@ -38,23 +21,21 @@ Configure and schedule Doris metadata and profiler workflows from the OpenMetada
 - [Data Quality](/connectors/ingestion/workflows/data-quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
-{% partial file="/v1.2/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
+{% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/doris/yaml"} /%}
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 1.2.x or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
+Metadata: Doris >= 1.2.0, Data Profiler: Doris >= 2.0.2
 
 ## Metadata Ingestion
 
 {% partial
-file="/v1.2/connectors/metadata-ingestion-ui.md"
+file="/v1.3/connectors/metadata-ingestion-ui.md"
 variables={
 connector: "Doris",
-selectServicePath: "/images/v1.2/connectors/doris/select-service.png",
-addNewServicePath: "/images/v1.2/connectors/doris/add-new-service.png",
-serviceConnectionPath: "/images/v1.2/connectors/doris/service-connection.png",
+selectServicePath: "/images/v1.3/connectors/doris/select-service.png",
+addNewServicePath: "/images/v1.3/connectors/doris/add-new-service.png",
+serviceConnectionPath: "/images/v1.3/connectors/doris/service-connection.png",
 }
 /%}
 
@@ -72,18 +53,18 @@ serviceConnectionPath: "/images/v1.2/connectors/doris/service-connection.png",
 - **sslCert**: Provide the path to ssl client certificate file (ssl_cert).
 - **sslKey**: Provide the path to ssl client certificate file (ssl_key).
 
-{% partial file="/v1.2/connectors/database/advanced-configuration.md" /%}
+{% partial file="/v1.3/connectors/database/advanced-configuration.md" /%}
 
 {% /extraContent %}
 
-{% partial file="/v1.2/connectors/test-connection.md" /%}
+{% partial file="/v1.3/connectors/test-connection.md" /%}
 
-{% partial file="/v1.2/connectors/database/configure-ingestion.md" /%}
+{% partial file="/v1.3/connectors/database/configure-ingestion.md" /%}
 
-{% partial file="/v1.2/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.2/connectors/troubleshooting.md" /%}
+{% partial file="/v1.3/connectors/troubleshooting.md" /%}
 
-{% partial file="/v1.2/connectors/database/related.md" /%}
+{% partial file="/v1.3/connectors/database/related.md" /%}

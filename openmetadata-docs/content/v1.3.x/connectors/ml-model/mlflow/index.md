@@ -3,7 +3,13 @@ title: MLflow
 slug: /connectors/ml-model/mlflow
 ---
 
-# MLflow
+{% connectorDetailsHeader
+name="MLflow"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["ML Store"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the MLflow connector.
 

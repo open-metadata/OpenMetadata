@@ -31,15 +31,6 @@ public interface MigrationDAO {
   Optional<String> getMaxVersion() throws StatementException;
 
   @ConnectionAwareSqlQuery(
-      value = "SELECT MAX(version) FROM SERVER_CHANGE_LOG",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value = "SELECT max(version) FROM SERVER_CHANGE_LOG",
-      connectionType = POSTGRES)
-  @SingleValue
-  Optional<String> getMaxServerMigrationVersion() throws StatementException;
-
-  @ConnectionAwareSqlQuery(
       value = "SELECT checksum FROM SERVER_CHANGE_LOG where version = :version",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
@@ -128,6 +119,9 @@ public interface MigrationDAO {
           "SELECT installed_rank, version, migrationFileName, checksum, installed_on, metrics FROM SERVER_CHANGE_LOG ORDER BY version ASC")
   @RegisterRowMapper(FromServerChangeLogMapper.class)
   List<ServerChangeLog> listMetricsFromDBMigrations();
+
+  @SqlQuery("SELECT version FROM SERVER_CHANGE_LOG")
+  List<String> getMigrationVersions();
 
   @Getter
   @Setter

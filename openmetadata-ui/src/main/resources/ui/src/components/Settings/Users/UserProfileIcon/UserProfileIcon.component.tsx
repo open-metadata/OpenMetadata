@@ -32,16 +32,15 @@ import {
   TERM_ADMIN,
   TERM_USER,
 } from '../../../../constants/constants';
-import { useApplicationConfigContext } from '../../../../context/ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityReference } from '../../../../generated/entity/type';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import {
   getImageWithResolutionAndFallback,
   ImageQuality,
 } from '../../../../utils/ProfilerUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
-import Avatar from '../../../common/AvatarComponent/Avatar';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import './user-profile-icon.less';
 
 type ListMenuItemProps = {
@@ -85,9 +84,13 @@ const renderLimitedListMenuItem = ({
 };
 
 export const UserProfileIcon = () => {
-  const { currentUser, onLogoutHandler } = useAuthContext();
-  const { selectedPersona, updateSelectedPersona } =
-    useApplicationConfigContext();
+  const {
+    currentUser,
+    onLogoutHandler,
+    selectedPersona,
+    setSelectedPersona: updateSelectedPersona,
+  } = useApplicationStore();
+
   const [isImgUrlValid, setIsImgUrlValid] = useState<boolean>(true);
   const { t } = useTranslation();
   const profilePicture = getImageWithResolutionAndFallback(
@@ -334,7 +337,7 @@ export const UserProfileIcon = () => {
               onError={handleOnImageError}
             />
           ) : (
-            <Avatar name={userName} type="circle" width="36" />
+            <ProfilePicture name={currentUser?.name ?? ''} width="36" />
           )}
           <div className="d-flex flex-col">
             <Tooltip title={getEntityName(currentUser)}>

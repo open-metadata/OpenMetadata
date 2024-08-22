@@ -3,7 +3,13 @@ title: Sagemaker
 slug: /connectors/ml-model/sagemaker
 ---
 
-# Sagemaker
+{% connectorDetailsHeader
+name="Sagemaker"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["ML Store"]
+unavailableFeatures=["ML Features", "Hyperparameters"]
+/ %}
 
 In this section, we provide guides and references to use the Sagemaker connector.
 

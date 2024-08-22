@@ -29,10 +29,11 @@ export interface ActivityFeedTabBasicProps {
   isForFeedTab?: boolean;
   refetchFeed?: boolean;
   entityFeedTotalCount?: number;
+  hasGlossaryReviewer?: boolean;
   onUpdateFeedCount?: (feedCount: FeedCounts) => void;
   onFeedUpdate: () => void;
   onUpdateEntityDetails?: () => void;
-  owner?: EntityReference;
+  owners?: EntityReference[];
 }
 
 export type ActivityFeedTabProps = ActivityFeedTabBasicProps &

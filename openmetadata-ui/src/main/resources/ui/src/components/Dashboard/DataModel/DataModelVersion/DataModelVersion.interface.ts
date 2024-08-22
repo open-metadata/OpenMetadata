@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
 import { EntityHistory } from '../../../../generated/type/entityHistory';
 import { TagLabel } from '../../../../generated/type/tagLabel';
@@ -21,7 +22,7 @@ export interface DataModelVersionProp {
   version: string;
   currentVersionData: VersionData;
   isVersionLoading: boolean;
-  owner: DashboardDataModel['owner'];
+  owners: DashboardDataModel['owners'];
   domain: DashboardDataModel['domain'];
   dataProducts: DashboardDataModel['dataProducts'];
   tier: TagLabel;
@@ -30,4 +31,5 @@ export interface DataModelVersionProp {
   deleted?: boolean;
   backHandler: () => void;
   versionHandler: (v: string) => void;
+  entityPermissions: OperationPermission;
 }

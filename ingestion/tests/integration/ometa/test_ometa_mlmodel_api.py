@@ -64,6 +64,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 )
 from metadata.generated.schema.type.entityLineage import EntitiesEdge
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
@@ -87,7 +88,7 @@ class OMetaModelTest(TestCase):
     user = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(id=user.id, type="user")
+    owners = EntityReferenceList(root=[EntityReference(id=user.id, type="user")])
 
     service = CreateMlModelServiceRequest(
         name="test-model-service",
@@ -134,7 +135,7 @@ class OMetaModelTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=MlModelService, fqn="test-model-service"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -153,7 +154,7 @@ class OMetaModelTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.algorithm, self.entity.algorithm)
-        self.assertEqual(res.owner, None)
+        self.assertIsNone(res.owners)
 
     def test_update(self):
         """
@@ -162,8 +163,8 @@ class OMetaModelTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.create.dict(exclude_unset=True)
-        updated["owner"] = self.owner
+        updated = self.create.model_dump(exclude_unset=True)
+        updated["owners"] = self.owners
         updated_entity = CreateMlModelRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
@@ -171,21 +172,21 @@ class OMetaModelTest(TestCase):
         # Same ID, updated algorithm
         self.assertEqual(res.algorithm, updated_entity.algorithm)
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owner.id, self.user.id)
+        self.assertEqual(res.owners.root[0].id, self.user.id)
 
         # Getting without owner field does not return it by default
         res_none = self.metadata.get_by_name(
             entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
-        self.assertIsNone(res_none.owner)
+        self.assertIsNone(res_none.owners)
 
         # We can request specific fields to be added
         res_owner = self.metadata.get_by_name(
             entity=MlModel,
             fqn=self.entity.fullyQualifiedName,
-            fields=["owner", "followers"],
+            fields=["owners", "followers"],
         )
-        self.assertEqual(res_owner.owner.id, self.user.id)
+        self.assertEqual(res_owner.owners.root[0].id, self.user.id)
 
     def test_get_name(self):
         """
@@ -243,11 +244,11 @@ class OMetaModelTest(TestCase):
         )
         # Then fetch by ID
         res_id = self.metadata.get_by_id(
-            entity=MlModel, entity_id=str(res_name.id.__root__)
+            entity=MlModel, entity_id=str(res_name.id.root)
         )
 
         # Delete
-        self.metadata.delete(entity=MlModel, entity_id=str(res_id.id.__root__))
+        self.metadata.delete(entity=MlModel, entity_id=str(res_id.id.root))
 
         # Then we should not find it
         res = self.metadata.list_entities(entity=MlModel)
@@ -368,11 +369,11 @@ class OMetaModelTest(TestCase):
         # Alternatively, we could manually send lineage via `add_mlmodel_lineage`
         # E.g., lineage = self.metadata.add_mlmodel_lineage(model=res)
         lineage = self.metadata.get_lineage_by_id(
-            entity=MlModel, entity_id=str(res.id.__root__)
+            entity=MlModel, entity_id=str(res.id.root)
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
-        assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
+        assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
 
         # If we delete the lineage, the `add_mlmodel_lineage` will take care of it too
         for edge in lineage.get("upstreamEdges") or []:
@@ -386,11 +387,11 @@ class OMetaModelTest(TestCase):
         self.metadata.add_mlmodel_lineage(model=res)
 
         lineage = self.metadata.get_lineage_by_id(
-            entity=MlModel, entity_id=str(res.id.__root__)
+            entity=MlModel, entity_id=str(res.id.root)
         )
 
         nodes = {node["id"] for node in lineage["nodes"]}
-        assert nodes == {str(table1_entity.id.__root__), str(table2_entity.id.__root__)}
+        assert nodes == {str(table1_entity.id.root), str(table2_entity.id.root)}
 
         self.metadata.delete(
             entity=DatabaseService,
@@ -411,7 +412,7 @@ class OMetaModelTest(TestCase):
         )
 
         res = self.metadata.get_list_entity_versions(
-            entity=MlModel, entity_id=res_name.id.__root__
+            entity=MlModel, entity_id=res_name.id.root
         )
         assert res
 
@@ -426,11 +427,11 @@ class OMetaModelTest(TestCase):
             entity=MlModel, fqn=self.entity.fullyQualifiedName
         )
         res = self.metadata.get_entity_version(
-            entity=MlModel, entity_id=res_name.id.__root__, version=0.1
+            entity=MlModel, entity_id=res_name.id.root, version=0.1
         )
 
         # check we get the correct version requested and the correct entity ID
-        assert res.version.__root__ == 0.1
+        assert res.version.root == 0.1
         assert res.id == res_name.id
 
     def test_get_entity_ref(self):

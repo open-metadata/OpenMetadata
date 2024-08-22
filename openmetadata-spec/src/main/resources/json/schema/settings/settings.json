@@ -23,11 +23,13 @@
         "sandboxModeEnabled",
         "slackChat",
         "emailConfiguration",
-        "customLogoConfiguration",
+        "customUiThemePreference",
         "loginConfiguration",
         "slackAppConfiguration",
         "slackBot",
-        "slackInstaller"
+        "slackInstaller",
+        "slackState",
+        "profilerConfiguration"
       ]
     }
   },
@@ -67,8 +69,10 @@
         },
         {
           "$ref": "../configuration/slackAppConfiguration.json"
+        },
+        {
+          "$ref": "../configuration/profilerConfiguration.json"
         }
-        
       ]
     }
   },

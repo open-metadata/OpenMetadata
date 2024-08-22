@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 import { FC } from 'react';
+import AuthenticatedAppRouter from '../components/AppRouter/AuthenticatedAppRouter';
 import { ApplicationRoutesClassBase } from './ApplicationRoutesClassBase';
 
-describe('ApplicationRoutesClassCollate', () => {
+describe('ApplicationRoutesClassBase', () => {
   let applicationRoutesClassBase: ApplicationRoutesClassBase;
 
   beforeEach(() => {
     applicationRoutesClassBase = new ApplicationRoutesClassBase();
   });
 
-  it('should return CollateRouter from getRouteElements', () => {
-    const result: FC | null = applicationRoutesClassBase.getRouteElements();
+  it('should return AuthenticatedAppRouter from getRouteElements', () => {
+    const result: FC = applicationRoutesClassBase.getRouteElements();
 
-    expect(result).toBeNull();
+    expect(result).toBe(AuthenticatedAppRouter);
   });
 });

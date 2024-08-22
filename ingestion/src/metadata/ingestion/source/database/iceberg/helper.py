@@ -20,7 +20,12 @@ import pyiceberg.partitioning
 import pyiceberg.table
 import pyiceberg.types
 
-from metadata.generated.schema.entity.data.table import Column, Constraint, DataType
+from metadata.generated.schema.entity.data.table import (
+    Column,
+    Constraint,
+    DataType,
+    PartitionIntervalTypes,
+)
 
 
 def namespace_to_str(namespace: tuple[str]) -> str:
@@ -32,32 +37,64 @@ def namespace_to_str(namespace: tuple[str]) -> str:
     return ".".join(namespace)
 
 
-def get_table_name_as_str(table: pyiceberg.table.Table) -> str:
-    """Returns the Table Name as Tring from a PyIceberg Table.
+def get_table_name_as_str(table: Tuple[str]) -> str:
+    """Returns the Table Name as String from a PyIceberg table identifier tuple.
 
     The PyIceberg table name is returned as tuple and we turn them into a String
     concatenating the items with a '.' in between.
     """
     # We are skipping the first item because it is the schema name.
-    return ".".join(table.name()[1:])
+    return ".".join(table[1:])
 
 
 def get_column_from_partition(
     columns: Tuple[pyiceberg.types.NestedField, ...],
     partition: pyiceberg.partitioning.PartitionField,
-) -> str:
+) -> Optional[str]:
     """Returns the Column Name belonging to a partition."""
     # A Partition in Iceberg has a Source Column to which a Transformation is applied.
     # We need to return the Source Column name.
-    return [
-        column.name for column in columns if column.field_id == partition.source_id
-    ][0]
+    return next(
+        (column.name for column in columns if column.field_id == partition.source_id),
+        None,
+    )
+
+
+def get_column_partition_type(
+    columns: Tuple[pyiceberg.types.NestedField, ...],
+    partition: pyiceberg.partitioning.PartitionField,
+) -> Optional[PartitionIntervalTypes]:
+    """Get the partition type for a given partition column."""
+    iceberg_interval_type_map = {
+        "INT": PartitionIntervalTypes.INTEGER_RANGE,
+        **dict.fromkeys(
+            ["TIME", "DATE", "TIMESTAMP", "TIMESTAMPTZ"],
+            PartitionIntervalTypes.TIME_UNIT,
+        ),
+    }
+
+    data_type = str(
+        next(
+            (
+                column.field_type
+                for column in columns
+                if column.field_id == partition.source_id
+            ),
+            "",
+        )
+    )
+    if not data_type.isalpha():
+        return None
+
+    return iceberg_interval_type_map.get(
+        data_type.upper(), PartitionIntervalTypes.COLUMN_VALUE
+    )
 
 
 def get_owner_from_table(
     table: pyiceberg.table.Table, property_key: str
 ) -> Optional[str]:
-    """Retrives the owner information from given Table Property."""
+    """Retrieves the owner information from given Table Property."""
     return table.properties.get(property_key)
 
 

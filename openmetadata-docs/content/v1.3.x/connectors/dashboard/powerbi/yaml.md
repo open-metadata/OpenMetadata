@@ -3,17 +3,13 @@ title: Run the PowerBI Connector Externally
 slug: /connectors/dashboard/powerbi/yaml
 ---
 
-# Run the PowerBI Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="check" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="PowerBI"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Datamodels", "Projects", "Lineage"]
+  unavailableFeatures=["Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the PowerBI connector.
 
@@ -228,7 +224,7 @@ Refer to the section [here](/connectors/dashboard/powerbi#powerbi-admin-and-nona
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: powerbi
   serviceName: local_powerbi

@@ -13,10 +13,12 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { TestCase } from '../../../generated/tests/testCase';
 import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { IncidentManagerTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
+import { UseTestCaseStoreInterface } from './useTestCase.store';
 
 const mockTestCaseData = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
@@ -67,7 +69,19 @@ const mockTestCaseData = {
   version: 0.1,
   updatedAt: 1703570589915,
   updatedBy: 'admin',
+} as TestCase;
+const mockUseTestCase: UseTestCaseStoreInterface = {
+  testCase: mockTestCaseData,
+  setTestCase: jest.fn(),
+  isLoading: false,
+  setIsLoading: jest.fn(),
+  reset: jest.fn(),
+  showAILearningBanner: false,
+  setShowAILearningBanner: jest.fn(),
 };
+jest.mock('./useTestCase.store', () => ({
+  useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCase),
+}));
 
 jest.mock('../../../rest/testAPI', () => ({
   getTestCaseByFqn: jest
@@ -179,13 +193,17 @@ describe('IncidentManagerDetailPage', () => {
   });
 
   it('should render no data placeholder message if there is no data', async () => {
+    mockUseTestCase.testCase = undefined;
     (getTestCaseByFqn as jest.Mock).mockImplementationOnce(() =>
       Promise.reject()
     );
+
     await act(async () => {
       render(<IncidentManagerDetailPage />, { wrapper: MemoryRouter });
     });
 
     expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+
+    mockUseTestCase.testCase = mockTestCaseData;
   });
 });

@@ -48,7 +48,7 @@ Extract the distribution tar.gz file created on the previous step and run the fo
 
 ```shell
 cd open-metadata-<version>
-sh bootstrap/bootstrap_storage.sh drop-create-all
+sh bootstrap/openmetadata-ops.sh create
 ```
 
 ## Running the OpenMetadata server
@@ -100,6 +100,16 @@ Click on Library
 In that list look for "jersey-client:2.25.1"
 
 {% image src="/images/v1.3/developers/contribute/build-code-and-run-tests/intellij-jersey-dependency.png" alt="Add jersey-client dependency" caption=" " /%}
+
+Select it and click "OK". 
+
+Click on Module Dependency
+
+{% image src="/images/v1.3/developers/contribute/build-code-and-run-tests/intellij-library.png" alt="Click on Library" caption=" " /%}
+
+In that list look for "openmetadata-ui"
+
+{% image src="/images/v1.3/developers/contribute/build-code-and-run-tests/intellij-Openmetadata-UI.png" alt="Add openmetadata-ui dependency" caption=" " /%}
 
 Select it and click "OK". 
 

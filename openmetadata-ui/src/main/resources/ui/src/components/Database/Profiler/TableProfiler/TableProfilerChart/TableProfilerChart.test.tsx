@@ -13,7 +13,6 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { DEFAULT_RANGE_DATA } from '../../../../../constants/profiler.constant';
 import {
   getSystemProfileList,
   getTableProfilesList,
@@ -53,9 +52,20 @@ jest.mock('../../../../common/SummaryCard/SummaryCard.component', () => {
     SummaryCard: jest.fn().mockImplementation(() => <div>SummaryCard</div>),
   };
 });
+jest.mock('../../../../../constants/profiler.constant', () => ({
+  DEFAULT_RANGE_DATA: {
+    startDate: '2022-01-01',
+    endDate: '2022-01-02',
+  },
+  INITIAL_OPERATION_METRIC_VALUE: {},
+  INITIAL_ROW_METRIC_VALUE: {},
+}));
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockReturnValue({
-    dateRangeObject: DEFAULT_RANGE_DATA,
+    dateRangeObject: {
+      startDate: '2022-01-01',
+      endDate: '2022-01-02',
+    },
     isProfilerDataLoading: false,
     permissions: {
       EditAll: true,
@@ -64,6 +74,28 @@ jest.mock('../TableProfilerProvider', () => ({
     isTableDeleted: false,
   }),
 }));
+
+jest.mock('../../../../../rest/tableAPI', () => ({
+  getSystemProfileList: jest.fn(),
+  getTableProfilesList: jest.fn(),
+}));
+
+jest.mock('../../../../../utils/RouterUtils', () => ({
+  getAddCustomMetricPath: jest.fn(),
+  getAddDataQualityTableTestPath: jest.fn(),
+}));
+
+jest.mock('../../../../common/TabsLabel/TabsLabel.component', () => {
+  return jest.fn().mockImplementation(() => <div>TabsLabel</div>);
+});
+
+jest.mock('../CustomMetricGraphs/CustomMetricGraphs.component', () => {
+  return jest.fn().mockImplementation(() => <div>CustomMetricGraphs</div>);
+});
+
+jest.mock('../../../../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
 describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {
@@ -105,12 +137,8 @@ describe('TableProfilerChart component test', () => {
     expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual(mockFQN);
     expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual(mockFQN);
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual(
-      DEFAULT_RANGE_DATA
-    );
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual(
-      DEFAULT_RANGE_DATA
-    );
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({});
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({});
   });
 
   it('If TimeRange change API should be call accordingly', async () => {
@@ -122,11 +150,7 @@ describe('TableProfilerChart component test', () => {
     });
 
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual(
-      DEFAULT_RANGE_DATA
-    );
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual(
-      DEFAULT_RANGE_DATA
-    );
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({});
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({});
   });
 });

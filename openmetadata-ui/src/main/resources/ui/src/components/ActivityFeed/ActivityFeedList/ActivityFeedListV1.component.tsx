@@ -20,7 +20,6 @@ import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
-import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
   feedList: Thread[];
@@ -31,17 +30,27 @@ interface ActivityFeedListV1Props {
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
+  componentsVisibility?: {
+    showThreadIcon?: boolean;
+    showRepliesContainer?: boolean;
+  };
+  selectedThread?: Thread;
 }
 
 const ActivityFeedListV1 = ({
   feedList,
   isLoading,
   showThread = true,
+  componentsVisibility = {
+    showThreadIcon: true,
+    showRepliesContainer: true,
+  },
   onFeedClick,
   activeFeedId,
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
+  selectedThread,
 }: ActivityFeedListV1Props) => {
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
 
@@ -52,9 +61,12 @@ const ActivityFeedListV1 = ({
 
   useEffect(() => {
     if (onFeedClick) {
-      onFeedClick(entityThread[0]);
+      onFeedClick(
+        entityThread.find((feed) => feed.id === selectedThread?.id) ??
+          entityThread[0]
+      );
     }
-  }, [entityThread, onFeedClick]);
+  }, [entityThread, selectedThread, onFeedClick]);
 
   if (isLoading) {
     return <Loader />;
@@ -76,9 +88,10 @@ const ActivityFeedListV1 = ({
       </ErrorPlaceHolder>
     </div>
   ) : (
-    <div className="feed-list-container p-y-md" id="feedData">
+    <div className="feed-list-container p-md" id="feedData">
       {entityThread.map((feed) => (
         <FeedPanelBodyV1
+          componentsVisibility={componentsVisibility}
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}

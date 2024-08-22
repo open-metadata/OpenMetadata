@@ -56,7 +56,7 @@ Once you have downloaded the jar from [here](https://github.com/open-metadata/op
 
 {% codeInfo srNumber=5 %}
 
-`spark.openmetadata.transport.jwtToken`: Specify your OpenMetadata Jwt token here. Checkout [this](https://docs.open-metadata.org/v1.2.x/deployment/security/enable-jwt-tokens#generate-token) documentation on how you can generate a jwt token in OpenMetadata.
+`spark.openmetadata.transport.jwtToken`: Specify your OpenMetadata Jwt token here. Checkout [this](/deployment/security/enable-jwt-tokens#generate-token) documentation on how you can generate a jwt token in OpenMetadata.
 
 {% /codeInfo %}
 
@@ -114,7 +114,7 @@ In this job we are reading data from `employee` table and moving it to another t
 {% codeBlock fileName="pyspark.py" %}
 
 
-```py
+```py {% isCodeBlock=true %}
 from pyspark.sql import SparkSession
 
 spark = (

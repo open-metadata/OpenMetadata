@@ -27,8 +27,8 @@ caption="React with Emojis"
 
 {%inlineCallout
   color="violet-70"
-  bold="How to Request for Description"
+  bold="Conversation Threads"
   icon="MdArrowForward"
-  href="/how-to-guides/data-collaboration/request-description"%}
-  Request for a description and discuss the same within OpenMetadata
+  href="/how-to-guides/data-collaboration/conversation"%}
+  Collaborate around data assets right within OpenMetadata.
 {%/inlineCallout%}

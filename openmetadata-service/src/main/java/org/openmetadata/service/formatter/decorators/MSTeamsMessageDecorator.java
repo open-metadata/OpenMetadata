@@ -55,23 +55,28 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn, String additionalParams) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
         "[%s](/%s/%s%s)",
         fqn.trim(),
         getSmtpSettings().getOpenMetadataUrl(),
-        entityType,
+        prefix,
         nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 
   @Override
-  public TeamsMessage buildEntityMessage(ChangeEvent event) {
-    return getTeamMessage(createEntityMessage(event));
+  public TeamsMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getTeamMessage(createEntityMessage(publisherName, event));
   }
 
   @Override
-  public TeamsMessage buildThreadMessage(ChangeEvent event) {
-    return getTeamMessage(createThreadMessage(event));
+  public TeamsMessage buildTestMessage(String publisherName) {
+    return getTeamTestMessage(publisherName);
+  }
+
+  @Override
+  public TeamsMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getTeamMessage(createThreadMessage(publisherName, event));
   }
 
   private TeamsMessage getTeamMessage(OutgoingMessage outgoingMessage) {
@@ -91,6 +96,25 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
       return teamsMessage;
     }
     throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private TeamsMessage getTeamTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      TeamsMessage teamsMessage = new TeamsMessage();
+      teamsMessage.setSummary(
+          "This is a test message from OpenMetadata to confirm your Microsoft Teams destination is configured correctly.");
+
+      // Sections
+      TeamsMessage.Section teamsSection = new TeamsMessage.Section();
+      teamsSection.setActivityTitle("Alert: " + publisherName);
+
+      List<TeamsMessage.Section> sectionList = new ArrayList<>();
+      sectionList.add(teamsSection);
+
+      teamsMessage.setSections(sectionList);
+      return teamsMessage;
+    }
+    throw new UnhandledServerException("Publisher name not found.");
   }
 
   private TeamsMessage.Section getTeamsSection(String activityTitle, String message) {

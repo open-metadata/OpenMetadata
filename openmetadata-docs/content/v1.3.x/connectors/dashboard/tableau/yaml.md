@@ -3,17 +3,13 @@ title: Run the Tableau Connector Externally
 slug: /connectors/dashboard/tableau/yaml
 ---
 
-# Run the Tableau Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="check" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="check" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Tableau"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels", "Tags", "Projects"]
+unavailableFeatures=[]
+/ %}
 
 In this section, we provide guides and references to use the Tableau connector.
 
@@ -27,10 +23,6 @@ Configure and schedule Tableau metadata and profiler workflows from the OpenMeta
 ## Requirements
 
 To ingest tableau metadata, minimum `Site Role: Viewer` is required for the tableau user.
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 To create lineage between tableau dashboard and any database service via the queries provided from Tableau Metadata API, please enable the Tableau Metadata API for your tableau server.
 For more information on enabling the Tableau Metadata APIs follow the link [here](https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_start.html)
@@ -152,7 +144,7 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: tableau
   serviceName: local_tableau

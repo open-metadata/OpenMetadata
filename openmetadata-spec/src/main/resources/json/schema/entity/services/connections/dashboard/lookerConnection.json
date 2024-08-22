@@ -13,7 +13,7 @@
       "default": "Looker"
     },
     "noGitCredentials": {
-      "title": "No GitHub Credentials",
+      "title": "No Git Credentials",
       "description": "Do not set any credentials. Note that credentials are required to extract .lkml views and their lineage.",
       "type": "object",
       "additionalProperties": false
@@ -56,6 +56,9 @@
         },
         {
           "$ref": "../../../../security/credentials/bitbucketCredentials.json"
+        },
+        {
+          "$ref": "../../../../security/credentials/gitlabCredentials.json"
         }
       ]
     },

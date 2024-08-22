@@ -8,92 +8,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.FlattenColumn;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public record TableIndex(Table table) implements ColumnIndex {
-  private static final List<String> excludeFields =
-      List.of(
+  private static final Set<String> excludeFields =
+      Set.of(
           "sampleData",
           "tableProfile",
           "joins",
           "changeDescription",
-          "viewDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel");
+          "schemaDefinition, tableProfilerConfig, profile, location, tableQueries, tests, dataModel",
+          "testSuite.changeDescription");
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(table);
+  @Override
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
-    List<SearchSuggest> columnSuggest = new ArrayList<>();
-    List<SearchSuggest> schemaSuggest = new ArrayList<>();
-    List<SearchSuggest> databaseSuggest = new ArrayList<>();
-    List<SearchSuggest> serviceSuggest = new ArrayList<>();
-    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
-    List<String> columnsWithChildrenName = new ArrayList<>();
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeFields);
-    if (table.getColumns() != null) {
-      List<FlattenColumn> cols = new ArrayList<>();
-      parseColumns(table.getColumns(), cols, null);
-
-      for (FlattenColumn col : cols) {
-        columnSuggest.add(SearchSuggest.builder().input(col.getName()).weight(5).build());
-        columnsWithChildrenName.add(col.getName());
-        if (col.getTags() != null) {
-          tagsWithChildren.add(col.getTags());
-        }
-      }
-      doc.put("columnNames", columnsWithChildrenName);
-    }
-    parseTableSuggest(suggest);
-    serviceSuggest.add(
-        SearchSuggest.builder().input(table.getService().getName()).weight(5).build());
-    databaseSuggest.add(
-        SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
-    schemaSuggest.add(
-        SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
-    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
-    tagsWithChildren.add(parseTags.getTags());
-    List<TagLabel> flattenedTagList =
-        tagsWithChildren.stream()
-            .flatMap(List::stream)
-            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
-    doc.put(
-        "displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
-    doc.put("tags", flattenedTagList);
-    doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", SearchIndexUtils.parseFollowers(table.getFollowers()));
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            table.getFullyQualifiedName(), suggest.stream().map(SearchSuggest::getInput).toList()));
-    doc.put("suggest", suggest);
-    doc.put("service_suggest", serviceSuggest);
-    doc.put("column_suggest", columnSuggest);
-    doc.put("schema_suggest", schemaSuggest);
-    doc.put("database_suggest", databaseSuggest);
-    doc.put("entityType", Entity.TABLE);
-    doc.put(
-        "totalVotes",
-        CommonUtil.nullOrEmpty(table.getVotes())
-            ? 0
-            : table.getVotes().getUpVotes() - table.getVotes().getDownVotes());
-    doc.put("serviceType", table.getServiceType());
-    doc.put("owner", getEntityWithDisplayName(table.getOwner()));
-    doc.put("service", getEntityWithDisplayName(table.getService()));
-    doc.put("domain", getEntityWithDisplayName(table.getDomain()));
-    doc.put("database", getEntityWithDisplayName(table.getDatabase()));
-    doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
-    doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
-    return doc;
-  }
-
-  private void parseTableSuggest(List<SearchSuggest> suggest) {
     suggest.add(SearchSuggest.builder().input(table.getFullyQualifiedName()).weight(5).build());
     suggest.add(SearchSuggest.builder().input(table.getName()).weight(10).build());
     suggest.add(SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
@@ -110,15 +44,76 @@ public record TableIndex(Table table) implements ColumnIndex {
         suggest.add(SearchSuggest.builder().input(fqnPartsWithoutDB[1]).weight(5).build());
       }
     }
+    return suggest;
+  }
+
+  @Override
+  public Object getEntity() {
+    return table;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeFields;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    List<SearchSuggest> columnSuggest = new ArrayList<>();
+    List<SearchSuggest> schemaSuggest = new ArrayList<>();
+    List<SearchSuggest> databaseSuggest = new ArrayList<>();
+    List<SearchSuggest> serviceSuggest = new ArrayList<>();
+    Set<List<TagLabel>> tagsWithChildren = new HashSet<>();
+    List<String> columnsWithChildrenName = new ArrayList<>();
+    if (table.getColumns() != null) {
+      List<FlattenColumn> cols = new ArrayList<>();
+      parseColumns(table.getColumns(), cols, null);
+
+      for (FlattenColumn col : cols) {
+        columnSuggest.add(SearchSuggest.builder().input(col.getName()).weight(5).build());
+        columnsWithChildrenName.add(col.getName());
+        if (col.getTags() != null) {
+          tagsWithChildren.add(col.getTags());
+        }
+      }
+      doc.put("columnNames", columnsWithChildrenName);
+    }
+    serviceSuggest.add(
+        SearchSuggest.builder().input(table.getService().getName()).weight(5).build());
+    databaseSuggest.add(
+        SearchSuggest.builder().input(table.getDatabase().getName()).weight(5).build());
+    schemaSuggest.add(
+        SearchSuggest.builder().input(table.getDatabaseSchema().getName()).weight(5).build());
+    ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.TABLE, table));
+    tagsWithChildren.add(parseTags.getTags());
+    List<TagLabel> flattenedTagList =
+        tagsWithChildren.stream()
+            .flatMap(List::stream)
+            .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+    Map<String, Object> commonAttributes = getCommonAttributesMap(table, Entity.TABLE);
+    doc.putAll(commonAttributes);
+    doc.put(
+        "displayName", table.getDisplayName() != null ? table.getDisplayName() : table.getName());
+    doc.put("tags", flattenedTagList);
+    doc.put("tier", parseTags.getTierTag());
+    doc.put("service_suggest", serviceSuggest);
+    doc.put("column_suggest", columnSuggest);
+    doc.put("schema_suggest", schemaSuggest);
+    doc.put("database_suggest", databaseSuggest);
+    doc.put("serviceType", table.getServiceType());
+    doc.put("service", getEntityWithDisplayName(table.getService()));
+    doc.put("database", getEntityWithDisplayName(table.getDatabase()));
+    doc.put("lineage", SearchIndex.getLineageData(table.getEntityReference()));
+    doc.put("databaseSchema", getEntityWithDisplayName(table.getDatabaseSchema()));
+    return doc;
   }
 
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put(COLUMNS_NAME_KEYWORD, 5.0f);
-    fields.put("columns.name", 7.0f);
-    fields.put("columns.displayName", 7.0f);
+    fields.put("columns.name", 5.0f);
+    fields.put("columns.displayName", 5.0f);
     fields.put("columns.description", 2.0f);
-    fields.put("columns.children.name", 7.0f);
+    fields.put("columns.children.name", 5.0f);
     return fields;
   }
 }

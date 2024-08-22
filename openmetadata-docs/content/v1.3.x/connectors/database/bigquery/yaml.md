@@ -3,30 +3,13 @@ title: Run the BigQuery Connector Externally
 slug: /connectors/database/bigquery/yaml
 ---
 
-# Run the BigQuery Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | Policy Tags                  |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="BigQuery"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures"]
+unavailableFeatures=["Owners"]
+/ %}
 
 In this section, we provide guides and references to use the BigQuery connector.
 
@@ -35,19 +18,14 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 ### Python Requirements
 
@@ -188,13 +166,13 @@ the GCP credentials empty. This is why they are not marked as required.
 
 {% codeInfo srNumber=2 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=3 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -204,7 +182,7 @@ the GCP credentials empty. This is why they are not marked as required.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: bigquery
   serviceName: "<service name>"
@@ -215,22 +193,22 @@ source:
 ```yaml {% srNumber=1 %}
       credentials:
         gcpConfig:
-          type: My Type
-          projectId: project ID # ["project-id-1", "project-id-2"]
-          privateKeyId: us-east-2
+          type: service_account
+          projectId: project-id # ["project-id-1", "project-id-2"]
+          privateKeyId: abc123
           privateKey: |
             -----BEGIN PRIVATE KEY-----
             Super secret key
             -----END PRIVATE KEY-----
-          clientEmail: client@mail.com
+          clientEmail: role@project.iam.gserviceaccount.com
           clientId: 1234
           # authUri: https://accounts.google.com/o/oauth2/auth (default)
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)
-          clientX509CertUrl: https://cert.url
-          # taxonomyLocation: us
-          # taxonomyProjectID: ["project-id-1", "project-id-2"]
-          # usageLocation: us
+          clientX509CertUrl: https://www.googleapis.com/robot/v1/metadata/x509/role%40project.iam.gserviceaccount.com
+      # taxonomyLocation: us
+      # taxonomyProjectID: ["project-id-1", "project-id-2"]
+      # usageLocation: us
 ```
 ```yaml {% srNumber=2 %}
       # connectionOptions:
@@ -255,11 +233,11 @@ source:
 
 {% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "bigquery"} /%}
 
+{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}
+
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "bigquery"} /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

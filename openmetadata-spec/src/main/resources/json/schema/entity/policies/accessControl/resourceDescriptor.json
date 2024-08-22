@@ -13,6 +13,7 @@
       "enum": [
         "All",
         "Create",
+        "CreateIngestionPipelineAutomator",
         "Delete",
         "ViewAll",
         "ViewBasic",
@@ -21,6 +22,7 @@
         "ViewQueries",
         "ViewDataProfile",
         "ViewSampleData",
+        "ViewTestCaseFailedRowsSample",
         "EditAll",
         "EditCustomFields",
         "EditDataProfile",
@@ -28,7 +30,7 @@
         "EditDisplayName",
         "EditLineage",
         "EditPolicy",
-        "EditOwner",
+        "EditOwners",
         "EditQueries",
         "EditReviewers",
         "EditRole",
@@ -42,7 +44,13 @@
         "EditUsers",
         "EditLifeCycle",
         "EditKnowledgePanel",
-        "EditPage"
+        "EditPage",
+        "EditIngestionPipelineStatus",
+        "DeleteTestCaseFailedRowsSample",
+        "Deploy",
+        "Trigger",
+        "Kill",
+        "GenerateToken"
       ]
     }
   },

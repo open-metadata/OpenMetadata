@@ -3,17 +3,13 @@ title: Qlik Sense
 slug: /connectors/dashboard/qliksense
 ---
 
-# Qlik Sense
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Qlik Sense"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Datamodels", "Lineage"]
+  unavailableFeatures=["Owners", "Tags", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Qlik Sense connector.
 

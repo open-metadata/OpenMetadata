@@ -14,7 +14,7 @@ sink:
     es_port: 9200
     recreate_indexes: false
 workflowConfig:
-  loggerLevel: DEBUG
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

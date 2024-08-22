@@ -65,33 +65,19 @@ to identify the graph nodes as OpenMetadata Entities.
 
 Note that if a Model is not materialized, its data won't be ingested.
 
-### Query Log
-
-{% note %}
-
-Up until 0.11, Query Log analysis for lineage happens during the Usage Workflow.
-
-From 0.12 onwards, there is a separated Lineage Workflow that will take care of this process.
-
-{% /note %}
-
 #### How to run?
 
 The main difference here is between those sources that provide internal access to query logs and those that do not. For
-services such as:
-
-- [BigQuery](/connectors/database/bigquery)
-- [Snowflake](/connectors/database/snowflake)
-- [MSSQL](/connectors/database/mssql)
-- [Redshift](/connectors/database/redshift)
-- [Clickhouse](/connectors/database/clickhouse)
-- [Postgres](/connectors/database/postgres)
-- [Databricks](/connectors/database/databricks)
-- [Oracle](/connectors/database/oracle)
-
+services such as [BigQuery](/connectors/database/bigquery), [Snowflake](/connectors/database/snowflake) etc.
 There are specific workflows (Usage & Lineage) that will use the query log information. An alternative for sources not
 listed here is to run the workflow by providing the Query Logs that you have previously exported and then running
-the [workflow](/connectors/ingestion/workflows/usage/usage-workflow-query-logs).
+the [workflow](/connectors/ingestion/workflows/usage/usage-workflow-query-logs). 
+
+{% note %}
+
+Checkout the documentation of the connector you are using to know if it supports lineage & usage.
+
+{% \note %}
 
 #### Process
 
@@ -150,7 +136,7 @@ and [Airbyte](/connectors/pipeline/airbyte).
 
 All of them ingest the lineage information out of the box. The only special case is Airflow, where one needs to
 setup `inlets` and `outlets`. You can find more information about it
-[here](https://docs.open-metadata.org/connectors/pipeline/airflow/lineage-backend#adding-lineage).
+[here](/connectors/pipeline/airflow/lineage-backend#adding-lineage).
 
 ## Manual Lineage
 

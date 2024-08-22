@@ -15,9 +15,13 @@ import { Col, Row, Space, Typography } from 'antd';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
-import { getBreadcrumbsFromFqn } from '../../../utils/EntityUtils';
+import {
+  getBreadcrumbsFromFqn,
+  getEntityName,
+} from '../../../utils/EntityUtils';
 import { getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './lineage-node-label.less';
@@ -27,18 +31,21 @@ interface LineageNodeLabelProps {
 }
 
 const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
-  const showDbtIcon = useMemo(() => {
-    return (
-      (node as SourceType).entityType === EntityType.TABLE &&
-      (node as Table)?.dataModel?.modelType === ModelType.Dbt
-    );
+  const { showDeletedIcon, showDbtIcon } = useMemo(() => {
+    return {
+      showDbtIcon:
+        node.entityType === EntityType.TABLE &&
+        (node as Table)?.dataModel?.modelType === ModelType.Dbt &&
+        (node as Table)?.dataModel?.resourceType?.toLowerCase() !== 'seed',
+      showDeletedIcon: node.deleted ?? false,
+    };
   }, [node]);
 
   return (
     <Row className="items-center" wrap={false}>
       <Col className="d-flex items-center" flex="auto">
         <div className="d-flex entity-button-icon m-r-xs">
-          {getServiceIcon(node as SourceType)}
+          {getServiceIcon(node)}
         </div>
         <Space align="start" direction="vertical" size={0}>
           <Typography.Text
@@ -51,12 +58,19 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
             ellipsis={{ tooltip: true }}>
-            {node.displayName || node.name}
+            {getEntityName(node)}
           </Typography.Text>
         </Space>
-        {showDbtIcon && (
+        {!showDeletedIcon && showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
             <IconDBTModel />
+          </div>
+        )}
+        {showDeletedIcon && (
+          <div className="flex-center p-xss custom-node-deleted-icon">
+            <div className="d-flex text-danger" data-testid="node-deleted-icon">
+              <DeleteIcon height={16} width={16} />
+            </div>
           </div>
         )}
       </Col>
@@ -78,7 +92,7 @@ const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             className="lineage-breadcrumb w-full"
             size={4}>
             {breadcrumbs.map((breadcrumb, index) => (
-              <React.Fragment key={index}>
+              <React.Fragment key={breadcrumb.name}>
                 <Typography.Text
                   className="text-grey-muted lineage-breadcrumb-item"
                   ellipsis={{ tooltip: true }}>

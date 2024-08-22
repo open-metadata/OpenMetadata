@@ -25,6 +25,7 @@ import {
   JWT_CONFIG,
 } from '../../../../constants/Services.constant';
 import { EntityType } from '../../../../enums/entity.enum';
+import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
@@ -34,13 +35,6 @@ import { PipelineServiceType } from '../../../../generated/entity/services/pipel
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { StorageServiceType } from '../../../../generated/entity/services/storageService';
 import { ConfigData } from '../../../../interface/service.interface';
-import { getDashboardConfig } from '../../../../utils/DashboardServiceUtils';
-import { getDatabaseConfig } from '../../../../utils/DatabaseServiceUtils';
-import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
-import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
-import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
-import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 
 type ServiceConnectionDetailsProps = {
@@ -195,6 +189,7 @@ const ServiceConnectionDetails = ({
                 <Input
                   readOnly
                   className="w-full border-none"
+                  data-testid="input-field"
                   type={format !== 'password' ? 'text' : 'password'}
                   value={value}
                 />
@@ -211,31 +206,51 @@ const ServiceConnectionDetails = ({
   useEffect(() => {
     switch (serviceCategory.slice(0, -1)) {
       case EntityType.DATABASE_SERVICE:
-        setSchema(getDatabaseConfig(serviceFQN as DatabaseServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getDatabaseServiceConfig(
+            serviceFQN as DatabaseServiceType
+          ).schema
+        );
 
         break;
       case EntityType.DASHBOARD_SERVICE:
         setSchema(
-          getDashboardConfig(serviceFQN as DashboardServiceType).schema
+          serviceUtilClassBase.getDashboardServiceConfig(
+            serviceFQN as DashboardServiceType
+          ).schema
         );
 
         break;
       case EntityType.MESSAGING_SERVICE:
         setSchema(
-          getMessagingConfig(serviceFQN as MessagingServiceType).schema
+          serviceUtilClassBase.getMessagingServiceConfig(
+            serviceFQN as MessagingServiceType
+          ).schema
         );
 
         break;
       case EntityType.PIPELINE_SERVICE:
-        setSchema(getPipelineConfig(serviceFQN as PipelineServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getPipelineServiceConfig(
+            serviceFQN as PipelineServiceType
+          ).schema
+        );
 
         break;
       case EntityType.MLMODEL_SERVICE:
-        setSchema(getMlmodelConfig(serviceFQN as MlModelServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getMlModelServiceConfig(
+            serviceFQN as MlModelServiceType
+          ).schema
+        );
 
         break;
       case EntityType.METADATA_SERVICE:
-        setSchema(getMetadataConfig(serviceFQN as MetadataServiceType).schema);
+        setSchema(
+          serviceUtilClassBase.getMetadataServiceConfig(
+            serviceFQN as MetadataServiceType
+          ).schema
+        );
 
         break;
       case EntityType.STORAGE_SERVICE:
@@ -248,8 +263,20 @@ const ServiceConnectionDetails = ({
         break;
       case EntityType.SEARCH_SERVICE:
         setSchema(
-          getSearchServiceConfig(serviceFQN as SearchServiceType).schema
+          serviceUtilClassBase.getSearchServiceConfig(
+            serviceFQN as SearchServiceType
+          ).schema
         );
+
+        break;
+
+      case EntityType.API_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getAPIServiceConfig(serviceFQN as APIServiceType)
+            .schema
+        );
+
+        break;
     }
   }, [serviceCategory, serviceFQN]);
 

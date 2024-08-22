@@ -12,11 +12,13 @@
 """
 Unique Count Metric definition
 """
+import json
 from typing import Optional
 
 from sqlalchemy import column, func
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.profiler.metrics.core import QueryMetric
 from metadata.profiler.orm.functions.unique_count import _unique_count_query_mapper
 from metadata.profiler.orm.registry import NOT_COMPUTE
@@ -34,7 +36,7 @@ class UniqueCount(QueryMetric):
 
     @classmethod
     def name(cls):
-        return "uniqueCount"
+        return MetricType.uniqueCount.value
 
     @property
     def metric_type(self):
@@ -59,8 +61,8 @@ class UniqueCount(QueryMetric):
         unique_count_query = _unique_count_query_mapper[session.bind.dialect.name](
             col, session, sample
         )
-        only_once_cte = unique_count_query.cte("only_once")
-        return session.query(func.count().label(self.name())).select_from(only_once_cte)
+        only_once_sub = unique_count_query.subquery("only_once")
+        return session.query(func.count().label(self.name())).select_from(only_once_sub)
 
     def df_fn(self, dfs=None):
         """
@@ -72,7 +74,14 @@ class UniqueCount(QueryMetric):
             counter = Counter()
             for df in dfs:
                 df_col_value = df[self.col.name].dropna().to_list()
-                counter.update(df_col_value)
+                try:
+                    counter.update(df_col_value)
+                except TypeError as err:
+                    if isinstance(df_col_value, list):
+                        for value in df_col_value:
+                            counter.update([json.dumps(value)])
+                    else:
+                        raise err
             return len([key for key, value in counter.items() if value == 1])
         except Exception as err:
             logger.debug(

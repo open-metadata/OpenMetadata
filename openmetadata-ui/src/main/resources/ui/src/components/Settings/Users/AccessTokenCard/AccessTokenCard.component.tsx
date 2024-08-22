@@ -11,20 +11,18 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
+import { Card, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
+import { noop } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  PersonalAccessToken,
-  TokenType,
-} from '../../../../generated/auth/personalAccessToken';
+import { USER_DEFAULT_AUTHENTICATION_MECHANISM } from '../../../../constants/User.constants';
+import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import {
   AuthenticationMechanism,
   AuthType,
 } from '../../../../generated/entity/teams/user';
-import { createBotWithPut } from '../../../../rest/botsAPI';
 import {
   createUserWithPut,
   getAuthMechanismForBotUser,
@@ -37,6 +35,7 @@ import Loader from '../../../common/Loader/Loader';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import AuthMechanism from '../../Bot/BotDetails/AuthMechanism';
 import AuthMechanismForm from '../../Bot/BotDetails/AuthMechanismForm';
+import './access-token-card.less';
 import { MockProps } from './AccessTokenCard.interfaces';
 
 const AccessTokenCard: FC<MockProps> = ({
@@ -44,16 +43,18 @@ const AccessTokenCard: FC<MockProps> = ({
   botData,
   botUserData,
   revokeTokenHandlerBot,
+  disabled = false,
 }: MockProps) => {
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isTokenRemoving, setIsTokenRemoving] = useState<boolean>(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isAuthMechanismEdit, setIsAuthMechanismEdit] =
     useState<boolean>(false);
   const [authenticationMechanism, setAuthenticationMechanism] =
-    useState<PersonalAccessToken>({
-      tokenType: TokenType.PersonalAccessToken,
-    } as PersonalAccessToken);
+    useState<PersonalAccessToken>(
+      USER_DEFAULT_AUTHENTICATION_MECHANISM as PersonalAccessToken
+    );
   const [authenticationMechanismBot, setAuthenticationMechanismBot] =
     useState<AuthenticationMechanism>({
       authType: AuthType.Jwt,
@@ -130,15 +131,7 @@ const AccessTokenCard: FC<MockProps> = ({
         });
 
         if (response) {
-          if (botData) {
-            await createBotWithPut({
-              name: botData.name,
-              description: botData.description,
-              displayName: botData.displayName,
-              botUser: response.name,
-            });
-            fetchAuthMechanismForBot();
-          }
+          fetchAuthMechanismForBot();
         }
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -157,10 +150,7 @@ const AccessTokenCard: FC<MockProps> = ({
           JWTTokenExpiry: data.config.JWTTokenExpiry,
           tokenName: 'test',
         });
-        if (response) {
-          setAuthenticationMechanism(response[0]);
-          fetchAuthMechanismForUser();
-        }
+        setAuthenticationMechanism(response);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -170,23 +160,28 @@ const AccessTokenCard: FC<MockProps> = ({
     }
   };
 
-  const revokeTokenHandler = () => {
-    revokeAccessToken('removeAll=true')
-      .then(() => setIsModalOpen(false))
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+  const revokeTokenHandler = async () => {
+    try {
+      const response = await revokeAccessToken('removeAll=true');
+      setAuthenticationMechanism(
+        response?.[0] ?? USER_DEFAULT_AUTHENTICATION_MECHANISM
+      );
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    }
   };
 
   useEffect(() => {
-    fetchAuthMechanismForUser();
-  }, [isModalOpen]);
+    if (!isBot) {
+      fetchAuthMechanismForUser();
+    }
+  }, []);
 
   useEffect(() => {
-    if (botUserData && botUserData.id) {
+    if (botUserData && botUserData.id && !disabled) {
       fetchAuthMechanismForBot();
     }
-  }, [botUserData]);
+  }, [botUserData, disabled]);
 
   const authenticationMechanismData = useMemo(() => {
     return isBot ? authenticationMechanismBot : authenticationMechanism;
@@ -206,48 +201,58 @@ const AccessTokenCard: FC<MockProps> = ({
       : t('message.are-you-sure-to-revoke-access-personal-access');
   }, [isBot]);
 
-  return isLoading ? (
-    <Loader />
-  ) : (
+  const handleTokenRevoke = async () => {
+    setIsTokenRemoving(true);
+    await tokenRevoke();
+    setIsTokenRemoving(false);
+    handleAuthMechanismEdit();
+    setIsModalOpen(false);
+  };
+
+  const tokenCard = (
     <Card
       className={classNames(
-        'm-t-md',
-        isBot ? 'page-layout-v1-left-panel mt-2 ' : 'p-md m-l-md m-r-lg w-auto'
+        'm-t-md access-token-card',
+        isBot ? 'page-layout-v1-left-panel mt-2 ' : 'p-md m-l-md m-r-lg w-auto',
+        { disabled }
       )}
       data-testid="center-panel">
-      <>
-        {isAuthMechanismEdit ? (
-          <AuthMechanismForm
-            authenticationMechanism={authenticationMechanismData}
-            isBot={isBot}
-            isUpdating={isUpdating}
-            onCancel={() => setIsAuthMechanismEdit(false)}
-            onSave={onSave}
-          />
-        ) : (
-          <AuthMechanism
-            hasPermission
-            authenticationMechanism={authenticationMechanismData}
-            isBot={isBot}
-            onEdit={handleAuthMechanismEdit}
-            onTokenRevoke={() => setIsModalOpen(true)}
-          />
-        )}
-      </>
+      {isAuthMechanismEdit ? (
+        <AuthMechanismForm
+          authenticationMechanism={authenticationMechanismData}
+          isBot={isBot}
+          isUpdating={isUpdating}
+          onCancel={() => setIsAuthMechanismEdit(false)}
+          onSave={onSave}
+        />
+      ) : (
+        <AuthMechanism
+          hasPermission
+          authenticationMechanism={authenticationMechanismData}
+          isBot={isBot}
+          onEdit={handleAuthMechanismEdit}
+          onTokenRevoke={disabled ? noop : () => setIsModalOpen(true)}
+        />
+      )}
       <ConfirmationModal
         bodyText={confirmMessage}
         cancelText={t('label.cancel')}
         confirmText={t('label.confirm')}
         header={t('message.are-you-sure')}
+        isLoading={isTokenRemoving}
         visible={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
-        onConfirm={() => {
-          tokenRevoke();
-          handleAuthMechanismEdit();
-          setIsModalOpen(false);
-        }}
+        onConfirm={disabled ? noop : handleTokenRevoke}
       />
     </Card>
+  );
+
+  return isLoading ? (
+    <Loader />
+  ) : disabled ? (
+    <Tooltip title="Upgrade to use this feature">{tokenCard}</Tooltip>
+  ) : (
+    tokenCard
   );
 };
 

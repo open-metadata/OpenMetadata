@@ -24,7 +24,7 @@ from unittest import TestCase
 
 import boto3
 import botocore
-from moto import mock_s3
+from moto import mock_aws
 
 from metadata.generated.schema.entity.data.table import ColumnProfile, Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -41,7 +41,7 @@ from metadata.utils.time_utils import (
 )
 from metadata.workflow.metadata import MetadataWorkflow
 from metadata.workflow.profiler import ProfilerWorkflow
-from metadata.workflow.workflow_output_handler import print_status
+from metadata.workflow.workflow_output_handler import WorkflowResultStatus
 
 SERVICE_NAME = Path(__file__).stem
 REGION = "us-west-1"
@@ -78,7 +78,7 @@ INGESTION_CONFIG = {
 }
 
 
-@mock_s3
+@mock_aws
 class DatalakeProfilerTestE2E(TestCase):
     """datalake profiler E2E test"""
 
@@ -139,7 +139,7 @@ class DatalakeProfilerTestE2E(TestCase):
         ingestion_workflow = MetadataWorkflow.create(INGESTION_CONFIG)
         ingestion_workflow.execute()
         ingestion_workflow.raise_from_status()
-        print_status(ingestion_workflow)
+        ingestion_workflow.print_status()
         ingestion_workflow.stop()
 
     def test_datalake_profiler_workflow(self):
@@ -159,7 +159,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table_profile = self.metadata.get_profile_data(
             f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv"',
@@ -207,7 +207,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -252,7 +252,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -298,7 +298,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -355,7 +355,7 @@ class DatalakeProfilerTestE2E(TestCase):
         status = profiler_workflow.result_status()
         profiler_workflow.stop()
 
-        assert status == 0
+        assert status == WorkflowResultStatus.SUCCESS
 
         table = self.metadata.get_by_name(
             entity=Table,
@@ -370,7 +370,7 @@ class DatalakeProfilerTestE2E(TestCase):
             profile_type=ColumnProfile,
         ).entities
 
-        latest_id_profile = max(id_profile, key=lambda o: o.timestamp.__root__)
+        latest_id_profile = max(id_profile, key=lambda o: o.timestamp.root)
 
         id_metric_ln = 0
         for metric_name, metric in latest_id_profile:
@@ -389,7 +389,7 @@ class DatalakeProfilerTestE2E(TestCase):
             profile_type=ColumnProfile,
         ).entities
 
-        latest_age_profile = max(age_profile, key=lambda o: o.timestamp.__root__)
+        latest_age_profile = max(age_profile, key=lambda o: o.timestamp.root)
 
         age_metric_ln = 0
         for metric_name, metric in latest_age_profile:
@@ -401,7 +401,7 @@ class DatalakeProfilerTestE2E(TestCase):
 
         assert age_metric_ln == len(profiler_metrics)
 
-        latest_exc_timestamp = latest_age_profile.timestamp.__root__
+        latest_exc_timestamp = latest_age_profile.timestamp.root
         first_name_profile = self.metadata.get_profile_data(
             f'{SERVICE_NAME}.default.MyBucket."profiler_test_.csv".first_name_profile',
             get_beginning_of_day_timestamp_mill(),
@@ -410,13 +410,11 @@ class DatalakeProfilerTestE2E(TestCase):
         ).entities
 
         assert not [
-            p
-            for p in first_name_profile
-            if p.timestamp.__root__ == latest_exc_timestamp
+            p for p in first_name_profile if p.timestamp.root == latest_exc_timestamp
         ]
 
         sample_data = self.metadata.get_sample_data(table)
-        assert sorted([c.__root__ for c in sample_data.sampleData.columns]) == sorted(
+        assert sorted([c.root for c in sample_data.sampleData.columns]) == sorted(
             ["id", "age"]
         )
 
@@ -431,9 +429,7 @@ class DatalakeProfilerTestE2E(TestCase):
         bucket.delete()
 
         service_id = str(
-            self.metadata.get_by_name(
-                entity=DatabaseService, fqn=SERVICE_NAME
-            ).id.__root__
+            self.metadata.get_by_name(entity=DatabaseService, fqn=SERVICE_NAME).id.root
         )
 
         self.metadata.delete(

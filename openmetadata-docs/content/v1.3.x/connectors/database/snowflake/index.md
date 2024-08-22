@@ -3,30 +3,14 @@ title: Snowflake
 slug: /connectors/database/snowflake
 ---
 
-# Snowflake
+{% connectorDetailsHeader
+name="Snowflake"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Tags"]
+unavailableFeatures=["Owners"]
+/ %}
 
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="check" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
 
 In this section, we provide guides and references to use the Snowflake connector.
 
@@ -73,6 +57,7 @@ GRANT USAGE ON SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL EXTERNAL TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 GRANT SELECT ON ALL VIEWS IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
+GRANT SELECT ON ALL DYNAMIC TABLES IN SCHEMA TEST_SCHEMA TO ROLE NEW_ROLE;
 ```
 
 While running the usage workflow, Openmetadata fetches the query logs by querying `snowflake.account_usage.query_history` table. For this the snowflake user should be granted the `ACCOUNTADMIN` role or a role granted IMPORTED PRIVILEGES on the database `SNOWFLAKE`.
@@ -142,5 +127,21 @@ Optional configuration for ingestion of `TRANSIENT` and `TEMPORARY` tables, By d
 {% /stepsContainer %}
 
 {% partial file="/v1.3/connectors/troubleshooting.md" /%}
+
+
+### Incomplete Column Level for Views
+
+For views with a tag or policy, you may see incorrect lineage, this can be because user may not have enough access to fetch those policies or tags. You need to grant the following privileges in order to fix it.
+checkout [snowflake docs](https://docs.snowflake.com/en/sql-reference/functions/get_ddl#usage-notes) for further details.
+
+```
+GRANT APPLY MASKING POLICY TO ROLE NEW_ROLE;
+GRANT APPLY ROW ACCESS POLICY TO ROLE NEW_ROLE;
+GRANT APPLY AGGREGATION POLICY TO ROLE NEW_ROLE;
+GRANT APPLY PROJECTION POLICY TO ROLE NEW_ROLE;
+GRANT APPLY TAG TO ROLE NEW_ROLE;
+```
+
+Depending on your view ddl you can grant the relevant privileged as per above queries.
 
 {% partial file="/v1.3/connectors/database/related.md" /%}

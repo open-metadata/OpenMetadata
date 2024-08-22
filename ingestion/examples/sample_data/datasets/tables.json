@@ -8,6 +8,7 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
               "tableType": "Regular",
+              "schemaDefinition": "CREATE TABLE dim_address(address_id NUMERIC PRIMARY KEY, shop_id NUMERIC)",
               "retentionPeriod": "10D",
               "columns": [
                   {
@@ -734,7 +735,8 @@
               "updatedAt": 1638354087591,
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
-              "tableType": "Regular",
+              "tableType": "View",
+              "schemaDefinition": "CREATE VIEW dim_address_clean(address_id NUMERIC PRIMARY KEY, shop_id NUMERIC)",
               "columns": [
                   {
                       "name": "address_id",
@@ -1069,6 +1071,7 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/753833e0-f526-47b6-8555-97f5bb2882d5",
               "tableType": "Regular",
+              "schemaDefinition": "CREATE TABLE dim.api/client(api_client_id NUMERIC PRIMARY KEY, title VARCHAR)",
               "columns": [
                   {
                       "name": "api_client_id",
@@ -1328,6 +1331,7 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/9c96042f-311a-4826-b5b2-8658914e2ee8",
               "tableType": "Regular",
+              "schemaDefinition": "CREATE TABLE dim_customer(customer_id NUMERIC PRIMARY KEY, shop_id NUMERIC, average_order_size NUMERIC)",
               "columns": [
                   {
                       "name": "customer_id",
@@ -2782,6 +2786,7 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/e64426b9-852a-468e-ac16-1231bb01fe96",
               "tableType": "Regular",
+              "schemaDefinition": "CREATE TABLE dim_location(location_id NUMERIC PRIMARY KEY, shop_id NUMERIC)",
               "columns": [
                   {
                       "name": "location_id",
@@ -3109,6 +3114,7 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/f888bde6-ce08-42c3-96aa-1d726e248930",
               "tableType": "Regular",
+              "schemaDefinition": "CREATE TABLE dim.produc(product_id NUMERIC PRIMARY KEY, shop_id NUMERIC)",
               "columns": [
                   {
                       "name": "product_id",
@@ -3494,6 +3500,7 @@
               "updatedBy": "anonymous",
               "href": "http://localhost:8585/api/v1/tables/c71690a3-0764-4791-a1d3-0c47f1e0c2ab",
               "tableType": "Regular",
+              "schemaDefinition": "CREATE TABLE dim.product.variant(product_variant_id NUMERIC PRIMARY KEY, shop_id NUMERIC)",
               "columns": [
                   {
                       "name": "product_variant_id",

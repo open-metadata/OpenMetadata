@@ -3,15 +3,13 @@ title: Run the Databricks Pipeline Connector Externally
 slug: /connectors/pipeline/databricks-pipeline/yaml
 ---
 
-# Run the Databricks Pipeline Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Databricks"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status"]
+unavailableFeatures=["Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Databricks Pipeline connector.
 
@@ -23,12 +21,6 @@ Configure and schedule Databricks Pipeline metadata and profiler workflows from 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
 
 ### Python Requirements
 
@@ -95,7 +87,7 @@ This is a sample config for Databricks Pipeline:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: databrickspipeline
   serviceName: local_databricks_pipeline

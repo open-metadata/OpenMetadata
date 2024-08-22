@@ -3,45 +3,29 @@ title: Clickhouse
 slug: /connectors/database/clickhouse
 ---
 
-# Clickhouse
+{% connectorDetailsHeader
+name="Clickhouse"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+unavailableFeatures=["Owners", "Tags", "Stored Procedures"]
+/ %}
 
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
 
 In this section, we provide guides and references to use the Clickhouse connector.
 
 Configure and schedule Clickhouse metadata and profiler workflows from the OpenMetadata UI:
 
-- [Clickhouse](#clickhouse)
-  - [Requirements](#requirements)
-    - [Profiler \& Data Quality](#profiler-&-data-quality)
-    - [Usage \& Lineage](#usage-&-lineage)
-  - [Metadata Ingestion](#metadata-ingestion)
-      - [Service Name](#service-name)
-      - [Connection Options](#connection-options)
-      - [Metadata Ingestion Options](#metadata-ingestion-options)
-  - [Troubleshooting](#troubleshooting)
-    - [Workflow Deployment Error](#workflow-deployment-error)
-  - [Related](#related)
+- [Requirements](#requirements)
+  - [Profiler \& Data Quality](#profiler-&-data-quality)
+  - [Usage \& Lineage](#usage-&-lineage)
+- [Metadata Ingestion](#metadata-ingestion)
+    - [Service Name](#service-name)
+    - [Connection Options](#connection-options)
+    - [Metadata Ingestion Options](#metadata-ingestion-options)
+- [Troubleshooting](#troubleshooting)
+  - [Workflow Deployment Error](#workflow-deployment-error)
+- [Related](#related)
 
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/clickhouse/yaml"} /%}
 
@@ -67,10 +51,10 @@ GRANT SELECT ON <schema_name>.* to <username>;
 ```
 
 ### Profiler & Data Quality
-Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](/connectors/ingestion/workflows/profiler) and data quality tests [here](/connectors/ingestion/workflows/data-quality).
 
 ### Usage & Lineage
-For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/usage) and the lineage workflow [here](https://docs.open-metadata.org/connectors/ingestion/workflows/lineage).
+For the usage and lineage workflow, the user will need `SELECT` privilege. You can find more information on the usage workflow [here](/connectors/ingestion/workflows/usage) and the lineage workflow [here](/connectors/ingestion/workflows/lineage).
 
 ## Metadata Ingestion
 

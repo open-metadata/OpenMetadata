@@ -16,7 +16,9 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_ASSETS;
 
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -48,6 +50,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void setFields(Domain entity, Fields fields) {
+    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
     entity.withParent(getParent(entity));
   }
 
@@ -82,13 +85,17 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void setInheritedFields(Domain domain, Fields fields) {
-    // If subdomain does not have owner and experts, then inherit it from parent domain
+    // If subdomain does not have owners and experts, then inherit it from parent domain
     EntityReference parentRef = domain.getParent() != null ? domain.getParent() : getParent(domain);
     if (parentRef != null) {
-      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owner,experts", ALL);
-      inheritOwner(domain, fields, parent);
+      Domain parent = Entity.getEntity(DOMAIN, parentRef.getId(), "owners,experts", ALL);
+      inheritOwners(domain, fields, parent);
       inheritExperts(domain, fields, parent);
     }
+  }
+
+  private List<EntityReference> getAssets(Domain entity) {
+    return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {

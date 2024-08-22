@@ -12,8 +12,10 @@
 """
 Common Class For Profiler Converter.
 """
+from typing import Dict, Set
 
 import sqlalchemy
+from sqlalchemy.sql.sqltypes import TypeEngine
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source import sqa_types
@@ -48,8 +50,8 @@ class CommonMapTypes:
         DataType.CHAR: sqlalchemy.CHAR,
         DataType.VARCHAR: sqlalchemy.VARCHAR,
         DataType.BOOLEAN: sqlalchemy.BOOLEAN,
-        DataType.BINARY: sqlalchemy.LargeBinary,
-        DataType.VARBINARY: sqlalchemy.VARBINARY,
+        DataType.BINARY: CustomTypes.BYTES.value,
+        DataType.VARBINARY: CustomTypes.BYTES.value,
         DataType.ARRAY: CustomTypes.ARRAY.value,
         DataType.BLOB: CustomTypes.BYTES.value,
         DataType.LONGBLOB: sqlalchemy.LargeBinary,
@@ -78,4 +80,51 @@ class CommonMapTypes:
         return self.return_custom_type(col, table_service_type)
 
     def return_custom_type(self, col: Column, _):
-        return self._TYPE_MAP.get(col.dataType)
+        return self._TYPE_MAP.get(col.dataType, CustomTypes.UNDETERMINED.value)
+
+    @staticmethod
+    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:
+        """returns an ORM type"""
+        return {
+            sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},
+            sqlalchemy.SMALLINT: {
+                DataType.TINYINT,
+                DataType.SMALLINT,
+                DataType.BYTEINT,
+            },
+            sqlalchemy.INT: {DataType.INT},
+            sqlalchemy.BIGINT: {DataType.BIGINT},
+            CustomTypes.BYTES.value: {DataType.BLOB, DataType.BYTES},
+            sqlalchemy.FLOAT: {DataType.FLOAT},
+            sqlalchemy.DECIMAL: {DataType.DOUBLE, DataType.DECIMAL},
+            CustomTypes.TIMESTAMP.value: {DataType.TIMESTAMP},
+            sqlalchemy.TIME: {DataType.TIME},
+            sqlalchemy.DATE: {DataType.DATE},
+            sqlalchemy.DATETIME: {DataType.DATETIME},
+            sqlalchemy.Interval: {DataType.INTERVAL},
+            sqlalchemy.String: {DataType.STRING},
+            sqlalchemy.TEXT: {DataType.TEXT, DataType.MEDIUMTEXT},
+            sqlalchemy.CHAR: {DataType.CHAR},
+            sqlalchemy.VARCHAR: {DataType.VARCHAR},
+            sqlalchemy.BOOLEAN: {DataType.BOOLEAN},
+            sqlalchemy.LargeBinary: {
+                DataType.MEDIUMBLOB,
+                DataType.BINARY,
+                DataType.LONGBLOB,
+            },
+            sqlalchemy.VARBINARY: {DataType.VARBINARY},
+            CustomTypes.ARRAY.value: {DataType.ARRAY},
+            sqa_types.SQAMap: {DataType.MAP},
+            sqa_types.SQAStruct: {DataType.STRUCT},
+            sqa_types.SQAUnion: {DataType.UNION},
+            sqa_types.SQASet: {DataType.SET},
+            sqa_types.SQASGeography: {DataType.GEOGRAPHY},
+            sqlalchemy.Enum: {DataType.ENUM},
+            sqlalchemy.JSON: {DataType.JSON},
+            CustomTypes.UUID.value: {DataType.UUID},
+            CustomTypes.BYTEA.value: {DataType.BYTEA},
+            sqlalchemy.NVARCHAR: {DataType.NTEXT},
+            CustomTypes.IMAGE.value: {DataType.IMAGE},
+            CustomTypes.IP.value: {DataType.IPV6, DataType.IPV4},
+            CustomTypes.SQADATETIMERANGE.value: {DataType.DATETIMERANGE},
+        }

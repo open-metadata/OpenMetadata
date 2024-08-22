@@ -123,7 +123,17 @@ const PopoverContent: FC<PopoverContentProps> = ({
       onFinish={handleEmbedImage}>
       <Row gutter={[8, 8]}>
         <Col span={24}>
-          <Form.Item name="Url" rules={[{ required: true, type: 'url' }]}>
+          <Form.Item
+            name="Url"
+            rules={[
+              {
+                required: true,
+                type: 'url',
+                message: t('label.field-required', {
+                  field: t('label.url-uppercase'),
+                }),
+              },
+            ]}>
             <Input
               autoFocus
               data-testid="embed-input"
@@ -163,6 +173,7 @@ const ImageComponent: FC<NodeViewProps> = ({
   node,
   updateAttributes,
   deleteNode,
+  editor,
 }) => {
   const { t } = useTranslation();
   const { src, alt } = node.attrs;
@@ -170,6 +181,11 @@ const ImageComponent: FC<NodeViewProps> = ({
 
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [isPopupVisible, setIsPopupVisible] = useState<boolean>(!isValidSource);
+
+  const handlePopoverVisibleChange = (visible: boolean) => {
+    // Only show the popover when the editor is in editable mode
+    setIsPopupVisible(visible && editor.isEditable);
+  };
 
   return (
     <NodeViewWrapper as="div" className="om-react-node">
@@ -193,7 +209,7 @@ const ImageComponent: FC<NodeViewProps> = ({
           placement="bottom"
           showArrow={false}
           trigger="click"
-          onOpenChange={setIsPopupVisible}>
+          onOpenChange={handlePopoverVisibleChange}>
           {isValidSource ? (
             <div className="om-image-node-uploaded">
               <img

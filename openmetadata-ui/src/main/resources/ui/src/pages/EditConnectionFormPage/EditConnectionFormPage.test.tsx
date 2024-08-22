@@ -10,10 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import EditConnectionFormPage from './EditConnectionFormPage.component';
+
+const mockServiceData = {
+  id: 'a831deb9-143e-4832-9eb2-82f635b6964b',
+  name: 'mySQL',
+  fullyQualifiedName: 'mySQL',
+  serviceType: 'Mysql',
+  connection: {
+    config: {
+      type: 'Mysql',
+      scheme: 'mysql+pymysql',
+      username: 'openmetadata_user',
+      authType: {
+        password: '*********',
+      },
+      hostPort: 'host.docker.internal:3306',
+      supportsMetadataExtraction: true,
+      supportsDBTExtraction: true,
+      supportsProfiler: true,
+      supportsQueryComment: true,
+    },
+  },
+};
 
 const SERVICE_CONFIG_UPDATE = 'Update ServiceConfig';
 const SERVICE_CONFIG_FOCUS = 'Focus ServiceConfig';
@@ -52,14 +74,27 @@ jest.mock('../../components/common/Loader/Loader', () =>
 );
 
 let withActiveField = true;
+let updateServiceData = true;
 
 jest.mock(
   '../../components/Settings/Services/ServiceConfig/ServiceConfig',
   () =>
     jest.fn().mockImplementation(({ onFocus, handleUpdate }) => (
       <>
-        ServiceConfig
-        <button onClick={handleUpdate}>{SERVICE_CONFIG_UPDATE}</button>
+        <p>ServiceConfig</p>
+        <button
+          onClick={() =>
+            handleUpdate(
+              updateServiceData
+                ? {
+                    ...mockServiceData.connection.config,
+                    databaseSchema: 'openmetadata_db',
+                  }
+                : mockServiceData.connection.config
+            )
+          }>
+          {SERVICE_CONFIG_UPDATE}
+        </button>
         <button onClick={() => onFocus(withActiveField ? ACTIVE_FIELD : '')}>
           {SERVICE_CONFIG_FOCUS}
         </button>
@@ -71,12 +106,11 @@ jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockImplementation(() => ({ fqn: '' })),
 }));
 
-const mockGetServiceByFQN = jest.fn();
-const mockUpdateService = jest.fn();
-
 jest.mock('../../rest/serviceAPI', () => ({
-  getServiceByFQN: jest.fn(() => mockGetServiceByFQN()),
-  updateService: jest.fn(() => mockUpdateService()),
+  getServiceByFQN: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockServiceData)),
+  patchService: jest.fn(),
 }));
 
 jest.mock('../../utils/CommonUtils', () => ({
@@ -108,11 +142,12 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockReturnValue({}),
+  useParams: jest.fn().mockReturnValue({ serviceCategory: 'databaseServices' }),
 }));
 
 describe('EditConnectionFormPage component', () => {
   it('should render all necessary elements', async () => {
+    const mockGetServiceByFQN = getServiceByFQN as jest.Mock;
     await act(async () => {
       render(<EditConnectionFormPage />);
     });
@@ -127,7 +162,7 @@ describe('EditConnectionFormPage component', () => {
   });
 
   it('should show ErrorPlaceHolder if get 404 error during service fetch', async () => {
-    mockGetServiceByFQN.mockRejectedValueOnce({
+    (getServiceByFQN as jest.Mock).mockRejectedValueOnce({
       response: {
         status: 404,
       },
@@ -141,26 +176,38 @@ describe('EditConnectionFormPage component', () => {
   });
 
   it('actions check', async () => {
+    const mockUpdateService = patchService as jest.Mock;
     await act(async () => {
       render(<EditConnectionFormPage />);
     });
 
     await act(async () => {
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', { name: SERVICE_CONFIG_UPDATE })
       );
     });
 
-    expect(mockUpdateService).toHaveBeenCalled();
+    expect(mockUpdateService).toHaveBeenCalledWith(
+      'databaseServices',
+      mockServiceData.id,
+      [
+        {
+          op: 'add',
+          path: '/connection/config/databaseSchema',
+          value: 'openmetadata_db',
+        },
+      ]
+    );
 
-    // not doing await as it just do state update
-    act(() => {
-      userEvent.click(
+    await act(async () => {
+      fireEvent.click(
         screen.getByRole('button', { name: SERVICE_CONFIG_FOCUS })
       );
     });
 
-    jest.runAllTimers();
+    await act(async () => {
+      jest.runAllTimers();
+    });
 
     expect(screen.getByText(ACTIVE_FIELD)).toBeInTheDocument();
   });
@@ -172,8 +219,8 @@ describe('EditConnectionFormPage component', () => {
       render(<EditConnectionFormPage />);
     });
 
-    act(() => {
-      userEvent.click(
+    await act(async () => {
+      fireEvent.click(
         screen.getByRole('button', { name: SERVICE_CONFIG_FOCUS })
       );
     });
@@ -181,20 +228,45 @@ describe('EditConnectionFormPage component', () => {
     expect(screen.queryByText(ACTIVE_FIELD)).not.toBeInTheDocument();
   });
 
-  it('other errors check', async () => {
-    mockGetServiceByFQN.mockRejectedValueOnce(ERROR);
-    mockUpdateService.mockRejectedValueOnce(ERROR);
+  it('showErrorTost should be call when GetServiceByFQN fails', async () => {
+    (getServiceByFQN as jest.Mock).mockRejectedValueOnce(ERROR);
+
+    await act(async () => {
+      render(<EditConnectionFormPage />);
+    });
+
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('showErrorTost should be call when updateService fails', async () => {
+    (patchService as jest.Mock).mockRejectedValueOnce(ERROR);
 
     await act(async () => {
       render(<EditConnectionFormPage />);
     });
 
     await act(async () => {
-      userEvent.click(
+      fireEvent.click(
         screen.getByRole('button', { name: SERVICE_CONFIG_UPDATE })
       );
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalledTimes(2);
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('patchService should not call if there is no change', async () => {
+    updateServiceData = false;
+    const mockUpdateService = patchService as jest.Mock;
+    await act(async () => {
+      render(<EditConnectionFormPage />);
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: SERVICE_CONFIG_UPDATE })
+      );
+    });
+
+    expect(mockUpdateService).not.toHaveBeenCalled();
   });
 });

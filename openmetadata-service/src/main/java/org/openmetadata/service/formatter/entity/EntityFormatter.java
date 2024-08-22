@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.formatter.entity;
 
-import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FormatterUtil;
@@ -21,7 +21,7 @@ import org.openmetadata.service.formatter.util.FormatterUtil;
 public interface EntityFormatter {
   String format(
       MessageDecorator<?> messageDecorator,
+      Thread thread,
       FieldChange fieldChange,
-      EntityInterface entity,
       FormatterUtil.CHANGE_TYPE changeType);
 }

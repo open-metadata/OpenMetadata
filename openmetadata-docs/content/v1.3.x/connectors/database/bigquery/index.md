@@ -3,30 +3,13 @@ title: BigQuery
 slug: /connectors/database/bigquery
 ---
 
-# BigQuery
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | Policy Tags                  |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="BigQuery"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt", "Tags", "Stored Procedures"]
+unavailableFeatures=["Owners"]
+/ %}
 
 
 In this section, we provide guides and references to use the BigQuery connector.
@@ -44,10 +27,6 @@ Configure and schedule BigQuery metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/bigquery/yaml"} /%}
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 ## Requirements
 
@@ -173,6 +152,10 @@ the GCP credentials empty. This is why they are not marked as required.
 {% partial file="/v1.3/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+### Cross Project Lineage
+
+We support cross-project lineage, but the data must be ingested within a single service. This means you need to perform lineage ingestion for just one service while including multiple projects.
 
 {% partial file="/v1.3/connectors/troubleshooting.md" /%}
 

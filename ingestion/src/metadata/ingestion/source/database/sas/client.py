@@ -35,7 +35,7 @@ class SASClient:
             config.serverHost, config.username, config.password.get_secret_value()
         )
         client_config: ClientConfig = ClientConfig(
-            base_url=config.serverHost,
+            base_url=str(config.serverHost),
             auth_header="Authorization",
             auth_token=self.get_auth_token,
             api_version="",
@@ -77,7 +77,7 @@ class SASClient:
         return response
 
     def get_information_catalog_link(self, instance_id):
-        return f"{self.config.serverHost}/SASInformationCatalog/details/~fs~catalog~fs~instances~fs~{instance_id}"
+        return f"{self.config.serverHost}SASInformationCatalog/details/~fs~catalog~fs~instances~fs~{instance_id}"
 
     def list_assets(self, assets):
         """

@@ -12,29 +12,39 @@
  */
 import { SearchOutlined } from '@ant-design/icons';
 import i18next from 'i18next';
+import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as IconDataModel } from '../assets/svg/data-model.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
+import { ReactComponent as IconAPICollection } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as IconAPIEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as IconAPIService } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as SearchIcon } from '../assets/svg/ic-search.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
+import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
+  API_ENDPOINT_DROPDOWN_ITEMS,
   COMMON_DROPDOWN_ITEMS,
   CONTAINER_DROPDOWN_ITEMS,
   DASHBOARD_DATA_MODEL_TYPE,
   DASHBOARD_DROPDOWN_ITEMS,
+  DATA_ASSET_DROPDOWN_ITEMS,
   DATA_PRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_DROPDOWN_ITEMS,
+  ML_MODEL_DROPDOWN_ITEMS,
   PIPELINE_DROPDOWN_ITEMS,
   SEARCH_INDEX_DROPDOWN_ITEMS,
   TABLE_DROPDOWN_ITEMS,
@@ -54,7 +64,10 @@ import {
   SearchSuggestions,
 } from '../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
 import { EntityType } from '../enums/entity.enum';
+import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { Chart } from '../generated/entity/data/chart';
+import { TestSuite } from '../generated/tests/testCase';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -63,20 +76,22 @@ import {
   getEntityName,
 } from './EntityUtils';
 import i18n from './i18next/LocalUtil';
-import { getServiceIcon } from './TableUtils';
+import { getEntityIcon, getServiceIcon } from './TableUtils';
+import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 class SearchClassBase {
   public getEntityTypeSearchIndexMapping(): Record<string, SearchIndex> {
     return {
       [EntityType.ALL]: SearchIndex.ALL,
       [EntityType.TABLE]: SearchIndex.TABLE,
+      [EntityType.CHART]: SearchIndex.CHART,
       [EntityType.PIPELINE]: SearchIndex.PIPELINE,
       [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
       [EntityType.MLMODEL]: SearchIndex.MLMODEL,
       [EntityType.TOPIC]: SearchIndex.TOPIC,
       [EntityType.CONTAINER]: SearchIndex.CONTAINER,
       [EntityType.TAG]: SearchIndex.TAG,
-      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY,
+      [EntityType.GLOSSARY_TERM]: SearchIndex.GLOSSARY_TERM,
       [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
       [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
       [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
@@ -97,6 +112,49 @@ class SearchClassBase {
       [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
       [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
       [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
+      [EntityType.API_SERVICE]: SearchIndex.API_SERVICE_INDEX,
+      [EntityType.API_COLLECTION]: SearchIndex.API_COLLECTION_INDEX,
+      [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT_INDEX,
+    };
+  }
+
+  public getSearchIndexEntityTypeMapping(): Partial<
+    Record<SearchIndex, EntityType>
+  > {
+    return {
+      [SearchIndex.ALL]: EntityType.ALL,
+      [SearchIndex.TABLE]: EntityType.TABLE,
+      [SearchIndex.CHART]: EntityType.CHART,
+      [SearchIndex.PIPELINE]: EntityType.PIPELINE,
+      [SearchIndex.DASHBOARD]: EntityType.DASHBOARD,
+      [SearchIndex.MLMODEL]: EntityType.MLMODEL,
+      [SearchIndex.TOPIC]: EntityType.TOPIC,
+      [SearchIndex.CONTAINER]: EntityType.CONTAINER,
+      [SearchIndex.TAG]: EntityType.TAG,
+      [SearchIndex.GLOSSARY_TERM]: EntityType.GLOSSARY_TERM,
+      [SearchIndex.STORED_PROCEDURE]: EntityType.STORED_PROCEDURE,
+      [SearchIndex.DASHBOARD_DATA_MODEL]: EntityType.DASHBOARD_DATA_MODEL,
+      [SearchIndex.SEARCH_INDEX]: EntityType.SEARCH_INDEX,
+      [SearchIndex.DATABASE_SERVICE]: EntityType.DATABASE_SERVICE,
+      [SearchIndex.MESSAGING_SERVICE]: EntityType.MESSAGING_SERVICE,
+      [SearchIndex.DASHBOARD_SERVICE]: EntityType.DASHBOARD_SERVICE,
+      [SearchIndex.PIPELINE_SERVICE]: EntityType.PIPELINE_SERVICE,
+      [SearchIndex.ML_MODEL_SERVICE]: EntityType.MLMODEL_SERVICE,
+      [SearchIndex.STORAGE_SERVICE]: EntityType.STORAGE_SERVICE,
+      [SearchIndex.SEARCH_SERVICE]: EntityType.SEARCH_SERVICE,
+      [SearchIndex.DOMAIN]: EntityType.DOMAIN,
+      [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
+      [SearchIndex.DATABASE]: EntityType.DATABASE,
+      [SearchIndex.DATABASE_SCHEMA]: EntityType.DATABASE_SCHEMA,
+      [SearchIndex.USER]: EntityType.USER,
+      [SearchIndex.TEAM]: EntityType.TEAM,
+      [SearchIndex.TEST_CASE]: EntityType.TEST_CASE,
+      [SearchIndex.TEST_SUITE]: EntityType.TEST_SUITE,
+      [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
+      [SearchIndex.INGESTION_PIPELINE]: EntityType.INGESTION_PIPELINE,
+      [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
+      [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
+      [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
     };
   }
 
@@ -117,11 +175,155 @@ class SearchClassBase {
         value: SearchIndex.DASHBOARD_DATA_MODEL,
         label: i18n.t('label.data-model'),
       },
-      { value: SearchIndex.GLOSSARY, label: i18n.t('label.glossary') },
+      { value: SearchIndex.GLOSSARY_TERM, label: i18n.t('label.glossary') },
       { value: SearchIndex.TAG, label: i18n.t('label.tag') },
       { value: SearchIndex.SEARCH_INDEX, label: i18n.t('label.search-index') },
       { value: SearchIndex.DATA_PRODUCT, label: i18n.t('label.data-product') },
+      {
+        value: SearchIndex.API_ENDPOINT_INDEX,
+        label: i18n.t('label.api-endpoint'),
+      },
+      {
+        value: SearchIndex.API_COLLECTION_INDEX,
+        label: i18n.t('label.api-collection'),
+      },
     ];
+  }
+
+  public getExploreTree(): ExploreTreeNode[] {
+    return [
+      {
+        title: i18n.t('label.database-plural'),
+        key: SearchIndex.DATABASE,
+        data: {
+          isRoot: true,
+          childEntities: [
+            EntityType.DATABASE,
+            EntityType.DATABASE_SCHEMA,
+            EntityType.STORED_PROCEDURE,
+            EntityType.TABLE,
+          ],
+        },
+        icon: DatabaseIcon,
+      },
+      {
+        title: i18n.t('label.dashboard-plural'),
+        key: SearchIndex.DASHBOARD,
+        data: {
+          isRoot: true,
+          childEntities: [
+            EntityType.DASHBOARD_DATA_MODEL,
+            EntityType.DASHBOARD,
+          ],
+        },
+        icon: DashboardIcon,
+      },
+      {
+        title: i18n.t('label.pipeline-plural'),
+        key: SearchIndex.PIPELINE,
+        data: { isRoot: true, childEntities: [EntityType.PIPELINE] },
+        icon: PipelineIcon,
+      },
+      {
+        title: i18n.t('label.topic-plural'),
+        key: SearchIndex.TOPIC,
+        data: { isRoot: true, childEntities: [EntityType.TOPIC] },
+        icon: TopicIcon,
+      },
+      {
+        title: i18n.t('label.ml-model-plural'),
+        key: SearchIndex.MLMODEL,
+        data: { isRoot: true, childEntities: [EntityType.MLMODEL] },
+        icon: MlModelIcon,
+      },
+      {
+        title: i18n.t('label.container-plural'),
+        key: SearchIndex.CONTAINER,
+        data: { isRoot: true, childEntities: [EntityType.CONTAINER] },
+        icon: ContainerIcon,
+      },
+      {
+        title: i18n.t('label.search-index-plural'),
+        key: SearchIndex.SEARCH_INDEX,
+        data: { isRoot: true, childEntities: [EntityType.SEARCH_INDEX] },
+        icon: SearchIcon,
+      },
+      {
+        title: i18n.t('label.api-uppercase-plural'),
+        key: SearchIndex.API_ENDPOINT_INDEX,
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
+        },
+        icon: IconAPIService,
+      },
+      {
+        title: i18n.t('label.governance'),
+        key: 'Governance',
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
+        },
+        icon: GovernIcon,
+        children: [
+          {
+            title: i18n.t('label.glossary-plural'),
+            key: EntityType.GLOSSARY_TERM,
+            isLeaf: true,
+            icon: GlossaryIcon,
+            data: {
+              entityType: EntityType.GLOSSARY_TERM,
+              isStatic: true,
+              dataId: 'Glossaries',
+            },
+          },
+          {
+            title: i18n.t('label.tag-plural'),
+            key: EntityType.TAG,
+            isLeaf: true,
+            icon: ClassificationIcon,
+            data: {
+              entityType: EntityType.TAG,
+              isStatic: true,
+              dataId: 'Tags',
+            },
+          },
+        ],
+      },
+      {
+        title: i18n.t('label.domain-plural'),
+        key: 'Domain',
+        data: { isRoot: true, childEntities: [EntityType.DATA_PRODUCT] },
+        icon: DomainIcon,
+        children: [
+          {
+            title: i18n.t('label.data-product-plural'),
+            key: EntityType.DATA_PRODUCT,
+            isLeaf: true,
+            icon: DataProductIcon,
+            data: {
+              entityType: EntityType.DATA_PRODUCT,
+              isStatic: true,
+            },
+          },
+        ],
+      },
+    ];
+  }
+
+  public getExploreTreeKey(tab: ExplorePageTabs) {
+    const tabMapping: Record<string, SearchIndex[]> = {
+      [ExplorePageTabs.TABLES]: [SearchIndex.DATABASE],
+      [ExplorePageTabs.DASHBOARDS]: [SearchIndex.DASHBOARD],
+      [ExplorePageTabs.TOPICS]: [SearchIndex.TOPIC],
+      [ExplorePageTabs.CONTAINERS]: [SearchIndex.CONTAINER],
+      [ExplorePageTabs.PIPELINES]: [SearchIndex.PIPELINE],
+      [ExplorePageTabs.MLMODELS]: [SearchIndex.MLMODEL],
+      [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
+      [ExplorePageTabs.API_ENDPOINT]: [SearchIndex.API_ENDPOINT_INDEX],
+    };
+
+    return tabMapping[tab] || [SearchIndex.DATABASE];
   }
 
   public getTabsInfo(): Record<ExploreSearchIndex, TabsInfoData> {
@@ -130,84 +332,84 @@ class SearchClassBase {
         label: i18n.t('label.table-plural'),
         sortingFields: tableSortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'tables',
+        path: ExplorePageTabs.TABLES,
         icon: TableIcon,
       },
       [SearchIndex.STORED_PROCEDURE]: {
         label: i18n.t('label.stored-procedure-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'storedProcedure',
+        path: ExplorePageTabs.STORED_PROCEDURE,
         icon: IconStoredProcedure,
       },
       [SearchIndex.DATABASE]: {
         label: i18n.t('label.database-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'databases',
+        path: ExplorePageTabs.DATABASE,
         icon: DatabaseIcon,
       },
       [SearchIndex.DATABASE_SCHEMA]: {
         label: i18n.t('label.database-schema-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'databaseSchemas',
+        path: ExplorePageTabs.DATABASE_SCHEMA,
         icon: SchemaIcon,
       },
       [SearchIndex.DASHBOARD]: {
         label: i18n.t('label.dashboard-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'dashboards',
+        path: ExplorePageTabs.DASHBOARDS,
         icon: DashboardIcon,
       },
       [SearchIndex.DASHBOARD_DATA_MODEL]: {
         label: i18n.t('label.dashboard-data-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'dashboardDataModel',
+        path: ExplorePageTabs.DASHBOARD_DATA_MODEL,
         icon: IconDataModel,
       },
       [SearchIndex.PIPELINE]: {
         label: i18n.t('label.pipeline-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'pipelines',
+        path: ExplorePageTabs.PIPELINES,
         icon: PipelineIcon,
       },
       [SearchIndex.TOPIC]: {
         label: i18n.t('label.topic-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'topics',
+        path: ExplorePageTabs.TOPICS,
         icon: TopicIcon,
       },
       [SearchIndex.MLMODEL]: {
         label: i18n.t('label.ml-model-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'mlmodels',
+        path: ExplorePageTabs.MLMODELS,
         icon: MlModelIcon,
       },
       [SearchIndex.CONTAINER]: {
         label: i18n.t('label.container-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'containers',
+        path: ExplorePageTabs.CONTAINERS,
         icon: ContainerIcon,
       },
       [SearchIndex.SEARCH_INDEX]: {
         label: i18n.t('label.search-index-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'searchIndexes',
+        path: ExplorePageTabs.SEARCH_INDEX,
         icon: SearchOutlined,
       },
-      [SearchIndex.GLOSSARY]: {
-        label: i18n.t('label.glossary-plural'),
+      [SearchIndex.GLOSSARY_TERM]: {
+        label: i18n.t('label.glossary-term-plural'),
         sortingFields: entitySortingFields,
         sortField: INITIAL_SORT_FIELD,
-        path: 'glossaries',
+        path: ExplorePageTabs.GLOSSARY,
         icon: GlossaryIcon,
       },
       [SearchIndex.TAG]: {
@@ -215,7 +417,7 @@ class SearchClassBase {
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         sortOrder: TAGS_INITIAL_SORT_ORDER,
-        path: 'tags',
+        path: ExplorePageTabs.TAG,
         icon: ClassificationIcon,
       },
       [SearchIndex.DATA_PRODUCT]: {
@@ -223,8 +425,24 @@ class SearchClassBase {
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         sortOrder: TAGS_INITIAL_SORT_ORDER,
-        path: 'dataProducts',
+        path: ExplorePageTabs.DATA_PRODUCT,
         icon: DataProductIcon,
+      },
+      [SearchIndex.API_COLLECTION_INDEX]: {
+        label: i18n.t('label.api-collection-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        path: ExplorePageTabs.API_COLLECTION,
+        icon: IconAPICollection,
+      },
+      [SearchIndex.API_ENDPOINT_INDEX]: {
+        label: i18n.t('label.api-endpoint-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        path: ExplorePageTabs.API_ENDPOINT,
+        icon: IconAPIEndpoint,
       },
     };
   }
@@ -236,6 +454,9 @@ class SearchClassBase {
       case SearchIndex.TOPIC:
         return [...COMMON_DROPDOWN_ITEMS, ...TOPIC_DROPDOWN_ITEMS];
 
+      case SearchIndex.API_ENDPOINT_INDEX:
+        return [...COMMON_DROPDOWN_ITEMS, ...API_ENDPOINT_DROPDOWN_ITEMS];
+
       case SearchIndex.DASHBOARD:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
 
@@ -246,26 +467,24 @@ class SearchClassBase {
         return [...COMMON_DROPDOWN_ITEMS, ...SEARCH_INDEX_DROPDOWN_ITEMS];
 
       case SearchIndex.MLMODEL:
-        return [
-          ...COMMON_DROPDOWN_ITEMS.filter(
-            (item) => item.key !== 'service_type'
-          ),
-        ];
+        return [...COMMON_DROPDOWN_ITEMS, ...ML_MODEL_DROPDOWN_ITEMS];
       case SearchIndex.CONTAINER:
         return [...COMMON_DROPDOWN_ITEMS, ...CONTAINER_DROPDOWN_ITEMS];
-      case SearchIndex.STORED_PROCEDURE:
-        return [...COMMON_DROPDOWN_ITEMS];
       case SearchIndex.DASHBOARD_DATA_MODEL:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DATA_MODEL_TYPE];
-      case SearchIndex.GLOSSARY:
-        return [...GLOSSARY_DROPDOWN_ITEMS];
+      case SearchIndex.GLOSSARY_TERM:
+        return GLOSSARY_DROPDOWN_ITEMS;
       case SearchIndex.TAG:
-        return [...TAG_DROPDOWN_ITEMS];
+        return TAG_DROPDOWN_ITEMS;
       case SearchIndex.DATA_PRODUCT:
-        return [...DATA_PRODUCT_DROPDOWN_ITEMS];
+        return DATA_PRODUCT_DROPDOWN_ITEMS;
+      case SearchIndex.STORED_PROCEDURE:
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
-        return [...COMMON_DROPDOWN_ITEMS];
+      case SearchIndex.API_COLLECTION_INDEX:
+        return COMMON_DROPDOWN_ITEMS;
+      case SearchIndex.DATA_ASSET:
+        return DATA_ASSET_DROPDOWN_ITEMS;
 
       default:
         return [];
@@ -285,6 +504,10 @@ class SearchClassBase {
     return getServiceIcon(source);
   }
 
+  public getEntityIcon(indexType: string, iconClass = '', iconStyle = {}) {
+    return getEntityIcon(indexType, iconClass, iconStyle);
+  }
+
   public getListOfEntitiesWithoutDomain(): string[] {
     return [EntityType.TEST_CASE];
   }
@@ -300,10 +523,30 @@ class SearchClassBase {
   public getEntityLink(
     entity: SearchSourceAlias
   ): string | { pathname: string } {
+    if (entity.entityType === EntityType.TEST_SUITE) {
+      return getTestSuiteDetailsPath({
+        isExecutableTestSuite: (entity as TestSuite).executable,
+        fullyQualifiedName: entity.fullyQualifiedName ?? '',
+      });
+    }
+
+    if (entity.entityType === EntityType.CHART) {
+      const dashboard = (entity as Chart).dashboards?.[0];
+
+      return dashboard
+        ? getEntityLinkFromType(
+            dashboard.fullyQualifiedName ?? '',
+            EntityType.DASHBOARD,
+            dashboard as SourceType
+          )
+        : '';
+    }
+
     if (entity.fullyQualifiedName && entity.entityType) {
       return getEntityLinkFromType(
         entity.fullyQualifiedName,
-        entity.entityType as EntityType
+        entity.entityType as EntityType,
+        entity
       );
     }
 
@@ -311,6 +554,10 @@ class SearchClassBase {
   }
 
   public getEntityName(entity: SearchSourceAlias) {
+    if (entity.entityType === EntityType.TEST_SUITE) {
+      return getTestSuiteFQN(getEntityName(entity));
+    }
+
     return getEntityName(entity);
   }
 
@@ -342,6 +589,14 @@ class SearchClassBase {
           GroupIcon: IconTable,
         };
     }
+  }
+
+  public notIncludeAggregationExploreTree() {
+    return [EntityType.CHART, EntityType.INGESTION_PIPELINE];
+  }
+
+  public staticKeysHavingCounts(): string[] {
+    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
   }
 }
 

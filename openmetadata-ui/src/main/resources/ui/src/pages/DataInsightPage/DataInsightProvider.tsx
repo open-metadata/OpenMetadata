@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isEqual } from 'lodash';
+import { isEmpty, isEqual, uniqBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import React, {
   createContext,
@@ -19,25 +19,29 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { ListItem } from 'react-awesome-query-builder';
 import Loader from '../../components/common/Loader/Loader';
 import { SearchDropdownOption } from '../../components/SearchDropdown/SearchDropdown.interface';
-import { autocomplete } from '../../constants/AdvancedSearch.constants';
-import { PAGE_SIZE } from '../../constants/constants';
+import { WILD_CARD_CHAR } from '../../constants/char.constants';
+import { PAGE_SIZE_BASE } from '../../constants/constants';
 import { INITIAL_CHART_FILTER } from '../../constants/DataInsight.constants';
 import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
 } from '../../constants/profiler.constant';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
 import { Tag } from '../../generated/entity/classification/tag';
 import { ChartFilter } from '../../interface/data-insight.interface';
+import {
+  DataInsightCustomChartResult,
+  SystemChartType,
+} from '../../rest/DataInsightAPI';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getTags } from '../../rest/tagAPI';
-import { getTeamFilter } from '../../utils/DataInsightUtils';
+import advancedSearchClassBase from '../../utils/AdvancedSearchClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import {
   DataInsightContextType,
@@ -49,9 +53,9 @@ import {
 export const DataInsightContext = createContext<DataInsightContextType>(
   {} as DataInsightContextType
 );
-const fetchTeamSuggestions = autocomplete({
+const fetchTeamSuggestions = advancedSearchClassBase.autocomplete({
   searchIndex: SearchIndex.TEAM,
-  entityField: EntityFields.OWNER,
+  entityField: EntityFields.DISPLAY_NAME_KEYWORD,
 });
 
 const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
@@ -60,10 +64,14 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     selectedOptions: [],
     options: [],
   });
+  const [isTeamLoading, setIsTeamLoading] = useState(false);
   const [tierOptions, setTierOptions] = useState<TierStateType>({
     selectedOptions: [],
     options: [],
   });
+  const [entitiesChartsSummary, setEntitiesChartsSummary] = useState<
+    Record<SystemChartType, DataInsightCustomChartResult>
+  >({} as Record<SystemChartType, DataInsightCustomChartResult>);
 
   const [chartFilter, setChartFilter] =
     useState<ChartFilter>(INITIAL_CHART_FILTER);
@@ -120,16 +128,35 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     }));
   };
 
+  const fetchTeamOptions = async (query = WILD_CARD_CHAR) => {
+    const response = await searchQuery({
+      searchIndex: SearchIndex.TEAM,
+      query: query,
+      pageSize: PAGE_SIZE_BASE,
+    });
+    const hits = response.hits.hits;
+    const teamFilterOptions = hits.map((hit) => {
+      const source = hit._source;
+
+      return { key: source.name, label: source.displayName ?? source.name };
+    });
+
+    return teamFilterOptions;
+  };
+
   const handleTeamSearch = async (query: string) => {
     if (fetchTeamSuggestions && !isEmpty(query)) {
+      setIsTeamLoading(true);
       try {
-        const response = await fetchTeamSuggestions(query, PAGE_SIZE);
+        const response = await fetchTeamOptions(query);
         setTeamOptions((prev) => ({
           ...prev,
-          options: getTeamFilter(response.values as ListItem[]),
+          options: response,
         }));
       } catch (_error) {
         // we will not show the toast error message for suggestion API
+      } finally {
+        setIsTeamLoading(false);
       }
     } else {
       setTeamOptions((prev) => ({
@@ -163,31 +190,24 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
     if (teamsOptions.defaultOptions.length) {
       setTeamOptions((prev) => ({
         ...prev,
-        options: prev.defaultOptions,
+        options: [...prev.selectedOptions, ...prev.defaultOptions],
       }));
 
       return;
     }
 
     try {
-      const response = await searchQuery({
-        searchIndex: SearchIndex.TEAM,
-        query: '*',
-        pageSize: PAGE_SIZE,
-      });
-      const hits = response.hits.hits;
-      const teamFilterOptions = hits.map((hit) => {
-        const source = hit._source;
-
-        return { key: source.name, label: source.displayName ?? source.name };
-      });
+      setIsTeamLoading(true);
+      const response = await fetchTeamOptions();
       setTeamOptions((prev) => ({
         ...prev,
-        defaultOptions: teamFilterOptions,
-        options: teamFilterOptions,
+        defaultOptions: response,
+        options: response,
       }));
     } catch (_error) {
       // we will not show the toast error message for search API
+    } finally {
+      setIsTeamLoading(false);
     }
   };
 
@@ -223,7 +243,9 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
   const fetchKpiList = async () => {
     setIsKpiLoading(true);
     try {
-      const response = await getListKPIs({ fields: 'dataInsightChart' });
+      const response = await getListKPIs({
+        fields: TabSpecificField.DATA_INSIGHT_CHART,
+      });
       setKpiList(response.data);
     } catch (_err) {
       setKpiList([]);
@@ -242,11 +264,12 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
         data: kpiList,
       },
       teamFilter: {
-        options: teamsOptions.options,
+        options: uniqBy(teamsOptions.options, 'key'),
         selectedKeys: teamsOptions.selectedOptions,
         onChange: handleTeamChange,
         onGetInitialOptions: fetchDefaultTeamOptions,
         onSearch: handleTeamSearch,
+        isSuggestionsLoading: isTeamLoading,
       },
       tierFilter: {
         options: tierOptions.options,
@@ -256,6 +279,8 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
         onSearch: handleTierSearch,
       },
       tierTag: tier,
+      entitiesSummary: entitiesChartsSummary,
+      updateEntitySummary: setEntitiesChartsSummary,
     }),
     [
       handleTeamSearch,
@@ -270,6 +295,9 @@ const DataInsightProvider = ({ children }: DataInsightProviderProps) => {
       fetchDefaultTeamOptions,
       handleTeamChange,
       teamsOptions,
+      isTeamLoading,
+      entitiesChartsSummary,
+      setEntitiesChartsSummary,
     ]
   );
 

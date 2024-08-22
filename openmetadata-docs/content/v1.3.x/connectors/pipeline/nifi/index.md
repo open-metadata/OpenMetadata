@@ -3,15 +3,13 @@ title: Nifi
 slug: /connectors/pipeline/nifi
 ---
 
-# Nifi
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="cross" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Nifi"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines"]
+unavailableFeatures=["Pipeline Status", "Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Nifi connector.
 
@@ -23,10 +21,6 @@ Configure and schedule Nifi metadata workflows from the OpenMetadata UI:
 {% partial file="/v1.3/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/nifi/yaml"} /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides. 
-{% /inlineCallout %}
 
 ### Metadata
 OpenMetadata supports 2 types of connection for the Nifi connector:

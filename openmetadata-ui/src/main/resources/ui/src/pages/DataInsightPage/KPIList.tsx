@@ -20,7 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -37,10 +36,11 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Kpi, KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
 import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -48,7 +48,7 @@ import { checkPermission } from '../../utils/PermissionsUtils';
 
 const KPIList = () => {
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const isAdminUser = currentUser?.isAdmin ?? false;
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
@@ -66,8 +66,13 @@ const KPIList = () => {
     try {
       setIsLoading(true);
       const response = await getListKPIs({
-        fields:
-          'startDate,endDate,targetDefinition,dataInsightChart,metricType',
+        fields: [
+          TabSpecificField.START_DATE,
+          TabSpecificField.END_DATE,
+          TabSpecificField.TARGET_VALUE,
+          TabSpecificField.DATA_INSIGHT_CHART,
+          TabSpecificField.METRIC_TYPE,
+        ],
         limit: PAGE_SIZE_MEDIUM,
         before: param && param.before,
         after: param && param.after,
@@ -126,16 +131,12 @@ const KPIList = () => {
       },
       {
         title: t('label.target'),
-        dataIndex: 'targetDefinition',
-        key: 'targetDefinition',
-        render: (targetDefinition: Kpi['targetDefinition'], record: Kpi) => {
+        dataIndex: 'targetValue',
+        key: 'targetValue',
+        render: (value: Kpi['targetValue'], record: Kpi) => {
           const isPercentageMetric =
             record.metricType === KpiTargetType.Percentage;
-          const targetValue = targetDefinition?.length
-            ? isPercentageMetric
-              ? `${+targetDefinition[0].value * 100}%`
-              : targetDefinition[0].value
-            : '-';
+          const targetValue = isPercentageMetric ? `${+value}%` : value;
 
           return <Typography.Text>{targetValue}</Typography.Text>;
         },

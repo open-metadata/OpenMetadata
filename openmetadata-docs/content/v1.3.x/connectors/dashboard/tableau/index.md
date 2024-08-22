@@ -3,17 +3,13 @@ title: Tableau
 slug: /connectors/dashboard/tableau
 ---
 
-# Tableau
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="check" /%} |
-| Tags       | {% icon iconName="check" /%} |
-| Datamodels | {% icon iconName="check" /%} |
-| Projects   | {% icon iconName="check" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Tableau"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Dashboards", "Charts", "Lineage", "Owners", "Datamodels", "Tags", "Projects"]
+unavailableFeatures=[]
+/ %}
 
 
 In this section, we provide guides and references to use the Tableau connector.

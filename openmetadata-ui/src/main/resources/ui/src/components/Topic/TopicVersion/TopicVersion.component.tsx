@@ -17,18 +17,21 @@ import { isEmpty, noop } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
-import { getVersionPathWithTab } from '../../../constants/constants';
+import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { ChangeDescription } from '../../../generated/entity/data/topic';
+import {
+  ChangeDescription,
+  MessageSchemaObject,
+} from '../../../generated/entity/data/topic';
 import { TagSource } from '../../../generated/type/tagLabel';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtils';
+import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
-import { getUpdatedMessageSchema } from '../../../utils/TopicVersionUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
@@ -37,7 +40,6 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-
 import TopicSchemaFields from '../TopicSchema/TopicSchema';
 import { TopicVersionProp } from './TopicVersion.interface';
 
@@ -45,7 +47,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   tier,
   slashedTopicName,
   versionList,
@@ -68,15 +70,19 @@ const TopicVersion: FC<TopicVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const messageSchemaDiff = useMemo(
-    () => getUpdatedMessageSchema(currentVersionData, changeDescription),
+    () =>
+      getVersionedSchema(
+        currentVersionData['messageSchema'] as MessageSchemaObject,
+        changeDescription
+      ),
     [currentVersionData, changeDescription]
   );
 
@@ -88,7 +94,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.TOPIC,
         currentVersionData.fullyQualifiedName ?? '',
         String(version),
@@ -250,6 +256,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={version}
+        entityType={EntityType.TOPIC}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

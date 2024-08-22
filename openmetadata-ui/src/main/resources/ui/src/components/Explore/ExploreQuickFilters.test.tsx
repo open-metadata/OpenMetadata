@@ -20,10 +20,7 @@ import { ExploreQuickFilterField } from './ExplorePage.interface';
 import ExploreQuickFilters from './ExploreQuickFilters';
 import {
   mockAdvancedFieldDefaultOptions,
-  mockAdvancedFieldOptions,
   mockAggregations,
-  mockTagSuggestions,
-  mockUserSuggestions,
 } from './mocks/ExploreQuickFilters.mock';
 
 jest.mock('react-router-dom', () => ({
@@ -79,15 +76,6 @@ jest.mock('../../rest/miscAPI', () => ({
   getAggregateFieldOptions: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockAdvancedFieldDefaultOptions)),
-  getAdvancedFieldOptions: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockAdvancedFieldOptions)),
-  getTagSuggestions: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockTagSuggestions)),
-  getUserSuggestions: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockUserSuggestions)),
 }));
 
 const index = SearchIndex.TABLE;

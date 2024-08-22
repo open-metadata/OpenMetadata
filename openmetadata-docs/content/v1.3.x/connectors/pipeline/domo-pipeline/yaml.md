@@ -3,15 +3,13 @@ title: Run the Domo Pipeline Connector Externally
 slug: /connectors/pipeline/domo-pipeline/yaml
 ---
 
-# Run the Domo Pipeline Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Domo"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage"]
+unavailableFeatures=["Owners", "Tags"]
+/ %}
 
 
 In this section, we provide guides and references to use the Domo Pipeline connector.
@@ -24,12 +22,6 @@ Configure and schedule Domo Pipeline metadata and profiler workflows from the Op
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
 
 **Note:** For metadata ingestion, kindly make sure add atleast `data` scopes to the clientId provided.
 Question related to scopes, click [here](https://developer.domo.com/portal/1845fc11bbe5d-api-authentication).
@@ -110,7 +102,7 @@ This is a sample config for Domo-Pipeline:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: domopipeline
   serviceName: domo-pipeline_source

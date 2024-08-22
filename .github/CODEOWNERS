@@ -1,7 +1,7 @@
 # Individual scopes
 
 # Review from UI owners for changes around UI code
-/openmetadata-ui/src/main/resources/ui/ @harshach @karanh37 @chirag-madlani @Sachin-chaurasiya
+/openmetadata-ui/src/main/resources/ui/ @ShaileshParmar11 @karanh37 @chirag-madlani @Sachin-chaurasiya
 
 # Review from Backend owners for changes around Backend code
 /openmetadata-service/ @open-metadata/backend
@@ -11,5 +11,5 @@
 /ingestion-core @open-metadata/ingestion
 
 # Review from Devops owners for changes around workflows
-/.github @akash-jain-10 @harshach
-/docker @akash-jain-10 @harshach
+/.github @akash-jain-10 @harshach @tutte
+/docker @akash-jain-10 @harshach @tutte

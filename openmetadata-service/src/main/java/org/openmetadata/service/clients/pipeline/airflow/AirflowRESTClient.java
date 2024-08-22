@@ -39,8 +39,8 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
-import org.openmetadata.sdk.PipelineServiceClient;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClient;
 import org.openmetadata.service.exception.IngestionPipelineDeploymentException;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.SSLUtil;
@@ -222,7 +222,7 @@ public class AirflowRESTClient extends PipelineServiceClient {
         response = post(toggleUrl, requestPayload.toString());
         if (response.statusCode() == 200) {
           ingestionPipeline.setEnabled(true);
-          ingestionPipeline.setEnabled(false);
+          return getResponse(200, response.body());
         } else if (response.statusCode() == 404) {
           ingestionPipeline.setDeployed(false);
           return getResponse(404, response.body());
@@ -309,12 +309,18 @@ public class AirflowRESTClient extends PipelineServiceClient {
       if (e.getMessage() != null) {
         exceptionMsg = String.format("Failed to get Airflow status due to [%s].", e.getMessage());
       } else {
-        exceptionMsg = "Failed to connect to Airflow.";
+        exceptionMsg =
+            String.format(
+                "Failed to connect to Airflow due to %s. Is the host available at %s?",
+                e.getCause().toString(), serviceURL.toString());
       }
       return buildUnhealthyStatus(String.format("%s %s", exceptionMsg, DOCS_LINK));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return buildUnhealthyStatus(String.format("Failed to connect to Airflow. %s", DOCS_LINK));
+      return buildUnhealthyStatus(
+          String.format(
+              "Failed to connect to Airflow due to %s. Is the host available at %s? %s.",
+              e.getMessage(), serviceURL.toString(), DOCS_LINK));
     }
   }
 
@@ -455,11 +461,14 @@ public class AirflowRESTClient extends PipelineServiceClient {
         String.format("Failed to get last ingestion logs due to %s", response.body()));
   }
 
-  private URIBuilder buildURI(String path) {
+  public URIBuilder buildURI(String path) {
     try {
       List<String> pathInternal = new ArrayList<>(API_ENDPOINT_SEGMENTS);
       pathInternal.add(path);
-      return new URIBuilder(String.valueOf(serviceURL)).setPathSegments(pathInternal);
+      URIBuilder builder = new URIBuilder(String.valueOf(serviceURL));
+      List<String> segments = new ArrayList<>(builder.getPathSegments());
+      segments.addAll(pathInternal);
+      return builder.setPathSegments(segments);
     } catch (Exception e) {
       throw clientException(String.format("Failed to built request URI for path [%s].", path), e);
     }

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import AirflowIngestionClass from '../../common/Services/AirflowIngestionClass';
 import BigQueryIngestionClass from '../../common/Services/BigQueryIngestionClass';
 import KafkaIngestionClass from '../../common/Services/KafkaIngestionClass';
 import MetabaseIngestionClass from '../../common/Services/MetabaseIngestionClass';
@@ -27,7 +26,8 @@ const services = [
   new S3IngestionClass(),
   new MetabaseIngestionClass(),
   new MysqlIngestionClass(),
-  new AirflowIngestionClass(),
+  // Todo: need to skip for time being as AUT runs on argo, and airflow is not available
+  // new AirflowIngestionClass(),
   new BigQueryIngestionClass(),
   new KafkaIngestionClass(),
   new MlFlowIngestionClass(),
@@ -38,7 +38,7 @@ const services = [
 ];
 
 services.forEach((service) => {
-  describe(`${service.serviceType} Ingestion`, () => {
+  describe(`${service.serviceType} Ingestion`, { tags: 'Integration' }, () => {
     beforeEach(() => {
       cy.login();
       goToServiceListingPage(service.category);

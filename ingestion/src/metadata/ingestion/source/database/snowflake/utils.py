@@ -13,7 +13,7 @@
 Module to define overriden dialect methods
 """
 
-from typing import Optional
+from typing import Dict, Optional
 
 import sqlalchemy.types as sqltypes
 from sqlalchemy import exc as sa_exc
@@ -22,20 +22,65 @@ from sqlalchemy.engine import reflection
 from sqlalchemy.sql import text
 from sqlalchemy.types import FLOAT
 
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
+)
+from metadata.ingestion.source.database.snowflake.models import (
+    SnowflakeTable,
+    SnowflakeTableList,
+)
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
+    SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
     SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_TABLE_DDL,
     SNOWFLAKE_GET_TRANSIENT_NAMES,
     SNOWFLAKE_GET_VIEW_NAMES,
     SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
+    SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
 )
 from metadata.utils import fqn
 from metadata.utils.sqlalchemy_utils import (
     get_display_datatype,
     get_table_comment_wrapper,
 )
+
+Query = str
+QueryMap = Dict[str, Query]
+
+
+TABLE_QUERY_MAPS = {
+    "full": {
+        "default": SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
+        "transient_tables": SNOWFLAKE_GET_TRANSIENT_NAMES,
+        "external_tables": SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES,
+        "dynamic_tables": SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES,
+    },
+    "incremental": {
+        "default": SNOWFLAKE_INCREMENTAL_GET_WITHOUT_TRANSIENT_TABLE_NAMES,
+        "transient_tables": SNOWFLAKE_INCREMENTAL_GET_TRANSIENT_NAMES,
+        "external_tables": SNOWFLAKE_INCREMENTAL_GET_EXTERNAL_TABLE_NAMES,
+        "dynamic_tables": SNOWFLAKE_INCREMENTAL_GET_DYNAMIC_TABLE_NAMES,
+    },
+}
+
+VIEW_QUERY_MAPS = {
+    "full": {
+        "views": SNOWFLAKE_GET_VIEW_NAMES,
+        "materialized_views": SNOWFLAKE_GET_MVIEW_NAMES,
+    },
+    "incremental": {
+        "views": SNOWFLAKE_INCREMENTAL_GET_VIEW_NAMES,
+        "materialized_views": SNOWFLAKE_INCREMENTAL_GET_MVIEW_NAMES,
+    },
+}
 
 
 def _quoted_name(entity_name: Optional[str]) -> Optional[str]:
@@ -88,25 +133,78 @@ def get_view_names_reflection(self, schema=None, **kw):
         )
 
 
-def get_table_names(self, connection, schema, **kw):
-    query = SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES
+def _get_query_map(
+    incremental: Optional[IncrementalConfig], query_maps: Dict[str, QueryMap]
+):
+    """Returns the proper queries depending if the extraction is Incremental or Full."""
+    if incremental and incremental.enabled:
+        return query_maps["incremental"]
+    return query_maps["full"]
+
+
+def _get_query_parameters(
+    self, connection, schema: str, incremental: Optional[IncrementalConfig]
+):
+    """Returns the proper query parameters depending if the extraciton is Incremental or Full"""
+    parameters = {"schema": fqn.unquote_name(schema)}
+
+    if incremental and incremental.enabled:
+        database, _ = self._current_database_schema(connection)  # pylint: disable=W0212
+        parameters = {
+            **parameters,
+            "date": incremental.start_timestamp,
+            "database": database,
+        }
+
+    return parameters
+
+
+def get_table_names(self, connection, schema: str, **kw):
+    """Return the Table names to process based on the incremental setup."""
+    incremental = kw.get("incremental")
+
+    queries = _get_query_map(incremental, TABLE_QUERY_MAPS)
+    parameters = _get_query_parameters(self, connection, schema, incremental)
+
+    query = queries["default"]
+
     if kw.get("include_transient_tables"):
-        query = SNOWFLAKE_GET_TRANSIENT_NAMES
+        query = queries["transient_tables"]
 
     if kw.get("external_tables"):
-        query = SNOWFLAKE_GET_EXTERNAL_TABLE_NAMES
-    cursor = connection.execute(query.format(fqn.unquote_name(schema)))
-    result = [self.normalize_name(row[0]) for row in cursor]
+        query = queries["external_tables"]
+
+    if kw.get("dynamic_tables"):
+        query = queries["dynamic_tables"]
+
+    cursor = connection.execute(query.format(**parameters))
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1])
+            for row in cursor
+        ]
+    )
     return result
 
 
 def get_view_names(self, connection, schema, **kw):
+    incremental = kw.get("incremental")
+
+    queries = _get_query_map(incremental, VIEW_QUERY_MAPS)
+    parameters = _get_query_parameters(self, connection, schema, incremental)
+
     if kw.get("materialized_views"):
-        query = SNOWFLAKE_GET_MVIEW_NAMES
+        query = queries["materialized_views"]
     else:
-        query = SNOWFLAKE_GET_VIEW_NAMES
-    cursor = connection.execute(query.format(schema))
-    result = [self.normalize_name(row[0]) for row in cursor]
+        query = queries["views"]
+
+    cursor = connection.execute(query.format(**parameters))
+    result = SnowflakeTableList(
+        tables=[
+            SnowflakeTable(name=self.normalize_name(row[0]), deleted=row[1])
+            for row in cursor
+        ]
+    )
     return result
 
 
@@ -291,6 +389,65 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
 
 @reflection.cache
+def get_schema_foreign_keys(self, connection, schema, **kw):
+    current_database, current_schema = self._current_database_schema(connection, **kw)
+    result = connection.execute(
+        text(
+            f"SHOW /* sqlalchemy:_get_schema_foreign_keys */ IMPORTED KEYS IN SCHEMA {schema}"
+        )
+    )
+    foreign_key_map = {}
+    for row in result:
+        name = self.normalize_name(row._mapping["fk_name"])
+        if name not in foreign_key_map:
+            referred_schema = self.normalize_name(row._mapping["pk_schema_name"])
+            foreign_key_map[name] = {
+                "constrained_columns": [
+                    self.normalize_name(row._mapping["fk_column_name"])
+                ],
+                # referred schema should be None in context where it doesn't need to be specified
+                # https://docs.sqlalchemy.org/en/14/core/reflection.html#reflection-schema-qualified-interaction
+                "referred_schema": (
+                    referred_schema
+                    if referred_schema not in (self.default_schema_name, current_schema)
+                    else None
+                ),
+                "referred_table": self.normalize_name(row._mapping["pk_table_name"]),
+                "referred_columns": [
+                    self.normalize_name(row._mapping["pk_column_name"])
+                ],
+                "referred_database": self.normalize_name(
+                    row._mapping["pk_database_name"]
+                ),
+                "name": name,
+                "table_name": self.normalize_name(row._mapping["fk_table_name"]),
+            }
+            options = {}
+            if self.normalize_name(row._mapping["delete_rule"]) != "NO ACTION":
+                options["ondelete"] = self.normalize_name(row._mapping["delete_rule"])
+            if self.normalize_name(row._mapping["update_rule"]) != "NO ACTION":
+                options["onupdate"] = self.normalize_name(row._mapping["update_rule"])
+            foreign_key_map[name]["options"] = options
+        else:
+            foreign_key_map[name]["constrained_columns"].append(
+                self.normalize_name(row._mapping["fk_column_name"])
+            )
+            foreign_key_map[name]["referred_columns"].append(
+                self.normalize_name(row._mapping["pk_column_name"])
+            )
+
+    ans = {}
+
+    for _, v in foreign_key_map.items():
+        if v["table_name"] not in ans:
+            ans[v["table_name"]] = []
+        ans[v["table_name"]].append(
+            {k2: v2 for k2, v2 in v.items() if k2 != "table_name"}
+        )
+    return ans
+
+
+@reflection.cache
 def get_unique_constraints(self, connection, table_name, schema, **kw):
     schema = schema or self.default_schema_name
     schema = _quoted_name(entity_name=schema)
@@ -320,3 +477,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     if normalized_table_name not in schema_columns:
         raise sa_exc.NoSuchTableError()
     return schema_columns[normalized_table_name]
+
+
+@reflection.cache
+def get_table_ddl(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
+    """
+    Gets the Table DDL
+    """
+    schema = schema or self.default_schema_name
+    table_name = f"{schema}.{table_name}" if schema else table_name
+    cursor = connection.execute(SNOWFLAKE_GET_TABLE_DDL.format(table_name=table_name))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None

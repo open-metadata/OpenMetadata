@@ -13,6 +13,7 @@
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import ObservabilityAlertsPage from './ObservabilityAlertsPage';
 
@@ -58,6 +59,12 @@ jest.mock('../../rest/alertsAPI', () => ({
 }));
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
 });
 
 describe('Observability Alerts Page Tests', () => {
@@ -123,5 +130,18 @@ describe('Observability Alerts Page Tests', () => {
     );
 
     expect(alertNameElement).toBeInTheDocument();
+  });
+
+  it('should call LimitWrapper with resource as eventsubscription', async () => {
+    await act(async () => {
+      render(<ObservabilityAlertsPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(LimitWrapper).toHaveBeenCalledWith(
+      expect.objectContaining({ resource: 'eventsubscription' }),
+      {}
+    );
   });
 });

@@ -9,6 +9,13 @@
             "errorMessage": "Failed to connect to Alation, please validate the credentials",
             "shortCircuit": true,
             "mandatory": true
+        },
+        {
+            "name": "CheckDbAccess",
+            "description":  "Check if the Alation backend database is reachable with the given credentials.",
+            "errorMessage": "Failed to connect to Alation Database, please validate the credentials",
+            "shortCircuit": false,
+            "mandatory": false
         }
     ]
 }

@@ -16,7 +16,7 @@ GRANT SELECT ON TABLE svv_table_info to test_user;
 
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `svv_table_info` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `svv_table_info` for all objects in the database. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 ### Usage & Lineage
 
@@ -64,6 +64,13 @@ $$section
 SSL Mode to connect to redshift database. E.g, `prefer`, `verify-ca` etc.
 $$
 
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`sslrootcert`).
+$$
+$$note
+Redshift only needs CA Certificate
+$$
 $$section
 ### Connection Options $(id="connectionOptions")
 Additional connection options to build the URL that can be sent to service during the connection.

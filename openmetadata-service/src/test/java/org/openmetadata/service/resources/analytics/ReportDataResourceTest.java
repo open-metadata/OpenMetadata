@@ -25,19 +25,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.client.WebTarget;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.analytics.EntityReportData;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.analytics.WebAnalyticUserActivityReportData;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.analytics.ReportDataResource.ReportDataResultList;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
+@Slf4j
 class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
   public static final String JSON_QUERY =
@@ -46,7 +47,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  void report_data_admin_200() throws ParseException, IOException {
+  void report_data_admin_200() throws ParseException, IOException, InterruptedException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -65,20 +66,14 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
     ResultList<ReportData> reportDataList =
         getReportData(
             "2022-10-10",
-            "2022-10-12",
+            "2022-10-13",
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
-
-    if (RUN_ELASTIC_SEARCH_TESTCASES) {
-      String jsonQuery = String.format(JSON_QUERY, "2022-10-10");
-      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 1);
-    }
 
     assertNotEquals(0, reportDataList.getData().size());
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
   void report_data_non_auth_user_403() throws ParseException {
     EntityReportData entityReportData =
         new EntityReportData()
@@ -100,8 +95,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Execution(ExecutionMode.CONCURRENT)
-  void report_data_bot_200() throws HttpResponseException, ParseException {
+  void report_data_bot_200() throws HttpResponseException, ParseException, InterruptedException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -119,8 +113,8 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
 
     ResultList<ReportData> reportDataList =
         getReportData(
-            "2022-10-10",
             "2022-10-12",
+            "2022-10-14",
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             INGESTION_BOT_AUTH_HEADERS);
 
@@ -128,7 +122,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void delete_endpoint_200() throws ParseException, IOException {
+  void delete_endpoint_200() throws ParseException, IOException, InterruptedException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
     // create some entity report data
@@ -178,14 +172,12 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             ADMIN_AUTH_HEADERS);
     assertNotEquals(0, entityReportDataList.getData().size());
     assertNotEquals(0, webAnalyticsReportDataList.getData().size());
-    if (RUN_ELASTIC_SEARCH_TESTCASES) {
-      List<String> indices = new ArrayList<>();
-      indices.add(ENTITY_REPORT_DATA_INDEX.value());
-      indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.value());
-      for (String index : indices) {
-        String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
-        assertDocumentCountEquals(jsonQuery, index, 1);
-      }
+    List<String> indices = new ArrayList<>();
+    indices.add(ENTITY_REPORT_DATA_INDEX.value());
+    indices.add(WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA_INDEX.value());
+    for (String index : indices) {
+      String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+      assertDocumentCountEquals(jsonQuery, index, 1);
     }
 
     // delete the entity report data and check that it has been deleted
@@ -198,11 +190,9 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
             ReportData.ReportDataType.ENTITY_REPORT_DATA,
             ADMIN_AUTH_HEADERS);
     assertEquals(0, entityReportDataList.getData().size());
-    if (RUN_ELASTIC_SEARCH_TESTCASES) {
-      // Check document has been deleted from elasticsearch
-      String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
-      assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 0);
-    }
+    // Check document has been deleted from elasticsearch
+    String jsonQuery = String.format(JSON_QUERY, "2022-10-15");
+    assertDocumentCountEquals(jsonQuery, ENTITY_REPORT_DATA_INDEX.value(), 0);
     webAnalyticsReportDataList =
         getReportData(
             "2022-10-15",
@@ -241,7 +231,12 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private JsonNode runSearchQuery(String query, String index) throws IOException {
     RestClient searchClient = getSearchClient();
     Response response;
-    Request request = new Request("POST", String.format("/%s/_search", index));
+    Request request =
+        new Request(
+            "POST",
+            String.format(
+                "/%s/_search",
+                Entity.getSearchRepository().getIndexOrAliasName(String.valueOf(index))));
     request.setJsonEntity(query);
     try {
       response = searchClient.performRequest(request);
@@ -252,7 +247,8 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void assertDocumentCountEquals(String query, String index, Integer count)
-      throws IOException {
+      throws IOException, InterruptedException {
+    // async client will return a future which we don't have access to, hence sleep
     JsonNode json = runSearchQuery(query, index);
     Integer docCount = json.get("hits").get("total").get("value").asInt();
     assertEquals(count, docCount);

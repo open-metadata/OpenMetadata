@@ -17,13 +17,12 @@ import traceback
 from pathlib import Path
 
 from metadata.config.common import load_config_file
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineType,
+)
 from metadata.utils.logger import cli_logger
 from metadata.workflow.data_quality import TestSuiteWorkflow
-from metadata.workflow.workflow_output_handler import (
-    WorkflowType,
-    print_init_error,
-    print_status,
-)
+from metadata.workflow.workflow_init_error_handler import WorkflowInitErrorHandler
 
 logger = cli_logger()
 
@@ -38,14 +37,15 @@ def run_test(config_path: Path) -> None:
     workflow_config_dict = None
     try:
         workflow_config_dict = load_config_file(config_path)
-        logger.debug(f"Using config: {workflow_config_dict}")
         workflow = TestSuiteWorkflow.create(workflow_config_dict)
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        print_init_error(exc, workflow_config_dict, WorkflowType.TEST)
+        WorkflowInitErrorHandler.print_init_error(
+            exc, workflow_config_dict, PipelineType.TestSuite
+        )
         sys.exit(1)
 
     workflow.execute()
     workflow.stop()
-    print_status(workflow)
+    workflow.print_status()
     workflow.raise_from_status()

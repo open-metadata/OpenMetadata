@@ -24,14 +24,16 @@ import {
 } from '../../../constants/LeftSidebar.constants';
 import { SidebarItem } from '../../../enums/sidebar.enum';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
+import { LeftSidebarItem as LeftSidebarItemType } from './LeftSidebar.interface';
 import LeftSidebarItem from './LeftSidebarItem.component';
 
 const LeftSidebar = () => {
   const { t } = useTranslation();
-  const { onLogoutHandler } = useAuthContext();
+  const { onLogoutHandler } = useApplicationStore();
   const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(true);
 
@@ -60,7 +62,7 @@ const LeftSidebar = () => {
         return {
           key: item.key,
           label: <LeftSidebarItem data={item} />,
-          children: item.children?.map((item) => {
+          children: item.children?.map((item: LeftSidebarItemType) => {
             return {
               key: item.key,
               label: <LeftSidebarItem data={item} />,

@@ -12,7 +12,6 @@
  */
 import {
   interceptURL,
-  login,
   uuid,
   verifyResponseStatusCode,
 } from '../../common/common';
@@ -22,6 +21,7 @@ import {
   createEntityTableViaREST,
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
+import { getToken } from '../../common/Utils/LocalStorage';
 import { EntityType } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE, USER_DETAILS } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
@@ -85,6 +85,7 @@ const testCase = {
 
 let organizationTeam = {} as OrganizationTeamType;
 let userId = '';
+let teamId = '';
 
 const viewPermissions = [
   {
@@ -130,8 +131,8 @@ const createViewBasicRoleViaREST = ({ token }) => {
     url: `/api/v1/policies`,
     headers: { Authorization: `Bearer ${token}` },
     body: policy,
-  }).then((response) => {
-    policy.id = response.body.id;
+  }).then((policyResponse) => {
+    policy.id = policyResponse.body.id;
     cy.request({
       method: 'POST',
       url: `/api/v1/roles`,
@@ -155,21 +156,49 @@ const createViewBasicRoleViaREST = ({ token }) => {
           body: [
             {
               op: 'replace',
-              path: '/policies/0',
-              value: {
-                id: response.body.id,
-                type: 'policy',
-              },
+              path: '/policies',
+              value: [
+                {
+                  id: policyResponse.body.id,
+                  type: 'policy',
+                },
+              ],
             },
             {
               op: 'replace',
-              path: '/defaultRoles/0',
-              value: {
-                id: roleResponse.body.id,
-                type: 'role',
-              },
+              path: '/defaultRoles',
+              value: [
+                {
+                  id: roleResponse.body.id,
+                  type: 'role',
+                },
+              ],
             },
           ],
+        });
+
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: USER_DETAILS,
+        }).then((userResponse) => {
+          userId = userResponse.body.id;
+          cy.request({
+            method: 'POST',
+            url: `/api/v1/teams`,
+            headers: { Authorization: `Bearer ${token}` },
+            body: {
+              name: `teamBasic-${uuid()}`,
+              description: 'teamBasic',
+              teamType: 'Group',
+              defaultRoles: [roleResponse.body.id],
+              policies: [policyResponse.body.id],
+              users: [userResponse.body.id],
+            },
+          }).then((teamResponse) => {
+            teamId = teamResponse.body.id;
+          });
         });
       });
     });
@@ -179,18 +208,11 @@ const createViewBasicRoleViaREST = ({ token }) => {
 const preRequisite = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     createViewBasicRoleViaREST({
       token,
     });
-    cy.request({
-      method: 'POST',
-      url: `/api/v1/users/signup`,
-      headers: { Authorization: `Bearer ${token}` },
-      body: USER_DETAILS,
-    }).then((response) => {
-      userId = response.body.id;
-    });
+
     createEntityTableViaREST({
       token,
       ...DATABASE_SERVICE,
@@ -234,7 +256,7 @@ const preRequisite = () => {
 const cleanUp = () => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     hardDeleteService({
       token,
       serviceFqn: DATABASE_SERVICE.service.name,
@@ -260,21 +282,15 @@ const cleanUp = () => {
       },
       body: [
         {
-          op: 'add',
-          path: '/policies/0',
-          value: {
-            id: organizationTeam.policies[0].id,
-            type: 'policy',
-          },
+          op: 'replace',
+          path: '/policies',
+          value: organizationTeam.policies,
         },
 
         {
           op: 'add',
-          path: '/defaultRoles/0',
-          value: {
-            id: organizationTeam.defaultRoles[0].id,
-            type: 'role',
-          },
+          path: '/defaultRoles',
+          value: organizationTeam.defaultRoles,
         },
       ],
     });
@@ -282,6 +298,12 @@ const cleanUp = () => {
     cy.request({
       method: 'DELETE',
       url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    // Delete created team
+    cy.request({
+      method: 'DELETE',
+      url: `/api/v1/teams/${teamId}?hardDelete=true&recursive=false`,
       headers: { Authorization: `Bearer ${token}` },
     });
   });
@@ -293,7 +315,7 @@ const checkPermission = (permission?: {
   viewTests?: boolean;
   editDisplayName?: boolean;
 }) => {
-  login(USER_DETAILS.email, USER_DETAILS.password);
+  cy.login(USER_DETAILS.email, USER_DETAILS.password);
   visitEntityDetailsPage({
     term: DATABASE_SERVICE.entity.name,
     serviceName: DATABASE_SERVICE.service.name,
@@ -307,7 +329,7 @@ const updatePolicy = (
 ) => {
   cy.login();
   cy.getAllLocalStorage().then((data) => {
-    const token = Object.values(data)[0].oidcIdToken;
+    const token = getToken(data);
     cy.request({
       method: 'PATCH',
       url: `/api/v1/policies/${policy.id}`,
@@ -322,7 +344,7 @@ const updatePolicy = (
   cy.reload();
 };
 
-describe('Permissions', () => {
+describe('Permissions', { tags: 'Settings' }, () => {
   before(preRequisite);
   after(cleanUp);
 
@@ -352,16 +374,20 @@ describe('Permissions', () => {
       { op: 'add', path: '/rules/0/operations/5', value: 'EditQueries' },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,
       entity: EntityType.Table,
     });
-    interceptURL('GET', '/api/v1/queries?*', 'getQueries');
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=*&index=query_search_index*',
+      'getQueries'
+    );
     cy.get('[data-testid="table_queries"]').click();
     verifyResponseStatusCode('@getQueries', 200);
-    cy.get('[data-testid="more-option-btn"]').click();
+    cy.get('[data-testid="query-btn"]').click();
     cy.get('[data-menu-id*="edit-query"]').click();
     interceptURL('PATCH', '/api/v1/queries/*', 'updateQuery');
     cy.get('.CodeMirror-line').click().type('updated');
@@ -385,7 +411,7 @@ describe('Permissions', () => {
       },
     ]);
 
-    login(USER_DETAILS.email, USER_DETAILS.password);
+    cy.login(USER_DETAILS.email, USER_DETAILS.password);
     visitEntityDetailsPage({
       term: DATABASE_SERVICE.entity.name,
       serviceName: DATABASE_SERVICE.service.name,

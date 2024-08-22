@@ -3,15 +3,13 @@ title: Run the Nifi Connector Externally
 slug: /connectors/pipeline/nifi/yaml
 ---
 
-# Run the Nifi Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="cross" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Nifi"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines"]
+unavailableFeatures=["Pipeline Status", "Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Nifi connector.
 
@@ -23,12 +21,6 @@ Configure and schedule Nifi metadata and profiler workflows from the OpenMetadat
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
 
 ### Python Requirements
 
@@ -92,7 +84,7 @@ This is a sample config for Nifi:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: nifi
   serviceName: nifi_source

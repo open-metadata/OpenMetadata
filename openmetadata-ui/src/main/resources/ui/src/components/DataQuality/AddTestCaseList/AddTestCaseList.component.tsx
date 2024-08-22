@@ -11,51 +11,52 @@
  *  limitations under the License.
  */
 import { Button, Checkbox, Col, List, Row, Space, Typography } from 'antd';
+import { isEmpty } from 'lodash';
 import VirtualList from 'rc-virtual-list';
-import React, { UIEventHandler, useCallback, useEffect, useState } from 'react';
+import React, {
+  UIEventHandler,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { getTableTabPath, PAGE_SIZE } from '../../../constants/constants';
+import { WILD_CARD_CHAR } from '../../../constants/char.constants';
+import {
+  getEntityDetailsPath,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCase } from '../../../generated/tests/testCase';
-import {
-  SearchHitBody,
-  TestCaseSearchSource,
-} from '../../../interface/search.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getNameFromFQN } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getColumnNameFromEntityLink,
+  getEntityName,
+} from '../../../utils/EntityUtils';
+import { getEntityFQN } from '../../../utils/FeedUtils';
 import { replacePlus } from '../../../utils/StringsUtils';
-import { getEntityFqnFromEntityLink } from '../../../utils/TableUtils';
+import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { AddTestCaseModalProps } from './AddTestCaseList.interface';
 
-// Todo: need to help from backend guys for ES query
-// export const getQueryFilterToExcludeTest = (testCase: EntityReference[]) => ({
-//   query: {
-//     bool: {
-//       must_not: testCase.map((test) => ({
-//         term: {
-//           name: test.name,
-//         },
-//       })),
-//     },
-//   },
-// });
-
 export const AddTestCaseList = ({
   onCancel,
-  existingTest,
   onSubmit,
   cancelText,
   submitText,
+  filters,
+  selectedTest,
+  onChange,
+  showButton = true,
 }: AddTestCaseModalProps) => {
   const { t } = useTranslation();
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [items, setItems] = useState<
-    SearchHitBody<SearchIndex.TEST_CASE, TestCase>[]
-  >([]);
+  const [searchTerm, setSearchTerm] = useState<string>();
+  const [items, setItems] = useState<TestCase[]>([]);
   const [selectedItems, setSelectedItems] = useState<Map<string, TestCase>>();
   const [pageNumber, setPageNumber] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -66,21 +67,31 @@ export const AddTestCaseList = ({
   };
 
   const fetchTestCases = useCallback(
-    async ({ searchText = '', page = 1 }) => {
+    async ({ searchText = WILD_CARD_CHAR, page = 1 }) => {
       try {
         setIsLoading(true);
         const res = await searchQuery({
           pageNumber: page,
-          pageSize: PAGE_SIZE,
+          pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: SearchIndex.TEST_CASE,
           query: searchText,
-          // queryFilter: getQueryFilterToExcludeTest(existingTest),
+          filters,
         });
-        const hits = res.hits.hits as SearchHitBody<
-          SearchIndex.TEST_CASE,
-          TestCaseSearchSource
-        >[];
+        const hits = res.hits.hits.map((hit) => hit._source as TestCase);
         setTotalCount(res.hits.total.value ?? 0);
+        if (selectedTest) {
+          setSelectedItems((pre) => {
+            const selectedItemsMap = new Map();
+            pre?.forEach((item) => selectedItemsMap.set(item.id, item));
+            hits.forEach((hit) => {
+              if (selectedTest.find((test) => hit.name === test)) {
+                selectedItemsMap.set(hit.id ?? '', hit);
+              }
+            });
+
+            return selectedItemsMap;
+          });
+        }
         setItems(page === 1 ? hits : (prevItems) => [...prevItems, ...hits]);
         setPageNumber(page);
       } catch (_) {
@@ -89,15 +100,13 @@ export const AddTestCaseList = ({
         setIsLoading(false);
       }
     },
-    [existingTest]
+    [selectedTest]
   );
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    const testCaseIds = [...(selectedItems?.values() ?? [])].map(
-      (test) => test.id ?? ''
-    );
-    onSubmit(testCaseIds);
+    const testCaseIds = [...(selectedItems?.values() ?? [])];
+    onSubmit?.(testCaseIds);
     setIsLoading(false);
   };
 
@@ -130,6 +139,9 @@ export const AddTestCaseList = ({
           (item) => item.id !== id && selectedItemMap.set(item.id, item)
         );
 
+        const testCases = [...(selectedItemMap?.values() ?? [])];
+        onChange?.(testCases);
+
         return selectedItemMap;
       });
     } else {
@@ -140,8 +152,10 @@ export const AddTestCaseList = ({
 
         selectedItemMap.set(
           id,
-          items.find(({ _source }) => _source.id === id)?._source
+          items.find((test) => test.id === id)
         );
+        const testCases = [...(selectedItemMap?.values() ?? [])];
+        onChange?.(testCases);
 
         return selectedItemMap;
       });
@@ -150,6 +164,93 @@ export const AddTestCaseList = ({
   useEffect(() => {
     fetchTestCases({ searchText: searchTerm });
   }, [searchTerm]);
+
+  const renderList = useMemo(() => {
+    if (!isLoading && isEmpty(items)) {
+      return (
+        <Col span={24}>
+          <Space align="center" className="w-full" direction="vertical">
+            <ErrorPlaceHolder
+              className="mt-0-important"
+              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+            />
+          </Space>
+        </Col>
+      );
+    } else {
+      return (
+        <Col span={24}>
+          <List
+            loading={{
+              spinning: isLoading,
+              indicator: <Loader />,
+            }}>
+            <VirtualList
+              data={items}
+              height={500}
+              itemKey="id"
+              onScroll={onScroll}>
+              {(test) => {
+                const tableFqn = getEntityFQN(test.entityLink);
+                const tableName = getNameFromFQN(tableFqn);
+                const isColumn = test.entityLink.includes('::columns::');
+
+                return (
+                  <Space
+                    className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
+                    direction="vertical"
+                    onClick={() => handleCardClick(test)}>
+                    <Space className="justify-between w-full">
+                      <Typography.Paragraph
+                        className="m-0 font-medium text-base w-max-500"
+                        data-testid={test.name}
+                        ellipsis={{ tooltip: true }}>
+                        {getEntityName(test)}
+                      </Typography.Paragraph>
+
+                      <Checkbox
+                        checked={selectedItems?.has(test.id ?? '')}
+                        data-testid={`checkbox-${test.name}`}
+                      />
+                    </Space>
+                    <Typography.Paragraph
+                      className="m-0 w-max-500"
+                      ellipsis={{ tooltip: true }}>
+                      {getEntityName(test.testDefinition)}
+                    </Typography.Paragraph>
+                    <Typography.Paragraph className="m-0">
+                      <Link
+                        data-testid="table-link"
+                        to={getEntityDetailsPath(
+                          EntityType.TABLE,
+                          tableFqn,
+                          EntityTabs.PROFILER
+                        )}
+                        onClick={(e) => e.stopPropagation()}>
+                        {tableName}
+                      </Link>
+                    </Typography.Paragraph>
+                    {isColumn && (
+                      <Space>
+                        <Typography.Text className="font-medium text-xs">{`${t(
+                          'label.column'
+                        )}:`}</Typography.Text>
+                        <Typography.Text className="text-grey-muted text-xs">
+                          {replacePlus(
+                            getColumnNameFromEntityLink(test.entityLink)
+                          ) ?? '--'}
+                        </Typography.Text>
+                      </Space>
+                    )}
+                  </Space>
+                );
+              }}
+            </VirtualList>
+          </List>
+        </Col>
+      );
+    }
+  }, [items, selectedItems, isLoading]);
 
   return (
     <Row gutter={[0, 16]}>
@@ -165,81 +266,23 @@ export const AddTestCaseList = ({
           onSearch={handleSearch}
         />
       </Col>
-      <Col span={24}>
-        <List loading={{ spinning: false, indicator: <Loader /> }}>
-          <VirtualList
-            data={items}
-            height={500}
-            itemKey="id"
-            onScroll={onScroll}>
-            {({ _source: test }) => {
-              const tableFqn = getEntityFqnFromEntityLink(test.entityLink);
-              const tableName = getNameFromFQN(tableFqn);
-              const isColumn = test.entityLink.includes('::columns::');
-
-              return (
-                <Space
-                  className="m-b-md border rounded-4 p-sm cursor-pointer"
-                  direction="vertical"
-                  onClick={() => handleCardClick(test)}>
-                  <Space className="justify-between w-full">
-                    <Typography.Paragraph
-                      className="m-0 font-medium text-base w-max-500"
-                      data-testid={test.name}
-                      ellipsis={{ tooltip: true }}>
-                      {getEntityName(test)}
-                    </Typography.Paragraph>
-
-                    <Checkbox checked={selectedItems?.has(test.id ?? '')} />
-                  </Space>
-                  <Typography.Paragraph
-                    className="m-0 w-max-500"
-                    ellipsis={{ tooltip: true }}>
-                    {getEntityName(test.testDefinition)}
-                  </Typography.Paragraph>
-                  <Typography.Paragraph className="m-0">
-                    <Link
-                      data-testid="table-link"
-                      to={getTableTabPath(tableFqn, 'profiler')}
-                      onClick={(e) => e.stopPropagation()}>
-                      {tableName}
-                    </Link>
-                  </Typography.Paragraph>
-                  {isColumn && (
-                    <Space>
-                      <Typography.Text className="font-medium text-xs">{`${t(
-                        'label.column'
-                      )}:`}</Typography.Text>
-                      <Typography.Text className="text-grey-muted text-xs">
-                        {getNameFromFQN(
-                          replacePlus(
-                            getEntityFqnFromEntityLink(
-                              test.entityLink,
-                              isColumn
-                            )
-                          )
-                        ) ?? '--'}
-                      </Typography.Text>
-                    </Space>
-                  )}
-                </Space>
-              );
-            }}
-          </VirtualList>
-        </List>
-      </Col>
-      <Col className="d-flex justify-end items-center p-y-xss" span={24}>
-        <Button data-testid="cancel" type="link" onClick={onCancel}>
-          {cancelText ?? t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="submit"
-          loading={isLoading}
-          type="primary"
-          onClick={handleSubmit}>
-          {submitText ?? t('label.submit')}
-        </Button>
-      </Col>
+      {renderList}
+      {showButton && (
+        <Col
+          className="d-flex justify-end items-center p-y-xss gap-4"
+          span={24}>
+          <Button data-testid="cancel" type="link" onClick={onCancel}>
+            {cancelText ?? t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="submit"
+            loading={isLoading}
+            type="primary"
+            onClick={handleSubmit}>
+            {submitText ?? t('label.submit')}
+          </Button>
+        </Col>
+      )}
     </Row>
   );
 };

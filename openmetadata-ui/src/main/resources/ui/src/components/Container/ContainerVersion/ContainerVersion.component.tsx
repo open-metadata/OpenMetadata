@@ -18,7 +18,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { getVersionPathWithTab } from '../../../constants/constants';
+import { getVersionPath } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import {
@@ -39,18 +39,17 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import Loader from '../../common/Loader/Loader';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
+import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import VersionTable from '../../Entity/VersionTable/VersionTable.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
-
-import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { ContainerVersionProp } from './ContainerVersion.interface';
 
 const ContainerVersion: React.FC<ContainerVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -78,11 +77,11 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const columns = useMemo(() => {
@@ -97,7 +96,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.CONTAINER,
         entityFqn,
         String(version),
@@ -262,6 +261,7 @@ const ContainerVersion: React.FC<ContainerVersionProp> = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.CONTAINER}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

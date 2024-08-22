@@ -18,19 +18,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: '30 2 * * 1,3,5'
-  pull_request_target:
-    types:
-      - labeled
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-    paths:
-      - openmetadata-spec/**
-      - openmetadata-ui/**
-      - openmetadata-service/**
-      - openmetadata-clients/**
-      - common/**
 
 permissions:
   contents: read

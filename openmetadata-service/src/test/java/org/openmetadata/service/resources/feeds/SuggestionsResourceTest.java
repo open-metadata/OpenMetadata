@@ -95,7 +95,7 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     USER2_AUTH_HEADERS = authHeaders(USER2.getName());
 
     CreateTable createTable =
-        TABLE_RESOURCE_TEST.createRequest(test).withOwner(TableResourceTest.USER1_REF);
+        TABLE_RESOURCE_TEST.createRequest(test).withOwners(List.of(TableResourceTest.USER1_REF));
     TABLE = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable, ADMIN_AUTH_HEADERS);
 
     TeamResourceTest teamResourceTest = new TeamResourceTest();
@@ -109,11 +109,11 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     EntityReference TEAM2_REF = TEAM2.getEntityReference();
 
     CreateTable createTable2 = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable2.withName("table2").withOwner(TEAM2_REF);
+    createTable2.withName("table2").withOwners(List.of(TEAM2_REF));
     TABLE2 = TABLE_RESOURCE_TEST.createAndCheckEntity(createTable2, ADMIN_AUTH_HEADERS);
 
     CreateTable createTable3 = TABLE_RESOURCE_TEST.createRequest(test);
-    createTable3.withName("table_without_owner").withOwner(null);
+    createTable3.withName("table_without_owner").withOwners(null);
     TABLE_WITHOUT_OWNER =
         TABLE_RESOURCE_TEST.createAndCheckEntity(createTable3, ADMIN_AUTH_HEADERS);
 
@@ -374,6 +374,160 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
     assertEquals(SuggestionStatus.Rejected, suggestion2.getStatus());
   }
 
+  @Test
+  @Order(3)
+  void put_acceptAllSuggestions_200() throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // Add another suggestion
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // And now update tags
+    create = createTagSuggestion().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(3, suggestionList.getData().size());
+
+    acceptAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    // We still have the tag suggestion open, since we only accepted the descriptions
+    assertEquals(1, suggestionList.getPaging().getTotal());
+
+    // Now we accept the pending one
+    acceptAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestTagLabel,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+  }
+
+  @Test
+  @Order(4)
+  void put_rejectAllSuggestions_200() throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // Add another suggestion
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // And now update tags
+    create = createTagSuggestion().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(3, suggestionList.getData().size());
+
+    rejectAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(1, suggestionList.getPaging().getTotal());
+
+    // Now we reject the pending one
+    rejectAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestTagLabel,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+  }
+
+  @Test
+  @Order(5)
+  void put_acceptAllColumnSuggestions_200() throws IOException {
+    CreateSuggestion create = create().withEntityLink(TABLE_LINK);
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // Add another suggestion at one column level
+    create =
+        create().withEntityLink(TABLE_COLUMN1_LINK).withDescription("Update column1 description");
+    createAndCheck(create, USER_AUTH_HEADERS);
+    // And now update another column description
+    create =
+        create().withEntityLink(TABLE_COLUMN2_LINK).withDescription("Update column2 description");
+    createAndCheck(create, USER_AUTH_HEADERS);
+
+    SuggestionsResource.SuggestionList suggestionList =
+        listSuggestions(TABLE.getFullyQualifiedName(), null, null, null, USER_AUTH_HEADERS);
+    assertEquals(3, suggestionList.getData().size());
+
+    acceptAllSuggestions(
+        TABLE.getFullyQualifiedName(),
+        USER.getId(),
+        SuggestionType.SuggestDescription,
+        USER_AUTH_HEADERS);
+
+    suggestionList =
+        listSuggestions(
+            TABLE.getFullyQualifiedName(),
+            null,
+            USER_AUTH_HEADERS,
+            null,
+            null,
+            SuggestionStatus.Open.toString(),
+            null,
+            null);
+    assertEquals(0, suggestionList.getPaging().getTotal());
+
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    Table table = tableResourceTest.getEntity(TABLE.getId(), "columns", USER_AUTH_HEADERS);
+    for (Column column : table.getColumns()) {
+      if (column.getName().equals(C1)) {
+        assertEquals("Update column1 description", column.getDescription());
+      } else if (column.getName().equals(C2)) {
+        assertEquals("Update column2 description", column.getDescription());
+      }
+    }
+  }
+
   public Suggestion createSuggestion(CreateSuggestion create, Map<String, String> authHeaders)
       throws HttpResponseException {
     return TestUtils.post(getResource("suggestions"), create, Suggestion.class, authHeaders);
@@ -449,6 +603,32 @@ public class SuggestionsResourceTest extends OpenMetadataApplicationTest {
       String entityFQN, Integer limit, String before, String after, Map<String, String> authHeaders)
       throws HttpResponseException {
     return listSuggestions(entityFQN, limit, authHeaders, null, null, null, before, after);
+  }
+
+  public void acceptAllSuggestions(
+      String entityFQN, UUID userId, SuggestionType suggestionType, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("suggestions/accept-all");
+    target = entityFQN != null ? target.queryParam("entityFQN", entityFQN) : target;
+    target = userId != null ? target.queryParam("userId", userId) : target;
+    target =
+        suggestionType != null
+            ? target.queryParam("suggestionType", suggestionType.toString())
+            : target;
+    TestUtils.put(target, null, Response.Status.OK, authHeaders);
+  }
+
+  public void rejectAllSuggestions(
+      String entityFQN, UUID userId, SuggestionType suggestionType, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource("suggestions/reject-all");
+    target = entityFQN != null ? target.queryParam("entityFQN", entityFQN) : target;
+    target = userId != null ? target.queryParam("userId", userId) : target;
+    target =
+        suggestionType != null
+            ? target.queryParam("suggestionType", suggestionType.toString())
+            : target;
+    TestUtils.put(target, null, Response.Status.OK, authHeaders);
   }
 
   public Suggestion createAndCheck(CreateSuggestion create, Map<String, String> authHeaders)

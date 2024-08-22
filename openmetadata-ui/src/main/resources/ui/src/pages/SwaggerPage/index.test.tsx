@@ -23,12 +23,17 @@ jest.mock('./RapiDocReact', () => {
   ));
 });
 
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
+    getOidcToken: () => 'fakeToken',
+    theme: {
+      primaryColor: '#9c27b0',
+    },
+  })),
+}));
+
 describe('SwaggerPage component', () => {
   it('renders SwaggerPage component correctly', async () => {
-    // Mocking localStorage.getItem method
-    const mockGetItem = jest.spyOn(window.localStorage.__proto__, 'getItem');
-    mockGetItem.mockReturnValue('fakeToken'); // Mocking the return value of getItem
-
     render(<SwaggerPage />);
 
     expect(await screen.findByTestId('fluid-container')).toBeInTheDocument();

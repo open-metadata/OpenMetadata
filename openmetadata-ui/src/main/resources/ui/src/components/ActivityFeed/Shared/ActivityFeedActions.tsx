@@ -11,26 +11,21 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Popover, Space } from 'antd';
-import { uniqueId } from 'lodash';
+import { Space } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconEdit } from '../../../assets/svg/ic-edit.svg';
-import { ReactComponent as IconReaction } from '../../../assets/svg/ic-reaction.svg';
-import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
 import ConfirmationModal from '../../../components/Modals/ConfirmationModal/ConfirmationModal';
-import { REACTION_LIST } from '../../../constants/reactions.constant';
-import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
   Post,
-  ReactionType,
   Thread,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+
+import { ReactComponent as IconReply } from '../../../assets/svg/ic-reply.svg';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
-import Reaction from '../Reactions/Reaction';
 import './activity-feed-actions.less';
 
 interface ActivityFeedActionsProps {
@@ -47,24 +42,16 @@ const ActivityFeedActions = ({
   onEditPost,
 }: ActivityFeedActionsProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const isAuthor = post.from === currentUser?.name;
-  const [visible, setVisible] = useState<boolean>(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const {
-    deleteFeed,
-    showDrawer,
-    hideDrawer,
-    updateReactions,
-    updateEditorFocus,
-  } = useActivityFeedProvider();
+  const { deleteFeed, showDrawer, hideDrawer, updateEditorFocus } =
+    useActivityFeedProvider();
 
-  const hide = () => {
-    setVisible(false);
-  };
+  const onReply = () => {
+    showDrawer(feed);
 
-  const handleVisibleChange = (newVisible: boolean) => {
-    setVisible(newVisible);
+    updateEditorFocus(true);
   };
 
   const handleDelete = () => {
@@ -75,42 +62,6 @@ const ActivityFeedActions = ({
     if (!isPost) {
       hideDrawer();
     }
-  };
-
-  const isReacted = (reactionType: ReactionType) => {
-    return (post.reactions ?? []).some(
-      (reactionItem) =>
-        reactionItem.user.id === currentUser?.id &&
-        reactionType === reactionItem.reactionType
-    );
-  };
-
-  const onReactionUpdate = (
-    reaction: ReactionType,
-    operation: ReactionOperation
-  ) => {
-    updateReactions(post, feed.id, !isPost, reaction, operation);
-  };
-
-  // prepare reaction list for reaction popover
-  const reactionList = REACTION_LIST.map((reaction) => {
-    return (
-      <Reaction
-        isReacted={isReacted(reaction.reaction)}
-        key={uniqueId()}
-        reaction={reaction}
-        onHide={() => {
-          hide();
-        }}
-        onReactionSelect={onReactionUpdate}
-      />
-    );
-  });
-
-  const onReply = () => {
-    showDrawer(feed);
-
-    updateEditorFocus(true);
   };
 
   const editCheck = useMemo(() => {
@@ -138,27 +89,6 @@ const ActivityFeedActions = ({
   return (
     <>
       <Space className="feed-actions" data-testid="feed-actions" size={12}>
-        {feed.type !== ThreadType.Task && !isPost && (
-          <Popover
-            destroyTooltipOnHide
-            align={{ targetOffset: [0, -10] }}
-            content={reactionList}
-            id="reaction-popover"
-            open={visible}
-            overlayClassName="ant-popover-feed-reactions"
-            placement="topLeft"
-            trigger="click"
-            zIndex={9999}
-            onOpenChange={handleVisibleChange}>
-            <Icon
-              className="toolbar-button"
-              component={IconReaction}
-              data-testid="add-reactions"
-              style={{ fontSize: '16px' }}
-            />
-          </Popover>
-        )}
-
         {!isPost && (
           <Icon
             className="toolbar-button"
@@ -188,7 +118,6 @@ const ActivityFeedActions = ({
             onClick={() => setShowDeleteDialog(true)}
           />
         )}
-        {/* </div> */}
       </Space>
       <ConfirmationModal
         bodyText={t('message.confirm-delete-message')}

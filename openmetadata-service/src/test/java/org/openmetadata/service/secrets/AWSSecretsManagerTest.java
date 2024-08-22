@@ -20,7 +20,7 @@ import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
-public class AWSSecretsManagerTest extends ExternalSecretsManagerTest {
+public class AWSSecretsManagerTest extends AWSBasedSecretsManagerTest {
 
   @Mock private SecretsManagerClient secretsManagerClient;
 

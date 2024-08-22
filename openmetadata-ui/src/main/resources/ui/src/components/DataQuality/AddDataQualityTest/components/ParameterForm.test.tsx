@@ -13,17 +13,45 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
+import { EntityReference } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import {
   MOCK_TABLE_COLUMN_NAME_TO_EXIST,
   MOCK_TABLE_CUSTOM_SQL_QUERY,
   MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN,
+  MOCK_TABLE_TEST_WITH_COLUMN,
   MOCK_TABLE_WITH_DATE_TIME_COLUMNS,
 } from '../../../../mocks/TestSuite.mock';
 import ParameterForm from './ParameterForm';
 
 jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockReturnValue(<div>SchemaEditor</div>);
+});
+
+jest.mock('../../../../constants/profiler.constant', () => ({
+  SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME: [],
+}));
+jest.mock('../../../../constants/constants', () => ({
+  PAGE_SIZE_LARGE: 50,
+}));
+jest.mock('../../../../utils/EntityUtils', () => {
+  return {
+    getEntityName: jest
+      .fn()
+      .mockImplementation(
+        (data: EntityReference) => data.displayName ?? data.name
+      ),
+  };
+});
+
+jest.mock('../../../../rest/searchAPI', () => {
+  return {
+    searchQuery: jest.fn().mockResolvedValue({
+      hits: {
+        hits: [],
+      },
+    }),
+  };
 });
 
 describe('ParameterForm component test', () => {
@@ -45,6 +73,25 @@ describe('ParameterForm component test', () => {
     expect(selectBox).toBeInTheDocument();
     expect(parameters).toHaveLength(
       MOCK_TABLE_ROW_INSERTED_COUNT_TO_BE_BETWEEN.parameterDefinition.length
+    );
+  });
+
+  it('Select box should render if "column" field is present and table data provided', async () => {
+    await act(async () => {
+      render(
+        <ParameterForm
+          definition={MOCK_TABLE_TEST_WITH_COLUMN as TestDefinition}
+          table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
+        />
+      );
+    });
+    // test definition should be "tableRowInsertedCountToBeBetween"
+    const selectBox = await screen.findByRole('combobox');
+    const parameters = await screen.findAllByTestId('parameter');
+
+    expect(selectBox).toBeInTheDocument();
+    expect(parameters).toHaveLength(
+      MOCK_TABLE_TEST_WITH_COLUMN.parameterDefinition.length
     );
   });
 

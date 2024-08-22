@@ -13,8 +13,10 @@
 
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
+import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.schema.type.MetadataOperation.CREATE;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_PIPELINE_STATUS;
 import static org.openmetadata.service.jdbi3.IngestionPipelineRepository.validateProfileSample;
 
@@ -65,12 +67,13 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -78,6 +81,7 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
@@ -96,9 +100,9 @@ import org.openmetadata.service.util.ResultList;
 public class IngestionPipelineResource
     extends EntityResource<IngestionPipeline, IngestionPipelineRepository> {
   public static final String COLLECTION_PATH = "v1/services/ingestionPipelines/";
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  static final String FIELDS = FIELD_OWNER;
+  static final String FIELDS = FIELD_OWNERS;
 
   @Override
   public IngestionPipeline addHref(UriInfo uriInfo, IngestionPipeline ingestionPipeline) {
@@ -107,8 +111,8 @@ public class IngestionPipelineResource
     return ingestionPipeline;
   }
 
-  public IngestionPipelineResource(Authorizer authorizer) {
-    super(Entity.INGESTION_PIPELINE, authorizer);
+  public IngestionPipelineResource(Authorizer authorizer, Limits limits) {
+    super(Entity.INGESTION_PIPELINE, authorizer, limits);
   }
 
   @Override
@@ -121,8 +125,45 @@ public class IngestionPipelineResource
     repository.setPipelineServiceClient(pipelineServiceClient);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return listOf(
+        MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR,
+        MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
+  }
+
   public static class IngestionPipelineList extends ResultList<IngestionPipeline> {
     /* Required for serde */
+  }
+
+  /**
+   * Handle permissions based on the pipeline type
+   */
+  @Override
+  public Response create(
+      UriInfo uriInfo, SecurityContext securityContext, IngestionPipeline entity) {
+    OperationContext operationContext =
+        new OperationContext(entityType, getOperationForPipelineType(entity));
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, entity);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
+    authorizer.authorize(securityContext, operationContext, createResourceContext);
+    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    return Response.created(entity.getHref()).entity(entity).build();
+  }
+
+  /**
+   * Dynamically get the MetadataOperation based on the pipelineType (or application Type).
+   * E.g., for the Automator, the Operation will be `CREATE_INGESTION_PIPELINE_AUTOMATOR`.
+   */
+  private MetadataOperation getOperationForPipelineType(IngestionPipeline ingestionPipeline) {
+    String pipelineType = IngestionPipelineRepository.getPipelineWorkflowType(ingestionPipeline);
+    try {
+      return MetadataOperation.valueOf(
+          String.format("CREATE_INGESTION_PIPELINE_%s", pipelineType.toUpperCase()));
+    } catch (IllegalArgumentException | NullPointerException e) {
+      return CREATE;
+    }
   }
 
   @GET
@@ -171,6 +212,11 @@ public class IngestionPipelineResource
               schema = @Schema(type = "string", example = "messagingService"))
           @QueryParam("serviceType")
           String serviceType,
+      @Parameter(
+              description = "Filter Ingestion Pipelines by the type of the application",
+              schema = @Schema(type = "string", example = "Automator"))
+          @QueryParam("applicationType")
+          String applicationType,
       @Parameter(description = "Limit the number ingestion returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @Min(0)
@@ -198,7 +244,8 @@ public class IngestionPipelineResource
             .addQueryParam("service", serviceParam)
             .addQueryParam("pipelineType", pipelineType)
             .addQueryParam("serviceType", serviceType)
-            .addQueryParam("testSuite", testSuiteParam);
+            .addQueryParam("testSuite", testSuiteParam)
+            .addQueryParam("applicationType", applicationType);
     ResultList<IngestionPipeline> ingestionPipelines =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -419,6 +466,37 @@ public class IngestionPipelineResource
     return response;
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchIngestionPipeline",
+      summary = "Update an ingestion pipeline using name.",
+      description = "Update an existing ingestion pipeline using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the ingestion pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    Response response = patchInternal(uriInfo, securityContext, fqn, patch);
+    decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
+    return response;
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdateIngestionPipeline",
@@ -452,7 +530,7 @@ public class IngestionPipelineResource
   @Path("/deploy/{id}")
   @Operation(
       summary = "Deploy an ingestion pipeline run",
-      description = "Trigger a ingestion pipeline run by Id.",
+      description = "Deploy a ingestion pipeline run by Id.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -554,7 +632,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline pipeline = repository.get(uriInfo, id, fields);
     // This call updates the state in Airflow as well as the `enabled` field on the
     // IngestionPipeline
@@ -755,7 +833,7 @@ public class IngestionPipelineResource
           String fqn,
       @Valid PipelineStatus pipelineStatus) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
@@ -827,7 +905,7 @@ public class IngestionPipelineResource
           @PathParam("id")
           UUID runId) {
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatus(fqn, runId);
   }
@@ -883,8 +961,12 @@ public class IngestionPipelineResource
 
   private PipelineServiceClientResponse deployPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext) {
-    Fields fields = getFields(FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, ingestionPipeline);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DEPLOY);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
@@ -898,8 +980,12 @@ public class IngestionPipelineResource
 
   public PipelineServiceClientResponse triggerPipelineInternal(
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
-    Fields fields = getFields(FIELD_OWNER);
+    Fields fields = getFields(FIELD_OWNERS);
     IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    CreateResourceContext<IngestionPipeline> createResourceContext =
+        new CreateResourceContext<>(entityType, ingestionPipeline);
+    OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
+    limits.enforceLimits(securityContext, createResourceContext, operationContext);
     if (CommonUtil.nullOrEmpty(botName)) {
       // Use Default Ingestion Bot
       ingestionPipeline.setOpenMetadataServerConnection(
@@ -927,7 +1013,7 @@ public class IngestionPipelineResource
     }
     secretsManager.decryptIngestionPipeline(ingestionPipeline);
     OpenMetadataConnection openMetadataServerConnection =
-        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build();
+        new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, ingestionPipeline).build();
     ingestionPipeline.setOpenMetadataServerConnection(
         secretsManager.encryptOpenMetadataConnection(openMetadataServerConnection, false));
     if (authorizer.shouldMaskPasswords(securityContext) && !forceNotMask) {

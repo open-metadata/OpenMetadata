@@ -7,6 +7,13 @@ slug: /connectors/ingestion/workflows/profiler
 
 Learn how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality.
 
+
+{% note %}
+
+For Datalake Profiling, we drop NaN (Not a Number) values from the DataFrame using the dropna() method to allow metric computation. However, we make an exception for null values, which are retained. This ensures that our computations are accurate while handling missing data
+
+{% /note %}
+
 ## UI configuration
 After the metadata ingestion has been done correctly, we can configure and deploy the Profiler Workflow.
 
@@ -20,7 +27,7 @@ This Pipeline will be in charge of feeding the Profiler tab of the Table Entity,
 
 
 {% image
-  src="/images/v1.3/features/ingestion/workflows/profiler/profiler-summary-colomn.png"
+  src="/images/v1.3/features/ingestion/workflows/profiler/profiler-summary-column.png"
   alt="Column profile summary page"
   caption="Column profile summary page"
  /%}
@@ -255,7 +262,7 @@ For a simple, local installation using our docker containers, this looks like:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: <connectorType (e.g. bigquery, redshift, etc.)>
   serviceName: <serviceName (same as metadata ingestion service name)>

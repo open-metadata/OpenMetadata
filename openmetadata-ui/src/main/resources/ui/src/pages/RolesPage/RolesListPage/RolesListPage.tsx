@@ -201,7 +201,13 @@ const RolesListPage = () => {
           return (
             <Tooltip
               placement="left"
-              title={!deleteRolePermission && NO_PERMISSION_FOR_ACTION}>
+              title={
+                deleteRolePermission
+                  ? t('label.delete-entity', {
+                      entity: t('label.role-plural'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
                 disabled={!deleteRolePermission}

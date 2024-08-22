@@ -70,7 +70,7 @@
         "analyzer": "om_analyzer",
         "index_options": "docs"
       },
-      "teamType": { 
+      "teamType": {
         "type": "text"
       },
       "version": {
@@ -264,8 +264,17 @@
             "path": "deleted"
           }
         ]
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
 }
-

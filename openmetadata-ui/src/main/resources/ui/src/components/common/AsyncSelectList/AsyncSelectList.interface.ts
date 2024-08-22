@@ -25,7 +25,7 @@ export type SelectOption = {
 
 export interface AsyncSelectListProps {
   mode?: 'multiple';
-  className?: string;
+  optionClassName?: string;
   placeholder?: string;
   debounceTimeout?: number;
   defaultValue?: string[];
@@ -34,6 +34,8 @@ export interface AsyncSelectListProps {
   initialOptions?: SelectOption[];
   filterOptions?: string[]; // array of fqn
   onChange?: (option: DefaultOptionType | DefaultOptionType[]) => void;
+  onCancel?: () => void;
+  isSubmitLoading?: boolean;
   fetchOptions: (
     search: string,
     page: number

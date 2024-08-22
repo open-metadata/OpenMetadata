@@ -25,93 +25,38 @@ the following docs to run the Ingestion Framework in any orchestrator externally
 {% tile
     title="External Schedulers"
     description="Get more information about running the Ingestion Framework Externally"
-    link="/deployment/ingestion"
+    link="/deployment/ingestion/external"
   / %}
 {% /tilesContainer %}
 
 ## Database / DataWarehouse Services
 
-- [Athena](/connectors/database/athena)
-- [AzureSQL](/connectors/database/azuresql)
-- [BigQuery](/connectors/database/bigquery)
-- [Clickhouse](/connectors/database/clickhouse)
-- [Couchbase](/connectors/database/couchbase)
-- [Data lake](/connectors/database/datalake)
-- [Databricks SQL](/connectors/database/databricks)
-- [DB2](/connectors/database/db2)
-- [Delta Lake](/connectors/database/deltalake)
-- [Domo Database](/connectors/database/domo-database)
-- [Druid](/connectors/database/druid)
-- [DynamoDB](/connectors/database/dynamodb)
-- [Glue](/connectors/database/glue)
-- [Greenplum](/connectors/database/greenplum)
-- [Hive](/connectors/database/hive)
-- [Iceberg](/connectors/database/iceberg)
-- [Impala](/connectors/database/impala)
-- [MariaDB](/connectors/database/mariadb)
-- [MongoDB](/connectors/database/mongodb)
-- [MSSQL](/connectors/database/mssql)
-- [MySQL](/connectors/database/mysql)
-- [Oracle](/connectors/database/oracle)
-- [PinotDB](/connectors/database/pinotdb)
-- [Postgres](/connectors/database/postgres)
-- [Presto](/connectors/database/presto)
-- [Redshift](/connectors/database/redshift)
-- [Salesforce](/connectors/database/salesforce)
-- [SAP Hana](/connectors/database/sap-hana)
-- [SAS](/connectors/database/sas)
-- [SingleStore](/connectors/database/singlestore)
-- [Snowflake](/connectors/database/snowflake)
-- [SQLite](/connectors/database/sqlite)
-- [Trino](/connectors/database/trino)
-- [Unity Catalog](/connectors/database/unity-catalog)
-- [Vertica](/connectors/database/vertica)
+{% partial file="/v1.3/connectors/database/connectors-list.md" /%}
 
 ## Dashboard Services
 
-- [Domo Dashboard](/connectors/dashboard/domo-dashboard)
-- [Looker](/connectors/dashboard/looker)
-- [Metabase](/connectors/dashboard/metabase)
-- [Mode](/connectors/dashboard/mode)
-- [PowerBI](/connectors/dashboard/powerbi)
-- [Qlik Sense](/connectors/dashboard/qliksense)
-- [QuickSight](/connectors/dashboard/quicksight)
-- [Redash](/connectors/dashboard/redash)
-- [Superset](/connectors/dashboard/superset)
-- [Tableau](/connectors/dashboard/tableau)
+{% partial file="/v1.3/connectors/dashboard/connectors-list.md" /%}
 
 ## Messaging Services
 
-- [Kafka](/connectors/messaging/kafka)
-- [Kinesis](/connectors/messaging/kinesis)
-- [Redpanda](/connectors/messaging/redpanda)
+{% partial file="/v1.3/connectors/messaging/connectors-list.md" /%}
 
 ## Pipeline Services
 
-- [Airbyte](/connectors/pipeline/airbyte)
-- [Airflow](/connectors/pipeline/airflow)
-- [Dagster](/connectors/pipeline/dagster)
-- [Databricks Pipeline](/connectors/pipeline/databricks-pipeline)
-- [Domo Pipeline](/connectors/pipeline/domo-pipeline)
-- [Fivetran](/connectors/pipeline/fivetran)
-- [Glue](/connectors/pipeline/glue-pipeline)
-- [NiFi](/connectors/pipeline/nifi)
-- [Spline](/connectors/pipeline/spline)
+{% partial file="/v1.3/connectors/pipeline/connectors-list.md" /%}
 
 ## ML Model Services
 
-- [MLflow](/connectors/ml-model/mlflow)
-- [Sagemaker](/connectors/ml-model/sagemaker)
+{% partial file="/v1.3/connectors/ml-model/connectors-list.md" /%}
 
 ## Storage Services
 
-- [S3](/connectors/storage/s3)
+{% partial file="/v1.3/connectors/storage/connectors-list.md" /%}
 
 ## Metadata Services
 
-- [Amundsen](/connectors/metadata/amundsen)
-- [Atlas](/connectors/metadata/atlas)
+{% partial file="/v1.3/connectors/metadata/connectors-list.md" /%}
 
 ## Search Services
 
-- [Elasticsearch](/connectors/search/elasticsearch)
+{% partial file="/v1.3/connectors/search/connectors-list.md" /%}

@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import IncidentManagerPage from './IncidentManagerPage';
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
@@ -20,9 +21,21 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
 jest.mock(
   '../../components/common/DatePickerMenu/DatePickerMenu.component',
   () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>DatePickerMenu.component</div>);
+    return jest.fn().mockImplementation(({ handleDateRangeChange }) => (
+      <div>
+        <p>DatePickerMenu.component</p>
+        <button
+          data-testid="time-filter"
+          onClick={() =>
+            handleDateRangeChange({
+              startTs: 1709556624254,
+              endTs: 1710161424255,
+            })
+          }>
+          time filter
+        </button>
+      </div>
+    ));
   }
 );
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
@@ -97,5 +110,24 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('Incident should be fetch with updated time', async () => {
+    const mockGetListTestCaseIncidentStatus =
+      getListTestCaseIncidentStatus as jest.Mock;
+    render(<IncidentManagerPage />);
+
+    const timeFilterButton = await screen.findByTestId('time-filter');
+
+    act(() => {
+      fireEvent.click(timeFilterButton);
+    });
+
+    expect(mockGetListTestCaseIncidentStatus).toHaveBeenCalledWith({
+      endTs: 1710161424255,
+      latest: true,
+      limit: 10,
+      startTs: 1709556624254,
+    });
   });
 });

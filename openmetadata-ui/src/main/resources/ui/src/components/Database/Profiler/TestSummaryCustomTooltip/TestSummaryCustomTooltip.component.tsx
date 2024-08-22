@@ -12,7 +12,7 @@
  */
 import { Card, Typography } from 'antd';
 import { entries, isNumber, isString, omit, startCase } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { TooltipProps } from 'recharts';
@@ -27,7 +27,7 @@ const TestSummaryCustomTooltip = (
   const { t } = useTranslation();
   const { active, payload = [] } = props;
   const data = payload.length
-    ? entries(omit(payload[0].payload, ['name', 'incidentId']))
+    ? entries(omit(payload[0].payload, ['name', 'incidentId', 'boundArea']))
     : [];
 
   if (!active || payload.length === 0) {
@@ -40,7 +40,7 @@ const TestSummaryCustomTooltip = (
   ]) => {
     if (key === 'task' && !isString(value) && !isNumber(value)) {
       return value?.task ? (
-        <>
+        <Fragment key={`item-${key}`}>
           <li
             className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
             key="item-incident">
@@ -63,10 +63,10 @@ const TestSummaryCustomTooltip = (
               {t('label.assignee')}
             </span>
             <span className="font-medium cursor-pointer" data-testid={key}>
-              <OwnerLabel owner={value.task.assignees[0]} />
+              <OwnerLabel owners={value.task.assignees} />
             </span>
           </li>
-        </>
+        </Fragment>
       ) : null;
     }
 

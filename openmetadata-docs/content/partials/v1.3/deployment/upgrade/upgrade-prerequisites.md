@@ -17,6 +17,8 @@ you will be able to get back to the previous version without any loss.
 
 You can learn more about how the migration process works [here](/deployment/upgrade/how-does-it-work).
 
+**During the upgrade, please note that the backup is only for safety and should not be used to restore data to a higher version**.
+
 {% /note %}
 
 - To run the backup and restore commands, please make sure that you are always in the latest `openmetadata-ingestion` version to have all the improvements shipped in the CLI.
@@ -108,6 +110,9 @@ After the migration is finished, you can revert this changes.
   We will deprecate the dictionary annotation in the 1.4 release, since the new annotation allows you to define lineage between
   assets other than Tables.
 
+- On 1.4.0 we will deprecate the `metadata backup` and `metadata restore` commands in favor of native backup & restore tools
+  from MySQL and PostgreSQL. We will provide a guide on how to use these tools to backup and restore OpenMetadata metadata.
+
 # Breaking Changes
 
 ## 1.3.0
@@ -152,7 +157,7 @@ the option to tag the created resources.
 In this release we updated the server [Dockerfile](https://github.com/open-metadata/OpenMetadata/blob/1.3.0/docker/development/Dockerfile#L34)
 to work with `openmetadata` as a user instead of root.
 
-If you're mapping volumes, specially when [configuring JWK](https://docs.open-metadata.org/v1.3.x/deployment/docker#add-docker-volumes-for-openmetadata-server-compose-service),
+If you're mapping volumes, specially when [configuring JWK](/deployment/docker#add-docker-volumes-for-openmetadata-server-compose-service),
 you will need to update the owner of the directory to get it working with the new `openmetadata` user.
 
 You will need to run:

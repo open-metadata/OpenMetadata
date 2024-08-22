@@ -34,16 +34,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.auth.EmailRequest;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.util.EmailUtil;
 import org.openmetadata.service.util.ResultList;
 
@@ -55,19 +59,26 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "system")
 @Slf4j
 public class SystemResource {
-  public static final String COLLECTION_PATH = "/v1/util";
+  public static final String COLLECTION_PATH = "/v1/system";
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
+  private PipelineServiceClientInterface pipelineServiceClient;
+  private JwtFilter jwtFilter;
 
   public SystemResource(Authorizer authorizer) {
     this.systemRepository = Entity.getSystemRepository();
     this.authorizer = authorizer;
   }
 
-  @SuppressWarnings("unused") // Method used for reflection
   public void initialize(OpenMetadataApplicationConfig config) {
     this.applicationConfig = config;
+    this.pipelineServiceClient =
+        PipelineServiceClientFactory.createPipelineServiceClient(
+            config.getPipelineServiceClientConfiguration());
+
+    this.jwtFilter =
+        new JwtFilter(config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -118,6 +129,27 @@ public class SystemResource {
           String name) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.getConfigWithKey(name);
+  }
+
+  @GET
+  @Path("/settings/profilerConfiguration")
+  @Operation(
+      operationId = "getProfilerConfigurationSetting",
+      summary = "Get profiler configuration setting",
+      description = "Get a profiler configuration Settings",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class)))
+      })
+  public Settings getProfilerConfigurationSetting(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
 
   @PUT
@@ -286,5 +318,25 @@ public class SystemResource {
           Include include) {
     ListFilter filter = new ListFilter(include);
     return systemRepository.getAllServicesCount(filter);
+  }
+
+  @GET
+  @Path("/status")
+  @Operation(
+      operationId = "validateDeployment",
+      summary = "Validate the OpenMetadata deployment",
+      description =
+          "Check connectivity against your database, elasticsearch/opensearch, migrations,...",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "validation OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ServicesCount.class)))
+      })
+  public ValidationResponse validate() {
+    return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
   }
 }

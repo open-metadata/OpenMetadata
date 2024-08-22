@@ -42,6 +42,14 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTime: jest.fn().mockReturnValue('Jan 3, 2024, 6:45 PM'),
 }));
 
+jest.mock('../../../../utils/TasksUtils', () => ({
+  getTaskDetailPath: jest.fn(),
+}));
+
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest.fn().mockReturnValue(<div>OwnerLabel</div>),
+}));
+
 describe('Test AddServicePage component', () => {
   it('AddServicePage component should render', async () => {
     render(<TestSummaryCustomTooltip {...mockProps} />);

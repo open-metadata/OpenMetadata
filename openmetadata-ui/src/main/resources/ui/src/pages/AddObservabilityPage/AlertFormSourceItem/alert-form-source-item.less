@@ -1,0 +1,43 @@
+/*
+ *  Copyright 2024 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.source-dropdown-card {
+  padding: 8px 0px;
+  .ant-dropdown-menu {
+    box-shadow: none;
+    padding: 0px;
+    overflow-y: scroll;
+    max-height: 300px;
+
+    .ant-dropdown-menu-item {
+      padding: 5px 16px 5px 32px;
+      min-width: 200px;
+    }
+  }
+
+  .dropdown-option-label {
+    max-width: 65vw;
+  }
+}
+.source-input-container {
+  // Below styling is for ant dropdown popup container
+  // to display inside the trigger item container
+  // !important styling given to override inline styling by antd
+  & > :nth-child(2) {
+    position: static !important;
+    width: 50% !important;
+  }
+  .ant-dropdown {
+    position: static !important;
+  }
+}

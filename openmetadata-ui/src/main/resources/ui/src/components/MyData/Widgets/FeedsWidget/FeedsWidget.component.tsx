@@ -17,7 +17,7 @@ import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
-import { ROUTES } from '../../../../constants/constants';
+import { PAGE_SIZE_LARGE, ROUTES } from '../../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
 import { mockFeedData } from '../../../../constants/mockTourData.constants';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
@@ -27,20 +27,17 @@ import {
   ThreadTaskStatus,
   ThreadType,
 } from '../../../../generated/entity/feed/thread';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getFeedCount } from '../../../../rest/feedsAPI';
-import {
-  getCountBadge,
-  getEntityDetailLink,
-  Transi18next,
-} from '../../../../utils/CommonUtils';
+import { getCountBadge, Transi18next } from '../../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getEntityUserLink } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTabs } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
 import FeedsFilterPopover from '../../../common/FeedsFilterPopover/FeedsFilterPopover.component';
 import './feeds-widget.less';
 
@@ -52,7 +49,7 @@ const FeedsWidget = ({
   const { t } = useTranslation();
   const history = useHistory();
   const { isTourOpen } = useTourProvider();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [activeTab, setActiveTab] = useState<ActivityFeedTabs>(
     ActivityFeedTabs.ALL
   );
@@ -66,7 +63,15 @@ const FeedsWidget = ({
 
   useEffect(() => {
     if (activeTab === ActivityFeedTabs.ALL) {
-      getFeedData(defaultFilter, undefined, ThreadType.Conversation);
+      getFeedData(
+        defaultFilter,
+        undefined,
+        ThreadType.Conversation,
+        undefined,
+        undefined,
+        undefined,
+        PAGE_SIZE_LARGE
+      );
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
       getFeedData(FeedFilter.MENTIONS);
     } else if (activeTab === ActivityFeedTabs.TASKS) {
@@ -105,7 +110,7 @@ const FeedsWidget = ({
 
   const redirectToUserPage = useCallback(() => {
     history.push(
-      getEntityDetailLink(
+      entityUtilClassBase.getEntityLink(
         EntityType.USER,
         currentUser?.name as string,
         EntityTabs.ACTIVITY_FEED,

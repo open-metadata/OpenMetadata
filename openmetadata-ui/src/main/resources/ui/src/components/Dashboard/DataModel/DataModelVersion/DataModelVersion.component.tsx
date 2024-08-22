@@ -16,7 +16,9 @@ import classNames from 'classnames';
 import { cloneDeep } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useHistory, useParams } from 'react-router-dom';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
+import { getVersionPath } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
 import {
@@ -32,6 +34,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtils';
+import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import Loader from '../../../common/Loader/Loader';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -46,7 +49,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -55,10 +58,18 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
   deleted = false,
   backHandler,
   versionHandler,
+  entityPermissions,
 }: DataModelVersionProp) => {
+  const history = useHistory();
   const { t } = useTranslation();
+  const { tab } = useParams<{ tab: EntityTabs }>();
   const [changeDescription, setChangeDescription] = useState<ChangeDescription>(
     currentVersionData.changeDescription as ChangeDescription
+  );
+
+  const entityFqn = useMemo(
+    () => currentVersionData.fullyQualifiedName ?? '',
+    [currentVersionData.fullyQualifiedName]
   );
 
   const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
@@ -66,11 +77,11 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const columns: DashboardDataModel['columns'] = useMemo(() => {
@@ -106,6 +117,17 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
       currentVersionData.displayName
     );
   }, [currentVersionData, changeDescription]);
+
+  const handleTabChange = (activeKey: string) => {
+    history.push(
+      getVersionPath(
+        EntityType.DASHBOARD_DATA_MODEL,
+        entityFqn,
+        String(version),
+        activeKey
+      )
+    );
+  };
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -160,8 +182,28 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
           </Row>
         ),
       },
+      {
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        children: (
+          <div className="p-md">
+            <CustomPropertyTable
+              isVersionView
+              entityDetails={currentVersionData as DashboardDataModel}
+              entityType={EntityType.DASHBOARD_DATA_MODEL}
+              hasEditAccess={false}
+              hasPermission={entityPermissions.ViewAll}
+            />
+          </div>
+        ),
+      },
     ],
-    [description, columns]
+    [description, columns, currentVersionData, entityPermissions]
   );
 
   return (
@@ -191,7 +233,11 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
                 />
               </Col>
               <Col span={24}>
-                <Tabs activeKey={EntityTabs.MODEL} items={tabItems} />
+                <Tabs
+                  activeKey={tab ?? EntityTabs.MODEL}
+                  items={tabItems}
+                  onChange={handleTabChange}
+                />
               </Col>
             </Row>
           </div>
@@ -199,6 +245,7 @@ const DataModelVersion: FC<DataModelVersionProp> = ({
 
         <EntityVersionTimeLine
           currentVersion={version}
+          entityType={EntityType.DASHBOARD_DATA_MODEL}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

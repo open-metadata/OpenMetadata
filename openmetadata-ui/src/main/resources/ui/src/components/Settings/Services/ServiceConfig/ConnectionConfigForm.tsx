@@ -14,7 +14,7 @@
 import Form, { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { t } from 'i18next';
-import { cloneDeep, isEmpty, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isNil, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   Fragment,
@@ -27,28 +27,24 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../../../generated/api/services/createMlModelService';
 import { StorageServiceType } from '../../../../generated/entity/data/container';
+import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   ConfigData,
   ServicesType,
 } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
-import { getDashboardConfig } from '../../../../utils/DashboardServiceUtils';
-import { getDatabaseConfig } from '../../../../utils/DatabaseServiceUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
-import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
-import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
-import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
-import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
 
 interface Props {
@@ -79,6 +75,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   const config = !isNil(data)
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
+  const { inlineAlertDetails } = useApplicationStore();
 
   const formRef = useRef<Form<ConfigData>>(null);
 
@@ -130,32 +127,44 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
     switch (serviceCategory) {
       case ServiceCategory.DATABASE_SERVICES: {
-        connSch = getDatabaseConfig(serviceType as DatabaseServiceType);
+        connSch = serviceUtilClassBase.getDatabaseServiceConfig(
+          serviceType as DatabaseServiceType
+        );
 
         break;
       }
       case ServiceCategory.MESSAGING_SERVICES: {
-        connSch = getMessagingConfig(serviceType as MessagingServiceType);
+        connSch = serviceUtilClassBase.getMessagingServiceConfig(
+          serviceType as MessagingServiceType
+        );
 
         break;
       }
       case ServiceCategory.DASHBOARD_SERVICES: {
-        connSch = getDashboardConfig(serviceType as DashboardServiceType);
+        connSch = serviceUtilClassBase.getDashboardServiceConfig(
+          serviceType as DashboardServiceType
+        );
 
         break;
       }
       case ServiceCategory.PIPELINE_SERVICES: {
-        connSch = getPipelineConfig(serviceType as PipelineServiceType);
+        connSch = serviceUtilClassBase.getPipelineServiceConfig(
+          serviceType as PipelineServiceType
+        );
 
         break;
       }
       case ServiceCategory.ML_MODEL_SERVICES: {
-        connSch = getMlmodelConfig(serviceType as MlModelServiceType);
+        connSch = serviceUtilClassBase.getMlModelServiceConfig(
+          serviceType as MlModelServiceType
+        );
 
         break;
       }
       case ServiceCategory.METADATA_SERVICES: {
-        connSch = getMetadataConfig(serviceType as MetadataServiceType);
+        connSch = serviceUtilClassBase.getMetadataServiceConfig(
+          serviceType as MetadataServiceType
+        );
 
         break;
       }
@@ -167,7 +176,17 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
         break;
       }
       case ServiceCategory.SEARCH_SERVICES: {
-        connSch = getSearchServiceConfig(serviceType as SearchServiceType);
+        connSch = serviceUtilClassBase.getSearchServiceConfig(
+          serviceType as SearchServiceType
+        );
+
+        break;
+      }
+
+      case ServiceCategory.API_SERVICES: {
+        connSch = serviceUtilClassBase.getAPIServiceConfig(
+          serviceType as APIServiceType
+        );
 
         break;
       }
@@ -215,6 +234,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
               onValidateFormRequiredFields={handleRequiredFieldsValidation}
             />
           )}
+        {!isUndefined(inlineAlertDetails) && (
+          <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
+        )}
       </FormBuilder>
     );
   };

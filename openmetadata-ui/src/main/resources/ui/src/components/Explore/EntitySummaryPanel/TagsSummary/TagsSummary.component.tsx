@@ -34,7 +34,7 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
         SearchIndex.TOPIC,
         SearchIndex.DASHBOARD,
         SearchIndex.CONTAINER,
-        SearchIndex.GLOSSARY,
+        SearchIndex.GLOSSARY_TERM,
         SearchIndex.MLMODEL,
         SearchIndex.PIPELINE,
         SearchIndex.STORED_PROCEDURE,

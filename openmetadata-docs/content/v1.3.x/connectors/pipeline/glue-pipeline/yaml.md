@@ -3,15 +3,13 @@ title: Run the Glue Pipeline Connector Externally
 slug: /connectors/pipeline/glue-pipeline/yaml
 ---
 
-# Run the Glue Pipeline Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Glue"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status"]
+unavailableFeatures=["Owners", "Tags", "Lineage"]
+/ %}
 
 In this section, we provide guides and references to use the Glue connector.
 
@@ -22,10 +20,6 @@ Configure and schedule Glue metadata and profiler workflows from the OpenMetadat
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
 
 The Glue connector ingests metadata through AWS [Boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/glue.html) Client.
 We will ingest Workflows, its jobs and their run status.
@@ -114,7 +108,7 @@ This is a sample config for Glue:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: glue
   serviceName: local_glue

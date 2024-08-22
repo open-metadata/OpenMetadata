@@ -13,17 +13,25 @@ OpenMetadata base class for tests
 """
 import uuid
 from datetime import datetime
+from textwrap import dedent
 from typing import Any, List, Optional, Type
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.api.data.createDashboardDataModel import (
+    CreateDashboardDataModelRequest,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceRequest,
+)
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
@@ -36,24 +44,36 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
+from metadata.generated.schema.api.tests.createTestSuite import (
+    CreateTestSuiteRequest,
+    TestSuiteEntityName,
+)
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.dashboardDataModel import (
+    DashboardDataModel,
+    DataModelType,
+)
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    AuthProvider,
-    OpenMetadataConnection,
-)
 from metadata.generated.schema.entity.services.connections.pipeline.customPipelineConnection import (
     CustomPipelineConnection,
     CustomPipelineType,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -65,37 +85,89 @@ from metadata.generated.schema.entity.services.pipelineService import (
     PipelineService,
     PipelineServiceType,
 )
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
+from metadata.generated.schema.entity.teams.team import TeamType
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.generated.schema.tests.testDefinition import (
     TestCaseParameterDefinition,
     TestPlatform,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
-from metadata.ingestion.ometa.ometa_api import C, OpenMetadata, T
+from metadata.generated.schema.type.basic import (
+    Email,
+    EntityLink,
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    TestCaseEntityName,
+)
+from metadata.ingestion.ometa.ometa_api import C, T
 from metadata.utils.dispatch import class_register
 
-OM_JWT = "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+COLUMNS = [
+    Column(name="id", dataType=DataType.BIGINT),
+    Column(name="another", dataType=DataType.BIGINT),
+    Column(
+        name="struct",
+        dataType=DataType.STRUCT,
+        children=[
+            Column(name="id", dataType=DataType.INT),
+            Column(name="name", dataType=DataType.STRING),
+        ],
+    ),
+]
 
+METADATA_INGESTION_CONFIG_TEMPLATE = dedent(
+    """{{
+        "source": {{
+            "type": "{type}",
+            "serviceName": "{service_name}",
+            "serviceConnection": {{
+                "config": {service_config}
+            }},
+            "sourceConfig": {{"config": {source_config} }}
+        }},
+        "sink": {{"type": "metadata-rest", "config": {{}}}},
+        "workflowConfig": {{
+            "loggerLevel": "DEBUG",
+            "openMetadataServerConfig": {{
+                "hostPort": "http://localhost:8585/api",
+                "authProvider": "openmetadata",
+                "securityConfig": {{
+                    "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                }}
+            }}
+        }}
+    }}"""
+)
 
-def int_admin_ometa(url: str = "http://localhost:8585/api") -> OpenMetadata:
-    """Initialize the ometa connection with default admin:admin creds"""
-    server_config = OpenMetadataConnection(
-        hostPort=url,
-        authProvider=AuthProvider.openmetadata,
-        securityConfig=OpenMetadataJWTClientConfig(jwtToken=CustomSecretStr(OM_JWT)),
-    )
-    metadata = OpenMetadata(server_config)
-    assert metadata.health_check()
-    return metadata
+PROFILER_INGESTION_CONFIG_TEMPLATE = dedent(
+    """{{
+        "source": {{
+            "type": "{type}",
+            "serviceName": "{service_name}",
+            "serviceConnection": {{
+                "config": {service_config}
+            }},
+            "sourceConfig": {{"config": {{"type":"Profiler", "generateSampleData": true}}}}
+        }},
+        "processor": {{"type": "orm-profiler", "config": {{}}}},
+        "sink": {{"type": "metadata-rest", "config": {{}}}},
+        "workflowConfig": {{
+            "loggerLevel": "DEBUG",
+            "openMetadataServerConfig": {{
+                "hostPort": "http://localhost:8585/api",
+                "authProvider": "openmetadata",
+                "securityConfig": {{
+                    "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+                }}
+            }}
+        }}
+    }}"""
+)
 
 
 def generate_name() -> EntityName:
     """Generate a random for the asset"""
-    return EntityName(__root__=str(uuid.uuid4()))
+    return EntityName(str(uuid.uuid4()))
 
 
 create_service_registry = class_register()
@@ -110,7 +182,7 @@ def get_create_service(entity: Type[T], name: Optional[EntityName] = None) -> C:
         )
 
     if not name:
-        name = generate_name()
+        name = generate_name().root
 
     return func(name)
 
@@ -123,18 +195,6 @@ def _(name: EntityName) -> C:
         serviceType=PipelineServiceType.CustomPipeline,
         connection=PipelineConnection(
             config=CustomPipelineConnection(type=CustomPipelineType.CustomPipeline)
-        ),
-    )
-
-
-@create_service_registry.add(DatabaseService)
-def _(name: EntityName) -> C:
-    """Prepare a Create service request"""
-    return CreateDatabaseServiceRequest(
-        name=name,
-        serviceType=DatabaseServiceType.CustomDatabase,
-        connection=DatabaseConnection(
-            config=CustomDatabaseConnection(type=CustomDatabaseType.CustomDatabase)
         ),
     )
 
@@ -157,6 +217,20 @@ def _(name: EntityName) -> C:
     )
 
 
+@create_service_registry.add(DashboardService)
+def _(name: EntityName) -> C:
+    """Prepare a Create service request"""
+    return CreateDashboardServiceRequest(
+        name=name,
+        serviceType=DashboardServiceType.Looker,
+        connection=DashboardConnection(
+            config=LookerConnection(
+                hostPort="http://hostPort", clientId="id", clientSecret="secret"
+            )
+        ),
+    )
+
+
 create_entity_registry = class_register()
 
 
@@ -173,7 +247,7 @@ def get_create_entity(
         )
 
     if not name:
-        name = generate_name()
+        name = generate_name().root
 
     return func(reference, name)
 
@@ -213,18 +287,25 @@ def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
     return CreateTableRequest(
         name=name,
         databaseSchema=reference,
-        columns=[
-            Column(name="id", dataType=DataType.BIGINT),
-            Column(name="another", dataType=DataType.BIGINT),
-            Column(
-                name="struct",
-                dataType=DataType.STRUCT,
-                children=[
-                    Column(name="id", dataType=DataType.INT),
-                    Column(name="name", dataType=DataType.STRING),
-                ],
-            ),
-        ],
+        columns=COLUMNS,
+    )
+
+
+@create_entity_registry.add(Dashboard)
+def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
+    return CreateDashboardRequest(
+        name=name,
+        service=reference,
+    )
+
+
+@create_entity_registry.add(DashboardDataModel)
+def _(reference: FullyQualifiedEntityName, name: EntityName) -> C:
+    return CreateDashboardDataModelRequest(
+        name=name,
+        service=reference,
+        dataModelType=DataModelType.LookMlExplore,
+        columns=COLUMNS,
     )
 
 
@@ -232,16 +313,16 @@ def get_create_user_entity(
     name: Optional[EntityName] = None, email: Optional[str] = None
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     if not email:
-        email = f"{generate_name().__root__}@getcollate.io"
-    return CreateUserRequest(name=name, email=email)
+        email = f"{generate_name().root}@getcollate.io"
+    return CreateUserRequest(name=name, email=Email(root=email))
 
 
 def get_create_team_entity(name: Optional[EntityName] = None, users=List[str]):
     if not name:
-        name = generate_name()
-    return CreateTeamRequest(name=name, teamType="Group", users=users)
+        name = generate_name().root
+    return CreateTeamRequest(name=name, teamType=TeamType.Group, users=users)
 
 
 def get_create_test_definition(
@@ -251,12 +332,12 @@ def get_create_test_definition(
     description: Optional[str] = None,
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     if not description:
-        description = generate_name().__root__
+        description = generate_name().root
     return CreateTestDefinitionRequest(
-        name=name,
-        description=description,
+        name=TestCaseEntityName(name),
+        description=Markdown(description),
         entityType=entity_type,
         testPlatforms=[TestPlatform.GreatExpectations],
         parameterDefinition=parameter_definition,
@@ -269,13 +350,13 @@ def get_create_test_suite(
     description: Optional[str] = None,
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     if not description:
-        description = generate_name().__root__
+        description = generate_name().root
     return CreateTestSuiteRequest(
-        name=name,
-        description=description,
-        executableEntityReference=executable_entity_reference,
+        name=TestSuiteEntityName(name),
+        description=Markdown(description),
+        executableEntityReference=FullyQualifiedEntityName(executable_entity_reference),
     )
 
 
@@ -287,10 +368,10 @@ def get_create_test_case(
     name: Optional[EntityName] = None,
 ):
     if not name:
-        name = generate_name()
+        name = generate_name().root
     return CreateTestCaseRequest(
-        name=name,
-        entityLink=entity_link,
+        name=TestCaseEntityName(name),
+        entityLink=EntityLink(entity_link),
         testSuite=test_suite,
         testDefinition=test_definition,
         parameterValues=parameter_values,

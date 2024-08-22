@@ -13,7 +13,24 @@ Metabase Models
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
+from typing_extensions import Annotated
+
+MetabaseStrId = Annotated[str, BeforeValidator(lambda x: str(x))]
+
+
+class MetabaseUser(BaseModel):
+    """
+    Metabase user model
+    """
+
+    id: MetabaseStrId
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    common_name: Optional[str] = None
+    email: Optional[str] = None
+    is_superuser: Optional[bool] = False
+    last_edit_timestamp: Optional[str] = Field(None, alias="timestamp")
 
 
 class MetabaseDashboard(BaseModel):
@@ -21,10 +38,10 @@ class MetabaseDashboard(BaseModel):
     Metabase dashboard model
     """
 
-    description: Optional[str]
+    description: Optional[str] = None
     name: str
-    id: int
-    collection_id: Optional[str]
+    id: MetabaseStrId
+    collection_id: Optional[MetabaseStrId] = None
 
 
 class MetabaseCollection(BaseModel):
@@ -33,24 +50,24 @@ class MetabaseCollection(BaseModel):
     """
 
     name: str
-    id: str
+    id: MetabaseStrId
 
 
 class MetabaseDashboardList(BaseModel):
-    dashboards: Optional[List[MetabaseDashboard]]
+    data: List[MetabaseDashboard] = []
 
 
 class MetabaseCollectionList(BaseModel):
-    collections: Optional[List[MetabaseCollection]]
+    collections: List[MetabaseCollection] = []
 
 
 class Native(BaseModel):
-    query: Optional[str]
+    query: Optional[str] = None
 
 
 class DatasetQuery(BaseModel):
-    type: Optional[str]
-    native: Optional[Native]
+    type: Optional[str] = None
+    native: Optional[Native] = None
 
 
 class MetabaseChart(BaseModel):
@@ -58,16 +75,16 @@ class MetabaseChart(BaseModel):
     Metabase card model
     """
 
-    description: Optional[str]
-    table_id: Optional[str]
-    database_id: Optional[int]
-    name: Optional[str]
-    dataset_query: Optional[DatasetQuery]
-    id: Optional[int]
-    display: Optional[str]
+    description: Optional[str] = None
+    table_id: Optional[MetabaseStrId] = None
+    database_id: Optional[MetabaseStrId] = None
+    name: Optional[str] = None
+    dataset_query: Optional[DatasetQuery] = None
+    id: Optional[MetabaseStrId] = None
+    display: Optional[str] = None
 
 
-class OrderedCard(BaseModel):
+class DashCard(BaseModel):
     card: MetabaseChart
 
 
@@ -76,15 +93,16 @@ class MetabaseDashboardDetails(BaseModel):
     Metabase dashboard details model
     """
 
-    description: Optional[str]
-    ordered_cards: List[OrderedCard]
-    name: Optional[str]
-    id: int
-    collection_id: Optional[str]
+    description: Optional[str] = None
+    dashcards: List[DashCard]
+    name: Optional[str] = None
+    id: MetabaseStrId
+    creator_id: Optional[MetabaseStrId] = None
+    collection_id: Optional[MetabaseStrId] = None
 
 
 class MetabaseDatabaseDetails(BaseModel):
-    db: Optional[str]
+    db: Optional[str] = None
 
 
 class MetabaseDatabase(BaseModel):
@@ -92,12 +110,12 @@ class MetabaseDatabase(BaseModel):
     Metabase database model
     """
 
-    details: Optional[MetabaseDatabaseDetails]
+    details: Optional[MetabaseDatabaseDetails] = None
 
 
 class MetabaseTable(BaseModel):
-    table_schema: Optional[str] = Field(..., alias="schema")
-    db: Optional[MetabaseDatabase]
-    name: Optional[str]
-    id: Optional[int]
-    display_name: Optional[str]
+    table_schema: Optional[str] = Field(None, alias="schema")
+    db: Optional[MetabaseDatabase] = None
+    name: Optional[str] = None
+    id: Optional[MetabaseStrId] = None
+    display_name: Optional[str] = None

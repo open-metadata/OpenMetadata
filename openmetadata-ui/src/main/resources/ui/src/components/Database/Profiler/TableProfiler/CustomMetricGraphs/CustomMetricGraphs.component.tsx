@@ -254,10 +254,11 @@ const CustomMetricGraphs = ({
                         />
 
                         <YAxis
+                          domain={['min', 'max']}
                           padding={{ top: 16, bottom: 16 }}
                           tick={{ fontSize: 12 }}
                           tickFormatter={(props) => axisTickFormatter(props)}
-                          type="category"
+                          type="number"
                         />
                         <Tooltip
                           formatter={(value: number | string) =>

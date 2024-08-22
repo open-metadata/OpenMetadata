@@ -1,0 +1,25 @@
+{
+  "name": "UsageBotPolicy",
+  "displayName": "Usage Bot Policy",
+  "fullyQualifiedName": "UsageBotPolicy",
+  "description": "Policy for Usage Bot to perform operations on metadata entities.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "UsageBotRule-Allow-Query-Table",
+      "description" : "Allow creating and updated Queries.",
+      "resources" : ["query", "table"],
+      "operations": ["Create", "EditAll", "ViewAll"],
+      "effect": "allow"
+    },
+    {
+      "name": "UsageBotRule-Allow-Usage",
+      "description" : "Allow handling usage and lifecycle information.",
+      "resources" : ["All"],
+      "operations": ["EditAll", "ViewAll"],
+      "effect": "allow"
+    }
+  ]
+}

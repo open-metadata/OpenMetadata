@@ -3,15 +3,13 @@ title: Run the Dagster Connector Externally
 slug: /connectors/pipeline/dagster/yaml
 ---
 
-# Run the Dagster Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="cross" /%} |
-| Tags            | {% icon iconName="check" /%} |
-| Lineage         | {% icon iconName="cross" /%} |
+{% connectorDetailsHeader
+name="Dagster"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Tags"]
+unavailableFeatures=["Owners", "Lineage"]
+/ %}
 
 
 In this section, we provide guides and references to use the Dagster connector.
@@ -24,12 +22,6 @@ Configure and schedule Dagster metadata and profiler workflows from the OpenMeta
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
 
 ### Python Requirements
 
@@ -88,7 +80,7 @@ This is a sample config for Dagster:
 {% codeBlock fileName="filename.yaml" %}
 
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: dagster
   serviceName: dagster_source

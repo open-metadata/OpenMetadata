@@ -11,15 +11,25 @@
         "name": "minValueForStdDevInCol",
         "displayName": "Min",
         "description": "Expected std. dev value for the column to be greater or equal than",
-        "dataType": "INT"
+        "dataType": "INT",
+        "validationRule": {
+          "parameterField": "maxValueForStdDevInCol",
+          "rule": "LESS_THAN_OR_EQUALS"
+        }
       },
       {
         "name": "maxValueForStdDevInCol",
         "displayName": "Max",
         "description": "Expected std. dev value for the column to be lower or equal than",
-        "dataType": "INT"
+        "dataType": "INT",
+        "validationRule": {
+          "parameterField": "minValueForStdDevInCol",
+          "rule": "GREATER_THAN_OR_EQUALS"
+        }
       }
     ],
-    "provider": "system"
+    "supportsDynamicAssertion": true,
+    "provider": "system",
+    "dataQualityDimension": "Accuracy"
   }
   

@@ -18,6 +18,7 @@ import {
 } from '@azure/msal-browser';
 import { useAccount, useMsal } from '@azure/msal-react';
 import { AxiosError } from 'axios';
+import { get } from 'lodash';
 import React, {
   forwardRef,
   Fragment,
@@ -26,11 +27,15 @@ import React, {
   useImperativeHandle,
 } from 'react';
 import { useMutex } from 'react-context-mutex';
+import { toast } from 'react-toastify';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { msalLoginRequest } from '../../../utils/AuthProvider.util';
-import localState from '../../../utils/LocalStorageUtils';
+import { getPopupSettingLink } from '../../../utils/BrowserUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
 import {
   AuthenticatorRef,
   OidcUser,
+  UserProfile,
 } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -45,6 +50,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     { children, onLoginSuccess, onLogoutSuccess, onLoginFailure }: Props,
     ref
   ) => {
+    const { setOidcToken, getOidcToken } = useApplicationStore();
     const { instance, accounts, inProgress } = useMsal();
     const account = useAccount(accounts[0] || {});
     const MutexRunner = useMutex();
@@ -76,18 +82,24 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     const parseResponse = (response: AuthenticationResult): OidcUser => {
       // Call your API with the access token and return the data you need to save in state
       const { idToken, scopes, account } = response;
+
       const user = {
         id_token: idToken,
         scope: scopes.join(),
         profile: {
-          email: account?.username || '',
+          email: get(account, 'idTokenClaims.email', ''),
           name: account?.name || '',
           picture: '',
-          sub: '',
-        },
+          preferred_username: get(
+            account,
+            'idTokenClaims.preferred_username',
+            ''
+          ),
+          sub: get(account, 'idTokenClaims.sub', ''),
+        } as UserProfile,
       };
 
-      localState.setOidcToken(idToken);
+      setOidcToken(idToken);
 
       return user;
     };
@@ -113,6 +125,20 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
             .catch((e) => {
               // eslint-disable-next-line no-console
               console.error(e);
+              if (e?.message?.includes('popup_window_error')) {
+                toast.error(
+                  <Transi18next
+                    i18nKey="message.popup-block-message"
+                    renderElement={
+                      <a
+                        href={getPopupSettingLink()}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      />
+                    }
+                  />
+                );
+              }
 
               throw e;
             });
@@ -128,7 +154,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     useEffect(() => {
-      const oidcUserToken = localState.getOidcToken();
+      const oidcUserToken = getOidcToken();
       if (
         !oidcUserToken &&
         inProgress === InteractionStatus.None &&
@@ -157,7 +183,7 @@ const MsalAuthenticator = forwardRef<AuthenticatorRef, Props>(
       invokeLogout() {
         logout();
       },
-      renewIdToken() {
+      renewIdToken(): Promise<string> {
         return new Promise((resolve, reject) => {
           fetchIdToken()
             .then((user) => {

@@ -30,7 +30,9 @@ import {
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
   LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
@@ -169,7 +171,8 @@ export const generateSearchDropdownLabel = (
   option: SearchDropdownOption,
   checked: boolean,
   searchKey: string,
-  showProfilePicture: boolean
+  showProfilePicture: boolean,
+  hideCounts = false
 ) => {
   return (
     <div className="d-flex justify-between">
@@ -183,7 +186,6 @@ export const generateSearchDropdownLabel = (
           <ProfilePicture
             displayName={option.label}
             name={option.label || ''}
-            textClass="text-xs"
             width="18"
           />
         )}
@@ -198,7 +200,7 @@ export const generateSearchDropdownLabel = (
           />
         </Typography.Text>
       </Space>
-      {getCountBadge(option.count, 'm-r-sm', false)}
+      {!hideCounts && getCountBadge(option.count, 'm-r-sm', false)}
     </div>
   );
 };
@@ -207,7 +209,8 @@ export const getSearchDropdownLabels = (
   optionsArray: SearchDropdownOption[],
   checked: boolean,
   searchKey = '',
-  showProfilePicture = false
+  showProfilePicture = false,
+  hideCounts = false
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
     const sortedOptions = optionsArray.sort(
@@ -220,7 +223,8 @@ export const getSearchDropdownLabels = (
         option,
         checked,
         searchKey,
-        showProfilePicture
+        showProfilePicture,
+        hideCounts
       ),
     }));
   } else {
@@ -393,11 +397,16 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     return [];
   }
 
-  return buckets.map((option) => ({
-    key: option.key,
-    label: option.key,
-    count: option.doc_count ?? 0,
-  }));
+  return buckets
+    .filter(
+      (item) =>
+        !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
+    )
+    .map((option) => ({
+      key: option.key,
+      label: option.key,
+      count: option.doc_count ?? 0,
+    }));
 };
 
 export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
 import Qs from 'qs';
@@ -25,13 +25,15 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
-import { API_RES_MAX_SIZE } from '../../../../constants/constants';
+import { PAGE_SIZE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   getLatestTableProfileByFqn,
@@ -45,7 +47,6 @@ import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interfa
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
 import {
   OverallTableSummaryType,
-  SplitTestCasesType,
   TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
@@ -58,11 +59,13 @@ export const TableProfilerContext =
 export const TableProfilerProvider = ({
   children,
   permissions,
-  isTableDeleted,
+  table,
+  testCaseSummary,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
+  const testCasePaging = usePaging(PAGE_SIZE);
   const location = useLocation();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
@@ -72,12 +75,10 @@ export const TableProfilerProvider = ({
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
-  const [splitTestCases, setSplitTestCases] = useState<SplitTestCasesType>({
-    column: [],
-    table: [],
-  });
   const [dateRangeObject, setDateRangeObject] =
     useState<DateRangeObject>(DEFAULT_RANGE_DATA);
+
+  const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
   const {
     activeTab = isTourOpen
@@ -158,19 +159,6 @@ export const TableProfilerProvider = ({
     setDateRangeObject(data);
   };
 
-  const splitTableAndColumnTest = (data: TestCase[]) => {
-    const columnTestsCase: TestCase[] = [];
-    const tableTests: TestCase[] = [];
-    data.forEach((test) => {
-      if (test.entityFQN === datasetFQN) {
-        tableTests.push(test);
-      } else {
-        columnTestsCase.push(test);
-      }
-    });
-    setSplitTestCases({ column: columnTestsCase, table: tableTests });
-  };
-
   const onTestCaseUpdate = useCallback(
     (testCase?: TestCase) => {
       if (isUndefined(testCase)) {
@@ -180,7 +168,6 @@ export const TableProfilerProvider = ({
         const updatedTests = prevTestCases.map((test) => {
           return testCase.id === test.id ? { ...test, ...testCase } : test;
         });
-        splitTableAndColumnTest(updatedTests);
 
         return updatedTests;
       });
@@ -203,7 +190,7 @@ export const TableProfilerProvider = ({
     try {
       const profiler = await getLatestTableProfileByFqn(datasetFQN);
       const customMetricResponse = await getTableDetailsByFQN(datasetFQN, {
-        fields: 'customMetrics,columns',
+        fields: [TabSpecificField.CUSTOM_METRICS, TabSpecificField.COLUMNS],
       });
 
       setTableProfiler(profiler);
@@ -218,15 +205,20 @@ export const TableProfilerProvider = ({
   const fetchAllTests = async (params?: ListTestCaseParams) => {
     setIsTestsLoading(true);
     try {
-      const { data } = await getListTestCase({
+      const { data, paging } = await getListTestCase({
         ...params,
-        fields: 'testCaseResult, testDefinition, incidentId',
+        fields: [
+          TabSpecificField.TEST_CASE_RESULT,
+          TabSpecificField.INCIDENT_ID,
+        ],
+
         entityLink: generateEntityLink(datasetFQN ?? ''),
         includeAllTests: true,
-        limit: API_RES_MAX_SIZE,
+        limit: testCasePaging.pageSize,
       });
-      splitTableAndColumnTest(data);
+
       setAllTestCases(data);
+      testCasePaging.handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -257,19 +249,15 @@ export const TableProfilerProvider = ({
 
   useEffect(() => {
     const fetchTest =
-      viewTest &&
-      !isTourOpen &&
-      [TableProfilerTab.DATA_QUALITY, TableProfilerTab.COLUMN_PROFILE].includes(
-        activeTab
-      ) &&
-      isEmpty(allTestCases);
+      !isTourOpen && activeTab === TableProfilerTab.DATA_QUALITY && viewTest;
 
     if (fetchTest) {
       fetchAllTests();
     } else {
+      setAllTestCases([]);
       setIsTestsLoading(false);
     }
-  }, [viewTest, isTourOpen, activeTab]);
+  }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
 
   const tableProfilerPropsData: TableProfilerContextInterface = useMemo(() => {
     return {
@@ -284,11 +272,13 @@ export const TableProfilerProvider = ({
       onSettingButtonClick: () => setSettingModalVisible(true),
       fetchAllTests,
       isProfilingEnabled: !isUndefined(tableProfiler?.profile),
-      splitTestCases,
       customMetric,
       onCustomMetricUpdate: handleUpdateCustomMetrics,
       onDateRangeChange: handleDateRangeChange,
       dateRangeObject,
+      testCasePaging,
+      table,
+      testCaseSummary,
     };
   }, [
     isTestsLoading,
@@ -299,9 +289,11 @@ export const TableProfilerProvider = ({
     isTableDeleted,
     overallSummary,
     onTestCaseUpdate,
-    splitTestCases,
     customMetric,
     dateRangeObject,
+    testCasePaging,
+    table,
+    testCaseSummary,
   ]);
 
   return (

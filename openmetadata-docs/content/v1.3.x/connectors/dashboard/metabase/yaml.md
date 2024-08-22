@@ -3,17 +3,13 @@ title: Run the Metabase Connector Externally
 slug: /connectors/dashboard/metabase/yaml
 ---
 
-# Run the Metabase Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="check" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+  name="Metabase"
+  stage="PROD"
+  platform="OpenMetadata"
+  availableFeatures=["Dashboards", "Charts", "Lineage", "Projects"]
+  unavailableFeatures=["Owners", "Tags", "Datamodels"]
+/ %}
 
 In this section, we provide guides and references to use the Metabase connector.
 
@@ -25,10 +21,6 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 **Note:** We have tested Metabase with Versions `0.42.4` and `0.43.4`.
 
@@ -94,7 +86,7 @@ This is a sample config for Metabase:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: metabase
   serviceName: <service name>

@@ -85,7 +85,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
         .build();
   }
 
-  public Response getResponse(Response.Status status, String message) {
+  public static Response getResponse(Response.Status status, String message) {
     return Response.status(status)
         .type(APPLICATION_JSON_TYPE)
         .entity(new ErrorMessage(status.getStatusCode(), message))

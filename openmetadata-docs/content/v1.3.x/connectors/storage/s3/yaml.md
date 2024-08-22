@@ -3,14 +3,13 @@ title: Run the S3 Connector Externally
 slug: /connectors/storage/s3/yaml
 ---
 
-# Run the S3 Connector Externally
-
-
-| Feature            | Status                       |
-| :----------------- |:-----------------------------|
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-
+{% connectorDetailsHeader
+name="S3"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=[]
+/ %}
 
 This page contains the setup guide and reference information for the S3 connector.
 
@@ -97,6 +96,8 @@ pip3 install "openmetadata-ingestion[athena]"
 In any other connector, extracting metadata happens automatically. In this case, we will be able to extract high-level
 metadata from buckets, but in order to understand their internal structure we need users to provide an `openmetadata.json`
 file at the bucket root.
+
+`Supported File Formats: [ "csv",  "tsv", "avro", "parquet", "json", "json.gz", "json.zip" ]`
 
 You can learn more about this [here](/connectors/storage). Keep reading for an example on the shape of the manifest file.
 
@@ -223,13 +224,13 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% codeInfo srNumber=11 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to storage service during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=12 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to storage service during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
@@ -237,7 +238,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: s3
   serviceName: local_s3

@@ -59,6 +59,17 @@ export default class EntityLink {
 
   /**
    *
+   * @param string entityLink column
+   * @returns entityColumn fqn
+   */
+  static getEntityColumnFqn(entityLink: string) {
+    const parts = this.split(entityLink);
+
+    return `${parts[1]}${parts[3] ? '.' + parts[3] : ''}`;
+  }
+
+  /**
+   *
    * @param string entityLink
    * @returns entity field
    */
@@ -90,7 +101,7 @@ export default class EntityLink {
    * @param string | undefined columnName
    * @returns entity link for table
    */
-  static getTableEntityLink(tableFqn: string, columnName: string) {
+  static getTableEntityLink(tableFqn: string, columnName?: string) {
     if (columnName) {
       return `<#E${ENTITY_LINK_SEPARATOR}table${ENTITY_LINK_SEPARATOR}${tableFqn}${ENTITY_LINK_SEPARATOR}columns${ENTITY_LINK_SEPARATOR}${columnName}>`;
     } else {

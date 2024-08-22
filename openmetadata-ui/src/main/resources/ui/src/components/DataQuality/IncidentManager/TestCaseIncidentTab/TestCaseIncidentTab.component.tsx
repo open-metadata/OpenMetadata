@@ -30,9 +30,9 @@ import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
-import { EntityReference } from '../../../../generated/entity/type';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import ActivityFeedListV1 from '../../../ActivityFeed/ActivityFeedList/ActivityFeedListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { TaskFilter } from '../../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -40,9 +40,12 @@ import Loader from '../../../common/Loader/Loader';
 import { TaskTab } from '../../../Entity/Task/TaskTab/TaskTab.component';
 import './test-case-incident-tab.style.less';
 
-const TestCaseIncidentTab = ({ owner }: { owner?: EntityReference }) => {
+const TestCaseIncidentTab = () => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
+  const { testCase } = useTestCaseStore();
+
+  const owners = useMemo(() => testCase?.owners, [testCase]);
 
   const {
     selectedThread,
@@ -185,7 +188,7 @@ const TestCaseIncidentTab = ({ owner }: { owner?: EntityReference }) => {
             <TaskTab
               entityType={EntityType.TEST_CASE}
               isForFeedTab={false}
-              owner={owner}
+              owners={owners}
               taskThread={selectedThread}
               onAfterClose={handleAfterTaskClose}
             />

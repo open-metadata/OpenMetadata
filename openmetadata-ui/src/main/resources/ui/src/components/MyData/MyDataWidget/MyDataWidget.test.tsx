@@ -63,12 +63,12 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
 }));
@@ -90,7 +90,7 @@ describe('MyDataWidget component', () => {
       '',
       1,
       10,
-      '(owner.id:113)',
+      '(owners.id:113)',
       '',
       '',
       'all'

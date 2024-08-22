@@ -128,7 +128,7 @@
         "analyzer": "om_analyzer",
         "index_options": "docs"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -281,11 +281,15 @@
         ]
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "votes" : {
         "type": "object"
-        }
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
+}

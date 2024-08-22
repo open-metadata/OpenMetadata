@@ -12,7 +12,18 @@
  */
 
 import { Table } from '../generated/entity/data/table';
-import { TestCase } from '../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../generated/tests/testCase';
+
+const OWNERS = [
+  {
+    id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
+    type: 'user',
+    name: 'admin',
+    fullyQualifiedName: 'admin',
+    deleted: false,
+    href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
+  },
+];
 
 export const MOCK_TABLE_DATA = {
   data: [
@@ -23,14 +34,7 @@ export const MOCK_TABLE_DATA = {
       href: 'http://localhost:8585/api/v1/dataQuality/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       name: 'test',
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       tests: [],
       updatedAt: 1670667043105,
       updatedBy: 'admin',
@@ -42,14 +46,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test1',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -63,14 +60,7 @@ export const MOCK_TABLE_DATA = {
       href: 'http://localhost:8585/api/v1/dataQuality/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dd',
       name: 'test2',
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       tests: [],
       updatedAt: 1670667043105,
       updatedBy: 'admin',
@@ -82,14 +72,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test3',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -103,14 +86,7 @@ export const MOCK_TABLE_DATA = {
       href: 'http://localhost:8585/api/v1/dataQuality/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6df',
       name: 'test4',
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       tests: [],
       updatedAt: 1670667043105,
       updatedBy: 'admin',
@@ -122,14 +98,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test5',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -143,14 +112,7 @@ export const MOCK_TABLE_DATA = {
       href: 'http://localhost:8585/api/v1/dataQuality/testSuites/db3e145b-4e17-4e39-b44e-801ed0d5e6dc',
       id: 'db3e145b-4e17-4e39-b44e-801ed0d5e6dh',
       name: 'test6',
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacca',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       tests: [],
       updatedAt: 1670667043105,
       updatedBy: 'admin',
@@ -162,14 +124,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test7',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -182,14 +137,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test8',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -202,14 +150,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test9',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -222,14 +163,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test10',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -242,14 +176,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test11',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -262,14 +189,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test12',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -282,14 +202,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test13',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -302,14 +215,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test14',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -322,14 +228,7 @@ export const MOCK_TABLE_DATA = {
       fullyQualifiedName: 'test15',
       description: 'this is test',
       tests: [],
-      owner: {
-        id: '54f92fc2-8a10-472b-8e22-bbdb801aacce',
-        type: 'user',
-        name: 'admin',
-        fullyQualifiedName: 'admin',
-        deleted: false,
-        href: 'http://localhost:8585/api/v1/users/54f92fc2-8a10-472b-8e22-bbdb801aacca',
-      },
+      owners: OWNERS,
       version: 0.1,
       updatedAt: 1670667255078,
       updatedBy: 'admin',
@@ -660,14 +559,7 @@ export const MOCK_SQL_TEST_CASE = {
     },
   ],
   version: 0.1,
-  owner: {
-    id: 'a2c17db1-e41d-4c45-82d2-2dbe23ad5969',
-    type: 'user',
-    name: 'admin',
-    fullyQualifiedName: 'admin',
-    deleted: false,
-    href: '',
-  },
+  owners: OWNERS,
   updatedAt: 1683709073678,
   updatedBy: 'admin',
   href: '',
@@ -889,10 +781,36 @@ export const MOCK_TABLE_COLUMN_NAME_TO_EXIST = {
   deleted: false,
 };
 
+export const MOCK_TABLE_TEST_WITH_COLUMN = {
+  id: 'id',
+  name: 'tableColumnNameToExist',
+  displayName: 'Table Column Name To Exist',
+  fullyQualifiedName: 'tableColumnNameToExist',
+  description:
+    'This test defines the test TableColumnNameToExist. Test the table columns exists in the table.',
+  entityType: 'TABLE',
+  testPlatforms: ['OpenMetadata'],
+  supportedDataTypes: [],
+  parameterDefinition: [
+    {
+      name: 'column',
+      displayName: 'Column Name',
+      dataType: 'STRING',
+      description: 'Expected column of the table to exist',
+      required: true,
+    },
+  ],
+  version: 0.1,
+  updatedAt: 1672236872076,
+  updatedBy: 'admin',
+  href: 'href',
+  deleted: false,
+};
+
 export const MOCK_TEST_CASE_RESULT = [
   {
     timestamp: 1683699927,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=65 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -903,7 +821,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683616212,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=65 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -914,7 +832,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683615873,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=65 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -925,7 +843,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683613527,
-    testCaseStatus: 'Failed',
+    testCaseStatus: TestCaseStatus.Failed,
     result: 'Found max=25 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -936,7 +854,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683529812,
-    testCaseStatus: 'Failed',
+    testCaseStatus: TestCaseStatus.Failed,
     result: 'Found max=25 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -947,7 +865,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683529473,
-    testCaseStatus: 'Failed',
+    testCaseStatus: TestCaseStatus.Failed,
     result: 'Found max=25 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -958,7 +876,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683527127,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=56 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -969,7 +887,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683443412,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=56 vs. the expected min=50, max=100.',
     testResultValue: [
       {
@@ -980,7 +898,7 @@ export const MOCK_TEST_CASE_RESULT = [
   },
   {
     timestamp: 1683443073,
-    testCaseStatus: 'Success',
+    testCaseStatus: TestCaseStatus.Success,
     result: 'Found max=56 vs. the expected min=50, max=100.',
     testResultValue: [
       {

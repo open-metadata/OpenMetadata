@@ -42,7 +42,8 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -75,16 +76,18 @@ class IcebergSource(DatabaseServiceSource):
             self.config.sourceConfig.config
         )
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.__root__.config
+        self.service_connection = self.config.serviceConnection.root.config
         self.iceberg = get_connection(self.service_connection)
 
         self.connection_obj = self.iceberg
         self.test_connection()
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: IcebergConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: IcebergConnection = config.serviceConnection.root.config
         if not isinstance(connection, IcebergConnection):
             raise InvalidSourceException(
                 f"Expected GlueConnection, but got {connection}"
@@ -110,7 +113,7 @@ class IcebergSource(DatabaseServiceSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -125,8 +128,8 @@ class IcebergSource(DatabaseServiceSource):
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=namespace_name,
                 )
                 if filter_by_schema(
@@ -156,12 +159,14 @@ class IcebergSource(DatabaseServiceSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -171,18 +176,19 @@ class IcebergSource(DatabaseServiceSource):
         Prepares the table name to be sent to stage.
         Filtering happens here.
         """
-        namespace = self.context.database_schema
+        namespace = self.context.get().database_schema
 
         for table_identifier in self.iceberg.list_tables(namespace):
             try:
                 table = self.iceberg.load_table(table_identifier)
-                table_name = get_table_name_as_str(table)
+                # extract table name from table identifier, which does not include catalog name
+                table_name = get_table_name_as_str(table_identifier)
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
@@ -197,7 +203,7 @@ class IcebergSource(DatabaseServiceSource):
                     )
                     continue
 
-                self.context.iceberg_table = table
+                self.context.get().iceberg_table = table
                 yield table_name, TableType.Regular
             except pyiceberg.exceptions.NoSuchPropertyException:
                 logger.warning(
@@ -222,9 +228,9 @@ class IcebergSource(DatabaseServiceSource):
                     )
                 )
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReference]:
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         owner = get_owner_from_table(
-            self.context.iceberg_table, self.service_connection.ownershipProperty
+            self.context.get().iceberg_table, self.service_connection.ownershipProperty
         )
         try:
             if owner:
@@ -245,25 +251,27 @@ class IcebergSource(DatabaseServiceSource):
         Also, update the self.inspector value to the current db.
         """
         table_name, table_type = table_name_and_type
-        iceberg_table = self.context.iceberg_table
+        iceberg_table = self.context.get().iceberg_table
         try:
-            owner = self.get_owner_ref(table_name)
+            owners = self.get_owner_ref(table_name)
             table = IcebergTable.from_pyiceberg(
-                table_name, table_type, owner, iceberg_table
+                table_name, table_type, owners, iceberg_table
             )
             table_request = CreateTableRequest(
-                name=table.name,
+                name=EntityName(table.name),
                 tableType=table.tableType,
                 description=table.description,
-                owner=table.owner,
+                owners=table.owners,
                 columns=table.columns,
                 tablePartition=table.tablePartition,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=self.context.get().database_schema,
+                    )
                 ),
             )
             yield Either(right=table_request)

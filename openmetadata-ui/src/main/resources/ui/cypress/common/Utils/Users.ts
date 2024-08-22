@@ -14,7 +14,6 @@ import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
 } from '../../../src/utils/date-time/DateTimeUtils';
-import { GlobalSettingOptions } from '../../constants/settings.constant';
 import {
   descriptionBox,
   interceptURL,
@@ -128,7 +127,7 @@ export const restoreUser = (username: string, editedUserName: string) => {
     'contain',
     `Are you sure you want to restore ${editedUserName}?`
   );
-  interceptURL('PUT', '/api/v1/users', 'restoreUser');
+  interceptURL('PUT', '/api/v1/users/restore', 'restoreUser');
   cy.get('.ant-modal-footer > .ant-btn-primary').click();
   verifyResponseStatusCode('@restoreUser', 200);
   toastNotification('User restored successfully');
@@ -166,10 +165,6 @@ export const permanentDeleteUser = (username: string, displayName: string) => {
 
   cy.get('[data-testid="search-error-placeholder"]').should('be.exist');
 };
-export const visitUserListPage = () => {
-  interceptURL('GET', '/api/v1/users?*', 'getUsers');
-  cy.settingClick(GlobalSettingOptions.USERS);
-};
 
 export const generateToken = () => {
   cy.get('[data-testid="no-token"]').should('be.visible');
@@ -202,7 +197,7 @@ export const updateExpiration = (expiry: number | string) => {
   cy.get('[data-testid="token-expiry"]').click();
   cy.contains(`${expiry} days`).click();
   const expiryDate = customFormatDateTime(
-    getEpochMillisForFutureDays(expiry),
+    getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
   cy.get('[data-testid="save-edit"]').click();
@@ -217,13 +212,19 @@ export const updateExpiration = (expiry: number | string) => {
 };
 
 export const editDisplayName = (editedUserName: string) => {
+  interceptURL(
+    'GET',
+    '/api/v1/feed?*type=Conversation*',
+    'ActivityFeedConversation'
+  );
+
   cy.get('[data-testid="edit-displayName"]').should('be.visible');
+  verifyResponseStatusCode('@ActivityFeedConversation', 200); // wait for the feed to load
   cy.get('[data-testid="edit-displayName"]').click();
   cy.get('[data-testid="displayName"]').clear();
   cy.get('[data-testid="displayName"]').type(editedUserName);
   interceptURL('PATCH', '/api/v1/users/*', 'updateName');
   cy.get('[data-testid="inline-save-btn"]').click();
-  cy.get('[data-testid="edit-displayName"]').scrollIntoView();
   cy.get('[data-testid="user-name"]').should('contain', editedUserName);
 };
 
@@ -250,9 +251,9 @@ export const editTeams = (teamName: string) => {
   cy.get('[data-testid="inline-save-btn"]').click({ timeout: 10000 });
   verifyResponseStatusCode('@updateTeams', 200);
 
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
-  cy.get('.page-layout-v1-vertical-scroll').scrollTo(0, 0);
-  cy.get(`[data-testid="${teamName}"]`).should('be.visible');
+  cy.get(`[data-testid="${teamName}-link"]`)
+    .scrollIntoView()
+    .should('be.visible');
 };
 
 export const handleUserUpdateDetails = (
@@ -289,14 +290,10 @@ export const handleAdminUpdateDetails = (
   editDisplayName(editedUserName);
 
   // edit teams
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
+  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView().click();
   editTeams(teamName);
 
   // edit description
-  cy.wait(500);
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').scrollIntoView();
-  cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
   editDescription(updatedDescription);
 
   // edit roles

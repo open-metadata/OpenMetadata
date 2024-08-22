@@ -3,31 +3,13 @@ title: Run the Datalake Connector Externally
 slug: /connectors/database/datalake/yaml
 ---
 
-# Run the Datalake Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="cross" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="cross" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="cross" /%} |
-| Table-level  | {% icon iconName="cross" /%} |
-| Column-level | {% icon iconName="cross" /%} |
-
-{% /multiTablesWrapper %}
-
+{% connectorDetailsHeader
+name="Datalake"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Data Profiler", "Data Quality"]
+unavailableFeatures=["Query Usage", "Lineage", "Column-level Lineage", "Owners", "dbt", "Tags", "Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the Datalake connector.
 
@@ -39,13 +21,6 @@ Configure and schedule Datalake metadata and profiler workflows from the OpenMet
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
-
 
 **Note:** Datalake connector supports extracting metadata from file types `JSON`, `CSV`, `TSV` & `Parquet`.
 
@@ -149,7 +124,7 @@ The workflow is modeled around the following JSON Schema.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: datalake
   serviceName: local_datalake
@@ -264,7 +239,8 @@ source:
 - **Client ID** : Client ID of the data storage account
 - **Client Secret** : Client Secret of the account
 - **Tenant ID** : Tenant ID under which the data storage account falls
-- **Account Name** : Account Name of the data Storage
+- **Account Name** : Account Name of the Data Storage
+- **Key Vault Name**: Azure Key Vault serves as a centralized secrets manager, securely storing and managing sensitive information, such as connection strings and cryptographic keys.
 
 {% /codeInfo %}
 

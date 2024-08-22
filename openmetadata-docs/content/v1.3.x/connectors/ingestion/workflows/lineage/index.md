@@ -7,15 +7,11 @@ slug: /connectors/ingestion/workflows/lineage
 
 Learn how to configure the Lineage workflow from the UI to ingest Lineage data from your data sources.
 
-This workflow is available ONLY for the following connectors:
+{% note %}
 
-- [BigQuery](/connectors/database/bigquery)
-- [Snowflake](/connectors/database/snowflake)
-- [MSSQL](/connectors/database/mssql)
-- [Redshift](/connectors/database/redshift)
-- [Clickhouse](/connectors/database/clickhouse)
-- [Postgres](/connectors/database/postgres)
-- [Databricks](/connectors/database/databricks)
+Checkout the documentation of the connector you are using to know if it supports automated lineage workflow.
+
+{% /note %}
 
 If your database service is not yet supported, you can use this same workflow by providing a Query Log file!
 
@@ -71,7 +67,7 @@ Here you can enter the Lineage Ingestion details:
 
 **Query Log Duration**
 
-Specify the duration in days for which the profiler should capture lineage data from the query logs. For example, if you specify 2 as the value for the duration, the data profiler will capture lineage information for 48 hours prior to when the ingestion workflow is run.
+Specify the duration in days for which the lineage should capture lineage data from the query logs. For example, if you specify 2 as the value for the duration, the data lineage will capture lineage information for 48 hours prior to when the ingestion workflow is run.
 
 **Result Limit**
 
@@ -88,3 +84,10 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
   caption="View Service Ingestion pipelines"
  /%}
 
+## YAML Configuration
+
+In the [connectors](/connectors) section we showcase how to run the metadata ingestion from a JSON/YAML file using the Airflow SDK or the CLI via metadata ingest. Running a lineage workflow is also possible using a JSON/YAML configuration file.
+
+This is a good option if you wish to execute your workflow via the Airflow SDK or using the CLI; if you use the CLI a lineage workflow can be triggered with the command `metadata ingest -c FILENAME.yaml`. The `serviceConnection` config will be specific to your connector (you can find more information in the [connectors](/connectors) section), though the sourceConfig for the lineage will be similar across all connectors.
+
+{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "bigquery"} /%}

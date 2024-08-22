@@ -27,7 +27,7 @@ as a starting point.
 1. **If you do not have an Airflow service** up and running on your platform, we provide a custom
    [Docker](https://hub.docker.com/r/openmetadata/ingestion) image, which already contains the OpenMetadata ingestion
    packages and custom [Airflow APIs](https://github.com/open-metadata/openmetadata-airflow-apis) to
-   deploy Workflows from the UI as well. This is the simplest approach.
+   deploy Workflows from the UI as well. **This is the simplest approach**.
 2. If you already have Airflow up and running and want to use it for the metadata ingestion, you will
    need to install the ingestion modules to the host. You can find more information on how to do this
    in the Custom Airflow Installation section.
@@ -49,6 +49,17 @@ and Airflow's Webserver:
 `User` permissions is enough for these requirements.
 
 You can find more information on Airflow's Access Control [here](https://airflow.apache.org/docs/apache-airflow/stable/security/access-control.html).
+
+## Shared Volumes
+
+{% note noteType="Warning" %}
+
+The Airflow Webserver, Scheduler and Workers - if using a distributed setup - need to have access to the same shared volumes
+with RWX permissions.
+
+{% /note %}
+
+We have specific instructions on how to set up the shared volumes in Kubernetes depending on your cloud deployment [here](/deployment/kubernetes).
 
 ## Using the OpenMetadata Ingestion Image
 
@@ -304,8 +315,7 @@ Let's remark the differences between `git-sync` and what we want to achieve by i
 
 Then, should you use `git-sync`?
 
-- If you have an existing Airflow instance, and you want to build and maintain your own ingestion DAGs ([example](https://docs.open-metadata.org/v1.0.0/connectors/database/snowflake/airflow#2.-prepare-the-ingestion-dag)),
-  then you can go for it.
+- If you have an existing Airflow instance, and you want to build and maintain your own ingestion DAGs then you can go for it. Check a DAG example [here](/deployment/ingestion/external/airflow#example).
 - If instead, you want to use the full deployment process from OpenMetadata, `git-sync` would not be the right tool, since the DAGs won't be backed up by Git, but rather created from OpenMetadata. Note that if anything
   would to happen where you might lose the Airflow volumes, etc. You can just redeploy the DAGs from OpenMetadata.
 
@@ -359,6 +369,25 @@ a couple of points to validate:
     ```
     {"code":403,"message":"Principal: CatalogPrincipal{name='ingestion-bot'} operations [ViewAll] not allowed"}
     ```
+
+### AirflowException: Dag 'XYZ' could not be found
+
+If you're seeing a similar error to
+
+```
+[...]
+task_run
+    _dag = get_dag(args.subdir, args.dag_id)
+  File "/home/airflow/.local/lib/python3.9/site-packages/airflow/utils/cli.py", line 235, in get_dag
+    raise AirflowException(
+airflow.exceptions.AirflowException: Dag '...' could not be found; either it does not exist or it failed to parse.
+```
+
+This is a common situation where you have not properly enabled the shared volumes between Webserver <> Scheduler <> Worker
+in your distributed environment.
+
+We have specific instructions on how to set up the shared volumes in Kubernetes depending on your cloud deployment [here](/deployment/kubernetes).
+
 
 ### ClientInitializationError
 

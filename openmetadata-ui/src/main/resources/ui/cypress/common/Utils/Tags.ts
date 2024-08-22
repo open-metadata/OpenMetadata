@@ -10,54 +10,69 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../new-tests/base/EntityClass';
+
+import { EntityType } from '../../constants/Entity.interface';
 import { interceptURL, verifyResponseStatusCode } from '../common';
 
 export const assignTags = (tag: string, endPoint: EntityType) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addTags');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=tag_search_index*`,
+    'searchTags'
+  );
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
-  ).click();
+  )
+    .scrollIntoView()
+    .click();
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
+  verifyResponseStatusCode('@searchTags', 200);
 
-  cy.get(`[data-testid="tag-${tag}"]`).click();
-
-  // to close popup
-  cy.clickOutside();
+  cy.get(`[data-testid="tag-${tag}"]`).scrollIntoView().click();
 
   cy.get(
     `[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`
   ).should('be.visible');
 
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addTags', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="tag-${tag}"]`
-  ).should('be.visible');
+  )
+    .scrollIntoView()
+    .should('be.visible');
 };
 
-export const udpateTags = (tag: string, endPoint: EntityType) => {
+export const updateTags = (tag: string, endPoint: EntityType) => {
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'addTags');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=tag_search_index*`,
+    'searchTags'
+  );
   cy.get(
     '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="edit-button"]'
-  ).click();
+  )
+    .scrollIntoView()
+    .click();
 
   cy.get('[data-testid="tag-selector"] input').should('be.visible').type(tag);
+  verifyResponseStatusCode('@searchTags', 200);
 
-  cy.get(`[data-testid="tag-${tag}"]`).click();
+  cy.get(`[data-testid="tag-${tag}"]`).scrollIntoView().click();
 
-  // to close popup
-  cy.clickOutside();
-
-  cy.get(
-    `[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`
-  ).should('be.visible');
-  cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
+  cy.get(`[data-testid="tag-selector"] [data-testid="selected-tag-${tag}"]`)
+    .scrollIntoView()
+    .should('be.visible');
+  cy.get('[data-testid="saveAssociatedTag"]').click();
   verifyResponseStatusCode('@addTags', 200);
   cy.get(
     `[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="tag-${tag}"]`
-  ).should('be.visible');
+  )
+    .scrollIntoView()
+    .should('be.visible');
 };
 
 export const removeTags = (
@@ -66,20 +81,36 @@ export const removeTags = (
 ) => {
   const tags = Array.isArray(inputTag) ? inputTag : [inputTag];
   interceptURL('PATCH', `/api/v1/${endPoint}/*`, 'removeTags');
+  interceptURL(
+    'GET',
+    `/api/v1/search/query?*index=tag_search_index*`,
+    'searchTags'
+  );
   tags.forEach((tag) => {
     cy.get(
       '[data-testid="entity-right-panel"]  [data-testid="tags-container"] [data-testid="edit-button"]'
-    ).click();
+    )
+      .scrollIntoView()
+      .click();
+
+    verifyResponseStatusCode('@searchTags', 200);
 
     // Remove all added tags
     cy.get(
       `[data-testid="selected-tag-${tag}"] [data-testid="remove-tags"]`
     ).click();
-
-    cy.get('[data-testid="saveAssociatedTag"]').scrollIntoView().click();
-    verifyResponseStatusCode('@removeTags', 200);
+    cy.get('[data-testid="saveAssociatedTag"]').should('be.enabled');
+    // Adding manual wait to eliminate flakiness 
+    // Remove manual wait and wait for elements instead
+    cy.wait(100);
+    cy.get('[data-testid="saveAssociatedTag"]').click();
+    verifyResponseStatusCode('@removeTags', 200, {
+      requestTimeout: 15000,
+    });
   });
   cy.get(
     '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="add-tag"]'
-  ).should('be.visible');
+  )
+    .scrollIntoView()
+    .should('be.visible');
 };

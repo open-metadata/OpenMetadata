@@ -179,7 +179,7 @@
         "extension": {
           "type": "object"
         },
-        "owner": {
+        "owners": {
           "properties": {
             "id": {
               "type": "keyword",
@@ -208,6 +208,7 @@
               "fields": {
                 "keyword": {
                   "type": "keyword",
+                  "normalizer": "lowercase_normalizer",
                   "ignore_above": 256
                 }
               }
@@ -264,7 +265,8 @@
           }
         },
         "serviceType": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
         },
         "database": {
           "properties": {
@@ -366,6 +368,15 @@
         },
         "sourceUrl": {
           "type": "text"
+        },
+        "totalVotes": {
+          "type": "long"
+        },
+        "votes" : {
+          "type": "object"
+        },
+        "descriptionStatus": {
+          "type": "keyword"
         }
       }
     }

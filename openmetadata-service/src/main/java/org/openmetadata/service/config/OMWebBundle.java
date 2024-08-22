@@ -1,5 +1,7 @@
 package org.openmetadata.service.config;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.dropwizard.Configuration;
 import io.dropwizard.ConfiguredBundle;
 import io.dropwizard.setup.Bootstrap;
@@ -51,6 +53,16 @@ public abstract class OMWebBundle<T extends Configuration> implements Configured
     // Permission Policy
     if (webConfig.getPermissionPolicyHeaderFactory() != null) {
       headers.putAll(webConfig.getPermissionPolicyHeaderFactory().build());
+    }
+
+    // Cache Control
+    if (!nullOrEmpty(webConfig.getCacheControl())) {
+      headers.put("Cache-Control", webConfig.getCacheControl());
+    }
+
+    // Pragma
+    if (!nullOrEmpty(webConfig.getPragma())) {
+      headers.put("Pragma", webConfig.getPragma());
     }
 
     // Other Headers

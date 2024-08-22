@@ -101,7 +101,7 @@ def get_identifiers(
         )
         es_tables = search_table_entities(
             metadata=ometa_client,
-            service_name=db_service.fullyQualifiedName.__root__,
+            service_name=db_service.fullyQualifiedName.root,
             database=database_name,
             database_schema=schema_name,
             table=table_name,

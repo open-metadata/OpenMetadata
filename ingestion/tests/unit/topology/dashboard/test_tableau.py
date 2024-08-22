@@ -28,7 +28,7 @@ from metadata.ingestion.source.dashboard.tableau.models import (
 
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="tableau_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("tableau_source_test"),
     name="tableau_source_test",
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Tableau,
@@ -118,8 +118,8 @@ EXPECTED_DASHBOARD = [
         sourceUrl="http://tableauHost.com/#/site/hidarsite/workbooks/897790/views",
         charts=[],
         tags=[],
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="tableau_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("tableau_source_test"),
         extension=None,
     )
 ]
@@ -132,8 +132,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/Obesity",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="tableau_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("tableau_source_test"),
     ),
     CreateChartRequest(
         name="106ff64d-537b-4534-8140-5d08c586e077",
@@ -142,8 +142,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/College",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="tableau_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("tableau_source_test"),
     ),
     CreateChartRequest(
         name="c1493abc-9057-4bdf-9061-c6d2908e4eaa",
@@ -152,8 +152,8 @@ EXPECTED_CHARTS = [
         chartType="Other",
         sourceUrl="http://tableauHost.com/#/site/tableauSiteUrl/views/Regional/GlobalTemperatures",
         tags=None,
-        owner=None,
-        service=FullyQualifiedEntityName(__root__="tableau_source_test"),
+        owners=None,
+        service=FullyQualifiedEntityName("tableau_source_test"),
     ),
 ]
 
@@ -176,7 +176,7 @@ class TableauUnitTest(TestCase):
         get_connection.return_value = False
         tableau_server_connection.return_value = False
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_tableau_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
         self.tableau = TableauSource.create(
             mock_tableau_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,

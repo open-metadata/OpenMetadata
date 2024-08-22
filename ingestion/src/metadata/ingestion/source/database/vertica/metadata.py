@@ -274,9 +274,11 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map = {}
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: VerticaConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: VerticaConnection = config.serviceConnection.root.config
         if not isinstance(connection, VerticaConnection):
             raise InvalidSourceException(
                 f"Expected VerticaConnection, but got {connection}"
@@ -301,7 +303,7 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(VERTICA_LIST_DATABASES)
 
     def get_database_names(self) -> Iterable[str]:
-        configured_db = self.config.serviceConnection.__root__.config.database
+        configured_db = self.config.serviceConnection.root.config.database
         if configured_db:
             self.set_inspector(database_name=configured_db)
             self.set_schema_description_map()
@@ -311,7 +313,7 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 

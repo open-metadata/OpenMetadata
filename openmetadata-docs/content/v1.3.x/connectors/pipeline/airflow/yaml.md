@@ -3,15 +3,13 @@ title: Run the Airflow Connector Externally
 slug: /connectors/pipeline/airflow/yaml
 ---
 
-# Run the Airflow Connector Externally
-
-| Stage           | PROD                         |
-|-----------------|------------------------------|
-| Pipelines       | {% icon iconName="check" /%} |
-| Pipeline Status | {% icon iconName="check" /%} |
-| Owners          | {% icon iconName="check" /%} |
-| Tags            | {% icon iconName="cross" /%} |
-| Lineage         | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Airflow"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Pipelines", "Pipeline Status", "Lineage", "Owners"]
+unavailableFeatures=["Tags"]
+/ %}
 
 In this section, we provide guides and references to use the Airbyte connector.
 
@@ -24,12 +22,6 @@ Configure and schedule Airbyte metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{% /inlineCallout %}
-
-
-
 ### Python Requirements
 
 To run the Airflow ingestion, you will need to install:
@@ -38,10 +30,15 @@ To run the Airflow ingestion, you will need to install:
 pip3 install "openmetadata-ingestion[airflow]"
 ```
 
-Note that this installs the same Airflow version that we ship in the Ingestion Container, which is
-Airflow `2.3.3` from Release `0.12`.
+{% note %}
 
-The ingestion using Airflow version 2.3.3 as a source package has been tested against Airflow 2.3.3 and Airflow 2.2.5.
+Note that this installs the same Airflow version that we ship in the Ingestion Container. If you are running
+the ingestion from Airflow already, you **DON'T NEED** to install the `airflow` plugin.
+
+Instead, just run `pip3 install "openmetadata-ingestion"`.
+
+{% /note %}
+
 
 **Note:** we only support officially supported Airflow versions. You can check the version list [here](https://airflow.apache.org/docs/apache-airflow/stable/installation/supported-versions.html).
 
@@ -70,8 +67,6 @@ This is a sample config for Airbyte:
 
 {% codeInfo srNumber=1 %}
 
-- 
-- 
 **connection**: Airflow metadata database connection. See
   these [docs](https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html)
   for supported backends.
@@ -121,7 +116,7 @@ In terms of `connection` we support the following selections:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: airflow
   serviceName: airflow_source
@@ -140,13 +135,15 @@ source:
       connection:
         type: Mysql
         username: airflow_user
-        password: airflow_pass
+        authType:
+          password: airflow_pass
         databaseSchema: airflow_db
         hostPort: localhost:3306
         # #
         # type: Postgres
         # username: airflow_user
-        # password: airflow_pass
+        # authType:
+        #   password: airflow_pass
         # database: airflow_db
         # hostPort: localhost:3306
         # #

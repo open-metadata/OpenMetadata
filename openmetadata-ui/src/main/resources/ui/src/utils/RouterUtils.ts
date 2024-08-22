@@ -148,19 +148,6 @@ export const getDomainDetailsPath = (fqn: string, tab?: string) => {
   return path;
 };
 
-export const getDataProductsDetailsPath = (fqn: string, tab?: string) => {
-  let path = tab
-    ? ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB
-    : ROUTES.DATA_PRODUCT_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-
-  return path;
-};
-
 export const getGlossaryPath = (fqn?: string) => {
   let path = ROUTES.GLOSSARY;
   if (fqn) {
@@ -336,7 +323,8 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
 
   path = path
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn))
-    .replace(PLACEHOLDER_RULE_NAME, ruleName);
+    // rule name is same as entity fqn so we need to encode it to pass it as a param
+    .replace(PLACEHOLDER_RULE_NAME, getEncodedFqn(ruleName));
 
   return path;
 };
@@ -485,18 +473,6 @@ export const getAddQueryPath = (entityFqn: string) => {
   return path;
 };
 
-export const getDataProductVersionsPath = (
-  dataProductFqn: string,
-  version: string
-) => {
-  let path = ROUTES.DATA_PRODUCT_VERSION;
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(dataProductFqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version);
-
-  return path;
-};
-
 export const getDomainVersionsPath = (domainFqn: string, version: string) => {
   let path = ROUTES.DOMAIN_VERSION;
   path = path
@@ -567,32 +543,6 @@ export const getServiceVersionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version);
-
-  return path;
-};
-
-export const getDatabaseVersionPath = (
-  databaseFqn: string,
-  version: string
-) => {
-  let path = ROUTES.DATABASE_VERSION;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(databaseFqn))
-    .replace(PLACEHOLDER_ROUTE_VERSION, version);
-
-  return path;
-};
-
-export const getDatabaseSchemaVersionPath = (
-  schemaFqn: string,
-  version: string
-) => {
-  let path = ROUTES.SCHEMA_VERSION;
-
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(schemaFqn))
     .replace(PLACEHOLDER_ROUTE_VERSION, version);
 
   return path;

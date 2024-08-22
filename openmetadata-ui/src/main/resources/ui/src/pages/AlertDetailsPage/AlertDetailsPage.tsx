@@ -13,7 +13,6 @@
 
 import {
   Button,
-  Card,
   Col,
   Divider,
   Row,
@@ -25,7 +24,6 @@ import {
 import { isEmpty, isNil, startCase } from 'lodash';
 import React, {
   Fragment,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -36,6 +34,7 @@ import { Link, useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import FormCardSection from '../../components/common/FormCardSection/FormCardSection';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
@@ -47,6 +46,7 @@ import {
   ArgumentsInput,
   EventSubscription,
   ProviderType,
+  SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import { useFqn } from '../../hooks/useFqn';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
@@ -56,8 +56,7 @@ import {
   getObservabilityAlertsEditPath,
   getSettingPath,
 } from '../../utils/RouterUtils';
-import { getEntityIcon } from '../../utils/TableUtils';
-import '../AddObservabilityPage/add-observability-page.less';
+import searchClassBase from '../../utils/SearchClassBase';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
 function AlertDetailsPage({
@@ -134,34 +133,6 @@ function AlertDetailsPage({
       : history.push(ROUTES.OBSERVABILITY_ALERTS);
   }, [history]);
 
-  const getObservabilityDetailsItem = ({
-    heading,
-    subHeading,
-    details,
-  }: {
-    heading: ReactNode;
-    subHeading: ReactNode;
-    details: ReactNode;
-  }) => (
-    <Card
-      className="alert-form-item-container"
-      data-testid={`${heading}-container`}>
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Typography.Text className="font-medium">{heading}</Typography.Text>
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="text-xs text-grey-muted">
-            {subHeading}
-          </Typography.Text>
-        </Col>
-        <Col className="bg-white p-y-xs p-x-sm border rounded-4" span={24}>
-          {details}
-        </Col>
-      </Row>
-    </Card>
-  );
-
   const getFilterDetails = (isFilter: boolean, filters?: ArgumentsInput[]) => (
     <div className="p-md">
       {filters?.map((filterDetails, index) => (
@@ -231,6 +202,16 @@ function AlertDetailsPage({
   const destinationDetails = useMemo(
     () => (
       <div className="p-md">
+        <Row gutter={[0, 8]}>
+          <Col className="font-medium" span={3}>
+            {`${t('label.connection-timeout')} (${t('label.second-plural')})`}
+          </Col>
+          <Col span={1}>:</Col>
+          <Col data-testid="connection-timeout" span={20}>
+            {destinations?.[0].timeout}
+          </Col>
+        </Row>
+        <Divider className="m-y-sm" />
         {destinations?.map((destination, index) => (
           <Fragment key={`${destination.category}-${destination.type}`}>
             <Row
@@ -250,6 +231,18 @@ function AlertDetailsPage({
               <Col data-testid="destination-type" span={20}>
                 {startCase(destination.type)}
               </Col>
+              {destination.type === SubscriptionType.Webhook &&
+                destination.config?.secretKey && (
+                  <>
+                    <Col className="font-medium" span={3}>
+                      {t('label.secret-key')}
+                    </Col>
+                    <Col span={1}>:</Col>
+                    <Col data-testid="secret-key" span={20}>
+                      {destination.config.secretKey}
+                    </Col>
+                  </>
+                )}
               {!isEmpty(destination.config?.receivers) &&
                 !isNil(destination.config?.receivers) && (
                   <>
@@ -296,6 +289,11 @@ function AlertDetailsPage({
     [destinations]
   );
 
+  const resourceIcon = useMemo(
+    () => searchClassBase.getEntityIcon(resource ?? ''),
+    [resource]
+  );
+
   useEffect(() => {
     fetchAlerts();
   }, []);
@@ -303,12 +301,14 @@ function AlertDetailsPage({
   return (
     <ResizablePanels
       hideSecondPanel
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: loading ? (
           <Loader />
         ) : (
           <div
-            className="alert-page-container"
+            className="steps-form-container"
             data-testid="alert-details-container">
             <Row
               className="add-notification-container p-x-lg p-t-md"
@@ -336,21 +336,34 @@ function AlertDetailsPage({
                             ? getNotificationAlertsEditPath(fqn)
                             : getObservabilityAlertsEditPath(fqn)
                         }>
+                        <Tooltip
+                          title={t('label.edit-entity', {
+                            entity: t('label.alert'),
+                          })}>
+                          <Button
+                            className="flex flex-center"
+                            data-testid="edit-button"
+                            disabled={
+                              alertDetails?.provider === ProviderType.System
+                            }
+                            icon={<EditIcon height={16} width={16} />}
+                          />
+                        </Tooltip>
+                      </Link>
+                      <Tooltip
+                        title={t('label.delete-entity', {
+                          entity: t('label.alert'),
+                        })}>
                         <Button
                           className="flex flex-center"
-                          data-testid="edit-button"
-                          icon={<EditIcon height={16} width={16} />}
+                          data-testid="delete-button"
+                          disabled={
+                            alertDetails?.provider === ProviderType.System
+                          }
+                          icon={<DeleteIcon height={16} width={16} />}
+                          onClick={() => setShowDeleteModal(true)}
                         />
-                      </Link>
-                      <Button
-                        className="flex flex-center"
-                        data-testid="delete-button"
-                        disabled={
-                          alertDetails?.provider === ProviderType.System
-                        }
-                        icon={<DeleteIcon height={16} width={16} />}
-                        onClick={() => setShowDeleteModal(true)}
-                      />
+                      </Tooltip>
                     </Space>
                   </Col>
                 </Row>
@@ -378,45 +391,47 @@ function AlertDetailsPage({
                 </Col>
               )}
               <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: (
-                    <div className="d-flex items-center gap-2 m-l-sm">
-                      <div className="d-flex h-4 w-4">
-                        {getEntityIcon(resource ?? '')}
-                      </div>
-                      <span data-testid="resource-name">
-                        {startCase(resource)}
-                      </span>
-                    </div>
-                  ),
-                  heading: t('label.trigger'),
-                  subHeading: t('message.alerts-trigger-description'),
-                })}
+                <FormCardSection
+                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                  heading={t('label.source')}
+                  subHeading={t('message.alerts-source-description')}>
+                  <div className="d-flex items-center gap-2 m-l-sm">
+                    {resourceIcon && (
+                      <div className="d-flex h-4 w-4">{resourceIcon}</div>
+                    )}
+                    <span data-testid="resource-name">
+                      {startCase(resource)}
+                    </span>
+                  </div>
+                </FormCardSection>
               </Col>
               {!isEmpty(filters) && !isNil(filters) && (
                 <Col span={24}>
-                  {getObservabilityDetailsItem({
-                    details: getFilterDetails(true, filters),
-                    heading: t('label.filter-plural'),
-                    subHeading: t('message.alerts-filter-description'),
-                  })}
+                  <FormCardSection
+                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                    heading={t('label.filter-plural')}
+                    subHeading={t('message.alerts-filter-description')}>
+                    {getFilterDetails(true, filters)}
+                  </FormCardSection>
                 </Col>
               )}
               {!isEmpty(actions) && !isNil(actions) && (
                 <Col span={24}>
-                  {getObservabilityDetailsItem({
-                    details: getFilterDetails(false, actions),
-                    heading: t('label.action-plural'),
-                    subHeading: t('message.alerts-action-description'),
-                  })}
+                  <FormCardSection
+                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                    heading={t('label.trigger')}
+                    subHeading={t('message.alerts-trigger-description')}>
+                    {getFilterDetails(false, actions)}
+                  </FormCardSection>
                 </Col>
               )}
               <Col span={24}>
-                {getObservabilityDetailsItem({
-                  details: destinationDetails,
-                  heading: t('label.destination'),
-                  subHeading: t('message.alerts-destination-description'),
-                })}
+                <FormCardSection
+                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                  heading={t('label.destination')}
+                  subHeading={t('message.alerts-destination-description')}>
+                  {destinationDetails}
+                </FormCardSection>
               </Col>
             </Row>
             <DeleteWidgetModal
@@ -436,7 +451,11 @@ function AlertDetailsPage({
         flex: 0.7,
       }}
       pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
-      secondPanel={{ children: <></>, minWidth: 0 }}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
     />
   );
 }

@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
-import { getListTestSuites } from '../../../../rest/testAPI';
+import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import { TestSuites } from './TestSuites.component';
 
 const testSuitePermission = {
@@ -29,6 +29,37 @@ const testSuitePermission = {
 const mockUseParam = { tab: DataQualityPageTabs.TABLES } as {
   tab?: DataQualityPageTabs;
 };
+const mockLocation = {
+  search: '',
+};
+
+const mockList = {
+  data: [
+    {
+      id: 'id',
+      name: 'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      fullyQualifiedName:
+        'sample_data.ecommerce_db.shopify.dim_address.testSuite',
+      description: 'This is an executable test suite linked to an entity',
+      serviceType: 'TestSuite',
+      href: 'href',
+      deleted: false,
+      executable: true,
+      executableEntityReference: {
+        id: 'id1',
+        type: 'table',
+        name: 'dim_address',
+        fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_address',
+      },
+      testCaseResultSummary: [],
+    },
+  ],
+  paging: {
+    offset: 0,
+    limit: 15,
+    total: 1,
+  },
+};
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
@@ -40,21 +71,36 @@ jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
 jest.mock('../../../../rest/testAPI', () => {
   return {
     ...jest.requireActual('../../../../rest/testAPI'),
-    getListTestSuites: jest
+    getListTestSuitesBySearch: jest
       .fn()
-      .mockImplementation(() =>
-        Promise.resolve({ data: [], paging: { total: 0 } })
-      ),
+      .mockImplementation(() => Promise.resolve(mockList)),
   };
 });
 jest.mock('react-router-dom', () => {
   return {
-    ...jest.requireActual('react-router-dom'),
+    Link: jest
+      .fn()
+      .mockImplementation(({ children, ...rest }) => (
+        <div {...rest}>{children}</div>
+      )),
+    useLocation: jest.fn().mockImplementation(() => mockLocation),
+    useHistory: jest.fn(),
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
 });
 jest.mock('../../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
+});
+jest.mock(
+  '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+  })
+);
+jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => {
+  return jest.fn().mockImplementation(() => <div>SearchBar.component</div>);
 });
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
   return jest
@@ -85,12 +131,16 @@ describe('TestSuites component', () => {
     ]);
     expect(await screen.findByTestId('test-suite-table')).toBeInTheDocument();
     expect(
+      await screen.findByTestId('owner-select-filter')
+    ).toBeInTheDocument();
+    expect(await screen.findByText('SearchBar.component')).toBeInTheDocument();
+    expect(
       await screen.findByText('SummaryPanel.component')
     ).toBeInTheDocument();
   });
 
   it('should send testSuiteType executable in api, if active tab is tables', async () => {
-    const mockGetListTestSuites = getListTestSuites as jest.Mock;
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
 
     render(<TestSuites {...mockProps} />);
 
@@ -98,15 +148,44 @@ describe('TestSuites component', () => {
       await screen.findByTestId('test-suite-container')
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
-      fields: 'owner,summary',
+      fields: ['owners', 'summary'],
       includeEmptyTestSuites: false,
       limit: 15,
+      offset: 0,
+      owner: undefined,
+      q: undefined,
+      sortField: 'testCaseResultSummary.timestamp',
+      sortNestedMode: ['max'],
+      sortNestedPath: 'testCaseResultSummary',
+      sortType: 'desc',
+      testSuiteType: 'executable',
+    });
+  });
+
+  it('filters API call should be made, if owner is selected', async () => {
+    mockLocation.search =
+      '?owner={"id":"84c3e66f-a4a6-42ab-b85c-b578f46d3bca","type":"user","name":"admin","fullyQualifiedName":"admin"}&searchValue=sales';
+    testSuitePermission.ViewAll = true;
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
+    render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
+
+    expect(mockGetListTestSuites).toHaveBeenCalledWith({
+      fields: ['owners', 'summary'],
+      includeEmptyTestSuites: false,
+      limit: 15,
+      offset: 0,
+      owner: 'admin',
+      q: '*sales*',
+      sortField: 'testCaseResultSummary.timestamp',
+      sortNestedMode: ['max'],
+      sortNestedPath: 'testCaseResultSummary',
+      sortType: 'desc',
       testSuiteType: 'executable',
     });
   });
 
   it('pagination should visible if total is grater than 15', async () => {
-    (getListTestSuites as jest.Mock).mockImplementationOnce(() =>
+    (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: [], paging: { total: 16 } })
     );
 
@@ -126,8 +205,9 @@ describe('TestSuites component', () => {
   });
 
   it('should send testSuiteType logical in api, if active tab is tables', async () => {
+    mockLocation.search = '';
     mockUseParam.tab = DataQualityPageTabs.TEST_SUITES;
-    const mockGetListTestSuites = getListTestSuites as jest.Mock;
+    const mockGetListTestSuites = getListTestSuitesBySearch as jest.Mock;
 
     render(<TestSuites {...mockProps} />, { wrapper: MemoryRouter });
 
@@ -135,9 +215,16 @@ describe('TestSuites component', () => {
       await screen.findByTestId('test-suite-container')
     ).toBeInTheDocument();
     expect(mockGetListTestSuites).toHaveBeenCalledWith({
-      fields: 'owner,summary',
+      fields: ['owners', 'summary'],
       includeEmptyTestSuites: true,
       limit: 15,
+      offset: 0,
+      owner: undefined,
+      q: undefined,
+      sortField: 'testCaseResultSummary.timestamp',
+      sortNestedMode: ['max'],
+      sortNestedPath: 'testCaseResultSummary',
+      sortType: 'desc',
       testSuiteType: 'logical',
     });
   });

@@ -20,30 +20,32 @@ from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import (
     Column,
+    PartitionColumnDetails,
     TablePartition,
     TableType,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.database.iceberg.helper import (
     IcebergColumnParser,
     get_column_from_partition,
+    get_column_partition_type,
 )
 
 
 class IcebergTable(BaseModel):
     name: str
     tableType: TableType
-    description: Optional[str]
-    owner: Optional[EntityReference]
+    description: Optional[str] = None
+    owners: Optional[EntityReferenceList] = None
     columns: List[Column] = []
-    tablePartition: Optional[TablePartition]
+    tablePartition: Optional[TablePartition] = None
 
     @classmethod
     def from_pyiceberg(
         cls,
         name: str,
         table_type: TableType,
-        owner: Optional[EntityReference],
+        owners: Optional[EntityReferenceList],
         table: pyiceberg.table.Table,
     ) -> IcebergTable:
         """Responsible for parsing the needed information from a PyIceberg Table."""
@@ -53,14 +55,20 @@ class IcebergTable(BaseModel):
             name=name,
             tableType=table_type,
             description=table.properties.get("comment"),
-            owner=owner,
+            owners=owners,
             columns=[IcebergColumnParser.parse(column) for column in iceberg_columns],
             tablePartition=TablePartition(
                 columns=[
-                    get_column_from_partition(iceberg_columns, partition)
+                    PartitionColumnDetails(
+                        columnName=get_column_from_partition(
+                            iceberg_columns, partition
+                        ),
+                        intervalType=get_column_partition_type(
+                            iceberg_columns, partition
+                        ),
+                        interval=None,
+                    )
                     for partition in table.spec().fields
-                ],
-                intervalType=None,
-                interval=None,
+                ]
             ),
         )

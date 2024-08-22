@@ -10,11 +10,12 @@
 #  limitations under the License.
 """Db2 source module"""
 import traceback
+from typing import Iterable, Optional
 
-from ibm_db_sa.base import DB2Dialect
-from sqlalchemy.engine import reflection
+from ibm_db_sa.base import ischema_names
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.row import LegacyRow
+from sqlalchemy.sql.sqltypes import BOOLEAN
 
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
@@ -30,14 +31,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-@reflection.cache
-def get_pk_constraint(
-    self, bind, table_name, schema=None, **kw
-):  # pylint: disable=unused-argument
-    return {"constrained_columns": [], "name": "undefined"}
-
-
-DB2Dialect.get_pk_constraint = get_pk_constraint
+ischema_names.update({"BOOLEAN": BOOLEAN})
 
 
 class Db2Source(CommonDbSourceService):
@@ -47,14 +41,23 @@ class Db2Source(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: Db2Connection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: Db2Connection = config.serviceConnection.root.config
         if not isinstance(connection, Db2Connection):
             raise InvalidSourceException(
                 f"Expected Db2Connection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_raw_database_schema_names(self) -> Iterable[str]:
+        if self.service_connection.__dict__.get("databaseSchema"):
+            yield self.service_connection.databaseSchema
+        else:
+            for schema_name in self.inspector.get_schema_names():
+                yield schema_name.rstrip()
 
     @staticmethod
     def get_table_description(

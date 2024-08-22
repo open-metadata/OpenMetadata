@@ -3,30 +3,13 @@ title: Run the MSSQL Connector Externally
 slug: /connectors/database/mssql/yaml
 ---
 
-# Run the MSSQL Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="MSSQL"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Stored Procedures"]
+unavailableFeatures=["Owners", "Tags", "SSIS packages"]
+/ %}
 
 In this section, we provide guides and references to use the MSSQL connector.
 
@@ -35,19 +18,14 @@ Configure and schedule MSSQL metadata and profiler workflows from the OpenMetada
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 MSSQL User must grant `SELECT` privilege to fetch the metadata of tables and views.
 
@@ -131,11 +109,17 @@ This is a sample config for MSSQL:
 
 {% codeInfo srNumber=5 %}
 
-**Database**: The database of the data source is an optional parameter, if you would like to restrict the metadata reading to a single database. If left blank, OpenMetadata ingestion attempts to scan all the databases.
+**database**: The initial database to establish a connection to the data source.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=6 %}
+
+**ingestAllDatabases**: If you need to ingest multiple databases - aside from the initial one above - you can enable this option.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=7 %}
 
 **uriString**: In case of a `pyodbc` connection.
 
@@ -150,15 +134,15 @@ This is a sample config for MSSQL:
 
 #### Advanced Configuration
 
-{% codeInfo srNumber=7 %}
+{% codeInfo srNumber=8 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
-{% codeInfo srNumber=8 %}
+{% codeInfo srNumber=9 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -168,33 +152,7 @@ This is a sample config for MSSQL:
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
-source:
-  type: mssql
-  serviceName: "<service name>"
-  serviceConnection:
-    config:
-      type: Mssql
-```
-```yaml {% srNumber=1 %}
-      scheme: mssql+pytds
-```
-```yaml {% srNumber=2 %}
-      username: <username>
-```
-```yaml {% srNumber=3 %}
-      password: <password>
-```
-```yaml {% srNumber=4 %}
-      hostPort: <hostPort>
-```
-```yaml {% srNumber=5 %}
-      # database: <database>
-```
-```yaml {% srNumber=6 %}
-      uriString: uriString
-```
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mssql
   serviceName: "<service name>"
@@ -206,11 +164,11 @@ source:
       hostPort: <hostPort>
       # database: <database>
 ```
-```yaml {% srNumber=7 %}
+```yaml {% srNumber=8 %}
       # connectionOptions:
       #   key: value
 ```
-```yaml {% srNumber=8 %}
+```yaml {% srNumber=9 %}
       # connectionArguments:
       #   key: value
 ```
@@ -229,11 +187,11 @@ source:
 
 {% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "mssql"} /%}
 
+{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "mssql"} /%}
+
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "mssql"} /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

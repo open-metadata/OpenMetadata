@@ -13,7 +13,7 @@
 
 package org.openmetadata.service.resources.settings;
 
-import static org.openmetadata.schema.settings.SettingsType.CUSTOM_LOGO_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.CUSTOM_UI_THEME_PREFERENCE;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.LOGIN_CONFIGURATION;
 
@@ -25,6 +25,8 @@ import javax.annotation.CheckForNull;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.api.configuration.LogoConfiguration;
+import org.openmetadata.api.configuration.ThemeConfiguration;
+import org.openmetadata.api.configuration.UiThemePreference;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
@@ -69,19 +71,28 @@ public class SettingsCache {
       systemRepository.createNewSetting(setting);
     }
 
-    // Initialise Logo Setting
-    Settings storedCustomLogoConf =
-        systemRepository.getConfigWithKey(CUSTOM_LOGO_CONFIGURATION.toString());
-    if (storedCustomLogoConf == null) {
+    // Initialise Theme Setting
+    Settings storedCustomUiThemeConf =
+        systemRepository.getConfigWithKey(CUSTOM_UI_THEME_PREFERENCE.toString());
+    if (storedCustomUiThemeConf == null) {
       // Only in case a config doesn't exist in DB we insert it
       Settings setting =
           new Settings()
-              .withConfigType(CUSTOM_LOGO_CONFIGURATION)
+              .withConfigType(CUSTOM_UI_THEME_PREFERENCE)
               .withConfigValue(
-                  new LogoConfiguration()
-                      .withCustomLogoUrlPath("")
-                      .withCustomMonogramUrlPath("")
-                      .withCustomFaviconUrlPath(""));
+                  new UiThemePreference()
+                      .withCustomLogoConfig(
+                          new LogoConfiguration()
+                              .withCustomLogoUrlPath("")
+                              .withCustomFaviconUrlPath("")
+                              .withCustomMonogramUrlPath(""))
+                      .withCustomTheme(
+                          new ThemeConfiguration()
+                              .withPrimaryColor("")
+                              .withSuccessColor("")
+                              .withErrorColor("")
+                              .withWarningColor("")
+                              .withInfoColor("")));
       systemRepository.createNewSetting(setting);
     }
 
@@ -138,6 +149,21 @@ public class SettingsCache {
           // Only if available
           fetchedSettings = systemRepository.getSlackApplicationConfigInternal();
           LOG.info("Loaded Slack Application Configuration");
+        }
+        case SLACK_BOT -> {
+          // Only if available
+          fetchedSettings = systemRepository.getSlackbotConfigInternal();
+          LOG.info("Loaded Slack Bot Configuration");
+        }
+        case SLACK_INSTALLER -> {
+          // Only if available
+          fetchedSettings = systemRepository.getSlackInstallerConfigInternal();
+          LOG.info("Loaded Slack Installer Configuration");
+        }
+        case SLACK_STATE -> {
+          // Only if available
+          fetchedSettings = systemRepository.getSlackStateConfigInternal();
+          LOG.info("Loaded Slack state Configuration");
         }
         default -> {
           fetchedSettings = systemRepository.getConfigWithKey(settingsName);

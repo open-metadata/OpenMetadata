@@ -18,6 +18,7 @@ from typing import Any, Callable, Optional, Type, TypeVar
 
 from pydantic import BaseModel
 
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -170,7 +171,7 @@ def get_sink(
     from the given configs
     """
     sink_class = import_sink_class(sink_type=sink_type, from_=from_)
-    sink_config = sink_config.dict().get("config", {})
+    sink_config = sink_config.model_dump().get("config", {})
     sink: Sink = sink_class.create(sink_config, metadata_config)
     logger.debug(f"Sink type:{sink_type}, {sink_class} configured")
 
@@ -196,13 +197,22 @@ def import_connection_fn(connection: BaseModel, function_name: str) -> Callable:
 
     # module building strings read better with .format instead of f-strings
     # pylint: disable=consider-using-f-string
-    _connection_fn = import_from_module(
-        "metadata.ingestion.source.{}.{}.connection.{}".format(
-            service_type.name.lower(),
-            connection_type.value.lower(),
-            function_name,
+
+    if connection.type.value.lower().startswith("custom"):
+        python_class_parts = connection.sourcePythonClass.rsplit(".", 1)
+        python_module_path = ".".join(python_class_parts[:-1])
+
+        _connection_fn = import_from_module(
+            "{}.{}".format(python_module_path, function_name)
         )
-    )
+    else:
+        _connection_fn = import_from_module(
+            "metadata.ingestion.source.{}.{}.connection.{}".format(
+                service_type.name.lower(),
+                connection_type.value.lower(),
+                function_name,
+            )
+        )
 
     return _connection_fn
 
@@ -211,7 +221,7 @@ def import_test_case_class(
     test_type: str,
     runner_type: str,
     test_definition: str,
-) -> Callable:
+) -> Type[BaseTestValidator]:
     """_summary_
 
     Args:

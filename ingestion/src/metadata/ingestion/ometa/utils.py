@@ -57,6 +57,8 @@ def get_entity_type(
         return class_name.replace("databaseschema", "databaseSchema")
     if "searchindex" in class_name:
         return class_name.replace("searchindex", "searchIndex")
+    if "dashboarddatamodel" in class_name:
+        return class_name.replace("dashboarddatamodel", "dashboardDataModel")
 
     return class_name
 
@@ -66,9 +68,9 @@ def model_str(arg: Any) -> str:
     Default model stringifying method.
 
     Some elements such as FQN, EntityName, UUID
-    have the actual value under the pydantic base __root__
+    have the actual value under the pydantic base root
     """
-    if hasattr(arg, "__root__"):
-        return str(arg.__root__)
+    if hasattr(arg, "root"):
+        return str(arg.root)
 
     return str(arg)

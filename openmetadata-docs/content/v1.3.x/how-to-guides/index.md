@@ -5,7 +5,7 @@ slug: /how-to-guides
 
 # How-to Guides
 
-The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities. 
+The How-to Guides will give you a walk through on accomplishing the basic to the most advanced things in OpenMetadata. These step-by-step guides will help get an overview of the features and also help explore the various functionalities.  
 
 ## Features in OpenMetadata
 
@@ -28,7 +28,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
     title="Data Quality & Profiler"
     description="Trust your data with quality tests that ensure freshness, & accuracy."
     link="/how-to-guides/data-quality-profiler"
-    icon="quality"
+    icon="observability"
 /%}
 {% tile
     title="Data Lineage"

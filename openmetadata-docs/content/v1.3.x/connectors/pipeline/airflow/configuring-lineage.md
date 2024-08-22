@@ -25,6 +25,8 @@ the relationship.
 
 This lineage configuration method is available for OpenMetadata release 1.2.3 or higher.
 
+We support lineage for the following entities: `Table`, `Container`, `Dashboard`, `DashboardDataModel`, `Pipeline`, `Topic`, `SearchIndex` and `MlModel`.
+
 {% /note %}
 
 Let's take a look at the following example:

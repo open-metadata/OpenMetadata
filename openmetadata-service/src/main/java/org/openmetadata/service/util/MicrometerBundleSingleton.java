@@ -18,30 +18,55 @@ import static io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle.pro
 import io.github.maksymdolgykh.dropwizard.micrometer.MicrometerBundle;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.prometheus.client.Counter;
+import io.prometheus.client.Histogram;
+import lombok.Getter;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class MicrometerBundleSingleton {
-  private static final MicrometerBundle instance = new MicrometerBundle();
+  @Getter private static final MicrometerBundle instance = new MicrometerBundle();
   // We'll use this registry to add monitoring around Ingestion Pipelines
   public static final PrometheusMeterRegistry prometheusMeterRegistry = prometheusRegistry;
-  private static Timer webAnalyticEvents;
+  @Getter private static Timer requestsLatencyTimer;
+  @Getter private static Timer jdbiLatencyTimer;
 
   private MicrometerBundleSingleton() {}
 
-  public static MicrometerBundle getInstance() {
-    return instance;
-  }
+  private static final double[] latencyBuckets = new double[] {.01, .1, 1, 2, 5, 10, 20, 60};
 
-  public static void setWebAnalyticsEvents(OpenMetadataApplicationConfig config) {
-    webAnalyticEvents =
-        Timer.builder("latency_requests")
-            .description("Request latency in seconds.")
+  public static final Histogram httpRequests =
+      Histogram.build()
+          .name("http_server_requests_sec")
+          .help("HTTP methods duration")
+          .labelNames("method")
+          .buckets(latencyBuckets)
+          .register(prometheusMeterRegistry.getPrometheusRegistry());
+
+  public static final Histogram jdbiRequests =
+      Histogram.build()
+          .name("jdbi_requests_seconds")
+          .help("jdbi requests duration distribution")
+          .buckets(latencyBuckets)
+          .register(MicrometerBundle.prometheusRegistry.getPrometheusRegistry());
+
+  public static final Counter pipelineClientStatusCounter =
+      Counter.build()
+          .name("pipeline_client_request_status")
+          .help("status codes returned by pipeline client by operation")
+          .labelNames("operation", "status")
+          .register(MicrometerBundle.prometheusRegistry.getPrometheusRegistry());
+
+  public static void initLatencyEvents(OpenMetadataApplicationConfig config) {
+    requestsLatencyTimer =
+        Timer.builder("http_latency_requests")
+            .description("HTTP request latency in seconds.")
             .publishPercentiles(config.getEventMonitorConfiguration().getLatency())
-            .publishPercentileHistogram()
             .register(prometheusMeterRegistry);
-  }
 
-  public static Timer getWebAnalyticEvents() {
-    return webAnalyticEvents;
+    jdbiLatencyTimer =
+        Timer.builder("jdbi_latency_requests")
+            .description("JDBI queries latency in seconds.")
+            .publishPercentiles(config.getEventMonitorConfiguration().getLatency())
+            .register(prometheusMeterRegistry);
   }
 }

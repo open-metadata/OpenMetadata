@@ -13,9 +13,9 @@
 
 import i18next from 'i18next';
 import { StepperStepType } from 'Models';
+import { DatabaseServiceType } from '../generated/entity/data/database';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import { getDataQualityPagePath } from '../utils/RouterUtils';
 
 const TEST_SUITE_LABEL = i18next.t('label.test-suite');
 const ADD_TEST_SUITE_LABEL = i18next.t('label.add-entity', {
@@ -39,6 +39,19 @@ export const STEPS_FOR_ADD_TEST_SUITE: Array<StepperStepType> = [
   },
 ];
 
+export const STEPS_FOR_ADD_TEST_SUITE_PIPELINE: Array<StepperStepType> = [
+  {
+    name: i18next.t('label.add-entity', {
+      entity: i18next.t('label.test-case'),
+    }),
+    step: 1,
+  },
+  {
+    name: i18next.t('label.schedule-interval'),
+    step: 2,
+  },
+];
+
 export const TEST_SUITE_BREADCRUMB = [
   {
     name: TEST_SUITE_LABEL,
@@ -49,7 +62,7 @@ export const TEST_SUITE_BREADCRUMB = [
 export const TEST_SUITE_STEPPER_BREADCRUMB = [
   {
     name: TEST_SUITE_LABEL,
-    url: getDataQualityPagePath(DataQualityPageTabs.TEST_SUITES),
+    url: `/data-quality/${DataQualityPageTabs.TEST_SUITES}`,
     activeTitle: false,
   },
   {
@@ -86,3 +99,18 @@ export const TEST_CASE_STATUS: Record<
   ],
   [TestCaseResolutionStatusTypes.Resolved]: [],
 };
+
+export const TABLE_DIFF = 'tableDiff';
+
+export const SUPPORTED_SERVICES_FOR_TABLE_DIFF = [
+  DatabaseServiceType.Snowflake,
+  DatabaseServiceType.BigQuery,
+  DatabaseServiceType.Redshift,
+  DatabaseServiceType.Athena,
+  DatabaseServiceType.Postgres,
+  DatabaseServiceType.Mysql,
+  DatabaseServiceType.Mssql,
+  DatabaseServiceType.Oracle,
+  DatabaseServiceType.Trino,
+  DatabaseServiceType.SapHana,
+];

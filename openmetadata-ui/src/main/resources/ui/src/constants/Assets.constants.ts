@@ -53,7 +53,7 @@ export const AssetsFilterOptions: Array<{
   {
     label: i18n.t('label.glossary-plural'),
     key: EntityType.GLOSSARY_TERM,
-    value: SearchIndex.GLOSSARY,
+    value: SearchIndex.GLOSSARY_TERM,
   },
   {
     label: i18n.t('label.stored-procedure-plural'),
@@ -131,6 +131,23 @@ export const AssetsFilterOptions: Array<{
     key: EntityType.SEARCH_SERVICE,
     value: SearchIndex.SEARCH_SERVICE,
   },
+  {
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.api-uppercase'),
+    }),
+    key: EntityType.API_SERVICE,
+    value: SearchIndex.API_SERVICE_INDEX,
+  },
+  {
+    label: i18n.t('label.api-collection-plural'),
+    key: EntityType.API_COLLECTION,
+    value: SearchIndex.API_COLLECTION_INDEX,
+  },
+  {
+    label: i18n.t('label.api-endpoint-plural'),
+    key: EntityType.API_ENDPOINT,
+    value: SearchIndex.API_ENDPOINT_INDEX,
+  },
 ];
 
 export const ASSET_MENU_KEYS = [
@@ -143,4 +160,23 @@ export const ASSET_MENU_KEYS = [
   EntityType.CONTAINER,
   EntityType.SEARCH_INDEX,
   EntityType.GOVERN,
+];
+
+export const NON_SERVICE_TYPE_ASSETS = [
+  EntityType.GLOSSARY,
+  EntityType.GLOSSARY_TERM,
+  EntityType.CLASSIFICATION,
+  EntityType.TAG,
+  EntityType.DATA_PRODUCT,
+  EntityType.DOMAIN,
+  EntityType.TEST_CASE,
+  EntityType.TEST_SUITE,
+  EntityType.EVENT_SUBSCRIPTION,
+  EntityType.BOT,
+  EntityType.TEAM,
+  EntityType.APPLICATION,
+  EntityType.PERSONA,
+  EntityType.ROLE,
+  EntityType.POLICY,
+  EntityType.KPI,
 ];

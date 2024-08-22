@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { checkServiceFieldSectionHighlighting } from '../common';
+import { SERVICE_TYPE } from '../../constants/constants';
+import {
+  checkServiceFieldSectionHighlighting,
+  interceptURL,
+  verifyResponseStatusCode,
+} from '../common';
 import ServiceBaseClass from '../Entities/ServiceBaseClass';
+import { visitServiceDetailsPage } from '../serviceUtils';
 import { Services } from '../Utils/Services';
 
 class MysqlIngestionClass extends ServiceBaseClass {
@@ -47,6 +53,70 @@ class MysqlIngestionClass extends ServiceBaseClass {
       .then((content) => content.text())
       .should('deep.eq', tables);
   }
+
+  runAdditionalTests() {
+    it('Edit service connection', () => {
+      interceptURL(
+        'GET',
+        'api/v1/teams/name/Organization?fields=*',
+        'getSettingsPage'
+      );
+      interceptURL(
+        'POST',
+        '/api/v1/services/ingestionPipelines/deploy/*',
+        'deployIngestion'
+      );
+      interceptURL(
+        'POST',
+        '/api/v1/services/ingestionPipelines?fields=*',
+        'ingestionPipeline'
+      );
+      interceptURL(
+        'POST',
+        '/api/v1/services/ingestionPipelines/trigger/*',
+        'triggerIngestionPipeline'
+      );
+      visitServiceDetailsPage(
+        { type: SERVICE_TYPE.Database, name: this.serviceName },
+        false
+      );
+
+      cy.get('[data-testid="connection"]').scrollIntoView().click();
+      cy.get('[data-testid="edit-connection-button"]').scrollIntoView().click();
+      cy.get('#root\\/databaseSchema').clear().type('openmetadata_db');
+      interceptURL(
+        'PATCH',
+        '/api/v1/services/databaseServices/*',
+        'editService'
+      );
+      cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+      cy.wait('@editService').then((interception) => {
+        expect(interception.request.body).to.deep.equal([
+          {
+            op: 'add',
+            path: '/connection/config/databaseSchema',
+            value: 'openmetadata_db',
+          },
+        ]);
+      });
+      cy.get('[data-testid="ingestions"]').scrollIntoView().click();
+      cy.get('[data-testid="more-actions"]').click();
+
+      cy.get(
+        '[data-testid="actions-dropdown"]:visible [data-testid="re-deploy-button"]'
+      ).click();
+      verifyResponseStatusCode('@deployIngestion', 200);
+
+      cy.reload();
+      cy.get('[data-testid="more-actions"]').click();
+
+      cy.get(
+        '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
+      ).click();
+      verifyResponseStatusCode('@triggerIngestionPipeline', 200);
+    });
+  }
 }
 
+// eslint-disable-next-line jest/no-export
 export default MysqlIngestionClass;

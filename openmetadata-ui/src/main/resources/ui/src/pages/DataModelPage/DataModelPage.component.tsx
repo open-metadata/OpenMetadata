@@ -23,21 +23,26 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+
+import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import DataModelDetails from '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
 import { Include } from '../../generated/type/include';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
@@ -59,7 +64,8 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const DataModelsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const history = useHistory();
+  const { currentUser } = useApplicationStore();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const { fqn: dashboardDataModelFQN } = useFqn();
@@ -123,13 +129,17 @@ const DataModelsPage = () => {
     setIsLoading(true);
     try {
       const response = await getDataModelByFqn(dashboardDataModelFQN, {
-        fields: 'owner,tags,followers,votes,domain,dataProducts',
+        // eslint-disable-next-line max-len
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.FOLLOWERS},${TabSpecificField.VOTES},${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`,
         include: Include.All,
       });
       setDataModelData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
       setHasError(true);
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -205,23 +215,23 @@ const DataModelsPage = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (updatedOwner?: DashboardDataModel['owner']) => {
+    async (updatedOwners?: DashboardDataModel['owners']) => {
       try {
-        const { owner: newOwner, version } = await handleUpdateDataModelData({
+        const { owners: newOwners, version } = await handleUpdateDataModelData({
           ...(dataModelData as DashboardDataModel),
-          owner: updatedOwner ? updatedOwner : undefined,
+          owners: updatedOwners,
         });
 
         setDataModelData((prev) => ({
           ...(prev as DashboardDataModel),
-          owner: newOwner,
+          owners: newOwners,
           version,
         }));
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [dataModelData, dataModelData?.owner]
+    [dataModelData, dataModelData?.owners]
   );
 
   const handleUpdateTier = async (updatedTier?: Tag) => {
@@ -299,7 +309,14 @@ const DataModelsPage = () => {
         dashboardDataModelFQN,
 
         {
-          fields: 'owner,tags,followers,votes,domain,dataProducts',
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.FOLLOWERS,
+            TabSpecificField.VOTES,
+            TabSpecificField.DOMAIN,
+            TabSpecificField.DATA_PRODUCTS,
+          ],
           include: Include.All,
         }
       );

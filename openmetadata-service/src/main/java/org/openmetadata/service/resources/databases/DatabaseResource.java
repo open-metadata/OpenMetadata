@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -77,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class DatabaseResource extends EntityResource<Database, DatabaseRepository> {
   public static final String COLLECTION_PATH = "v1/databases/";
   static final String FIELDS =
-      "owner,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash,sourceHash";
+      "owners,databaseSchemas,usageSummary,location,tags,extension,domain,sourceHash";
 
   @Override
   public Database addHref(UriInfo uriInfo, Database db) {
@@ -95,8 +96,8 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
     return listOf(MetadataOperation.VIEW_USAGE, MetadataOperation.EDIT_USAGE);
   }
 
-  public DatabaseResource(Authorizer authorizer) {
-    super(Entity.DATABASE, authorizer);
+  public DatabaseResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATABASE, authorizer, limits);
   }
 
   public static class DatabaseList extends ResultList<Database> {
@@ -340,6 +341,35 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchDatabase",
+      summary = "Update a database by name.",
+      description = "Update an existing database using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the database", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT

@@ -3,30 +3,13 @@ title: Run the Postgres Connector Externally
 slug: /connectors/database/postgres/yaml
 ---
 
-# Run the Postgres Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="check" /%} |
-| Tags               | {% icon iconName="check" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | Postgres>=11                 |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%}          |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="Postgres"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Data Profiler", "Data Quality", "dbt", "Lineage", "Column-level Lineage", "Owners", "Tags"]
+unavailableFeatures=["Stored Procedures"]
+/ %}
 
 In this section, we provide guides and references to use the Postgres connector.
 
@@ -35,19 +18,14 @@ Configure and schedule Postgres metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Query Usage](#query-usage)
-- [Data Profiler](#data-profiler)
 - [Lineage](#lineage)
+- [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
-
-
 
 **Note:** Note that we only support officially supported Postgres versions. You can check the version list [here](https://www.postgresql.org/support/versioning/).
 
@@ -209,17 +187,31 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
 
+
+{% codeInfo srNumber=9 %}
+
+**sslMode**: SSL Mode to connect to postgres database. E.g, `prefer`, `verify-ca`, `allow` etc.
+NOTE: if you are using `IAM auth`, select either `allow` (recommended) or other option based on your use case.
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=10 %}
+
+**sslConfig.certificatePath**: CA certificate path. E.g., /path/to/public.cert. Will be used if Verify SSL is set to `verify-ca`.
+
+{% /codeInfo %}
+
 #### Advanced Configuration
 
 {% codeInfo srNumber=7 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=8 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -229,7 +221,7 @@ Find more information about [Source Identity](https://docs.aws.amazon.com/STS/la
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: postgres
   serviceName: local_postgres
@@ -260,6 +252,13 @@ source:
 ```yaml {% srNumber=6 %}
       ingestAllDatabases: true
 ```
+```yaml {% srNumber=9 %}
+      # sslMode: disable
+```
+```yaml {% srNumber=10 %}
+      # sslConfig:
+      #       certificatePath:  /path/to/public.cert
+```
 ```yaml {% srNumber=7 %}
       # connectionOptions:
       #   key: value
@@ -283,11 +282,11 @@ source:
 
 {% partial file="/v1.3/connectors/yaml/query-usage.md" variables={connector: "postgres"} /%}
 
+{% partial file="/v1.3/connectors/yaml/lineage.md" variables={connector: "postgres"} /%}
+
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "postgres"} /%}
 
-## Lineage
-
-You can learn more about how to ingest lineage [here](/connectors/ingestion/workflows/lineage).
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

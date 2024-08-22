@@ -97,7 +97,7 @@ jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
-jest.mock('../../common/EntityDescription/Description', () => {
+jest.mock('../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockReturnValue(<p>Description Component</p>);
 });
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewer', () => {

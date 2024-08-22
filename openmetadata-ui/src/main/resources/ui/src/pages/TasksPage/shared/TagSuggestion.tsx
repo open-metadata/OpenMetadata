@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { DefaultOptionType } from 'antd/lib/select';
+import { DefaultOptionType, SelectProps } from 'antd/lib/select';
 import { t } from 'i18next';
 import { isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
@@ -29,6 +29,7 @@ export interface TagSuggestionProps {
   value?: TagLabel[];
   initialOptions?: SelectOption[];
   onChange?: (newTags: TagLabel[]) => void;
+  selectProps?: SelectProps;
 }
 
 const TagSuggestion: React.FC<TagSuggestionProps> = ({
@@ -37,6 +38,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
   placeholder,
   initialOptions,
   tagType = TagSource.Classification,
+  selectProps,
 }) => {
   const isGlossaryType = useMemo(
     () => tagType === TagSource.Glossary,
@@ -83,6 +85,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
     <AsyncSelectList
       fetchOptions={isGlossaryType ? fetchGlossaryList : tagClassBase.getTags}
       initialOptions={initialOptions}
+      {...selectProps}
       mode="multiple"
       placeholder={
         placeholder ??
@@ -91,7 +94,7 @@ const TagSuggestion: React.FC<TagSuggestionProps> = ({
         })
       }
       value={value?.map((item) => item.tagFQN) ?? []}
-      onChange={(value) => handleTagSelection(value)}
+      onChange={handleTagSelection}
     />
   );
 };

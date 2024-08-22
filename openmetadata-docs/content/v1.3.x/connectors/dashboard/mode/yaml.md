@@ -3,17 +3,13 @@ title: Run the Mode Connector Externally
 slug: /connectors/dashboard/mode/yaml
 ---
 
-# Run the Mode Connector Externally
-
-| Stage      | PROD                         |
-|------------|------------------------------|
-| Dashboards | {% icon iconName="check" /%} |
-| Charts     | {% icon iconName="check" /%} |
-| Owners     | {% icon iconName="cross" /%} |
-| Tags       | {% icon iconName="cross" /%} |
-| Datamodels | {% icon iconName="cross" /%} |
-| Projects   | {% icon iconName="cross" /%} |
-| Lineage    | {% icon iconName="check" /%} |
+{% connectorDetailsHeader
+name="Mode"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Dashboards", "Charts", "Lineage"]
+unavailableFeatures=["Owners", "Tags", "Datamodels", "Projects"]
+/ %}
 
 In this section, we provide guides and references to use the Mode connector.
 
@@ -25,10 +21,6 @@ Configure and schedule Mode metadata and profiler workflows from the OpenMetadat
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 OpenMetadata relies on Mode's API, which is exclusive to members of the Mode Business Workspace. This means that only resources that belong to a Mode Business Workspace can be accessed via the API.
 
@@ -114,7 +106,7 @@ Name of the mode workspace from where the metadata is to be fetched.
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: mode
   serviceName: local_mode

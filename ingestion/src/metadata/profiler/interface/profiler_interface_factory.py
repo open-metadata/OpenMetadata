@@ -13,7 +13,8 @@
 Factory class for creating profiler interface objects
 """
 
-from typing import cast
+import importlib
+from typing import Dict, cast
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -27,8 +28,14 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
 )
+from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
+    DynamoDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
     MariaDBConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
+    MongoDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
@@ -43,81 +50,58 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
     UnityCatalogConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
-from metadata.profiler.interface.pandas.profiler_interface import (
-    PandasProfilerInterface,
-)
+from metadata.profiler.factory import Factory
 from metadata.profiler.interface.profiler_interface import ProfilerInterface
-from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
-    BigQueryProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
-    DatabricksProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.db2.profiler_interface import (
-    DB2ProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.mariadb.profiler_interface import (
-    MariaDBProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.profiler_interface import (
-    SQAProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.single_store.profiler_interface import (
-    SingleStoreProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.snowflake.profiler_interface import (
-    SnowflakeProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.trino.profiler_interface import (
-    TrinoProfilerInterface,
-)
-from metadata.profiler.interface.sqlalchemy.unity_catalog.profiler_interface import (
-    UnityCatalogProfilerInterface,
-)
 
 
-class ProfilerInterfaceFactory:
-    """Creational factory for profiler interface objects"""
-
-    def __init__(self):
-        self._interface_type = {}
-
-    def register(self, interface_type: str, interface_class):
-        """Register a new interface"""
-        self._interface_type[interface_type] = interface_class
-
-    def register_many(self, interface_dict):
-        """
-        Registers multiple profiler interfaces at once.
-
-        Args:
-            interface_dict: A dictionary mapping connection class names (strings) to their
-            corresponding profiler interface classes.
-        """
-        for interface_type, interface_class in interface_dict.items():
-            self.register(interface_type, interface_class)
-
+class ProfilerInterfaceFactory(Factory):
     def create(self, interface_type: str, *args, **kwargs):
         """Create interface object based on interface type"""
-        interface_class = self._interface_type.get(interface_type)
-        if not interface_class:
-            interface_class = self._interface_type.get(DatabaseConnection.__name__)
-        interface_class = cast(ProfilerInterface, interface_class)
-        return interface_class.create(*args, **kwargs)
+        interface_class_path = profiler_class_mapping.get(
+            interface_type, profiler_class_mapping[DatabaseConnection.__name__]
+        )
+        try:
+            module_path, class_name = interface_class_path.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            profiler_class = getattr(module, class_name)
+        except (ImportError, AttributeError) as e:
+            raise ImportError(f"Error importing {class_name} from {module_path}: {e}")
+        profiler_class = cast(ProfilerInterface, profiler_class)
+        return profiler_class.create(*args, **kwargs)
 
 
 profiler_interface_factory = ProfilerInterfaceFactory()
-profilers = {
-    DatabaseConnection.__name__: SQAProfilerInterface,
-    BigQueryConnection.__name__: BigQueryProfilerInterface,
-    SingleStoreConnection.__name__: SingleStoreProfilerInterface,
-    DatalakeConnection.__name__: PandasProfilerInterface,
-    MariaDBConnection.__name__: MariaDBProfilerInterface,
-    SnowflakeConnection.__name__: SnowflakeProfilerInterface,
-    TrinoConnection.__name__: TrinoProfilerInterface,
-    UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
-    DatabricksConnection.__name__: DatabricksProfilerInterface,
-    Db2Connection.__name__: DB2ProfilerInterface,
-}
 
-profiler_interface_factory.register_many(profilers)
+BASE_PROFILER_PATH = "metadata.profiler.interface"
+SQLALCHEMY_PROFILER_PATH = f"{BASE_PROFILER_PATH}.sqlalchemy"
+NOSQL_PROFILER_PATH = (
+    f"{BASE_PROFILER_PATH}.nosql.profiler_interface.NoSQLProfilerInterface"
+)
+PANDAS_PROFILER_PATH = (
+    f"{BASE_PROFILER_PATH}.pandas.profiler_interface.PandasProfilerInterface"
+)
+
+# Configuration for dynamic imports
+profiler_class_mapping: Dict[str, str] = {
+    DatabaseConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".profiler_interface.SQAProfilerInterface",
+    BigQueryConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".bigquery.profiler_interface.BigQueryProfilerInterface",
+    SingleStoreConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".single_store.profiler_interface.SingleStoreProfilerInterface",
+    DatalakeConnection.__name__: PANDAS_PROFILER_PATH,
+    MariaDBConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".mariadb.profiler_interface.MariaDBProfilerInterface",
+    SnowflakeConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".snowflake.profiler_interface.SnowflakeProfilerInterface",
+    TrinoConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".trino.profiler_interface.TrinoProfilerInterface",
+    UnityCatalogConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".unity_catalog.profiler_interface.UnityCatalogProfilerInterface",
+    DatabricksConnection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".databricks.profiler_interface.DatabricksProfilerInterface",
+    Db2Connection.__name__: SQLALCHEMY_PROFILER_PATH
+    + ".db2.profiler_interface.DB2ProfilerInterface",
+    MongoDBConnection.__name__: NOSQL_PROFILER_PATH,
+    DynamoDBConnection.__name__: NOSQL_PROFILER_PATH,
+}

@@ -13,18 +13,20 @@
 snowflake unit tests
 """
 # pylint: disable=line-too-long
-
 from unittest import TestCase
 from unittest.mock import PropertyMock, patch
 
 from metadata.generated.schema.entity.data.table import TableType
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineStatus,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 
-mock_snowflake_config = {
+SNOWFLAKE_CONFIGURATION = {
     "source": {
         "type": "snowflake",
         "serviceName": "local_snowflake",
@@ -50,8 +52,49 @@ mock_snowflake_config = {
             },
         }
     },
+    "ingestionPipelineFQN": "snowflake.mock_pipeline",
 }
 
+SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
+    **SNOWFLAKE_CONFIGURATION,
+    **{
+        "source": {
+            **SNOWFLAKE_CONFIGURATION["source"],
+            "sourceConfig": {
+                "config": {"type": "DatabaseMetadata", "incremental": {"enabled": True}}
+            },
+        }
+    },
+}
+
+SNOWFLAKE_CONFIGURATIONS = {
+    "incremental": SNOWFLAKE_INCREMENTAL_CONFIGURATION,
+    "not_incremental": SNOWFLAKE_CONFIGURATION,
+}
+
+MOCK_PIPELINE_STATUSES = [
+    PipelineStatus(
+        runId="1",
+        pipelineState="success",
+        timestamp=10,
+        startDate=10,
+        endDate=20,
+    ),
+    PipelineStatus(
+        runId="2",
+        pipelineState="success",
+        timestamp=30,
+        startDate=30,
+        endDate=50,
+    ),
+    PipelineStatus(
+        runId="3",
+        pipelineState="failed",
+        timestamp=70,
+        startDate=70,
+        endDate=80,
+    ),
+]
 
 RAW_CLUSTER_KEY_EXPRS = [
     "LINEAR(c1, c2)",
@@ -78,50 +121,90 @@ EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/random_org/random_account/#/
 EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
 
 
+def get_snowflake_sources():
+    sources = {}
+
+    with patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection",
+        return_value=False,
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(
+            SNOWFLAKE_CONFIGURATIONS["not_incremental"]
+        )
+        sources["not_incremental"] = SnowflakeSource.create(
+            SNOWFLAKE_CONFIGURATIONS["not_incremental"]["source"],
+            config.workflowConfig.openMetadataServerConfig,
+            SNOWFLAKE_CONFIGURATIONS["not_incremental"]["ingestionPipelineFQN"],
+        )
+
+        with patch(
+            "metadata.ingestion.source.database.incremental_metadata_extraction.IncrementalConfigCreator._get_pipeline_statuses",
+            return_value=MOCK_PIPELINE_STATUSES,
+        ):
+            config = OpenMetadataWorkflowConfig.model_validate(
+                SNOWFLAKE_CONFIGURATIONS["incremental"]
+            )
+            sources["incremental"] = SnowflakeSource.create(
+                SNOWFLAKE_CONFIGURATIONS["incremental"]["source"],
+                config.workflowConfig.openMetadataServerConfig,
+                SNOWFLAKE_CONFIGURATIONS["incremental"]["ingestionPipelineFQN"],
+            )
+    return sources
+
+
 class SnowflakeUnitTest(TestCase):
     """
     Unit test for snowflake source
     """
 
-    @patch(
-        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-    )
-    def __init__(self, methodName, test_connection) -> None:
+    def __init__(self, methodName) -> None:
         super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_snowflake_config)
-        self.snowflake_source: SnowflakeSource = SnowflakeSource.create(
-            mock_snowflake_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
+        self.sources = get_snowflake_sources()
 
     def test_partition_parse_columns(self):
-        for idx, expr in enumerate(RAW_CLUSTER_KEY_EXPRS):
-            assert (
-                self.snowflake_source.parse_column_name_from_expr(expr)
-                == EXPECTED_PARTITION_COLUMNS[idx]
-            )
+        for source in self.sources.values():
+            for idx, expr in enumerate(RAW_CLUSTER_KEY_EXPRS):
+                assert (
+                    source.parse_column_name_from_expr(expr)
+                    == EXPECTED_PARTITION_COLUMNS[idx]
+                )
+
+    def test_incremental_config_is_created_accordingly(self):
+        self.assertFalse(self.sources["not_incremental"].incremental.enabled)
+
+        self.assertTrue(self.sources["incremental"].incremental.enabled)
+
+        milliseconds_in_one_day = 24 * 60 * 60 * 1000
+        safety_margin_days = self.sources[
+            "incremental"
+        ].source_config.incremental.safetyMarginDays
+
+        self.assertEqual(
+            self.sources["incremental"].incremental.start_timestamp,
+            30 - safety_margin_days * milliseconds_in_one_day,
+        )
 
     def _assert_urls(self):
-        self.assertEqual(
-            self.snowflake_source.get_source_url(
-                database_name=MOCK_DB_NAME,
-                schema_name=MOCK_SCHEMA_NAME_2,
-                table_name=MOCK_TABLE_NAME,
-                table_type=TableType.Regular,
-            ),
-            EXPECTED_SNOW_URL_TABLE,
-        )
+        for source in self.sources.values():
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_2,
+                    table_name=MOCK_TABLE_NAME,
+                    table_type=TableType.Regular,
+                ),
+                EXPECTED_SNOW_URL_TABLE,
+            )
 
-        self.assertEqual(
-            self.snowflake_source.get_source_url(
-                database_name=MOCK_DB_NAME,
-                schema_name=MOCK_SCHEMA_NAME_1,
-                table_name=MOCK_VIEW_NAME,
-                table_type=TableType.View,
-            ),
-            EXPECTED_SNOW_URL_VIEW,
-        )
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name=MOCK_VIEW_NAME,
+                    table_type=TableType.View,
+                ),
+                EXPECTED_SNOW_URL_VIEW,
+            )
 
     def test_source_url(self):
         """
@@ -147,14 +230,15 @@ class SnowflakeUnitTest(TestCase):
                 new_callable=PropertyMock,
                 return_value=None,
             ):
-                self.assertIsNone(
-                    self.snowflake_source.get_source_url(
-                        database_name=MOCK_DB_NAME,
-                        schema_name=MOCK_SCHEMA_NAME_1,
-                        table_name=MOCK_VIEW_NAME,
-                        table_type=TableType.View,
+                for source in self.sources.values():
+                    self.assertIsNone(
+                        source.get_source_url(
+                            database_name=MOCK_DB_NAME,
+                            schema_name=MOCK_SCHEMA_NAME_1,
+                            table_name=MOCK_VIEW_NAME,
+                            table_type=TableType.View,
+                        )
                     )
-                )
 
     def test_stored_procedure_validator(self):
         """Review how we are building the SP signature"""

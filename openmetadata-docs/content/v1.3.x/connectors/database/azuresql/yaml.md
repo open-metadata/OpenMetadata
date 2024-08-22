@@ -3,30 +3,13 @@ title: Run the AzureSQL Connector Externally
 slug: /connectors/database/azuresql/yaml
 ---
 
-# Run the AzureSQL Connector Externally
-
-{% multiTablesWrapper %}
-
-| Feature            | Status                       |
-| :----------------- | :--------------------------- |
-| Stage              | PROD                         |
-| Metadata           | {% icon iconName="check" /%} |
-| Query Usage        | {% icon iconName="check" /%} |
-| Data Profiler      | {% icon iconName="check" /%} |
-| Data Quality       | {% icon iconName="check" /%} |
-| Stored Procedures  | {% icon iconName="cross" /%} |
-| Owners             | {% icon iconName="cross" /%} |
-| Tags               | {% icon iconName="cross" /%} |
-| DBT                | {% icon iconName="check" /%} |
-| Supported Versions | --                           |
-
-| Feature      | Status                       |
-| :----------- | :--------------------------- |
-| Lineage      | {% icon iconName="check" /%} |
-| Table-level  | {% icon iconName="check" /%} |
-| Column-level | {% icon iconName="check" /%} |
-
-{% /multiTablesWrapper %}
+{% connectorDetailsHeader
+name="AzureSQL"
+stage="PROD"
+platform="OpenMetadata"
+availableFeatures=["Metadata", "Query Usage", "Lineage", "Column-level Lineage", "Data Profiler", "Data Quality", "dbt"]
+unavailableFeatures=["Stored Procedures", "Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the AzureSQL connector.
 
@@ -35,15 +18,12 @@ Configure and schedule AzureSQL metadata and profiler workflows from the OpenMet
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 - [Data Profiler](#data-profiler)
+- [Data Quality](#data-quality)
 - [dbt Integration](#dbt-integration)
 
 {% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
-
-{%inlineCallout icon="description" bold="OpenMetadata 0.12 or later" href="/deployment"%}
-To deploy OpenMetadata, check the Deployment guides.
-{%/inlineCallout%}
 
 Make sure if you have whitelisted ingestion container IP on Azure SQL firewall rules. Checkout [this](https://learn.microsoft.com/en-us/azure/azure-sql/database/firewall-configure?view=azuresql#use-the-azure-portal-to-manage-server-level-ip-firewall-rules) document on how to whitelist your IP using azure portal.
 
@@ -120,6 +100,30 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 {% /codeInfo %}
 
+{% codeInfo srNumber=8 %}
+
+**Authentication Mode**:
+
+1. **Authentication**:
+   - The `authentication` parameter determines the method of authentication when connecting to AzureSQL using ODBC (Open Database Connectivity).
+   - If you select **"Active Directory Password"**, you'll need to provide the password associated with your Azure Active Directory account.
+   - Alternatively, if you choose **"Active Directory Integrated"**, the connection will use the credentials of the currently logged-in user. This mode ensures secure and seamless connections with AzureSQL.
+
+2. **Encrypt**:
+   - The `encrypt` setting in the connection string pertains to data encryption during communication with AzureSQL.
+   - When enabled, it ensures that data exchanged between your application and the database is encrypted, enhancing security.
+
+3. **Trust Server Certificate**:
+   - The `trustServerCertificate` option also relates to security.
+   - When set to true, your application will trust the server's SSL certificate without validation. Use this cautiously, as it bypasses certificate validation checks.
+
+4. **Connection Timeout**:
+   - The `connectionTimeout` parameter specifies the maximum time (in seconds) that your application will wait while attempting to establish a connection to AzureSQL.
+   - If the connection cannot be established within this timeframe, an error will be raised.
+
+{% /codeInfo %}
+
+
 {% partial file="/v1.3/connectors/yaml/database/source-config-def.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/ingestion-sink-def.md" /%}
@@ -130,13 +134,13 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 {% codeInfo srNumber=6 %}
 
-**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 {% /codeInfo %}
 
 {% codeInfo srNumber=7 %}
 
-**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to Athena during the connection. These details must be added as Key-Value pairs.
+**Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to database during the connection. These details must be added as Key-Value pairs.
 
 - In case you are using Single-Sign-On (SSO) for authentication, add the `authenticator` details in the Connection Arguments as a Key-Value pair as follows: `"authenticator" : "sso_login_url"`
 
@@ -146,7 +150,7 @@ You can download the ODBC driver from [here](https://learn.microsoft.com/en-us/s
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: azuresql
   serviceName: local_azuresql
@@ -168,6 +172,13 @@ source:
 ```
 ```yaml {% srNumber=5 %}
       # driver: ODBC Driver 18 for SQL Server (default)
+```
+```yaml {% srNumber=8 %}
+      # authenticationMode:
+      #   authentication: ActiveDirectoryPassword #ActiveDirectoryIntegrated
+      #   encrypt: true
+      #   trustServerCertificate: false
+      #   connectionTimeout: 130
 ```
 ```yaml {% srNumber=6 %}
       connectionOptions:
@@ -191,6 +202,8 @@ source:
 {% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}
 
 {% partial file="/v1.3/connectors/yaml/data-profiler.md" variables={connector: "azuresql"} /%}
+
+{% partial file="/v1.3/connectors/yaml/data-quality.md" /%}
 
 ## dbt Integration
 

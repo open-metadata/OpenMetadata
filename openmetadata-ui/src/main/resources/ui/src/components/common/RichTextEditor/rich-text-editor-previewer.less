@@ -60,7 +60,7 @@
     }
 
     section[data-highlighted='true'] {
-      background: @primary-color-hover;
+      background: @primary-1;
       color: @primary-color;
       transition: ease-in-out;
       border-left: 3px solid @primary-color;
@@ -232,15 +232,14 @@
       }
     }
     .code-copy-button {
+      display: none;
       position: absolute;
-      top: 16px;
+      top: 8px;
       right: 40px;
       pointer-events: all;
       cursor: pointer;
       z-index: 1;
-      width: 16px;
-      opacity: 0;
-      padding: 8px;
+      padding: 2px;
       background: @border-color;
       border-radius: 4px;
     }
@@ -260,7 +259,7 @@
 
     .code-block {
       &:hover .code-copy-button[data-copied='false'] {
-        opacity: 1;
+        display: inline-block;
       }
     }
 

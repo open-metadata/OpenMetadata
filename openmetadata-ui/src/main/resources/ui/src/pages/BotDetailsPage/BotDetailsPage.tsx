@@ -25,6 +25,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Bot } from '../../generated/entity/bot';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
@@ -77,7 +78,10 @@ const BotDetailsPage = () => {
 
       const botUserResponse = await getUserByName(
         botResponse.botUser.fullyQualifiedName || '',
-        { fields: 'roles,profile', include: Include.All }
+        {
+          fields: [TabSpecificField.ROLES, TabSpecificField.PROFILE],
+          include: Include.All,
+        }
       );
       setBotUserData(botUserResponse);
       setBotData(botResponse);
@@ -124,15 +128,13 @@ const BotDetailsPage = () => {
     }
   };
 
-  const revokeBotsToken = () => {
-    revokeUserToken(botUserData.id)
-      .then((res) => {
-        const data = res;
-        setBotUserData(data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err);
-      });
+  const revokeBotsToken = async () => {
+    try {
+      const response = await revokeUserToken(botUserData.id);
+      setBotUserData(response);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
   };
 
   useEffect(() => {

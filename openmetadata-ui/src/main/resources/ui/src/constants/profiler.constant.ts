@@ -12,19 +12,22 @@
  */
 
 import { t } from 'i18next';
-import { map, values } from 'lodash';
+import { capitalize, map, startCase, values } from 'lodash';
 import { DateFilterType, StepperStepType } from 'Models';
+import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
   ColumnProfilerConfig,
   DataType,
-  PartitionIntervalType,
+  PartitionIntervalTypes,
   PartitionIntervalUnit,
   ProfileSampleType,
 } from '../generated/entity/data/table';
+import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import { EntityType } from '../generated/tests/testDefinition';
+import { TestPlatform } from '../generated/tests/testDefinition';
+import { TestCaseType } from '../rest/testAPI';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -111,11 +114,11 @@ export const PROFILER_FILTER_RANGE: DateFilterType = {
 };
 
 export const DEFAULT_SELECTED_RANGE = {
-  key: 'last3days',
+  key: 'last7Days',
   title: t('label.last-number-of-days', {
-    numberOfDays: 3,
+    numberOfDays: 7,
   }),
-  days: 3,
+  days: 7,
 };
 
 export const DEFAULT_RANGE_DATA = {
@@ -346,18 +349,19 @@ export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
 ];
 
 export const SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL = {
-  [PartitionIntervalType.IngestionTime]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
-  [PartitionIntervalType.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
-  [PartitionIntervalType.IntegerRange]: [DataType.Int, DataType.Bigint],
-  [PartitionIntervalType.ColumnValue]: [DataType.Varchar, DataType.String],
-};
+  [PartitionIntervalTypes.IngestionTime]:
+    SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalTypes.TimeUnit]: SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME,
+  [PartitionIntervalTypes.IntegerRange]: [DataType.Int, DataType.Bigint],
+  [PartitionIntervalTypes.ColumnValue]: [DataType.Varchar, DataType.String],
+} as Record<PartitionIntervalTypes, DataType[]>;
 
-export const INTERVAL_TYPE_OPTIONS = Object.values(PartitionIntervalType).map(
-  (value) => ({
-    value,
-    label: value,
-  })
-);
+export const INTERVAL_TYPE_OPTIONS = Object.keys(
+  SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL
+).map((value) => ({
+  value,
+  label: value,
+}));
 export const INTERVAL_UNIT_OPTIONS = Object.values(PartitionIntervalUnit).map(
   (value) => ({
     value,
@@ -392,17 +396,13 @@ export const PROFILER_MODAL_LABEL_STYLE = {
 };
 
 export const TIME_BASED_PARTITION = [
-  PartitionIntervalType.IngestionTime,
-  PartitionIntervalType.TimeUnit,
+  PartitionIntervalTypes.IngestionTime,
+  PartitionIntervalTypes.TimeUnit,
 ];
 
 export const TEST_CASE_TYPE_OPTION = [
-  {
-    label: t('label.all'),
-    value: '',
-  },
-  ...map(EntityType, (value, key) => ({
-    label: key,
+  ...map(TestCaseType, (value) => ({
+    label: capitalize(value),
     value: value,
   })),
 ];
@@ -418,10 +418,49 @@ export const TEST_CASE_STATUS_OPTION = [
   })),
 ];
 
+export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
+  table: 'tableFqn',
+  platform: 'testPlatforms',
+  type: 'testCaseType',
+  status: 'testCaseStatus',
+  lastRun: 'lastRunRange',
+  tier: 'tier',
+  tags: 'tags',
+  service: 'serviceName',
+};
+
+export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({
+  label: value,
+  value: value,
+}));
+
 export const INITIAL_COLUMN_METRICS_VALUE = {
   countMetrics: INITIAL_COUNT_METRIC_VALUE,
   proportionMetrics: INITIAL_PROPORTION_METRIC_VALUE,
   mathMetrics: INITIAL_MATH_METRIC_VALUE,
   sumMetrics: INITIAL_SUM_METRIC_VALUE,
   quartileMetrics: INITIAL_QUARTILE_METRIC_VALUE,
+};
+
+export const PROFILER_METRICS_TYPE_OPTIONS = [
+  {
+    label: 'All',
+    key: 'all',
+    value: 'all',
+    children: values(MetricType).map((value) => ({
+      label: startCase(value),
+      key: value,
+      value,
+    })),
+  },
+];
+
+export const DEFAULT_PROFILER_CONFIG_VALUE = {
+  metricConfiguration: [
+    {
+      dataType: undefined,
+      metrics: undefined,
+      disabled: false,
+    },
+  ],
 };

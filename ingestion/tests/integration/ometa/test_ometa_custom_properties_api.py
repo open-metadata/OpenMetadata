@@ -26,6 +26,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
@@ -42,15 +43,65 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.basic import EntityExtension
+from metadata.generated.schema.type.customProperties.enumConfig import EnumConfig
+from metadata.generated.schema.type.customProperty import (
+    CustomPropertyConfig,
+    EntityTypes,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
+
+EXPECTED_CUSTOM_PROPERTIES = [
+    {
+        "name": "DataEngineers",
+        "description": "Data Engineers of a table",
+        "propertyType": {
+            "name": "entityReferenceList",
+        },
+        "customPropertyConfig": {"config": ["user"]},
+    },
+    {
+        "name": "DataQuality",
+        "description": "Quality Details of a Table",
+        "propertyType": {
+            "name": "markdown",
+        },
+    },
+    {
+        "name": "Department",
+        "description": "Department of a table",
+        "propertyType": {
+            "type": "type",
+            "name": "enum",
+        },
+        "customPropertyConfig": {
+            "config": {"values": ["D1", "D2", "D3"], "multiSelect": True}
+        },
+    },
+    {
+        "name": "Rating",
+        "description": "Rating of a table",
+        "propertyType": {"name": "enum"},
+        "customPropertyConfig": {
+            "config": {"values": ["Good", "Average", "Bad"], "multiSelect": False},
+        },
+    },
+    {
+        "name": "TableSize",
+        "description": "Size of the Table",
+        "propertyType": {"name": "string"},
+    },
+]
 
 
 class OMetaCustomAttributeTest(TestCase):
@@ -92,7 +143,7 @@ class OMetaCustomAttributeTest(TestCase):
             name=name,
             databaseSchema=self.create_schema_entity.fullyQualifiedName,
             columns=[Column(name="id", dataType=DataType.BIGINT)],
-            extension=EntityExtension(__root__=extensions),
+            extension=EntityExtension(root=extensions),
         )
         return self.metadata.create_or_update(create)
 
@@ -118,6 +169,30 @@ class OMetaCustomAttributeTest(TestCase):
 
         cls.create_schema_entity = cls.metadata.create_or_update(data=create_schema)
 
+        user_one: User = cls.metadata.create_or_update(
+            data=CreateUserRequest(
+                name="custom-prop-user-one", email="custom-prop-user-one@user.com"
+            ),
+        )
+        user_two: User = cls.metadata.create_or_update(
+            data=CreateUserRequest(
+                name="custom-prop-user-two", email="custom-prop-user-two@user.com"
+            ),
+        )
+
+        cls.user_one_ref = EntityReference(
+            id=user_one.id,
+            name="custom-prop-user-one",
+            type="user",
+            fullyQualifiedName=user_one.fullyQualifiedName.root,
+        )
+        cls.user_two = EntityReference(
+            id=user_two.id,
+            name="custom-prop-user-two",
+            type="user",
+            fullyQualifiedName=user_two.fullyQualifiedName.root,
+        )
+
     @classmethod
     def tearDownClass(cls) -> None:
         """
@@ -126,7 +201,7 @@ class OMetaCustomAttributeTest(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-custom-properties"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -144,9 +219,12 @@ class OMetaCustomAttributeTest(TestCase):
         # Create the table size property
         ometa_custom_property_request = OMetaCustomProperties(
             entity_type=Table,
-            custom_property_type=CustomPropertyDataTypes.STRING,
             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                name="TableSize", description="Size of the Table"
+                name="TableSize",
+                description="Size of the Table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.STRING
+                ),
             ),
         )
         self.metadata.create_or_update_custom_property(
@@ -156,9 +234,12 @@ class OMetaCustomAttributeTest(TestCase):
         # Create the DataQuality property for a table
         ometa_custom_property_request = OMetaCustomProperties(
             entity_type=Table,
-            custom_property_type=CustomPropertyDataTypes.MARKDOWN,
             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                name="DataQuality", description="Quality Details of a Table"
+                name="DataQuality",
+                description="Quality Details of a Table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.MARKDOWN
+                ),
             ),
         )
         self.metadata.create_or_update_custom_property(
@@ -168,13 +249,107 @@ class OMetaCustomAttributeTest(TestCase):
         # Create the SchemaCost property for database schema
         ometa_custom_property_request = OMetaCustomProperties(
             entity_type=DatabaseSchema,
-            custom_property_type=CustomPropertyDataTypes.INTEGER,
             createCustomPropertyRequest=CreateCustomPropertyRequest(
-                name="SchemaAge", description="Age in years of a Schema"
+                name="SchemaAge",
+                description="Age in years of a Schema",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.INTEGER
+                ),
             ),
         )
         self.metadata.create_or_update_custom_property(
             ometa_custom_property=ometa_custom_property_request
+        )
+
+        # Create single select enum custom property for a table
+        ometa_custom_property_request = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="Rating",
+                description="Rating of a table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.ENUM
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=EnumConfig(
+                        multiSelect=False, values=["Good", "Average", "Bad"]
+                    )
+                ),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=ometa_custom_property_request
+        )
+
+        # Create multi select enum custom property for a table
+        ometa_custom_property_request = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="Department",
+                description="Department of a table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.ENUM
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=EnumConfig(multiSelect=True, values=["D1", "D2", "D3"])
+                ),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=ometa_custom_property_request
+        )
+
+        # Create entity reference list custom property for a table
+        ometa_custom_property_request = OMetaCustomProperties(
+            entity_type=Table,
+            createCustomPropertyRequest=CreateCustomPropertyRequest(
+                name="DataEngineers",
+                description="Data Engineers of a table",
+                propertyType=self.metadata.get_property_type_ref(
+                    CustomPropertyDataTypes.ENTITY_REFERENCE_LIST
+                ),
+                customPropertyConfig=CustomPropertyConfig(
+                    config=EntityTypes(root=[ENTITY_REFERENCE_TYPE_MAP[User.__name__]])
+                ),
+            ),
+        )
+        self.metadata.create_or_update_custom_property(
+            ometa_custom_property=ometa_custom_property_request
+        )
+
+    def test_get_custom_property(self):
+        """
+        Test getting the custom properties for an entity
+        """
+        # create the custom properties
+        self.create_custom_property()
+
+        custom_properties = self.metadata.get_entity_custom_properties(
+            entity_type=Table
+        )
+
+        actual_custom_properties = []
+        for expected_custom_property in EXPECTED_CUSTOM_PROPERTIES:
+            for custom_property in custom_properties:
+                if expected_custom_property["name"] == custom_property["name"]:
+                    actual_custom_properties.append(custom_property)
+                    self.assertEquals(
+                        custom_property["name"], expected_custom_property["name"]
+                    )
+                    self.assertEquals(
+                        custom_property["description"],
+                        expected_custom_property["description"],
+                    )
+                    self.assertEquals(
+                        custom_property.get("customPropertyConfig"),
+                        expected_custom_property.get("customPropertyConfig"),
+                    )
+                    self.assertEquals(
+                        custom_property["propertyType"]["name"],
+                        expected_custom_property["propertyType"]["name"],
+                    )
+        self.assertEquals(
+            len(actual_custom_properties), len(EXPECTED_CUSTOM_PROPERTIES)
         )
 
     def test_add_custom_property_table(self):
@@ -188,6 +363,9 @@ class OMetaCustomAttributeTest(TestCase):
         extensions = {
             "DataQuality": '<div><p><b>Last evaluation:</b> 07/24/2023<br><b>Interval: </b>30 days <br><b>Next run:</b> 08/23/2023, 10:44:21<br><b>Measurement unit:</b> percent [%]</p><br><table><tbody><tr><th>Metric</th><th>Target</th><th>Latest result</th></tr><tr><td><p class="text-success">Completeness</p></td><td>90%</td><td><div class="bar fabric" style="width: 93%;"><strong>93%</strong></div></td></tr><tr><td><p class="text-success">Integrity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-warning">Timeliness</p></td><td>90%</td><td><div class="bar fabric" style="width: 56%;"><strong>56%</strong></div></td></tr><tr><td><p class="text-success">Uniqueness</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr><tr><td><p class="text-success">Validity</p></td><td>90%</td><td><div class="bar fabric" style="width: 100%;"><strong>100%</strong></div></td></tr></tbody></table><h3>Overall score of the table is: 89%</h3><hr style="border-width: 5px;"></div>',
             "TableSize": "250 MB",
+            "Rating": ["Good"],
+            "Department": ["D1", "D2"],
+            "DataEngineers": [self.user_one_ref, self.user_two],
         }
 
         self.create_table(name="test_custom_properties", extensions=extensions)
@@ -197,10 +375,18 @@ class OMetaCustomAttributeTest(TestCase):
             fqn="test-service-custom-properties.test-db.test-schema.test_custom_properties",
             fields=["*"],
         )
+        self.assertEqual(res.extension.root["DataQuality"], extensions["DataQuality"])
+        self.assertEqual(res.extension.root["TableSize"], extensions["TableSize"])
+        self.assertEqual(res.extension.root["Rating"], extensions["Rating"])
+        self.assertEqual(res.extension.root["Department"], extensions["Department"])
         self.assertEqual(
-            res.extension.__root__["DataQuality"], extensions["DataQuality"]
+            res.extension.root["DataEngineers"][0]["id"],
+            str(extensions["DataEngineers"][0].id.root),
         )
-        self.assertEqual(res.extension.__root__["TableSize"], extensions["TableSize"])
+        self.assertEqual(
+            res.extension.root["DataEngineers"][1]["id"],
+            str(extensions["DataEngineers"][1].id.root),
+        )
 
     def test_add_custom_property_schema(self):
         """
@@ -215,7 +401,7 @@ class OMetaCustomAttributeTest(TestCase):
         create_schema = CreateDatabaseSchemaRequest(
             name="test-schema-custom-property",
             database=self.create_db_entity.fullyQualifiedName,
-            extension=EntityExtension(__root__=extensions),
+            extension=EntityExtension(root=extensions),
         )
         self.metadata.create_or_update(data=create_schema)
 
@@ -224,4 +410,4 @@ class OMetaCustomAttributeTest(TestCase):
             fqn="test-service-custom-properties.test-db.test-schema-custom-property",
             fields=["*"],
         )
-        self.assertEqual(res.extension.__root__["SchemaAge"], extensions["SchemaAge"])
+        self.assertEqual(res.extension.root["SchemaAge"], extensions["SchemaAge"])

@@ -3,7 +3,13 @@ title: Run the SAS Connector Externally
 slug: /connectors/database/sas/yaml
 ---
 
-# Run the SAS Connector Externally
+{% connectorDetailsHeader
+name="SAS"
+stage="BETA"
+platform="OpenMetadata"
+availableFeatures=["Metadata"]
+unavailableFeatures=["Query Usage", "Data Profiler", "Data Quality", "Lineage", "Column-level Lineage", "dbt", "Stored Procedures", "Owners", "Tags"]
+/ %}
 
 In this section, we provide guides and references to use the SAS connector.
 
@@ -13,7 +19,7 @@ Configure and schedule SAS metadata workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
 
 
-{% partial file="/v1.2/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.3/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
@@ -84,12 +90,12 @@ To send the metadata to OpenMetadata, it needs to be specified as `type: metadat
 
 {% /codeInfo %}
 
-{% partial file="/v1.2/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.3/connectors/yaml/workflow-config-def.md" /%}
 {% /codeInfoContainer %}
 
 {% codeBlock fileName="filename.yaml" %}
 
-```yaml
+```yaml {% isCodeBlock=true %}
 source:
   type: SAS
   serviceName: local_sas
@@ -125,10 +131,10 @@ sink:
   config: {}
 ```
 
-{% partial file="/v1.2/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.3/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.2/connectors/yaml/ingestion-cli.md" /%}
+{% partial file="/v1.3/connectors/yaml/ingestion-cli.md" /%}

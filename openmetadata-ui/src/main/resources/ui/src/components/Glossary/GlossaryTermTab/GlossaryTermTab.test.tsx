@@ -25,13 +25,14 @@ import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
+import { useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermTab from './GlossaryTermTab.component';
 
 const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
 
-const mockProps1 = {
+const mockProps = {
   childGlossaryTerms: [],
   isGlossary: false,
   permissions: MOCK_PERMISSIONS,
@@ -40,11 +41,6 @@ const mockProps1 = {
   termsLoading: false,
   onAddGlossaryTerm: mockOnAddGlossaryTerm,
   onEditGlossaryTerm: mockOnEditGlossaryTerm,
-};
-
-const mockProps2 = {
-  ...mockProps1,
-  childGlossaryTerms: mockedGlossaryTerms,
 };
 
 jest.mock('../../../rest/glossaryAPI', () => ({
@@ -75,10 +71,16 @@ jest.mock('../../common/Loader/Loader', () =>
 jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
 }));
+jest.mock('../useGlossary.store', () => ({
+  useGlossaryStore: jest.fn().mockImplementation(() => ({
+    activeGlossary: mockedGlossaryTerms[0],
+    updateActiveGlossary: jest.fn(),
+  })),
+}));
 
 describe('Test GlossaryTermTab component', () => {
   it('should show the ErrorPlaceHolder component, if no glossary is present', () => {
-    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
+    const { container } = render(<GlossaryTermTab {...mockProps} />, {
       wrapper: MemoryRouter,
     });
 
@@ -86,7 +88,7 @@ describe('Test GlossaryTermTab component', () => {
   });
 
   it('should call the onAddGlossaryTerm fn onClick of add button in ErrorPlaceHolder', () => {
-    const { container } = render(<GlossaryTermTab {...mockProps1} />, {
+    const { container } = render(<GlossaryTermTab {...mockProps} />, {
       wrapper: MemoryRouter,
     });
 
@@ -96,7 +98,15 @@ describe('Test GlossaryTermTab component', () => {
   });
 
   it('should contain all necessary fields value in table when glossary data is not empty', async () => {
-    const { container } = render(<GlossaryTermTab {...mockProps2} />, {
+    (useGlossaryStore as unknown as jest.Mock).mockImplementation(() => ({
+      activeGlossary: {
+        ...mockedGlossaryTerms[0],
+        children: mockedGlossaryTerms,
+      },
+      glossaryChildTerms: mockedGlossaryTerms,
+      updateActiveGlossary: jest.fn(),
+    }));
+    const { container } = render(<GlossaryTermTab {...mockProps} />, {
       wrapper: MemoryRouter,
     });
 

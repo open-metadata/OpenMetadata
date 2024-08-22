@@ -51,6 +51,14 @@ alt="Announcement Display (Top Right)"
 caption="Landing Page Announcement Display (Top Right)"
 /%}
 
+Furthermore, users can react with emojis and reply to the announcements from both the Activity Feed in the homepage and from the data asset page.
+
+{% image
+src="/images/v1.3/how-to-guides/user-guide-for-data-stewards/react.webp"
+alt="Reply or React to an Announcement"
+caption="Reply or React to an Announcement"
+/%}
+
 {% note %}
 **Advanced Tip:** Users can set up Alerts to be sent from OpenMetadata via Email,  Chat, Slack, MS Teams, and Webhooks. If alerts have been set up for Activity Feeds, then the concerned data owners and followers will be notified via email, Slack, etc.
 {% /note %}

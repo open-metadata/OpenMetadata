@@ -18,7 +18,8 @@
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
       "enum": [
-        "postgresql+psycopg2", "pgspider+psycopg2"
+        "postgresql+psycopg2",
+        "pgspider+psycopg2"
       ],
       "default": "postgresql+psycopg2"
     }
@@ -50,6 +51,9 @@
         },
         {
           "$ref": "./common/iamAuthConfig.json"
+        },
+        {
+          "$ref": "./common/azureConfig.json"
         }
       ]
     },
@@ -70,17 +74,7 @@
       "default": false
     },
     "sslMode": {
-      "title": "SSL Mode",
-      "description": "SSL Mode to connect to postgres database.",
-      "enum": [
-        "disable",
-        "allow",
-        "prefer",
-        "require",
-        "verify-ca",
-        "verify-full"
-      ],
-      "default": "disable"
+      "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslMode"
     },
     "sslConfig": {
       "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"

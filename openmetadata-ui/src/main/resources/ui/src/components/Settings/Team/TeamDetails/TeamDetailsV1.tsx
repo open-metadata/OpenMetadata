@@ -36,17 +36,12 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { ReactComponent as IconTeams } from '../../../../assets/svg/teams.svg';
-import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
-  ROUTES,
-} from '../../../../constants/constants';
+import { ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
   ROLE_DOCS,
@@ -56,7 +51,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
-import { DROPDOWN_ICON_SIZE_PROPS } from '../../../../constants/ManageButton.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
@@ -71,6 +65,7 @@ import {
 } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import AddAttributeModal from '../../../../pages/RolesPage/AddAttributeModal/AddAttributeModal';
 import { ImportType } from '../../../../pages/TeamsPage/ImportTeamsPage/ImportTeamsPage.interface';
 import { getSuggestions } from '../../../../rest/miscAPI';
@@ -88,8 +83,7 @@ import {
   getDeleteMessagePostFix,
 } from '../../../../utils/TeamUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { useAuthContext } from '../../../Auth/AuthProviders/AuthProvider';
-import Description from '../../../common/EntityDescription/Description';
+import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -144,7 +138,7 @@ const TeamDetailsV1 = ({
   const history = useHistory();
   const location = useLocation();
   const { isAdminUser } = useAuth();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
 
   const { activeTab } = useMemo(() => {
     const param = location.search;
@@ -297,25 +291,29 @@ const TeamDetailsV1 = ({
     }
   };
 
-  const joinTeam = useCallback(() => {
-    if (currentUser && currentTeam) {
-      const newTeams = cloneDeep(currentUser.teams ?? []);
-      newTeams.push({
-        id: currentTeam.id,
-        type: OwnerType.TEAM,
-        name: currentTeam.name,
-      });
+  const joinTeam: React.MouseEventHandler<HTMLElement> = useCallback(
+    (event) => {
+      event.stopPropagation();
+      if (currentUser && currentTeam) {
+        const newTeams = cloneDeep(currentUser.teams ?? []);
+        newTeams.push({
+          id: currentTeam.id,
+          type: OwnerType.TEAM,
+          name: currentTeam.name,
+        });
 
-      const updatedData: User = {
-        ...currentUser,
-        teams: newTeams,
-      };
+        const updatedData: User = {
+          ...currentUser,
+          teams: newTeams,
+        };
 
-      const options = compare(currentUser, updatedData);
+        const options = compare(currentUser, updatedData);
 
-      handleJoinTeamClick(currentUser.id, options);
-    }
-  }, [currentUser, currentTeam, handleJoinTeamClick]);
+        handleJoinTeamClick(currentUser.id, options);
+      }
+    },
+    [currentUser, currentTeam, handleJoinTeamClick]
+  );
 
   const leaveTeam = async () => {
     if (currentUser && currentTeam) {
@@ -469,13 +467,6 @@ const TeamDetailsV1 = ({
     return t('message.are-you-sure-want-to-text', { text });
   };
 
-  const restoreIcon = useMemo(
-    () => (
-      <IconRestore {...DROPDOWN_ICON_SIZE_PROPS} name={t('label.restore')} />
-    ),
-    [currentTeam.isJoinable]
-  );
-
   const handleTeamExportClick = useCallback(async () => {
     if (currentTeam?.name) {
       showModal({
@@ -504,7 +495,7 @@ const TeamDetailsV1 = ({
             description={t('message.export-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={<ExportIcon width="18px" />}
+            icon={ExportIcon}
             id="export"
             name={t('label.export')}
           />
@@ -522,7 +513,7 @@ const TeamDetailsV1 = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={<ImportIcon width="20px" />}
+            icon={ImportIcon}
             id="import-button"
             name={t('label.import')}
           />
@@ -544,7 +535,7 @@ const TeamDetailsV1 = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.restore-deleted-team')}
-                  icon={restoreIcon}
+                  icon={IconRestore}
                   id="restore-team-dropdown"
                   name={t('label.restore-entity', {
                     entity: t('label.team'),
@@ -563,7 +554,7 @@ const TeamDetailsV1 = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.access-to-collaborate')}
-                  icon={<IconOpenLock {...DROPDOWN_ICON_SIZE_PROPS} />}
+                  icon={IconOpenLock}
                   id="open-group-dropdown"
                   name={
                     <Row>
@@ -739,6 +730,7 @@ const TeamDetailsV1 = ({
         isSummaryPanelOpen
         assetCount={assetsCount}
         isEntityDeleted={isTeamDeleted}
+        noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => history.push(ROUTES.EXPLORE)}
@@ -756,7 +748,7 @@ const TeamDetailsV1 = ({
           heading: t('label.role'),
           doc: ROLE_DOCS,
           children: t('message.assigning-team-entity-description', {
-            entity: t('label.role'),
+            entity: t('label.role-lowercase'),
             name: currentTeam.name,
           }),
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
@@ -827,7 +819,7 @@ const TeamDetailsV1 = ({
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
           children: t('message.assigning-team-entity-description', {
-            entity: t('label.policy-plural'),
+            entity: t('label.policy-lowercase-plural'),
             name: currentTeam.name,
           }),
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
@@ -906,7 +898,11 @@ const TeamDetailsV1 = ({
           ghost
           data-testid="leave-team-button"
           type="primary"
-          onClick={() => deleteUserHandler(currentUser.id, true)}>
+          onClick={(e) => {
+            // Used to stop click propagation event to the header collapsible panel
+            e.stopPropagation();
+            deleteUserHandler(currentUser.id, true);
+          }}>
           {t('label.leave-team')}
         </Button>
       ) : (
@@ -929,7 +925,7 @@ const TeamDetailsV1 = ({
               <IconTeams className="text-primary" width={20} />
             </Avatar>
 
-            <Space direction="vertical" size={3}>
+            <div className="d-flex flex-column gap-1">
               {!isOrganization && (
                 <TitleBreadcrumb titleLinks={slashedTeamName} />
               )}
@@ -939,7 +935,7 @@ const TeamDetailsV1 = ({
                 entityPermissions={entityPermissions}
                 updateTeamHandler={updateTeamHandler}
               />
-            </Space>
+            </div>
           </Space>
 
           <Space align="center">
@@ -1119,11 +1115,9 @@ const TeamDetailsV1 = ({
           <Collapse
             accordion
             bordered={false}
-            className="header-collapse-custom-collapse"
-            expandIconPosition="end">
+            className="header-collapse-custom-collapse">
             <Collapse.Panel
               className="header-collapse-custom-panel"
-              collapsible="icon"
               data-testid="team-details-collapse"
               header={teamsCollapseHeader}
               key="1">
@@ -1131,28 +1125,16 @@ const TeamDetailsV1 = ({
                 <Col className="border-top" span={24}>
                   <Card
                     className="ant-card-feed card-body-border-none card-padding-y-0 p-y-sm"
-                    data-testid="teams-description"
-                    title={
-                      <Space align="center">
-                        <Typography.Text className="right-panel-label font-normal">
-                          {t('label.description')}
-                        </Typography.Text>
-                        {editDescriptionPermission && (
-                          <EditIcon
-                            className="cursor-pointer align-middle"
-                            color={DE_ACTIVE_COLOR}
-                            data-testid="edit-description"
-                            {...ICON_DIMENSION}
-                            onClick={() => descriptionHandler(true)}
-                          />
-                        )}
-                      </Space>
-                    }>
-                    <Description
+                    data-testid="teams-description">
+                    <DescriptionV1
                       description={currentTeam.description ?? ''}
                       entityName={getEntityName(currentTeam)}
+                      entityType={EntityType.TEAM}
+                      hasEditAccess={editDescriptionPermission}
                       isEdit={isDescriptionEditable}
+                      showCommentsIcon={false}
                       onCancel={() => descriptionHandler(false)}
+                      onDescriptionEdit={() => descriptionHandler(true)}
                       onDescriptionUpdate={onDescriptionUpdate}
                     />
                   </Card>

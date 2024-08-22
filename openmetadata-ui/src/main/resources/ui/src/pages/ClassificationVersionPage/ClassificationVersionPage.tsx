@@ -27,6 +27,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { Classification } from '../../generated/entity/classification/classification';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { useFqn } from '../../hooks/useFqn';
@@ -170,6 +171,7 @@ function ClassificationVersionPage() {
 
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={EntityType.CLASSIFICATION}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}

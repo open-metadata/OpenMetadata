@@ -19,8 +19,8 @@ import { useTranslation } from 'react-i18next';
 import { REACTION_LIST } from '../../../constants/reactions.constant';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useImage from '../../../hooks/useImage';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 
 interface EmojiProps {
   reaction: ReactionType;
@@ -37,7 +37,7 @@ const Emoji: FC<EmojiProps> = ({
   onReactionSelect,
 }) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [reactionType, setReactionType] = useState(reaction);
   const [isClicked, setIsClicked] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -107,7 +107,7 @@ const Emoji: FC<EmojiProps> = ({
   return (
     <Popover
       content={popoverContent}
-      key="reaction-detail-popover"
+      key={reaction}
       open={visible}
       trigger="hover"
       zIndex={9999}
@@ -117,13 +117,16 @@ const Emoji: FC<EmojiProps> = ({
           'ant-btn-isReacted': isReacted,
         })}
         data-testid="emoji-button"
+        key={reaction}
         shape="round"
         size="small"
         onClick={handleEmojiOnClick}
         onMouseOver={() => setVisible(true)}>
         {element}
-        <span className="text-xs m-l-xss self-center" data-testid="emoji-count">
-          {reactionList.length}
+        <span className="text-xs m-l-xs self-center" data-testid="emoji-count">
+          {reactionList.length.toLocaleString('en-US', {
+            useGrouping: false,
+          })}
         </span>
       </Button>
     </Popover>

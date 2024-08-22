@@ -15,6 +15,7 @@ import { PipelineStatus } from '../../../../generated/entity/services/ingestionP
 
 export interface DataInsightLatestRun {
   data_insight_task: string;
+  application_task: string;
   total: string;
   pipelineStatus: PipelineStatus;
 }

@@ -12,7 +12,6 @@
  */
 
 import { render, screen } from '@testing-library/react';
-
 import React from 'react';
 import { act } from 'react-test-renderer';
 import { INITIAL_ROW_METRIC_VALUE } from '../../../../constants/profiler.constant';
@@ -25,6 +24,10 @@ const mockProps: ProfilerLatestValueProps = {
     latestValue: 10,
   })),
 };
+
+jest.mock('../../../../constants/constants', () => ({
+  JSON_TAB_SIZE: 2,
+}));
 
 describe('ProfilerLatestValue component test', () => {
   it('Component should render', async () => {
