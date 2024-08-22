@@ -14,6 +14,7 @@
 import { FC } from 'react';
 import ActivityFeedImg from '../assets/img/activity-feed.png';
 import AnnouncementImg from '../assets/img/announcement.png';
+import DataAssetsImg from '../assets/img/data-assets.png';
 import FollowingImg from '../assets/img/following.png';
 import KPISmallImg from '../assets/img/kpi-small.png';
 import KPIImg from '../assets/img/kpi.png';
@@ -21,7 +22,6 @@ import MyDataImg from '../assets/img/my-data.png';
 import RecentViewsImg from '../assets/img/recent-views.png';
 import TotalAssetsMediumImg from '../assets/img/total-assets-medium.png';
 import TotalAssetsImg from '../assets/img/total-assets.png';
-import KPIWidget from '../components/KPIWidget/KPIWidget.component';
 import { MyDataWidget } from '../components/MyData/MyDataWidget/MyDataWidget.component';
 import AnnouncementsWidget, {
   AnnouncementsWidgetProps,
@@ -29,9 +29,11 @@ import AnnouncementsWidget, {
 import FollowingWidget, {
   FollowingWidgetProps,
 } from '../components/MyData/RightSidebar/FollowingWidget';
-import TotalDataAssetsWidget from '../components/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
-import FeedsWidget from '../components/Widgets/FeedsWidget/FeedsWidget.component';
-import RecentlyViewed from '../components/Widgets/RecentlyViewed/RecentlyViewed';
+import DataAssetsWidget from '../components/MyData/Widgets/DataAssetsWidget/DataAssetsWidget.component';
+import FeedsWidget from '../components/MyData/Widgets/FeedsWidget/FeedsWidget.component';
+import KPIWidget from '../components/MyData/Widgets/KPIWidget/KPIWidget.component';
+import RecentlyViewed from '../components/MyData/Widgets/RecentlyViewed/RecentlyViewed';
+import TotalDataAssetsWidget from '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget.component';
 import {
   LandingPageWidgetKeys,
   WidgetWidths,
@@ -45,7 +47,7 @@ class CustomizePageClassBase {
   defaultWidgetHeight = 3;
   landingPageWidgetMargin = 16;
   landingPageRowHeight = 100;
-  landingPageMaxGridSize = 3;
+  landingPageMaxGridSize = 4;
 
   landingPageWidgetDefaultHeights: Record<string, number> = {
     activityFeed: 6,
@@ -55,6 +57,16 @@ class CustomizePageClassBase {
     myData: 3,
     kpi: 3,
     totalAssets: 3,
+    DataAssets: 3,
+  };
+
+  announcementWidget: WidgetConfig = {
+    h: this.landingPageWidgetDefaultHeights.announcements,
+    i: LandingPageWidgetKeys.ANNOUNCEMENTS,
+    w: 1,
+    x: 3,
+    y: 0,
+    static: true, // Making announcement widget fixed on top right position
   };
 
   defaultLayout: Array<WidgetConfig> = [
@@ -67,10 +79,18 @@ class CustomizePageClassBase {
       static: false,
     },
     {
+      h: this.landingPageWidgetDefaultHeights.DataAssets,
+      i: LandingPageWidgetKeys.DATA_ASSETS,
+      w: 3,
+      x: 0,
+      y: 0,
+      static: false,
+    },
+    {
       h: this.landingPageWidgetDefaultHeights.myData,
       i: LandingPageWidgetKeys.MY_DATA,
       w: 1,
-      x: 0,
+      x: 3,
       y: 6,
       static: false,
     },
@@ -78,8 +98,8 @@ class CustomizePageClassBase {
       h: this.landingPageWidgetDefaultHeights.kpi,
       i: LandingPageWidgetKeys.KPI,
       w: 2,
-      x: 1,
-      y: 6,
+      x: 0,
+      y: 9,
       static: false,
     },
     {
@@ -87,15 +107,7 @@ class CustomizePageClassBase {
       i: LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
       w: 3,
       x: 0,
-      y: 9,
-      static: false,
-    },
-    {
-      h: this.landingPageWidgetDefaultHeights.announcements,
-      i: LandingPageWidgetKeys.ANNOUNCEMENTS,
-      w: 1,
-      x: 3,
-      y: 0,
+      y: 6,
       static: false,
     },
     {
@@ -145,6 +157,9 @@ class CustomizePageClassBase {
     if (widgetKey.startsWith(LandingPageWidgetKeys.ACTIVITY_FEED)) {
       return FeedsWidget;
     }
+    if (widgetKey.startsWith(LandingPageWidgetKeys.DATA_ASSETS)) {
+      return DataAssetsWidget;
+    }
     if (widgetKey.startsWith(LandingPageWidgetKeys.MY_DATA)) {
       return MyDataWidget;
     }
@@ -171,6 +186,9 @@ class CustomizePageClassBase {
     switch (widgetKey) {
       case LandingPageWidgetKeys.ACTIVITY_FEED: {
         return ActivityFeedImg;
+      }
+      case LandingPageWidgetKeys.DATA_ASSETS: {
+        return DataAssetsImg;
       }
       case LandingPageWidgetKeys.MY_DATA: {
         return MyDataImg;
@@ -208,6 +226,8 @@ class CustomizePageClassBase {
     switch (widgetName) {
       case 'ActivityFeed':
         return this.landingPageWidgetDefaultHeights.activityFeed;
+      case 'DataAssets':
+        return this.landingPageWidgetDefaultHeights.DataAssets;
       case 'Announcements':
         return this.landingPageWidgetDefaultHeights.announcements;
       case 'Following':

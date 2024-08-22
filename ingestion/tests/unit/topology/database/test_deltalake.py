@@ -50,8 +50,10 @@ MOCK_DELTA_CONFIG = {
         "serviceConnection": {
             "config": {
                 "type": "DeltaLake",
-                "metastoreConnection": {
-                    "metastoreFilePath": METASTORE_PATH,
+                "configSource": {
+                    "connection": {
+                        "metastoreFilePath": METASTORE_PATH,
+                    }
                 },
                 "connectionArguments": {
                     "spark.sql.warehouse.dir": SPARK_SQL_WAREHOUSE,
@@ -111,14 +113,14 @@ class DeltaLakeUnitTest(TestCase):
     Add method validations from Deltalake ingestion
     """
 
-    config: OpenMetadataWorkflowConfig = OpenMetadataWorkflowConfig.parse_obj(
+    config: OpenMetadataWorkflowConfig = OpenMetadataWorkflowConfig.model_validate(
         MOCK_DELTA_CONFIG
     )
     delta: DeltalakeSource = DeltalakeSource.create(
         MOCK_DELTA_CONFIG["source"],
         OpenMetadata(config.workflowConfig.openMetadataServerConfig),
     )
-    spark = delta.spark
+    spark = delta.client._spark
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -147,16 +149,16 @@ class DeltaLakeUnitTest(TestCase):
         )
 
         # Set context
-        cls.delta.context.__dict__[
+        cls.delta.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
-        cls.delta.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        cls.delta.context.__dict__[
+        ] = MOCK_DATABASE_SERVICE.name.root
+        cls.delta.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        cls.delta.context.get().__dict__[
             "database_schema"
-        ] = MOCK_DATABASE_SCHEMA.name.__root__
+        ] = MOCK_DATABASE_SCHEMA.name.root
         # We pick up the table comments when getting their name and type, so we
         # store the description in the context
-        cls.delta.context.__dict__["table_description"] = "testing around"
+        cls.delta.context.get().__dict__["table_description"] = "testing around"
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -176,7 +178,7 @@ class DeltaLakeUnitTest(TestCase):
         ).right
         expected_database_request = CreateDatabaseRequest(
             name="default",
-            service=FullyQualifiedEntityName(__root__="delta"),
+            service=FullyQualifiedEntityName("delta"),
         )
 
         self.assertEqual(database_request, expected_database_request)
@@ -220,7 +222,7 @@ class DeltaLakeUnitTest(TestCase):
             columns=expected_columns,
             tableConstraints=None,
             databaseSchema=MOCK_DATABASE_SCHEMA.fullyQualifiedName,
-            viewDefinition=None,
+            schemaDefinition=None,
         )
 
         self.assertEqual(table_request, expected_table_request)

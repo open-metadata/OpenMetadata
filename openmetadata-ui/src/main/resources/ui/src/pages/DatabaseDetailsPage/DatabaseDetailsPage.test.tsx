@@ -116,7 +116,7 @@ const mockFeedCount = {
   ],
 };
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermissionByFqn: jest.fn().mockReturnValue({
       Create: true,
@@ -143,7 +143,10 @@ jest.mock('react-router-dom', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <p data-testid="link">{children}</p>
     )),
-  useHistory: jest.fn(),
+  useHistory: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+  }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'bigquery.shopify',
   }),
@@ -209,7 +212,7 @@ jest.mock('../../utils/TagsUtils', () => ({
     },
   ]),
 }));
-jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   return jest
     .fn()
     .mockImplementation(({ name, id }) => <div data-testid={id}>{name}</div>);
@@ -287,6 +290,10 @@ describe('Test DatabaseDetails page', () => {
       'testDatabaseSchemaTable'
     );
 
+    expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
+      fields: 'owners,tags,domain,votes,extension,dataProducts',
+      include: 'all',
+    });
     expect(entityHeader).toBeInTheDocument();
     expect(descriptionContainer).toBeInTheDocument();
     expect(databaseTable).toBeInTheDocument();

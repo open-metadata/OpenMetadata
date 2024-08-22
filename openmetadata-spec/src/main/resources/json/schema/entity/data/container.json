@@ -10,13 +10,6 @@
     "org.openmetadata.schema.EntityInterface"
   ],
   "definitions": {
-    "entityName": {
-      "description": "Name of a container. Expected to be unique in the same level containers.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^((?!::).)*$"
-    },
     "containerDataModel": {
       "description": "This captures information about how the container's data is modeled, if it has a schema. ",
       "type": "object",
@@ -65,7 +58,7 @@
     },
     "name": {
       "description": "Name that identifies the container.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a container in the format 'ServiceName.ContainerName'.",
@@ -95,9 +88,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this container.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this container.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the storage service where this container is hosted in.",
@@ -176,15 +169,20 @@
       "description": "Source URL of container.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
+    "fullPath": {
+      "description": "Full path of the container/file.",
+      "type": "string"
+    },
     "domain" : {
       "description": "Domain the Container belongs to. When not set, the Container inherits the domain from the storage service it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "dataProducts" : {
+    "dataProducts": {
       "description": "List of data products this entity is part of.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
-    "votes" : {
+    "votes": {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {

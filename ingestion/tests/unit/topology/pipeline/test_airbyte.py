@@ -127,13 +127,13 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
             sourceUrl=f"{MOCK_CONNECTION_URI_PATH}/status",
         )
     ],
-    service=FullyQualifiedEntityName(__root__="airbyte_source"),
+    service=FullyQualifiedEntityName("airbyte_source"),
 )
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="85811038-099a-11ed-861d-0242ac120002",
     name="airbyte_source",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="airbyte_source"),
+    fullyQualifiedName=FullyQualifiedEntityName("airbyte_source"),
     connection=PipelineConnection(),
     serviceType=PipelineServiceType.Airbyte,
 )
@@ -165,15 +165,15 @@ class AirbyteUnitTest(TestCase):
     def __init__(self, methodName, airbyte_client, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.parse_obj(mock_airbyte_config)
+        config = OpenMetadataWorkflowConfig.model_validate(mock_airbyte_config)
         self.airbyte = AirbyteSource.create(
             mock_airbyte_config["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.airbyte.context.__dict__["pipeline"] = MOCK_PIPELINE.name.__root__
-        self.airbyte.context.__dict__[
+        self.airbyte.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.airbyte.context.get().__dict__[
             "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.__root__
+        ] = MOCK_PIPELINE_SERVICE.name.root
         self.client = airbyte_client.return_value
         self.client.list_jobs.return_value = mock_data.get("jobs")
         self.client.list_workspaces.return_value = mock_data.get("workspace")
@@ -192,7 +192,6 @@ class AirbyteUnitTest(TestCase):
         assert pipline == EXPECTED_CREATED_PIPELINES
 
     def test_pipeline_status(self):
-
         status = [
             either.right
             for either in self.airbyte.yield_pipeline_status(EXPECTED_ARIBYTE_DETAILS)

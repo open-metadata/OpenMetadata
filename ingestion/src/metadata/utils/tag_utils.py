@@ -14,20 +14,26 @@ Tag utils Module
 
 import functools
 import traceback
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Type, Union
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
+    TagFQN,
     TagLabel,
     TagSource,
 )
@@ -43,8 +49,8 @@ logger = ingestion_logger()
 def get_ometa_tag_and_classification(
     tags: List[str],
     classification_name: str,
-    tag_description: Optional[str] = None,
-    classification_description: Optional[str] = None,
+    tag_description: str,
+    classification_description: str,
     include_tags: bool = True,
     tag_fqn: Optional[FullyQualifiedEntityName] = None,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -57,13 +63,15 @@ def get_ometa_tag_and_classification(
                 classification = OMetaTagAndClassification(
                     fqn=tag_fqn,
                     classification_request=CreateClassificationRequest(
-                        name=classification_name,
-                        description=classification_description,
+                        name=EntityName(classification_name),
+                        description=Markdown(classification_description),
                     ),
                     tag_request=CreateTagRequest(
-                        classification=classification_name,
-                        name=tag,
-                        description=tag_description,
+                        classification=FullyQualifiedEntityName(classification_name),
+                        name=EntityName(tag),
+                        description=Markdown(tag_description)
+                        if tag_description
+                        else None,
                     ),
                 )
                 yield Either(right=classification)
@@ -82,29 +90,42 @@ def get_ometa_tag_and_classification(
 
 @functools.lru_cache(maxsize=512)
 def get_tag_label(
-    metadata: OpenMetadata, tag_name: str, classification_name: str
+    metadata: OpenMetadata,
+    tag_name: str,
+    classification_name: Optional[str],
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
 ) -> Optional[TagLabel]:
     """
     Returns the tag label if the tag is created
     """
     try:
-        # Build the tag FQN
-        tag_fqn = fqn.build(
-            metadata,
-            Tag,
-            classification_name=classification_name,
-            tag_name=tag_name,
-        )
+        if tag_type == Tag:
+            # Build the tag FQN
+            tag_fqn = fqn.build(
+                metadata,
+                tag_type,
+                classification_name=classification_name,
+                tag_name=tag_name,
+            )
+            source = TagSource.Classification.value
+
+        # We either have a Tag or a Glossary
+        else:
+            tag_fqn = tag_name
+            source = TagSource.Glossary.value
 
         # Check if the tag exists
-        tag = metadata.get_by_name(entity=Tag, fqn=tag_fqn)
+        tag = metadata.get_by_name(entity=tag_type, fqn=tag_fqn)
         if tag:
             return TagLabel(
-                tagFQN=tag_fqn,
+                tagFQN=TagFQN(tag_fqn),
                 labelType=LabelType.Automated.value,
                 state=State.Suggested.value,
-                source=TagSource.Classification.value,
+                source=source,
             )
+
+        logger.warning(f"Tag does not exist: {tag_fqn}")
+
     except Exception as err:
         logger.debug(traceback.format_exc())
         logger.error(f"Error processing tag label: {err}")
@@ -114,8 +135,9 @@ def get_tag_label(
 def get_tag_labels(
     metadata: OpenMetadata,
     tags: List[str],
-    classification_name: str,
+    classification_name: Optional[str] = None,
     include_tags: bool = True,
+    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,
 ) -> Optional[List[TagLabel]]:
     """
     Method to create tag labels from the collected tags
@@ -125,7 +147,10 @@ def get_tag_labels(
         for tag in tags:
             try:
                 tag_label = get_tag_label(
-                    metadata, tag_name=tag, classification_name=classification_name
+                    metadata,
+                    tag_name=tag,
+                    classification_name=classification_name,
+                    tag_type=tag_type,
                 )
                 if tag_label:
                     tag_labels_list.append(tag_label)

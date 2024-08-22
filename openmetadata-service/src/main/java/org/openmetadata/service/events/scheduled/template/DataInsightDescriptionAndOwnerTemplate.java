@@ -15,6 +15,7 @@ package org.openmetadata.service.events.scheduled.template;
 
 import java.util.Map;
 
+@SuppressWarnings("unused")
 public class DataInsightDescriptionAndOwnerTemplate {
   public enum MetricType {
     DESCRIPTION,
@@ -28,42 +29,50 @@ public class DataInsightDescriptionAndOwnerTemplate {
     NOT_MET
   }
 
-  private final Double percentCompleted;
+  private String totalAssets;
+  private final String percentCompleted;
   private boolean kpiAvailable;
-  private Double percentChange;
+  private String percentChange;
+  private String percentChangeMessage;
   private String targetKpi;
   private String numberOfDaysLeft;
   private String completeMessage;
   private int numberOfDaysChange;
   private Map<String, Double> tierMap;
+  private Map<String, Integer> dateMap;
 
   public DataInsightDescriptionAndOwnerTemplate(
       MetricType metricType,
       KpiCriteria criteria,
+      String totalAssets,
       Double percentCompleted,
       String targetKpi,
       Double percentChange,
       boolean isKpiAvailable,
       String numberOfDaysLeft,
       int numberOfDaysChange,
-      Map<String, Double> tierMap) {
-    this.percentCompleted = percentCompleted;
+      Map<String, Double> tierMap,
+      Map<String, Integer> dateMap) {
+    this.percentCompleted = String.format("%.2f", percentCompleted);
     this.targetKpi = targetKpi;
-    this.percentChange = percentChange;
+    this.percentChange = String.format("%.2f", percentChange);
+    this.percentChangeMessage = getFormattedPercentChangeMessage(percentChange);
+    this.totalAssets = totalAssets;
     this.kpiAvailable = isKpiAvailable;
     this.numberOfDaysLeft = numberOfDaysLeft;
     this.tierMap = tierMap;
     this.numberOfDaysChange = numberOfDaysChange;
+    this.dateMap = dateMap;
     String color = "#BF0000";
     if (percentChange > 0) {
       color = "#008510";
     }
     this.completeMessage =
         String.format(
-            "The %s changed by <strong style=\"color: %s;\">%.2f%%</strong> per cent in the last week. %s",
+            "The %s changed by <strong style=\"color: %s;\">%s</strong>%% in the last week. %s",
             getMetricTypeMessage(metricType),
             color,
-            percentChange,
+            this.percentChange,
             getKpiCriteriaMessage(metricType, criteria));
   }
 
@@ -81,17 +90,17 @@ public class DataInsightDescriptionAndOwnerTemplate {
         return switch (criteria) {
           case MET -> "Great the Target Set for KPIs has been achieved. It's time to restructure your goals, set new KPIs and progress faster.";
           case IN_PROGRESS -> String.format(
-              "To meet the KPIs you will need a minimum of %s per cent completed description in the next %s days.",
-              targetKpi, numberOfDaysLeft);
+              "To meet the KPIs you will need a minimum of %s%% %s in the next %s days.",
+              targetKpi, getMetricTypeMessage(metricType).toLowerCase(), numberOfDaysLeft);
           case NOT_MET -> "The Target set for KPIs was not met it’s time to restructure your goals and progress faster.";
         };
       }
-      return "You have not set any KPIS yet, it’s time to restructure your goals, set KPIs and progress faster.";
+      return "You have not set any KPIs yet, it’s time to restructure your goals, set KPIs and progress faster.";
     }
     return "";
   }
 
-  public Double getPercentCompleted() {
+  public String getPercentCompleted() {
     return percentCompleted;
   }
 
@@ -103,12 +112,12 @@ public class DataInsightDescriptionAndOwnerTemplate {
     this.targetKpi = targetKpi;
   }
 
-  public Double getPercentChange() {
+  public String getPercentChange() {
     return percentChange;
   }
 
   public void setPercentChange(Double percentChange) {
-    this.percentChange = percentChange;
+    this.percentChange = String.format("%.2f", percentChange);
   }
 
   public boolean isKpiAvailable() {
@@ -125,6 +134,22 @@ public class DataInsightDescriptionAndOwnerTemplate {
 
   public void setNumberOfDaysLeft(String numberOfDaysLeft) {
     this.numberOfDaysLeft = numberOfDaysLeft;
+  }
+
+  public String getTotalAssets() {
+    return totalAssets;
+  }
+
+  public void setTotalAssets(String totalAssets) {
+    this.totalAssets = totalAssets;
+  }
+
+  public String getPercentChangeMessage() {
+    return percentChangeMessage;
+  }
+
+  public void setPercentChangeMessage(String message) {
+    this.percentChangeMessage = message;
   }
 
   public String getCompleteMessage() {
@@ -149,5 +174,27 @@ public class DataInsightDescriptionAndOwnerTemplate {
 
   public void setNumberOfDaysChange(int numberOfDaysChange) {
     this.numberOfDaysChange = numberOfDaysChange;
+  }
+
+  public Map<String, Integer> getDateMap() {
+    return dateMap;
+  }
+
+  public void setDateMap(Map<String, Integer> dateMap) {
+    this.dateMap = dateMap;
+  }
+
+  public static String getFormattedPercentChangeMessage(Double percent) {
+    String symbol = "";
+    String color = "#BF0000";
+    if (percent > 0) {
+      symbol = "+";
+      color = "#008611";
+    } else if (percent < 0) {
+      symbol = "-";
+    }
+
+    return String.format(
+        "<span style=\"color:%s ; font-weight: 600\">%s%.2f</span>", color, symbol, percent);
   }
 }

@@ -12,6 +12,7 @@
  */
 
 import { FormItemProps, FormRule } from 'antd';
+import { NamePath } from 'antd/lib/form/interface';
 import { ReactNode } from 'react';
 import { FormValidationRulesType } from '../enums/form.enum';
 
@@ -21,7 +22,7 @@ export type FormValidationRules = Record<
 >;
 
 export enum FormItemLayout {
-  HORIZONATAL = 'horizontal',
+  HORIZONTAL = 'horizontal',
   VERTICAL = 'vertical',
 }
 
@@ -39,11 +40,18 @@ export enum FieldTypes {
   USER_TEAM_SELECT = 'user_team_select',
   USER_MULTI_SELECT = 'user_multi_select',
   COLOR_PICKER = 'color_picker',
+  DOMAIN_SELECT = 'domain_select',
+  CRON_EDITOR = 'cron_editor',
+}
+
+export enum HelperTextType {
+  ALERT = 'alert',
+  Tooltip = 'tooltip',
 }
 
 export interface FieldProp {
   label: ReactNode;
-  name: string;
+  name: NamePath;
   type: FieldTypes;
   required: boolean;
   id: string;
@@ -51,7 +59,10 @@ export interface FieldProp {
   formItemProps?: FormItemProps;
   rules?: FormRule[];
   helperText?: ReactNode;
+  helperTextType?: HelperTextType;
+  showHelperText?: boolean;
   placeholder?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
+  isBeta?: boolean;
 }

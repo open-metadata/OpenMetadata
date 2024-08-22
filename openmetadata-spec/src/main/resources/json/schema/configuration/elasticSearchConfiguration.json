@@ -66,6 +66,16 @@
       "type": "integer",
       "default": 10
     },
+    "payLoadSize": {
+      "description": "Payload size in bytes depending on elasticsearch config",
+      "type": "integer",
+      "default": 10485760
+    },
+    "clusterAlias": {
+      "description": "Alias for search indexes to provide segregation of indexes.",
+      "type": "string",
+      "default": null
+    },
     "searchIndexMappingLanguage": {
       "$ref": "#/definitions/searchIndexMappingLanguage"
     },
@@ -77,6 +87,10 @@
         "opensearch"
       ],
       "default": "elasticsearch"
+    },
+    "searchIndexFactoryClassName": {
+      "description": "Index factory name",
+      "type": "string"
     }
   },
   "required": ["host", "port", "scheme", "connectionTimeoutSecs", "socketTimeoutSecs", "batchSize", "searchIndexMappingLanguage"],

@@ -15,7 +15,7 @@ import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React from 'react';
 import { toast } from 'react-toastify';
-import { ClientErrors } from '../enums/axios.enum';
+import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
 
@@ -51,6 +51,7 @@ export const showErrorToast = (
   if (isString(error)) {
     errorMessage = error.toString();
   } else {
+    const method = error.config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText
@@ -62,7 +63,8 @@ export const showErrorToast = (
     if (
       error &&
       (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        error.response?.status === ClientErrors.FORBIDDEN) &&
+        (error.response?.status === ClientErrors.FORBIDDEN &&
+          method === 'GET')) &&
       !errorMessage.includes('principal domain')
     ) {
       return;

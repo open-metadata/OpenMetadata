@@ -11,12 +11,42 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { Popover } from 'antd';
 import React from 'react';
 import { UserTeamSelectableList } from './UserTeamSelectableList.component';
 
 const mockOnUpdate = jest.fn();
 
-describe('SelectableList Component Test', () => {
+jest.mock('../SelectableList/SelectableList.component', () => {
+  return {
+    SelectableList: jest.fn().mockReturnValue(<div>SelectableList</div>),
+  };
+});
+
+jest.mock('../../../utils/CommonUtils', () => {
+  return {
+    getCountBadge: jest.fn().mockReturnValue(<div>CountBadge</div>),
+  };
+});
+
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('getEntityName'),
+  getEntityReferenceListFromEntities: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Popover: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+}));
+
+jest.mock('../../../constants/constants', () => ({
+  DE_ACTIVE_COLOR: '#fff',
+  PAGE_SIZE_MEDIUM: 15,
+}));
+
+describe('UserTeamSelectableList Component Test', () => {
   it('should render children if provided', () => {
     render(
       <UserTeamSelectableList hasPermission onUpdate={mockOnUpdate}>
@@ -27,5 +57,23 @@ describe('SelectableList Component Test', () => {
     const children = screen.getByText('CustomRenderer');
 
     expect(children).toBeInTheDocument();
+  });
+
+  it('should pass popover props to popover component', () => {
+    render(
+      <UserTeamSelectableList
+        hasPermission
+        popoverProps={{ open: true }}
+        onUpdate={mockOnUpdate}>
+        <p>CustomRenderer</p>
+      </UserTeamSelectableList>
+    );
+
+    expect(Popover).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        open: true,
+      }),
+      {}
+    );
   });
 });

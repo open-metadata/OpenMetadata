@@ -14,13 +14,13 @@ import { Col, Divider, Row } from 'antd';
 import { get } from 'lodash';
 import React, { useMemo } from 'react';
 import SummaryTagsDescription from '../../../../components/common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SummaryPanelSkeleton from '../../../../components/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
 import { getSortedTagsWithHighlight } from '../../../../utils/EntitySummaryPanelUtils';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import { DatabaseSchemaSummaryProps } from './DatabaseSchemaSummary.interface';
 
@@ -54,15 +54,10 @@ const DatabaseSchemaSummary = ({
           entityDetail={entityDetails}
           tags={
             tags ??
-            getSortedTagsWithHighlight({
-              tags: entityDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ??
-            []
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
           }
         />
       </>

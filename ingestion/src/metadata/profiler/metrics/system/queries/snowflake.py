@@ -15,10 +15,13 @@ Snowflake System Metric Queries and query operations
 
 import re
 import traceback
-from typing import Optional
+from typing import Optional, Tuple
 
 from sqlalchemy.engine.row import Row
 
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.lineage.sql_lineage import search_table_entities
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import (
     SnowflakeQueryResult,
@@ -55,20 +58,92 @@ RESULT_SCAN = """
     """
 
 
-def get_snowflake_system_queries(
-    row: Row, database: str, schema: str
-) -> Optional[SnowflakeQueryResult]:
-    """get snowflake system queries for a specific database and schema. Parsing the query
-    is the only reliable way to get the DDL operation as fields in the table are not. If parsing
-    fails we'll fall back to regex lookup
+QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=[\s*\n])"  # pylint: disable=line-too-long
+IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
-    1. Parse the query and check if we have an Identifier
-    2.
+
+def _parse_query(query: str) -> Optional[str]:
+    """Parse snowflake queries to extract the identifiers"""
+    match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
+    try:
+        # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
+        # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
+        identifier = match.group(2)
+
+        match_internal_identifier = re.match(
+            IDENTIFIER_PATTERN, identifier, re.IGNORECASE
+        )
+        internal_identifier = (
+            match_internal_identifier.group(2) if match_internal_identifier else None
+        )
+        if internal_identifier:
+            return internal_identifier
+
+        return identifier
+    except (IndexError, AttributeError):
+        logger.debug("Could not find identifier in query. Skipping row.")
+        return None
+
+
+def get_identifiers(
+    identifier: str, ometa_client: OpenMetadata, db_service: DatabaseService
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Get query identifiers and if needed, fetch them from ES"""
+    database_name, schema_name, table_name = get_identifiers_from_string(identifier)
+
+    if not table_name:
+        logger.debug("Could not extract the table name. Skipping operation.")
+        return database_name, schema_name, table_name
+
+    if not all([database_name, schema_name]):
+        logger.debug(
+            "Missing database or schema info from the query. We'll look for it in ES."
+        )
+        es_tables = search_table_entities(
+            metadata=ometa_client,
+            service_name=db_service.fullyQualifiedName.root,
+            database=database_name,
+            database_schema=schema_name,
+            table=table_name,
+        )
+
+        if not es_tables:
+            logger.debug("No tables match the search criteria.")
+            return database_name, schema_name, table_name
+
+        if len(es_tables) > 1:
+            logger.debug(
+                "Found more than 1 table matching the search criteria."
+                " Skipping the computation to not mix system data."
+            )
+            return database_name, schema_name, table_name
+
+        matched_table = es_tables[0]
+        database_name = matched_table.database.name
+        schema_name = matched_table.databaseSchema.name
+
+    return database_name, schema_name, table_name
+
+
+def get_snowflake_system_queries(
+    row: Row,
+    database: str,
+    schema: str,
+    ometa_client: OpenMetadata,
+    db_service: DatabaseService,
+) -> Optional[SnowflakeQueryResult]:
+    """
+    Run a regex lookup on the query to identify which operation ran against the table.
+
+    If the query does not have the complete set of `database.schema.table` when it runs,
+    we'll use ES to pick up the table, if we find it.
 
     Args:
         row (dict): row from the snowflake system queries table
         database (str): database name
         schema (str): schema name
+        ometa_client (OpenMetadata): OpenMetadata client to search against ES
+        db_service (DatabaseService): DB service where the process is running against
     Returns:
         QueryResult: namedtuple with the query result
     """
@@ -78,20 +153,17 @@ def get_snowflake_system_queries(
         query_text = dict_row.get("QUERY_TEXT", dict_row.get("query_text"))
         logger.debug(f"Trying to parse query:\n{query_text}\n")
 
-        pattern = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"]+)(?=[\s*\n])"  # pylint: disable=line-too-long
-        match = re.match(pattern, query_text, re.IGNORECASE)
-        try:
-            identifier = match.group(2)
-        except (IndexError, AttributeError):
-            logger.debug("Could not find identifier in query. Skipping row.")
+        identifier = _parse_query(query_text)
+        if not identifier:
             return None
 
-        database_name, schema_name, table_name = get_identifiers_from_string(identifier)
+        database_name, schema_name, table_name = get_identifiers(
+            identifier=identifier,
+            ometa_client=ometa_client,
+            db_service=db_service,
+        )
 
         if not all([database_name, schema_name, table_name]):
-            logger.debug(
-                "Missing database, schema, or table. Can't link operation to table entity in OpenMetadata."
-            )
             return None
 
         if (

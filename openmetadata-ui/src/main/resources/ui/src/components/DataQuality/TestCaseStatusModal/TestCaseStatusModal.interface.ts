@@ -10,11 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { EntityReference } from '../../../generated/entity/type';
 import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 
 export interface TestCaseStatusModalProps {
   open: boolean;
   data?: TestCaseResolutionStatus;
+  testCaseFqn: string;
   onCancel: () => void;
-  onSubmit: (data: TestCaseResolutionStatus) => Promise<void>;
+  onSubmit: (data: TestCaseResolutionStatus) => void;
+  usersList?: EntityReference[];
 }

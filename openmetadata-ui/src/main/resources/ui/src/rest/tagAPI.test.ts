@@ -19,17 +19,8 @@ import {
   deleteTag,
   getClassificationByName,
   getTags,
-  updateClassification,
   updateTag,
 } from './tagAPI';
-
-jest.mock('../utils/APIUtils', () => ({
-  getURLWithQueryFields: jest
-    .fn()
-    .mockImplementation(
-      (url, lstQueryFields) => `${url}?fields=${lstQueryFields}`
-    ),
-}));
 
 jest.mock('./index', () => ({
   get: jest
@@ -56,17 +47,15 @@ jest.mock('./index', () => ({
 
 describe('API functions should work properly', () => {
   it('getTags function should work properly', async () => {
-    const data = await getTags({ arrQueryFields: 'query' });
+    const data = await getTags({});
 
-    expect(data).toBe(`get_request/tags?fields=query`);
+    expect(data).toBe(`get_request/tags`);
   });
 
   it('getClassificationByName function should work properly', async () => {
-    const result = await getClassificationByName('categoryName', 'query');
+    const result = await getClassificationByName('categoryName');
 
-    expect(result).toBe(
-      `get_request/classifications/name/categoryName?fields=query`
-    );
+    expect(result).toBe(`get_request/classifications/name/categoryName`);
   });
 
   it('deleteClassification function should work properly', async () => {
@@ -86,7 +75,10 @@ describe('API functions should work properly', () => {
 
   it('createClassification function should work properly', async () => {
     const mockPostData = { name: 'testCategory' } as Classification;
-    const result = await createClassification(mockPostData);
+    const result = await createClassification({
+      ...mockPostData,
+      domain: undefined,
+    });
 
     expect(result).toEqual({
       url: `post_request/classifications`,
@@ -96,24 +88,11 @@ describe('API functions should work properly', () => {
 
   it('createTag function should work properly', async () => {
     const mockPostData = { name: 'newTag' } as Classification;
-    const result = await createTag(mockPostData);
+    const result = await createTag({ ...mockPostData, domain: undefined });
 
     expect(result).toEqual({
       url: `post_request/tags`,
       data: mockPostData,
-    });
-  });
-
-  it('updateClassification function should work properly', async () => {
-    const mockUpdateData = {
-      name: 'testCategory',
-      description: 'newDescription',
-    };
-    const result = await updateClassification(mockUpdateData);
-
-    expect(result).toEqual({
-      url: `put_request/classifications`,
-      data: mockUpdateData,
     });
   });
 

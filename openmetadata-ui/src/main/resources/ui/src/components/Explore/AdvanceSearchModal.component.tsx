@@ -12,18 +12,9 @@
  */
 
 import { Button, Modal, Space, Typography } from 'antd';
-import { cloneDeep } from 'lodash';
-import React, { FunctionComponent, useEffect } from 'react';
-import {
-  Builder,
-  FieldGroup,
-  Query,
-  ValueSource,
-} from 'react-awesome-query-builder';
+import React, { FunctionComponent } from 'react';
+import { Builder, Query } from 'react-awesome-query-builder';
 import { useTranslation } from 'react-i18next';
-import { getTypeByFQN } from '../../rest/metadataTypeAPI';
-import { EntitiesSupportedCustomProperties } from '../../utils/CustomProperties/CustomProperty.utils';
-import { getEntityTypeFromSearchIndex } from '../../utils/SearchUtils';
 import './advanced-search-modal.less';
 import { useAdvanceSearch } from './AdvanceSearchProvider/AdvanceSearchProvider.component';
 
@@ -39,51 +30,8 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
   onCancel,
 }: Props) => {
   const { t } = useTranslation();
-  const {
-    config,
-    treeInternal,
-    onTreeUpdate,
-    onReset,
-    onUpdateConfig,
-    searchIndex,
-  } = useAdvanceSearch();
-
-  const updatedConfig = cloneDeep(config);
-
-  async function getCustomAttributesSubfields() {
-    try {
-      const entityType = getEntityTypeFromSearchIndex(searchIndex);
-      if (!entityType) {
-        return;
-      }
-      const res = await getTypeByFQN(entityType);
-      const customAttributes = res.customProperties;
-
-      const subfields: Record<
-        string,
-        { type: string; valueSources: ValueSource[] }
-      > = {};
-
-      if (customAttributes) {
-        customAttributes.forEach((attr) => {
-          subfields[attr.name] = {
-            type: 'text',
-            valueSources: ['value'],
-          };
-        });
-      }
-      (updatedConfig.fields.extension as FieldGroup).subfields = subfields;
-      onUpdateConfig(updatedConfig);
-    } catch (error) {
-      // Error
-    }
-  }
-
-  useEffect(() => {
-    if (visible && EntitiesSupportedCustomProperties.includes(searchIndex)) {
-      getCustomAttributesSubfields();
-    }
-  }, [visible, searchIndex]);
+  const { config, treeInternal, onTreeUpdate, onReset, modalProps } =
+    useAdvanceSearch();
 
   return (
     <Modal
@@ -114,13 +62,16 @@ export const AdvancedSearchModal: FunctionComponent<Props> = ({
       maskClosable={false}
       okText={t('label.submit')}
       open={visible}
-      title={t('label.advanced-entity', {
-        entity: t('label.search'),
-      })}
+      title={
+        modalProps?.title ??
+        t('label.advanced-entity', {
+          entity: t('label.search'),
+        })
+      }
       width={950}
       onCancel={onCancel}>
       <Typography.Text data-testid="advanced-search-message">
-        {t('message.advanced-search-message')}
+        {modalProps?.subTitle ?? t('message.advanced-search-message')}
       </Typography.Text>
       <Query
         {...config}

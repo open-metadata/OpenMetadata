@@ -7,13 +7,6 @@
   "javaType": "org.openmetadata.schema.entity.teams.User",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "entityName": {
-      "description": "Login name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 64,
-      "pattern": "(?U)^[\\w\\-.]+$"
-    },
     "authenticationMechanism": {
       "type": "object",
       "description": "User/Bot Authentication Mechanism.",
@@ -46,7 +39,7 @@
     },
     "name": {
       "description": "A unique name of the user, typically the user ID from an identity provider. Example - uid from LDAP.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
@@ -87,11 +80,13 @@
     },
     "isBot": {
       "description": "When true indicates a special type of user called Bot.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "isAdmin": {
       "description": "When true indicates user is an administrator for the system with superuser privileges.",
-      "type": "boolean"
+      "type": "boolean",
+      "default": false
     },
     "authenticationMechanism": {
       "$ref": "#/definitions/authenticationMechanism"
@@ -141,9 +136,9 @@
       "description": "If the User has verified the mail",
       "type": "boolean"
     },
-    "domain" : {
+    "domains" : {
       "description": "Domain the User belongs to. This is inherited by the team the user belongs to.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     }
   },
   "additionalProperties": false,

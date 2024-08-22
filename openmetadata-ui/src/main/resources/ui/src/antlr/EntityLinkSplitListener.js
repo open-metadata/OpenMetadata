@@ -25,12 +25,7 @@ export default class EntityLinkSplitListener extends EntityLinkListener {
   }
 
   // Enter a parse tree produced by EntityLinkParser#entityAttribute.
-  enterEntityAttribute(ctx) {
-    this.entityLinkParts.push(ctx.getText());
-  }
-
-  // Enter a parse tree produced by EntityLinkParser#entityFqn.
-  enterEntityFqn(ctx) {
+  enterNameOrFQN(ctx) {
     this.entityLinkParts.push(ctx.getText());
   }
 

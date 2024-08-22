@@ -12,6 +12,7 @@
  */
 
 import { EllipsisOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Card,
@@ -22,6 +23,7 @@ import {
   Row,
   Space,
   Tabs,
+  Tooltip,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
@@ -29,21 +31,24 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import Description from '../../../components/common/EntityDescription/Description';
+import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   getPolicyByName,
   getRoleByName,
@@ -57,7 +62,6 @@ import {
   getEditPolicyRulePath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './policies-detail.less';
 import PoliciesDetailsList from './PoliciesDetailsList.component';
@@ -69,7 +73,7 @@ type Attribute = 'roles' | 'teams';
 const PoliciesDetailPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
 
   const [policy, setPolicy] = useState<Policy>({} as Policy);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -102,7 +106,15 @@ const PoliciesDetailPage = () => {
   const fetchPolicy = async () => {
     setLoading(true);
     try {
-      const data = await getPolicyByName(fqn, 'owner,location,teams,roles');
+      const data = await getPolicyByName(
+        fqn,
+        `${
+          (TabSpecificField.OWNERS,
+          TabSpecificField.LOCATION,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES)
+        }`
+      );
       setPolicy(data ?? ({} as Policy));
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -155,10 +167,9 @@ const PoliciesDetailPage = () => {
 
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const team = await getTeamByName(
-        data.fullyQualifiedName || '',
-        'policies'
-      );
+      const team = await getTeamByName(data.fullyQualifiedName || '', {
+        fields: TabSpecificField.POLICIES,
+      });
       const updatedAttributeData = (team.policies ?? []).filter(
         (attrData) => attrData.id !== policy.id
       );
@@ -264,11 +275,12 @@ const PoliciesDetailPage = () => {
                         handleRuleDelete(rule);
                       }}>
                       <Space align="center">
-                        <SVGIcons
-                          alt={t('label.delete')}
-                          icon={Icons.DELETE}
-                          width="16px"
+                        <Icon
+                          className="align-middle"
+                          component={IconDelete}
+                          style={{ fontSize: '16px' }}
                         />
+
                         {t('label.delete')}
                       </Space>
                     </Button>
@@ -280,15 +292,21 @@ const PoliciesDetailPage = () => {
           }
           placement="bottomRight"
           trigger={['click']}>
-          <Button
-            data-testid={`manage-button-${rule.name}`}
-            icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
-            size="small"
-            type="text"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          />
+          <Tooltip
+            placement="topRight"
+            title={t('label.manage-entity', {
+              entity: t('label.rule'),
+            })}>
+            <Button
+              data-testid={`manage-button-${rule.name}`}
+              icon={<EllipsisOutlined className="text-grey-body" rotate={90} />}
+              size="small"
+              type="text"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            />
+          </Tooltip>
         </Dropdown>
       );
     },
@@ -304,205 +322,215 @@ const PoliciesDetailPage = () => {
   }
 
   return (
-    <div data-testid="policy-details-container">
-      <TitleBreadcrumb titleLinks={breadcrumb} />
+    <PageLayoutV1 pageTitle={t('label.policy-plural')}>
+      <div className="page-container" data-testid="policy-details-container">
+        <TitleBreadcrumb titleLinks={breadcrumb} />
 
-      <>
-        {isEmpty(policy) ? (
-          <ErrorPlaceHolder>
-            <div className="text-center">
-              <p>
-                {t('message.no-entity-found-for-name', {
-                  entity: t('label.policy-lowercase'),
-                  name: fqn,
-                })}
-              </p>
-              <Button
-                size="small"
-                type="primary"
-                onClick={() => history.push(policiesPath)}>
-                {t('label.go-back')}
-              </Button>
-            </div>
-          </ErrorPlaceHolder>
-        ) : (
-          <div className="policies-detail" data-testid="policy-details">
-            <Typography.Title
-              className="m-b-0 m-t-xs"
-              data-testid="heading"
-              level={5}>
-              {policyName}
-            </Typography.Title>
-            <Description
-              hasEditAccess
-              className="m-b-md"
-              description={policy.description || ''}
-              entityFqn={policy.fullyQualifiedName}
-              entityName={policyName}
-              entityType={EntityType.POLICY}
-              isEdit={editDescription}
-              onCancel={() => setEditDescription(false)}
-              onDescriptionEdit={() => setEditDescription(true)}
-              onDescriptionUpdate={handleDescriptionUpdate}
-            />
+        <>
+          {isEmpty(policy) ? (
+            <ErrorPlaceHolder>
+              <div className="text-center">
+                <p>
+                  {t('message.no-entity-found-for-name', {
+                    entity: t('label.policy-lowercase'),
+                    name: fqn,
+                  })}
+                </p>
+                <Button
+                  size="small"
+                  type="primary"
+                  onClick={() => history.push(policiesPath)}>
+                  {t('label.go-back')}
+                </Button>
+              </div>
+            </ErrorPlaceHolder>
+          ) : (
+            <div className="policies-detail" data-testid="policy-details">
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {policyName}
+              </Typography.Title>
+              <DescriptionV1
+                hasEditAccess
+                className="m-y-md"
+                description={policy.description || ''}
+                entityFqn={policy.fullyQualifiedName}
+                entityName={policyName}
+                entityType={EntityType.POLICY}
+                isEdit={editDescription}
+                showCommentsIcon={false}
+                onCancel={() => setEditDescription(false)}
+                onDescriptionEdit={() => setEditDescription(true)}
+                onDescriptionUpdate={handleDescriptionUpdate}
+              />
 
-            <Tabs defaultActiveKey="rules">
-              <TabPane key="rules" tab={t('label.rule-plural')}>
-                {isEmpty(policy.rules) ? (
-                  <ErrorPlaceHolder />
-                ) : (
-                  <Space className="w-full tabpane-space" direction="vertical">
-                    <Button
-                      data-testid="add-rule"
-                      type="primary"
-                      onClick={() => history.push(getAddPolicyRulePath(fqn))}>
-                      {t('label.add-entity', {
-                        entity: t('label.rule'),
-                      })}
-                    </Button>
+              <Tabs defaultActiveKey="rules">
+                <TabPane key="rules" tab={t('label.rule-plural')}>
+                  {isEmpty(policy.rules) ? (
+                    <ErrorPlaceHolder />
+                  ) : (
+                    <Space
+                      className="w-full tabpane-space"
+                      direction="vertical">
+                      <Button
+                        data-testid="add-rule"
+                        type="primary"
+                        onClick={() => history.push(getAddPolicyRulePath(fqn))}>
+                        {t('label.add-entity', {
+                          entity: t('label.rule'),
+                        })}
+                      </Button>
 
-                    <Space className="w-full" direction="vertical" size={20}>
-                      {policy.rules.map((rule) => (
-                        <Card data-testid="rule-card" key={rule.name || 'rule'}>
-                          <Space
-                            align="baseline"
-                            className="w-full justify-between p-b-lg"
-                            direction="horizontal">
-                            <Typography.Text
-                              className="font-medium text-base text-grey-body"
-                              data-testid="rule-name">
-                              {rule.name}
-                            </Typography.Text>
-                            {getRuleActionElement(rule)}
-                          </Space>
+                      <Space className="w-full" direction="vertical" size={20}>
+                        {policy.rules.map((rule) => (
+                          <Card
+                            data-testid="rule-card"
+                            key={rule.name || 'rule'}>
+                            <Space
+                              align="baseline"
+                              className="w-full justify-between p-b-lg"
+                              direction="horizontal">
+                              <Typography.Text
+                                className="font-medium text-base text-grey-body"
+                                data-testid="rule-name">
+                                {rule.name}
+                              </Typography.Text>
+                              {getRuleActionElement(rule)}
+                            </Space>
 
-                          <Space
-                            className="w-full"
-                            direction="vertical"
-                            size={12}>
-                            {rule.description && (
-                              <Row data-testid="description">
+                            <Space
+                              className="w-full"
+                              direction="vertical"
+                              size={12}>
+                              {rule.description && (
+                                <Row data-testid="description">
+                                  <Col span={2}>
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${t('label.description')}:`}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={22}>
+                                    <RichTextEditorPreviewer
+                                      markdown={rule.description || ''}
+                                    />
+                                  </Col>
+                                </Row>
+                              )}
+
+                              <Row data-testid="resources">
                                 <Col span={2}>
-                                  <Typography.Text className="text-grey-muted">
-                                    {`${t('label.description')}:`}
+                                  <Typography.Text className="text-grey-muted m-b-0">
+                                    {`${t('label.resource-plural')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
-                                  <RichTextEditorPreviewer
-                                    markdown={rule.description || ''}
-                                  />
+                                  <Typography.Text className="text-grey-body">
+                                    {rule.resources
+                                      ?.map((resource) => startCase(resource))
+                                      ?.join(', ')}
+                                  </Typography.Text>
                                 </Col>
                               </Row>
-                            )}
 
-                            <Row data-testid="resources">
-                              <Col span={2}>
-                                <Typography.Text className="text-grey-muted m-b-0">
-                                  {`${t('label.resource-plural')}:`}
-                                </Typography.Text>
-                              </Col>
-                              <Col span={22}>
-                                <Typography.Text className="text-grey-body">
-                                  {rule.resources
-                                    ?.map((resource) => startCase(resource))
-                                    ?.join(', ')}
-                                </Typography.Text>
-                              </Col>
-                            </Row>
-
-                            <Row data-testid="operations">
-                              <Col span={2}>
-                                <Typography.Text className="text-grey-muted">
-                                  {`${t('label.operation-plural')}:`}
-                                </Typography.Text>
-                              </Col>
-                              <Col span={22}>
-                                <Typography.Text className="text-grey-body">
-                                  {rule.operations?.join(', ')}
-                                </Typography.Text>
-                              </Col>
-                            </Row>
-                            <Row data-testid="effect">
-                              <Col span={2}>
-                                <Typography.Text className="text-grey-muted">
-                                  {`${t('label.effect')}:`}
-                                </Typography.Text>
-                              </Col>
-                              <Col span={22}>
-                                <Typography.Text className="text-grey-body">
-                                  {startCase(rule.effect)}
-                                </Typography.Text>
-                              </Col>
-                            </Row>
-                            {rule.condition && (
-                              <Row data-testid="condition">
+                              <Row data-testid="operations">
                                 <Col span={2}>
                                   <Typography.Text className="text-grey-muted">
-                                    {`${t('label.condition')}:`}
+                                    {`${t('label.operation-plural')}:`}
                                   </Typography.Text>
                                 </Col>
                                 <Col span={22}>
-                                  <code>{rule.condition}</code>
+                                  <Typography.Text className="text-grey-body">
+                                    {rule.operations?.join(', ')}
+                                  </Typography.Text>
                                 </Col>
                               </Row>
-                            )}
-                          </Space>
-                        </Card>
-                      ))}
+                              <Row data-testid="effect">
+                                <Col span={2}>
+                                  <Typography.Text className="text-grey-muted">
+                                    {`${t('label.effect')}:`}
+                                  </Typography.Text>
+                                </Col>
+                                <Col span={22}>
+                                  <Typography.Text className="text-grey-body">
+                                    {startCase(rule.effect)}
+                                  </Typography.Text>
+                                </Col>
+                              </Row>
+                              {rule.condition && (
+                                <Row data-testid="condition">
+                                  <Col span={2}>
+                                    <Typography.Text className="text-grey-muted">
+                                      {`${t('label.condition')}:`}
+                                    </Typography.Text>
+                                  </Col>
+                                  <Col span={22}>
+                                    <code>{rule.condition}</code>
+                                  </Col>
+                                </Row>
+                              )}
+                            </Space>
+                          </Card>
+                        ))}
+                      </Space>
                     </Space>
-                  </Space>
-                )}
-              </TabPane>
-              <TabPane key="roles" tab={t('label.role-plural')}>
-                <PoliciesDetailsList
-                  hasAccess
-                  list={policy.roles ?? []}
-                  type="role"
-                  onDelete={(record) =>
-                    setEntity({ record, attribute: 'roles' })
-                  }
-                />
-              </TabPane>
-              <TabPane key="teams" tab={t('label.team-plural')}>
-                <PoliciesDetailsList
-                  hasAccess
-                  list={policy.teams ?? []}
-                  type="team"
-                  onDelete={(record) =>
-                    setEntity({ record, attribute: 'teams' })
-                  }
-                />
-              </TabPane>
-            </Tabs>
-          </div>
-        )}
-      </>
+                  )}
+                </TabPane>
+                <TabPane key="roles" tab={t('label.role-plural')}>
+                  <PoliciesDetailsList
+                    hasAccess
+                    list={policy.roles ?? []}
+                    type="role"
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'roles' })
+                    }
+                  />
+                </TabPane>
+                <TabPane key="teams" tab={t('label.team-plural')}>
+                  <PoliciesDetailsList
+                    hasAccess
+                    list={policy.teams ?? []}
+                    type="team"
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'teams' })
+                    }
+                  />
+                </TabPane>
+              </Tabs>
+            </div>
+          )}
+        </>
 
-      {selectedEntity && (
-        <Modal
-          centered
-          closable={false}
-          confirmLoading={isloadingOnSave}
-          maskClosable={false}
-          okText={t('label.confirm')}
-          open={!isUndefined(selectedEntity.record)}
-          title={`${t('label.remove-entity', {
-            entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from-lowercase')} ${policyName}`}
-          onCancel={() => setEntity(undefined)}
-          onOk={async () => {
-            await handleDelete(selectedEntity.record, selectedEntity.attribute);
-            setEntity(undefined);
-          }}>
-          <Typography.Text>
-            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
-              child: getEntityName(selectedEntity.record),
-              parent: policyName,
-            })}
-          </Typography.Text>
-        </Modal>
-      )}
-    </div>
+        {selectedEntity && (
+          <Modal
+            centered
+            closable={false}
+            confirmLoading={isloadingOnSave}
+            maskClosable={false}
+            okText={t('label.confirm')}
+            open={!isUndefined(selectedEntity.record)}
+            title={`${t('label.remove-entity', {
+              entity: getEntityName(selectedEntity.record),
+            })} ${t('label.from-lowercase')} ${policyName}`}
+            onCancel={() => setEntity(undefined)}
+            onOk={async () => {
+              await handleDelete(
+                selectedEntity.record,
+                selectedEntity.attribute
+              );
+              setEntity(undefined);
+            }}>
+            <Typography.Text>
+              {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+                child: getEntityName(selectedEntity.record),
+                parent: policyName,
+              })}
+            </Typography.Text>
+          </Modal>
+        )}
+      </div>
+    </PageLayoutV1>
   );
 };
 

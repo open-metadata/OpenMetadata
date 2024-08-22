@@ -67,9 +67,11 @@
       "default": null
     },
     "connection": {
+      "description": "TestSuite mock connection, since it needs to implement a Service.",
       "$ref": "#/definitions/testSuiteConnection"
     },
     "testConnectionResult": {
+      "description": "Result of the test connection.",
       "$ref": "../entity/services/connections/testConnectionResult.json"
     },
     "pipelines": {
@@ -79,14 +81,18 @@
     },
     "serviceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
-      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaInterfaces": [
+        "org.openmetadata.schema.EnumInterface"
+      ],
       "type": "string",
-      "enum": ["TestSuite"],
+      "enum": [
+        "TestSuite"
+      ],
       "default": "TestSuite"
     },
-    "owner": {
-      "description": "Owner of this TestCase definition.",
-      "$ref": "../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this TestCase definition.",
+      "$ref": "../type/entityReferenceList.json",
       "default": null
     },
     "version": {
@@ -131,10 +137,24 @@
       "description": "Summary of test case execution",
       "type": "array",
       "items": {
-          "$ref": "#/definitions/testSuiteConnection/resultSummary"
+        "$ref": "#/definitions/testSuiteConnection/resultSummary"
       }
+    },
+    "domain": {
+      "description": "Domain the test Suite belongs to. When not set, the test Suite inherits the domain from the table it belongs to.",
+      "$ref": "../type/entityReference.json"
+    },
+    "tags": {
+      "description": "Tags for this test suite. This is an inherited field from the parent entity if the testSuite is native.",
+      "type": "array",
+      "items": {
+        "$ref": "../type/tagLabel.json"
+      },
+      "default": null
     }
   },
-  "required": ["name"],
+  "required": [
+    "name"
+  ],
   "additionalProperties": false
 }

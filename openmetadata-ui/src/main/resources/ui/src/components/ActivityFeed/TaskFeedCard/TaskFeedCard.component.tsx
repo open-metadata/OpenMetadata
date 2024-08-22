@@ -13,14 +13,13 @@
 import Icon from '@ant-design/icons';
 import { Button, Col, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { isEmpty, isUndefined, lowerCase, noop } from 'lodash';
+import { isUndefined, lowerCase, noop } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as ThreadIcon } from '../../../assets/svg/thread.svg';
-import AssigneeList from '../../../components/common/AssigneeList/AssigneeList';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import {
@@ -35,8 +34,10 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
+
+import { TASK_TYPES } from '../../../constants/Task.constant';
 import { getTaskDetailPath } from '../../../utils/TasksUtils';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
@@ -60,32 +61,46 @@ const TaskFeedCard = ({
   showThread = true,
   isActive,
   hidePopover = false,
-  isForFeedTab = false,
 }: TaskFeedCardProps) => {
   const history = useHistory();
   const { t } = useTranslation();
-  const timeStamp = feed.threadTs;
-  const taskDetails = feed.task;
-  const postLength = feed?.postsCount ?? 0;
-  const entityType = getEntityType(feed.about) ?? '';
-  const entityFQN = getEntityFQN(feed.about) ?? '';
+  const { showDrawer, setActiveThread } = useActivityFeedProvider();
+  const [showActions, setShowActions] = useState(false);
+  const {
+    threadTs: timeStamp,
+    task: taskDetails,
+    postsCount: postLength = 0,
+  } = feed;
 
-  const entityCheck = !isUndefined(entityFQN) && !isUndefined(entityType);
   const [isEditPost, setIsEditPost] = useState(false);
   const repliedUsers = [...new Set((feed?.posts ?? []).map((f) => f.from))];
   const repliedUniqueUsersList = repliedUsers.slice(0, postLength >= 3 ? 2 : 1);
 
-  const { showDrawer, setActiveThread } = useActivityFeedProvider();
+  const { entityType, entityFQN } = useMemo(
+    () => ({
+      entityType: getEntityType(feed.about) ?? '',
+      entityFQN: getEntityFQN(feed.about) ?? '',
+    }),
+    [feed.about]
+  );
 
-  const taskField = useMemo(() => {
-    const entityField = EntityLink.getEntityField(feed.about) ?? '';
+  const isEntityDetailsAvailable = useMemo(
+    () => !isUndefined(entityFQN) && !isUndefined(entityType),
+    [entityFQN, entityType]
+  );
+
+  const taskColumnName = useMemo(() => {
     const columnName = EntityLink.getTableColumnName(feed.about) ?? '';
 
     if (columnName) {
-      return `${entityField}/${columnName}`;
+      return (
+        <Typography.Text className="p-r-xss">
+          {columnName} {t('label.in-lowercase')}
+        </Typography.Text>
+      );
     }
 
-    return entityField;
+    return null;
   }, [feed]);
 
   const showReplies = () => {
@@ -103,140 +118,148 @@ const TaskFeedCard = ({
     setActiveThread(feed);
   };
 
-  const getTaskLinkElement = entityCheck && (
-    <Typography.Text>
-      <Button
-        className="p-0"
-        data-testid="redirect-task-button-link"
-        type="link"
-        onClick={handleTaskLinkClick}>
-        {`#${taskDetails?.id} `}
-      </Button>
+  const taskLinkTitleElement = useMemo(
+    () =>
+      isEntityDetailsAvailable && !isUndefined(taskDetails) ? (
+        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+          <Button
+            className="p-0 task-feed-message"
+            data-testid="redirect-task-button-link"
+            type="link"
+            onClick={handleTaskLinkClick}>
+            <Typography.Text className="p-0 text-primary">{`#${taskDetails.id} `}</Typography.Text>
 
-      <Typography.Text className="p-l-xss">{taskDetails?.type}</Typography.Text>
-      <span className="m-x-xss">{t('label.for-lowercase')}</span>
+            <Typography.Text className="p-xss">
+              {TASK_TYPES[taskDetails.type]}
+            </Typography.Text>
 
-      {isForFeedTab ? null : (
-        <>
-          <span className="p-r-xss">{entityType}</span>
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Link
-              className="break-all"
-              data-testid="entity-link"
-              to={getEntityLink(entityType, entityFQN)}
-              onClick={(e) => e.stopPropagation()}>
+            {taskColumnName}
+
+            <Typography.Text className="break-all" data-testid="entity-link">
               {getNameFromFQN(entityFQN)}
-            </Link>
-          </EntityPopOverCard>
-        </>
-      )}
+            </Typography.Text>
 
-      {!isEmpty(taskField) ? (
-        <span className={classNames({ 'p-l-xss': !isForFeedTab })}>
-          {taskField}
-        </span>
-      ) : null}
-    </Typography.Text>
+            <Typography.Text className="p-l-xss">{`(${entityType})`}</Typography.Text>
+          </Button>
+        </EntityPopOverCard>
+      ) : null,
+    [isEntityDetailsAvailable, entityFQN, entityType, taskDetails]
   );
 
+  const handleMouseEnter = () => {
+    setShowActions(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowActions(false);
+  };
+
   return (
-    <div
-      className={classNames(
-        className,
-        'task-feed-card-v1 activity-feed-card activity-feed-card-v1',
-        { active: isActive }
-      )}
-      data-testid="task-feed-card">
-      <Row gutter={[0, 8]}>
-        <Col className="d-flex items-center" span={24}>
-          <Icon
-            className="m-r-xs"
-            component={
-              taskDetails?.status === ThreadTaskStatus.Open
-                ? TaskOpenIcon
-                : TaskCloseIcon
-            }
-            data-testid={`task-status-icon-${lowerCase(taskDetails?.status)}`}
-            style={{ fontSize: '18px' }}
-          />
+    <Button
+      block
+      className="remove-button-default-styling"
+      type="text"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}>
+      <div
+        className={classNames(
+          className,
+          'task-feed-card-v1 activity-feed-card activity-feed-card-v1',
+          { active: isActive }
+        )}
+        data-testid="task-feed-card">
+        <Row gutter={[0, 8]}>
+          <Col
+            className="d-flex items-center task-feed-message-container"
+            span={24}>
+            <Icon
+              className="m-r-xs"
+              component={
+                taskDetails?.status === ThreadTaskStatus.Open
+                  ? TaskOpenIcon
+                  : TaskCloseIcon
+              }
+              data-testid={`task-status-icon-${lowerCase(taskDetails?.status)}`}
+              style={{ fontSize: '18px' }}
+            />
 
-          {getTaskLinkElement}
-        </Col>
-        <Col span={24}>
-          <Typography.Text className="task-feed-body text-xs text-grey-muted">
-            <UserPopOverCard
-              key={feed.createdBy}
-              userName={feed.createdBy ?? ''}>
-              <span className="p-r-xss" data-testid="task-created-by">
-                {feed.createdBy}
-              </span>
-            </UserPopOverCard>
-            {t('message.created-this-task-lowercase')}
-            {timeStamp && (
-              <Tooltip title={formatDateTime(timeStamp)}>
-                <span className="p-l-xss" data-testid="timestamp">
-                  {getRelativeTime(timeStamp)}
-                </span>
-              </Tooltip>
-            )}
-          </Typography.Text>
-        </Col>
-        {!showThread ? (
-          <Col span={24}>
-            <div className="d-flex items-center p-l-lg gap-2">
-              {postLength > 0 && (
-                <>
-                  <div className="thread-users-profile-pic">
-                    {repliedUniqueUsersList.map((user) => (
-                      <UserPopOverCard key={user} userName={user}>
-                        <span
-                          className="profile-image-span cursor-pointer"
-                          data-testid="authorAvatar">
-                          <ProfilePicture
-                            name={user}
-                            type="circle"
-                            width="24"
-                          />
-                        </span>
-                      </UserPopOverCard>
-                    ))}
-                  </div>
-                  <div
-                    className="d-flex items-center thread-count cursor-pointer m-l-xs"
-                    onClick={!hidePopover ? showReplies : noop}>
-                    <ThreadIcon width={20} />{' '}
-                    <span className="text-xs p-l-xss">{postLength}</span>
-                  </div>
-                </>
-              )}
-
-              <Typography.Text
-                className={
-                  postLength > 0
-                    ? 'm-l-sm text-sm text-grey-muted'
-                    : 'text-sm text-grey-muted'
-                }>
-                {`${t('label.assignee-plural')}: `}
-              </Typography.Text>
-              <AssigneeList
-                assignees={feed?.task?.assignees || []}
-                className="d-flex gap-1"
-                showUserName={false}
-              />
-            </div>
+            {taskLinkTitleElement}
           </Col>
-        ) : null}
-      </Row>
+          <Col span={24}>
+            <Typography.Text className="task-feed-body text-xs text-grey-muted">
+              <UserPopOverCard
+                key={feed.createdBy}
+                userName={feed.createdBy ?? ''}>
+                <span className="p-r-xss" data-testid="task-created-by">
+                  {feed.createdBy}
+                </span>
+              </UserPopOverCard>
+              {t('message.created-this-task-lowercase')}
+              {timeStamp && (
+                <Tooltip title={formatDateTime(timeStamp)}>
+                  <span className="p-l-xss" data-testid="timestamp">
+                    {getRelativeTime(timeStamp)}
+                  </span>
+                </Tooltip>
+              )}
+            </Typography.Text>
+          </Col>
+          {!showThread ? (
+            <Col span={24}>
+              <div className="d-flex items-start p-l-lg gap-2">
+                {postLength > 0 && (
+                  <>
+                    <div className="thread-users-profile-pic">
+                      {repliedUniqueUsersList.map((user) => (
+                        <UserPopOverCard key={user} userName={user}>
+                          <span
+                            className="profile-image-span cursor-pointer"
+                            data-testid="authorAvatar">
+                            <ProfilePicture
+                              name={user}
+                              type="circle"
+                              width="24"
+                            />
+                          </span>
+                        </UserPopOverCard>
+                      ))}
+                    </div>
+                    <div
+                      className="d-flex items-center thread-count cursor-pointer m-l-xs"
+                      onClick={!hidePopover ? showReplies : noop}>
+                      <ThreadIcon width={20} />{' '}
+                      <span className="text-xs p-t-xss p-l-xss">
+                        {postLength}
+                      </span>
+                    </div>
+                  </>
+                )}
 
-      {!hidePopover && (
-        <ActivityFeedActions
-          feed={feed}
-          isPost={false}
-          post={post}
-          onEditPost={onEditPost}
-        />
-      )}
-    </div>
+                <Typography.Text
+                  className={classNames(
+                    'p-t-xss',
+                    postLength > 0
+                      ? 'm-l-sm text-sm text-grey-muted'
+                      : 'text-sm text-grey-muted'
+                  )}>
+                  {`${t('label.assignee-plural')}: `}
+                </Typography.Text>
+                <OwnerLabel className="p-t-05" owners={feed?.task?.assignees} />
+              </div>
+            </Col>
+          ) : null}
+        </Row>
+
+        {!hidePopover && showActions && (
+          <ActivityFeedActions
+            feed={feed}
+            isPost={false}
+            post={post}
+            onEditPost={onEditPost}
+          />
+        )}
+      </div>
+    </Button>
   );
 };
 

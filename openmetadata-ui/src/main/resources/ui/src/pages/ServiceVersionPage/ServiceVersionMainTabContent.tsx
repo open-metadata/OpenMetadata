@@ -26,6 +26,7 @@ import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interfac
 import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage';
@@ -42,10 +43,11 @@ function ServiceVersionMainTabContent({
   entityType,
   changeDescription,
 }: ServiceVersionMainTabContentProps) {
-  const { fqn: serviceFQN, serviceCategory } = useParams<{
-    fqn: string;
+  const { serviceCategory } = useParams<{
     serviceCategory: ServiceTypes;
   }>();
+
+  const { fqn: serviceFQN } = useFqn();
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () => getServiceMainTabColumns(serviceCategory),

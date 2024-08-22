@@ -40,7 +40,6 @@ class ColumnNameScannerTest(TestCase):
         self.assertIsNone(ColumnNameScanner.scan("user_id"))
 
     def test_column_names_sensitive(self):
-
         # Bank
         self.assertEqual(ColumnNameScanner.scan("bank_account"), EXPECTED_SENSITIVE)
 

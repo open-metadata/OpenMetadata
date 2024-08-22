@@ -12,17 +12,14 @@
  */
 import { Typography } from 'antd';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { ReactNode, useEffect, useState } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/activity-feed-no-data-placeholder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/Loader/Loader';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { getFeedListWithRelativeDays } from '../../../utils/FeedUtils';
+import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1 from '../ActivityFeedPanel/FeedPanelBodyV1';
-import { ActivityFeedTabs } from '../ActivityFeedTab/ActivityFeedTab.interface';
-import './activity-feed-list.less';
 
 interface ActivityFeedListV1Props {
   feedList: Thread[];
@@ -32,25 +29,30 @@ interface ActivityFeedListV1Props {
   activeFeedId?: string;
   hidePopover: boolean;
   isForFeedTab?: boolean;
-  emptyPlaceholderText: string;
-  tab: ActivityFeedTabs;
+  emptyPlaceholderText: ReactNode;
+  componentsVisibility?: {
+    showThreadIcon?: boolean;
+    showRepliesContainer?: boolean;
+  };
+  selectedThread?: Thread;
 }
 
 const ActivityFeedListV1 = ({
   feedList,
   isLoading,
   showThread = true,
+  componentsVisibility = {
+    showThreadIcon: true,
+    showRepliesContainer: true,
+  },
   onFeedClick,
   activeFeedId,
   hidePopover = false,
   isForFeedTab = false,
   emptyPlaceholderText,
-  tab,
+  selectedThread,
 }: ActivityFeedListV1Props) => {
-  const { t } = useTranslation();
   const [entityThread, setEntityThread] = useState<Thread[]>([]);
-
-  const isTaskTab = useMemo(() => tab === ActivityFeedTabs.TASKS, [tab]);
 
   useEffect(() => {
     const { updatedFeedList } = getFeedListWithRelativeDays(feedList);
@@ -58,10 +60,13 @@ const ActivityFeedListV1 = ({
   }, [feedList]);
 
   useEffect(() => {
-    if (onFeedClick && entityThread[0]) {
-      onFeedClick(entityThread[0]);
+    if (onFeedClick) {
+      onFeedClick(
+        entityThread.find((feed) => feed.id === selectedThread?.id) ??
+          entityThread[0]
+      );
     }
-  }, [entityThread, onFeedClick]);
+  }, [entityThread, selectedThread, onFeedClick]);
 
   if (isLoading) {
     return <Loader />;
@@ -78,19 +83,15 @@ const ActivityFeedListV1 = ({
         <Typography.Paragraph
           className="tw-max-w-md"
           style={{ marginBottom: '0' }}>
-          {isTaskTab && (
-            <Typography.Text strong>
-              {t('message.no-open-tasks')} <br />
-            </Typography.Text>
-          )}
           {emptyPlaceholderText}
         </Typography.Paragraph>
       </ErrorPlaceHolder>
     </div>
   ) : (
-    <div className="feed-list-container p-y-md" id="feedData">
+    <div className="feed-list-container p-md" id="feedData">
       {entityThread.map((feed) => (
         <FeedPanelBodyV1
+          componentsVisibility={componentsVisibility}
           feed={feed}
           hidePopover={hidePopover}
           isActive={activeFeedId === feed.id}

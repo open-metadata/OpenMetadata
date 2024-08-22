@@ -66,8 +66,8 @@ class GitHubReader(ApiReader):
                 self._build_url(
                     HOST,
                     UrlParts.REPOS.value,
-                    self.credentials.repositoryOwner.__root__,
-                    self.credentials.repositoryName.__root__,
+                    self.credentials.repositoryOwner.root,
+                    self.credentials.repositoryName.root,
                     UrlParts.CONTENTS.value,
                     path,
                 ),
@@ -94,8 +94,8 @@ class GitHubReader(ApiReader):
             self._build_url(
                 HOST,
                 UrlParts.REPOS.value,
-                self.credentials.repositoryOwner.__root__,
-                self.credentials.repositoryName.__root__,
+                self.credentials.repositoryOwner.root,
+                self.credentials.repositoryName.root,
             ),
             headers=self.auth_headers,
             timeout=30,
@@ -118,8 +118,8 @@ class GitHubReader(ApiReader):
                 self._build_url(
                     HOST,
                     UrlParts.REPOS.value,
-                    self.credentials.repositoryOwner.__root__,
-                    self.credentials.repositoryName.__root__,
+                    self.credentials.repositoryOwner.root,
+                    self.credentials.repositoryName.root,
                     "git",
                     "trees",
                     f"{branch}?recursive=1",

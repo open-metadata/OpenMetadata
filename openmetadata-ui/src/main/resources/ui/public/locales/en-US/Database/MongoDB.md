@@ -1,4 +1,4 @@
-# Hive
+# MongoDB
 In this section, we provide guides and references to use the MongoDB connector. You can view the full documentation for MongoDB [here](https://docs.open-metadata.org/connectors/database/mongo).
 
 ## Requirements
@@ -7,18 +7,6 @@ To extract metadata, the user used in the connection needs to be able to perform
 You can find further information on the Hive connector in the [here](https://docs.open-metadata.org/connectors/database/mongo).
 
 ## Connection Details
-
-$$section
-### MongoDB Connection Details $(id="connectionDetails")
-
-Choose between MongoDB Connection String and MongoDB Connection Values to authenticate with your mongodb cluster.
-$$
-
-$$section
-### Connection URI $(id="connectionURI")
-
-MongoDB connection string is a concise string of parameters used to establish a connection between an OpenMetadata and a MongoDB database. For ex. `mongodb://username:password@mongodb0.example.com:27017`
-$$
 
 $$section
 ### Username $(id="username")

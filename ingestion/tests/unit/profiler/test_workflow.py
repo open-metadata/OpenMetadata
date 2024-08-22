@@ -49,7 +49,7 @@ from metadata.workflow.profiler import ProfilerWorkflow
 TABLE = Table(
     id=uuid.uuid4(),
     name="users",
-    fullyQualifiedName="service.db.users",
+    fullyQualifiedName="my_service.db.users",
     columns=[
         Column(name="id", dataType=DataType.INT),
         Column(name="name", dataType=DataType.STRING),
@@ -141,10 +141,10 @@ def test_filter_entities(mocked_method):
     We can properly filter entities depending on the
     workflow configuration
     """
+    service_name = "my_service"
     workflow = ProfilerWorkflow.create(config)
     mocked_method.assert_called()
 
-    service_name = "service"
     schema_reference1 = EntityReference(
         id=uuid.uuid4(), name="one_schema", type="databaseSchema"
     )
@@ -159,6 +159,7 @@ def test_filter_entities(mocked_method):
             databaseSchema=schema_reference1,
             fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table1",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
+            database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
         ),
         Table(
             id=uuid.uuid4(),
@@ -166,6 +167,7 @@ def test_filter_entities(mocked_method):
             databaseSchema=schema_reference1,
             fullyQualifiedName=f"{service_name}.db.{schema_reference1.name}.table2",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
+            database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
         ),
         Table(
             id=uuid.uuid4(),
@@ -173,12 +175,52 @@ def test_filter_entities(mocked_method):
             databaseSchema=schema_reference2,
             fullyQualifiedName=f"{service_name}.db.{schema_reference2.name}.table3",
             columns=[Column(name="id", dataType=DataType.BIGINT)],
+            database=EntityReference(id=uuid.uuid4(), name="db", type="database"),
         ),
     ]
 
     # Simple workflow does not filter
     assert len(list(workflow.source.filter_entities(all_tables))) == 3
 
+    fqn_filter_config = deepcopy(config)
+    fqn_filter_config["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "excludes": ["my_service.db.another_schema"]
+    }
+    fqn_filter_workflow = ProfilerWorkflow.create(fqn_filter_config)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow.source.filter_entities(all_tables))) == 2
+
+    fqn_filter_config_2 = deepcopy(config)
+    fqn_filter_config_2["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config_2["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
+        "includes": ["my_service.db.one_schema"]
+    }
+    fqn_filter_workflow_2 = ProfilerWorkflow.create(fqn_filter_config_2)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow_2.source.filter_entities(all_tables))) == 2
+
+    fqn_filter_config_3 = deepcopy(config)
+    fqn_filter_config_3["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config_3["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
+        "includes": ["my_service.db.one_schema.table1"]
+    }
+    fqn_filter_workflow_3 = ProfilerWorkflow.create(fqn_filter_config_3)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow_3.source.filter_entities(all_tables))) == 1
+
+    fqn_filter_config_4 = deepcopy(config)
+    fqn_filter_config_4["source"]["sourceConfig"]["config"]["useFqnForFiltering"] = True
+    fqn_filter_config_4["source"]["sourceConfig"]["config"]["tableFilterPattern"] = {
+        "excludes": ["my_service.db.one_schema.table1"]
+    }
+    fqn_filter_workflow_4 = ProfilerWorkflow.create(fqn_filter_config_4)
+    mocked_method.assert_called()
+
+    assert len(list(fqn_filter_workflow_4.source.filter_entities(all_tables))) == 2
     # We can exclude based on the schema name
     exclude_config = deepcopy(config)
     exclude_config["source"]["sourceConfig"]["config"]["schemaFilterPattern"] = {
@@ -243,6 +285,7 @@ def test_profile_def(mocked_method, mocked_orm):  # pylint: disable=unused-argum
             serviceType=DatabaseServiceType.SQLite,
         ),  # type: ignore
         profile_workflow.metadata,
+        None,
     )
     profiler_runner = profiler_source.get_profiler_runner(
         TABLE, profiler_processor_step.profiler_config
@@ -286,6 +329,7 @@ def test_default_profile_def(
             serviceType=DatabaseServiceType.SQLite,
         ),  # type: ignore
         profile_workflow.metadata,
+        None,
     )
     profiler_runner = profiler_source.get_profiler_runner(
         TABLE, profiler_processor_step.profiler_config

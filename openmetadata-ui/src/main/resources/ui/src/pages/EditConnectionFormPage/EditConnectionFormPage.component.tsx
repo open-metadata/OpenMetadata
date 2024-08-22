@@ -13,24 +13,27 @@
 
 import { Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, startCase } from 'lodash';
+import { compare } from 'fast-json-patch';
+import { isEmpty, isUndefined, startCase } from 'lodash';
 import { ServicesData, ServicesUpdateRequest, ServiceTypes } from 'Models';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import Loader from '../../components/Loader/Loader';
-import ServiceConfig from '../../components/ServiceConfig/ServiceConfig';
+import ServiceConfig from '../../components/Settings/Services/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
+import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
-import { getServiceByFQN, updateService } from '../../rest/serviceAPI';
+import { getServiceByFQN, patchService } from '../../rest/serviceAPI';
 import { getEntityMissingError } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getPathByServiceFQN, getSettingPath } from '../../utils/RouterUtils';
@@ -43,10 +46,10 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 function EditConnectionFormPage() {
   const { t } = useTranslation();
-  const { fqn: serviceFQN, serviceCategory } = useParams<{
-    fqn: string;
+  const { serviceCategory } = useParams<{
     serviceCategory: ServiceCategory;
   }>();
+  const { fqn: serviceFQN } = useFqn();
 
   const isOpenMetadataService = useMemo(
     () => serviceFQN === OPEN_METADATA,
@@ -62,25 +65,32 @@ function EditConnectionFormPage() {
   const [activeField, setActiveField] = useState<string>('');
 
   const handleConfigUpdate = async (updatedData: ConfigData) => {
-    const configData = {
-      name: serviceDetails?.name,
-      serviceType: serviceDetails?.serviceType,
-      description: serviceDetails?.description,
-      owner: serviceDetails?.owner,
+    if (isUndefined(serviceDetails)) {
+      return;
+    }
+
+    const configData: ServicesUpdateRequest = {
+      ...serviceDetails,
       connection: {
         config: updatedData,
       },
-    } as ServicesUpdateRequest;
+    };
+
+    const jsonPatch = compare(serviceDetails, configData);
+
+    if (isEmpty(jsonPatch)) {
+      return;
+    }
 
     try {
-      const response = await updateService(
+      const response = await patchService(
         serviceCategory,
-        serviceDetails?.id ?? '',
-        configData
+        serviceDetails.id,
+        jsonPatch
       );
       setServiceDetails({
         ...response,
-        owner: response?.owner ?? serviceDetails?.owner,
+        owners: response?.owners ?? serviceDetails?.owners,
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -90,9 +100,9 @@ function EditConnectionFormPage() {
   const fetchServiceDetail = async () => {
     setIsLoading(true);
     try {
-      const response = await getServiceByFQN(serviceCategory, serviceFQN, [
-        'owner',
-      ]);
+      const response = await getServiceByFQN(serviceCategory, serviceFQN, {
+        fields: TabSpecificField.OWNERS,
+      });
       setServiceDetails(response);
       setSlashedBreadcrumb([
         {
@@ -178,7 +188,13 @@ function EditConnectionFormPage() {
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
       hideSecondPanel={!serviceDetails?.serviceType ?? ''}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
       secondPanel={{
@@ -189,13 +205,9 @@ function EditConnectionFormPage() {
             serviceType={getServiceType(serviceCategory)}
           />
         ),
-        className: 'service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'service-doc-panel content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

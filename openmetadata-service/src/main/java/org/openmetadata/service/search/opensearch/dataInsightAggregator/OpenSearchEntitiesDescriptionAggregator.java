@@ -1,7 +1,6 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
-import java.util.Optional;
 import org.openmetadata.service.dataInsight.EntitiesDescriptionAggregator;
 import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
@@ -43,7 +42,7 @@ public class OpenSearchEntitiesDescriptionAggregator
   }
 
   @Override
-  protected Optional<Double> getValue(Sum aggregations) {
-    return Optional.ofNullable(aggregations != null ? aggregations.getValue() : null);
+  protected Double getValue(Sum aggregations) {
+    return aggregations != null ? aggregations.getValue() : null;
   }
 }

@@ -13,7 +13,8 @@
       "type": "string",
       "enum": [
         "Live",
-        "Scheduled"
+        "Scheduled",
+        "ScheduledOrManual"
       ],
       "javaEnums": [
         {
@@ -21,19 +22,24 @@
         },
         {
           "name": "Scheduled"
+        },
+        {
+          "name": "ScheduledOrManual"
         }
       ]
     },
     "scheduleTimeline": {
+      "javaType": "org.openmetadata.schema.entity.app.ScheduleTimeline",
+      "description": "This schema defines the Application ScheduleTimeline Options",
       "type": "string",
-      "enum": ["Hourly"," Daily", "Weekly", "Monthly", "Custom"],
+      "enum": ["Hourly"," Daily", "Weekly", "Monthly", "Custom", "None"],
       "default": "Weekly"
     },
     "appSchedule": {
       "javaType": "org.openmetadata.schema.entity.app.AppSchedule",
       "description": "This schema defines the type of application.",
       "properties": {
-        "scheduleType": {
+        "scheduleTimeline": {
           "$ref": "#/definitions/scheduleTimeline"
         },
         "cronExpression": {
@@ -41,7 +47,7 @@
           "type": "string"
         }
       },
-      "required": ["scheduleType"],
+      "required": ["scheduleTimeline"],
       "additionalProperties": false
     },
     "appType": {
@@ -112,9 +118,9 @@
       "description": "FullyQualifiedName same as `name`.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
-    "owner": {
-      "description": "Owner of this workflow.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this workflow.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "version": {
@@ -195,9 +201,23 @@
       "type": "boolean",
       "default": true
     },
+    "system": {
+      "description": "A system app cannot be uninstalled or modified.",
+      "type": "boolean",
+      "default": false
+    },
     "appConfiguration": {
       "description": "Application Configuration object.",
       "$ref": "./configuration/applicationConfig.json#/definitions/appConfig"
+    },
+    "privateConfiguration": {
+      "description": "Application Private configuration loaded at runtime.",
+      "$ref": "./configuration/applicationConfig.json#/definitions/privateConfig"
+    },
+    "preview": {
+      "type": "boolean",
+      "description": "Flag to enable/disable preview for the application. If the app is in preview mode, it can't be installed.",
+      "default": false
     },
     "pipelines": {
       "description": "References to pipelines deployed for this database service to extract metadata, usage, lineage etc..",
@@ -222,6 +242,10 @@
         "type": "string"
       },
       "uniqueItems": true
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
     }
   },
   "additionalProperties": false,

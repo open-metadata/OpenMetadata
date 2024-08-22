@@ -30,8 +30,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.generated.schema.type.basic import EntityLink
+from metadata.generated.schema.type.basic import EntityLink, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.lifeCycle import LifeCycle
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Entity
@@ -46,7 +47,7 @@ from metadata.ingestion.ometa.mixins.patch_mixin_utils import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.deprecation import deprecated
-from metadata.utils.logger import ometa_logger
+from metadata.utils.logger import get_log_name, ometa_logger
 
 logger = ometa_logger()
 
@@ -64,10 +65,7 @@ def update_column_tags(
     Inplace update for the incoming column list
     """
     for col in columns:
-        if (
-            str(col.fullyQualifiedName.__root__).lower()
-            == column_tag.column_fqn.lower()
-        ):
+        if str(col.fullyQualifiedName.root).lower() == column_tag.column_fqn.lower():
             if operation == PatchOperation.REMOVE:
                 for tag in col.tags:
                     if tag.tagFQN == column_tag.tag_label.tagFQN:
@@ -88,18 +86,18 @@ def update_column_description(
     """
     Inplace update for the incoming column list
     """
-    col_dict = {col.column_fqn: col.description for col in column_descriptions}
+    col_dict = {col.column_fqn.lower(): col.description for col in column_descriptions}
     for col in columns:
-        desc_column = col_dict.get(col.fullyQualifiedName.__root__)
+        # For dbt the column names in OM and dbt are not always in the same case.
+        # We'll match the column names in case insensitive way
+        desc_column = col_dict.get(col.fullyQualifiedName.root.lower())
         if desc_column:
             if col.description and not force:
-                logger.warning(
-                    f"The entity with id [{model_str(col.fullyQualifiedName)}] already has a description."
-                    " To overwrite it, set `force` to True."
-                )
+                # If the description is already present and force is not passed,
+                # description will not be overridden
                 continue
 
-            col.description = desc_column.__root__
+            col.description = desc_column  # Keep the Markdown type
 
         if col.children:
             update_column_description(col.children, column_descriptions, force)
@@ -114,13 +112,15 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
     client: REST
 
-    def patch(
+    def patch(  # pylint: disable=too-many-arguments
         self,
         entity: Type[T],
         source: T,
         destination: T,
         allowed_fields: Optional[Dict] = None,
         restrict_update_fields: Optional[List] = None,
+        array_entity_fields: Optional[List] = None,
+        override_metadata: Optional[bool] = False,
     ) -> Optional[T]:
         """
         Given an Entity type and Source entity and Destination entity,
@@ -137,12 +137,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         try:
-
             patch = build_patch(
                 source=source,
                 destination=destination,
                 allowed_fields=allowed_fields,
                 restrict_update_fields=restrict_update_fields,
+                array_entity_fields=array_entity_fields,
+                override_metadata=override_metadata,
             )
 
             if not patch:
@@ -156,9 +157,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(
-                f"Error trying to PATCH {entity.__name__} [{source.id.__root__}]: {exc}"
-            )
+            logger.error(f"Error trying to PATCH {get_log_name(source)}: {exc}")
 
         return None
 
@@ -196,15 +195,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             return None
 
         if instance.description and not force:
-            logger.warning(
-                f"The entity with id [{model_str(source.id)}] already has a description."
-                " To overwrite it, set `force` to True."
-            )
+            # If the description is already present and force is not passed,
+            # description will not be overridden
             return None
 
         # https://docs.pydantic.dev/latest/usage/exporting_models/#modelcopy
-        destination = source.copy(deep=True)
-        destination.description = description
+        destination = source.model_copy(deep=True)
+        destination.description = Markdown(description)
 
         return self.patch(entity=entity, source=source, destination=destination)
 
@@ -232,16 +229,17 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         table.tableConstraints = instance.tableConstraints
 
-        destination = table.copy(deep=True)
+        destination = table.model_copy(deep=True)
         destination.tableConstraints = constraints
 
         return self.patch(entity=Table, source=table, destination=destination)
 
     def patch_test_case_definition(
         self,
-        source: TestCase,
+        test_case: TestCase,
         entity_link: str,
         test_case_parameter_values: Optional[List[TestCaseParameterValue]] = None,
+        compute_passed_failed_row_count: Optional[bool] = False,
     ) -> Optional[TestCase]:
         """Given a test case and a test case definition JSON PATCH the test case
 
@@ -250,17 +248,19 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             test_case_definition: test case definition to add
         """
         source: TestCase = self._fetch_entity_if_exists(
-            entity=TestCase, entity_id=source.id, fields=["testDefinition", "testSuite"]
+            entity=TestCase, entity_id=test_case.id, fields=["testDefinition", "testSuite"]  # type: ignore
         )  # type: ignore
 
         if not source:
             return None
 
-        destination = source.copy(deep=True)
+        destination = source.model_copy(deep=True)
 
-        destination.entityLink = EntityLink(__root__=entity_link)
+        destination.entityLink = EntityLink(entity_link)
         if test_case_parameter_values:
             destination.parameterValues = test_case_parameter_values
+        if compute_passed_failed_row_count != source.computePassedFailedRowCount:
+            destination.computePassedFailedRowCount = compute_passed_failed_row_count
 
         return self.patch(entity=TestCase, source=source, destination=destination)
 
@@ -292,13 +292,13 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         # Initialize empty tag list or the last updated tags
         source.tags = instance.tags or []
-        destination = source.copy(deep=True)
+        destination = source.model_copy(deep=True)
 
-        tag_fqns = {label.tagFQN.__root__ for label in tag_labels}
+        tag_fqns = {label.tagFQN.root for label in tag_labels}
 
         if operation == PatchOperation.REMOVE:
             for tag in destination.tags:
-                if tag.tagFQN.__root__ in tag_fqns:
+                if tag.tagFQN.root in tag_fqns:
                     destination.tags.remove(tag)
         else:
             destination.tags.extend(tag_labels)
@@ -324,7 +324,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         self,
         entity: Type[T],
         source: T,
-        owner: EntityReference = None,
+        owners: EntityReferenceList = None,
         force: bool = False,
     ) -> Optional[T]:
         """
@@ -341,22 +341,20 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
             Updated Entity
         """
         instance: Optional[T] = self._fetch_entity_if_exists(
-            entity=entity, entity_id=source.id, fields=["owner"]
+            entity=entity, entity_id=source.id, fields=["owners"]
         )
 
         if not instance:
             return None
 
         # Don't change existing data without force
-        if instance.owner and not force:
-            logger.warning(
-                f"The entity with id [{model_str(source.id)}] already has an owner."
-                " To overwrite it, set `overrideOwner` to True."
-            )
+        if instance.owners and instance.owners.root and not force:
+            # If a owner is already present and force is not passed,
+            # owner will not be overridden
             return None
 
         destination = deepcopy(instance)
-        destination.owner = owner
+        destination.owners = owners
 
         return self.patch(entity=entity, source=instance, destination=destination)
 
@@ -388,7 +386,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         # Make sure we run the patch against the last updated data from the API
         table.columns = instance.columns
 
-        destination = table.copy(deep=True)
+        destination = table.model_copy(deep=True)
         for column_tag in column_tags or []:
             update_column_tags(destination.columns, column_tag, operation)
 
@@ -396,7 +394,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if patched_entity is None:
             logger.debug(
                 f"Empty PATCH result. Either everything is up to date or the "
-                f"column names are  not in [{table.fullyQualifiedName.__root__}]"
+                f"column names are  not in [{table.fullyQualifiedName.root}]"
             )
 
         return patched_entity
@@ -442,7 +440,9 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         return self.patch_column_descriptions(
             table=table,
             column_descriptions=[
-                ColumnDescription(column_fqn=column_fqn, description=description)
+                ColumnDescription(
+                    column_fqn=column_fqn, description=Markdown(description)
+                )
             ],
             force=force,
         )
@@ -473,14 +473,14 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         # Make sure we run the patch against the last updated data from the API
         table.columns = instance.columns
 
-        destination = table.copy(deep=True)
+        destination = table.model_copy(deep=True)
         update_column_description(destination.columns, column_descriptions, force)
 
         patched_entity = self.patch(entity=Table, source=table, destination=destination)
         if patched_entity is None:
             logger.debug(
                 f"Empty PATCH result. Either everything is up to date or "
-                f"columns are not matching for [{table.fullyQualifiedName.__root__}]"
+                f"columns are not matching for [{table.fullyQualifiedName.root}]"
             )
 
         return patched_entity
@@ -496,7 +496,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """
         result_data: Dict = {
             PatchField.PATH: PatchPath.RESPONSE,
-            PatchField.VALUE: test_connection_result.dict(),
+            PatchField.VALUE: test_connection_result.model_dump(),
             PatchField.OPERATION: PatchOperation.ADD,
         }
 
@@ -532,7 +532,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         :param life_cycle_data: Life Cycle data to add
         """
         try:
-            destination = entity.copy(deep=True)
+            destination = entity.model_copy(deep=True)
             destination.lifeCycle = life_cycle
             return self.patch(
                 entity=type(entity), source=entity, destination=destination
@@ -540,14 +540,14 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.__root__}: {exc}"
+                f"Error trying to Patch life cycle data for {entity.fullyQualifiedName.root}: {exc}"
             )
             return None
 
     def patch_domain(self, entity: Entity, domain: Domain) -> Optional[Entity]:
         """Patch domain data for an Entity"""
         try:
-            destination: Entity = entity.copy(deep=True)
+            destination: Entity = entity.model_copy(deep=True)
             destination.domain = EntityReference(id=domain.id, type="domain")
             return self.patch(
                 entity=type(entity), source=entity, destination=destination
@@ -555,6 +555,6 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
-                f"Error trying to Patch Domain for {entity.fullyQualifiedName.__root__}: {exc}"
+                f"Error trying to Patch Domain for {entity.fullyQualifiedName.root}: {exc}"
             )
             return None

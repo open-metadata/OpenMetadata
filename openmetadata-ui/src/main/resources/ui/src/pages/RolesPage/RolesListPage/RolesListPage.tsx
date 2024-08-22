@@ -25,15 +25,19 @@ import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewer from '../../../components/common/RichTextEditor/RichTextEditorPreviewer';
 import Table from '../../../components/common/Table/Table';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
 } from '../../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -42,6 +46,7 @@ import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getRoles } from '../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -57,7 +62,6 @@ import './roles-list.less';
 const RolesListPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedRole, setSelectedRole] = useState<Role>();
@@ -93,6 +97,15 @@ const RolesListPage = () => {
     );
   }, [permissions]);
 
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.ACCESS,
+        t('label.role-plural')
+      ),
+    []
+  );
+
   const columns: ColumnsType<Role> = useMemo(() => {
     return [
       {
@@ -104,9 +117,7 @@ const RolesListPage = () => {
           <Link
             className="link-hover"
             data-testid="role-name"
-            to={getRoleWithFqnPath(
-              encodeURIComponent(record.fullyQualifiedName ?? '')
-            )}>
+            to={getRoleWithFqnPath(record.fullyQualifiedName ?? '')}>
             {getEntityName(record)}
           </Link>
         ),
@@ -190,7 +201,13 @@ const RolesListPage = () => {
           return (
             <Tooltip
               placement="left"
-              title={!deleteRolePermission && NO_PERMISSION_FOR_ACTION}>
+              title={
+                deleteRolePermission
+                  ? t('label.delete-entity', {
+                      entity: t('label.role-plural'),
+                    })
+                  : NO_PERMISSION_FOR_ACTION
+              }>
               <Button
                 data-testid={`delete-action-${getEntityName(record)}`}
                 disabled={!deleteRolePermission}
@@ -248,73 +265,78 @@ const RolesListPage = () => {
   }, [pageSize]);
 
   return (
-    <Row
-      className="roles-list-container"
-      data-testid="roles-list-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-between">
-          <PageHeader data={PAGE_HEADERS.ROLES} />
+    <PageLayoutV1 pageTitle={t('label.role-plural')}>
+      <Row
+        className="roles-list-container page-container"
+        data-testid="roles-list-container"
+        gutter={[0, 16]}>
+        <Col span={24}>
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
+        </Col>
+        <Col span={24}>
+          <Space className="w-full justify-between">
+            <PageHeader data={PAGE_HEADERS.ROLES} />
 
-          {addRolePermission && (
-            <Button
-              data-testid="add-role"
-              type="primary"
-              onClick={handleAddRole}>
-              {t('label.add-entity', { entity: t('label.role') })}
-            </Button>
+            {addRolePermission && (
+              <Button
+                data-testid="add-role"
+                type="primary"
+                onClick={handleAddRole}>
+                {t('label.add-entity', { entity: t('label.role') })}
+              </Button>
+            )}
+          </Space>
+        </Col>
+        <Col span={24}>
+          <Table
+            bordered
+            className="roles-list-table"
+            columns={columns}
+            data-testid="roles-list-table"
+            dataSource={roles}
+            loading={isLoading}
+            locale={{
+              emptyText: (
+                <ErrorPlaceHolder
+                  heading={t('label.role')}
+                  permission={addRolePermission}
+                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                  onClick={handleAddRole}
+                />
+              ),
+            }}
+            pagination={false}
+            rowKey="name"
+            size="small"
+          />
+          {selectedRole && (
+            <DeleteWidgetModal
+              afterDeleteAction={handleAfterDeleteAction}
+              allowSoftDelete={false}
+              deleteMessage={t('message.are-you-sure-delete-entity', {
+                entity: getEntityName(selectedRole),
+              })}
+              entityId={selectedRole.id}
+              entityName={getEntityName(selectedRole)}
+              entityType={EntityType.ROLE}
+              visible={!isUndefined(selectedRole)}
+              onCancel={() => setSelectedRole(undefined)}
+            />
           )}
-        </Space>
-      </Col>
-      <Col span={24}>
-        <Table
-          bordered
-          className="roles-list-table"
-          columns={columns}
-          data-testid="roles-list-table"
-          dataSource={roles}
-          loading={isLoading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder
-                heading={t('label.role')}
-                permission={addRolePermission}
-                type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                onClick={handleAddRole}
-              />
-            ),
-          }}
-          pagination={false}
-          rowKey="name"
-          size="small"
-        />
-        {selectedRole && (
-          <DeleteWidgetModal
-            afterDeleteAction={handleAfterDeleteAction}
-            allowSoftDelete={false}
-            deleteMessage={t('message.are-you-sure-delete-entity', {
-              entity: getEntityName(selectedRole),
-            })}
-            entityId={selectedRole.id}
-            entityName={getEntityName(selectedRole)}
-            entityType={EntityType.ROLE}
-            visible={!isUndefined(selectedRole)}
-            onCancel={() => setSelectedRole(undefined)}
-          />
-        )}
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handlePaging}
-            onShowSizeChange={handlePageSizeChange}
-          />
-        )}
-      </Col>
-    </Row>
+        </Col>
+        <Col span={24}>
+          {showPagination && (
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handlePaging}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          )}
+        </Col>
+      </Row>
+    </PageLayoutV1>
   );
 };
 

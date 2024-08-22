@@ -13,37 +13,23 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { isString } from 'lodash';
-import { RestoreRequestType } from 'Models';
+import { PagingResponse, RestoreRequestType } from 'Models';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
 import { CSVImportResult } from '../generated/type/csvImportResult';
-import { Paging } from '../generated/type/paging';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getTeams = async (
-  arrQueryFields?: string | string[],
-  params?: {
-    limit?: number;
-    before?: string;
-    after?: string;
-    parentTeam?: string;
-    include?: string;
-  }
+  params?: ListParams & { parentTeam: string }
 ) => {
-  const updatedParams = {
-    fields: isString(arrQueryFields)
-      ? arrQueryFields
-      : arrQueryFields?.join(','),
-    limit: 100000,
-    ...params,
-  };
-  const url = getURLWithQueryFields('/teams');
-
-  const response = await APIClient.get<{ data: Team[]; paging: Paging }>(url, {
-    params: updatedParams,
+  const response = await APIClient.get<PagingResponse<Team[]>>('/teams', {
+    params: {
+      ...params,
+      limit: params?.limit ?? 100000,
+    },
   });
 
   return response.data;
@@ -62,18 +48,13 @@ export const getTeamsHierarchy = async (isJoinable = false) => {
   return response.data;
 };
 
-export const getTeamByName = async (
-  name: string,
-  arrQueryFields?: string | string[],
-  include?: string
-) => {
-  const url = getURLWithQueryFields(`/teams/name/${name}`, arrQueryFields);
-
-  const response = await APIClient.get<Team>(url, {
-    params: {
-      include,
-    },
-  });
+export const getTeamByName = async (name: string, params?: ListParams) => {
+  const response = await APIClient.get<Team>(
+    `/teams/name/${getEncodedFqn(name)}`,
+    {
+      params,
+    }
+  );
 
   return response.data;
 };
@@ -85,14 +66,9 @@ export const createTeam = async (data: CreateTeam) => {
 };
 
 export const patchTeamDetail = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Team>>(
     `/teams/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -100,15 +76,6 @@ export const patchTeamDetail = async (id: string, data: Operation[]) => {
 
 export const deleteTeam = async (id: string) => {
   const response = await APIClient.delete<Team>(`/teams/${id}`);
-
-  return response.data;
-};
-
-export const updateTeam = async (data: CreateTeam) => {
-  const response = await APIClient.put<CreateTeam, AxiosResponse<Team>>(
-    '/teams',
-    data
-  );
 
   return response.data;
 };
@@ -124,7 +91,7 @@ export const restoreTeam = async (id: string) => {
 
 export const exportTeam = async (teamName: string) => {
   const response = await APIClient.get<string>(
-    `/teams/name/${teamName}/export`
+    `/teams/name/${getEncodedFqn(teamName)}/export`
   );
 
   return response.data;
@@ -150,7 +117,7 @@ export const importTeam = async (
     },
   };
   const response = await APIClient.put<string, AxiosResponse<CSVImportResult>>(
-    `/teams/name/${teamName}/import`,
+    `/teams/name/${getEncodedFqn(teamName)}/import`,
     data,
     configOptions
   );

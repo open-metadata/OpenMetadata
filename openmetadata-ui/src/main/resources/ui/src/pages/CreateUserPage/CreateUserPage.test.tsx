@@ -47,13 +47,16 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../components/CreateUser/CreateUser.component', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ onSave }) => (
-      <div onClick={onSave}>CreateUser component</div>
-    ));
-});
+jest.mock(
+  '../../components/Settings/Users/CreateUser/CreateUser.component',
+  () => {
+    return jest
+      .fn()
+      .mockImplementation(({ onSave }) => (
+        <div onClick={onSave}>CreateUser component</div>
+      ));
+  }
+);
 
 jest.mock('../../rest/userAPI', () => ({
   createUser: jest.fn().mockImplementation(() => Promise.resolve()),

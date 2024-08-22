@@ -38,7 +38,7 @@ WHERE creation_time BETWEEN "{start_time}" AND "{end_time}"
 )
 
 BIGQUERY_TEST_STATEMENT = textwrap.dedent(
-    """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT 
+    """SELECT query FROM `region-{region}`.INFORMATION_SCHEMA.JOBS_BY_PROJECT
     where creation_time > '{creation_date}' limit 1"""
 )
 
@@ -46,8 +46,8 @@ BIGQUERY_TEST_STATEMENT = textwrap.dedent(
 BIGQUERY_SCHEMA_DESCRIPTION = textwrap.dedent(
     """
     SELECT option_value as schema_description FROM
-    `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA_OPTIONS 
-    where schema_name = '{schema_name}' and option_name = 'description' 
+    `{project_id}`.`region-{region}`.INFORMATION_SCHEMA.SCHEMATA_OPTIONS
+    where schema_name = '{schema_name}' and option_name = 'description'
     and option_value is not null
     """
 )
@@ -58,9 +58,32 @@ BIGQUERY_TABLE_AND_TYPE = textwrap.dedent(
     """
 )
 
+BIGQUERY_TABLE_CONSTRAINTS = textwrap.dedent(
+    """
+    SELECT * 
+    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE 
+    WHERE constraint_name LIKE '%pk$';
+    """
+)
+
+BIGQUERY_FOREIGN_CONSTRAINTS = textwrap.dedent(
+    """
+    SELECT
+      c.table_name AS referred_table,
+      r.table_schema as referred_schema,
+      r.constraint_name as name,
+      c.column_name as referred_columns,
+      c.column_name as constrained_columns,
+      r.table_name as table_name
+    FROM `{project_id}`.{schema_name}.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE c 
+    JOIN `{project_id}`.{schema_name}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS r ON c.constraint_name = r.constraint_name 
+    WHERE r.constraint_type = 'FOREIGN KEY';
+    """
+)
+
 BIGQUERY_GET_STORED_PROCEDURES = textwrap.dedent(
     """
-SELECT 
+SELECT
   routine_name as name,
   routine_definition as definition,
   external_language as language
@@ -75,7 +98,6 @@ BIGQUERY_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
   SELECT
-    job_id,
     query AS query_text,
     start_time,
     end_time,
@@ -90,7 +112,6 @@ WITH SP_HISTORY AS (
 ),
 Q_HISTORY AS (
   SELECT
-    job_id,
     project_id as database_name,
     user_email as user_name,
     statement_type as query_type,
@@ -109,8 +130,6 @@ Q_HISTORY AS (
     AND error_result is NULL
 )
 SELECT
-  SP.job_id as procedure_id,
-  Q.job_id as query_id,
   Q.query_type as query_type,
   SP.query_text as procedure_text,
   Q.query_text as query_text,
@@ -130,3 +149,26 @@ JOIN Q_HISTORY Q
 ORDER BY procedure_start_time DESC
 """
 )
+
+BIGQUERY_LIFE_CYCLE_QUERY = textwrap.dedent(
+    """
+select
+table_name as table_name,
+creation_time as created_at
+from `{schema_name}`.INFORMATION_SCHEMA.TABLES
+where table_schema = '{schema_name}'
+and table_catalog = '{database_name}'
+"""
+)
+
+BIGQUERY_GET_CHANGED_TABLES_FROM_CLOUD_LOGGING = """
+protoPayload.metadata.@type="type.googleapis.com/google.cloud.audit.BigQueryAuditMetadata"
+AND (
+    protoPayload.methodName = ("google.cloud.bigquery.v2.TableService.UpdateTable" OR "google.cloud.bigquery.v2.TableService.InsertTable" OR "google.cloud.bigquery.v2.TableService.PatchTable" OR "google.cloud.bigquery.v2.TableService.DeleteTable")
+    OR
+    (protoPayload.methodName = "google.cloud.bigquery.v2.JobService.InsertJob" AND (protoPayload.metadata.tableCreation:* OR protoPayload.metadata.tableChange:* OR protoPayload.metadata.tableDeletion:*))
+)
+AND resource.labels.project_id = "{project}"
+AND resource.labels.dataset_id = "{dataset}"
+AND timestamp >= "{start_date}"
+"""

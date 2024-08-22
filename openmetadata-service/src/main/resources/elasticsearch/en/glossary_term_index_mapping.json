@@ -20,8 +20,8 @@
         },
         "om_ngram": {
           "tokenizer": "ngram",
-          "min_gram": 1,
-          "max_gram": 3,
+          "min_gram": 3,
+          "max_gram": 10,
           "filter": [
             "lowercase"
           ]
@@ -126,9 +126,9 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "docs"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -195,10 +195,6 @@
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
           }
         }
       },
@@ -223,10 +219,6 @@
                 "type": "keyword",
                 "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
-              },
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
               }
             }
           },
@@ -237,10 +229,6 @@
               "keyword": {
                 "type": "keyword",
                 "ignore_above": 256
-              },
-              "ngram": {
-                "type": "text",
-                "analyzer": "om_ngram"
               }
             }
           },
@@ -405,7 +393,8 @@
         "type": "text"
       },
       "status": {
-        "type": "text"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
@@ -419,7 +408,20 @@
             "path": "deleted"
           }
         ]
-      }
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
+      },
+      "childrenCount": {
+        "type": "integer"
       }
     }
   }
+}

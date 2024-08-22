@@ -13,11 +13,10 @@ Databricks Unity Catalog Source source methods.
 """
 import json
 import traceback
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
-from databricks.sdk.service.catalog import TableConstraintList
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -50,15 +49,24 @@ from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.external_table_lineage_mixin import (
+    ExternalTableLineageMixin,
+)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
+from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
 from metadata.ingestion.source.database.unitycatalog.connection import get_connection
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
@@ -75,20 +83,9 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-# pylint: disable=not-callable
-@classmethod
-def from_dict(cls, dct: Dict[str, Any]) -> "TableConstraintList":
-    return cls(
-        table_constraints=[
-            DBTableConstraint.from_dict(constraint) for constraint in dct
-        ]
-    )
-
-
-TableConstraintList.from_dict = from_dict
-
-
-class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(
+    ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource
+):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -101,14 +98,17 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         self.source_config: DatabaseServiceMetadataPipeline = (
             self.config.sourceConfig.config
         )
-        self.context.table_views = []
+        self.context.get_global().table_views = []
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = (
-            self.config.serviceConnection.__root__.config
+            self.config.serviceConnection.root.config
         )
+        self.external_location_map = {}
         self.client = get_connection(self.service_connection)
+        self.api_client = UnityCatalogClient(self.service_connection)
         self.connection_obj = self.client
         self.table_constraints = []
+        self.context.storage_location = None
         self.test_connection()
 
     def get_configured_database(self) -> Optional[str]:
@@ -119,9 +119,11 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             yield catalog.name
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: UnityCatalogConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(
                 f"Expected UnityCatalogConnection, but got {connection}"
@@ -147,14 +149,16 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.database_service,
+                        service_name=self.context.get().database_service,
                         database_name=catalog_name,
                     )
                     if filter_by_database(
                         self.config.sourceConfig.config.databaseFilterPattern,
-                        database_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else catalog_name,
+                        (
+                            database_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else catalog_name
+                        ),
                     ):
                         self.status.filter(
                             database_fqn,
@@ -181,7 +185,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         yield Either(
             right=CreateDatabaseRequest(
                 name=database_name,
-                service=self.context.database_service,
+                service=self.context.get().database_service,
             )
         )
 
@@ -189,21 +193,23 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         """
         return schema names
         """
-        catalog_name = self.context.database
+        catalog_name = self.context.get().database
         for schema in self.client.schemas.list(catalog_name=catalog_name):
             try:
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
                     schema_name=schema.name,
                 )
                 if filter_by_schema(
                     self.config.sourceConfig.config.schemaFilterPattern,
-                    schema_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else schema.name,
+                    (
+                        schema_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else schema.name
+                    ),
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
@@ -226,12 +232,14 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         """
         yield Either(
             right=CreateDatabaseSchemaRequest(
-                name=schema_name,
-                database=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
+                name=EntityName(schema_name),
+                database=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                    )
                 ),
             )
         )
@@ -245,8 +253,8 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
 
         :return: tables or views, depending on config
         """
-        schema_name = self.context.database_schema
-        catalog_name = self.context.database
+        schema_name = self.context.get().database_schema
+        catalog_name = self.context.get().database
         for table in self.client.tables.list(
             catalog_name=catalog_name,
             schema_name=schema_name,
@@ -256,16 +264,18 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=self.context.database_schema,
+                    service_name=self.context.get().database_service,
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
                     table_name=table_name,
                 )
                 if filter_by_table(
                     self.config.sourceConfig.config.tableFilterPattern,
-                    table_fqn
-                    if self.config.sourceConfig.config.useFqnForFiltering
-                    else table_name,
+                    (
+                        table_fqn
+                        if self.config.sourceConfig.config.useFqnForFiltering
+                        else table_name
+                    ),
                 ):
                     self.status.filter(
                         table_fqn,
@@ -273,35 +283,42 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
                     )
                     continue
                 table_type: TableType = TableType.Regular
-                if table.table_type.value.lower() == TableType.View.value.lower():
-                    table_type: TableType = TableType.View
-                if table.table_type.value.lower() == TableType.External.value.lower():
-                    table_type: TableType = TableType.External
-                self.context.table_data = table
+                if table.table_type:
+                    if table.table_type.value.lower() == TableType.View.value.lower():
+                        table_type: TableType = TableType.View
+                    elif (
+                        table.table_type.value.lower()
+                        == TableType.External.value.lower()
+                    ):
+                        table_type: TableType = TableType.External
+                self.context.get().table_data = table
                 yield table_name, table_type
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
-                        name=table.Name,
-                        error=f"Unexpected exception to get table [{table.Name}]: {exc}",
+                        name=table.name,
+                        error=f"Unexpected exception to get table [{table.name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
 
     def yield_table(
-        self, table_name_and_type: Tuple[str, str]
+        self, table_name_and_type: Tuple[str, TableType]
     ) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
         """
         table_name, table_type = table_name_and_type
-        table = self.client.tables.get(self.context.table_data.full_name)
-        schema_name = self.context.database_schema
-        db_name = self.context.database
-        table_constraints = None
+        table = self.client.tables.get(self.context.get().table_data.full_name)
+        schema_name = self.context.get().database_schema
+        db_name = self.context.get().database
+        if table.storage_location and not table.storage_location.startswith("dbfs"):
+            self.external_location_map[
+                (db_name, schema_name, table_name)
+            ] = table.storage_location
         try:
-            columns = self.get_columns(table.columns)
+            columns = list(self.get_columns(table.columns))
             (
                 primary_constraints,
                 foreign_constraints,
@@ -312,23 +329,26 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             )
 
             table_request = CreateTableRequest(
-                name=table_name,
+                name=EntityName(table_name),
                 tableType=table_type,
                 description=table.comment,
                 columns=columns,
                 tableConstraints=table_constraints,
-                databaseSchema=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=DatabaseSchema,
-                    service_name=self.context.database_service,
-                    database_name=self.context.database,
-                    schema_name=schema_name,
+                databaseSchema=FullyQualifiedEntityName(
+                    fqn.build(
+                        metadata=self.metadata,
+                        entity_type=DatabaseSchema,
+                        service_name=self.context.get().database_service,
+                        database_name=self.context.get().database,
+                        schema_name=schema_name,
+                    )
                 ),
+                owners=self.get_owner_ref(table_name),
             )
             yield Either(right=table_request)
 
             if table_type == TableType.View or table.view_definition:
-                self.context.table_views.append(
+                self.context.get_global().table_views.append(
                     TableView(
                         table_name=table_name,
                         schema_name=schema_name,
@@ -351,7 +371,7 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             )
 
     def get_table_constraints(
-        self, constraints: TableConstraintList
+        self, constraints: List[DBTableConstraint]
     ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:
         """
         Function to handle table constraint for the current table and add it to context
@@ -359,23 +379,22 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
 
         primary_constraints = []
         foreign_constraints = []
-        if constraints and constraints.table_constraints:
-            for constraint in constraints.table_constraints:
-                if constraint.primary_key_constraint:
-                    primary_constraints.append(
-                        TableConstraint(
-                            constraintType=ConstraintType.PRIMARY_KEY,
-                            columns=constraint.primary_key_constraint.child_columns,
-                        )
+        for constraint in constraints:
+            if constraint.primary_key_constraint:
+                primary_constraints.append(
+                    TableConstraint(
+                        constraintType=ConstraintType.PRIMARY_KEY,
+                        columns=constraint.primary_key_constraint.child_columns,
                     )
-                if constraint.foreign_key_constraint:
-                    foreign_constraints.append(
-                        ForeignConstrains(
-                            child_columns=constraint.foreign_key_constraint.child_columns,
-                            parent_columns=constraint.foreign_key_constraint.parent_columns,
-                            parent_table=constraint.foreign_key_constraint.parent_table,
-                        )
+                )
+            if constraint.foreign_key_constraint:
+                foreign_constraints.append(
+                    ForeignConstrains(
+                        child_columns=constraint.foreign_key_constraint.child_columns,
+                        parent_columns=constraint.foreign_key_constraint.parent_columns,
+                        parent_table=constraint.foreign_key_constraint.parent_table,
                     )
+                )
         return primary_constraints, foreign_constraints
 
     def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:
@@ -390,20 +409,19 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             ref_table_fqn = column.parent_table
             table_fqn_list = fqn.split(ref_table_fqn)
 
-            referred_table = fqn.search_table_from_es(
-                metadata=self.metadata,
+            referred_table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
                 table_name=table_fqn_list[2],
                 schema_name=table_fqn_list[1],
                 database_name=table_fqn_list[0],
-                service_name=self.context.database_service,
+                service_name=self.context.get().database_service,
             )
-            if referred_table:
+            if referred_table_fqn:
                 for parent_column in column.parent_columns:
-                    col_fqn = get_column_fqn(
-                        table_entity=referred_table, column=parent_column
-                    )
+                    col_fqn = fqn._build(referred_table_fqn, parent_column, quote=False)
                     if col_fqn:
-                        referred_column_fqns.append(col_fqn)
+                        referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
             else:
                 continue
 
@@ -443,12 +461,12 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
         """
         try:
             if column.children is None:
-                if column_json.metadata:
-                    column.description = column_json.metadata.comment
+                if column_json.metadata and column_json.metadata.comment:
+                    column.description = Markdown(column_json.metadata.comment)
             else:
                 for i, child in enumerate(column.children):
-                    if column_json.metadata:
-                        column.description = column_json.metadata.comment
+                    if column_json.metadata and column_json.metadata.comment:
+                        column.description = Markdown(column_json.metadata.comment)
                     if (
                         column_json.type
                         and isinstance(column_json.type, Type)
@@ -474,33 +492,44 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
             )
 
     def get_columns(self, column_data: List[ColumnInfo]) -> Iterable[Column]:
-        # process table regular columns info
+        """
+        process table regular columns info
+        """
 
         for column in column_data:
-            if column.type_text.lower().startswith("union"):
-                column.type_text = column.Type.replace(" ", "")
-            parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                column.type_text.lower()
-            )
+            parsed_string = {}
+            if column.type_text:
+                if column.type_text.lower().startswith("union"):
+                    column.type_text = column.type_text.replace(" ", "")
+                if (
+                    column.type_text.lower() == "struct"
+                    or column.type_text.lower() == "array"
+                ):
+                    column.type_text = column.type_text.lower() + "<>"
+
+                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                    column.type_text.lower()
+                )
             parsed_string["name"] = column.name[:256]
             parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-            parsed_string["description"] = column.comment
+            if column.comment:
+                parsed_string["description"] = Markdown(column.comment)
             parsed_column = Column(**parsed_string)
             self.add_complex_datatype_descriptions(
                 column=parsed_column,
-                column_json=ColumnJson.parse_obj(json.loads(column.type_json)),
+                column_json=ColumnJson.model_validate(json.loads(column.type_json)),
             )
             yield parsed_column
 
     def yield_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         logger.info("Processing Lineage for Views")
         for view in [
-            v for v in self.context.table_views if v.view_definition is not None
+            v for v in self.context.get().table_views if v.view_definition is not None
         ]:
             yield from get_view_lineage(
                 view=view,
                 metadata=self.metadata,
-                service_name=self.context.database_service,
+                service_name=self.context.get().database_service,
                 connection_type=self.service_connection.type.value,
             )
 
@@ -528,3 +557,19 @@ class UnitycatalogSource(DatabaseServiceSource, MultiDBSource):
 
     def close(self):
         """Nothing to close"""
+
+    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
+        """
+        Method to process the table owners
+        """
+        try:
+            full_table_name = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
+            owner = self.api_client.get_owner_info(full_table_name)
+            if not owner:
+                return
+            owner_ref = self.metadata.get_reference_by_email(email=owner)
+            return owner_ref
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for table {table_name}: {exc}")
+        return

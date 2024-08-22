@@ -13,64 +13,28 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const URL = '/dashboard/datamodels';
 
-const configOptionsForPatch = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
-const configOptions = {
-  headers: { 'Content-type': 'application/json' },
-};
-
-export const getDataModelDetails = async (
-  id: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(`${URL}/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<DashboardDataModel>(url);
-
-  return response.data;
-};
-
-export const getDataModelsByName = async (
-  name: string,
-  fields: string | string[],
-  include: Include = Include.NonDeleted
-) => {
+export const getDataModelByFqn = async (fqn: string, params?: ListParams) => {
   const response = await APIClient.get<DashboardDataModel>(
-    `${URL}/name/${name}?fields=${fields}`,
+    `${URL}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
-        include,
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
       },
     }
   );
-
-  return response.data;
-};
-
-export const getDataModelDetailsByFQN = async (
-  databaseSchemaName: string,
-  arrQueryFields?: string | string[],
-  include = Include.All
-) => {
-  const url = `${getURLWithQueryFields(
-    `${URL}/name/${databaseSchemaName}`,
-    arrQueryFields,
-    `include=${include}`
-  )}`;
-
-  const response = await APIClient.get<DashboardDataModel>(url);
 
   return response.data;
 };
@@ -79,7 +43,7 @@ export const patchDataModelDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<DashboardDataModel>
-  >(`${URL}/${id}`, data, configOptionsForPatch);
+  >(`${URL}/${id}`, data);
 
   return response.data;
 };
@@ -90,7 +54,7 @@ export const addDataModelFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers`, userId, configOptions);
+  >(`${URL}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };
@@ -101,7 +65,7 @@ export const removeDataModelFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers/${userId}`, configOptions);
+  >(`${URL}/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };

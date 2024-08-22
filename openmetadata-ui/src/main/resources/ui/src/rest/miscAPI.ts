@@ -19,12 +19,14 @@ import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { PipelineServiceClientConfiguration } from '../generated/configuration/pipelineServiceClientConfiguration';
+import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import {
   RawSuggestResponse,
   SearchResponse,
 } from '../interface/search.interface';
 import { getSearchAPIQueryParams } from '../utils/SearchUtils';
+import { escapeESReservedCharacters } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const searchData = <SI extends SearchIndex>(
@@ -36,7 +38,8 @@ export const searchData = <SI extends SearchIndex>(
   sortOrder: string,
   searchIndex: SI | SI[],
   onlyDeleted = false,
-  trackTotalHits = false
+  trackTotalHits = false,
+  wildcard = true
 ) => {
   const { q, ...params } = getSearchAPIQueryParams(
     queryString,
@@ -47,7 +50,8 @@ export const searchData = <SI extends SearchIndex>(
     sortOrder,
     searchIndex,
     onlyDeleted,
-    trackTotalHits
+    trackTotalHits,
+    wildcard
   );
 
   return APIClient.get<SearchResponse<SI>>(`/search/query?q=${q}`, {
@@ -102,7 +106,7 @@ export const getSuggestions = <T extends SearchIndex>(
       SearchIndex.CONTAINER,
       SearchIndex.STORED_PROCEDURE,
       SearchIndex.DASHBOARD_DATA_MODEL,
-      SearchIndex.GLOSSARY,
+      SearchIndex.GLOSSARY_TERM,
       SearchIndex.TAG,
       SearchIndex.SEARCH_INDEX,
     ],
@@ -161,10 +165,12 @@ export const getSuggestedTeams = (term: string) => {
   );
 };
 
-export const getUserSuggestions = (term: string) => {
+export const getUserSuggestions = (term: string, userOnly = false) => {
   const params = {
     q: term || WILD_CARD_CHAR,
-    index: `${SearchIndex.USER},${SearchIndex.TEAM}`,
+    index: userOnly
+      ? SearchIndex.USER
+      : `${SearchIndex.USER},${SearchIndex.TEAM}`,
   };
 
   return APIClient.get<RawSuggestResponse<SearchIndex.USER>>(
@@ -190,17 +196,6 @@ export const getTeamsByQuery = async (params: {
   return response.data;
 };
 
-export const getTagSuggestions = (term: string) => {
-  const params = {
-    q: term,
-    index: `${SearchIndex.TAG},${SearchIndex.GLOSSARY}`,
-  };
-
-  return APIClient.get<RawSuggestResponse<SearchIndex.TAG>>(`/search/suggest`, {
-    params,
-  });
-};
-
 export const getSearchedUsers = (
   queryString: string,
   from: number,
@@ -224,19 +219,6 @@ export const getSearchedTeams = (
     '',
     SearchIndex.TEAM
   );
-};
-
-export const getSearchedUsersAndTeams = async (
-  queryString: string,
-  from: number,
-  size = 10
-) => {
-  const response = await searchData(queryString, from, size, '', '', '', [
-    SearchIndex.USER,
-    SearchIndex.TEAM,
-  ]);
-
-  return response.data;
 };
 
 export const deleteEntity = async (
@@ -283,8 +265,15 @@ export const getAggregateFieldOptions = (
   value: string,
   q: string
 ) => {
-  const withWildCardValue = value ? `.*${value}.*` : '.*';
-  const params = { index, field, value: withWildCardValue, q };
+  const withWildCardValue = value
+    ? `.*${escapeESReservedCharacters(value)}.*`
+    : '.*';
+  const params = {
+    index,
+    field,
+    value: withWildCardValue,
+    q,
+  };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(
     `/search/aggregate`,
@@ -322,6 +311,12 @@ export const fetchMarkdownFile = async (filePath: string) => {
       Accept: 'text/markdown',
     },
   });
+
+  return response.data;
+};
+
+export const fetchOMStatus = async () => {
+  const response = await APIClient.get<ValidationResponse>('/system/status');
 
   return response.data;
 };

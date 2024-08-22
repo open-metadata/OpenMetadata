@@ -12,7 +12,7 @@
 Profiler Processor Step
 """
 import traceback
-from typing import cast
+from typing import Optional, cast
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -40,32 +40,32 @@ class ProfilerProcessor(Processor):
     """
 
     def __init__(self, config: OpenMetadataWorkflowConfig):
-
         super().__init__()
 
         self.config = config
-        self.profiler_config = ProfilerProcessorConfig.parse_obj(
-            self.config.processor.dict().get("config")
+        self.profiler_config = ProfilerProcessorConfig.model_validate(
+            self.config.processor.model_dump().get("config")
         )
         self.source_config: DatabaseServiceProfilerPipeline = cast(
             DatabaseServiceProfilerPipeline, self.config.source.sourceConfig.config
         )  # Used to satisfy type checked
 
-    def _run(self, record: ProfilerSourceAndEntity) -> Either[ProfilerResponse]:
+    @property
+    def name(self) -> str:
+        return "Profiler"
 
+    def _run(self, record: ProfilerSourceAndEntity) -> Either[ProfilerResponse]:
         profiler_runner: Profiler = record.profiler_source.get_profiler_runner(
             record.entity, self.profiler_config
         )
 
         try:
-            profile: ProfilerResponse = profiler_runner.process(
-                self.source_config.generateSampleData,
-            )
+            profile: ProfilerResponse = profiler_runner.process()
         except Exception as exc:
             self.status.failed(
                 StackTraceError(
-                    name=record.entity.fullyQualifiedName.__root__,
-                    error=f"Unexpected exception processing entity {record.entity.fullyQualifiedName.__root__}: {exc}",
+                    name=record.entity.fullyQualifiedName.root,
+                    error=f"Unexpected exception processing entity {record.entity.fullyQualifiedName.root}: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -82,7 +82,9 @@ class ProfilerProcessor(Processor):
         return Either()
 
     @classmethod
-    def create(cls, config_dict: dict, _: OpenMetadata) -> "Step":
+    def create(
+        cls, config_dict: dict, _: OpenMetadata, pipeline_name: Optional[str] = None
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config)
 

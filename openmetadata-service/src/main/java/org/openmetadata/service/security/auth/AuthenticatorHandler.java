@@ -1,6 +1,8 @@
 package org.openmetadata.service.security.auth;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 
 import freemarker.template.TemplateException;
 import java.io.IOException;
@@ -23,6 +25,8 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 public interface AuthenticatorHandler {
+  String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
+
   void init(OpenMetadataApplicationConfig config);
 
   JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException;
@@ -38,42 +42,51 @@ public interface AuthenticatorHandler {
   User lookUserInProvider(String userName);
 
   default User registerUser(RegistrationRequest registrationRequest) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default void sendEmailVerification(UriInfo uriInfo, User user) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default void confirmEmailRegistration(UriInfo uriInfo, String emailToken) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default void resendRegistrationToken(UriInfo uriInfo, User registeredUser) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default void sendPasswordResetLink(
       UriInfo uriInfo, User user, String subject, String templateFilePath) throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default void resetUserPasswordWithToken(UriInfo uriInfo, PasswordResetRequest req)
       throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default void changeUserPwdWithOldPwd(UriInfo uriInfo, String userName, ChangePasswordRequest req)
       throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default RefreshToken createRefreshTokenForLogin(UUID currentUserId) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default JwtResponse getNewAccessToken(TokenRefreshRequest request) {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default void sendInviteMailToUser(
@@ -83,7 +96,8 @@ public interface AuthenticatorHandler {
       CreateUser.CreatePasswordType requestType,
       String pwd)
       throws IOException {
-    throw new CustomExceptionMessage(Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_METHOD);
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
   default JwtResponse getJwtResponse(User storedUser, long expireInSeconds) {
@@ -92,6 +106,8 @@ public interface AuthenticatorHandler {
         JWTTokenGenerator.getInstance()
             .generateJWTToken(
                 storedUser.getName(),
+                getRoleListFromUser(storedUser),
+                !nullOrEmpty(storedUser.getIsAdmin()) && storedUser.getIsAdmin(),
                 storedUser.getEmail(),
                 expireInSeconds,
                 false,

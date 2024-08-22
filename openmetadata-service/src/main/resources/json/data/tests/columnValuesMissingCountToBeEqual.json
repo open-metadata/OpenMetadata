@@ -20,5 +20,7 @@
       "description": "By default match all null and empty values to be missing. This field allows us to configure additional strings such as N/A, NULL as missing strings as well.",
       "dataType": "STRING"
     }
-  ]
+  ],
+  "provider": "system",
+  "dataQualityDimension": "Completeness"
 }

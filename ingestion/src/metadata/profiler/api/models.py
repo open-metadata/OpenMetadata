@@ -17,6 +17,7 @@ multiple profilers per table and columns.
 """
 from typing import List, Optional, Type, Union
 
+from pydantic import ConfigDict
 from sqlalchemy import Column
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -45,8 +46,8 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 class ColumnConfig(ConfigModel):
     """Column config for profiler"""
 
-    excludeColumns: Optional[List[str]]
-    includeColumns: Optional[List[ColumnProfilerConfig]]
+    excludeColumns: Optional[List[str]] = None
+    includeColumns: Optional[List[ColumnProfilerConfig]] = None
 
 
 class BaseProfileConfig(ConfigModel):
@@ -62,8 +63,8 @@ class TableConfig(BaseProfileConfig):
     """table profile config"""
 
     profileQuery: Optional[str] = None
-    partitionConfig: Optional[PartitionProfilerConfig]
-    columnConfig: Optional[ColumnConfig]
+    partitionConfig: Optional[PartitionProfilerConfig] = None
+    columnConfig: Optional[ColumnConfig] = None
 
     @classmethod
     def from_database_and_schema_config(
@@ -118,16 +119,15 @@ class ProfilerResponse(ConfigModel):
 
     def __str__(self):
         """Return the table name being processed"""
-        return f"Table [{self.table.name.__root__}]"
+        return f"Table [{self.table.name.root}]"
 
 
 class ThreadPoolMetrics(ConfigModel):
-    """thread pool metric"""
+    """A container for all metrics to be computed on the same thread."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     metrics: Union[List[Union[Type[Metric], CustomMetric]], Type[Metric]]
     metric_type: MetricTypes
-    column: Optional[Union[Column, SQALikeColumn]]
+    column: Optional[Union[Column, SQALikeColumn]] = None
     table: Union[Table, DeclarativeMeta]
-
-    class Config:
-        arbitrary_types_allowed = True

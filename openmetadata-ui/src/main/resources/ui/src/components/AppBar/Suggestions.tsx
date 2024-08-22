@@ -16,8 +16,24 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/Loader/Loader';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
+import {
+  APICollectionSource,
+  APIEndpointSource,
+  ChartSource,
+  DashboardSource,
+  DataProductSource,
+  GlossarySource,
+  MlModelSource,
+  Option,
+  PipelineSource,
+  SearchIndexSource,
+  SearchSuggestions,
+  TableSource,
+  TagSource,
+  TopicSource,
+} from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import {
   ContainerSearchSource,
@@ -33,20 +49,7 @@ import {
   getSuggestionElement,
 } from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import {
-  DashboardSource,
-  DataProductSource,
-  GlossarySource,
-  MlModelSource,
-  Option,
-  PipelineSource,
-  SearchIndexSource,
-  SearchSuggestions,
-  TableSource,
-  TagSource,
-  TopicSource,
-} from '../GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { useTourProvider } from '../TourProvider/TourProvider';
+import Loader from '../common/Loader/Loader';
 
 type SuggestionProp = {
   searchText: string;
@@ -79,7 +82,7 @@ const Suggestions = ({
   const [containerSuggestions, setContainerSuggestions] = useState<
     ContainerSearchSource[]
   >([]);
-  const [glossarySuggestions, setGlossarySuggestions] = useState<
+  const [glossaryTermSuggestions, setGlossaryTermSuggestions] = useState<
     GlossarySource[]
   >([]);
   const [searchIndexSuggestions, setSearchIndexSuggestions] = useState<
@@ -96,6 +99,16 @@ const Suggestions = ({
   >([]);
   const [dataProductSuggestions, setDataProductSuggestions] = useState<
     DataProductSource[]
+  >([]);
+
+  const [chartSuggestions, setChartSuggestions] = useState<ChartSource[]>([]);
+
+  const [apiCollectionSuggestions, setApiCollectionSuggestions] = useState<
+    APICollectionSource[]
+  >([]);
+
+  const [apiEndpointSuggestions, setApiEndpointSuggestions] = useState<
+    APIEndpointSource[]
   >([]);
 
   const isMounting = useRef(true);
@@ -120,10 +133,22 @@ const Suggestions = ({
     setDataModelSuggestions(
       filterOptionsByIndex(options, SearchIndex.DASHBOARD_DATA_MODEL)
     );
-    setGlossarySuggestions(filterOptionsByIndex(options, SearchIndex.GLOSSARY));
+    setGlossaryTermSuggestions(
+      filterOptionsByIndex(options, SearchIndex.GLOSSARY_TERM)
+    );
     setTagSuggestions(filterOptionsByIndex(options, SearchIndex.TAG));
     setDataProductSuggestions(
       filterOptionsByIndex(options, SearchIndex.DATA_PRODUCT)
+    );
+
+    setChartSuggestions(filterOptionsByIndex(options, SearchIndex.CHART));
+
+    setApiCollectionSuggestions(
+      filterOptionsByIndex(options, SearchIndex.API_COLLECTION_INDEX)
+    );
+
+    setApiEndpointSuggestions(
+      filterOptionsByIndex(options, SearchIndex.API_ENDPOINT_INDEX)
     );
   };
 
@@ -136,14 +161,14 @@ const Suggestions = ({
     }
 
     return (
-      <>
+      <div data-testid={`group-${searchIndex}`}>
         {getGroupLabel(searchIndex)}
         {suggestions.map((suggestion: SearchSuggestions[number]) => {
           return getSuggestionElement(suggestion, searchIndex, () =>
             setIsOpen(false)
           );
         })}
-      </>
+      </div>
     );
   };
 
@@ -179,13 +204,25 @@ const Suggestions = ({
             searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
           },
           {
-            suggestions: glossarySuggestions,
-            searchIndex: SearchIndex.GLOSSARY,
+            suggestions: glossaryTermSuggestions,
+            searchIndex: SearchIndex.GLOSSARY_TERM,
           },
           { suggestions: tagSuggestions, searchIndex: SearchIndex.TAG },
           {
             suggestions: dataProductSuggestions,
             searchIndex: SearchIndex.DATA_PRODUCT,
+          },
+          {
+            suggestions: chartSuggestions,
+            searchIndex: SearchIndex.CHART,
+          },
+          {
+            suggestions: apiCollectionSuggestions,
+            searchIndex: SearchIndex.API_COLLECTION_INDEX,
+          },
+          {
+            suggestions: apiEndpointSuggestions,
+            searchIndex: SearchIndex.API_ENDPOINT_INDEX,
           },
           ...searchClassBase.getEntitiesSuggestions(options ?? []),
         ].map(({ suggestions, searchIndex }) =>
@@ -205,7 +242,10 @@ const Suggestions = ({
         '',
         '',
         '',
-        searchCriteria ?? SearchIndex.ALL
+        searchCriteria ?? SearchIndex.DATA_ASSET,
+        false,
+        false,
+        false
       );
 
       if (res.data) {

@@ -38,13 +38,15 @@ const MOCK_VERSION = {
   updatedAt: 1694584150825,
   updatedBy: 'admin',
   children: [],
-  owner: {
-    id: '118caaa4-e172-4602-a2bb-6a8956127175',
-    type: 'team',
-    name: 'Sales',
-    fullyQualifiedName: 'Sales',
-    deleted: false,
-  },
+  owners: [
+    {
+      id: '118caaa4-e172-4602-a2bb-6a8956127175',
+      type: 'team',
+      name: 'Sales',
+      fullyQualifiedName: 'Sales',
+      deleted: false,
+    },
+  ],
   experts: [
     {
       id: '35fcf658-d2e3-4579-bb57-e6bb5b526b0a',
@@ -108,6 +110,10 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
+jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
+  return jest.fn().mockReturnValue(<>Version timeline</>);
+});
+
 describe('DomainVersion', () => {
   it('renders domain version', async () => {
     await act(async () => {
@@ -118,11 +124,6 @@ describe('DomainVersion', () => {
     expect(await screen.findByText('Domain component')).toBeInTheDocument();
 
     // Check that the version timeline is displayed
-    expect(
-      screen.getByText('label.version-plural-history')
-    ).toBeInTheDocument();
-
-    // check active version visible
-    expect(screen.getByText('v0.4')).toBeInTheDocument();
+    expect(screen.getByText('Version timeline')).toBeInTheDocument();
   });
 });

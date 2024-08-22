@@ -20,6 +20,7 @@ import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JFieldVar;
 import com.sun.codemodel.JMethod;
 import java.lang.reflect.Field;
+import java.util.TreeMap;
 import org.jsonschema2pojo.AbstractAnnotator;
 
 /** Add {@link MaskedField} annotation to generated Java classes */
@@ -50,17 +51,22 @@ public class MaskedAnnotator extends AbstractAnnotator {
   }
 
   /**
-   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If the {@link JMethod} is
-   * pointing to a field annotated with {@link MaskedField} then annotates the {@link JMethod} object with {@link
-   * MaskedField}
+   * Use reflection methods to access the {@link JDefinedClass} of the {@link JMethod} object. If
+   * the {@link JMethod} is pointing to a field annotated with {@link MaskedField} then annotates
+   * the {@link JMethod} object with {@link MaskedField}
    */
   private void addMaskedFieldAnnotationIfApplies(JMethod jMethod, String propertyName) {
     try {
       Field outerClassField = JMethod.class.getDeclaredField("outer");
       outerClassField.setAccessible(true);
       JDefinedClass outerClass = (JDefinedClass) outerClassField.get(jMethod);
-      if (outerClass.fields().containsKey(propertyName)
-          && outerClass.fields().get(propertyName).annotations().stream()
+
+      TreeMap<String, JFieldVar> insensitiveFieldsMap =
+          new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+      insensitiveFieldsMap.putAll(outerClass.fields());
+
+      if (insensitiveFieldsMap.containsKey(propertyName)
+          && insensitiveFieldsMap.get(propertyName).annotations().stream()
               .anyMatch(
                   annotation ->
                       MaskedField.class.getName().equals(getAnnotationClassName(annotation)))) {

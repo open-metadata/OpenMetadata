@@ -14,7 +14,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   Database,
   DatabaseProfilerConfig as ProfilerConfig,
@@ -24,7 +24,7 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const getDatabases = async (
@@ -52,40 +52,27 @@ export const getTables = (id: number): Promise<AxiosResponse> => {
   return APIClient.get('/databases/' + id + '/tables');
 };
 
-export const getDatabase = (
-  id: string,
-  query?: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`/databases/${id}`, query);
-
-  return APIClient.get(url);
-};
-
 export const getDatabaseDetailsByFQN = async (
   fqn: string,
-  arrQueryFields: string | string[],
-  include: Include = Include.NonDeleted
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(`/databases/name/${fqn}`, arrQueryFields);
-
-  const response = await APIClient.get<Database>(url, {
-    params: {
-      include,
-    },
-  });
+  const response = await APIClient.get<Database>(
+    `/databases/name/${getEncodedFqn(fqn)}`,
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
+      },
+    }
+  );
 
   return response.data;
 };
 
 export const patchDatabaseDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Database>>(
     `/databases/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;
@@ -95,14 +82,10 @@ export const patchDatabaseSchemaDetails = async (
   id: string,
   data: Operation[]
 ) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<DatabaseSchema>
-  >(`/databaseSchemas/${id}`, data, configOptions);
+  >(`/databaseSchemas/${id}`, data);
 
   return response.data;
 };
@@ -136,15 +119,14 @@ export const getDatabaseSchemas = async ({
 
 export const getDatabaseSchemaDetailsByFQN = async (
   databaseSchemaName: string,
-  fields?: string | string[],
-  include: Include = Include.NonDeleted
+  params?: ListParams
 ) => {
   const response = await APIClient.get<DatabaseSchema>(
-    `/databaseSchemas/name/${databaseSchemaName}`,
+    `/databaseSchemas/name/${getEncodedFqn(databaseSchemaName)}`,
     {
       params: {
-        fields,
-        include,
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
       },
     }
   );

@@ -14,9 +14,10 @@ OpenMetadata source for the profiler
 import traceback
 from typing import Iterable, Optional, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -42,19 +43,21 @@ from metadata.utils.logger import profiler_logger
 logger = profiler_logger()
 
 
+TABLE_FIELDS = ["tableProfilerConfig", "columns", "customMetrics"]
+TAGS_FIELD = ["tags"]
+
+
 class ProfilerSourceAndEntity(BaseModel):
     """Return class for the OpenMetadata Profiler Source"""
 
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "forbid"
+    model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
     profiler_source: ProfilerSource
     entity: Table
 
     def __str__(self):
         """Return the information of the table being profiler"""
-        return f"Table [{self.entity.name.__root__}]"
+        return f"Table [{self.entity.name.root}]"
 
 
 class OpenMetadataSource(Source):
@@ -69,6 +72,10 @@ class OpenMetadataSource(Source):
 
     def init_steps(self):
         super().__init__()
+
+    @property
+    def name(self) -> str:
+        return "OpenMetadata Service"
 
     # pylint: disable=super-init-not-called
     def __init__(
@@ -117,7 +124,7 @@ class OpenMetadataSource(Source):
         self.metadata.health_check()
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
-
+        global_profiler_config = self.metadata.get_profiler_config_settings()
         for database in self.get_database_entities():
             try:
                 profiler_source = profiler_source_factory.create(
@@ -125,6 +132,7 @@ class OpenMetadataSource(Source):
                     self.config,
                     database,
                     self.metadata,
+                    global_profiler_config,
                 )
                 for entity in self.get_table_entities(database=database):
                     yield Either(
@@ -136,24 +144,37 @@ class OpenMetadataSource(Source):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=database.fullyQualifiedName.__root__,
+                        name=database.fullyQualifiedName.root,
                         error=f"Error listing source and entities for database due to [{exc}]",
                         stackTrace=traceback.format_exc(),
                     )
                 )
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)
 
     def filter_databases(self, database: Database) -> Optional[Database]:
         """Returns filtered database entities"""
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.config.source.serviceName,
+            database_name=database.name.root,
+        )
         if filter_by_database(
             self.source_config.databaseFilterPattern,
-            database.name.__root__,
+            database_fqn
+            if self.source_config.useFqnForFiltering
+            else database.name.root,
         ):
-            self.status.filter(database.name.__root__, "Database pattern not allowed")
+            self.status.filter(database.name.root, "Database pattern not allowed")
             return None
         return database
 
@@ -166,21 +187,41 @@ class OpenMetadataSource(Source):
         """
         for table in tables:
             try:
+                schema_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.config.source.serviceName,
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                )
                 if filter_by_schema(
                     self.source_config.schemaFilterPattern,
-                    table.databaseSchema.name,  # type: ignore
+                    schema_fqn
+                    if self.source_config.useFqnForFiltering
+                    else table.databaseSchema.name,  # type: ignore
                 ):
                     self.status.filter(
-                        f"Schema pattern not allowed: {table.fullyQualifiedName.__root__}",
+                        f"Schema pattern not allowed: {table.fullyQualifiedName.root}",
                         "Schema pattern not allowed",
                     )
                     continue
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.config.source.serviceName,
+                    database_name=table.database.name,
+                    schema_name=table.databaseSchema.name,
+                    table_name=table.name.root,
+                )
+
                 if filter_by_table(
                     self.source_config.tableFilterPattern,
-                    table.name.__root__,
+                    table_fqn
+                    if self.source_config.useFqnForFiltering
+                    else table.name.root,
                 ):
                     self.status.filter(
-                        f"Table pattern not allowed: {table.fullyQualifiedName.__root__}",
+                        f"Table pattern not allowed: {table.fullyQualifiedName.root}",
                         "Table pattern not allowed",
                     )
                     continue
@@ -189,7 +230,7 @@ class OpenMetadataSource(Source):
                     and not self.source_config.includeViews
                 ):
                     self.status.filter(
-                        table.fullyQualifiedName.__root__,
+                        table.fullyQualifiedName.root,
                         "View filtered out",
                     )
                     continue
@@ -197,7 +238,7 @@ class OpenMetadataSource(Source):
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
-                        name=table.fullyQualifiedName.__root__,
+                        name=table.fullyQualifiedName.root,
                         error=f"Unexpected error filtering entities for table [{table}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
@@ -241,14 +282,16 @@ class OpenMetadataSource(Source):
         """
         tables = self.metadata.list_all_entities(
             entity=Table,
-            fields=["tableProfilerConfig", "columns", "customMetrics"],
+            fields=TABLE_FIELDS
+            if not self.source_config.processPiiSensitive
+            else TABLE_FIELDS + TAGS_FIELD,
             params={
                 "service": self.config.source.serviceName,
                 "database": fqn.build(
                     self.metadata,
                     entity_type=Database,
                     service_name=self.config.source.serviceName,
-                    database_name=database.name.__root__,
+                    database_name=database.name.root,
                 ),
             },  # type: ignore
         )

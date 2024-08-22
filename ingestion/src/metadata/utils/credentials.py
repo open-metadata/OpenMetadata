@@ -15,7 +15,7 @@ import base64
 import json
 import os
 import tempfile
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from cryptography.hazmat.primitives import serialization
 from google import auth
@@ -24,6 +24,9 @@ from google.auth import impersonated_credentials
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GCPCredentials,
     GcpCredentialsPath,
+)
+from metadata.generated.schema.security.credentials.gcpExternalAccount import (
+    GcpExternalAccount,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -85,30 +88,44 @@ def create_credential_tmp_file(credentials: dict) -> str:
         return temp_file_path
 
 
-def build_google_credentials_dict(gcp_values: GcpCredentialsValues) -> Dict[str, str]:
+def build_google_credentials_dict(
+    gcp_values: Union[GcpCredentialsValues, GcpExternalAccount]
+) -> Dict[str, str]:
     """
     Given GcPCredentialsValues, build a dictionary as the JSON file
     downloaded from GCP with the service_account
     :param gcp_values: GCP credentials
     :return: Dictionary with credentials
     """
-    private_key_str = gcp_values.privateKey.get_secret_value()
-    # adding the replace string here to escape line break if passed from env
-    private_key_str = private_key_str.replace("\\n", "\n")
-    validate_private_key(private_key_str)
+    if isinstance(gcp_values, GcpCredentialsValues):
+        private_key_str = gcp_values.privateKey.get_secret_value()
+        # adding the replace string here to escape line break if passed from env
+        private_key_str = private_key_str.replace("\\n", "\n")
+        validate_private_key(private_key_str)
 
-    return {
-        "type": gcp_values.type,
-        "project_id": gcp_values.projectId.__root__,
-        "private_key_id": gcp_values.privateKeyId,
-        "private_key": private_key_str,
-        "client_email": gcp_values.clientEmail,
-        "client_id": gcp_values.clientId,
-        "auth_uri": str(gcp_values.authUri),
-        "token_uri": str(gcp_values.tokenUri),
-        "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
-        "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
-    }
+        return {
+            "type": gcp_values.type,
+            "project_id": gcp_values.projectId.root,
+            "private_key_id": gcp_values.privateKeyId,
+            "private_key": private_key_str,
+            "client_email": gcp_values.clientEmail,
+            "client_id": gcp_values.clientId,
+            "auth_uri": str(gcp_values.authUri),
+            "token_uri": str(gcp_values.tokenUri),
+            "auth_provider_x509_cert_url": str(gcp_values.authProviderX509CertUrl),
+            "client_x509_cert_url": str(gcp_values.clientX509CertUrl),
+        }
+    if isinstance(gcp_values, GcpExternalAccount):
+        return {
+            "type": gcp_values.externalType,
+            "audience": gcp_values.audience,
+            "subject_token_type": gcp_values.subjectTokenType,
+            "token_url": gcp_values.tokenURL,
+            "credential_source": gcp_values.credentialSource,
+        }
+    raise InvalidGcpConfigException(
+        f"Error trying to build GCP credentials dict due to Invalid GCP config {type(gcp_values)}"
+    )
 
 
 def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
@@ -117,12 +134,21 @@ def set_google_credentials(gcp_credentials: GCPCredentials) -> None:
     :param gcp_credentials: GCPCredentials
     """
     if isinstance(gcp_credentials.gcpConfig, GcpCredentialsPath):
-        os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.__root__)
+        os.environ[GOOGLE_CREDENTIALS] = str(gcp_credentials.gcpConfig.path)
         return
 
-    if gcp_credentials.gcpConfig.projectId is None:
+    if (
+        isinstance(gcp_credentials.gcpConfig, GcpCredentialsValues)
+        and gcp_credentials.gcpConfig.projectId is None
+    ):
         logger.info(
             "No credentials available, using the current environment permissions authenticated via gcloud SDK."
+        )
+        return
+
+    if isinstance(gcp_credentials.gcpConfig, GcpExternalAccount):
+        logger.info(
+            "Using External account credentials to authenticate with GCP services."
         )
         return
 

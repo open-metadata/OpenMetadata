@@ -20,7 +20,8 @@ import { SUPPORTED_TABLE_CONSTRAINTS } from '../../../constants/Table.constants'
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { ConstraintType, Table } from '../../../generated/entity/data/table';
 import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
+
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import ForeignKeyConstraint from './ForeignKeyConstraint';
 import PrimaryKeyConstraint from './PrimaryKeyConstraint';
 import './table-constraints.less';
@@ -96,7 +97,7 @@ const TableConstraints: FC<TableConstraintsProps> = ({ constraints }) => {
                         trigger="hover">
                         <Link
                           className="no-underline"
-                          to={getEntityLink(
+                          to={entityUtilClassBase.getEntityLink(
                             EntityType.TABLE,
                             getPartialNameFromTableFQN(
                               referredColumn,

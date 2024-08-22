@@ -13,7 +13,8 @@
 
 @import (reference) url('../../../styles/variables.less');
 
-@lineage-sidebar-width: 100px;
+@lineage-breadcrumb-panel: 50px;
+@lineage-toolbar-height: 54px;
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -35,6 +36,12 @@
   border: 1px solid @primary-color;
   .react-flow__handle {
     border-color: @primary-color;
+  }
+  .lineage-node-handle {
+    border: 1px solid @primary-color;
+    svg {
+      color: @primary-color;
+    }
   }
 }
 .custom-node-header-active {
@@ -60,15 +67,15 @@
   }
 }
 .custom-node-column-lineage-normal {
-  border-bottom: 1px solid @border-color;
+  border-top: 1px solid @border-color;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
-}
-
-.custom-edge-pipeline-button.ant-btn {
-  background-color: @body-bg-color;
+  font-size: 12px;
+  &:first-child {
+    border-top: none;
+  }
 }
 
 .custom-node {
@@ -83,17 +90,13 @@
 }
 
 .custom-control-search-box {
-  width: 400px;
+  width: 220px;
   height: 32px;
 }
 .ant-select.custom-control-search-box-edit-mode {
   margin-left: @lineage-sidebar-width;
 }
-.custom-control-fit-screen-button {
-  border: 1px solid @border-color;
-  border-radius: 4px;
-  background-color: @body-bg-color;
-}
+
 .custom-control-zoom-slide {
   display: flex;
   column-gap: 8px;
@@ -107,13 +110,14 @@
   z-index: 1;
 }
 .load-more-node {
-  border: 3.5px dashed #1890ff;
+  border: 3.5px dashed @primary-color;
   border-radius: 18px;
   text-align: center;
-  color: #1890ff;
+  color: @primary-color;
   font-weight: 600;
+  padding: 0.5rem;
   .load-more-node-sizes {
-    color: #37352f;
+    color: @text-color;
   }
 }
 
@@ -130,6 +134,12 @@
   &.active {
     background-color: @primary-color;
   }
+  &.active:hover {
+    background-color: @primary-color;
+  }
+  &.active:focus {
+    background-color: @primary-color;
+  }
 }
 
 .custom-lineage-heading {
@@ -143,7 +153,7 @@
   width: max-content;
   z-index: 20;
   background-color: @white;
-  color: @text-color-secondary;
+  color: @text-color;
 }
 
 .lineage-card .react-flow__edge.animated path {
@@ -151,7 +161,7 @@
 }
 
 .entity-lineage.sidebar {
-  height: 110%;
+  height: 100%;
   background: @white;
   position: absolute;
   top: 0;
@@ -172,17 +182,169 @@
   padding-top: 20px;
 }
 
-.lineage-card.full-screen-lineage {
-  top: @navbar-height;
+.loading-card {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+// lineage
+.lineage-card {
+  height: calc(100vh - 240px);
+
+  // lineage and it's children's always should be ltr
+  direction: ltr;
+  * {
+    direction: ltr;
+  }
+}
+
+.full-screen-lineage {
+  top: @om-navbar-height;
   left: @sidebar-width;
   position: fixed !important;
   width: calc(100vw - @sidebar-width);
-  height: calc(100vh - @navbar-height);
+  height: calc(100vh - @om-navbar-height);
+  .lineage-card {
+    height: calc(100vh - @om-navbar-height);
+  }
+  .entity-lineage.sidebar {
+    top: @lineage-breadcrumb-panel;
+  }
+  .entity-panel-container {
+    top: calc(@lineage-breadcrumb-panel + @lineage-toolbar-height);
+    margin-top: 0;
+  }
+  .lineage-container {
+    height: calc(100vh - @om-navbar-height - @lineage-breadcrumb-panel);
+  }
 }
 
 .lineage-node-remove-btn {
-  position: absolute;
+  position: absolute !important;
   top: -20px;
   right: -20px;
   cursor: pointer;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__controls-button {
+  width: 20px;
+  height: 20px;
+}
+
+.custom-edge-pipeline-button {
+  background-color: @body-bg-color;
+  color: @primary-color;
+  &.green {
+    background: @green-6;
+    border: 1px solid @green-7;
+    color: @green-7;
+  }
+  &.amber {
+    background: @yellow-5;
+    border: 1px solid @yellow-6;
+    color: @yellow-6;
+  }
+  &.red {
+    background: @red-6;
+    border: 1px solid @red-7;
+    color: @red-7;
+  }
+  svg {
+    color: inherit;
+  }
+}
+
+.ant-tag.amber {
+  background: @yellow-5;
+  color: @yellow-6;
+  border: 1px solid @yellow-6;
+  margin: 0;
+}
+.ant-tag.red {
+  background: @red-6;
+  border: 1px solid @red-7;
+  color: @red-7;
+  margin: 0;
+}
+.ant-tag.green {
+  background: @green-6;
+  border: 1px solid @green-7;
+  color: @green-7;
+  margin: 0;
+}
+
+@keyframes blink {
+  0% {
+    border: 1px solid @primary-color;
+  }
+  50% {
+    border: 3px solid @primary-color;
+  }
+  100% {
+    border: 1px solid @primary-color;
+  }
+}
+
+@keyframes blink-success {
+  0% {
+    border: 1px solid @green-7;
+  }
+  50% {
+    border: 3px solid @green-7;
+  }
+  100% {
+    border: 1px solid @green-7;
+  }
+}
+
+@keyframes blink-amber {
+  0% {
+    border: 1px solid @yellow-6;
+  }
+  50% {
+    border: 3px solid @yellow-6;
+  }
+  100% {
+    border: 1px solid @yellow-6;
+  }
+}
+
+@keyframes blink-red {
+  0% {
+    border: 1px solid @red-7;
+  }
+  50% {
+    border: 3px solid @red-7;
+  }
+  100% {
+    border: 1px solid @red-7;
+  }
+}
+
+.blinking-border {
+  animation: blink 1s infinite;
+}
+
+.blinking-green-border {
+  animation: blink-success 1s infinite;
+}
+
+.blinking-amber-border {
+  animation: blink-amber 1s infinite;
+}
+
+.blinking-red-border {
+  animation: blink-red 1s infinite;
+}
+
+.react-flow__panel.left.bottom,
+.react-flow__panel.right.bottom {
+  bottom: 8px;
 }

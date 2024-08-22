@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.StorageServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -63,17 +64,17 @@ import org.openmetadata.service.util.ResultList;
 public class StorageServiceResource
     extends ServiceEntityResource<StorageService, StorageServiceRepository, StorageConnection> {
   public static final String COLLECTION_PATH = "v1/services/storageServices/";
-  static final String FIELDS = "pipelines,owner,tags,domain";
+  static final String FIELDS = "pipelines,owners,tags,domain";
 
   @Override
   public StorageService addHref(UriInfo uriInfo, StorageService service) {
     super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getOwners());
     return service;
   }
 
-  public StorageServiceResource(Authorizer authorizer) {
-    super(Entity.STORAGE_SERVICE, authorizer, ServiceType.STORAGE);
+  public StorageServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.STORAGE_SERVICE, authorizer, limits, ServiceType.STORAGE);
   }
 
   @Override

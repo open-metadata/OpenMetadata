@@ -167,7 +167,7 @@ class MSTRClient:
             dashboards = []
             for result in results:
                 dashboards.append(
-                    MstrDashboard(projectName=project_name, **result.dict())
+                    MstrDashboard(projectName=project_name, **result.model_dump())
                 )
 
             dashboards_list = MstrDashboardList(dashboards=dashboards)

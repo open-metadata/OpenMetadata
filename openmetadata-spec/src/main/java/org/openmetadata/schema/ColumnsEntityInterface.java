@@ -17,8 +17,8 @@ import java.util.List;
 import org.openmetadata.schema.type.Column;
 
 /**
- * Interface to be implemented by entities with a list of Column and FullyQualifiedName. It is used when adding lineage
- * between different entities.
+ * Interface to be implemented by entities with a list of Column and FullyQualifiedName. It is used
+ * when adding lineage between different entities.
  */
 public interface ColumnsEntityInterface {
 

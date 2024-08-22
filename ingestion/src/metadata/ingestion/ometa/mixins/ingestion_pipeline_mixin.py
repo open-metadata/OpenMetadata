@@ -47,10 +47,10 @@ class OMetaIngestionPipelineMixin:
         """
         resp = self.client.put(
             f"{self.get_suffix(IngestionPipeline)}/{ingestion_pipeline_fqn}/pipelineStatus",
-            data=pipeline_status.json(),
+            data=pipeline_status.model_dump_json(),
         )
         logger.debug(
-            f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {resp}"
+            f"Created Pipeline Status for pipeline {ingestion_pipeline_fqn}: {pipeline_status}"
         )
         return resp
 
@@ -104,7 +104,9 @@ class OMetaIngestionPipelineMixin:
         )
 
         if resp:
-            return [PipelineStatus.parse_obj(status) for status in resp.get("data")]
+            return [
+                PipelineStatus.model_validate(status) for status in resp.get("data")
+            ]
         return None
 
     def get_ingestion_pipeline_by_name(

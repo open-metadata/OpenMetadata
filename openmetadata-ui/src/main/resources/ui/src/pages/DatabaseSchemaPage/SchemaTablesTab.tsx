@@ -13,6 +13,7 @@
 
 import { Col, Row, Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { isEmpty } from 'lodash';
 import { PagingResponse } from 'Models';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,8 +29,8 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getEntityLink } from '../../utils/TableUtils';
 
 interface SchemaTablesTabProps {
   databaseSchemaDetails: DatabaseSchema;
@@ -80,8 +81,8 @@ function SchemaTablesTab({
             <div className="d-inline-flex w-max-90">
               <Link
                 className="break-word"
-                data-testid="table-name-link"
-                to={getEntityLink(
+                data-testid={record.name}
+                to={entityUtilClassBase.getEntityLink(
                   EntityType.TABLE,
                   record.fullyQualifiedName as string
                 )}>
@@ -114,6 +115,7 @@ function SchemaTablesTab({
             description={description}
             entityFqn={databaseSchemaDetails.fullyQualifiedName}
             entityType={EntityType.DATABASE_SCHEMA}
+            isDescriptionExpanded={isEmpty(tableData.data)}
             showActions={false}
           />
         ) : (
@@ -123,6 +125,7 @@ function SchemaTablesTab({
             entityName={getEntityName(databaseSchemaDetails)}
             entityType={EntityType.DATABASE_SCHEMA}
             hasEditAccess={editDescriptionPermission}
+            isDescriptionExpanded={isEmpty(tableData.data)}
             isEdit={isEdit}
             showActions={!databaseSchemaDetails.deleted}
             onCancel={onCancel}

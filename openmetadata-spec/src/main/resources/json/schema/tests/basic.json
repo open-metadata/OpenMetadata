@@ -4,6 +4,36 @@
   "title": "Basic",
   "description": "This schema defines basic types that are used by other test schemas.",
   "definitions": {
+    "columnTestSummaryDefinition": {
+      "description": "Schema to capture test case execution summary at the column level.",
+      "javaType": "org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition",
+      "type": "object",
+      "properties": {
+        "success": {
+          "description": "Number of test cases that passed.",
+          "type": "integer"
+        },
+        "failed": {
+          "description": "Number of test cases that failed.",
+          "type": "integer"
+        },
+        "aborted": {
+          "description": "Number of test cases that aborted.",
+          "type": "integer"
+        },
+        "queued": {
+          "description": "Number of test cases that are queued for execution.",
+          "type": "integer"
+        },
+        "total": {
+          "description": "Total number of test cases.",
+          "type": "integer"
+        },
+        "entityLink": {
+          "$ref": "../type/basic.json#/definitions/entityLink"
+        }
+      }
+    },
     "testSummary": {
       "description": "Schema to capture test case execution summary.",
       "javaType": "org.openmetadata.schema.tests.type.TestSummary",
@@ -21,9 +51,19 @@
           "description": "Number of test cases that aborted.",
           "type": "integer"
         },
+        "queued": {
+          "description": "Number of test cases that are queued for execution.",
+          "type": "integer"
+        },
         "total": {
           "description": "Total number of test cases.",
           "type": "integer"
+        },
+        "columnTestSummary": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/columnTestSummaryDefinition"
+          }
         }
       }
     },
@@ -39,6 +79,10 @@
         "value": {
           "description": "test result value",
           "type": "string"
+        },
+        "predictedValue": {
+          "description": "predicted value",
+          "type": "string"
         }
       }
     },
@@ -46,7 +90,7 @@
       "description": "Status of Test Case run.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseStatus",
       "type": "string",
-      "enum": ["Success", "Failed", "Aborted"],
+      "enum": ["Success", "Failed", "Aborted", "Queued"],
       "javaEnums": [
         {
           "name": "Success"
@@ -56,6 +100,9 @@
         },
         {
           "name": "Aborted"
+        },
+        {
+          "name": "Queued"
         }
       ]
     },
@@ -86,10 +133,6 @@
             "$ref": "#/definitions/testResultValue"
           }
         },
-        "testCaseResolutionStatusReference": {
-            "description": "Reference to the failure status object for the test case result.",
-            "$ref": "./testCaseResolutionStatus.json"
-        },
         "passedRows": {
           "description": "Number of rows that passed.",
           "type": "integer"
@@ -104,6 +147,18 @@
         },
         "failedRowsPercentage": {
           "description": "Percentage of rows that failed.",
+          "type": "number"
+        },
+        "incidentId": {
+          "description": "Incident State ID associated with this result. This association happens when the result is created, and will stay there even when the incident is resolved.",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "maxBound": {
+          "description": "Upper bound limit for the test case result as defined in the test definition.",
+          "type": "number"
+        },
+        "minBound": {
+          "description": "Lower bound limit for the test case result as defined in the test definition.",
           "type": "number"
         }
       }

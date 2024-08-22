@@ -39,7 +39,7 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>testLoader</p>);
 });
 
@@ -60,7 +60,6 @@ jest.mock('../../utils/StringsUtils', () => ({
 }));
 
 jest.mock('../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockImplementation((link) => link),
   getTableExpandableConfig: jest.fn(),
 }));
 

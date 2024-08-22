@@ -13,9 +13,14 @@
 
 package org.openmetadata.schema;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Collections;
+import java.util.Set;
 
 public interface SubscriptionAction {
+  default Set<String> getReceivers() {
+    return Collections.emptySet();
+  }
+
   default Boolean getSendToAdmins() {
     return false;
   }
@@ -25,11 +30,6 @@ public interface SubscriptionAction {
   }
 
   default Boolean getSendToFollowers() {
-    return false;
-  }
-
-  @JsonIgnore
-  default Boolean getSendToTeams() {
     return false;
   }
 }

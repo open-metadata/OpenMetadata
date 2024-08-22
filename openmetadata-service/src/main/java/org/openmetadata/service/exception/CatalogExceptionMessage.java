@@ -17,8 +17,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -28,14 +28,22 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.util.JsonUtils;
 
 public final class CatalogExceptionMessage {
+  public static final String REINDEXING_ALREADY_RUNNING = "REINDEXING_ALREADY_RUNNING";
+  public static final String FAILED_SEND_EMAIL = "FAILED_SEND_EMAIL";
   public static final String EMAIL_SENDING_ISSUE =
       "There is some issue in sending the Mail. Please contact your administrator.";
   public static final String PASSWORD_INVALID_FORMAT =
       "Password must be of minimum 8 characters, with one special, one Upper, one lower case character, and one Digit.";
   public static final String MAX_FAILED_LOGIN_ATTEMPT =
       "Failed Login Attempts Exceeded. Please try after some time.";
+
+  public static final String INCORRECT_OLD_PASSWORD = "INCORRECT_OLD_PASSWORD";
+
+  public static final String INVALID_USER_OR_PASSWORD = "INVALID_USER_OR_PASSWORD";
   public static final String INVALID_USERNAME_PASSWORD =
       "You have entered an invalid username or password.";
+
+  public static final String PASSWORD_RESET_TOKEN_EXPIRED = "PASSWORD_RESET_TOKEN_EXPIRED";
   public static final String ENTITY_ALREADY_EXISTS = "Entity already exists";
   public static final String FERNET_KEY_NULL = "Fernet key is null";
   public static final String FIELD_NOT_TOKENIZED = "Field is not tokenized";
@@ -62,21 +70,36 @@ public final class CatalogExceptionMessage {
       "Unexpected error occurred while building the teams hierarchy";
   public static final String LDAP_MISSING_ATTR =
       "Username or Email Attribute is incorrect. Please check Openmetadata Configuration.";
+  public static final String MULTIPLE_EMAIL_ENTRIES_ERROR = "MULTIPLE_EMAIL_ENTRIES_ERROR";
   public static final String MULTIPLE_EMAIL_ENTRIES =
       "Email corresponds to multiple entries in Directory.";
 
   public static final String INVALID_EMAIL_PASSWORD =
       "You have entered an invalid email or password.";
 
+  public static final String EMAIL_EXISTS = "EMAIL_EXISTS";
+
+  public static final String SELF_SIGNUP_NOT_ENABLED = "SELF_SIGNUP_NOT_ENABLED";
   public static final String SELF_SIGNUP_ERROR = "Signup is not supported.";
+  public static final String OTHER_USER_SIGN_UP_ERROR = "OTHER_USER_SIGN_UP_ERROR";
+  public static final String OTHER_USER_SIGN_UP =
+      "Self Signup can only create user for self. Only Admin can create other users.";
+  public static final String SELF_SIGNUP_DISABLED_MESSAGE =
+      "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
+  public static final String AUTHENTICATOR_OPERATION_NOT_SUPPORTED =
+      "AUTHENTICATOR_OPERATION_NOT_SUPPORTED";
   public static final String FORBIDDEN_AUTHENTICATOR_OP =
       "Operation is not permitted with the Selected Authenticator.";
+
+  public static final String INVALID_TOKEN = "INVALID_TOKEN";
+  public static final String TOKEN_EXPIRED = "TOKEN_EXPIRED";
   public static final String TOKEN_EXPIRY_ERROR =
       "Email Verification Token %s is expired. Please issue a new request for email verification.";
   public static final String INVALID_BOT_USER = "Revoke Token can only be applied to Bot Users.";
-  public static final String LIVE_APP_SCHEDULE_ERR = "Live Application cannot scheduled.";
+  public static final String NO_MANUAL_TRIGGER_ERR = "App does not support manual trigger.";
   public static final String INVALID_APP_TYPE = "Application Type is not valid.";
 
   private CatalogExceptionMessage() {}
@@ -141,6 +164,10 @@ public final class CatalogExceptionMessage {
     return String.format("Invalid %s name %s", fieldType, fieldName);
   }
 
+  public static String invalidFieldFQN(String fqn) {
+    return String.format("Invalid fully qualified field name %s", fqn);
+  }
+
   public static String entityVersionNotFound(String entityType, UUID id, Double version) {
     return String.format("%s instance for %s and version %s not found", entityType, id, version);
   }
@@ -159,6 +186,12 @@ public final class CatalogExceptionMessage {
 
   public static String notAdmin(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
+  }
+
+  public static String operationNotAllowed(String name, MetadataOperation operation) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operations [%s] not allowed",
+        name, operation.value());
   }
 
   public static String notReviewer(String name) {
@@ -186,7 +219,19 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String domainPermissionNotAllowed(
+      String user, String domainName, List<MetadataOperation> operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} does not belong to domain %s. to perform the %s ",
+        user, domainName, operations);
+  }
+
   public static String taskOperationNotAllowed(String user, String operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
+  }
+
+  public static String suggestionOperationNotAllowed(String user, String operations) {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
@@ -197,6 +242,11 @@ public final class CatalogExceptionMessage {
 
   public static String unknownCustomField(String fieldName) {
     return String.format("Unknown custom field %s", fieldName);
+  }
+
+  public static String dateTimeValidationError(String fieldName, String format) {
+    return String.format(
+        "Custom field %s value is not as per defined format %s", fieldName, format);
   }
 
   public static String jsonValidationError(String fieldName, String validationMessages) {
@@ -230,6 +280,14 @@ public final class CatalogExceptionMessage {
         entityType);
   }
 
+  public static String onlyOneTeamAllowed() {
+    return "Only One Team is allowed to own Data Assets.";
+  }
+
+  public static String noTeamAndUserComboAllowed() {
+    return "Data Assets can have up to 5 users or a Team but not both as owners.";
+  }
+
   public static String failedToParse(String message) {
     return String.format("Failed to parse - %s", message);
   }
@@ -244,6 +302,10 @@ public final class CatalogExceptionMessage {
 
   public static String systemEntityRenameNotAllowed(String name, String entityType) {
     return String.format("System entity [%s] of type %s can not be renamed.", name, entityType);
+  }
+
+  public static String systemEntityModifyNotAllowed(String name, String entityType) {
+    return String.format("System entity [%s] of type %s can not be modified.", name, entityType);
   }
 
   public static String mutuallyExclusiveLabels(TagLabel tag1, TagLabel tag2) {
@@ -267,10 +329,15 @@ public final class CatalogExceptionMessage {
   }
 
   public static String eventPublisherFailedToPublish(
-      CreateEventSubscription.SubscriptionType type, ChangeEvent event, String message) {
+      SubscriptionDestination.SubscriptionType type, ChangeEvent event, String message) {
     return String.format(
         "Failed to publish event %s to %s due to %s ",
         JsonUtils.pojoToJson(event), type.value(), message);
+  }
+
+  public static String eventPublisherFailedToPublish(
+      SubscriptionDestination.SubscriptionType type, String message) {
+    return String.format("Failed to publish event %s due to %s ", type.value(), message);
   }
 
   public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
@@ -281,6 +348,10 @@ public final class CatalogExceptionMessage {
 
   public static String invalidFieldForTask(String fieldName, TaskType type) {
     return String.format("The field name %s is not supported for %s task.", fieldName, type);
+  }
+
+  public static String invalidReviewerType(String type) {
+    return String.format("Reviewers can only be a Team or User. Given Reviewer Type : %s", type);
   }
 
   public static String invalidEnumValue(Class<? extends Enum<?>> enumClass) {

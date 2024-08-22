@@ -13,6 +13,7 @@ OMeta ES Mixin integration tests. The API needs to be up
 """
 import logging
 import time
+import uuid
 from unittest import TestCase
 
 from requests.utils import quote
@@ -48,8 +49,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.type.basic import SqlQuery
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
-
-QUERY_CHECKSUM = fqn.get_query_checksum("select * from awesome")
 
 
 class OMetaESTest(TestCase):
@@ -118,7 +117,7 @@ class OMetaESTest(TestCase):
                     metadata=None,
                     entity_type=Query,
                     service_name="test-service-es",
-                    query_checksum=QUERY_CHECKSUM,
+                    query_checksum=cls.checksum,
                 ),
             )
             if not table_res or query_res:
@@ -155,16 +154,18 @@ class OMetaESTest(TestCase):
 
         cls.entity = cls.metadata.create_or_update(create)
 
+        query_str = str(uuid.uuid4())
+        cls.checksum = fqn.get_query_checksum(query_str)
         # Create queries for the given service
         query = CreateQueryRequest(
-            query=SqlQuery(__root__="select * from awesome"),
+            query=SqlQuery(query_str),
             service=cls.service_entity.fullyQualifiedName,
             processedLineage=True,  # Only 1 with processed lineage
         )
         cls.metadata.create_or_update(query)
 
         query2 = CreateQueryRequest(
-            query=SqlQuery(__root__="select * from another_awesome"),
+            query=SqlQuery(str(uuid.uuid4())),
             service=cls.service_entity.fullyQualifiedName,
         )
         cls.metadata.create_or_update(query2)
@@ -175,7 +176,7 @@ class OMetaESTest(TestCase):
         )
 
         another_query = CreateQueryRequest(
-            query=SqlQuery(__root__="select * from awesome"),
+            query=SqlQuery(str(uuid.uuid4())),
             service=cls.another_service_entity.fullyQualifiedName,
             processedLineage=True,
         )
@@ -192,8 +193,8 @@ class OMetaESTest(TestCase):
 
         service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.service.name.__root__
-            ).id.__root__
+                entity=DatabaseService, fqn=cls.service.name.root
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -205,8 +206,8 @@ class OMetaESTest(TestCase):
 
         another_service_id = str(
             cls.metadata.get_by_name(
-                entity=DatabaseService, fqn=cls.another_service.name.__root__
-            ).id.__root__
+                entity=DatabaseService, fqn=cls.another_service.name.root
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -222,13 +223,14 @@ class OMetaESTest(TestCase):
         """
 
         fqn_search_string = fqn._build(
-            self.service.name.__root__, "*", "*", self.entity.name.__root__
+            self.service.name.root, "*", "*", self.entity.name.root
         )
 
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         # We get the created table back
@@ -236,32 +238,34 @@ class OMetaESTest(TestCase):
         self.assertIn(self.entity, res)
 
         fqn_search_string = fqn._build(
-            self.service.name.__root__,
-            self.create_db_entity.name.__root__,
+            self.service.name.root,
+            self.create_db_entity.name.root,
             "*",
-            self.entity.name.__root__,
+            self.entity.name.root,
         )
 
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         self.assertIsNotNone(res)
         self.assertIn(self.entity, res)
 
         fqn_search_string = fqn._build(
-            self.service.name.__root__,
-            self.create_db_entity.name.__root__,
-            self.create_schema_entity.name.__root__,
-            self.entity.name.__root__,
+            self.service.name.root,
+            self.create_db_entity.name.root,
+            self.create_schema_entity.name.root,
+            self.entity.name.root,
         )
 
         res = self.metadata.es_search_from_fqn(
             entity_type=Table,
             fqn_search_string=fqn_search_string,
             size=100,
+            fields="owners",
         )
 
         self.assertIsNotNone(res)
@@ -289,5 +293,5 @@ class OMetaESTest(TestCase):
 
     def test_get_queries_with_lineage(self):
         """Check the payload from ES"""
-        res = self.metadata.es_get_queries_with_lineage(self.service.name.__root__)
-        self.assertIn(QUERY_CHECKSUM, res)
+        res = self.metadata.es_get_queries_with_lineage(self.service.name.root)
+        self.assertIn(self.checksum, res)

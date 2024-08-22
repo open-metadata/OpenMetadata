@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Input, InputProps } from 'antd';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
-import PropTypes from 'prop-types';
 import React, { useCallback, useEffect, useState } from 'react';
-import SVGIcons, { Icons } from '../../../utils/SvgUtils';
-import Loader from '../../Loader/Loader';
+import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
+import Loader from '../Loader/Loader';
 
 type Props = {
   onSearch: (text: string) => void;
@@ -46,8 +46,8 @@ const Searchbar = ({
   inputProps,
 }: Props) => {
   const [userSearch, setUserSearch] = useState('');
-  const [searchIcon, setSearchIcon] = useState<string>(Icons.SEARCHV1);
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
+  const [isSearchBlur, setIsSearchBlur] = useState(true);
 
   useEffect(() => {
     setUserSearch(searchValue);
@@ -85,7 +85,16 @@ const Searchbar = ({
           allowClear={showClearSearch}
           data-testid={searchBarDataTestId ?? 'searchbar'}
           placeholder={placeholder}
-          prefix={<SVGIcons alt="icon-search" icon={searchIcon} />}
+          prefix={
+            <Icon
+              className={classNames('align-middle', {
+                'text-grey-3': isSearchBlur,
+                'text-primary': !isSearchBlur,
+              })}
+              component={IconSearchV1}
+              style={{ fontSize: '16px' }}
+            />
+          }
           suffix={
             showLoadingStatus &&
             loadingState === 'waiting' && (
@@ -96,9 +105,9 @@ const Searchbar = ({
           }
           type="text"
           value={userSearch}
-          onBlur={() => setSearchIcon(Icons.SEARCHV1)}
+          onBlur={() => setIsSearchBlur(true)}
           onChange={handleChange}
-          onFocus={() => setSearchIcon(Icons.SEARCHV1COLOR)}
+          onFocus={() => setIsSearchBlur(false)}
           {...inputProps}
         />
         {showLoadingStatus && loadingState === 'waiting' && (
@@ -116,14 +125,6 @@ Searchbar.defaultProps = {
   typingInterval: 1000,
   placeholder: 'Search...',
   label: '',
-};
-
-Searchbar.propTypes = {
-  onSearch: PropTypes.func.isRequired,
-  searchValue: PropTypes.string,
-  typingInterval: PropTypes.number,
-  placeholder: PropTypes.string,
-  label: PropTypes.string,
 };
 
 export default Searchbar;

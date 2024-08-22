@@ -31,15 +31,18 @@ from metadata.generated.schema.entity.services.connections.dashboard.qlikSenseCo
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardServiceType,
-)
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
+)
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -66,9 +69,11 @@ class QliksenseSource(DashboardServiceSource):
     metadata_config: OpenMetadataConnection
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: QlikSenseConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: QlikSenseConnection = config.serviceConnection.root.config
         if not isinstance(connection, QlikSenseConnection):
             raise InvalidSourceException(
                 f"Expected QlikSenseConnection, but got {connection}"
@@ -85,9 +90,18 @@ class QliksenseSource(DashboardServiceSource):
         # Data models will be cleared up for each dashboard
         self.data_models: List[QlikTable] = []
 
+    def filter_draft_dashboard(self, dashboard: QlikDashboard) -> bool:
+        # When only published(non-draft) dashboards are allowed, filter dashboard based on "published" flag from QlikDashboardMeta(qMeta)
+        return (not self.source_config.includeDraftDashboard) and (
+            not dashboard.qMeta.published
+        )
+
     def get_dashboards_list(self) -> Iterable[QlikDashboard]:
         """Get List of all dashboards"""
         for dashboard in self.client.get_dashboards_list():
+            if self.filter_draft_dashboard(dashboard):
+                # Skip unpublished dashboards
+                continue
             # create app specific websocket
             self.client.connect_websocket(dashboard.qDocId)
             # clean data models for next iteration
@@ -118,20 +132,25 @@ class QliksenseSource(DashboardServiceSource):
                 dashboard_url = None
 
             dashboard_request = CreateDashboardRequest(
-                name=dashboard_details.qDocId,
-                sourceUrl=dashboard_url,
+                name=EntityName(dashboard_details.qDocId),
+                sourceUrl=SourceUrl(dashboard_url),
                 displayName=dashboard_details.qDocName,
-                description=dashboard_details.qMeta.description,
+                description=Markdown(dashboard_details.qMeta.description)
+                if dashboard_details.qMeta.description
+                else None,
                 charts=[
-                    fqn.build(
-                        self.metadata,
-                        entity_type=Chart,
-                        service_name=self.context.dashboard_service,
-                        chart_name=chart,
+                    FullyQualifiedEntityName(
+                        fqn.build(
+                            self.metadata,
+                            entity_type=Chart,
+                            service_name=self.context.get().dashboard_service,
+                            chart_name=chart,
+                        )
                     )
-                    for chart in self.context.charts
+                    for chart in self.context.get().charts or []
                 ],
-                service=self.context.dashboard_service,
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),
+                owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
@@ -167,12 +186,16 @@ class QliksenseSource(DashboardServiceSource):
                     continue
                 yield Either(
                     right=CreateChartRequest(
-                        name=chart.qInfo.qId,
+                        name=EntityName(chart.qInfo.qId),
                         displayName=chart.qMeta.title,
-                        description=chart.qMeta.description,
+                        description=Markdown(chart.qMeta.description)
+                        if chart.qMeta.description
+                        else None,
                         chartType=ChartType.Other,
-                        sourceUrl=chart_url,
-                        service=self.context.dashboard_service,
+                        sourceUrl=SourceUrl(chart_url),
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
                     )
                 )
             except Exception as exc:  # pylint: disable=broad-except
@@ -214,17 +237,18 @@ class QliksenseSource(DashboardServiceSource):
                     ):
                         self.status.filter(data_model_name, "Data model filtered out.")
                         continue
-
                     data_model_request = CreateDashboardDataModelRequest(
-                        name=data_model.id,
+                        name=EntityName(data_model.id),
                         displayName=data_model_name,
-                        service=self.context.dashboard_service,
-                        dataModelType=DataModelType.QlikSenseDataModel.value,
-                        serviceType=DashboardServiceType.QlikSense.value,
+                        service=FullyQualifiedEntityName(
+                            self.context.get().dashboard_service
+                        ),
+                        dataModelType=DataModelType.QlikDataModel.value,
+                        serviceType=self.service_connection.type.value,
                         columns=self.get_column_info(data_model),
                     )
                     yield Either(right=data_model_request)
-                    self.register_record_datamodel(datamodel_requst=data_model_request)
+                    self.register_record_datamodel(datamodel_request=data_model_request)
                 except Exception as exc:
                     name = (
                         data_model.tableName if data_model.tableName else data_model.id
@@ -237,12 +261,12 @@ class QliksenseSource(DashboardServiceSource):
                         )
                     )
 
-    def _get_datamodel(self, datamodel: QlikTable):
+    def _get_datamodel(self, datamodel_id: str):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
-            data_model_name=datamodel.id,
+            service_name=self.context.get().dashboard_service,
+            data_model_name=datamodel_id,
         )
         if datamodel_fqn:
             return self.metadata.get_by_name(
@@ -274,7 +298,7 @@ class QliksenseSource(DashboardServiceSource):
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
-                    service_name=db_service_entity.name.__root__,
+                    service_name=db_service_entity.name.root,
                     schema_name=schema_name,
                     table_name=datamodel.tableName,
                     database_name=database_name,
@@ -300,14 +324,20 @@ class QliksenseSource(DashboardServiceSource):
         )
         for datamodel in self.data_models or []:
             try:
-                data_model_entity = self._get_datamodel(datamodel=datamodel)
+                data_model_entity = self._get_datamodel(datamodel_id=datamodel.id)
                 if data_model_entity:
                     om_table = self._get_database_table(
                         db_service_entity, datamodel=datamodel
                     )
                     if om_table:
+                        columns_list = [col.name for col in datamodel.fields]
+                        column_lineage = self._get_column_lineage(
+                            om_table, data_model_entity, columns_list
+                        )
                         yield self._get_add_lineage_request(
-                            to_entity=data_model_entity, from_entity=om_table
+                            to_entity=data_model_entity,
+                            from_entity=om_table,
+                            column_lineage=column_lineage,
                         )
             except Exception as err:
                 yield Either(

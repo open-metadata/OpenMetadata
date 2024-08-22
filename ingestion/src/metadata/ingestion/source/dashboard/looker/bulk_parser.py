@@ -67,7 +67,7 @@ class BulkLkmlParser(metaclass=Singleton):
         file_paths = self.reader.get_local_files(search_key=".view.lkml")
         for _path in file_paths:
             file = self._read_file(Includes(_path))
-            lkml_file = LkmlFile.parse_obj(lkml.load(file))
+            lkml_file = LkmlFile.model_validate(lkml.load(file))
             self.parsed_files[Includes(_path)] = file
             for view in lkml_file.views:
                 view.source_file = _path
@@ -120,7 +120,7 @@ class BulkLkmlParser(metaclass=Singleton):
         """
         if isinstance(self.reader, ApiReader):
             return (
-                f"Parser at [{self.reader.credentials.repositoryOwner.__root__}/"
-                f"{self.reader.credentials.repositoryName.__root__}]"
+                f"Parser at [{self.reader.credentials.repositoryOwner.root}/"
+                f"{self.reader.credentials.repositoryName.root}]"
             )
         return f"Parser at [{self.reader}]"

@@ -13,9 +13,13 @@
 
 import { OktaAuth, OktaAuthOptions } from '@okta/okta-auth-js';
 import { Security } from '@okta/okta-react';
-import React, { FunctionComponent, ReactNode } from 'react';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from './AuthProvider';
+import React, {
+  FunctionComponent,
+  ReactNode,
+  useCallback,
+  useMemo,
+} from 'react';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
 
 interface Props {
@@ -27,42 +31,46 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
   children,
   onLoginSuccess,
 }: Props) => {
-  const { authConfig, setIsAuthenticated } = useAuthContext();
+  const { authConfig, setOidcToken } = useApplicationStore();
   const { clientId, issuer, redirectUri, scopes, pkce } =
     authConfig as OktaAuthOptions;
-  const oktaAuth = new OktaAuth({
-    clientId,
-    issuer,
-    redirectUri,
-    scopes,
-    pkce,
-    tokenManager: {
-      autoRenew: false,
-    },
-  });
+
+  const oktaAuth = useMemo(
+    () =>
+      new OktaAuth({
+        clientId,
+        issuer,
+        redirectUri,
+        scopes,
+        pkce,
+        tokenManager: {
+          autoRenew: false,
+        },
+      }),
+    [clientId, issuer, redirectUri, scopes, pkce]
+  );
 
   const triggerLogin = async () => {
     await oktaAuth.signInWithRedirect();
   };
 
-  const restoreOriginalUri = async (_oktaAuth: OktaAuth) => {
-    const idToken = _oktaAuth.getIdToken() || '';
+  const restoreOriginalUri = useCallback(async (_oktaAuth: OktaAuth) => {
+    const idToken = _oktaAuth.getIdToken() ?? '';
     const scopes =
       _oktaAuth.authStateManager.getAuthState()?.idToken?.scopes.join() || '';
-    localState.setOidcToken(idToken);
+    setOidcToken(idToken);
     _oktaAuth
       .getUser()
       .then((info) => {
-        setIsAuthenticated(true);
         const user = {
           id_token: idToken,
           scope: scopes,
           profile: {
-            email: info.email || '',
-            name: info.name || '',
+            email: info.email ?? '',
+            name: info.name ?? '',
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            picture: (info as any).imageUrl || '',
-            locale: info.locale || '',
+            picture: (info as any).imageUrl ?? '',
+            locale: info.locale ?? '',
             sub: info.sub,
           },
         };
@@ -72,9 +80,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
         // eslint-disable-next-line no-console
         console.error(err);
       });
-
-    return;
-  };
+  }, []);
 
   const customAuthHandler = async () => {
     const previousAuthState = oktaAuth.authStateManager.getPreviousAuthState();

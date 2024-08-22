@@ -12,11 +12,11 @@ from dbt_artifacts_parser.parser import parse_catalog, parse_manifest, parse_run
 from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.table import Column, DataModel, Table
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -47,6 +47,7 @@ mock_dbt_config = {
             "config": {
                 "type": "DBT",
                 "dbtConfigSource": {
+                    "dbtConfigType": "local",
                     "dbtCatalogFilePath": "sample/dbt_files/catalog.json",
                     "dbtManifestFilePath": "sample/dbt_files/manifest.json",
                     "dbtRunResultsFilePath": "sample/dbt_files/run_results.json",
@@ -99,22 +100,21 @@ EXPECTED_DATA_MODELS = [
         resourceType="model",
         sql="sample customers compile code",
         upstream=[],
-        owner=EntityReference(
-            id="cb2a92f5-e935-4ad7-911c-654280046538",
-            type="user",
-            name=None,
-            fullyQualifiedName="aaron_johnson0",
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=AnyUrl(
-                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-            ),
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    name=None,
+                    fullyQualifiedName="aaron_johnson0",
+                    description=None,
+                    displayName=None,
+                    deleted=None,
+                    href=AnyUrl(
+                        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+                    ),
+                )
+            ]
         ),
         tags=[
             TagLabel(
@@ -167,22 +167,21 @@ EXPECTED_DATA_MODEL_NULL_DB = [
         resourceType="model",
         sql="sample customers_null_db compiled code",
         upstream=[],
-        owner=EntityReference(
-            id="cb2a92f5-e935-4ad7-911c-654280046538",
-            type="user",
-            name=None,
-            fullyQualifiedName="aaron_johnson0",
-            description=None,
-            displayName=None,
-            deleted=None,
-            href=AnyUrl(
-                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-                scheme="http",
-                host="localhost",
-                host_type="int_domain",
-                port="8585",
-                path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-            ),
+        owners=EntityReferenceList(
+            root=[
+                EntityReference(
+                    id="cb2a92f5-e935-4ad7-911c-654280046538",
+                    type="user",
+                    name=None,
+                    fullyQualifiedName="aaron_johnson0",
+                    description=None,
+                    displayName=None,
+                    deleted=None,
+                    href=AnyUrl(
+                        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+                    ),
+                )
+            ]
         ),
         tags=None,
         columns=[
@@ -198,33 +197,30 @@ EXPECTED_DATA_MODEL_NULL_DB = [
     ),
 ]
 
-MOCK_OWNER = EntityReference(
-    id="cb2a92f5-e935-4ad7-911c-654280046538",
-    type="user",
-    name=None,
-    fullyQualifiedName="aaron_johnson0",
-    description=None,
-    displayName=None,
-    deleted=None,
-    href=AnyUrl(
-        "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-        scheme="http",
-        host="localhost",
-        host_type="int_domain",
-        port="8585",
-        path="/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
-    ),
+MOCK_OWNER = EntityReferenceList(
+    root=[
+        EntityReference(
+            id="cb2a92f5-e935-4ad7-911c-654280046538",
+            type="user",
+            name=None,
+            fullyQualifiedName="aaron_johnson0",
+            description=None,
+            displayName=None,
+            deleted=None,
+            href=AnyUrl(
+                "http://localhost:8585/api/v1/users/cb2a92f5-e935-4ad7-911c-654280046538",
+            ),
+        )
+    ]
 )
 
-MOCK_USER = [
-    User(
-        id=uuid.uuid4(),
-        name="aaron_johnson0",
-        email="aaron_johnson0@gmail.com",
-        href="http://localhost:8585/api/v1/users/d96eccb9-9a9b-40ad-9585-0a8a71665c51",
-        fullyQualifiedName="aaron_johnson0",
-    )
-]
+MOCK_USER = EntityReference(
+    id="70064aef-f085-4658-a11a-b5f46568e980",
+    name="aaron_johnson0",
+    type="user",
+    href="http://localhost:8585/api/v1/users/d96eccb9-9a9b-40ad-9585-0a8a71665c51",
+    fullyQualifiedName="aaron_johnson0",
+)
 
 
 MOCK_TABLE_ENTITIES = [
@@ -268,6 +264,21 @@ MOCK_TAG_LABELS = [
     ),
 ]
 
+MOCK_GLOASSARY_LABELS = [
+    TagLabel(
+        tagFQN="Test_Glossary.term_one",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Glossary,
+    ),
+    TagLabel(
+        tagFQN="Test_Glossary.term_two.nested_term.more_nested_term",
+        labelType=LabelType.Automated,
+        state=State.Suggested,
+        source=TagSource.Glossary,
+    ),
+]
+
 
 class DbtUnitTest(TestCase):
     """
@@ -279,7 +290,7 @@ class DbtUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_dbt_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_dbt_config)
         self.dbt_source_obj = DbtSource.create(
             mock_dbt_config["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
@@ -459,12 +470,14 @@ class DbtUnitTest(TestCase):
         result = get_dbt_raw_query(mnode=manifest_node)
         self.assertEqual(expected_query, result)
 
-    @patch("metadata.ingestion.ometa.mixins.es_mixin.ESMixin.es_search_from_fqn")
-    def test_dbt_owner(self, es_search_from_fqn):
+    @patch(
+        "metadata.ingestion.ometa.mixins.user_mixin.OMetaUserMixin.get_reference_by_name"
+    )
+    def test_dbt_owner(self, get_reference_by_name):
         """
         This test requires having the sample data properly indexed
         """
-        es_search_from_fqn.return_value = MOCK_USER
+        get_reference_by_name.return_value = MOCK_USER
         _, dbt_objects = self.get_dbt_object_files(
             mock_manifest=MOCK_SAMPLE_MANIFEST_V8
         )
@@ -474,7 +487,9 @@ class DbtUnitTest(TestCase):
         result = self.dbt_source_obj.get_dbt_owner(
             manifest_node=manifest_node, catalog_node=None
         )
-        self.assertEqual("aaron_johnson0", result.fullyQualifiedName)
+        self.assertEqual(
+            "70064aef-f085-4658-a11a-b5f46568e980", result.id.root.__str__()
+        )
 
     def execute_test(self, mock_manifest, expected_records, expected_data_models):
         dbt_files, dbt_objects = self.get_dbt_object_files(mock_manifest)
@@ -493,7 +508,7 @@ class DbtUnitTest(TestCase):
             if dbt_files.dbt_catalog
             else None,
             dbt_manifest=parse_manifest(dbt_files.dbt_manifest),
-            dbt_run_results=parse_run_results(dbt_files.dbt_run_results)
+            dbt_run_results=[parse_run_results(dbt_files.dbt_run_results)]
             if dbt_files.dbt_run_results
             else None,
         )
@@ -515,7 +530,7 @@ class DbtUnitTest(TestCase):
         for data_model_link in yield_data_models:
             if isinstance(data_model_link, Either) and data_model_link.right:
                 self.assertIn(
-                    data_model_link.right.table_entity.fullyQualifiedName.__root__,
+                    data_model_link.right.table_entity.fullyQualifiedName.root,
                     EXPECTED_DATA_MODEL_FQNS,
                 )
                 data_model_list.append(data_model_link.right.datamodel)
@@ -524,3 +539,32 @@ class DbtUnitTest(TestCase):
             zip(expected_data_models, data_model_list)
         ):
             self.assertEqual(expected, original)
+
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_glossary_tiers(self, get_tag_label):
+        get_tag_label.side_effect = [
+            TagLabel(
+                tagFQN="Test_Glossary.term_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+            TagLabel(
+                tagFQN="Test_Glossary.term_two.nested_term.more_nested_term",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+        ]
+
+        _, dbt_objects = self.get_dbt_object_files(
+            mock_manifest=MOCK_SAMPLE_MANIFEST_V8
+        )
+        manifest_node = dbt_objects.dbt_manifest.nodes.get(
+            "model.jaffle_shop.customers"
+        )
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_node.meta
+        )
+
+        self.assertEqual(dbt_meta_tags, MOCK_GLOASSARY_LABELS)

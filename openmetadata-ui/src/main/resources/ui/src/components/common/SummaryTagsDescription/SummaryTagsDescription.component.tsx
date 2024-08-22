@@ -14,15 +14,15 @@ import { Col, Divider, Row, Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import { BasicEntityInfo } from '../../Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 
 const SummaryTagsDescription = ({
-  tags,
+  tags = [],
   entityDetail,
 }: {
-  tags: TagLabel[];
+  tags: BasicEntityInfo['tags'];
   entityDetail: EntityUnion;
 }) => {
   const { t } = useTranslation();
@@ -37,13 +37,9 @@ const SummaryTagsDescription = ({
             {t('label.tag-plural')}
           </Typography.Text>
         </Col>
-        <Col span={24}>
+        <Col className="d-flex flex-wrap gap-2" span={24}>
           {tags.length > 0 ? (
-            <Row>
-              <Col className="d-flex flex-wrap" span={23}>
-                <TagsViewer sizeCap={-1} tags={tags} />
-              </Col>
-            </Row>
+            <TagsViewer sizeCap={-1} tags={tags} />
           ) : (
             <Typography.Text className="text-grey-body">
               {t('label.no-tags-added')}
@@ -67,7 +63,7 @@ const SummaryTagsDescription = ({
             {entityDetail.description?.trim() ? (
               <RichTextEditorPreviewer
                 markdown={entityDetail.description}
-                maxLength={80}
+                maxLength={200}
               />
             ) : (
               <Typography className="text-grey-body">

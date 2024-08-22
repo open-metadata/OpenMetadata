@@ -15,8 +15,7 @@ import { Col, Divider, Row, Typography } from 'antd';
 import { get, isArray, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { getTeamAndUserDetailsPath } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { TagLabel, Topic } from '../../../../generated/entity/data/topic';
 import { getTopicByFqn } from '../../../../rest/topicsAPI';
@@ -24,16 +23,14 @@ import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
 } from '../../../../utils/EntitySummaryPanelUtils';
-import {
-  DRAWER_NAVIGATION_OPTIONS,
-  getOwnerNameWithProfilePic,
-} from '../../../../utils/EntityUtils';
-import { bytesToSize, getEncodedFqn } from '../../../../utils/StringsUtils';
+import { DRAWER_NAVIGATION_OPTIONS } from '../../../../utils/EntityUtils';
+import { bytesToSize } from '../../../../utils/StringsUtils';
 import { getConfigObject } from '../../../../utils/TopicDetailsUtils';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import { TopicConfigObjectInterface } from '../../../TopicDetails/TopicDetails.interface';
+import { TopicConfigObjectInterface } from '../../../Topic/TopicDetails/TopicDetails.interface';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 
@@ -72,25 +69,18 @@ function TopicSummary({
   }, [entityDetails, topicDetails]);
 
   const ownerDetails = useMemo(() => {
-    const owner = entityDetails.owner;
+    const owners = entityDetails.owners;
 
     return {
-      value:
-        getOwnerNameWithProfilePic(owner) ??
-        t('label.no-entity', {
-          entity: t('label.owner'),
-        }),
-      url: getTeamAndUserDetailsPath(owner?.name ?? ''),
-      isLink: !isEmpty(owner?.name),
+      value: <OwnerLabel hasPermission={false} owners={owners} />,
     };
   }, [entityDetails, topicDetails]);
 
   const fetchExtraTopicInfo = useCallback(async () => {
     try {
-      const res = await getTopicByFqn(
-        getEncodedFqn(entityDetails.fullyQualifiedName ?? ''),
-        ['tags', 'owner']
-      );
+      const res = await getTopicByFqn(entityDetails.fullyQualifiedName ?? '', {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
+      });
 
       const { partitions, messageSchema } = res;
 
@@ -122,17 +112,7 @@ function TopicSummary({
         <Row className="m-md m-t-0" gutter={[0, 4]}>
           {!isExplore ? (
             <Col className="p-b-md" span={24}>
-              {ownerDetails.isLink ? (
-                <Link
-                  component={Typography.Link}
-                  to={{ pathname: ownerDetails.url }}>
-                  {ownerDetails.value}
-                </Link>
-              ) : (
-                <Typography.Text className="text-grey-muted">
-                  {ownerDetails.value}
-                </Typography.Text>
-              )}
+              {ownerDetails.value}
             </Col>
           ) : null}
           <Col span={24}>
@@ -167,15 +147,10 @@ function TopicSummary({
           entityDetail={entityDetails}
           tags={
             tags ??
-            getSortedTagsWithHighlight({
-              tags: entityDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ??
-            []
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
           }
         />
         <Divider className="m-y-xs" />

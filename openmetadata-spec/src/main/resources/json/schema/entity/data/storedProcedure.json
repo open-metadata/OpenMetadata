@@ -8,13 +8,6 @@
   "javaType": "org.openmetadata.schema.entity.data.StoredProcedure",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "entityName": {
-      "description": "Name of a Stored Procedure. Expected to be unique within a database schema.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256,
-      "pattern": "^((?!::).)*$"
-    },
     "storedProcedureCode": {
       "properties": {
         "language": {
@@ -25,7 +18,8 @@
             "SQL",
             "Java",
             "JavaScript",
-            "Python"
+            "Python",
+            "External"
           ],
           "javaEnums": [
             {
@@ -39,6 +33,9 @@
             },
             {
               "name": "Python"
+            },
+            {
+              "name": "External"
             }
           ]
         },
@@ -57,7 +54,7 @@
     },
     "name": {
       "description": "Name of Stored Procedure.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Fully qualified name of a Stored Procedure.",
@@ -120,16 +117,17 @@
       "type": "boolean",
       "default": false
     },
-    "owner": {
-      "description": "Owner of this Query.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Stored Procedure.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "followers": {
-      "description": "Followers of this Query.",
+      "description": "Followers of this Stored Procedure.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "votes" : {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "code": {

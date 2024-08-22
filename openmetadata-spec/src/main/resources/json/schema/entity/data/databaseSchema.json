@@ -7,14 +7,8 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.DatabaseSchema",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-    "entityName": {
-      "description": "Name of a table. Expected to be unique within a database.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 128,
-      "pattern": "^((?!::).)*$"
-    }
+"definitions": {
+   
   },
   "properties": {
     "id": {
@@ -23,7 +17,7 @@
     },
     "name": {
       "description": "Name that identifies the schema.",
-      "$ref": "#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "Name that uniquely identifies a schema in the format 'ServiceName.DatabaseName.SchemaName'.",
@@ -57,9 +51,9 @@
       "description": "Link to the resource corresponding to this entity.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
+    "owners": {
       "description": "Owner of this schema.",
-      "$ref": "../../type/entityReference.json"
+      "$ref": "../../type/entityReferenceList.json"
     },
     "service": {
       "description": "Link to the database cluster/service where this schema is hosted in.",
@@ -111,11 +105,12 @@
       "description": "Source URL of database schema.",
       "$ref": "../../type/basic.json#/definitions/sourceUrl"
     },
-    "domain" : {
+    "domain": {
       "description": "Domain the Database Schema belongs to. When not set, the Schema inherits the domain from the database it belongs to.",
       "$ref": "../../type/entityReference.json"
     },
-    "votes" : {
+    "votes": {
+      "description": "Votes on the entity.",
       "$ref": "../../type/votes.json"
     },
     "lifeCycle": {

@@ -18,23 +18,29 @@ import {
   Radio,
   RadioChangeEvent,
   Space,
+  Spin,
   Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import { t } from 'i18next';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { getTags } from '../../../rest/tagAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
+import Loader from '../Loader/Loader';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import './tier-card.style.less';
 import { CardWithListItems, TierCardProps } from './TierCard.interface';
 
 const { Panel } = Collapse;
-const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
+const TierCard = ({
+  currentTier,
+  updateTier,
+  children,
+  popoverProps,
+}: TierCardProps) => {
   const [tiers, setTiers] = useState<Array<Tag>>([]);
   const [tierCardData, setTierCardData] = useState<Array<CardWithListItems>>(
     []
@@ -50,7 +56,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
 
       if (data) {
         const tierData: CardWithListItems[] =
-          data.map((tier: { name: string; description: string }) => ({
+          data.map((tier) => ({
             id: `Tier${FQN_SEPARATOR_CHAR}${tier.name}`,
             title: getEntityName(tier),
             description: tier.description.substring(
@@ -60,6 +66,7 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
             data: tier.description.substring(
               tier.description.indexOf('\n\n') + 1
             ),
+            style: tier.style,
           })) ?? [];
         setTierCardData(tierData);
         setTiers(data);
@@ -78,14 +85,24 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
     }
   };
 
-  const handleTierSelection = ({ target: { value } }: RadioChangeEvent) => {
+  const updateTierData = async (value?: string) => {
+    setIsLoadingTierData(true);
     const tier = tiers.find((tier) => tier.fullyQualifiedName === value);
-    updateTier?.(tier);
+    await updateTier?.(tier);
+    setIsLoadingTierData(false);
   };
 
-  const clearTierSelection = () => {
-    updateTier?.();
+  const handleTierSelection = async ({
+    target: { value },
+  }: RadioChangeEvent) => {
+    updateTierData(value);
   };
+
+  useEffect(() => {
+    if (popoverProps?.open && tierCardData.length === 0) {
+      getTierData();
+    }
+  }, [popoverProps?.open]);
 
   return (
     <Popover
@@ -102,49 +119,55 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
               <Typography.Text
                 className="m-b-0 font-normal text-primary cursor-pointer"
                 data-testid="clear-tier"
-                onClick={clearTierSelection}>
+                // we need to pass undefined to clear the tier
+                onClick={() => updateTierData()}>
                 {t('label.clear')}
               </Typography.Text>
             </Space>
           }>
-          <Radio.Group value={currentTier} onChange={handleTierSelection}>
-            <Collapse
-              accordion
-              className="bg-white border-none"
-              collapsible="icon"
-              defaultActiveKey={currentTier}
-              expandIconPosition="end">
-              {tierCardData.map((card) => (
-                <Panel
-                  data-testid="card-list"
-                  header={
-                    <Radio
-                      className="radio-input"
-                      data-testid={`radio-btn-${card.title}`}
-                      value={card.id}>
-                      <Space direction="vertical" size={0}>
-                        <Typography.Paragraph className="m-b-0 font-regular text-grey-body">
-                          {card.title}
-                        </Typography.Paragraph>
-                        <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
-                          {card.description.replace(/\*/g, '')}
-                        </Typography.Paragraph>
-                      </Space>
-                    </Radio>
-                  }
-                  key={card.id}>
-                  <div className="m-l-md">
-                    <RichTextEditorPreviewer
-                      className="tier-card-description"
-                      enableSeeMoreVariant={false}
-                      markdown={card.data}
-                    />
-                  </div>
-                </Panel>
-              ))}
-            </Collapse>
-          </Radio.Group>
-          {isLoadingTierData && <Loader />}
+          <Spin
+            indicator={<Loader size="small" />}
+            spinning={isLoadingTierData}>
+            <Radio.Group value={currentTier} onChange={handleTierSelection}>
+              <Collapse
+                accordion
+                className="bg-white border-none"
+                collapsible="icon"
+                defaultActiveKey={currentTier}
+                expandIconPosition="end">
+                {tierCardData.map((card) => (
+                  <Panel
+                    data-testid="card-list"
+                    header={
+                      <Radio
+                        className="radio-input"
+                        data-testid={`radio-btn-${card.title}`}
+                        value={card.id}>
+                        <Space direction="vertical" size={0}>
+                          <Typography.Paragraph
+                            className="m-b-0 font-regular text-grey-body"
+                            style={{ color: card.style?.color }}>
+                            {card.title}
+                          </Typography.Paragraph>
+                          <Typography.Paragraph className="m-b-0 font-regular text-xs text-grey-muted">
+                            {card.description.replace(/\*/g, '')}
+                          </Typography.Paragraph>
+                        </Space>
+                      </Radio>
+                    }
+                    key={card.id}>
+                    <div className="m-l-md">
+                      <RichTextEditorPreviewer
+                        className="tier-card-description"
+                        enableSeeMoreVariant={false}
+                        markdown={card.data}
+                      />
+                    </div>
+                  </Panel>
+                ))}
+              </Collapse>
+            </Radio.Group>
+          </Spin>
         </Card>
       }
       overlayClassName="tier-card-popover"
@@ -153,7 +176,8 @@ const TierCard = ({ currentTier, updateTier, children }: TierCardProps) => {
       trigger="click"
       onOpenChange={(visible) =>
         visible && !tierCardData.length && getTierData()
-      }>
+      }
+      {...popoverProps}>
       {children}
     </Popover>
   );

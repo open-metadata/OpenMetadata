@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Badge, Button, Typography } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
 
 interface LeftSidebarItemProps {
@@ -20,37 +21,48 @@ interface LeftSidebarItemProps {
     key: string;
     label: string;
     dataTestId: string;
-    redirect_url: string;
+    redirect_url?: string;
     icon: SvgComponent;
+    isBeta?: boolean;
+    onClick?: () => void;
   };
 }
 
 const LeftSidebarItem = ({
-  data: { key, label, icon, redirect_url, dataTestId },
+  data: { label, redirect_url, dataTestId, icon, isBeta, onClick },
 }: LeftSidebarItemProps) => {
-  const Icon = icon;
+  const { t } = useTranslation();
 
-  return (
-    <Tooltip
-      overlayClassName="left-panel-tooltip"
-      placement="right"
-      title={
+  return redirect_url ? (
+    <NavLink
+      className="left-panel-item no-underline"
+      data-testid={dataTestId}
+      to={{
+        pathname: redirect_url,
+      }}>
+      <div className="d-flex items-center">
+        <Icon component={icon} />
         <Typography.Text className="left-panel-label">{label}</Typography.Text>
-      }>
-      <NavLink
-        className={classNames(
-          'no-underline d-flex justify-center left-panel-item',
-          {
-            active: location.pathname.startsWith(key),
-          }
+
+        {isBeta && (
+          <Badge
+            className="service-beta-tag"
+            count={t('label.beta')}
+            offset={[10, 0]}
+            size="small"
+          />
         )}
-        data-testid={dataTestId}
-        to={{
-          pathname: redirect_url,
-        }}>
-        <Icon width={30} />
-      </NavLink>
-    </Tooltip>
+      </div>
+    </NavLink>
+  ) : (
+    <Button
+      className="left-panel-item d-flex items-center p-0"
+      data-testid={dataTestId}
+      type="text"
+      onClick={onClick}>
+      <Icon component={icon} />
+      <Typography.Text className="left-panel-label">{label}</Typography.Text>
+    </Button>
   );
 };
 

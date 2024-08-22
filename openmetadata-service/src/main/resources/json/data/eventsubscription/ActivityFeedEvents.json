@@ -3,26 +3,135 @@
   "fullyQualifiedName": "ActivityFeedAlert",
   "displayName": "Activity Feed Alerts",
   "description": "Alerts received on the Activity Feed are controlled with this.",
-  "alertType": "ChangeEvent",
+  "alertType": "ActivityFeed",
   "filteringRules":{
     "resources": ["all"],
     "rules": [
       {
-        "name": "matchUpdatedBy",
-        "effect": "exclude",
-        "condition": "matchUpdatedBy('ingestion-bot')"
+        "name": "matchAnyEventType",
+        "effect": "include",
+        "condition": "matchAnyEventType({'entityCreated', 'entityDeleted', 'entitySoftDeleted'}) && !matchUpdatedBy({'ingestion-bot'}) && !matchAnySource({'user', 'ingestionPipeline', 'workflow'})",
+        "prefixCondition": "AND"
       },
       {
         "name": "matchAnyFieldChange",
+        "effect": "include",
+        "condition": "matchAnyFieldChange({'testCaseResult'})",
+        "prefixCondition": "OR"
+      },
+      {
+        "name": "matchAnyFieldChange",
+        "effect": "include",
+        "condition": "matchAnyFieldChange({'description', 'domain', 'owners', 'tags', 'followers', 'extension','parameterValues', 'assets'})",
+        "prefixCondition": "OR"
+      },
+      {
+        "name": "matchAnySource",
+        "effect": "include",
+        "prefixCondition": "AND",
+        "condition": "matchAnySource({'chart','container','dashboard','dashboardDataModel','database','databaseSchema','glossary','glossaryTerm','mlmodel','pipeline','query','report','searchIndex','storedProcedure','table','topic','testSuite','testCase', 'domain', 'dataProduct'})"
+      },
+      {
+        "name": "matchUpdatedBy",
         "effect": "exclude",
-        "condition": "matchAnyFieldChange('usageSummary')"
+        "condition": "matchUpdatedBy({'ingestion-bot'})",
+        "prefixCondition": "AND"
       }
     ]
   },
-  "subscriptionType": "ActivityFeed",
-  "subscriptionConfig": {
-    "description": "Feed Subscription Endpoint"
+  "destinations": [
+    {
+      "id": "fc9e7a84-5dbd-4e63-8b78-6c3a7bf04a65",
+      "category": "External",
+      "type": "ActivityFeed"
+    }
+  ],
+  "input": {
+    "filters": [
+      {
+        "name": "filterByEventType",
+        "effect" : "include",
+        "prefixCondition": "OR",
+        "arguments": [
+          {
+            "name": "eventTypeList",
+            "input": [
+              "entityCreated",
+              "entityDeleted",
+              "entitySoftDeleted"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterByFieldChange",
+        "effect" : "include",
+        "prefixCondition": "AND",
+        "arguments": [
+          {
+            "name": "fieldChangeList",
+            "input": [
+              "description",
+              "domain",
+              "owners",
+              "tags",
+              "followers",
+              "extension",
+              "parameterValues",
+              "testCaseResult",
+              "pipelineStatus"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterBySource",
+        "effect" : "include",
+        "prefixCondition": "AND",
+        "arguments": [
+          {
+            "name": "sourceList",
+            "input": [
+              "chart",
+              "container",
+              "dashboard",
+              "dashboardDataModel",
+              "database",
+              "databaseSchema",
+              "glossary",
+              "glossaryTerm",
+              "mlmodel",
+              "pipeline",
+              "query",
+              "report",
+              "searchIndex",
+              "storedProcedure",
+              "table",
+              "topic",
+              "testSuite",
+              "testCase",
+              "domain",
+              "dataProduct"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "filterByUpdaterName",
+        "effect" : "exclude",
+        "prefixCondition": "AND",
+        "arguments": [
+          {
+            "name": "updateByUserList",
+            "input": [
+              "ingestion-bot"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "provider" : "system",
+  "pollInterval" : 30,
   "enabled" : true
 }

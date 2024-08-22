@@ -19,6 +19,7 @@
       "enum": [
         "S3",
         "ADLS",
+        "GCS",
         "CustomStorage"
       ],
       "javaEnums": [
@@ -29,6 +30,9 @@
           "name": "ADLS"
         },
         {
+          "name": "GCS"
+        },
+        {
           "name": "CustomStorage"
         }
       ]
@@ -36,7 +40,7 @@
     "storageConnection": {
       "type": "object",
       "javaType": "org.openmetadata.schema.type.StorageConnection",
-      "description": "storage Connection.",
+      "description": "Storage Connection.",
       "javaInterfaces": [
         "org.openmetadata.schema.ServiceConnectionEntityInterface"
       ],
@@ -49,6 +53,9 @@
             },
             {
               "$ref": "connections/storage/adlsConnection.json"
+            },
+            {
+              "$ref": "connections/storage/gcsConnection.json"
             },
             {
               "$ref": "connections/storage/customStorageConnection.json"
@@ -119,9 +126,9 @@
       "description": "Link to the resource corresponding to this storage service.",
       "$ref": "../../type/basic.json#/definitions/href"
     },
-    "owner": {
-      "description": "Owner of this storage service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this storage service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "changeDescription": {
       "description": "Change that lead to this version of the entity.",

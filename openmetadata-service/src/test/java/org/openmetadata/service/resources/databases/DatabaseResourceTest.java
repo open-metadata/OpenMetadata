@@ -25,6 +25,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.csv.EntityCsvTest.getSuccessRecord;
 import static org.openmetadata.service.util.EntityUtil.getFqn;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
@@ -34,6 +35,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +46,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -53,6 +56,7 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository.DatabaseSchemaCsv
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -117,7 +121,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
     // Update databaseSchema with invalid tags field
     String resultsHeader = recordToString(EntityCsv.getResultHeaders(DatabaseCsv.HEADERS));
-    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,";
+    String record = "s1,dsp1,dsc1,,Tag.invalidTag,,,,,";
     String csv = createCsv(DatabaseCsv.HEADERS, listOf(record), null);
     CsvImportResult result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
@@ -127,18 +131,27 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         };
     assertRows(result, expectedRows);
 
-    // Existing schema can be updated. New schema can't be created.
-    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,";
+    //  invalid tag it will give error.
+    record = "non-existing,dsp1,dsc1,,Tag.invalidTag,,,,,";
     csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
     result = importCsv(databaseName, csv, false);
     assertSummary(result, ApiStatus.FAILURE, 2, 1, 1);
-    String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), "non-existing");
     expectedRows =
         new String[] {
-          resultsHeader,
-          getFailedRecord(record, entityNotFound(0, Entity.DATABASE_SCHEMA, schemaFqn))
+          resultsHeader, getFailedRecord(record, entityNotFound(4, "tag", "Tag.invalidTag"))
         };
     assertRows(result, expectedRows);
+
+    // databaseSchema will be created if it does not exist
+    String schemaFqn = FullyQualifiedName.add(database.getFullyQualifiedName(), "non-existing");
+    record = "non-existing,dsp1,dsc1,,,,,,,";
+    csv = createCsv(DatabaseSchemaCsv.HEADERS, listOf(record), null);
+    result = importCsv(databaseName, csv, false);
+    assertSummary(result, ApiStatus.SUCCESS, 2, 2, 0);
+    expectedRows = new String[] {resultsHeader, getSuccessRecord(record, "Entity created")};
+    assertRows(result, expectedRows);
+    DatabaseSchema createdSchema = schemaTest.getEntityByName(schemaFqn, "id", ADMIN_AUTH_HEADERS);
+    assertEquals(schemaFqn, createdSchema.getFullyQualifiedName());
   }
 
   @Test
@@ -150,11 +163,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
         schemaTest.createRequest("s1").withDatabase(database.getFullyQualifiedName());
     schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
 
-    // Headers: name, displayName, description, owner, tags, retentionPeriod, sourceUrl, domain
+    // Headers: name, displayName, description, owner, tags, glossaryTerms, tiers, retentionPeriod,
+    // sourceUrl, domain
     // Update terms with change in description
     String record =
         String.format(
-            "s1,dsp1,new-dsc1,user;%s,Tier.Tier1,P23DT23H,http://test.com,%s",
+            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
             user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
@@ -182,12 +196,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
     assertListNull(
-        database.getOwner(),
+        database.getOwners(),
         database.getDatabaseSchemas(),
         database.getUsageSummary(),
         database.getLocation());
 
-    fields = "owner,databaseSchemas,usageSummary,location,tags";
+    fields = "owners,databaseSchemas,usageSummary,location,tags";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -238,6 +252,17 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.endsWith("owners") && (expected != null && actual != null)) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedOwners =
+          expected instanceof List
+              ? (List<EntityReference>) expected
+              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
+      List<EntityReference> actualOwners =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertOwners(expectedOwners, actualOwners);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

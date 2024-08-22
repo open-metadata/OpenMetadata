@@ -13,12 +13,20 @@
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { EntityDetailUnion } from 'Models';
-import { MapPatchAPIResponse } from '../../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { MapPatchAPIResponse } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { EntityType } from '../../enums/entity.enum';
-import { SearchIndex } from '../../enums/search.enum';
 import { Table } from '../../generated/entity/data/table';
 import { Domain } from '../../generated/entity/domains/domain';
+import { ListParams } from '../../interface/API.interface';
+import {
+  getApiCollectionByFQN,
+  patchApiCollection,
+} from '../../rest/apiCollectionsAPI';
+import {
+  getApiEndPointByFQN,
+  patchApiEndPoint,
+} from '../../rest/apiEndpointsAPI';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
@@ -30,7 +38,7 @@ import {
   patchDatabaseSchemaDetails,
 } from '../../rest/databaseAPI';
 import {
-  getDataModelsByName,
+  getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
 import {
@@ -54,12 +62,13 @@ import {
   patchContainerDetails,
 } from '../../rest/storageAPI';
 import {
-  getStoredProceduresByName,
+  getStoredProceduresByFqn,
   patchStoredProceduresDetails,
 } from '../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN, patchTableDetails } from '../../rest/tableAPI';
 import { getTeamByName, patchTeamDetail } from '../../rest/teamsAPI';
 import { getTopicByFqn, patchTopicDetails } from '../../rest/topicsAPI';
+import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { getServiceCategoryFromEntityType } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../ToastUtils';
 
@@ -98,6 +107,12 @@ export const getAPIfromSource = (
       return patchDatabaseDetails;
     case EntityType.TEAM:
       return patchTeamDetail;
+    case EntityType.USER:
+      return updateUserDetail;
+    case EntityType.API_COLLECTION:
+      return patchApiCollection;
+    case EntityType.API_ENDPOINT:
+      return patchApiEndPoint;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -105,6 +120,7 @@ export const getAPIfromSource = (
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
@@ -116,8 +132,8 @@ export const getAPIfromSource = (
 export const getEntityAPIfromSource = (
   source: keyof MapPatchAPIResponse
 ): ((
-  id: string,
-  queryFields: string | string[]
+  fqn: string,
+  params?: ListParams
 ) => Promise<MapPatchAPIResponse[typeof source]>) => {
   switch (source) {
     case EntityType.TABLE:
@@ -133,9 +149,9 @@ export const getEntityAPIfromSource = (
     case EntityType.CONTAINER:
       return getContainerByName;
     case EntityType.STORED_PROCEDURE:
-      return getStoredProceduresByName;
+      return getStoredProceduresByFqn;
     case EntityType.DASHBOARD_DATA_MODEL:
-      return getDataModelsByName;
+      return getDataModelByFqn;
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermByFQN;
     case EntityType.GLOSSARY:
@@ -148,6 +164,12 @@ export const getEntityAPIfromSource = (
       return getSearchIndexDetailsByFQN;
     case EntityType.TEAM:
       return getTeamByName;
+    case EntityType.USER:
+      return getUserByName;
+    case EntityType.API_COLLECTION:
+      return getApiCollectionByFQN;
+    case EntityType.API_ENDPOINT:
+      return getApiEndPointByFQN;
     case EntityType.MESSAGING_SERVICE:
     case EntityType.DASHBOARD_SERVICE:
     case EntityType.PIPELINE_SERVICE:
@@ -155,43 +177,13 @@ export const getEntityAPIfromSource = (
     case EntityType.STORAGE_SERVICE:
     case EntityType.DATABASE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
       return (id, queryFields) => {
         const serviceCat = getServiceCategoryFromEntityType(source);
 
         return getDomainSupportedServiceByFQN(serviceCat, id, queryFields);
       };
   }
-};
-
-export const getAssetsSearchIndex = (source: AssetsOfEntity) => {
-  const commonAssets: Record<string, SearchIndex> = {
-    [EntityType.ALL]: SearchIndex.ALL,
-    [EntityType.TABLE]: SearchIndex.TABLE,
-    [EntityType.PIPELINE]: SearchIndex.PIPELINE,
-    [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
-    [EntityType.MLMODEL]: SearchIndex.MLMODEL,
-    [EntityType.TOPIC]: SearchIndex.TOPIC,
-    [EntityType.CONTAINER]: SearchIndex.CONTAINER,
-    [EntityType.STORED_PROCEDURE]: SearchIndex.STORED_PROCEDURE,
-    [EntityType.DASHBOARD_DATA_MODEL]: SearchIndex.DASHBOARD_DATA_MODEL,
-    [EntityType.SEARCH_INDEX]: SearchIndex.SEARCH_INDEX,
-    [EntityType.DATABASE_SERVICE]: SearchIndex.DATABASE_SERVICE,
-    [EntityType.MESSAGING_SERVICE]: SearchIndex.MESSAGING_SERVICE,
-    [EntityType.DASHBOARD_SERVICE]: SearchIndex.DASHBOARD_SERVICE,
-    [EntityType.PIPELINE_SERVICE]: SearchIndex.PIPELINE_SERVICE,
-    [EntityType.MLMODEL_SERVICE]: SearchIndex.ML_MODEL_SERVICE,
-    [EntityType.STORAGE_SERVICE]: SearchIndex.STORAGE_SERVICE,
-    [EntityType.SEARCH_SERVICE]: SearchIndex.SEARCH_SERVICE,
-  };
-
-  if (
-    source === AssetsOfEntity.DOMAIN ||
-    source === AssetsOfEntity.DATA_PRODUCT
-  ) {
-    commonAssets[EntityType.GLOSSARY] = SearchIndex.GLOSSARY;
-  }
-
-  return commonAssets;
 };
 
 export const getAssetsFields = (source: AssetsOfEntity) => {
@@ -234,10 +226,9 @@ export const updateDomainAssets = async (
 ) => {
   try {
     const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-      getEntityAPIfromSource(item.entityType)(
-        item.fullyQualifiedName,
-        getAssetsFields(type)
-      )
+      getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, {
+        fields: getAssetsFields(type),
+      })
     );
     const entityDetailsResponse = await Promise.allSettled(entityDetails);
     const map = new Map();
@@ -274,10 +265,9 @@ export const removeGlossaryTermAssets = async (
   selectedItems: Map<string, EntityDetailUnion>
 ) => {
   const entityDetails = [...(selectedItems?.values() ?? [])].map((item) =>
-    getEntityAPIfromSource(item.entityType)(
-      item.fullyQualifiedName,
-      getAssetsFields(type)
-    )
+    getEntityAPIfromSource(item.entityType)(item.fullyQualifiedName, {
+      fields: getAssetsFields(type),
+    })
   );
 
   try {

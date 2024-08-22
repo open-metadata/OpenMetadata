@@ -11,54 +11,143 @@
  *  limitations under the License.
  */
 import { Form, Modal, Select } from 'antd';
-import { startCase } from 'lodash';
-import React, { useRef, useState } from 'react';
+import { AxiosError } from 'axios';
+import { startCase, unionBy } from 'lodash';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../components/Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { CreateTestCaseResolutionStatus } from '../../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseFailureReasonType } from '../../../generated/tests/resolved';
-import {
-  TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
-} from '../../../generated/tests/testCaseResolutionStatus';
-import { getCurrentMillis } from '../../../utils/date-time/DateTimeUtils';
+import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
+import Assignees from '../../../pages/TasksPage/shared/Assignees';
+import { Option } from '../../../pages/TasksPage/TasksPage.interface';
+import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import { getEntityReferenceFromEntity } from '../../../utils/EntityUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
+import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+
+import { VALIDATION_MESSAGES } from '../../../constants/constants';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { TestCaseStatusModalProps } from './TestCaseStatusModal.interface';
 
 export const TestCaseStatusModal = ({
   open,
   data,
+  testCaseFqn,
   onSubmit,
   onCancel,
+  usersList,
 }: TestCaseStatusModalProps) => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [form] = Form.useForm();
   const markdownRef = useRef<EditorContentRef>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [options, setOptions] = useState<Option[]>([]);
 
-  const statusType = Form.useWatch('testCaseFailureStatusType', form);
+  const { assigneeOptions } = useMemo(() => {
+    const initialAssignees = data?.testCaseResolutionStatusDetails?.assignee
+      ? generateOptions([data.testCaseResolutionStatusDetails.assignee])
+      : [];
+    const assigneeOptions = unionBy(
+      [...initialAssignees, ...generateOptions(usersList ?? [])],
+      'value'
+    );
 
-  const handleFormSubmit = (data: TestCaseResolutionStatus) => {
-    const updatedData: TestCaseResolutionStatus = {
+    return { initialAssignees, assigneeOptions };
+  }, [data, usersList]);
+
+  const statusType = Form.useWatch('testCaseResolutionStatusType', form);
+  const updatedAssignees = Form.useWatch(
+    ['testCaseResolutionStatusDetails', 'assignee'],
+    form
+  );
+
+  const statusOptions = useMemo(() => {
+    const status =
+      data?.testCaseResolutionStatusType ===
+      TestCaseResolutionStatusTypes.Assigned
+        ? [
+            TestCaseResolutionStatusTypes.Assigned,
+            TestCaseResolutionStatusTypes.Resolved,
+          ]
+        : Object.values(TestCaseResolutionStatusTypes);
+
+    return status.map((value) => ({
+      label: value,
+      value,
+    }));
+  }, [data]);
+
+  const handleFormSubmit = async (data: CreateTestCaseResolutionStatus) => {
+    setIsLoading(true);
+    const updatedData: CreateTestCaseResolutionStatus = {
       ...data,
-      updatedAt: getCurrentMillis(),
-      updatedBy: currentUser
-        ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
-        : undefined,
+      testCaseReference: testCaseFqn,
     };
-    onSubmit(updatedData).finally(() => {
+
+    switch (data.testCaseResolutionStatusType) {
+      case TestCaseResolutionStatusTypes.Resolved:
+        updatedData.testCaseResolutionStatusDetails = {
+          ...data.testCaseResolutionStatusDetails,
+          resolvedBy: currentUser
+            ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
+            : undefined,
+        };
+
+        break;
+
+      case TestCaseResolutionStatusTypes.Assigned:
+        if (updatedAssignees.length > 0) {
+          updatedData.testCaseResolutionStatusDetails = {
+            ...data.testCaseResolutionStatusDetails,
+            assignee: {
+              name: updatedAssignees[0].name,
+              displayName: updatedAssignees[0].displayName,
+              id: updatedAssignees[0].value,
+              type: EntityType.USER,
+            },
+          };
+        }
+
+        break;
+      default:
+        break;
+    }
+    try {
+      const data = await postTestCaseIncidentStatus(updatedData);
+      onSubmit(data);
+      onCancel();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
       setIsLoading(false);
-    });
+    }
   };
+
+  useEffect(() => {
+    const assignee = data?.testCaseResolutionStatusDetails?.assignee;
+    if (
+      data?.testCaseResolutionStatusType ===
+        TestCaseResolutionStatusTypes.Assigned &&
+      assignee
+    ) {
+      form.setFieldValue(
+        ['testCaseResolutionStatusDetails', 'assignee'],
+        [assignee.id]
+      );
+    }
+    setOptions(assigneeOptions);
+  }, [data, assigneeOptions]);
 
   return (
     <Modal
       cancelText={t('label.cancel')}
       closable={false}
       okButtonProps={{
+        id: 'update-status-button',
         form: 'update-status-form',
         htmlType: 'submit',
         loading: isLoading,
@@ -68,47 +157,45 @@ export const TestCaseStatusModal = ({
       title={t('label.update-entity', { entity: t('label.status') })}
       width={750}
       onCancel={onCancel}>
-      <Form<TestCaseResolutionStatus>
+      <Form<CreateTestCaseResolutionStatus>
         data-testid="update-status-form"
         form={form}
         id="update-status-form"
         initialValues={data}
         layout="vertical"
+        validateMessages={VALIDATION_MESSAGES}
         onFinish={handleFormSubmit}>
         <Form.Item
           label={t('label.status')}
-          name="testCaseFailureStatusType"
+          name="testCaseResolutionStatusType"
           rules={[
             {
               required: true,
-              message: t('label.field-required', {
-                field: t('label.status'),
-              }),
             },
           ]}>
           <Select
+            data-testid="test-case-resolution-status-type"
+            options={statusOptions}
             placeholder={t('label.please-select-entity', {
               entity: t('label.status'),
-            })}>
-            {Object.values(TestCaseResolutionStatusTypes).map((value) => (
-              <Select.Option key={value}>{value}</Select.Option>
-            ))}
-          </Select>
+            })}
+          />
         </Form.Item>
         {statusType === TestCaseResolutionStatusTypes.Resolved && (
           <>
             <Form.Item
               label={t('label.reason')}
-              name="testCaseFailureReason"
+              name={[
+                'testCaseResolutionStatusDetails',
+                'testCaseFailureReason',
+              ]}
               rules={[
                 {
                   required: true,
-                  message: t('label.field-required', {
-                    field: t('label.reason'),
-                  }),
                 },
               ]}>
               <Select
+                data-testid="test-case-failure-reason"
                 placeholder={t('label.please-select-entity', {
                   entity: t('label.reason'),
                 })}>
@@ -119,13 +206,13 @@ export const TestCaseStatusModal = ({
             </Form.Item>
             <Form.Item
               label={t('label.comment')}
-              name="testCaseFailureComment"
+              name={[
+                'testCaseResolutionStatusDetails',
+                'testCaseFailureComment',
+              ]}
               rules={[
                 {
                   required: true,
-                  message: t('label.field-required', {
-                    field: t('label.comment'),
-                  }),
                 },
               ]}>
               <RichTextEditor
@@ -139,11 +226,48 @@ export const TestCaseStatusModal = ({
                 })}
                 ref={markdownRef}
                 onTextChange={(value) =>
-                  form.setFieldValue('testCaseFailureComment', value)
+                  form.setFieldValue(
+                    [
+                      'testCaseResolutionStatusDetails',
+                      'testCaseFailureComment',
+                    ],
+                    value
+                  )
                 }
               />
             </Form.Item>
           </>
+        )}
+        {statusType === TestCaseResolutionStatusTypes.Assigned && (
+          <Form.Item
+            label={t('label.assignee')}
+            name={['testCaseResolutionStatusDetails', 'assignee']}
+            rules={[
+              {
+                required: true,
+              },
+            ]}>
+            <Assignees
+              allowClear
+              isSingleSelect
+              options={options}
+              value={updatedAssignees}
+              onChange={(values) =>
+                form.setFieldValue(
+                  ['testCaseResolutionStatusDetails', 'assignee'],
+                  values
+                )
+              }
+              onSearch={(query) =>
+                fetchOptions({
+                  query,
+                  setOptions,
+                  onlyUsers: true,
+                  initialOptions: assigneeOptions,
+                })
+              }
+            />
+          </Form.Item>
         )}
       </Form>
     </Modal>

@@ -16,19 +16,21 @@ import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import PipelineDetails from '../../components/PipelineDetails/PipelineDetails.component';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import { getVersionPath } from '../../constants/constants';
+import Loader from '../../components/common/Loader/Loader';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import PipelineDetails from '../../components/Pipeline/PipelineDetails/PipelineDetails.component';
+import { getVersionPath, ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { Paging } from '../../generated/type/paging';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
 import {
   addFollower,
   getPipelineByFqn,
@@ -47,23 +49,17 @@ import {
   defaultFields,
   getFormattedPipelineDetails,
 } from '../../utils/PipelineDetailsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const PipelineDetailsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
 
-  const { fqn: pipelineFQN } = useParams<{ fqn: string }>();
+  const { fqn: decodedPipelineFQN } = useFqn();
   const [pipelineDetails, setPipelineDetails] = useState<Pipeline>(
     {} as Pipeline
-  );
-
-  const decodedPipelineFQN = useMemo(
-    () => getDecodedFqn(pipelineFQN),
-    [pipelineFQN]
   );
 
   const [isLoading, setLoading] = useState<boolean>(true);
@@ -122,7 +118,9 @@ const PipelineDetailsPage = () => {
     setLoading(true);
 
     try {
-      const res = await getPipelineByFqn(pipelineFQN, defaultFields);
+      const res = await getPipelineByFqn(pipelineFQN, {
+        fields: defaultFields,
+      });
       const { id, fullyQualifiedName, serviceType } = res;
 
       setPipelineDetails(res);
@@ -138,6 +136,10 @@ const PipelineDetailsPage = () => {
     } catch (error) {
       if ((error as AxiosError).response?.status === 404) {
         setIsError(true);
+      } else if (
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+      ) {
+        history.replace(ROUTES.FORBIDDEN);
       } else {
         showErrorToast(
           error as AxiosError,
@@ -152,53 +154,43 @@ const PipelineDetailsPage = () => {
     }
   };
 
-  const followPipeline = useCallback(
-    async (fetchCount: () => void) => {
-      try {
-        const res = await addFollower(pipelineId, USERId);
-        const { newValue } = res.changeDescription.fieldsAdded[0];
-        const newFollowers = [...(followers ?? []), ...newValue];
-        setPipelineDetails((prev) => {
-          return { ...prev, followers: newFollowers };
-        });
+  const followPipeline = useCallback(async () => {
+    try {
+      const res = await addFollower(pipelineId, USERId);
+      const { newValue } = res.changeDescription.fieldsAdded[0];
+      const newFollowers = [...(followers ?? []), ...newValue];
+      setPipelineDetails((prev) => {
+        return { ...prev, followers: newFollowers };
+      });
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-follow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
+  }, [followers, USERId]);
 
-        fetchCount();
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-follow-error', {
-            entity: getEntityName(pipelineDetails),
-          })
-        );
-      }
-    },
-    [followers, USERId]
-  );
-
-  const unFollowPipeline = useCallback(
-    async (fetchCount: () => void) => {
-      try {
-        const res = await removeFollower(pipelineId, USERId);
-        const { oldValue } = res.changeDescription.fieldsDeleted[0];
-        setPipelineDetails((prev) => ({
-          ...prev,
-          followers: followers.filter(
-            (follower) => follower.id !== oldValue[0].id
-          ),
-        }));
-
-        fetchCount();
-      } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-unfollow-error', {
-            entity: getEntityName(pipelineDetails),
-          })
-        );
-      }
-    },
-    [followers, USERId]
-  );
+  const unFollowPipeline = useCallback(async () => {
+    try {
+      const res = await removeFollower(pipelineId, USERId);
+      const { oldValue } = res.changeDescription.fieldsDeleted[0];
+      setPipelineDetails((prev) => ({
+        ...prev,
+        followers: followers.filter(
+          (follower) => follower.id !== oldValue[0].id
+        ),
+      }));
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-unfollow-error', {
+          entity: getEntityName(pipelineDetails),
+        })
+      );
+    }
+  }, [followers, USERId]);
 
   const descriptionUpdateHandler = async (updatedPipeline: Pipeline) => {
     try {
@@ -238,13 +230,20 @@ const PipelineDetailsPage = () => {
 
   const versionHandler = () => {
     history.push(
-      getVersionPath(EntityType.PIPELINE, pipelineFQN, currentVersion as string)
+      getVersionPath(
+        EntityType.PIPELINE,
+        decodedPipelineFQN,
+        currentVersion as string
+      )
     );
   };
 
   const handleExtensionUpdate = async (updatedPipeline: Pipeline) => {
     try {
-      const data = await saveUpdatedPipelineData(updatedPipeline);
+      const data = await saveUpdatedPipelineData({
+        ...pipelineDetails,
+        extension: updatedPipeline.extension,
+      });
       setPipelineDetails(data);
     } catch (error) {
       showErrorToast(
@@ -273,7 +272,9 @@ const PipelineDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updatePipelinesVotes(id, data);
-      const details = await getPipelineByFqn(pipelineFQN, defaultFields);
+      const details = await getPipelineByFqn(decodedPipelineFQN, {
+        fields: defaultFields,
+      });
       setPipelineDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -291,13 +292,13 @@ const PipelineDetailsPage = () => {
 
   useEffect(() => {
     if (pipelinePermissions.ViewAll || pipelinePermissions.ViewBasic) {
-      fetchPipelineDetail(pipelineFQN);
+      fetchPipelineDetail(decodedPipelineFQN);
     }
-  }, [pipelinePermissions, pipelineFQN]);
+  }, [pipelinePermissions, decodedPipelineFQN]);
 
   useEffect(() => {
-    fetchResourcePermission(pipelineFQN);
-  }, [pipelineFQN]);
+    fetchResourcePermission(decodedPipelineFQN);
+  }, [decodedPipelineFQN]);
 
   if (isLoading) {
     return <Loader />;
@@ -318,7 +319,7 @@ const PipelineDetailsPage = () => {
   return (
     <PipelineDetails
       descriptionUpdateHandler={descriptionUpdateHandler}
-      fetchPipeline={() => fetchPipelineDetail(pipelineFQN)}
+      fetchPipeline={() => fetchPipelineDetail(decodedPipelineFQN)}
       followPipelineHandler={followPipeline}
       handleToggleDelete={handleToggleDelete}
       paging={paging}

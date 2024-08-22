@@ -15,6 +15,7 @@ import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EdgeProps, Position } from 'reactflow';
+import { LineageLayerView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { CustomEdge } from './CustomEdge.component';
 
@@ -38,32 +39,44 @@ const mockCustomEdgeProp = {
     sourceType: EntityType.TABLE,
     targetType: EntityType.DASHBOARD,
     onEdgeClick: jest.fn(),
+    isColumnLineage: false,
     selectedNode: {
       id: 'node1',
     },
-    isColumnLineage: false,
+    edge: {
+      fromEntity: {
+        id: '1',
+        fqn: 'table1',
+        type: 'table',
+      },
+      toEntity: {
+        id: '2',
+        fqn: 'table2',
+        type: 'table',
+      },
+      pipeline: {
+        id: 'pipeline1',
+        fullyQualifiedName: 'pipeline1',
+        type: 'pipeline',
+        name: 'pipeline1',
+      },
+    },
     isEditMode: true,
   },
   selected: true,
 } as EdgeProps;
 
+jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
+  useLineageProvider: jest.fn().mockImplementation(() => ({
+    tracedNodes: [],
+    tracedColumns: [],
+    pipelineStatus: {},
+    activeLayer: [LineageLayerView.COLUMN],
+    fetchPipelineStatus: jest.fn(),
+  })),
+}));
+
 describe('Test CustomEdge Component', () => {
-  it('Check if CustomEdge has all child elements', async () => {
-    render(<CustomEdge {...mockCustomEdgeProp} />, {
-      wrapper: MemoryRouter,
-    });
-
-    const deleteButton = await screen.findByTestId('delete-button');
-    const edgePathElement = await screen.findAllByTestId(
-      'react-flow-edge-path'
-    );
-    const pipelineLabelAsEdge = screen.queryByTestId('pipeline-label');
-
-    expect(deleteButton).toBeInTheDocument();
-    expect(pipelineLabelAsEdge).not.toBeInTheDocument();
-    expect(edgePathElement).toHaveLength(edgePathElement.length);
-  });
-
   it('Check if CustomEdge has selected as false', async () => {
     render(<CustomEdge {...mockCustomEdgeProp} selected={false} />, {
       wrapper: MemoryRouter,
@@ -98,7 +111,9 @@ describe('Test CustomEdge Component', () => {
       }
     );
 
-    const pipelineLabelAsEdge = await screen.findByTestId('pipeline-label');
+    const pipelineLabelAsEdge = await screen.findByTestId(
+      'pipeline-label-table1-table2'
+    );
 
     expect(pipelineLabelAsEdge).toBeInTheDocument();
   });

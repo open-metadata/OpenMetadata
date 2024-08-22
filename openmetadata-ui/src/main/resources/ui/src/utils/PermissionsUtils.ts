@@ -15,7 +15,7 @@ import {
   OperationPermission,
   ResourceEntity,
   UIPermission,
-} from '../components/PermissionProvider/PermissionProvider.interface';
+} from '../context/PermissionProvider/PermissionProvider.interface';
 import {
   Access,
   Permission,
@@ -106,7 +106,7 @@ export const DEFAULT_ENTITY_PERMISSION = {
   EditDescription: false,
   EditDisplayName: false,
   EditLineage: false,
-  EditOwner: false,
+  EditOwners: false,
   EditQueries: false,
   EditSampleData: false,
   EditTags: false,

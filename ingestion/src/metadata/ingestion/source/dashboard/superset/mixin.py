@@ -34,7 +34,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -70,9 +70,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         self.all_charts = {}
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: SupersetConnection = config.serviceConnection.__root__.config
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: SupersetConnection = config.serviceConnection.root.config
         if not isinstance(connection, SupersetConnection):
             raise InvalidSourceException(
                 f"Expected SupersetConnection, but got {connection}"
@@ -95,24 +100,28 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         return dashboard
 
-    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReference]:
+    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReferenceList]:
         if email:
             return self.metadata.get_reference_by_email(email)
         return None
 
-    def get_owner_details(
+    def get_owner_ref(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
-    ) -> EntityReference:
-        if hasattr(dashboard_details, "owner"):
-            for owner in dashboard_details.owners or []:
-                if owner.email:
-                    user = self._get_user_by_email(owner.email)
-                    if user:
-                        return user
-        if dashboard_details.email:
-            user = self._get_user_by_email(dashboard_details.email)
-            if user:
-                return user
+    ) -> Optional[EntityReferenceList]:
+        try:
+            if hasattr(dashboard_details, "owners"):
+                for owner in dashboard_details.owners or []:
+                    if owner.email:
+                        user = self._get_user_by_email(owner.email)
+                        if user:
+                            return user
+            if dashboard_details.email:
+                user = self._get_user_by_email(dashboard_details.email)
+                if user:
+                    return user
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
     def _get_charts_of_dashboard(
@@ -173,9 +182,15 @@ class SupersetSourceMixin(DashboardServiceSource):
                             fqn=datamodel_fqn,
                         )
 
+                        columns_list = self._get_columns_list_for_lineage(chart_json)
+                        column_lineage = self._get_column_lineage(
+                            from_entity, to_entity, columns_list
+                        )
                         if from_entity and to_entity:
                             yield self._get_add_lineage_request(
-                                to_entity=to_entity, from_entity=from_entity
+                                to_entity=to_entity,
+                                from_entity=from_entity,
+                                column_lineage=column_lineage,
                             )
                     except Exception as exc:
                         yield Either(
@@ -198,7 +213,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         datamodel_fqn = fqn.build(
             self.metadata,
             entity_type=DashboardDataModel,
-            service_name=self.context.dashboard_service,
+            service_name=self.context.get().dashboard_service,
             data_model_name=datamodel.id,
         )
         if datamodel_fqn:
@@ -207,6 +222,10 @@ class SupersetSourceMixin(DashboardServiceSource):
                 fqn=datamodel_fqn,
             )
         return None
+
+    def _clearn_column_datatype(self, datatype: str) -> str:
+        """clean datatype of column fetched from superset"""
+        return datatype.replace("()", "")
 
     def get_column_info(
         self, data_source: List[Union[DataSourceResult, FetchColumn]]
@@ -221,13 +240,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         for field in data_source or []:
             try:
                 if field.type:
+                    field.type = self._clearn_column_datatype(field.type)
                     col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type
                     )
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
-                        name=field.id,
+                        name=str(field.id),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),

@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { InfoCircleOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Collapse, Divider, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { LazyLog } from 'react-lazylog';
 import { ReactComponent as AttentionIcon } from '../../../../assets/svg/attention.svg';
 import { ReactComponent as FailIcon } from '../../../../assets/svg/fail-badge.svg';
 import { ReactComponent as SuccessIcon } from '../../../../assets/svg/success-badge.svg';
@@ -28,7 +30,7 @@ const { Panel } = Collapse;
 
 interface ConnectionStepCardProp {
   testConnectionStep: TestConnectionStep;
-  testConnectionStepResult: TestConnectionStepResult | undefined;
+  testConnectionStepResult?: TestConnectionStepResult;
   isTestingConnection: boolean;
 }
 
@@ -46,6 +48,10 @@ const ConnectionStepCard = ({
   const isMandatoryStepsFailing = failed && testConnectionStepResult?.mandatory;
   const isNonMandatoryStepsFailing =
     failed && !testConnectionStepResult?.mandatory;
+
+  const logs =
+    testConnectionStepResult?.errorLog ??
+    t('label.no-entity', { entity: t('label.log-plural') });
 
   return (
     <div
@@ -80,43 +86,51 @@ const ConnectionStepCard = ({
             </Typography.Text>
           )}
           {success && (
-            <Space size={4}>
+            <div className="d-flex gap-2 align-center">
               <Typography.Text className="success-status">
                 {`${t('label.success')}`}
               </Typography.Text>
-              <SuccessIcon data-testid="success-badge" height={20} width={20} />
-            </Space>
+              <Icon
+                component={SuccessIcon}
+                data-testid="success-badge"
+                style={{ fontSize: '20px' }}
+              />
+            </div>
           )}
           {isMandatoryStepsFailing && (
-            <Space size={4}>
+            <div className="d-flex gap-2 align-center">
               <Typography.Text className="failure-status">
                 {`${t('label.failed')}`}
               </Typography.Text>
-              <FailIcon data-testid="fail-badge" height={20} width={20} />
-            </Space>
+              <Icon
+                component={FailIcon}
+                data-testid="fail-badge"
+                style={{ fontSize: '20px' }}
+              />
+            </div>
           )}
           {isNonMandatoryStepsFailing && (
-            <Space align="center" size={4}>
+            <div className="d-flex gap-2 align-center">
               <Typography.Text className="warning-status">
                 {`${t('label.attention')}`}
               </Typography.Text>
-              <AttentionIcon
+              <Icon
+                component={AttentionIcon}
                 data-testid="warning-badge"
-                height={20}
-                width={20}
+                style={{ fontSize: '20px' }}
               />
-            </Space>
+            </div>
           )}
           {isSkipped && (
-            <Space size={4}>
-              <Typography.Text className="skipped-status">{`${t(
-                'label.skipped'
-              )}`}</Typography.Text>
-            </Space>
+            <Typography.Text className="skipped-status">{`${t(
+              'label.skipped'
+            )}`}</Typography.Text>
           )}
         </Space>
       </div>
-      {(isMandatoryStepsFailing || isNonMandatoryStepsFailing) && (
+      {(isMandatoryStepsFailing ||
+        isNonMandatoryStepsFailing ||
+        testConnectionStepResult?.message) && (
         <div className="connection-step-card-content">
           <Typography.Text className="text-body">
             {testConnectionStepResult?.message}
@@ -127,12 +141,17 @@ const ConnectionStepCard = ({
               <Collapse ghost>
                 <Panel
                   className="connection-step-card-content-logs"
-                  header="Show logs"
+                  data-testid="lazy-log"
+                  header={t('label.show-log-plural')}
                   key="show-log">
-                  <p className="text-grey-muted">
-                    {testConnectionStepResult?.errorLog ||
-                      t('label.no-entity', { entity: t('label.log-plural') })}
-                  </p>
+                  <LazyLog
+                    caseInsensitive
+                    enableSearch
+                    selectableLines
+                    extraLines={1} // 1 is to be add so that linux users can see last line of the log
+                    height={300}
+                    text={logs}
+                  />
                 </Panel>
               </Collapse>
             </>

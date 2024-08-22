@@ -17,19 +17,21 @@ import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import Description from '../../../components/common/EntityDescription/Description';
+import { useHistory } from 'react-router-dom';
+import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../../components/Loader/Loader';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Role } from '../../../generated/entity/teams/role';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { useFqn } from '../../../hooks/useFqn';
 import { getRoleByName, patchRole } from '../../../rest/rolesAPIV1';
 import { getTeamByName, patchTeamDetail } from '../../../rest/teamsAPI';
 import { getUserByName, updateUserDetail } from '../../../rest/userAPI';
@@ -52,7 +54,7 @@ interface AddAttribute {
 const RolesDetailPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
 
   const [role, setRole] = useState<Role>({} as Role);
   const [isLoading, setLoading] = useState<boolean>(false);
@@ -110,10 +112,9 @@ const RolesDetailPage = () => {
 
   const handleTeamsUpdate = async (data: EntityReference) => {
     try {
-      const team = await getTeamByName(
-        data.fullyQualifiedName || '',
-        'defaultRoles'
-      );
+      const team = await getTeamByName(data.fullyQualifiedName || '', {
+        fields: TabSpecificField.DEFAULT_ROLES,
+      });
       const updatedAttributeData = (team.defaultRoles ?? []).filter(
         (attrData) => attrData.id !== role.id
       );
@@ -140,7 +141,9 @@ const RolesDetailPage = () => {
 
   const handleUsersUpdate = async (data: EntityReference) => {
     try {
-      const user = await getUserByName(data.fullyQualifiedName || '', 'roles');
+      const user = await getUserByName(data.fullyQualifiedName || '', {
+        fields: TabSpecificField.ROLES,
+      });
       const updatedAttributeData = (user.roles ?? []).filter(
         (attrData) => attrData.id !== role.id
       );
@@ -225,137 +228,145 @@ const RolesDetailPage = () => {
   }
 
   return (
-    <div data-testid="role-details-container">
-      <TitleBreadcrumb titleLinks={breadcrumb} />
+    <PageLayoutV1 pageTitle={t('label.role-plural')}>
+      <div className="page-container" data-testid="role-details-container">
+        <TitleBreadcrumb titleLinks={breadcrumb} />
 
-      <>
-        {isEmpty(role) ? (
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <div className="text-center">
-              <p>
-                {t('message.no-entity-found-for-name', {
-                  entity: t('label.role'),
-                  name: fqn,
-                })}
-              </p>
-              <Button
-                ghost
-                className="m-t-sm"
-                type="primary"
-                onClick={() => history.push(rolesPath)}>
-                {t('label.go-back')}
-              </Button>
-            </div>
-          </ErrorPlaceHolder>
-        ) : (
-          <div className="roles-detail" data-testid="role-details">
-            <Typography.Title
-              className="m-b-0 m-t-xs"
-              data-testid="heading"
-              level={5}>
-              {roleName}
-            </Typography.Title>
-            <Description
-              hasEditAccess
-              className="m-b-md"
-              description={role.description || ''}
-              entityFqn={role.fullyQualifiedName}
-              entityName={roleName}
-              entityType={EntityType.ROLE}
-              isEdit={editDescription}
-              onCancel={() => setEditDescription(false)}
-              onDescriptionEdit={() => setEditDescription(true)}
-              onDescriptionUpdate={handleDescriptionUpdate}
-            />
+        <>
+          {isEmpty(role) ? (
+            <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              <div className="text-center">
+                <p>
+                  {t('message.no-entity-found-for-name', {
+                    entity: t('label.role'),
+                    name: fqn,
+                  })}
+                </p>
+                <Button
+                  ghost
+                  className="m-t-sm"
+                  type="primary"
+                  onClick={() => history.push(rolesPath)}>
+                  {t('label.go-back')}
+                </Button>
+              </div>
+            </ErrorPlaceHolder>
+          ) : (
+            <div className="roles-detail" data-testid="role-details">
+              <Typography.Title
+                className="m-b-0 m-t-xs"
+                data-testid="heading"
+                level={5}>
+                {roleName}
+              </Typography.Title>
+              <DescriptionV1
+                hasEditAccess
+                className="m-y-md"
+                description={role.description || ''}
+                entityFqn={role.fullyQualifiedName}
+                entityName={roleName}
+                entityType={EntityType.ROLE}
+                isEdit={editDescription}
+                showCommentsIcon={false}
+                onCancel={() => setEditDescription(false)}
+                onDescriptionEdit={() => setEditDescription(true)}
+                onDescriptionUpdate={handleDescriptionUpdate}
+              />
 
-            <Tabs data-testid="tabs" defaultActiveKey="policies">
-              <TabPane key="policies" tab={t('label.policy-plural')}>
-                <Space className="w-full" direction="vertical">
-                  <Button
-                    data-testid="add-policy"
-                    type="primary"
-                    onClick={() =>
-                      setAddAttribute({
-                        type: EntityType.POLICY,
-                        selectedData: role.policies || [],
-                      })
-                    }>
-                    {t('label.add-entity', {
-                      entity: t('label.policy'),
-                    })}
-                  </Button>
+              <Tabs data-testid="tabs" defaultActiveKey="policies">
+                <TabPane key="policies" tab={t('label.policy-plural')}>
+                  <Space
+                    className="role-detail-tab w-full"
+                    direction="vertical">
+                    <Button
+                      data-testid="add-policy"
+                      type="primary"
+                      onClick={() =>
+                        setAddAttribute({
+                          type: EntityType.POLICY,
+                          selectedData: role.policies || [],
+                        })
+                      }>
+                      {t('label.add-entity', {
+                        entity: t('label.policy'),
+                      })}
+                    </Button>
 
+                    <RolesDetailPageList
+                      hasAccess
+                      list={role.policies ?? []}
+                      type="policy"
+                      onDelete={(record) =>
+                        setEntity({ record, attribute: 'policies' })
+                      }
+                    />
+                  </Space>
+                </TabPane>
+                <TabPane key="teams" tab={t('label.team-plural')}>
                   <RolesDetailPageList
                     hasAccess
-                    list={role.policies ?? []}
-                    type="policy"
+                    list={role.teams ?? []}
+                    type="team"
                     onDelete={(record) =>
-                      setEntity({ record, attribute: 'policies' })
+                      setEntity({ record, attribute: 'teams' })
                     }
                   />
-                </Space>
-              </TabPane>
-              <TabPane key="teams" tab={t('label.team-plural')}>
-                <RolesDetailPageList
-                  hasAccess
-                  list={role.teams ?? []}
-                  type="team"
-                  onDelete={(record) =>
-                    setEntity({ record, attribute: 'teams' })
-                  }
-                />
-              </TabPane>
-              <TabPane key="users" tab={t('label.user-plural')}>
-                <RolesDetailPageList
-                  hasAccess
-                  list={role.users ?? []}
-                  type="user"
-                  onDelete={(record) =>
-                    setEntity({ record, attribute: 'users' })
-                  }
-                />
-              </TabPane>
-            </Tabs>
-          </div>
-        )}
-      </>
+                </TabPane>
+                <TabPane key="users" tab={t('label.user-plural')}>
+                  <RolesDetailPageList
+                    hasAccess
+                    list={role.users ?? []}
+                    type="user"
+                    onDelete={(record) =>
+                      setEntity({ record, attribute: 'users' })
+                    }
+                  />
+                </TabPane>
+              </Tabs>
+            </div>
+          )}
+        </>
 
-      {selectedEntity && (
-        <Modal
-          centered
-          closable={false}
-          confirmLoading={isLoadingOnSave}
-          maskClosable={false}
-          okText={t('label.confirm')}
-          open={!isUndefined(selectedEntity.record)}
-          title={`${t('label.remove-entity', {
-            entity: getEntityName(selectedEntity.record),
-          })} ${t('label.from-lowercase')} ${roleName}`}
-          onCancel={() => setEntity(undefined)}
-          onOk={async () => {
-            await handleDelete(selectedEntity.record, selectedEntity.attribute);
-            setEntity(undefined);
-          }}>
-          <Typography.Text>
-            {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
-              child: getEntityName(selectedEntity.record),
-              parent: roleName,
-            })}
-          </Typography.Text>
-        </Modal>
-      )}
-      {addAttribute && (
-        <AddAttributeModal
-          isModalLoading={isLoadingOnSave}
-          isOpen={!isUndefined(addAttribute)}
-          selectedKeys={addAttribute.selectedData.map((data) => data.id)}
-          title={`${t('label.add')} ${addAttribute.type}`}
-          type={addAttribute.type}
-          onCancel={() => setAddAttribute(undefined)}
-          onSave={(data) => handleAddAttribute(data)}
-        />
-      )}
-    </div>
+        {selectedEntity && (
+          <Modal
+            centered
+            closable={false}
+            confirmLoading={isLoadingOnSave}
+            maskClosable={false}
+            okText={t('label.confirm')}
+            open={!isUndefined(selectedEntity.record)}
+            title={`${t('label.remove-entity', {
+              entity: getEntityName(selectedEntity.record),
+            })} ${t('label.from-lowercase')} ${roleName}`}
+            onCancel={() => setEntity(undefined)}
+            onOk={async () => {
+              await handleDelete(
+                selectedEntity.record,
+                selectedEntity.attribute
+              );
+              setEntity(undefined);
+            }}>
+            <Typography.Text>
+              {t('message.are-you-sure-you-want-to-remove-child-from-parent', {
+                child: getEntityName(selectedEntity.record),
+                parent: roleName,
+              })}
+            </Typography.Text>
+          </Modal>
+        )}
+        {addAttribute && (
+          <AddAttributeModal
+            isModalLoading={isLoadingOnSave}
+            isOpen={!isUndefined(addAttribute)}
+            selectedKeys={addAttribute.selectedData.map((data) => data.id)}
+            title={`${t('label.add')} ${addAttribute.type}`}
+            type={addAttribute.type}
+            onCancel={() => setAddAttribute(undefined)}
+            onSave={(data) => handleAddAttribute(data)}
+          />
+        )}
+      </div>
+    </PageLayoutV1>
   );
 };
 

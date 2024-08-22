@@ -29,6 +29,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+    SourceUrl,
+)
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.parser import LineageParser
@@ -55,13 +61,15 @@ class ModeSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.workspace_name = config.serviceConnection.__root__.config.workspaceName
+        self.workspace_name = config.serviceConnection.root.config.workspaceName
         self.data_sources = self.client.get_all_data_sources(self.workspace_name)
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config = WorkflowSource.parse_obj(config_dict)
-        connection: ModeConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config = WorkflowSource.model_validate(config_dict)
+        connection: ModeConnection = config.serviceConnection.root.config
         if not isinstance(connection, ModeConnection):
             raise InvalidSourceException(
                 f"Expected ModeConnection, but got {connection}"
@@ -95,20 +103,25 @@ class ModeSource(DashboardServiceSource):
         dashboard_path = dashboard_details[client.LINKS][client.SHARE][client.HREF]
         dashboard_url = f"{clean_uri(self.service_connection.hostPort)}{dashboard_path}"
         dashboard_request = CreateDashboardRequest(
-            name=dashboard_details.get(client.TOKEN),
-            sourceUrl=dashboard_url,
+            name=EntityName(dashboard_details.get(client.TOKEN)),
+            sourceUrl=SourceUrl(dashboard_url),
             displayName=dashboard_details.get(client.NAME),
-            description=dashboard_details.get(client.DESCRIPTION),
+            description=Markdown(dashboard_details.get(client.DESCRIPTION))
+            if dashboard_details.get(client.DESCRIPTION)
+            else None,
             charts=[
-                fqn.build(
-                    self.metadata,
-                    entity_type=Chart,
-                    service_name=self.context.dashboard_service,
-                    chart_name=chart,
+                FullyQualifiedEntityName(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=Chart,
+                        service_name=self.context.get().dashboard_service,
+                        chart_name=chart,
+                    )
                 )
-                for chart in self.context.charts
+                for chart in self.context.get().charts or []
             ],
-            service=self.context.dashboard_service,
+            service=self.context.get().dashboard_service,
+            owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
         self.register_record(dashboard_request=dashboard_request)
@@ -198,11 +211,11 @@ class ModeSource(DashboardServiceSource):
                     )
                     yield Either(
                         right=CreateChartRequest(
-                            name=chart.get(client.TOKEN),
+                            name=EntityName(chart.get(client.TOKEN)),
                             displayName=chart_name,
                             chartType=ChartType.Other,
-                            sourceUrl=chart_url,
-                            service=self.context.dashboard_service,
+                            sourceUrl=SourceUrl(chart_url),
+                            service=self.context.get().dashboard_service,
                         )
                     )
                 except Exception as exc:

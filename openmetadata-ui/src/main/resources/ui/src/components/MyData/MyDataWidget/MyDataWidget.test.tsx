@@ -63,27 +63,26 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockImplementation((link) => link),
+jest.mock('../../../utils/SearchClassBase', () => ({
   getEntityIcon: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
-jest.mock('../../Auth/AuthProviders/AuthProvider', () => ({
-  useAuthContext: jest.fn(() => ({
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
     currentUser: mockUserData,
   })),
 }));
 
 jest.mock(
-  '../../../components/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
+  '../../common/Skeleton/MyData/EntityListSkeleton/EntityListSkeleton.component',
   () => {
     return jest.fn().mockImplementation(({ children }) => <>{children}</>);
   }
 );
 
 describe('MyDataWidget component', () => {
-  it('should fetch data', () => {
-    act(() => {
+  it('should fetch data', async () => {
+    await act(async () => {
       render(<MyDataWidget widgetKey="widgetKey" />, { wrapper: MemoryRouter });
     });
 
@@ -91,15 +90,15 @@ describe('MyDataWidget component', () => {
       '',
       1,
       10,
-      '(owner.id:113)',
+      '(owners.id:113)',
       '',
       '',
       'all'
     );
   });
 
-  it.skip('should render header', () => {
-    act(() => {
+  it.skip('should render header', async () => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />
@@ -110,8 +109,8 @@ describe('MyDataWidget component', () => {
     expect(screen.getByText('label.my-data')).toBeInTheDocument();
   });
 
-  it('should not render view all for 0 length data', () => {
-    act(() => {
+  it('should not render view all for 0 length data', async () => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />
@@ -126,7 +125,7 @@ describe('MyDataWidget component', () => {
     (searchData as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve(mockSearchAPIResponse)
     );
-    act(() => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />
@@ -139,7 +138,7 @@ describe('MyDataWidget component', () => {
 
   it('should render table names', async () => {
     (searchData as jest.Mock).mockResolvedValueOnce(mockSearchAPIResponse);
-    act(() => {
+    await act(async () => {
       render(
         <MemoryRouter>
           <MyDataWidget widgetKey="widgetKey" />

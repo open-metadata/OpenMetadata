@@ -16,7 +16,6 @@ package org.openmetadata.service.events;
 import com.lmax.disruptor.BatchEventProcessor;
 import com.lmax.disruptor.EventFactory;
 import com.lmax.disruptor.EventHandler;
-import com.lmax.disruptor.ExceptionHandler;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.util.DaemonThreadFactory;
@@ -28,7 +27,6 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.events.EventPubSub.ChangeEventHolder;
-import org.openmetadata.service.events.errors.EventPublisherException;
 
 /** Change event PubSub built based on LMAX Disruptor. */
 @Slf4j
@@ -41,7 +39,7 @@ public class EventPubSub {
   public static void start() {
     if (!started) {
       disruptor = new Disruptor<>(ChangeEventHolder::new, 1024, DaemonThreadFactory.INSTANCE);
-      disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
+      // disruptor.setDefaultExceptionHandler(new DefaultExceptionHandler());
       executor = Executors.newCachedThreadPool(DaemonThreadFactory.INSTANCE);
       ringBuffer = disruptor.start();
       LOG.info("Disruptor started");
@@ -85,7 +83,7 @@ public class EventPubSub {
       EventHandler<ChangeEventHolder> eventHandler) {
     BatchEventProcessor<ChangeEventHolder> processor =
         new BatchEventProcessor<>(ringBuffer, ringBuffer.newBarrier(), eventHandler);
-    processor.setExceptionHandler(new DefaultExceptionHandler());
+    // processor.setExceptionHandler(new DefaultExceptionHandler());
     ringBuffer.addGatingSequences(processor.getSequence());
     executor.execute(processor);
     LOG.info("Processor added for {}", processor);
@@ -99,25 +97,5 @@ public class EventPubSub {
 
   public void close() {
     /* Nothing to clean up */
-  }
-
-  public static class DefaultExceptionHandler implements ExceptionHandler<ChangeEventHolder> {
-    @Override
-    public void handleEventException(
-        Throwable throwable, long l, ChangeEventHolder changeEventHolder) {
-      LOG.warn("Disruptor error in onEvent {}", throwable.getMessage());
-      throw new EventPublisherException(
-          throwable.getMessage()); // Throw runtime exception to stop the event handler thread
-    }
-
-    @Override
-    public void handleOnStartException(Throwable throwable) {
-      LOG.warn("Disruptor error in onStart {}", throwable.getMessage());
-    }
-
-    @Override
-    public void handleOnShutdownException(Throwable throwable) {
-      LOG.warn("Disruptor error on onShutdown {}", throwable.getMessage());
-    }
   }
 }

@@ -18,8 +18,9 @@ import React, {
   useImperativeHandle,
   useRef,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EDITOR_OPTIONS } from '../../constants/BlockEditor.constants';
-import { formatContent } from '../../utils/BlockEditorUtils';
+import { formatContent, setEditorContent } from '../../utils/BlockEditorUtils';
 import './block-editor.less';
 import { EditorSlotsRef } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
@@ -37,6 +38,7 @@ export interface BlockEditorProps {
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   ({ content = '', editable = true, onChange }, ref) => {
+    const { i18n } = useTranslation();
     const editorSlots = useRef<EditorSlotsRef>(null);
 
     const editor = useCustomEditor({
@@ -70,7 +72,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       setTimeout(() => {
         if (content !== undefined) {
           const htmlContent = formatContent(content, 'client');
-          editor.commands.setContent(htmlContent);
+          setEditorContent(editor, htmlContent);
         }
       });
     }, [content, editor]);
@@ -88,6 +90,20 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       // mentioned here https://github.com/ueberdosis/tiptap/issues/3764#issuecomment-1546854730
       setTimeout(() => editor.setEditable(editable));
     }, [editable, editor]);
+
+    useEffect(() => {
+      const editorWrapper = document.getElementById('block-editor-wrapper');
+      if (!editorWrapper) {
+        return;
+      }
+      editorWrapper.setAttribute('dir', i18n.dir());
+      // text align right if rtl
+      if (i18n.dir() === 'rtl') {
+        editorWrapper.style.textAlign = 'right';
+      } else {
+        editorWrapper.style.textAlign = 'left';
+      }
+    }, [i18n]);
 
     return (
       <div className="block-editor-wrapper" id="block-editor-wrapper">

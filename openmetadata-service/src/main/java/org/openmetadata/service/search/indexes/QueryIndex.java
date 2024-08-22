@@ -6,42 +6,39 @@ import static org.openmetadata.service.search.EntityBuilderConstant.QUERY_NGRAM;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.models.SearchSuggest;
-import org.openmetadata.service.util.JsonUtils;
 
 public class QueryIndex implements SearchIndex {
-  final List<String> excludeTopicFields = List.of("changeDescription");
   final Query query;
 
   public QueryIndex(Query query) {
     this.query = query;
   }
 
-  public Map<String, Object> buildESDoc() {
-    Map<String, Object> doc = JsonUtils.getMap(query);
+  @Override
+  public List<SearchSuggest> getSuggest() {
     List<SearchSuggest> suggest = new ArrayList<>();
     if (query.getDisplayName() != null) {
       suggest.add(SearchSuggest.builder().input(query.getName()).weight(10).build());
     }
-    SearchIndexUtils.removeNonIndexableFields(doc, excludeTopicFields);
+    return suggest;
+  }
 
+  @Override
+  public Object getEntity() {
+    return query;
+  }
+
+  public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     ParseTags parseTags = new ParseTags(Entity.getEntityTags(Entity.QUERY, query));
+    Map<String, Object> commonAttributes = getCommonAttributesMap(query, Entity.QUERY);
+    doc.putAll(commonAttributes);
     doc.put("displayName", query.getDisplayName() != null ? query.getDisplayName() : "");
     doc.put("tags", parseTags.getTags());
     doc.put("tier", parseTags.getTierTag());
-    doc.put("followers", SearchIndexUtils.parseFollowers(query.getFollowers()));
-    doc.put("suggest", suggest);
-    doc.put("entityType", Entity.QUERY);
-    doc.put(
-        "fqnParts",
-        getFQNParts(
-            query.getFullyQualifiedName(),
-            suggest.stream().map(SearchSuggest::getInput).collect(Collectors.toList())));
     return doc;
   }
 

@@ -13,7 +13,11 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.schema.type.EventType.*;
+import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
+import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_RESTORED;
+import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
+import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +42,11 @@ public class ChangeEventRepository {
       List<String> entityRestoredList,
       List<String> entityDeletedList) {
     List<String> jsons = new ArrayList<>();
-    jsons.addAll(dao.list(ENTITY_CREATED.value(), entityCreatedList, timestamp));
-    jsons.addAll(dao.list(ENTITY_UPDATED.value(), entityUpdatedList, timestamp));
-    jsons.addAll(dao.list(ENTITY_RESTORED.value(), entityRestoredList, timestamp));
-    jsons.addAll(dao.list(ENTITY_DELETED.value(), entityDeletedList, timestamp));
-    jsons.addAll(dao.list(ENTITY_SOFT_DELETED.value(), entityDeletedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_CREATED, entityCreatedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_UPDATED, entityUpdatedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_RESTORED, entityRestoredList, timestamp));
+    jsons.addAll(dao.list(ENTITY_DELETED, entityDeletedList, timestamp));
+    jsons.addAll(dao.list(ENTITY_SOFT_DELETED, entityDeletedList, timestamp));
 
     List<ChangeEvent> changeEvents = new ArrayList<>();
     for (String json : jsons) {

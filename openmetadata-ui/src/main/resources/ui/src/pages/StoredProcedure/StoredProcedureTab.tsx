@@ -16,7 +16,7 @@ import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -26,11 +26,11 @@ import { EntityType } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useFqn } from '../../hooks/useFqn';
 import { ServicePageData } from '../../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
-import { getEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const StoredProcedureTab = () => {
@@ -47,13 +47,8 @@ const StoredProcedureTab = () => {
 
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const { fqn: databaseSchemaFQN } = useParams<{ fqn: string }>();
+  const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const [showDeleted, setShowDeleted] = useState(false);
-
-  const decodedDatabaseSchemaFQN = useMemo(
-    () => getDecodedFqn(databaseSchemaFQN),
-    [databaseSchemaFQN]
-  );
 
   const fetchStoreProcedureDetails = useCallback(
     async (params?: Partial<Paging>) => {
@@ -101,7 +96,7 @@ const StoredProcedureTab = () => {
           <div className="d-inline-flex w-max-90">
             <Link
               className="break-word"
-              to={getEntityLink(
+              to={entityUtilClassBase.getEntityLink(
                 EntityType.STORED_PROCEDURE,
                 record.fullyQualifiedName ?? ''
               )}>

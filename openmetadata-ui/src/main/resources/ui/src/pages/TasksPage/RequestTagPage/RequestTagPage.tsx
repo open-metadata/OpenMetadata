@@ -19,11 +19,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { useAuthContext } from '../../../components/Auth/AuthProviders/AuthProvider';
+import Loader from '../../../components/common/Loader/Loader';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import ExploreSearchCard from '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../../components/Loader/Loader';
 import { SearchedDataProps } from '../../../components/SearchedData/SearchedData.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -31,20 +30,23 @@ import {
   CreateThread,
   TaskType,
 } from '../../../generated/api/feed/createThread';
+import { Glossary } from '../../../generated/entity/data/glossary';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
 import { postThread } from '../../../rest/feedsAPI';
-import { getEntityDetailLink } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityFeedLink,
-  getEntityName,
 } from '../../../utils/EntityUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import {
   fetchEntityDetail,
   fetchOptions,
   getBreadCrumbList,
+  getTaskAssignee,
+  getTaskEntityFQN,
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -55,12 +57,12 @@ import { EntityData, Option } from '../TasksPage.interface';
 
 const RequestTag = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
-  const { entityType, fqn: entityFQN } =
-    useParams<{ fqn: string; entityType: EntityType }>();
+  const { entityType } = useParams<{ entityType: EntityType }>();
+  const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -70,6 +72,12 @@ const RequestTag = () => {
   const [options, setOptions] = useState<Option[]>([]);
   const [assignees, setAssignees] = useState<Option[]>([]);
   const [suggestion] = useState<TagLabel[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const entityFQN = useMemo(
+    () => getTaskEntityFQN(entityType, fqn),
+    [fqn, entityType]
+  );
 
   const taskMessage = useMemo(
     () =>
@@ -83,15 +91,14 @@ const RequestTag = () => {
     [value, entityType, field, entityData]
   );
 
-  const decodedEntityFQN = useMemo(
-    () => getDecodedFqn(entityFQN),
-    [entityType]
-  );
-
   const back = () => history.goBack();
 
   const onSearch = (query: string) => {
-    fetchOptions(query, setOptions);
+    const data = {
+      query,
+      setOptions,
+    };
+    fetchOptions(data);
   };
 
   const getTaskAbout = () => {
@@ -103,10 +110,11 @@ const RequestTag = () => {
   };
 
   const onCreateTask: FormProps['onFinish'] = (value) => {
+    setIsLoading(true);
     const data: CreateThread = {
       from: currentUser?.name as string,
       message: value.title || taskMessage,
-      about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+      about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
       taskDetails: {
         assignees: assignees.map((assignee) => ({
           id: assignee.value,
@@ -126,15 +134,16 @@ const RequestTag = () => {
           })
         );
         history.push(
-          getEntityDetailLink(
+          entityUtilClassBase.getEntityLink(
             entityType,
-            decodedEntityFQN,
+            entityFQN,
             EntityTabs.ACTIVITY_FEED,
             ActivityFeedTabs.TASKS
           )
         );
       })
-      .catch((err: AxiosError) => showErrorToast(err));
+      .catch((err: AxiosError) => showErrorToast(err))
+      .finally(() => setIsLoading(false));
   };
 
   useEffect(() => {
@@ -142,17 +151,9 @@ const RequestTag = () => {
   }, [entityFQN, entityType]);
 
   useEffect(() => {
-    const owner = entityData.owner;
-    let defaultAssignee: Option[] = [];
-    if (owner) {
-      defaultAssignee = [
-        {
-          label: getEntityName(owner),
-          value: owner.id || '',
-          type: owner.type,
-          name: owner.name,
-        },
-      ];
+    const defaultAssignee = getTaskAssignee(entityData as Glossary);
+
+    if (defaultAssignee) {
       setAssignees(defaultAssignee);
       setOptions((prev) => [...defaultAssignee, ...prev]);
     }
@@ -168,7 +169,9 @@ const RequestTag = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -194,6 +197,7 @@ const RequestTag = () => {
                 })}
               </Typography.Paragraph>
               <Form
+                data-testid="form-container"
                 form={form}
                 initialValues={{
                   suggestTags: [],
@@ -226,7 +230,6 @@ const RequestTag = () => {
                     },
                   ]}>
                   <Assignees
-                    disabled={Boolean(entityData.owner)}
                     options={options}
                     value={assignees}
                     onChange={setAssignees}
@@ -247,12 +250,13 @@ const RequestTag = () => {
                     className="w-full justify-end"
                     data-testid="cta-buttons"
                     size={16}>
-                    <Button type="link" onClick={back}>
+                    <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
                     <Button
                       data-testid="submit-tag-request"
                       htmlType="submit"
+                      loading={isLoading}
                       type="primary">
                       {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>
@@ -265,6 +269,7 @@ const RequestTag = () => {
       }}
       pageTitle={t('label.task')}
       secondPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,
         children: (

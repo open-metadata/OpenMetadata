@@ -43,7 +43,7 @@ class MstrProject(BaseModel):
 
 
 class MstrProjectList(BaseModel):
-    projects: Optional[List[MstrProject]]
+    projects: Optional[List[MstrProject]] = None
 
 
 class MstrSearchResult(BaseModel):
@@ -54,7 +54,7 @@ class MstrSearchResult(BaseModel):
     name: str
     id: str
     type: int
-    description: Optional[str]
+    description: Optional[str] = None
     subtype: int
     dateCreated: str
     dateModified: str
@@ -80,7 +80,7 @@ class MstrDashboard(BaseModel):
     name: str
     id: str
     type: int
-    description: Optional[str]
+    description: Optional[str] = None
     subtype: int
     dateCreated: str
     dateModified: str
@@ -96,7 +96,7 @@ class MstrDashboard(BaseModel):
 
 
 class MstrDashboardList(BaseModel):
-    dashboards: Optional[List[MstrDashboard]]
+    dashboards: Optional[List[MstrDashboard]] = None
 
 
 class MstrAttribute(BaseModel):

@@ -5,16 +5,10 @@
   "description": "A `Tag` entity is used for classification or categorization. It is a term defined under `Classification` entity. Tags are used to label the entities and entity fields, such as Tables, and Columns.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.classification.Tag",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
-  "definitions": {
-    "tagName": {
-      "description": "Name of the tag.",
-      "type": "string",
-      "minLength": 2,
-      "maxLength": 64,
-      "pattern": "(?U)^[\\w'\\- .&()]+$"
-    }
-  },
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
+  "definitions": {},
   "properties": {
     "id": {
       "description": "Unique identifier of this entity instance.",
@@ -22,7 +16,7 @@
     },
     "name": {
       "description": "Name of the tag.",
-      "$ref": "#/definitions/tagName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this tag.",
@@ -96,8 +90,19 @@
       "description": "Children tags under this group are mutually exclusive. When mutually exclusive is `true` the tags from this group are used to **classify** an entity. An entity can only be in one class - example, it can only be either `tier1` or `tier2` and not both. When mutually exclusive is `false`, the tags from this group are used to **categorize** an entity. An entity can be in multiple categories simultaneously - example a customer can be `newCustomer` and `atRisk` simultaneously.",
       "type": "boolean",
       "default": "false"
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "dataProducts" : {
+      "description": "List of data products this entity is part of.",
+      "$ref" : "../../type/entityReferenceList.json"
     }
   },
-  "required": ["name", "description"],
+  "required": [
+    "name",
+    "description"
+  ],
   "additionalProperties": false
 }

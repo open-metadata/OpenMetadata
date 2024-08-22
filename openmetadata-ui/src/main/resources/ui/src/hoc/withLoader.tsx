@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import PropTypes from 'prop-types';
 import React, { ComponentType, PropsWithChildren } from 'react';
-import Loader from '../components/Loader/Loader';
+import Loader from '../components/common/Loader/Loader';
 
 export interface ComponentProps<T> {
   [key: string]: T;
@@ -31,10 +30,6 @@ export function withLoader<T>(Component: ComponentType<T>) {
 
   WithLoader.displayName =
     Component.displayName || Component.name || 'Component';
-
-  WithLoader.propTypes = {
-    isLoading: PropTypes.bool,
-  };
 
   return WithLoader;
 }

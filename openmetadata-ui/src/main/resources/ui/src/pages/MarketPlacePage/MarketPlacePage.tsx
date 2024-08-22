@@ -17,17 +17,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as HeadingIcon } from '../../assets/svg/marketplace-heading.svg';
-import ApplicationCard from '../../components/Applications/ApplicationCard/ApplicationCard.component';
+import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import Loader from '../../components/Loader/Loader';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
+import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { Paging } from '../../generated/type/paging';
@@ -113,10 +110,7 @@ const MarketPlacePage = () => {
             titleLinks={[
               {
                 name: t('label.application-plural'),
-                url: getSettingPath(
-                  GlobalSettingsMenuCategory.INTEGRATIONS,
-                  GlobalSettingOptions.APPLICATIONS
-                ),
+                url: getSettingPath(GlobalSettingOptions.APPLICATIONS),
               },
               {
                 name: t('label.market-place'),

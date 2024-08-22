@@ -13,26 +13,24 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { getStoredProceduresDetailsByFQN } from '../../rest/storedProceduresAPI';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { getStoredProceduresByFqn } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import { STORED_PROCEDURE_DEFAULT_FIELDS } from '../../utils/StoredProceduresUtils';
 import StoredProcedurePage from './StoredProcedurePage';
 
 const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-const API_FIELDS = `owner, followers, 
-tags, domain,dataProducts, votes`;
-
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
 }));
 
 jest.mock('../../rest/storedProceduresAPI', () => ({
-  getStoredProceduresDetailsByFQN: jest.fn().mockImplementation(() =>
+  getStoredProceduresByFqn: jest.fn().mockImplementation(() =>
     Promise.resolve({
       name: 'test',
       id: '123',
@@ -69,14 +67,9 @@ jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <p>testDescriptionV1</p>);
 });
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <p>testEntityLineageComponent</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockImplementation(() => <p>testEntityLineageComponent</p>);
+});
 
 jest.mock(
   '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -98,18 +91,15 @@ jest.mock(
   })
 );
 
-jest.mock(
-  '../../components/Entity/EntityLineage/EntityLineage.component',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
-  }
-);
+jest.mock('../../components/Lineage/Lineage.component', () => {
+  return jest.fn().mockImplementation(() => <p>testEntityLineage</p>);
+});
 
-jest.mock('../../components/SchemaEditor/SchemaEditor', () => {
+jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
   return jest.fn().mockImplementation(() => <p>testSchemaEditor</p>);
 });
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () => {
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
 
@@ -135,8 +125,12 @@ jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({})),
 }));
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <>testLoader</>);
+});
+
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <p>{children}</p>);
 });
 
 jest.useFakeTimers();
@@ -154,7 +148,7 @@ describe('StoredProcedure component', () => {
   it('StoredProcedurePage should not fetch details if permission is there', () => {
     render(<StoredProcedurePage />);
 
-    expect(getStoredProceduresDetailsByFQN).not.toHaveBeenCalled();
+    expect(getStoredProceduresByFqn).not.toHaveBeenCalled();
   });
 
   it('StoredProcedurePage should fetch details with basic fields', async () => {
@@ -168,10 +162,10 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
+    });
   });
 
   it('StoredProcedurePage should fetch details with all the permitted fields', async () => {
@@ -187,10 +181,10 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
+    });
   });
 
   it('StoredProcedurePage should render permission placeholder if not have required permission', async () => {
@@ -218,10 +212,10 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
+    });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByText('label.code')).toBeInTheDocument();
@@ -245,10 +239,10 @@ describe('StoredProcedure component', () => {
       render(<StoredProcedurePage />);
     });
 
-    expect(getStoredProceduresDetailsByFQN).toHaveBeenCalledWith(
-      'fqn',
-      API_FIELDS
-    );
+    expect(getStoredProceduresByFqn).toHaveBeenCalledWith('fqn', {
+      fields: STORED_PROCEDURE_DEFAULT_FIELDS,
+      include: 'all',
+    });
 
     expect(await screen.findByText('testSchemaEditor')).toBeInTheDocument();
   });

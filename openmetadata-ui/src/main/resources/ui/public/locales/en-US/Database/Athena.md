@@ -184,3 +184,19 @@ Database Service > Database > Schema > Table
 
 In the case of Athena, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
 $$
+
+$$section
+### Bucket Name $(id="bucketName")
+
+A bucket name in Data Lake is a unique identifier used to organize and store data objects.
+
+It's similar to a folder name, but it's used for object storage rather than file storage.
+$$
+
+$$section
+### Prefix $(id="prefix")
+
+The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data.
+
+It's used to organize and categorize data within the container, and can help users easily locate and access the data they need.
+$$

@@ -27,6 +27,10 @@
     // this is to have enough space after last node, referred from the reference editor
     padding-bottom: 30vh;
   }
+  .om-block-editor > .tableWrapper {
+    width: 100%;
+    overflow-x: auto;
+  }
   // show placeholder when editor is in focused mode
   .tiptap.ProseMirror-focused .is-node-empty.has-focus::before {
     color: @grey-3;
@@ -264,14 +268,18 @@
 }
 
 .link-popup {
+  align-items: center;
   padding: 4px;
   background: @white;
   border: @global-border;
-  border-radius: 20px;
+  border-radius: @border-radius-base;
 
   button,
   a {
     color: @text-color !important;
+    &:hover {
+      background-color: @hover-bg;
+    }
   }
 }
 
@@ -323,11 +331,11 @@
 
 .om-list-decimal {
   list-style-type: decimal !important;
-  padding-left: 16px;
+  padding-left: 24px;
 }
 .om-list-disc {
   list-style-type: disc !important;
-  padding-left: 16px;
+  padding-left: 24px;
 }
 .om-leading-normal {
   line-height: 1.5;
@@ -382,7 +390,7 @@
 }
 .om-image-node-embed-link-btn-col {
   display: flex;
-  justify-content: end;
+  justify-content: flex-end;
 }
 
 .om-callout-node {
@@ -449,5 +457,11 @@
   border-radius: @border-radius-base;
   button {
     padding: 0px;
+  }
+}
+
+.block-editor-wrapper[dir='rtl'] {
+  .tiptap.ProseMirror-focused .is-node-empty.has-focus::before {
+    float: right;
   }
 }

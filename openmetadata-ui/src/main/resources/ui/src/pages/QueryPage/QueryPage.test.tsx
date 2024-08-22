@@ -24,7 +24,7 @@ jest.mock('react-router-dom', () => ({
     queryId: 'queryId',
   })),
 }));
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
       ViewAll: true,
@@ -41,10 +41,10 @@ jest.mock(
     return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
   }
 );
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader</div>);
 });
-jest.mock('../../components/TableQueries/QueryCard', () => {
+jest.mock('../../components/Database/TableQueries/QueryCard', () => {
   return jest.fn().mockImplementation(() => <div>QueryCard</div>);
 });
 jest.mock('../../rest/queryAPI', () => ({

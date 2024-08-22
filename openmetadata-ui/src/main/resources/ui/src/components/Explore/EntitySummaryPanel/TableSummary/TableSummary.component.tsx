@@ -24,14 +24,18 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { mockTablePermission } from '../../../../constants/mockTourData.constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
-import { Table, TestSummary } from '../../../../generated/entity/data/table';
-import {
-  getLatestTableProfileByFqn,
-  getTableDetailsByFQN,
-} from '../../../../rest/tableAPI';
-import { formTwoDigitNmber as formTwoDigitNumber } from '../../../../utils/CommonUtils';
+import { Table } from '../../../../generated/entity/data/table';
+import { TestSummary } from '../../../../generated/tests/testCase';
+import { getLatestTableProfileByFqn } from '../../../../rest/tableAPI';
+import { getTestCaseExecutionSummary } from '../../../../rest/testAPI';
+import { formTwoDigitNumber } from '../../../../utils/CommonUtils';
 import {
   getFormattedEntityData,
   getSortedTagsWithHighlight,
@@ -41,14 +45,8 @@ import {
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import { getEncodedFqn } from '../../../../utils/StringsUtils';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
-import { usePermissionProvider } from '../../../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../PermissionProvider/PermissionProvider.interface';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
@@ -89,17 +87,16 @@ function TableSummary({
   const isTableDeleted = useMemo(() => tableDetails.deleted, [tableDetails]);
 
   const fetchAllTests = async () => {
-    try {
-      const res = await getTableDetailsByFQN(
-        getEncodedFqn(tableDetails.fullyQualifiedName ?? ''),
-        'testSuite'
-      );
+    if (tableDetails?.testSuite?.id) {
+      try {
+        const res = await getTestCaseExecutionSummary(
+          tableDetails.testSuite.id
+        );
 
-      if (res?.testSuite?.summary) {
-        setTestSuiteSummary(res?.testSuite?.summary);
+        setTestSuiteSummary(res);
+      } catch (error) {
+        // Error
       }
-    } catch (error) {
-      // Error
     }
   };
 
@@ -247,15 +244,10 @@ function TableSummary({
           entityDetail={tableDetails}
           tags={
             tags ??
-            getSortedTagsWithHighlight({
-              tags: tableDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ??
-            []
+            getSortedTagsWithHighlight(
+              tableDetails.tags,
+              get(highlights, 'tag.name')
+            )
           }
         />
         <Divider className="m-y-xs" />

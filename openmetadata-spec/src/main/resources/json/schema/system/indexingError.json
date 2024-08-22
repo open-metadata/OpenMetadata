@@ -1,0 +1,47 @@
+{
+  "$id": "https://open-metadata.org/schema/system/indexingError.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IndexingAppError",
+  "description": "This schema defines Event Publisher Job Error Schema.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.IndexingError",
+  "definitions": {
+    "errorSource": {
+      "type": "string",
+      "enum": ["Job" ,"Reader", "Processor", "Sink"]
+    }
+  },
+  "properties": {
+    "errorSource": {
+      "$ref": "#/definitions/errorSource"
+    },
+    "lastFailedCursor": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "failedEntities": {
+      "type": "array",
+      "items": {
+        "$ref": "./entityError.json"
+      }
+    },
+    "reason": {
+      "type": "string"
+    },
+    "stackTrace": {
+      "type": "string"
+    },
+    "submittedCount": {
+      "type": "integer"
+    },
+    "successCount": {
+      "type": "integer"
+    },
+    "failedCount": {
+      "type": "integer"
+    }
+  },
+  "additionalProperties": false
+}

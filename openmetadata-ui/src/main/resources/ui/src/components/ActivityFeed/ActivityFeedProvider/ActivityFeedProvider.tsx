@@ -13,26 +13,36 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { isEqual } from 'lodash';
+import { isEqual, orderBy } from 'lodash';
 import React, {
   createContext,
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ReactionOperation } from '../../../enums/reactions.enum';
 import {
   Post,
+  TaskType,
   Thread,
+  ThreadTaskStatus,
   ThreadType,
 } from '../../../generated/entity/feed/thread';
+import { EntityReference } from '../../../generated/entity/type';
+import { TestCaseResolutionStatus } from '../../../generated/tests/testCaseResolutionStatus';
 import { Paging } from '../../../generated/type/paging';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   deletePostById,
   deleteThread,
@@ -42,10 +52,14 @@ import {
   updatePost,
   updateThread,
 } from '../../../rest/feedsAPI';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
+import { getUsers } from '../../../rest/userAPI';
+import {
+  getEntityFeedLink,
+  getEntityReferenceListFromEntities,
+} from '../../../utils/EntityUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';
 import { ActivityFeedProviderContextType } from './ActivityFeedProviderContext.interface';
 
@@ -69,10 +83,42 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const [isDrawerLoading, setIsDrawerLoading] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedThread, setSelectedThread] = useState<Thread>();
-  const { currentUser } = useAuthContext();
+  const [testCaseResolutionStatus, setTestCaseResolutionStatus] = useState<
+    TestCaseResolutionStatus[]
+  >([]);
+  const [initialAssignees, setInitialAssignees] = useState<EntityReference[]>(
+    []
+  );
+  const { currentUser } = useApplicationStore();
+
+  const fetchTestCaseResolution = useCallback(async (id: string) => {
+    try {
+      const { data } = await getListTestCaseIncidentByStateId(id, {
+        limit: PAGE_SIZE_LARGE,
+      });
+
+      setTestCaseResolutionStatus(
+        orderBy(data, (item) => item.timestamp, ['asc'])
+      );
+    } catch (error) {
+      setTestCaseResolutionStatus([]);
+    }
+  }, []);
 
   const setActiveThread = useCallback((active?: Thread) => {
     setSelectedThread(active);
+    if (
+      active &&
+      active.task?.type === TaskType.RequestTestCaseFailureResolution &&
+      active.task?.testCaseResolutionStatusId
+    ) {
+      setLoading(true);
+      fetchTestCaseResolution(active.task.testCaseResolutionStatusId).finally(
+        () => {
+          setLoading(false);
+        }
+      );
+    }
   }, []);
 
   const getFeedDataById = useCallback(async (id) => {
@@ -92,23 +138,47 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     }
   }, []);
 
+  const fetchUpdatedThread = useCallback(
+    async (id) => {
+      try {
+        const res = await getFeedById(id);
+        setSelectedThread(res.data);
+        setEntityThread((prev) => {
+          return prev.map((thread) => {
+            if (thread.id === id) {
+              return res.data;
+            } else {
+              return thread;
+            }
+          });
+        });
+      } catch (err) {
+        // no need to show error toast
+      }
+    },
+    [setEntityThread]
+  );
+
   const getFeedData = useCallback(
     async (
       filterType?: FeedFilter,
       after?: string,
       type?: ThreadType,
       entityType?: EntityType,
-      fqn?: string
+      fqn?: string,
+      taskStatus?: ThreadTaskStatus,
+      limit?: number
     ) => {
       try {
         setLoading(true);
         const feedFilterType = filterType ?? FeedFilter.ALL;
-        const userId =
-          entityType === EntityType.USER
-            ? user
-            : feedFilterType === FeedFilter.ALL
-            ? undefined
-            : currentUser?.id;
+        let userId = undefined;
+
+        if (entityType === EntityType.USER) {
+          userId = user;
+        } else if (feedFilterType !== FeedFilter.ALL) {
+          userId = currentUser?.id;
+        }
 
         const { data, paging } = await getAllFeeds(
           entityType !== EntityType.USER && fqn
@@ -117,8 +187,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           after,
           type,
           feedFilterType,
-          undefined,
-          userId
+          type === ThreadType.Task ? taskStatus : undefined,
+          userId,
+          limit
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
@@ -149,6 +220,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
     try {
       const res = await postFeedById(id, data);
+      setActiveThread(res);
       const { id: responseId, posts } = res;
       setEntityThread((pre) => {
         return pre.map((thread) => {
@@ -159,7 +231,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           }
         });
       });
-      setActiveThread(res);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -173,6 +244,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const refreshActivityFeed = useCallback((threads) => {
     setEntityThread([...threads]);
   }, []);
+
+  const updateEntityThread = useCallback(
+    (thread: Thread) => {
+      setEntityThread((prev) => {
+        return prev.map((threadItem) => {
+          if (threadItem.id === thread.id) {
+            return thread;
+          } else {
+            return threadItem;
+          }
+        });
+      });
+    },
+    [setEntityThread]
+  );
 
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
@@ -272,11 +358,11 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       data: Operation[]
     ) => {
       if (isThread) {
-        updateThreadHandler(threadId, data).catch(() => {
+        await updateThreadHandler(threadId, data).catch(() => {
           // ignore since error is displayed in toast in the parent promise.
         });
       } else {
-        updatePostHandler(threadId, postId, data).catch(() => {
+        await updatePostHandler(threadId, postId, data).catch(() => {
           // ignore since error is displayed in toast in the parent promise.
         });
       }
@@ -284,7 +370,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     []
   );
 
-  const updateReactions = (
+  const updateReactions = async (
     post: Post,
     feedId: string,
     isThread: boolean,
@@ -319,7 +405,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       }
     );
 
-    updateFeed(feedId, post.id, isThread, patch).catch(() => {
+    await updateFeed(feedId, post.id, isThread, patch).catch(() => {
       // ignore since error is displayed in toast in the parent promise.
     });
   };
@@ -340,6 +426,34 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     setIsDrawerOpen(false);
   }, []);
 
+  const updateTestCaseIncidentStatus = useCallback(
+    (status: TestCaseResolutionStatus[]) => {
+      setTestCaseResolutionStatus(status);
+    },
+    [setTestCaseResolutionStatus]
+  );
+  const fetchInitialAssign = useCallback(async () => {
+    try {
+      const { data } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+
+        isBot: false,
+      });
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+      setInitialAssignees(filterData);
+    } catch (error) {
+      setInitialAssignees([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    // fetch users once and store in state
+    fetchInitialAssign();
+  }, []);
+
   const activityFeedContextValues = useMemo(() => {
     return {
       entityThread,
@@ -358,8 +472,13 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       hideDrawer,
       updateEditorFocus,
       setActiveThread,
+      updateEntityThread,
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
+      testCaseResolutionStatus,
+      fetchUpdatedThread,
+      updateTestCaseIncidentStatus,
+      initialAssignees,
     };
   }, [
     entityThread,
@@ -378,19 +497,20 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     hideDrawer,
     updateEditorFocus,
     setActiveThread,
+    updateEntityThread,
     entityPaging,
     user,
     currentUser,
+    testCaseResolutionStatus,
+    fetchUpdatedThread,
+    updateTestCaseIncidentStatus,
+    initialAssignees,
   ]);
 
   return (
     <ActivityFeedContext.Provider value={activityFeedContextValues}>
       {children}
-      {isDrawerOpen && (
-        <>
-          <ActivityFeedDrawer open={isDrawerOpen} />
-        </>
-      )}
+      {isDrawerOpen && <ActivityFeedDrawer open={isDrawerOpen} />}
     </ActivityFeedContext.Provider>
   );
 };

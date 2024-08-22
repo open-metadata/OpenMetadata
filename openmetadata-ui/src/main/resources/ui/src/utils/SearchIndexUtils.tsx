@@ -12,18 +12,12 @@
  */
 
 import { uniqueId } from 'lodash';
-import {
-  PLACEHOLDER_ROUTE_FQN,
-  PLACEHOLDER_ROUTE_SUB_TAB,
-  PLACEHOLDER_ROUTE_TAB,
-  ROUTES,
-} from '../constants/constants';
-import { EntityTabs, TabSpecificField } from '../enums/entity.enum';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { sortTagsCaseInsensitive } from './CommonUtils';
 
 // eslint-disable-next-line max-len
-export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNER},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS}`;
+export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
 export const makeRow = (column: SearchIndexField) => {
   return {
@@ -45,29 +39,4 @@ export const makeData = (
     id: uniqueId(column.name),
     children: column.children ? makeData(column.children) : undefined,
   }));
-};
-
-export const getSearchIndexDetailsPath = (searchIndexFQN: string) => {
-  let path = ROUTES.SEARCH_INDEX_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, searchIndexFQN);
-
-  return path;
-};
-
-export const getSearchIndexTabPath = (
-  searchIndexFQN: string,
-  tab = 'fields',
-  subTab = 'all'
-) => {
-  let path = ROUTES.SEARCH_INDEX_DETAILS_WITH_TAB;
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.SEARCH_INDEX_DETAILS_WITH_SUB_TAB;
-
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
-  }
-  path = path
-    .replace(PLACEHOLDER_ROUTE_FQN, searchIndexFQN)
-    .replace(PLACEHOLDER_ROUTE_TAB, tab);
-
-  return path;
 };

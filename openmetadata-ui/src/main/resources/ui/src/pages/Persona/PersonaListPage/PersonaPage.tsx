@@ -15,21 +15,25 @@ import Card from 'antd/lib/card/Card';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { AddEditPersonaForm } from '../../../components/MyData/Persona/AddEditPersona/AddEditPersona.component';
+import { PersonaDetailsCard } from '../../../components/MyData/Persona/PersonaDetailsCard/PersonaDetailsCard';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
-import { AddEditPersonaForm } from '../../../components/Persona/AddEditPersona/AddEditPersona.component';
-import { PersonaDetailsCard } from '../../../components/Persona/PersonaDetailsCard/PersonaDetailsCard';
+import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
+import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { Paging } from '../../../generated/type/paging';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllPersonas } from '../../../rest/PersonaAPI';
+import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 
 export const PersonaPage = () => {
   const { isAdminUser } = useAuth();
@@ -40,8 +44,6 @@ export const PersonaPage = () => {
   const [addEditPersona, setAddEditPersona] = useState<Persona>();
 
   const [isLoading, setIsLoading] = useState(false);
-
-  const [personaDeleting, setPersonaDeleting] = useState<Persona>();
   const {
     currentPage,
     handlePageChange,
@@ -52,12 +54,21 @@ export const PersonaPage = () => {
     showPagination,
   } = usePaging();
 
+  const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
+    () =>
+      getSettingPageEntityBreadCrumb(
+        GlobalSettingsMenuCategory.MEMBERS,
+        t('label.persona-plural')
+      ),
+    []
+  );
+
   const fetchPersonas = useCallback(async (params?: Partial<Paging>) => {
     try {
       setIsLoading(true);
       const { data, paging } = await getAllPersonas({
         limit: pageSize,
-        fields: 'users',
+        fields: TabSpecificField.USERS,
         after: params?.after,
         before: params?.before,
       });
@@ -113,71 +124,64 @@ export const PersonaPage = () => {
   };
 
   return (
-    <Row
-      className="user-listing p-b-md"
-      data-testid="user-list-v1-component"
-      gutter={[16, 16]}>
-      <Col span={18}>
-        <PageHeader data={PAGE_HEADERS.PERSONAS} />
-      </Col>
-      <Col span={6}>
-        <Space align="center" className="w-full justify-end" size={16}>
-          <Button
-            data-testid="add-user"
-            type="primary"
-            onClick={handleAddNewPersona}>
-            {t('label.add-entity', { entity: t('label.persona') })}
-          </Button>
-        </Space>
-      </Col>
-
-      {isLoading
-        ? [1, 2, 3].map((key) => (
-            <Col key={key} span={8}>
-              <Card>
-                <Skeleton active paragraph title />
-              </Card>
-            </Col>
-          ))
-        : persona?.map((persona) => (
-            <Col key={persona.id} span={8}>
-              <PersonaDetailsCard persona={persona} />
-            </Col>
-          ))}
-
-      {isEmpty(persona) && !isLoading && errorPlaceHolder}
-
-      {showPagination && (
+    <PageLayoutV1 pageTitle={t('label.persona-plural')}>
+      <Row
+        className="user-listing page-container p-b-md"
+        data-testid="user-list-v1-component"
+        gutter={[16, 16]}>
         <Col span={24}>
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handlePersonaPageChange}
-            onShowSizeChange={handlePageSizeChange}
-          />
+          <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Col>
-      )}
+        <Col span={18}>
+          <PageHeader data={PAGE_HEADERS.PERSONAS} />
+        </Col>
+        <Col span={6}>
+          <Space align="center" className="w-full justify-end" size={16}>
+            <Button
+              data-testid="add-persona-button"
+              type="primary"
+              onClick={handleAddNewPersona}>
+              {t('label.add-entity', { entity: t('label.persona') })}
+            </Button>
+          </Space>
+        </Col>
 
-      {Boolean(addEditPersona) && (
-        <AddEditPersonaForm
-          persona={addEditPersona}
-          onCancel={handlePersonalAddEditCancel}
-          onSave={handlePersonaAddEditSave}
-        />
-      )}
+        {isLoading
+          ? [1, 2, 3].map((key) => (
+              <Col key={key} span={8}>
+                <Card>
+                  <Skeleton active paragraph title />
+                </Card>
+              </Col>
+            ))
+          : persona?.map((persona) => (
+              <Col key={persona.id} span={8}>
+                <PersonaDetailsCard persona={persona} />
+              </Col>
+            ))}
 
-      <DeleteWidgetModal
-        afterDeleteAction={() => fetchPersonas()}
-        allowSoftDelete={false}
-        entityId={personaDeleting?.id ?? ''}
-        entityName={personaDeleting?.name ?? ''}
-        entityType={EntityType.PERSONA}
-        visible={Boolean(personaDeleting)}
-        onCancel={() => {
-          setPersonaDeleting(undefined);
-        }}
-      />
-    </Row>
+        {isEmpty(persona) && !isLoading && errorPlaceHolder}
+
+        {showPagination && (
+          <Col span={24}>
+            <NextPrevious
+              currentPage={currentPage}
+              pageSize={pageSize}
+              paging={paging}
+              pagingHandler={handlePersonaPageChange}
+              onShowSizeChange={handlePageSizeChange}
+            />
+          </Col>
+        )}
+
+        {Boolean(addEditPersona) && (
+          <AddEditPersonaForm
+            persona={addEditPersona}
+            onCancel={handlePersonalAddEditCancel}
+            onSave={handlePersonaAddEditSave}
+          />
+        )}
+      </Row>
+    </PageLayoutV1>
   );
 };

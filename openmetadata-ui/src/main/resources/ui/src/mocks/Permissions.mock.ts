@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 
 export const PERMISSIONS = {
   alert: {
@@ -39,7 +39,7 @@ export const PERMISSIONS = {
     EditDescription: true,
     EditDisplayName: true,
     EditTags: true,
-    EditOwner: true,
+    EditOwners: true,
     EditTier: true,
     EditCustomFields: true,
     EditLineage: true,
@@ -69,7 +69,7 @@ export const PERMISSIONS = {
     EditDescription: true,
     EditDisplayName: true,
     EditTags: true,
-    EditOwner: true,
+    EditOwners: true,
     EditTier: true,
     EditCustomFields: true,
     EditLineage: true,
@@ -101,7 +101,7 @@ export const PERMISSIONS = {
     EditDescription: true,
     EditDisplayName: true,
     EditTags: true,
-    EditOwner: true,
+    EditOwners: true,
     EditTier: true,
     EditCustomFields: true,
     EditLineage: true,
@@ -304,7 +304,7 @@ export const PERMISSIONS = {
     EditDescription: true,
     EditDisplayName: true,
     EditTags: true,
-    EditOwner: true,
+    EditOwners: true,
     EditTier: true,
     EditCustomFields: true,
     EditTests: true,
@@ -401,7 +401,7 @@ export const ENTITY_PERMISSIONS = {
   EditDescription: true,
   EditDisplayName: true,
   EditLineage: true,
-  EditOwner: true,
+  EditOwners: true,
   EditQueries: true,
   EditSampleData: true,
   EditTags: true,

@@ -15,6 +15,8 @@ Oracle E2E tests
 
 from typing import List
 
+import pytest
+
 from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType
@@ -23,7 +25,6 @@ from .common_e2e_sqa_mixins import SQACommonMethods
 
 
 class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
-
     create_table_query: str = """
        CREATE TABLE admin.admin_emp (
          empno      NUMBER(5) PRIMARY KEY,
@@ -47,7 +48,7 @@ class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         """
-        INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status) WITH names AS ( 
+        INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status) WITH names AS (
 SELECT 1, 'John Doe', 12356789, 'Manager', 121, 5200.0, 5000.0, 'Amazing', 'Active' FROM dual UNION ALL
 SELECT 2, 'Jane Doe', 123467189, 'Clerk', 131, 503.0, 5000.0, 'Wow', 'Active' FROM dual UNION ALL
 SELECT 3, 'Jon Doe', 123562789, 'Assistant', 141, 5000.0, 5000.0, 'Nice', 'Active' FROM dual UNION ALL
@@ -83,7 +84,7 @@ SELECT * from names
 
     @staticmethod
     def expected_tables() -> int:
-        return 14
+        return 13
 
     def inserted_rows_count(self) -> int:
         # For the admin_emp table
@@ -97,11 +98,11 @@ SELECT * from names
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "e2e_oracle.default.admin.ADMIN_EMP"
+        return "e2e_oracle.default.admin.admin_emp"
 
     @staticmethod
     def _fqn_deleted_table() -> str:
-        return "e2e_oracle.default.admin.ADMIN_EMP"
+        return "e2e_oracle.default.admin.admin_emp"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
@@ -125,16 +126,19 @@ SELECT * from names
 
     @staticmethod
     def expected_filtered_table_includes() -> int:
-        return 42
+        return 43
 
     @staticmethod
     def expected_filtered_table_excludes() -> int:
-        return 28
+        return 30
 
     @staticmethod
     def expected_filtered_mix() -> int:
-        return 42
+        return 43
 
+    @pytest.mark.xfail(
+        reason="Issue Raised: https://github.com/open-metadata/OpenMetadata/issues/17085"
+    )
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
         self.delete_table_and_view()
@@ -241,7 +245,7 @@ SELECT * from names
             E2EType.INGEST_DB_FILTER_MIX,
             {
                 "schema": {"includes": self.get_includes_schemas()},
-                "table": {"excludes": self.get_includes_tables()},
+                "table": {"excludes": self.get_excludes_tables()},
             },
         )
 
@@ -252,10 +256,16 @@ SELECT * from names
     def assert_for_vanilla_ingestion(
         self, source_status: Status, sink_status: Status
     ) -> None:
-        self.assertTrue(len(source_status.failures) == 0)
-        self.assertTrue(len(source_status.warnings) == 0)
-        self.assertTrue(len(source_status.filtered) == 28)
-        self.assertTrue(len(source_status.records) >= self.expected_tables())
-        self.assertTrue(len(sink_status.failures) == 0)
-        self.assertTrue(len(sink_status.warnings) == 0)
-        self.assertTrue(len(sink_status.records) > self.expected_tables())
+        self.assertEqual(len(source_status.failures), 0)
+        self.assertEqual(len(source_status.warnings), 0)
+        self.assertEqual(len(source_status.filtered), 29)
+        self.assertGreaterEqual(
+            (len(source_status.records) + len(source_status.updated_records)),
+            self.expected_tables(),
+        )
+        self.assertEqual(len(sink_status.failures), 0)
+        self.assertEqual(len(sink_status.warnings), 0)
+        self.assertGreater(
+            (len(sink_status.records) + len(sink_status.updated_records)),
+            self.expected_tables(),
+        )

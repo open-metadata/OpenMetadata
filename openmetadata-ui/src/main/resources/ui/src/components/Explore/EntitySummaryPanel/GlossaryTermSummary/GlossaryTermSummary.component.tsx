@@ -15,13 +15,14 @@ import { Col, Divider, Row, Space, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SummaryEntityType } from '../../../../enums/EntitySummary.enum';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
 import { getGlossaryTermByFQN } from '../../../../rest/glossaryAPI';
 import { getFormattedEntityData } from '../../../../utils/EntitySummaryPanelUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
-import TagButton from '../../../TagButton/TagButton.component';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import TagButton from '../../../common/TagButton/TagButton.component';
 import SummaryList from '../SummaryList/SummaryList.component';
 import { BasicEntityInfo } from '../SummaryList/SummaryList.interface';
 import { GlossaryTermSummaryProps } from './GlossaryTermSummary.interface';
@@ -58,7 +59,15 @@ function GlossaryTermSummary({
     try {
       const response = await getGlossaryTermByFQN(
         entityDetails.fullyQualifiedName,
-        'relatedTerms,reviewers,tags,owner,children'
+        {
+          fields: [
+            TabSpecificField.RELATED_TERMS,
+            TabSpecificField.OWNERS,
+            TabSpecificField.REVIEWERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.CHILDREN,
+          ],
+        }
       );
       setSelectedData(response);
     } catch (error) {
@@ -84,12 +93,7 @@ function GlossaryTermSummary({
           <Col span={24}>
             {reviewers.length > 0 ? (
               <Space wrap size={[8, 8]}>
-                {reviewers.map((assignee) => (
-                  <OwnerLabel
-                    key={assignee.fullyQualifiedName}
-                    owner={assignee}
-                  />
-                ))}
+                <OwnerLabel owners={reviewers} />
               </Space>
             ) : (
               <Typography.Text

@@ -204,6 +204,9 @@ export const rawSearchQuery = <
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
     },
+    paramsSerializer: {
+      indexes: null,
+    },
   });
 };
 

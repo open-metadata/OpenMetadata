@@ -32,7 +32,7 @@ jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
   jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 
-jest.mock('../../Loader/Loader', () =>
+jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 

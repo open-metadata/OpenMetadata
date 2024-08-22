@@ -1,0 +1,48 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/iceberg/icebergCatalog.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IcebergCatalog",
+  "description": "Iceberg Catalog configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.iceberg.IcebergCatalog",
+  "properties": {
+    "name": {
+      "title": "Name",
+      "description": "Catalog Name.",
+      "type": "string"
+    },
+    "connection": {
+      "title": "Connection",
+      "description": "Catalog connection configuration, depending on your catalog type.",
+      "oneOf": [
+        {
+          "$ref": "./hiveCatalogConnection.json"
+        },
+        {
+          "$ref": "./restCatalogConnection.json"
+        },
+        {
+          "$ref": "./glueCatalogConnection.json"
+        },
+        {
+          "$ref": "./dynamoDbCatalogConnection.json"
+        }
+      ]
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Custom Database Name for your Iceberg Service. If not set it will be 'default'.",
+      "type": "string"
+    },
+    "warehouseLocation": {
+      "title": "Warehouse Location",
+      "description": "Warehouse Location. Used to specify a custom warehouse location if needed.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "connection"
+  ]
+}

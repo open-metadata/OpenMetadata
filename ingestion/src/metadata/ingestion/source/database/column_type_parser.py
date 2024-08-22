@@ -88,7 +88,7 @@ class ColumnTypeParser:
         "BIGNUMERIC": "NUMERIC",
         "BIGSERIAL": "BIGINT",
         "BINARY": "BINARY",
-        "BIT": "INT",
+        "BIT": "BIT",
         "BLOB": "BLOB",
         "BOOL": "BOOLEAN",
         "BOOLEAN": "BOOLEAN",
@@ -276,6 +276,24 @@ class ColumnTypeParser:
         "WDC_BOOL": "BOOLEAN",
         "WDC_DATE": "DATE",
         "WDC_GEOMETRY": "GEOMETRY",
+        # SAP ERP
+        "CLNT": "INT",
+        "INT1": "INT",
+        "LRAW": "BLOB",
+        "UNIT": "CHAR",
+        "NUMC": "CHAR",
+        "LANG": "CHAR",
+        "CUKY": "CHAR",
+        "DATS": "DATE",
+        "TIMS": "TIME",
+        "FLTP": "FLOAT",
+        "QUAN": "DECIMAL",
+        "DEC": "DECIMAL",
+        "CURR": "DECIMAL",
+        "STRG": "STRING",
+        "RSTR": "STRING",
+        # azuresql
+        "HIERARCHYID": "UNKNOWN",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
@@ -284,10 +302,12 @@ class ColumnTypeParser:
 
     try:
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy.dialects.mssql import BIT
+        from teradatasqlalchemy import BYTE, VARBYTE
 
-        _COLUMN_TYPE_MAPPING[BIT] = "BINARY"
-        _SOURCE_TYPE_TO_OM_TYPE["BIT"] = "BINARY"
+        _COLUMN_TYPE_MAPPING[BYTE] = "BINARY"
+        _SOURCE_TYPE_TO_OM_TYPE["BYTE"] = "BINARY"
+        _COLUMN_TYPE_MAPPING[VARBYTE] = "VARBINARY"
+        _SOURCE_TYPE_TO_OM_TYPE["VARBYTE"] = "VARBINARY"
     except ImportError:
         pass
 
@@ -329,7 +349,6 @@ class ColumnTypeParser:
             arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
                 data_type[6:-1]
             )["dataType"]
-
             data_type_string = {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,
@@ -369,7 +388,9 @@ class ColumnTypeParser:
 
     @staticmethod
     def _parse_struct_fields_string(stuct_type: str) -> Dict[str, object]:
-        parts = ColumnTypeParser._ignore_brackets_split(stuct_type, ",")
+        parts = ColumnTypeParser._ignore_brackets_split(
+            stuct_type, ",", skip_no_child_validation=True
+        )
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
@@ -387,9 +408,10 @@ class ColumnTypeParser:
             field_type = ColumnTypeParser._parse_datatype_string(name_and_type[1])
             field_type["name"] = field_name
             columns.append(field_type)
+
         return {
             "children": columns,
-            "dataTypeDisplay": f"struct<{stuct_type}>",
+            "dataTypeDisplay": f"struct<{stuct_type or 'unknown'}>",
             "dataType": "STRUCT",
         }
 
@@ -431,7 +453,9 @@ class ColumnTypeParser:
         }
 
     @staticmethod
-    def _ignore_brackets_split(string: str, separator: str) -> List[str]:
+    def _ignore_brackets_split(
+        string: str, separator: str, skip_no_child_validation: bool = False
+    ) -> List[str]:
         parts = []
         buf = ""
         level = 0
@@ -452,9 +476,10 @@ class ColumnTypeParser:
             else:
                 buf += char
 
-        if len(buf) == 0:
+        if len(buf) == 0 and not skip_no_child_validation:
             raise ValueError(f"The {separator} cannot be the last char: {string}")
-        parts.append(buf)
+        if buf:
+            parts.append(buf)
         return parts
 
     @staticmethod

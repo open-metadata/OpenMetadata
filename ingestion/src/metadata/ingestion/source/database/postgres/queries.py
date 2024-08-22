@@ -71,18 +71,25 @@ POSTGRES_PARTITION_DETAILS = textwrap.dedent(
         col.table_schema = par.relnamespace::regnamespace::text
         and col.table_name = par.relname
         and ordinal_position = pt.column_index
-     where par.relname='{table_name}' and  par.relnamespace::regnamespace::text='{schema_name}'
+     where par.relname=%(table_name)s and  par.relnamespace::regnamespace::text=%(schema_name)s
     """
 )
 
 POSTGRES_GET_ALL_TABLE_PG_POLICY = """
-SELECT object_id, polname, table_catalog , table_schema ,table_name  
+SELECT object_id, polname, table_catalog, table_schema, table_name  
 FROM information_schema.tables AS it
 JOIN (SELECT pc.oid as object_id, pc.relname, pp.*
       FROM pg_policy AS pp
       JOIN pg_class AS pc ON pp.polrelid = pc.oid
       JOIN pg_namespace as pn ON pc.relnamespace = pn.oid) AS ppr ON it.table_name = ppr.relname
 WHERE it.table_schema='{schema_name}' AND it.table_catalog='{database_name}';
+"""
+
+POSTGRES_SCHEMA_COMMENTS = """
+    SELECT n.nspname AS schema_name, 
+            d.description AS comment
+    FROM pg_catalog.pg_namespace n
+    LEFT JOIN pg_catalog.pg_description d ON d.objoid = n.oid AND d.objsubid = 0;
 """
 
 POSTGRES_TABLE_COMMENTS = """
@@ -187,4 +194,20 @@ POSTGRES_SQL_COLUMNS = """
 
 POSTGRES_GET_SERVER_VERSION = """
 show server_version
+"""
+
+POSTGRES_FETCH_FK = """
+    SELECT r.conname,
+        pg_catalog.pg_get_constraintdef(r.oid, true) as condef,
+        n.nspname as conschema,
+        d.datname AS con_db_name
+    FROM  pg_catalog.pg_constraint r,
+        pg_namespace n,
+        pg_class c
+    JOIN pg_database d ON d.datname = current_database()
+    WHERE r.conrelid = :table AND
+        r.contype = 'f' AND
+        c.oid = confrelid AND
+        n.oid = c.relnamespace
+    ORDER BY 1
 """

@@ -79,7 +79,7 @@
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "docs"
       },
       "version": {
         "type": "float"
@@ -96,6 +96,9 @@
       },
       "sourceUrl": {
         "type": "text"
+      },
+      "lineage": {
+        "type" : "object"
       },
       "dataProducts": {
         "properties": {
@@ -291,7 +294,7 @@
       "server": {
         "type": "text"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -486,6 +489,16 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

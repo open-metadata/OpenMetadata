@@ -16,6 +16,7 @@
       "type": "string",
       "enum": [
         "BigQuery",
+        "BigTable",
         "Mysql",
         "Redshift",
         "Snowflake",
@@ -52,11 +53,18 @@
         "Greenplum",
         "Doris",
         "UnityCatalog",
-        "DuckDb"
+        "SAS",
+        "Iceberg",
+        "Teradata",
+        "SapErp",
+        "Synapse"
       ],
       "javaEnums": [
         {
           "name": "BigQuery"
+        },
+        {
+          "name": "BigTable"
         },
         {
           "name": "Mysql"
@@ -167,9 +175,20 @@
           "name": "UnityCatalog"
         },
         {
-          "name": "DuckDb"
+          "name": "SAS"
+        },
+        {
+          "name": "Iceberg"
+        },
+        {
+          "name": "Teradata"
+        },
+        {
+          "name": "SapErp"
+        },
+        {
+          "name": "Synapse"
         }
-        
       ]
     },
     "databaseConnection": {
@@ -184,6 +203,9 @@
           "oneOf": [
             {
               "$ref": "./connections/database/bigQueryConnection.json"
+            },
+            {
+              "$ref": "./connections/database/bigTableConnection.json"
             },
             {
               "$ref": "./connections/database/athenaConnection.json"
@@ -288,7 +310,19 @@
               "$ref": "./connections/database/unityCatalogConnection.json"
             },
             {
-              "$ref": "./connections/database/duckdbConnection.json"
+              "$ref": "./connections/database/sasConnection.json"
+            },
+            {
+              "$ref": "./connections/database/icebergConnection.json"
+            },
+            {
+              "$ref": "./connections/database/teradataConnection.json"
+            },
+            {
+              "$ref": "./connections/database/sapErpConnection.json"
+            },
+            {
+              "$ref": "./connections/database/synapseConnection.json"
             }
           ]
         }
@@ -352,9 +386,9 @@
       "description": "User who made the update.",
       "type": "string"
     },
-    "owner": {
-      "description": "Owner of this database service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this database service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this database service.",

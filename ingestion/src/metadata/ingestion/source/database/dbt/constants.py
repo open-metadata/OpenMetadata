@@ -14,6 +14,8 @@ Constants required for dbt
 
 from enum import Enum
 
+DBT_RUN_RESULT_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
 # Based on https://schemas.getdbt.com/dbt/manifest/v7/index.html
 REQUIRED_MANIFEST_KEYS = ["name", "schema", "resource_type"]
 
@@ -24,13 +26,7 @@ NONE_KEYWORDS_LIST = ["none", "null"]
 
 DBT_CATALOG_FILE_NAME = "catalog.json"
 DBT_MANIFEST_FILE_NAME = "manifest.json"
-DBT_RUN_RESULTS_FILE_NAME = "run_results.json"
-
-DBT_FILE_NAMES_LIST = [
-    DBT_CATALOG_FILE_NAME,
-    DBT_MANIFEST_FILE_NAME,
-    DBT_RUN_RESULTS_FILE_NAME,
-]
+DBT_RUN_RESULTS_FILE_NAME = "run_results"
 
 
 class SkipResourceTypeEnum(Enum):

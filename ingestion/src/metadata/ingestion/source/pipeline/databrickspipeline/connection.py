@@ -44,11 +44,7 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    def custom_executor_for_pipeline():
-        result = client.list_jobs()
-        return list(result)
-
-    test_fn = {"GetPipelines": custom_executor_for_pipeline}
+    test_fn = {"GetPipelines": client.list_jobs_test_connection}
 
     test_connection_steps(
         metadata=metadata,

@@ -13,7 +13,11 @@ Define custom types as wrappers on top of
 existing SQA types to have a bridge between
 SQA dialects and OM rich type system
 """
+
 from sqlalchemy import types
+from sqlalchemy.sql.sqltypes import TypeDecorator
+
+from metadata.utils.sqlalchemy_utils import convert_numpy_to_list
 
 
 class SQAMap(types.String):
@@ -22,10 +26,25 @@ class SQAMap(types.String):
     """
 
 
-class SQAStruct(types.String):
+class SQAStruct(TypeDecorator):
     """
     Custom Struct type definition
     """
+
+    impl = types.String
+    cache_ok = True
+
+    def process_result_value(self, value, dialect):
+        """This is executed during result retrieval
+
+        Args:
+            value: database record
+            dialect: database dialect
+        Returns:
+            python list conversion of ndarray
+        """
+
+        return convert_numpy_to_list(value)
 
 
 class SQADateTimeRange(types.String):

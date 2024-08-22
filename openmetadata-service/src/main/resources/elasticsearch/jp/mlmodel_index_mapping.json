@@ -99,6 +99,9 @@
       "sourceUrl": {
         "type": "text"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "dataProducts": {
         "properties": {
           "id": {
@@ -283,7 +286,7 @@
       "server": {
         "type": "text"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -454,7 +457,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
@@ -471,6 +475,16 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

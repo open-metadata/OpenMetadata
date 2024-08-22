@@ -52,7 +52,6 @@ class Loggers(Enum):
     GREAT_EXPECTATIONS = "GreatExpectations"
     PROFILER_INTERFACE = "ProfilerInterface"
     TEST_SUITE = "TestSuite"
-    DATA_INSIGHT = "DataInsight"
     QUERY_RUNNER = "QueryRunner"
     APP = "App"
 
@@ -130,14 +129,6 @@ def ingestion_logger():
     return logging.getLogger(Loggers.INGESTION.value)
 
 
-def data_insight_logger():
-    """
-    Function to get the DATA INSIGHT logger
-    """
-
-    return logging.getLogger(Loggers.DATA_INSIGHT.value)
-
-
 def utils_logger():
     """
     Method to get the UTILS logger
@@ -190,8 +181,8 @@ def log_ansi_encoded_string(
 def get_log_name(record: Entity) -> Optional[str]:
     try:
         if hasattr(record, "name"):
-            return f"{type(record).__name__} [{getattr(record, 'name').__root__}]"
-        return f"{type(record).__name__} [{record.entity.name.__root__}]"
+            return f"{type(record).__name__} [{getattr(record, 'name').root}]"
+        return f"{type(record).__name__} [{record.entity.name.root}]"
     except Exception:
         return str(record)
 
@@ -202,11 +193,7 @@ def _(record: OMetaTagAndClassification) -> str:
     Given a LineageRequest, parse its contents to return
     a string that we can log
     """
-    name = (
-        record.fqn.__root__
-        if record.fqn
-        else record.classification_request.name.__root__
-    )
+    name = record.fqn.root if record.fqn else record.classification_request.name.root
     return f"{type(record).__name__} [{name}]"
 
 
@@ -218,7 +205,7 @@ def _(record: AddLineageRequest) -> str:
     """
 
     # id and type will always be informed
-    id_ = record.edge.fromEntity.id.__root__
+    id_ = record.edge.fromEntity.id.root
     type_ = record.edge.fromEntity.type
 
     # name can be informed or not
@@ -234,7 +221,7 @@ def _(record: DeleteEntity) -> str:
     """
     Capture information about the deleted Entity
     """
-    return f"{type(record.entity).__name__} [{record.entity.name.__root__}]"
+    return f"{type(record.entity).__name__} [{record.entity.name.root}]"
 
 
 @get_log_name.register
@@ -242,26 +229,26 @@ def _(record: OMetaLifeCycleData) -> str:
     """
     Capture the lifecycle changes of an Entity
     """
-    return f"{type(record.entity).__name__} Lifecycle [{record.entity.name.__root__}]"
+    return f"{record.entity.__name__} Lifecycle [{record.entity_fqn}]"
 
 
 @get_log_name.register
 def _(record: TableAndTests) -> str:
     if record.table:
-        return f"Tests for [{record.table.fullyQualifiedName.__root__}]"
+        return f"Tests for [{record.table.fullyQualifiedName.root}]"
 
-    return f"Test Suite [{record.executable_test_suite.name.__root__}]"
+    return f"Test Suite [{record.executable_test_suite.name.root}]"
 
 
 @get_log_name.register
-def _(_: TestCaseResults) -> Optional[str]:
+def _(record: TestCaseResults) -> str:
     """We don't want to log this in the status"""
-    return None
+    return ",".join(set(result.testCase.name.root for result in record.test_results))
 
 
 @get_log_name.register
 def _(record: TestCaseResultResponse) -> str:
-    return record.testCase.fullyQualifiedName.__root__
+    return record.testCase.fullyQualifiedName.root
 
 
 @get_log_name.register

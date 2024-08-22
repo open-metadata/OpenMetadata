@@ -14,54 +14,73 @@
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { ROUTES } from '../../constants/constants';
+import { ES_MAX_PAGE_SIZE, ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Operation } from '../../generated/entity/policies/policy';
-import { getDomainByName, patchDomains } from '../../rest/domainAPI';
+import { useDomainStore } from '../../hooks/useDomainStore';
+import { useFqn } from '../../hooks/useFqn';
+import {
+  getDomainByName,
+  getDomainList,
+  patchDomains,
+} from '../../rest/domainAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getDomainPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 import './domain.less';
 import DomainDetailsPage from './DomainDetailsPage/DomainDetailsPage.component';
 import DomainsLeftPanel from './DomainLeftPanel/DomainLeftPanel.component';
-import { useDomainProvider } from './DomainProvider/DomainProvider';
 
 const DomainPage = () => {
   const { t } = useTranslation();
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn: domainFqn } = useFqn();
   const history = useHistory();
   const { permissions } = usePermissionProvider();
-  const { domains, refreshDomains, updateDomains, domainLoading } =
-    useDomainProvider();
-  const [isMainContentLoading, setIsMainContentLoading] = useState(true);
+  const { domains, updateDomains, domainLoading, updateDomainLoading } =
+    useDomainStore();
+  const [isMainContentLoading, setIsMainContentLoading] = useState(false);
   const [activeDomain, setActiveDomain] = useState<Domain>();
-  const domainFqn = fqn ? decodeURIComponent(fqn) : null;
 
-  const createDomainPermission = useMemo(
-    () => checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
+  const rootDomains = useMemo(() => {
+    return domains.filter((domain) => domain.parent == null);
+  }, [domains]);
 
-  const viewBasicDomainPermission = useMemo(
-    () =>
+  const refreshDomains = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
+
+  const [
+    createDomainPermission,
+    viewBasicDomainPermission,
+    viewAllDomainPermission,
+  ] = useMemo(() => {
+    return [
+      checkPermission(Operation.Create, ResourceEntity.DOMAIN, permissions),
       checkPermission(Operation.ViewBasic, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
-
-  const viewAllDomainPermission = useMemo(
-    () =>
       checkPermission(Operation.ViewAll, ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
+    ];
+  }, [permissions]);
 
   const handleAddDomainClick = () => {
     history.push(ROUTES.ADD_DOMAIN);
@@ -75,7 +94,7 @@ const DomainPage = () => {
 
         setActiveDomain(response);
 
-        const updatedDomains = domains.map((item) => {
+        const updatedDomains = rootDomains.map((item) => {
           if (item.name === response.name) {
             return response;
           } else {
@@ -83,7 +102,7 @@ const DomainPage = () => {
           }
         });
 
-        updateDomains(updatedDomains);
+        updateDomains(updatedDomains, false);
 
         if (activeDomain?.name !== updatedData.name) {
           history.push(getDomainPath(response.fullyQualifiedName));
@@ -96,7 +115,7 @@ const DomainPage = () => {
   };
 
   const handleDomainDelete = (id: string) => {
-    const updatedDomains = domains.find((item) => item.id !== id);
+    const updatedDomains = rootDomains.find((item) => item.id !== id);
     const domainPath = updatedDomains
       ? getDomainPath(updatedDomains.fullyQualifiedName)
       : getDomainPath();
@@ -105,13 +124,17 @@ const DomainPage = () => {
     history.push(domainPath);
   };
 
-  const fetchDomainByName = async (fqn: string) => {
+  const fetchDomainByName = async (domainFqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDomainByName(
-        encodeURIComponent(fqn),
-        'children,owner,parent,experts'
-      );
+      const data = await getDomainByName(domainFqn, {
+        fields: [
+          TabSpecificField.CHILDREN,
+          TabSpecificField.OWNERS,
+          TabSpecificField.PARENT,
+          TabSpecificField.EXPERTS,
+        ],
+      });
       setActiveDomain(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -142,16 +165,16 @@ const DomainPage = () => {
   ]);
 
   useEffect(() => {
-    if (domainFqn && domains.length > 0) {
+    if (domainFqn) {
       fetchDomainByName(domainFqn);
     }
-  }, [domainFqn, domains]);
+  }, [domainFqn]);
 
   useEffect(() => {
-    if (domains.length > 0 && !domainFqn && !domainLoading) {
-      history.push(getDomainPath(domains[0].fullyQualifiedName));
+    if (rootDomains.length > 0 && !domainFqn && !domainLoading) {
+      history.push(getDomainPath(rootDomains[0].fullyQualifiedName));
     }
-  }, [domains, domainFqn]);
+  }, [rootDomains, domainFqn]);
 
   if (domainLoading) {
     return <Loader />;
@@ -166,7 +189,7 @@ const DomainPage = () => {
     );
   }
 
-  if (isEmpty(domains)) {
+  if (isEmpty(rootDomains)) {
     return (
       <ErrorPlaceHolder
         buttonId="add-domain"
@@ -187,7 +210,7 @@ const DomainPage = () => {
   return (
     <PageLayoutV1
       className="domain-parent-page-layout"
-      leftPanel={<DomainsLeftPanel domains={domains} />}
+      leftPanel={<DomainsLeftPanel domains={rootDomains} />}
       pageTitle={t('label.domain')}>
       {domainPageRender}
     </PageLayoutV1>

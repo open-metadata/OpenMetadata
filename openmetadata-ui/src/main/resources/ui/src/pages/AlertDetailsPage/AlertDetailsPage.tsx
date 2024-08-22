@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,121 +11,453 @@
  *  limitations under the License.
  */
 
-import { Card } from 'antd';
-import { trim } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
-import { AlertDetailsComponent } from '../../components/Alerts/AlertsDetails/AlertDetails.component';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
 import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
+  Button,
+  Col,
+  Divider,
+  Row,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
+} from 'antd';
+import { isEmpty, isNil, startCase } from 'lodash';
+import React, {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link, useHistory } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
+import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
+import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import FormCardSection from '../../components/common/FormCardSection/FormCardSection';
+import Loader from '../../components/common/Loader/Loader';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import RichTextEditorPreviewer from '../../components/common/RichTextEditor/RichTextEditorPreviewer';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { ROUTES } from '../../constants/constants';
+import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  EventFilterRule,
+  ArgumentsInput,
   EventSubscription,
-  FilteringRules,
+  ProviderType,
+  SubscriptionType,
 } from '../../generated/events/eventSubscription';
-import { getAlertsFromId } from '../../rest/alertsAPI';
+import { useFqn } from '../../hooks/useFqn';
+import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getSettingPath } from '../../utils/RouterUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import {
+  getNotificationAlertsEditPath,
+  getObservabilityAlertsEditPath,
+  getSettingPath,
+} from '../../utils/RouterUtils';
+import searchClassBase from '../../utils/SearchClassBase';
+import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 
-const AlertDetailsPage = () => {
+function AlertDetailsPage({
+  isNotificationAlert = false,
+}: Readonly<AlertDetailsPageProps>) {
   const { t } = useTranslation();
+  const { fqn } = useFqn();
+  const history = useHistory();
 
-  const { fqn: id } = useParams<{ fqn: string }>();
-  const [loadingCount, setLoadingCount] = useState(0);
-  const [alerts, setAlerts] = useState<EventSubscription>();
-  const [showDeleteModel, setShowDeleteModel] = useState(false);
+  const [alertDetails, setAlertDetails] = useState<EventSubscription>();
+  const [loading, setLoading] = useState<boolean>(true);
+  const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
 
-  const fetchAlert = async () => {
+  const { resource, filters, actions, destinations } = useMemo(
+    () => ({
+      resource: alertDetails?.filteringRules?.resources[0],
+      filters: alertDetails?.input?.filters,
+      actions: alertDetails?.input?.actions,
+      destinations: alertDetails?.destinations,
+    }),
+    [alertDetails]
+  );
+
+  const fetchAlerts = async () => {
     try {
-      setLoadingCount((count) => count + 1);
+      setLoading(true);
+      const observabilityAlert = await getObservabilityAlertByFQN(fqn);
 
-      const response: EventSubscription = await getAlertsFromId(id);
-
-      const requestFilteringRules =
-        response.filteringRules?.rules?.map((curr) => {
-          const [fullyQualifiedName, filterRule] =
-            curr.condition?.split('(') ?? [];
-
-          return {
-            ...curr,
-            fullyQualifiedName,
-            condition: filterRule
-              .replaceAll("'", '')
-              .replace(new RegExp(`\\)`), '')
-              .split(',')
-              .map(trim),
-          } as unknown as EventFilterRule;
-        }) ?? [];
-
-      setAlerts({
-        ...response,
-        filteringRules: {
-          ...(response.filteringRules as FilteringRules),
-          rules: requestFilteringRules,
-        },
-      });
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.alert') }),
-        id
-      );
+      setAlertDetails(observabilityAlert);
+    } catch (error) {
+      // Error handling
     } finally {
-      setLoadingCount((count) => count - 1);
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (id) {
-      fetchAlert();
-    }
-  }, [id]);
-
   const breadcrumb = useMemo(
-    () => [
-      {
-        name: t('label.alert-plural'),
-        url: getSettingPath(
-          GlobalSettingsMenuCategory.NOTIFICATIONS,
-          GlobalSettingOptions.ALERTS
-        ),
-      },
-      {
-        name: getEntityName(alerts),
-        url: '',
-      },
-    ],
-    [alerts]
+    () =>
+      isNotificationAlert
+        ? [
+            {
+              name: t('label.setting-plural'),
+              url: ROUTES.SETTINGS,
+            },
+            {
+              name: t('label.notification-plural'),
+              url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
+            },
+            {
+              name: getEntityName(alertDetails),
+              url: '',
+            },
+          ]
+        : [
+            {
+              name: t('label.observability'),
+              url: '',
+            },
+            {
+              name: t('label.alert-plural'),
+              url: ROUTES.OBSERVABILITY_ALERTS,
+            },
+            {
+              name: getEntityName(alertDetails),
+              url: '',
+            },
+          ],
+    [alertDetails]
   );
+
+  const handleAlertDelete = useCallback(async () => {
+    isNotificationAlert
+      ? history.push(ROUTES.NOTIFICATION_ALERTS)
+      : history.push(ROUTES.OBSERVABILITY_ALERTS);
+  }, [history]);
+
+  const getFilterDetails = (isFilter: boolean, filters?: ArgumentsInput[]) => (
+    <div className="p-md">
+      {filters?.map((filterDetails, index) => (
+        <Fragment key={filterDetails.name}>
+          <Row data-testid={`filter-${filterDetails.name}`} gutter={[0, 8]}>
+            <Col className="font-medium" span={3}>
+              {t('label.effect')}
+            </Col>
+            <Col span={1}>:</Col>
+            <Col data-testid="effect-value" span={20}>
+              {startCase(filterDetails.effect)}
+            </Col>
+            <Col className="font-medium" span={3}>
+              {t('label.entity-name', {
+                entity: isFilter ? t('label.filter') : t('label.action'),
+              })}
+            </Col>
+            <Col span={1}>:</Col>
+            <Col data-testid="filter-name" span={20}>
+              {startCase(filterDetails.name)}
+            </Col>
+            {!isEmpty(filterDetails.arguments) && (
+              <>
+                <Col className="font-medium" span={3}>
+                  {t('label.argument-plural')}
+                </Col>
+                <Col span={1}>:</Col>
+                <Col
+                  className="border rounded-4 p-sm"
+                  data-testid="arguments-container"
+                  span={20}>
+                  {filterDetails.arguments?.map((argument) => (
+                    <Row
+                      data-testid={`argument-container-${argument.name}`}
+                      gutter={[0, 8]}
+                      key={argument.name}>
+                      <Col className="font-medium" span={24}>
+                        <Typography.Text data-testid="argument-name">
+                          {argument.name}
+                        </Typography.Text>
+                      </Col>
+                      <Col span={24}>
+                        {argument.input?.map((inputItem) => (
+                          <Tooltip key={inputItem} title={inputItem}>
+                            <Tag
+                              className="m-b-xs w-max-full"
+                              data-testid="argument-value">
+                              <Typography.Text ellipsis>
+                                {inputItem}
+                              </Typography.Text>
+                            </Tag>
+                          </Tooltip>
+                        ))}
+                      </Col>
+                    </Row>
+                  ))}
+                </Col>
+              </>
+            )}
+          </Row>
+          {index < filters.length - 1 && <Divider className="m-y-sm" />}
+        </Fragment>
+      ))}
+    </div>
+  );
+
+  const destinationDetails = useMemo(
+    () => (
+      <div className="p-md">
+        <Row gutter={[0, 8]}>
+          <Col className="font-medium" span={3}>
+            {`${t('label.connection-timeout')} (${t('label.second-plural')})`}
+          </Col>
+          <Col span={1}>:</Col>
+          <Col data-testid="connection-timeout" span={20}>
+            {destinations?.[0].timeout}
+          </Col>
+        </Row>
+        <Divider className="m-y-sm" />
+        {destinations?.map((destination, index) => (
+          <Fragment key={`${destination.category}-${destination.type}`}>
+            <Row
+              data-testid={`destination-${destination.category}`}
+              gutter={[0, 8]}>
+              <Col className="font-medium" span={3}>
+                {t('label.category')}
+              </Col>
+              <Col span={1}>:</Col>
+              <Col data-testid="category-value" span={20}>
+                {startCase(destination.category)}
+              </Col>
+              <Col className="font-medium" span={3}>
+                {t('label.type')}
+              </Col>
+              <Col span={1}>:</Col>
+              <Col data-testid="destination-type" span={20}>
+                {startCase(destination.type)}
+              </Col>
+              {destination.type === SubscriptionType.Webhook &&
+                destination.config?.secretKey && (
+                  <>
+                    <Col className="font-medium" span={3}>
+                      {t('label.secret-key')}
+                    </Col>
+                    <Col span={1}>:</Col>
+                    <Col data-testid="secret-key" span={20}>
+                      {destination.config.secretKey}
+                    </Col>
+                  </>
+                )}
+              {!isEmpty(destination.config?.receivers) &&
+                !isNil(destination.config?.receivers) && (
+                  <>
+                    <Col className="font-medium" span={3}>
+                      {t('label.config')}
+                    </Col>
+                    <Col span={1}>:</Col>
+                    <Col className="border rounded-4 p-sm" span={20}>
+                      <Row gutter={[0, 8]}>
+                        {destination.config?.receivers && (
+                          <>
+                            <Col className="font-medium" span={24}>
+                              <Typography.Text>
+                                {t('label.receiver-plural')}
+                              </Typography.Text>
+                            </Col>
+                            <Col data-testid="receivers-value" span={24}>
+                              {destination.config?.receivers?.map(
+                                (receiver) => (
+                                  <Tooltip key={receiver} title={receiver}>
+                                    <Tag
+                                      className="m-b-xs w-max-full"
+                                      data-testid={`receiver-${receiver}`}>
+                                      <Typography.Text ellipsis>
+                                        {receiver}
+                                      </Typography.Text>
+                                    </Tag>
+                                  </Tooltip>
+                                )
+                              )}
+                            </Col>
+                          </>
+                        )}
+                      </Row>
+                    </Col>
+                  </>
+                )}
+            </Row>
+            {index < destinations.length - 1 && <Divider className="m-y-sm" />}
+          </Fragment>
+        ))}
+      </div>
+    ),
+    [destinations]
+  );
+
+  const resourceIcon = useMemo(
+    () => searchClassBase.getEntityIcon(resource ?? ''),
+    [resource]
+  );
+
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
 
   return (
-    <>
-      {loadingCount > 0 && <Card loading={loadingCount > 0} />}
-      {alerts && (
-        <AlertDetailsComponent
-          alerts={alerts}
-          breadcrumb={breadcrumb}
-          onDelete={() => setShowDeleteModel(true)}
-        />
-      )}
-      <DeleteWidgetModal
-        afterDeleteAction={() => history.back()}
-        allowSoftDelete={false}
-        entityId={alerts?.id || ''}
-        entityName={alerts?.name || ''}
-        entityType={EntityType.SUBSCRIPTION}
-        visible={showDeleteModel}
-        onCancel={() => {
-          setShowDeleteModel(false);
-        }}
-      />
-    </>
+    <ResizablePanels
+      hideSecondPanel
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        className: 'content-resizable-panel-container',
+        children: loading ? (
+          <Loader />
+        ) : (
+          <div
+            className="steps-form-container"
+            data-testid="alert-details-container">
+            <Row
+              className="add-notification-container p-x-lg p-t-md"
+              gutter={[0, 16]}>
+              <Col span={24}>
+                <TitleBreadcrumb titleLinks={breadcrumb} />
+              </Col>
+
+              <Col span={24}>
+                <Row justify="space-between">
+                  <Col>
+                    <Typography.Title level={5}>
+                      {t('label.entity-detail-plural', {
+                        entity: isNotificationAlert
+                          ? t('label.notification-alert')
+                          : t('label.observability-alert'),
+                      })}
+                    </Typography.Title>
+                  </Col>
+                  <Col>
+                    <Space size={8}>
+                      <Link
+                        to={
+                          isNotificationAlert
+                            ? getNotificationAlertsEditPath(fqn)
+                            : getObservabilityAlertsEditPath(fqn)
+                        }>
+                        <Tooltip
+                          title={t('label.edit-entity', {
+                            entity: t('label.alert'),
+                          })}>
+                          <Button
+                            className="flex flex-center"
+                            data-testid="edit-button"
+                            disabled={
+                              alertDetails?.provider === ProviderType.System
+                            }
+                            icon={<EditIcon height={16} width={16} />}
+                          />
+                        </Tooltip>
+                      </Link>
+                      <Tooltip
+                        title={t('label.delete-entity', {
+                          entity: t('label.alert'),
+                        })}>
+                        <Button
+                          className="flex flex-center"
+                          data-testid="delete-button"
+                          disabled={
+                            alertDetails?.provider === ProviderType.System
+                          }
+                          icon={<DeleteIcon height={16} width={16} />}
+                          onClick={() => setShowDeleteModal(true)}
+                        />
+                      </Tooltip>
+                    </Space>
+                  </Col>
+                </Row>
+              </Col>
+
+              <Col span={24}>
+                <Space direction="vertical">
+                  <Typography.Text className="font-medium">
+                    {`${t('label.name')} :`}
+                  </Typography.Text>
+                  <Typography.Text data-testid="alert-name">
+                    {getEntityName(alertDetails)}
+                  </Typography.Text>
+                </Space>
+              </Col>
+              {alertDetails?.description && (
+                <Col data-testid="alert-description" span={24}>
+                  <Typography.Text className="font-medium">{`${t(
+                    'label.description'
+                  )} :`}</Typography.Text>
+                  <RichTextEditorPreviewer
+                    className="p-t-xs"
+                    markdown={alertDetails.description}
+                  />
+                </Col>
+              )}
+              <Col span={24}>
+                <FormCardSection
+                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                  heading={t('label.source')}
+                  subHeading={t('message.alerts-source-description')}>
+                  <div className="d-flex items-center gap-2 m-l-sm">
+                    {resourceIcon && (
+                      <div className="d-flex h-4 w-4">{resourceIcon}</div>
+                    )}
+                    <span data-testid="resource-name">
+                      {startCase(resource)}
+                    </span>
+                  </div>
+                </FormCardSection>
+              </Col>
+              {!isEmpty(filters) && !isNil(filters) && (
+                <Col span={24}>
+                  <FormCardSection
+                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                    heading={t('label.filter-plural')}
+                    subHeading={t('message.alerts-filter-description')}>
+                    {getFilterDetails(true, filters)}
+                  </FormCardSection>
+                </Col>
+              )}
+              {!isEmpty(actions) && !isNil(actions) && (
+                <Col span={24}>
+                  <FormCardSection
+                    childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                    heading={t('label.trigger')}
+                    subHeading={t('message.alerts-trigger-description')}>
+                    {getFilterDetails(false, actions)}
+                  </FormCardSection>
+                </Col>
+              )}
+              <Col span={24}>
+                <FormCardSection
+                  childrenContainerClassName="bg-white p-y-xs p-x-sm border rounded-4"
+                  heading={t('label.destination')}
+                  subHeading={t('message.alerts-destination-description')}>
+                  {destinationDetails}
+                </FormCardSection>
+              </Col>
+            </Row>
+            <DeleteWidgetModal
+              afterDeleteAction={handleAlertDelete}
+              allowSoftDelete={false}
+              entityId={alertDetails?.id ?? ''}
+              entityName={getEntityName(alertDetails)}
+              entityType={EntityType.SUBSCRIPTION}
+              visible={showDeleteModal}
+              onCancel={() => {
+                setShowDeleteModal(false);
+              }}
+            />
+          </div>
+        ),
+        minWidth: 700,
+        flex: 0.7,
+      }}
+      pageTitle={t('label.entity-detail-plural', { entity: t('label.alert') })}
+      secondPanel={{
+        children: <></>,
+        minWidth: 0,
+        className: 'content-resizable-panel-container',
+      }}
+    />
   );
-};
+}
 
 export default AlertDetailsPage;

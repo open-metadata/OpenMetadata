@@ -16,14 +16,14 @@ import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { formatDateTimeFromSeconds } from '../../../../utils/date-time/DateTimeUtils';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtils';
 import RichTextEditorPreviewer from '../../../common/RichTextEditor/RichTextEditorPreviewer';
-import Reactions from '../../../Reactions/Reactions';
 import ActivityFeedEditor from '../../ActivityFeedEditor/ActivityFeedEditor';
+import Reactions from '../../Reactions/Reactions';
 import { FeedBodyProp } from '../ActivityFeedCard.interface';
 
 const FeedCardBody: FC<FeedBodyProp> = ({
@@ -104,12 +104,12 @@ const FeedCardBody: FC<FeedBodyProp> = ({
     <>
       <div className={classNames('feed-message', isEditPost ? '' : className)}>
         {!isUndefined(announcementDetails) ? (
-          <Space direction="vertical" size={4}>
+          <Space data-testid="announcement-data" direction="vertical" size={4}>
             <Typography.Text className="feed-body-schedule text-xs text-grey-muted">
               {t('label.schedule')}{' '}
-              {formatDateTimeFromSeconds(announcementDetails.startTime)}{' '}
+              {formatDateTime(announcementDetails.startTime)}{' '}
               {t('label.to-lowercase')}{' '}
-              {formatDateTimeFromSeconds(announcementDetails.endTime)}
+              {formatDateTime(announcementDetails.endTime)}{' '}
             </Typography.Text>
             <Typography.Text className="font-medium">
               {postMessage}

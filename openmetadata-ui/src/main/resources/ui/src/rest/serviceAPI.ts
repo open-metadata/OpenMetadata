@@ -19,16 +19,18 @@ import {
   ServicesUpdateRequest,
 } from 'Models';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { configOptions, PAGE_SIZE } from '../constants/constants';
+import { PAGE_SIZE } from '../constants/constants';
+import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
 import {
   DomainSupportedServiceTypes,
   ServiceResponse,
   ServicesType,
 } from '../interface/service.interface';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchData } from './miscAPI';
 
@@ -58,7 +60,7 @@ export const getServices = async ({
   const url = `/services/${serviceName}`;
 
   const params = {
-    fields: 'owner',
+    fields: TabSpecificField.OWNERS,
     limit,
     after,
     before,
@@ -81,16 +83,12 @@ export const getServiceById = async (serviceName: string, id: string) => {
 export const getServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields: string | string[] = '',
-  include = Include.NonDeleted
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `/services/${serviceCat}/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+  const response = await APIClient.get<ServicesType>(
+    `/services/${serviceCat}/name/${getEncodedFqn(fqn)}`,
+    { params: { ...params, include: params?.include ?? Include.NonDeleted } }
   );
-
-  const response = await APIClient.get<ServicesType>(url);
 
   return response.data;
 };
@@ -98,14 +96,12 @@ export const getServiceByFQN = async (
 export const getDomainSupportedServiceByFQN = async (
   serviceCat: string,
   fqn: string,
-  arrQueryFields: string | string[] = ''
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `/services/${serviceCat}/name/${fqn}`,
-    arrQueryFields
+  const response = await APIClient.get<DomainSupportedServiceTypes>(
+    `/services/${serviceCat}/name/${getEncodedFqn(fqn)}`,
+    { params }
   );
-
-  const response = await APIClient.get<DomainSupportedServiceTypes>(url);
 
   return response.data;
 };
@@ -122,19 +118,6 @@ export const postService = async (
   return response.data;
 };
 
-export const updateService = async (
-  serviceCat: string,
-  _id: string,
-  options: ServicesUpdateRequest
-) => {
-  const response = await APIClient.put<
-    ServicesUpdateRequest,
-    AxiosResponse<ServicesType>
-  >(`/services/${serviceCat}`, options);
-
-  return response.data;
-};
-
 export const patchService = async (
   serviceCat: string,
   id: string,
@@ -143,7 +126,7 @@ export const patchService = async (
   const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<ServicesType>
-  >(`/services/${serviceCat}/${id}`, options, configOptions);
+  >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
 };
@@ -156,7 +139,7 @@ export const patchDomainSupportedService = async (
   const response = await APIClient.patch<
     ServicesUpdateRequest,
     AxiosResponse<DomainSupportedServiceTypes>
-  >(`/services/${serviceCat}/${id}`, options, configOptions);
+  >(`/services/${serviceCat}/${id}`, options);
 
   return response.data;
 };

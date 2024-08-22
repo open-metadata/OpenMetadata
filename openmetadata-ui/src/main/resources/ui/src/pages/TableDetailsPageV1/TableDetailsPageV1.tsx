@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,11 +11,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { Col, Row, Space, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isEqual, isUndefined } from 'lodash';
+import { get, isEmpty, isEqual, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,33 +25,41 @@ import { useActivityFeedProvider } from '../../components/ActivityFeed/ActivityF
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import TableProfiler from '../../components/Database/Profiler/TableProfiler/TableProfiler';
+import SampleDataTableComponent from '../../components/Database/SampleDataTable/SampleDataTable.component';
+import SchemaTab from '../../components/Database/SchemaTab/SchemaTab.component';
+import TableQueries from '../../components/Database/TableQueries/TableQueries';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
-import Loader from '../../components/Loader/Loader';
+import Lineage from '../../components/Lineage/Lineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+  ROUTES,
+} from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { mockDatasetData } from '../../constants/mockTourData.constants';
+import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SampleDataTableComponent from '../../components/SampleDataTable/SampleDataTable.component';
-import SchemaTab from '../../components/SchemaTab/SchemaTab.component';
-import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import TableProfiler from '../../components/TableProfiler/TableProfiler';
-import TableQueries from '../../components/TableQueries/TableQueries';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { useTourProvider } from '../../components/TourProvider/TourProvider';
-import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getTableTabPath, getVersionPath } from '../../constants/constants';
-import { mockDatasetData } from '../../constants/mockTourData.constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -59,9 +69,20 @@ import {
 } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
-import { JoinedWith, Table } from '../../generated/entity/data/table';
+import {
+  JoinedWith,
+  Table,
+  TableType,
+} from '../../generated/entity/data/table';
+import { Suggestion } from '../../generated/entity/feed/suggestion';
 import { ThreadType } from '../../generated/entity/feed/thread';
+import { TestSummary } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -72,6 +93,7 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
+import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import {
   addToRecentViewed,
   getFeedCounts,
@@ -80,28 +102,31 @@ import {
   sortTagsCaseInsensitive,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DatasetDetailsUtils';
+import EntityLink from '../../utils/EntityLink';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { FrequentlyJoinedTables } from './FrequentlyJoinedTables/FrequentlyJoinedTables.component';
-import { PartitionedKeys } from './PartitionedKeys/PartitionedKeys.component';
 import './table-details-page-v1.less';
 import TableConstraints from './TableConstraints/TableConstraints';
 
-const TableDetailsPageV1 = () => {
+const TableDetailsPageV1: React.FC = () => {
   const { isTourOpen, activeTabForTourDatasetPage, isTourPage } =
     useTourProvider();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { fqn: datasetFQN, tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ fqn: string; tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } =
+    useParams<{ tab: EntityTabs }>();
+  const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
   const USERId = currentUser?.id ?? '';
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -113,38 +138,55 @@ const TableDetailsPageV1 = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-
-  const viewUsagePermission = useMemo(
-    () => tablePermissions.ViewAll || tablePermissions.ViewUsage,
-    [tablePermissions]
-  );
+  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
 
   const tableFqn = useMemo(
     () =>
-      encodeURIComponent(
-        getPartialNameFromTableFQN(
-          decodeURIComponent(datasetFQN),
-          [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-          FQN_SEPARATOR_CHAR
-        )
+      getPartialNameFromTableFQN(
+        datasetFQN,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
       ),
     [datasetFQN]
   );
 
-  const decodedTableFQN = useMemo(
-    () => getDecodedFqn(datasetFQN),
-    [datasetFQN]
+  const extraDropdownContent = useMemo(
+    () =>
+      entityUtilClassBase.getManageExtraOptions(
+        EntityType.TABLE,
+        tableFqn,
+        tablePermissions
+      ),
+    [tablePermissions, tableFqn]
   );
 
-  const fetchTableDetails = async () => {
+  const { viewUsagePermission, viewTestCasePermission } = useMemo(
+    () => ({
+      viewUsagePermission:
+        tablePermissions.ViewAll || tablePermissions.ViewUsage,
+      viewTestCasePermission:
+        tablePermissions.ViewAll || tablePermissions.ViewTests,
+    }),
+    [tablePermissions]
+  );
+
+  const isViewTableType = useMemo(
+    () => tableDetails?.tableType === TableType.View,
+    [tableDetails?.tableType]
+  );
+
+  const fetchTableDetails = useCallback(async () => {
     setLoading(true);
     try {
       let fields = defaultFields;
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
+      if (viewTestCasePermission) {
+        fields += `,${TabSpecificField.TESTSUITE}`;
+      }
 
-      const details = await getTableDetailsByFQN(tableFqn, fields);
+      const details = await getTableDetailsByFQN(tableFqn, { fields });
 
       setTableDetails(details);
       addToRecentViewed({
@@ -156,9 +198,26 @@ const TableDetailsPageV1 = () => {
         id: details.id,
       });
     } catch (error) {
-      // Error here
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setLoading(false);
+    }
+  }, [tableFqn, viewUsagePermission]);
+
+  const fetchTestCaseSummary = async () => {
+    if (isUndefined(tableDetails?.testSuite?.id)) {
+      return;
+    }
+
+    try {
+      const response = await getTestCaseExecutionSummary(
+        tableDetails?.testSuite?.id
+      );
+      setTestCaseSummary(response);
+    } catch (error) {
+      setTestCaseSummary(undefined);
     }
   };
 
@@ -188,7 +247,6 @@ const TableDetailsPageV1 = () => {
   const {
     tier,
     tableTags,
-    owner,
     deleted,
     version,
     followers = [],
@@ -275,7 +333,7 @@ const TableDetailsPageV1 = () => {
         setLoading(false);
       }
     },
-    [tableFqn, getEntityPermissionByFqn, setTablePermissions]
+    [getEntityPermissionByFqn, setTablePermissions]
   );
 
   useEffect(() => {
@@ -284,14 +342,20 @@ const TableDetailsPageV1 = () => {
     }
   }, [tableFqn]);
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () => {
-    getFeedCounts(EntityType.TABLE, decodedTableFQN, setFeedCount);
+    getFeedCounts(EntityType.TABLE, tableFqn, handleFeedCount);
   };
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
       if (!isTourOpen) {
-        history.push(getTableTabPath(tableFqn, activeKey));
+        history.push(
+          getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey)
+        );
       }
     }
   };
@@ -337,29 +401,23 @@ const TableDetailsPageV1 = () => {
 
         return updatedObj;
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: Table['owner']) => {
+    async (newOwners?: Table['owners']) => {
       if (!tableDetails) {
         return;
       }
       const updatedTableDetails = {
         ...tableDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owners: newOwners,
       };
-      await onTableUpdate(updatedTableDetails, 'owner');
+      await onTableUpdate(updatedTableDetails, 'owners');
     },
-    [owner, tableDetails]
+    [tableDetails]
   );
 
   const handleUpdateRetentionPeriod = useCallback(
@@ -436,10 +494,13 @@ const TableDetailsPageV1 = () => {
 
   const onExtensionUpdate = async (updatedData: Table) => {
     tableDetails &&
-      (await saveUpdatedTableData({
-        ...tableDetails,
-        extension: updatedData.extension,
-      }));
+      (await onTableUpdate(
+        {
+          ...tableDetails,
+          extension: updatedData.extension,
+        },
+        'extension'
+      ));
   };
 
   const {
@@ -490,88 +551,106 @@ const TableDetailsPageV1 = () => {
         gutter={[0, 16]}
         id="schemaDetails"
         wrap={false}>
-        <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
-          <div className="d-flex flex-col gap-4">
-            <DescriptionV1
-              description={tableDetails?.description}
-              entityFqn={decodedTableFQN}
-              entityName={entityName}
-              entityType={EntityType.TABLE}
-              hasEditAccess={editDescriptionPermission}
-              isEdit={isEdit}
-              owner={tableDetails?.owner}
-              showActions={!deleted}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <SchemaTab
-              columnName={getPartialNameFromTableFQN(
-                tableFqn,
-                [FqnPart['Column']],
-                FQN_SEPARATOR_CHAR
-              )}
-              columns={tableDetails?.columns ?? []}
-              entityFqn={decodedTableFQN}
-              hasDescriptionEditAccess={editDescriptionPermission}
-              hasTagEditAccess={editTagsPermission}
-              isReadOnly={deleted}
-              joins={tableDetails?.joins?.columnJoins ?? []}
-              tableConstraints={tableDetails?.tableConstraints}
-              tablePartitioned={tableDetails?.tablePartition}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdate={onColumnsUpdate}
-            />
-          </div>
-        </Col>
-        <Col
-          className="entity-tag-right-panel-container"
-          data-testid="entity-right-panel"
-          flex="320px">
-          <EntityRightPanel
-            afterSlot={
-              <Space
-                className="w-full m-t-lg"
-                direction="vertical"
-                size="large">
-                <TableConstraints
-                  constraints={tableDetails?.tableConstraints}
-                />
-                {tableDetails?.tablePartition ? (
-                  <PartitionedKeys
-                    tablePartition={tableDetails.tablePartition}
+        <Col className="tab-content-height-with-resizable-panel" span={24}>
+          <ResizablePanels
+            firstPanel={{
+              className: 'entity-resizable-panel-container',
+              children: (
+                <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
+                  <DescriptionV1
+                    showSuggestions
+                    description={tableDetails?.description}
+                    entityFqn={tableFqn}
+                    entityName={entityName}
+                    entityType={EntityType.TABLE}
+                    hasEditAccess={editDescriptionPermission}
+                    isDescriptionExpanded={isEmpty(tableDetails?.columns)}
+                    isEdit={isEdit}
+                    owner={tableDetails?.owners}
+                    showActions={!deleted}
+                    onCancel={onCancel}
+                    onDescriptionEdit={onDescriptionEdit}
+                    onDescriptionUpdate={onDescriptionUpdate}
+                    onThreadLinkSelect={onThreadLinkSelect}
                   />
-                ) : null}
-              </Space>
-            }
-            beforeSlot={
-              !isEmpty(joinedTables) ? (
-                <FrequentlyJoinedTables joinedTables={joinedTables} />
-              ) : null
-            }
-            dataProducts={tableDetails?.dataProducts ?? []}
-            domain={tableDetails?.domain}
-            editTagPermission={editTagsPermission}
-            entityFQN={decodedTableFQN}
-            entityId={tableDetails?.id ?? ''}
-            entityType={EntityType.TABLE}
-            selectedTags={tableTags}
-            onTagSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
+                  <SchemaTab
+                    hasDescriptionEditAccess={editDescriptionPermission}
+                    hasTagEditAccess={editTagsPermission}
+                    isReadOnly={deleted}
+                    table={tableDetails}
+                    testCaseSummary={testCaseSummary}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                    onUpdate={onColumnsUpdate}
+                  />
+                </div>
+              ),
+              minWidth: 800,
+              flex: 0.87,
+            }}
+            secondPanel={{
+              children: (
+                <div data-testid="entity-right-panel">
+                  <EntityRightPanel<EntityType.TABLE>
+                    afterSlot={
+                      <Space
+                        className="w-full m-t-lg"
+                        direction="vertical"
+                        size="large">
+                        <TableConstraints
+                          constraints={tableDetails?.tableConstraints}
+                        />
+                      </Space>
+                    }
+                    beforeSlot={
+                      !isEmpty(joinedTables) ? (
+                        <FrequentlyJoinedTables joinedTables={joinedTables} />
+                      ) : null
+                    }
+                    customProperties={tableDetails}
+                    dataProducts={tableDetails?.dataProducts ?? []}
+                    domain={tableDetails?.domain}
+                    editCustomAttributePermission={
+                      editCustomAttributePermission
+                    }
+                    editTagPermission={editTagsPermission}
+                    entityFQN={tableFqn}
+                    entityId={tableDetails?.id ?? ''}
+                    entityType={EntityType.TABLE}
+                    selectedTags={tableTags}
+                    tablePartition={tableDetails?.tablePartition}
+                    viewAllPermission={viewAllPermission}
+                    onExtensionUpdate={onExtensionUpdate}
+                    onTagSelectionChange={handleTagSelection}
+                    onThreadLinkSelect={onThreadLinkSelect}
+                  />
+                </div>
+              ),
+              minWidth: 320,
+              flex: 0.13,
+              className:
+                'entity-resizable-panel-container entity-resizable-right-panel-container ',
+            }}
           />
         </Col>
       </Row>
     ),
     [
+      isTourPage,
+      tableTags,
+      joinedTables,
+      tableFqn,
       isEdit,
+      deleted,
       tableDetails,
       entityName,
       onDescriptionEdit,
       onDescriptionUpdate,
+      testCaseSummary,
       editTagsPermission,
       editDescriptionPermission,
       editAllPermission,
+      viewAllPermission,
+      editCustomAttributePermission,
     ]
   );
 
@@ -585,7 +664,7 @@ const TableDetailsPageV1 = () => {
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -594,12 +673,15 @@ const TableDetailsPageV1 = () => {
         key: EntityTabs.ACTIVITY_FEED,
         children: (
           <ActivityFeedTab
+            refetchFeed
             columns={tableDetails?.columns}
+            entityFeedTotalCount={feedCount.totalCount}
             entityType={EntityType.TABLE}
             fqn={tableDetails?.fullyQualifiedName ?? ''}
-            owner={tableDetails?.owner}
+            owners={tableDetails?.owners}
             onFeedUpdate={getEntityFeedCount}
             onUpdateEntityDetails={fetchTableDetails}
+            onUpdateFeedCount={handleFeedCount}
           />
         ),
       },
@@ -618,7 +700,7 @@ const TableDetailsPageV1 = () => {
           ) : (
             <SampleDataTableComponent
               isTableDeleted={deleted}
-              ownerId={tableDetails?.owner?.id ?? ''}
+              owners={tableDetails?.owners ?? []}
               permissions={tablePermissions}
               tableId={tableDetails?.id ?? ''}
             />
@@ -656,8 +738,9 @@ const TableDetailsPageV1 = () => {
             <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />
           ) : (
             <TableProfiler
-              isTableDeleted={deleted}
               permissions={tablePermissions}
+              table={tableDetails}
+              testCaseSummary={testCaseSummary}
             />
           ),
       },
@@ -665,12 +748,14 @@ const TableDetailsPageV1 = () => {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={deleted}
-            entity={tableDetails as SourceType}
-            entityType={EntityType.TABLE}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={tableDetails as SourceType}
+              entityType={EntityType.TABLE}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
 
@@ -679,15 +764,14 @@ const TableDetailsPageV1 = () => {
           <TabsLabel id={EntityTabs.DBT} name={t('label.dbt-lowercase')} />
         ),
         isHidden: !(
-          tableDetails?.dataModel?.sql ?? tableDetails?.dataModel?.rawSql
+          tableDetails?.dataModel?.sql || tableDetails?.dataModel?.rawSql
         ),
         key: EntityTabs.DBT,
         children: (
           <QueryViewer
             sqlQuery={
-              tableDetails?.dataModel?.sql ??
-              tableDetails?.dataModel?.rawSql ??
-              ''
+              get(tableDetails, 'dataModel.sql', '') ||
+              get(tableDetails, 'dataModel.rawSql', '')
             }
             title={
               <Space className="p-y-xss">
@@ -705,13 +789,25 @@ const TableDetailsPageV1 = () => {
       {
         label: (
           <TabsLabel
-            id={EntityTabs.VIEW_DEFINITION}
-            name={t('label.view-definition')}
+            id={
+              isViewTableType
+                ? EntityTabs.VIEW_DEFINITION
+                : EntityTabs.SCHEMA_DEFINITION
+            }
+            name={
+              isViewTableType
+                ? t('label.view-definition')
+                : t('label.schema-definition')
+            }
           />
         ),
-        isHidden: isUndefined(tableDetails?.viewDefinition),
-        key: EntityTabs.VIEW_DEFINITION,
-        children: <QueryViewer sqlQuery={tableDetails?.viewDefinition ?? ''} />,
+        isHidden: isUndefined(tableDetails?.schemaDefinition),
+        key: isViewTableType
+          ? EntityTabs.VIEW_DEFINITION
+          : EntityTabs.SCHEMA_DEFINITION,
+        children: (
+          <QueryViewer sqlQuery={tableDetails?.schemaDefinition ?? ''} />
+        ),
       },
       {
         label: (
@@ -721,13 +817,16 @@ const TableDetailsPageV1 = () => {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.TABLE}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: tableDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.TABLE>
+              entityDetails={tableDetails}
+              entityType={EntityType.TABLE}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ];
@@ -740,10 +839,11 @@ const TableDetailsPageV1 = () => {
     schemaTab,
     deleted,
     tableDetails,
-    feedCount,
+    feedCount.totalCount,
     entityName,
     onExtensionUpdate,
     getEntityFeedCount,
+    handleFeedCount,
     tableDetails?.dataModel,
     viewAllPermission,
     editCustomAttributePermission,
@@ -816,7 +916,6 @@ const TableDetailsPageV1 = () => {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -825,7 +924,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, setTableDetails, getEntityFeedCount]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const unFollowTable = useCallback(async () => {
     try {
@@ -843,7 +942,6 @@ const TableDetailsPageV1 = () => {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -852,7 +950,7 @@ const TableDetailsPageV1 = () => {
         })
       );
     }
-  }, [USERId, tableId, entityName, getEntityFeedCount, setTableDetails]);
+  }, [USERId, tableId, entityName, setTableDetails]);
 
   const { isFollowing } = useMemo(() => {
     return {
@@ -884,6 +982,49 @@ const TableDetailsPageV1 = () => {
     }));
   }, []);
 
+  const updateDescriptionFromSuggestions = useCallback(
+    (suggestion: Suggestion) => {
+      setTableDetails((prev) => {
+        if (!prev) {
+          return;
+        }
+
+        const activeCol = prev?.columns.find((column) => {
+          return (
+            EntityLink.getTableEntityLink(
+              prev.fullyQualifiedName ?? '',
+              column.name ?? ''
+            ) === suggestion.entityLink
+          );
+        });
+
+        if (!activeCol) {
+          return {
+            ...prev,
+            description: suggestion.description,
+          };
+        } else {
+          const updatedColumns = prev.columns.map((column) => {
+            if (column.fullyQualifiedName === activeCol.fullyQualifiedName) {
+              return {
+                ...column,
+                description: suggestion.description,
+              };
+            } else {
+              return column;
+            }
+          });
+
+          return {
+            ...prev,
+            columns: updatedColumns,
+          };
+        }
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (isTourOpen || isTourPage) {
       setTableDetails(mockDatasetData.tableDetails as unknown as Table);
@@ -896,8 +1037,17 @@ const TableDetailsPageV1 = () => {
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
+      fetchTestCaseSummary();
     }
   }, [tableDetails?.fullyQualifiedName]);
+
+  useSub(
+    'updateDetails',
+    (suggestion: Suggestion) => {
+      updateDescriptionFromSuggestions(suggestion);
+    },
+    [tableDetails]
+  );
 
   const onThreadPanelClose = () => {
     setThreadLink('');
@@ -906,7 +1056,6 @@ const TableDetailsPageV1 = () => {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -920,7 +1069,9 @@ const TableDetailsPageV1 = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTablesVotes(id, data);
-      const details = await getTableDetailsByFQN(tableFqn, defaultFields);
+      const details = await getTableDetailsByFQN(tableFqn, {
+        fields: defaultFields,
+      });
       setTableDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -955,6 +1106,8 @@ const TableDetailsPageV1 = () => {
             afterDomainUpdateAction={updateTableDetailsState}
             dataAsset={tableDetails}
             entityType={EntityType.TABLE}
+            extraDropdownContent={extraDropdownContent}
+            openTaskCount={feedCount.openTaskCount}
             permissions={tablePermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowTable}
@@ -966,11 +1119,9 @@ const TableDetailsPageV1 = () => {
             onVersionClick={versionHandler}
           />
         </Col>
-
         {/* Entity Tabs */}
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={
               isTourOpen
                 ? activeTabForTourDatasetPage
@@ -982,7 +1133,9 @@ const TableDetailsPageV1 = () => {
             onChange={handleTabChange}
           />
         </Col>
-
+        <LimitWrapper resource="table">
+          <></>
+        </LimitWrapper>
         {threadLink ? (
           <ActivityThreadPanel
             createThread={createThread}
@@ -1000,4 +1153,4 @@ const TableDetailsPageV1 = () => {
   );
 };
 
-export default withActivityFeed(TableDetailsPageV1);
+export default withSuggestions(withActivityFeed(TableDetailsPageV1));

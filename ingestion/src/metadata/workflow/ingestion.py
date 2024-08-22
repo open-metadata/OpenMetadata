@@ -41,6 +41,7 @@ from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.api.step import Step, Summary
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.ingestion.models.custom_types import ServiceWithConnectionType
+from metadata.profiler.api.models import ProfilerProcessorConfig
 from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
@@ -184,7 +185,7 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                 )
                 if service:
                     self.config.source.serviceConnection = ServiceConnection(
-                        __root__=service.connection
+                        service.connection
                     )
                 else:
                     raise InvalidWorkflowJSONException(
@@ -201,3 +202,19 @@ class IngestionWorkflow(BaseWorkflow, ABC):
                     f"Unknown error getting service connection for service name [{service_name}]"
                     f" using the secrets manager provider [{self.metadata.config.secretsManagerProvider}]: {exc}"
                 )
+
+    def validate(self):
+        try:
+            if not self.config.source.serviceConnection.root.config.supportsProfiler:
+                raise AttributeError()
+        except AttributeError:
+            if ProfilerProcessorConfig.model_validate(
+                self.config.processor.model_dump().get("config")
+            ).ignoreValidation:
+                logger.debug(
+                    f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
+                )
+                return
+            raise WorkflowExecutionError(
+                f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
+            )

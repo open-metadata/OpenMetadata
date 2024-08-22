@@ -35,6 +35,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.quicksight.metadata import QuicksightSource
+from metadata.ingestion.source.dashboard.quicksight.models import DashboardDetail
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/quicksight_dataset.json"
@@ -45,7 +46,7 @@ with open(mock_file_path, encoding="UTF-8") as file:
 MOCK_DASHBOARD_SERVICE = DashboardService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
     name="quicksight_source_test",
-    fullyQualifiedName=FullyQualifiedEntityName(__root__="quicksight_source_test"),
+    fullyQualifiedName=FullyQualifiedEntityName("quicksight_source_test"),
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.QuickSight,
 )
@@ -105,7 +106,7 @@ EXPECTED_DASHBOARD = CreateDashboardRequest(
     sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
     charts=[],
     tags=None,
-    owner=None,
+    owners=None,
     service="quicksight_source_test",
     extension=None,
 )
@@ -117,7 +118,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
-        owner=None,
+        owners=None,
         service="quicksight_source_test",
     ),
     CreateChartRequest(
@@ -126,7 +127,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
-        owner=None,
+        owners=None,
         service="quicksight_source_test",
     ),
     CreateChartRequest(
@@ -135,7 +136,7 @@ EXPECTED_DASHBOARDS = [
         chartType="Other",
         sourceUrl="https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335",
         tags=None,
-        owner=None,
+        owners=None,
         service="quicksight_source_test",
     ),
 ]
@@ -153,7 +154,7 @@ class QuickSightUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_quicksight_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_quicksight_config)
         self.quicksight = QuicksightSource.create(
             mock_quicksight_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
@@ -161,17 +162,19 @@ class QuickSightUnitTest(TestCase):
         self.quicksight.dashboard_url = (
             "https://us-east-2.quicksight.aws.amazon.com/sn/dashboards/552315335"
         )
-        self.quicksight.context.__dict__[
+        self.quicksight.context.get().__dict__[
             "dashboard"
-        ] = MOCK_DASHBOARD.fullyQualifiedName.__root__
-        self.quicksight.context.__dict__[
+        ] = MOCK_DASHBOARD.fullyQualifiedName.root
+        self.quicksight.context.get().__dict__[
             "dashboard_service"
-        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.__root__
+        ] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
 
     @pytest.mark.order(1)
     def test_dashboard(self):
         dashboard_list = []
-        results = self.quicksight.yield_dashboard(MOCK_DASHBOARD_DETAILS)
+        results = self.quicksight.yield_dashboard(
+            DashboardDetail(**MOCK_DASHBOARD_DETAILS)
+        )
         for result in results:
             if isinstance(result, Either) and result.right:
                 dashboard_list.append(result.right)
@@ -180,14 +183,16 @@ class QuickSightUnitTest(TestCase):
     @pytest.mark.order(2)
     def test_dashboard_name(self):
         assert (
-            self.quicksight.get_dashboard_name(MOCK_DASHBOARD_DETAILS)
+            self.quicksight.get_dashboard_name(
+                DashboardDetail(**MOCK_DASHBOARD_DETAILS)
+            )
             == mock_data["Name"]
         )
 
     @pytest.mark.order(3)
     def test_chart(self):
-        dashboard_details = MOCK_DASHBOARD_DETAILS
-        dashboard_details["Version"]["Sheets"] = mock_data["Version"]["Sheets"]
+        dashboard_details = DashboardDetail(**MOCK_DASHBOARD_DETAILS)
+        dashboard_details.Version.Charts = mock_data["Version"]["Sheets"]
         results = self.quicksight.yield_dashboard_chart(dashboard_details)
         chart_list = []
         for result in results:

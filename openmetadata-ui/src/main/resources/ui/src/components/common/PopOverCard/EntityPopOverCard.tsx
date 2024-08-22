@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Popover } from 'antd';
+import { Popover, Typography } from 'antd';
+import { isUndefined } from 'lodash';
 import React, {
   FC,
   HTMLAttributes,
@@ -20,15 +21,19 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { EntityType } from '../../../enums/entity.enum';
+import { useTranslation } from 'react-i18next';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { Include } from '../../../generated/type/include';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
+import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getDashboardByFqn } from '../../../rest/dashboardAPI';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
 } from '../../../rest/databaseAPI';
-import { getDataModelDetailsByFQN } from '../../../rest/dataModelsAPI';
+import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
 import { getDomainByName } from '../../../rest/domainAPI';
 import {
@@ -38,111 +43,155 @@ import {
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
-import { getStoredProceduresDetailsByFQN } from '../../../rest/storedProceduresAPI';
+import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
 import { getTableDetailsByFQN } from '../../../rest/tableAPI';
+import { getTagByFqn } from '../../../rest/tagAPI';
+import { getTestCaseByFqn } from '../../../rest/testAPI';
 import { getTopicByFqn } from '../../../rest/topicsAPI';
-import { getTableFQNFromColumnFQN } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getDecodedFqn, getEncodedFqn } from '../../../utils/StringsUtils';
-import { useApplicationConfigContext } from '../../ApplicationConfigProvider/ApplicationConfigProvider';
 import { EntityUnion } from '../../Explore/ExplorePage.interface';
 import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
-import Loader from '../../Loader/Loader';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import Loader from '../Loader/Loader';
 import './popover-card.less';
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;
   entityFQN: string;
+  extraInfo?: React.ReactNode;
+  defaultOpen?: boolean;
 }
 
-const PopoverContent: React.FC<{
+export const PopoverContent: React.FC<{
   entityFQN: string;
   entityType: string;
-}> = ({ entityFQN, entityType }) => {
+  extraInfo?: React.ReactNode;
+}> = ({ entityFQN, entityType, extraInfo }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
-  const { cachedEntityData, updateCachedEntityData } =
-    useApplicationConfigContext();
-  const entityData = useMemo(
-    () => cachedEntityData[entityFQN],
-    [cachedEntityData, entityFQN]
-  );
+  const { cachedEntityData, updateCachedEntityData } = useApplicationStore();
+
+  const entityData: SearchedDataProps['data'][number]['_source'] | undefined =
+    useMemo(() => {
+      const data = cachedEntityData[entityFQN];
+
+      return data
+        ? {
+            ...data,
+            name: data.name,
+            displayName: getEntityName(data),
+            id: data.id ?? '',
+            description: data.description ?? '',
+            fullyQualifiedName: entityFQN,
+            tags: (data as Table)?.tags,
+            entityType: entityType,
+            serviceType: (data as Table)?.serviceType,
+          }
+        : data;
+    }, [cachedEntityData, entityFQN]);
 
   const getData = useCallback(async () => {
-    const fields = 'tags,owner';
+    const fields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS}`;
     setLoading(true);
     let promise: Promise<EntityUnion> | null = null;
 
     switch (entityType) {
       case EntityType.TABLE:
-        promise = getTableDetailsByFQN(entityFQN, fields);
+        promise = getTableDetailsByFQN(entityFQN, { fields });
 
         break;
       case EntityType.TEST_CASE:
-        promise = getTableDetailsByFQN(
-          getEncodedFqn(getTableFQNFromColumnFQN(getDecodedFqn(entityFQN))),
-          fields
-        );
+        promise = getTestCaseByFqn(entityFQN, {
+          fields: [TabSpecificField.OWNERS],
+        });
 
         break;
       case EntityType.TOPIC:
-        promise = getTopicByFqn(entityFQN, fields);
+        promise = getTopicByFqn(entityFQN, { fields });
 
         break;
       case EntityType.DASHBOARD:
       case EntityType.CHART:
-        promise = getDashboardByFqn(entityFQN, fields);
+        promise = getDashboardByFqn(entityFQN, { fields });
 
         break;
       case EntityType.PIPELINE:
-        promise = getPipelineByFqn(entityFQN, fields);
+        promise = getPipelineByFqn(entityFQN, { fields });
 
         break;
       case EntityType.MLMODEL:
-        promise = getMlModelByFQN(entityFQN, fields);
+        promise = getMlModelByFQN(entityFQN, { fields });
 
         break;
       case EntityType.DATABASE:
-        promise = getDatabaseDetailsByFQN(entityFQN, 'owner', Include.All);
+        promise = getDatabaseDetailsByFQN(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+        });
 
         break;
       case EntityType.DATABASE_SCHEMA:
-        promise = getDatabaseSchemaDetailsByFQN(
-          entityFQN,
-          'owner',
-          Include.All
-        );
+        promise = getDatabaseSchemaDetailsByFQN(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+          include: Include.All,
+        });
 
         break;
       case EntityType.GLOSSARY_TERM:
-        promise = getGlossaryTermByFQN(getDecodedFqn(entityFQN), 'owner');
+        promise = getGlossaryTermByFQN(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+        });
 
         break;
       case EntityType.GLOSSARY:
-        promise = getGlossariesByName(entityFQN, 'owner');
+        promise = getGlossariesByName(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+        });
 
         break;
 
       case EntityType.CONTAINER:
-        promise = getContainerByFQN(entityFQN, 'owner', Include.All);
+        promise = getContainerByFQN(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+          include: Include.All,
+        });
 
         break;
 
       case EntityType.DASHBOARD_DATA_MODEL:
-        promise = getDataModelDetailsByFQN(entityFQN, fields);
+        promise = getDataModelByFqn(entityFQN, { fields });
 
         break;
 
       case EntityType.STORED_PROCEDURE:
-        promise = getStoredProceduresDetailsByFQN(entityFQN, fields);
+        promise = getStoredProceduresByFqn(entityFQN, { fields });
 
         break;
       case EntityType.DOMAIN:
-        promise = getDomainByName(entityFQN, 'owner');
+        promise = getDomainByName(entityFQN, {
+          fields: TabSpecificField.OWNERS,
+        });
 
         break;
 
       case EntityType.DATA_PRODUCT:
-        promise = getDataProductByName(entityFQN, 'owner,domain');
+        promise = getDataProductByName(entityFQN, {
+          fields: [TabSpecificField.OWNERS, TabSpecificField.DOMAIN],
+        });
+
+        break;
+
+      case EntityType.TAG:
+        promise = getTagByFqn(entityFQN);
+
+        break;
+
+      case EntityType.API_COLLECTION:
+        promise = getApiCollectionByFQN(entityFQN, { fields });
+
+        break;
+
+      case EntityType.API_ENDPOINT:
+        promise = getApiEndPointByFQN(entityFQN, { fields });
 
         break;
 
@@ -162,11 +211,14 @@ const PopoverContent: React.FC<{
     } else {
       setLoading(false);
     }
-  }, [entityType, entityFQN]);
+  }, [entityType, entityFQN, updateCachedEntityData]);
 
   useEffect(() => {
     const entityData = cachedEntityData[entityFQN];
-    if (!entityData) {
+
+    if (entityData) {
+      setLoading(false);
+    } else {
       getData();
     }
   }, [entityFQN]);
@@ -175,35 +227,38 @@ const PopoverContent: React.FC<{
     return <Loader size="small" />;
   }
 
+  if (isUndefined(entityData)) {
+    return <Typography.Text>{t('label.no-data-found')}</Typography.Text>;
+  }
+
   return (
     <ExploreSearchCard
+      actionPopoverContent={extraInfo}
       id="tabledatacard"
       showTags={false}
-      source={{
-        ...entityData,
-        name: entityData.name,
-        displayName: getEntityName(entityData),
-        id: entityData.id ?? '',
-        description: entityData.description ?? '',
-        fullyQualifiedName: getDecodedFqn(entityFQN),
-        tags: (entityData as Table).tags,
-        entityType: entityType,
-        serviceType: (entityData as Table).serviceType,
-      }}
+      source={entityData}
     />
   );
 };
 
-const EntityPopOverCard: FC<Props> = ({ children, entityType, entityFQN }) => {
+const EntityPopOverCard: FC<Props> = ({
+  children,
+  entityType,
+  entityFQN,
+  extraInfo,
+  defaultOpen = false,
+}) => {
   return (
     <Popover
       align={{ targetOffset: [0, -10] }}
       content={
         <PopoverContent
-          entityFQN={getEncodedFqn(entityFQN)}
+          entityFQN={entityFQN}
           entityType={entityType}
+          extraInfo={extraInfo}
         />
       }
+      defaultOpen={defaultOpen}
       overlayClassName="entity-popover-card"
       trigger="hover"
       zIndex={9999}>

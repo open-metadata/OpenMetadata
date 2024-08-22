@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.prestoConnec
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
+    init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.test_connections import (
     execute_inspector_func,
@@ -58,6 +59,19 @@ def get_connection(connection: PrestoConnection) -> Engine:
     """
     Create connection
     """
+    connection.connectionArguments = (
+        connection.connectionArguments or init_empty_connection_arguments()
+    )
+    if connection.protocol:
+        connection.connectionArguments.root["protocol"] = connection.protocol
+    if connection.verify:
+        connection.connectionArguments = (
+            connection.connectionArguments or init_empty_connection_arguments()
+        )
+        connection.connectionArguments.root["requests_kwargs"] = {
+            "verify": connection.verify
+        }
+
     return create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,

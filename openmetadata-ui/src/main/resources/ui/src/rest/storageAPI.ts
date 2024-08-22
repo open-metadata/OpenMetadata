@@ -13,23 +13,17 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Container } from '../generated/entity/data/container';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
-
-const configOptionsForPatch = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
-const configOptions = {
-  headers: { 'Content-type': 'application/json' },
-};
 
 const BASE_URL = '/containers';
 
@@ -55,16 +49,13 @@ export const getContainers = async (args: {
   return response.data;
 };
 
-export const getContainerByName = async (
-  name: string,
-  fields: string | string[],
-  include: Include = Include.All
-) => {
+export const getContainerByName = async (name: string, params?: ListParams) => {
   const response = await APIClient.get<Container>(
-    `${BASE_URL}/name/${name}?fields=${fields}`,
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
     {
       params: {
-        include,
+        ...params,
+        include: params?.include ?? Include.All,
       },
     }
   );
@@ -75,8 +66,7 @@ export const getContainerByName = async (
 export const patchContainerDetails = async (id: string, data: Operation[]) => {
   const response = await APIClient.patch<Operation[], AxiosResponse<Container>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptionsForPatch
+    data
   );
 
   return response.data;
@@ -88,7 +78,11 @@ export const addContainerFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${id}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${id}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -108,7 +102,10 @@ export const removeContainerFollower = async (id: string, userId: string) => {
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${id}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${id}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
@@ -129,18 +126,13 @@ export const getContainerVersion = async (id: string, version: string) => {
   return response.data;
 };
 
-export const getContainerByFQN = async (
-  fqn: string,
-  arrQueryFields: string | string[],
-  include = 'all'
-) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    `include=${include}`
+export const getContainerByFQN = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Container>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: { ...params, include: params?.include ?? Include.All },
+    }
   );
-
-  const response = await APIClient.get<Container>(url);
 
   return response.data;
 };

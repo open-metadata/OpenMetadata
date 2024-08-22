@@ -14,15 +14,16 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/TableQueries/TableQueries.interface';
-import { TabSpecificField } from '../enums/entity.enum';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 const BASE_URL = '/topics';
@@ -63,50 +64,36 @@ export const getTopics = async (
   return response.data;
 };
 
-export const getTopicDetails = (
-  id: string,
-  arrQueryFields: string
-): Promise<AxiosResponse> => {
-  const url = getURLWithQueryFields(`${BASE_URL}/${id}`, arrQueryFields);
-
-  return APIClient.get(url);
-};
-
-export const getTopicByFqn = async (
-  fqn: string,
-  arrQueryFields: string[] | string | TabSpecificField[]
-) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${fqn}`,
-    arrQueryFields,
-    'include=all'
+export const getTopicByFqn = async (fqn: string, params?: ListParams) => {
+  const response = await APIClient.get<Topic>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params: {
+        ...params,
+        include: params?.include ?? Include.All,
+      },
+    }
   );
-
-  const response = await APIClient.get<Topic>(url);
 
   return response.data;
 };
 
 export const addFollower = async (topicId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.put<
     string,
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${BASE_URL}/${topicId}/followers`, userId, configOptions);
+  >(
+    `${BASE_URL}/${topicId}/followers`,
+    userId,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const removeFollower = async (topicId: string, userId: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
   const response = await APIClient.delete<
     string,
     AxiosResponse<{
@@ -114,20 +101,18 @@ export const removeFollower = async (topicId: string, userId: string) => {
         fieldsDeleted: { oldValue: EntityReference[] }[];
       };
     }>
-  >(`${BASE_URL}/${topicId}/followers/${userId}`, configOptions);
+  >(
+    `${BASE_URL}/${topicId}/followers/${userId}`,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
+  );
 
   return response.data;
 };
 
 export const patchTopicDetails = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<Operation[], AxiosResponse<Topic>>(
     `${BASE_URL}/${id}`,
-    data,
-    configOptions
+    data
   );
 
   return response.data;

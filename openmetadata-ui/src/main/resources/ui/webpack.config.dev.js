@@ -95,6 +95,7 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
+          path.resolve(__dirname, 'node_modules/katex'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
@@ -109,6 +110,7 @@ module.exports = {
           {
             loader: 'css-loader', // translates CSS into CommonJS
           },
+          'postcss-loader',
           {
             loader: 'less-loader', // compiles Less to CSS
             options: {
@@ -163,11 +165,13 @@ module.exports = {
     // File types to be handled
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.svg'],
     fallback: {
-      http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: require.resolve('url/'),
+      'process/browser': require.resolve('process/browser'),
+    },
+    alias: {
+      process: 'process/browser',
     },
   },
 
@@ -206,10 +210,6 @@ module.exports = {
         },
         {
           from: path.join(__dirname, 'public/swagger.html'),
-          to: outputPath,
-        },
-        {
-          from: path.join(__dirname, 'public/robots.txt'),
           to: outputPath,
         },
         {
@@ -253,7 +253,7 @@ module.exports = {
     // Proxy configuration
     proxy: [
       {
-        context: '/api',
+        context: '/api/',
         target: 'http://localhost:8585/',
         changeOrigin: true,
       },

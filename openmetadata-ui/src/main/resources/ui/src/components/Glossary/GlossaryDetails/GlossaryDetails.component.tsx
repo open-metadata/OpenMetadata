@@ -12,24 +12,28 @@
  */
 
 import { Col, Row, Space, Tabs } from 'antd';
-import { noop } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { isEmpty, noop } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { getGlossaryTermDetailsPath } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { ChangeDescription } from '../../../generated/entity/type';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
-import TabsLabel from '../../TabsLabel/TabsLabel.component';
+import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
+import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import GlossaryDetailsRightPanel from '../GlossaryDetailsRightPanel/GlossaryDetailsRightPanel.component';
 import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import GlossaryTermTab from '../GlossaryTermTab/GlossaryTermTab.component';
+import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
 import {
   GlossaryDetailsProps,
@@ -38,11 +42,9 @@ import {
 
 const GlossaryDetails = ({
   permissions,
-  glossary,
   updateGlossary,
   updateVote,
   handleGlossaryDelete,
-  glossaryTerms,
   termsLoading,
   refreshGlossaryTerms,
   onAddGlossaryTerm,
@@ -52,16 +54,23 @@ const GlossaryDetails = ({
 }: GlossaryDetailsProps) => {
   const { t } = useTranslation();
   const history = useHistory();
+  const { activeGlossary: glossary } = useGlossaryStore();
   const { tab: activeTab } = useParams<{ tab: string }>();
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [isDescriptionEditable, setIsDescriptionEditable] =
     useState<boolean>(false);
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
 
   const getEntityFeedCount = () => {
     getFeedCounts(
       EntityType.GLOSSARY,
       glossary.fullyQualifiedName ?? '',
-      setFeedCount
+      handleFeedCount
     );
   };
 
@@ -76,7 +85,7 @@ const GlossaryDetails = ({
         ...glossary,
         description: updatedHTML,
       };
-      handleGlossaryUpdate(updatedGlossaryDetails);
+      await handleGlossaryUpdate(updatedGlossaryDetails);
       setIsDescriptionEditable(false);
     } else {
       setIsDescriptionEditable(false);
@@ -132,46 +141,64 @@ const GlossaryDetails = ({
 
   const detailsContent = useMemo(() => {
     return (
-      <Row className="h-full p-x-md" gutter={[32, 16]}>
-        <Col
-          className="border-right p-y-md glossary-content-container"
-          span={18}>
-          <Space className="w-full" direction="vertical" size={24}>
-            <DescriptionV1
-              description={description}
-              entityFqn={glossary.fullyQualifiedName}
-              entityName={getEntityName(glossary)}
-              entityType={EntityType.GLOSSARY}
-              hasEditAccess={permissions.EditDescription || permissions.EditAll}
-              isEdit={isDescriptionEditable}
-              owner={glossary?.owner}
-              showActions={!glossary.deleted}
-              onCancel={() => setIsDescriptionEditable(false)}
-              onDescriptionEdit={() => setIsDescriptionEditable(true)}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
+      <Row className="h-full" gutter={[32, 0]}>
+        <Col className="glossary-height-with-resizable-panel" span={24}>
+          <ResizablePanels
+            firstPanel={{
+              className: 'glossary-resizable-panel-container',
+              children: (
+                <div className="p-y-md p-x-md glossary-content-container">
+                  <Space className="w-full" direction="vertical" size={24}>
+                    <DescriptionV1
+                      description={description}
+                      entityFqn={glossary.fullyQualifiedName}
+                      entityName={getEntityName(glossary)}
+                      entityType={EntityType.GLOSSARY}
+                      hasEditAccess={
+                        permissions.EditDescription || permissions.EditAll
+                      }
+                      isDescriptionExpanded={isEmpty(glossary.children)}
+                      isEdit={isDescriptionEditable}
+                      owner={glossary?.owners}
+                      showActions={!glossary.deleted}
+                      onCancel={() => setIsDescriptionEditable(false)}
+                      onDescriptionEdit={() => setIsDescriptionEditable(true)}
+                      onDescriptionUpdate={onDescriptionUpdate}
+                      onThreadLinkSelect={onThreadLinkSelect}
+                    />
 
-            <GlossaryTermTab
-              isGlossary
-              childGlossaryTerms={glossaryTerms}
-              permissions={permissions}
-              refreshGlossaryTerms={refreshGlossaryTerms}
-              selectedData={glossary}
-              termsLoading={termsLoading}
-              onAddGlossaryTerm={onAddGlossaryTerm}
-              onEditGlossaryTerm={onEditGlossaryTerm}
-            />
-          </Space>
-        </Col>
-        <Col className="p-y-md" span={6}>
-          <GlossaryDetailsRightPanel
-            isGlossary
-            isVersionView={isVersionView}
-            permissions={permissions}
-            selectedData={glossary}
-            onThreadLinkSelect={onThreadLinkSelect}
-            onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+                    <GlossaryTermTab
+                      isGlossary
+                      permissions={permissions}
+                      refreshGlossaryTerms={refreshGlossaryTerms}
+                      termsLoading={termsLoading}
+                      onAddGlossaryTerm={onAddGlossaryTerm}
+                      onEditGlossaryTerm={onEditGlossaryTerm}
+                    />
+                  </Space>
+                </div>
+              ),
+              minWidth: 800,
+              flex: 0.75,
+            }}
+            secondPanel={{
+              children: (
+                <GlossaryDetailsRightPanel
+                  isGlossary
+                  entityType={EntityType.GLOSSARY_TERM}
+                  isVersionView={isVersionView}
+                  permissions={permissions}
+                  refreshGlossaryTerms={refreshGlossaryTerms}
+                  selectedData={glossary}
+                  onThreadLinkSelect={onThreadLinkSelect}
+                  onUpdate={handleGlossaryUpdate}
+                />
+              ),
+              minWidth: 320,
+              flex: 0.25,
+              className:
+                'entity-resizable-right-panel-container glossary-resizable-panel-container',
+            }}
           />
         </Col>
       </Row>
@@ -180,7 +207,6 @@ const GlossaryDetails = ({
     isVersionView,
     permissions,
     glossary,
-    glossaryTerms,
     termsLoading,
     description,
     isDescriptionEditable,
@@ -204,7 +230,7 @@ const GlossaryDetails = ({
             {
               label: (
                 <TabsLabel
-                  count={feedCount}
+                  count={feedCount.totalCount}
                   id={GlossaryTabs.ACTIVITY_FEED}
                   isActive={activeTab === GlossaryTabs.ACTIVITY_FEED}
                   name={t('label.activity-feed-and-task-plural')}
@@ -213,8 +239,12 @@ const GlossaryDetails = ({
               key: GlossaryTabs.ACTIVITY_FEED,
               children: (
                 <ActivityFeedTab
+                  refetchFeed
+                  entityFeedTotalCount={feedCount.totalCount}
                   entityType={EntityType.GLOSSARY}
                   fqn={glossary.fullyQualifiedName ?? ''}
+                  hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
+                  owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
                 />
@@ -226,7 +256,8 @@ const GlossaryDetails = ({
   }, [
     detailsContent,
     glossary.fullyQualifiedName,
-    feedCount,
+    feedCount.conversationCount,
+    feedCount.totalTasksCount,
     activeTab,
     isVersionView,
   ]);
@@ -249,12 +280,11 @@ const GlossaryDetails = ({
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
-          onUpdate={(data) => handleGlossaryUpdate(data as Glossary)}
+          onUpdate={handleGlossaryUpdate}
         />
       </Col>
       <Col span={24}>
         <Tabs
-          destroyInactiveTabPane
           activeKey={activeTab ?? GlossaryTabs.TERMS}
           className="glossary-details-page-tabs"
           data-testid="tabs"

@@ -35,7 +35,7 @@ jest.mock('../../../rest/teamsAPI', () => ({
   patchTeamDetail: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../components/common/EntityDescription/Description', () =>
+jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
   jest
     .fn()
     .mockReturnValue(<div data-testid="description-data">Description</div>)
@@ -57,7 +57,7 @@ jest.mock(
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
 );
 
@@ -87,6 +87,10 @@ jest.mock('react-i18next', () => ({
     t: (label: string) => label,
   }),
 }));
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
 describe('Test Policy details page', () => {
   it('Should render the policy details page component', async () => {

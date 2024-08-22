@@ -29,17 +29,35 @@ jest.mock('react-router-dom', () => ({
   }),
 }));
 
-jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+jest.mock('../common/ResizablePanels/ResizablePanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
+});
+
+jest.mock('../common/ResizablePanels/ResizableLeftPanels', () => {
+  return jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
+    <div>
+      <div>{firstPanel.children}</div>
+      <div>{secondPanel.children}</div>
+    </div>
+  ));
 });
 
 jest.mock('./ExploreSearchCard/ExploreSearchCard', () => {
   return jest.fn().mockReturnValue(<p>ExploreSearchCard</p>);
 });
 
-jest.mock('../../components/GlobalSearchProvider/GlobalSearchProvider', () => ({
-  useGlobalSearchProvider: jest.fn().mockImplementation(() => ({
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn().mockImplementation(() => ({
     searchCriteria: '',
+    theme: {
+      primaryColor: '#000000',
+      errorColor: '#000000',
+    },
   })),
 }));
 
@@ -52,6 +70,15 @@ jest.mock(
       onResetAllFilters: jest.fn(),
     })),
   })
+);
+
+jest.mock('antd', () => ({
+  ...jest.requireActual('antd'),
+  Alert: jest.fn().mockReturnValue(<span>Index Not Found Alert</span>),
+}));
+
+jest.mock('../SearchedData/SearchedData', () =>
+  jest.fn().mockReturnValue(<div>SearchedData</div>)
 );
 
 const onChangeAdvancedSearchQuickFilters = jest.fn();
@@ -71,6 +98,8 @@ const props = {
     table_search_index: 20,
     topic_search_index: 10,
     dashboard_search_index: 14,
+    database_search_index: 1,
+    database_schema_search_index: 1,
     pipeline_search_index: 0,
     mlmodel_search_index: 0,
     container_search_index: 0,
@@ -103,6 +132,16 @@ describe('ExploreV1', () => {
     render(<ExploreV1 {...props} />);
 
     expect(screen.getByTestId('explore-page')).toBeInTheDocument();
+
+    expect(screen.getByText('label.database-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.dashboard-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.pipeline-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.ml-model-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.topic-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.container-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.search-index-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.governance')).toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
   });
 
   it('changes sort order when sort button is clicked', () => {
@@ -113,5 +152,13 @@ describe('ExploreV1', () => {
     });
 
     expect(onChangeSortOder).toHaveBeenCalled();
+  });
+
+  it('should show the index not found alert, if get isElasticSearchIssue true in prop', () => {
+    render(<ExploreV1 {...props} isElasticSearchIssue />);
+
+    expect(screen.getByText('Index Not Found Alert')).toBeInTheDocument();
+
+    expect(screen.queryByText('SearchedData')).not.toBeInTheDocument();
   });
 });

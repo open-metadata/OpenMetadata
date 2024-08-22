@@ -13,12 +13,9 @@
 
 import { LoadingState } from 'Models';
 import { HTMLAttributes } from 'react';
-import { Edge as FlowEdge, FitViewOptions, Node } from 'reactflow';
-import { EntityType } from '../../../enums/entity.enum';
+import { Edge as FlowEdge, Node } from 'reactflow';
 import { Column } from '../../../generated/entity/data/container';
 import { EntityReference } from '../../../generated/entity/type';
-import { EntityLineage } from '../../../generated/type/entityLineage';
-import { SourceType } from '../../SearchedData/SearchedData.interface';
 
 export interface SelectedNode {
   name: string;
@@ -27,14 +24,6 @@ export interface SelectedNode {
   displayName?: string;
   id?: string;
   entityId: string;
-}
-
-export interface EntityLineageProp {
-  entityType: EntityType;
-  deleted?: boolean;
-  hasEditAccess: boolean;
-  isFullScreen?: boolean;
-  entity?: SourceType;
 }
 
 export interface Edge {
@@ -84,9 +73,8 @@ export interface SelectedEdge {
 }
 
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
-
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
-export type CustomFlow = Node | FlowEdge;
+
 export type ModifiedColumn = Column & {
   type: string;
 };
@@ -108,27 +96,13 @@ export enum EdgeTypeEnum {
 }
 
 export interface ControlProps extends HTMLAttributes<HTMLDivElement> {
-  showZoom?: boolean;
-  showFitView?: boolean;
-  fitViewParams?: FitViewOptions;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
-  onFitView?: () => void;
   handleFullScreenViewClick?: () => void;
   onExitFullScreenViewClick?: () => void;
   deleted: boolean | undefined;
-  isEditMode: boolean;
   hasEditAccess: boolean | undefined;
-  isColumnsExpanded: boolean;
-  onEditLinageClick: () => void;
-  onExpandColumnClick: () => void;
-  loading: boolean;
-  status: LoadingState;
-  zoomValue: number;
-  lineageData: EntityLineage;
-  lineageConfig: LineageConfig;
-  onOptionSelect: (value?: string) => void;
-  onLineageConfigUpdate: (config: LineageConfig) => void;
+  onExpandColumnClick?: () => void;
+  onOptionSelect?: (value?: string) => void;
+  onLineageConfigUpdate?: (config: LineageConfig) => void;
 }
 
 export type LineagePos = 'from' | 'to';

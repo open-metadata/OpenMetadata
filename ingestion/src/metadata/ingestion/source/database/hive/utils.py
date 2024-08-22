@@ -26,6 +26,7 @@ _type_map.update(
         "binary": types.BINARY,
         "char": types.CHAR,
         "varchar": types.VARCHAR,
+        "decimal": types.DECIMAL,
     }
 )
 
@@ -61,6 +62,8 @@ def get_columns(
             if attype == "decimal":
                 prec, scale = charlen.split(",")
                 args = (int(prec), int(scale))
+            elif attype.startswith("struct"):
+                args = []
             else:
                 args = (int(charlen),)
             coltype = coltype(*args)

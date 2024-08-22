@@ -12,24 +12,33 @@
 Models required for dbt 
 """
 
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel
 
 
 class DbtFiles(BaseModel):
-    dbt_catalog: Optional[dict]
+    dbt_catalog: Optional[dict] = None
     dbt_manifest: dict
-    dbt_run_results: Optional[dict]
+    dbt_run_results: Optional[List[dict]] = None
 
 
 class DbtObjects(BaseModel):
-    dbt_catalog: Optional[Any]
+    dbt_catalog: Optional[Any] = None
     dbt_manifest: Any
-    dbt_run_results: Optional[Any]
+    dbt_run_results: Optional[List[Any]] = None
 
 
 class DbtFilteredModel(BaseModel):
     is_filtered: Optional[bool] = False
-    message: Optional[str]
-    model_fqn: Optional[str]
+    message: Optional[str] = None
+    model_fqn: Optional[str] = None
+
+
+class DbtMetaGlossaryTier(BaseModel):
+    tier: Optional[str] = None
+    glossary: Optional[List[str]] = None
+
+
+class DbtMeta(BaseModel):
+    openmetadata: Optional[DbtMetaGlossaryTier] = None

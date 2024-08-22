@@ -12,6 +12,7 @@
 Lineage Source Module
 """
 import csv
+import os
 import traceback
 from abc import ABC
 from typing import Iterable, Iterator, Union
@@ -47,17 +48,28 @@ class LineageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            with open(
-                self.config.sourceConfig.config.queryLogFilePath, "r", encoding="utf-8"
-            ) as file:
-                for row in csv.DictReader(file):
-                    query_dict = dict(row)
-                    yield TableQuery(
-                        query=query_dict["query_text"],
-                        databaseName=self.get_database_name(query_dict),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=self.get_schema_name(query_dict),
-                    )
+            query_log_path = self.config.sourceConfig.config.queryLogFilePath
+            if os.path.isfile(query_log_path):
+                file_paths = [query_log_path]
+            elif os.path.isdir(query_log_path):
+                file_paths = [
+                    os.path.join(query_log_path, f)
+                    for f in os.listdir(query_log_path)
+                    if f.endswith(".csv")
+                ]
+            else:
+                raise ValueError(f"{query_log_path} is neither a file nor a directory.")
+
+            for file_path in file_paths:
+                with open(file_path, "r", encoding="utf-8") as file:
+                    for row in csv.DictReader(file):
+                        query_dict = dict(row)
+                        yield TableQuery(
+                            query=query_dict["query_text"],
+                            databaseName=self.get_database_name(query_dict),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=self.get_schema_name(query_dict),
+                        )
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to read queries form log file due to: {err}")
@@ -143,12 +155,12 @@ class LineageSource(QueryParserSource, ABC):
                     if lineage_request.right:
                         yield Either(
                             right=CreateQueryRequest(
-                                query=SqlQuery(__root__=table_query.query),
+                                query=SqlQuery(table_query.query),
                                 query_type=table_query.query_type,
                                 duration=table_query.duration,
                                 processedLineage=True,
                                 service=FullyQualifiedEntityName(
-                                    __root__=self.config.serviceName
+                                    self.config.serviceName
                                 ),
                             )
                         )

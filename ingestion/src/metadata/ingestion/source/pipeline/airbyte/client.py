@@ -30,7 +30,7 @@ class AirbyteClient:
     def __init__(self, config: AirbyteConnection):
         self.config = config
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.hostPort,
+            base_url=str(self.config.hostPort),
             api_version="api/v1",
             auth_header=AUTHORIZATION_HEADER,
             auth_token=lambda: (NO_ACCESS_TOKEN, 0),

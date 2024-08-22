@@ -24,10 +24,9 @@ import {
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
-import {
-  formatDataProductResponse,
-  getURLWithQueryFields,
-} from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { formatDataProductResponse } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 import { searchQuery } from './searchAPI';
 
@@ -52,28 +51,24 @@ export const addDataProducts = async (data: CreateDataProduct) => {
 };
 
 export const patchDataProduct = async (id: string, patch: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<DataProduct>
-  >(`${BASE_URL}/${id}`, patch, configOptions);
+  >(`${BASE_URL}/${id}`, patch);
 
   return response.data;
 };
 
 export const getDataProductByName = async (
-  dataProductName: string,
-  arrQueryFields: string | string[]
+  fqn: string,
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `${BASE_URL}/name/${dataProductName}`,
-    arrQueryFields
+  const response = await APIClient.get<DataProduct>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`,
+    {
+      params,
+    }
   );
-
-  const response = await APIClient.get<DataProduct>(url);
 
   return response.data;
 };
@@ -151,7 +146,7 @@ export const addAssetsToDataProduct = async (
   const response = await APIClient.put<
     { assets: EntityReference[] },
     AxiosResponse<DataProduct>
-  >(`/dataProducts/${dataProductFqn}/assets/add`, data);
+  >(`/dataProducts/${getEncodedFqn(dataProductFqn)}/assets/add`, data);
 
   return response.data;
 };
@@ -167,7 +162,7 @@ export const removeAssetsFromDataProduct = async (
   const response = await APIClient.put<
     { assets: EntityReference[] },
     AxiosResponse<DataProduct>
-  >(`/dataProducts/${dataProductFqn}/assets/remove`, data);
+  >(`/dataProducts/${getEncodedFqn(dataProductFqn)}/assets/remove`, data);
 
   return response.data;
 };

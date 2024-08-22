@@ -28,7 +28,7 @@ GRANT SELECT ON SYSCAT.VIEWS TO USER_NAME;
 
 ### Profiler & Data Quality
 
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/connectors/ingestion/workflows/profiler) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
 
 You can find further information on the DB2 connector in the [docs](https://docs.open-metadata.org/connectors/database/db2).
 
@@ -39,6 +39,8 @@ $$section
 ### Scheme $(id="scheme")
 
 SQLAlchemy driver scheme options.
+
+Note: In case you are using Db2 for IBM i, then from advanced config you can choose the `ibmi` scheme.
 $$
 
 $$section

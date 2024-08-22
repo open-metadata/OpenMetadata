@@ -26,6 +26,9 @@ export interface SearchDropdownProps {
   onChange: (values: SearchDropdownOption[], searchKey: string) => void;
   onGetInitialOptions?: (searchKey: string) => void;
   onSearch: (searchText: string, searchKey: string) => void;
+  independent?: boolean; // flag to indicate if the filters are independent of aggregations
+  hideCounts?: boolean; // Determines if the count should be displayed or not.
+  hasNullOption?: boolean; // Determines if the null option should be displayed or not. For e.g No Owner, No Tier etc
 }
 
 export interface SearchDropdownOption {

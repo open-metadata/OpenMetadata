@@ -15,15 +15,23 @@ package org.openmetadata.service.resources.teams;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.CONFLICT;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_SENDING_ISSUE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
+import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
+import static org.openmetadata.service.util.UserUtil.getUser;
+import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
+import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.template.TemplateException;
@@ -45,6 +53,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -64,6 +73,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -77,6 +87,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.TokenInterface;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
@@ -104,7 +115,6 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
@@ -118,6 +128,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -125,10 +136,13 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.CatalogPrincipal;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.BotTokenCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
@@ -140,7 +154,6 @@ import org.openmetadata.service.util.PasswordUtil;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TokenUtil;
-import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 @Path("/v1/users")
@@ -152,7 +165,8 @@ import org.openmetadata.service.util.UserUtil;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(
     name = "users",
-    order = 3) // Initialize user resource before bot resource (at default order 9)
+    order = 3,
+    requiredForOps = true) // Initialize user resource before bot resource (at default order 9)
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
@@ -160,8 +174,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final TokenRepository tokenRepository;
   private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
+  private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
+  private boolean isSelfSignUpEnabled = false;
+  static final String FIELDS = "profile,roles,teams,follows,owns,domains,personas,defaultPersona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -175,8 +191,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return user;
   }
 
-  public UserResource(Authorizer authorizer, AuthenticatorHandler authenticatorHandler) {
-    super(Entity.USER, authorizer);
+  public UserResource(
+      Authorizer authorizer, Limits limits, AuthenticatorHandler authenticatorHandler) {
+    super(Entity.USER, authorizer, limits);
     jwtTokenGenerator = JWTTokenGenerator.getInstance();
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
@@ -194,9 +211,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
+    this.authorizerConfiguration = config.getAuthorizerConfiguration();
     SmtpSettings smtpSettings = config.getSmtpSettings();
     this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
+    this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
 
   public static class UserList extends ResultList<User> {
@@ -416,14 +435,27 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public User getCurrentLoggedInUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    User user = repository.getByName(uriInfo, currentUserName, fields);
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    User user = repository.getByEmail(uriInfo, currentEmail, fields);
+
+    repository.validateLoggedInUserNameAndEmailMatches(
+        securityContext.getUserPrincipal().getName(), currentEmail, user);
+
+    // Sync the Roles from token to User
+    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
+        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+      reSyncUserRolesFromToken(
+          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
+    }
     return addHref(uriInfo, user);
   }
 
@@ -447,9 +479,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "404", description = "User not found")
       })
   public List<EntityReference> getCurrentLoggedInUser(
-      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    return repository.getGroupTeams(uriInfo, currentUserName);
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
+    String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
+    return repository.getGroupTeams(uriInfo, catalogSecurityContext, currentEmail);
   }
 
   @POST
@@ -529,37 +565,84 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response createUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
-    if (Boolean.TRUE.equals(create.getIsAdmin())) {
-      authorizer.authorizeAdmin(securityContext);
-    }
-    if (Boolean.TRUE.equals(create.getIsBot())) {
+    if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
 
-    if (isBasicAuth()) {
-      try {
-        // basic auth doesn't allow duplicate emails, since username part of the email is used as
-        // login name
-        validateEmailAlreadyExists(create.getEmail());
-      } catch (RuntimeException ex) {
-        return Response.status(CONFLICT)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .entity(
-                new ErrorMessage(
-                    CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
-            .build();
+    //
+    try {
+      // Email Validation
+      validateEmailAlreadyExists(user.getEmail());
+      addUserAuthForBasic(user, create);
+    } catch (RuntimeException ex) {
+      return Response.status(CONFLICT)
+          .type(MediaType.APPLICATION_JSON_TYPE)
+          .entity(
+              new ErrorMessage(
+                  CONFLICT.getStatusCode(), CatalogExceptionMessage.ENTITY_ALREADY_EXISTS))
+          .build();
+    }
+
+    // Add the roles on user creation
+    updateUserRolesIfRequired(user, containerRequestContext);
+
+    Response createdUserRes;
+    try {
+      createdUserRes = create(uriInfo, securityContext, user);
+    } catch (EntityNotFoundException ex) {
+      if (isSelfSignUpEnabled) {
+        if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
+          User created = addHref(uriInfo, repository.create(uriInfo, user));
+          createdUserRes = Response.created(created.getHref()).entity(created).build();
+        } else {
+          throw new CustomExceptionMessage(
+              FORBIDDEN,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP_ERROR,
+              CatalogExceptionMessage.OTHER_USER_SIGN_UP);
+        }
+      } else {
+        throw new CustomExceptionMessage(
+            FORBIDDEN,
+            CatalogExceptionMessage.SELF_SIGNUP_NOT_ENABLED,
+            CatalogExceptionMessage.SELF_SIGNUP_DISABLED_MESSAGE);
       }
+    }
+
+    if (createdUserRes != null) {
+      // Send Invite mail to user
+      sendInviteMailToUserForBasicAuth(uriInfo, user, create);
+
+      // Update response to remove auth fields
+      decryptOrNullify(securityContext, (User) createdUserRes.getEntity());
+      return createdUserRes;
+    }
+    return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
+  }
+
+  private void addUserAuthForBasic(User user, CreateUser create) {
+    if (isBasicAuth()) {
       user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
       }
-      // else the user will get a mail if configured smtp
     }
-    // TODO do we need to authenticate user is creating himself?
-    addHref(uriInfo, repository.create(uriInfo, user));
+  }
+
+  private void updateUserRolesIfRequired(
+      User user, ContainerRequestContext containerRequestContext) {
+    CatalogSecurityContext catalogSecurityContext =
+        (CatalogSecurityContext) containerRequestContext.getSecurityContext();
+    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
+        && Boolean.FALSE.equals(user.getIsBot() != null && user.getIsBot())) {
+      user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
+    }
+  }
+
+  private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
     if (isBasicAuth() && isEmailServiceEnabled) {
       try {
         authHandler.sendInviteMailToUser(
@@ -572,9 +655,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
         LOG.error("Error in sending invite to User" + ex.getMessage());
       }
     }
-    Response response = Response.created(user.getHref()).entity(user).build();
-    decryptOrNullify(securityContext, (User) response.getEntity());
-    return response;
   }
 
   private boolean isBasicAuth() {
@@ -601,7 +681,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     repository.prepareInternal(user, true);
-
+    User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
+    if (existingUser == null) {
+      limits.enforceLimits(
+          securityContext,
+          getResourceContextByName(user.getFullyQualifiedName()),
+          new OperationContext(entityType, MetadataOperation.CREATE));
+    }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
     if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
       authorizer.authorizeAdmin(securityContext);
@@ -754,11 +840,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-
     User user = repository.get(uriInfo, id, new Fields(Set.of(AUTH_MECHANISM_FIELD)));
     if (!Boolean.TRUE.equals(user.getIsBot())) {
       throw new IllegalArgumentException("JWT token is only supported for bot users");
     }
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     decryptOrNullify(securityContext, user);
     authorizer.authorizeAdmin(securityContext);
     return user.getAuthenticationMechanism();
@@ -793,7 +882,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       JsonObject patchOpObject = patchOp.asJsonObject();
       if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
         String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot") || path.equals("/roles")) {
+        if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
           authorizer.authorizeAdmin(securityContext);
           continue;
         }
@@ -1174,6 +1263,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "User Name of the User for which to get. (Default = `false`)")
           @QueryParam("username")
           String userName) {
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     if (userName != null) {
       authorizer.authorizeAdmin(securityContext);
     } else {
@@ -1252,15 +1345,22 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreatePersonalToken tokenRequest) {
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(entityType, MetadataOperation.GENERATE_TOKEN));
     String userName = securityContext.getUserPrincipal().getName();
     User user =
-        repository.getByName(null, userName, getFields("email,isBot"), Include.NON_DELETED, false);
-    if (Boolean.FALSE.equals(user.getIsBot())) {
+        repository.getByName(
+            null, userName, getFields("roles,email,isBot"), Include.NON_DELETED, false);
+    if (user.getIsBot() == null || Boolean.FALSE.equals(user.getIsBot())) {
       // Create Personal Access Token
       JWTAuthMechanism authMechanism =
           JWTTokenGenerator.getInstance()
               .getJwtAuthMechanism(
                   userName,
+                  getRoleListFromUser(user),
+                  user.getIsAdmin(),
                   user.getEmail(),
                   false,
                   ServiceTokenType.PERSONAL_ACCESS,
@@ -1272,7 +1372,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       UserTokenCache.invalidateToken(user.getName());
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
-    throw new CustomExceptionMessage(BAD_REQUEST, "Bots cannot have a Personal Access Token.");
+    throw new CustomExceptionMessage(
+        BAD_REQUEST, "NO_PERSONAL_TOKEN_FOR_BOTS", "Bots cannot have a Personal Access Token.");
   }
 
   @GET
@@ -1349,29 +1450,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return importCsvInternal(securityContext, team, csv, dryRun);
   }
 
-  public static User getUser(String updatedBy, CreateUser create) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(create.getName())
-        .withFullyQualifiedName(create.getName())
-        .withEmail(create.getEmail())
-        .withDescription(create.getDescription())
-        .withDisplayName(create.getDisplayName())
-        .withIsBot(create.getIsBot())
-        .withIsAdmin(create.getIsAdmin())
-        .withProfile(create.getProfile())
-        .withPersonas(create.getPersonas())
-        .withDefaultPersona(create.getDefaultPersona())
-        .withTimezone(create.getTimezone())
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
-        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE));
-  }
-
   public void validateEmailAlreadyExists(String email) {
     if (repository.checkEmailAlreadyExists(email)) {
-      throw new CustomExceptionMessage(BAD_REQUEST, "User with Email Already Exists");
+      throw new CustomExceptionMessage(
+          BAD_REQUEST, "EMAIL_EXISTS", "User with Email Already Exists");
     }
   }
 
@@ -1408,8 +1490,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
               create.getAuthenticationMechanism(),
               original.getAuthenticationMechanism());
       user.setRoles(original.getRoles());
-    } else if (bot != null && ProviderType.SYSTEM.equals(bot.getProvider())) {
-      user.setRoles(UserUtil.getRoleForBot(botName));
     }
     // TODO remove this
     addAuthMechanismToBot(user, create, uriInfo);
@@ -1466,7 +1546,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       switch (authType) {
         case JWT -> {
           User original = retrieveBotUser(user, uriInfo);
-          if (original == null || !hasAJWTAuthMechanism(original.getAuthenticationMechanism())) {
+          if (original == null
+              || !hasAJWTAuthMechanism(user, original.getAuthenticationMechanism())) {
             JWTAuthMechanism jwtAuthMechanism =
                 JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
             authMechanism.setConfig(
@@ -1517,12 +1598,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withAuthType(BASIC).withConfig(newAuthForUser));
   }
 
-  private boolean hasAJWTAuthMechanism(AuthenticationMechanism authMechanism) {
+  private boolean hasAJWTAuthMechanism(User user, AuthenticationMechanism authMechanism) {
     if (authMechanism != null && JWT.equals(authMechanism.getAuthType())) {
+      SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
+      secretsManager.decryptAuthenticationMechanism(user.getName(), authMechanism);
       JWTAuthMechanism jwtAuthMechanism =
           JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
       return jwtAuthMechanism != null
           && jwtAuthMechanism.getJWTToken() != null
+          && !Objects.equals(jwtAuthMechanism.getJWTToken(), NULL_SECRET_STRING)
           && !StringUtils.EMPTY.equals(jwtAuthMechanism.getJWTToken());
     }
     return false;
@@ -1559,5 +1643,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .maskAuthenticationMechanism(user.getName(), user.getAuthenticationMechanism());
       }
     }
+
+    // Remove mails for non-admin users
+    PIIMasker.maskUser(authorizer, securityContext, user);
   }
 }

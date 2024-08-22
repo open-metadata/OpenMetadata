@@ -15,21 +15,28 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 from functools import lru_cache
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional, Type
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.engine import Engine
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
 )
+from metadata.generated.schema.type.basic import Timestamp
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.status import Status
-from metadata.ingestion.models.topology import TopologyContext
+from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
+from metadata.ingestion.models.topology import TopologyContextManager
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import convert_timestamp_to_milliseconds
 
 logger = ingestion_logger()
 
@@ -39,11 +46,10 @@ class LifeCycleQueryByTable(BaseModel):
     Query executed get life cycle
     """
 
-    table_name: str = Field(..., alias="TABLE_NAME")
-    created_at: Optional[datetime] = Field(..., alias="CREATED_AT")
+    model_config = ConfigDict(populate_by_name=True)
 
-    class Config:
-        allow_population_by_field_name = True
+    table_name: str = Field(..., alias="TABLE_NAME")
+    created_at: Optional[datetime] = Field(None, alias="CREATED_AT")
 
 
 class LifeCycleQueryMixin:
@@ -51,7 +57,7 @@ class LifeCycleQueryMixin:
     Module stores the methods to query the sources and get life cycle information
     """
 
-    context: TopologyContext
+    context: TopologyContextManager
     status: Status
     source_config: DatabaseServiceMetadataPipeline
     engine: Engine
@@ -73,7 +79,7 @@ class LifeCycleQueryMixin:
 
         for row in results:
             try:
-                life_cycle_by_table = LifeCycleQueryByTable.parse_obj(dict(row))
+                life_cycle_by_table = LifeCycleQueryByTable.model_validate(dict(row))
                 queries_dict[life_cycle_by_table.table_name] = life_cycle_by_table
             except Exception as exc:
                 self.status.failed(
@@ -85,3 +91,71 @@ class LifeCycleQueryMixin:
                 )
 
         return queries_dict
+
+    def get_life_cycle_data(
+        self, entity: Type[Entity], entity_name: str, entity_fqn: str, query: str
+    ):
+        """
+        Get the life cycle data
+        """
+        try:
+            life_cycle_data = self.life_cycle_query_dict(query=query).get(entity_name)
+            if life_cycle_data:
+                life_cycle = LifeCycle(
+                    created=AccessDetails(
+                        timestamp=Timestamp(
+                            int(
+                                convert_timestamp_to_milliseconds(
+                                    life_cycle_data.created_at.timestamp()
+                                )
+                            )
+                        )
+                    )
+                )
+                yield Either(
+                    right=OMetaLifeCycleData(
+                        entity=entity, entity_fqn=entity_fqn, life_cycle=life_cycle
+                    )
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=entity_name,
+                    error=f"Unable to get the table life cycle data for table {entity_name}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def yield_life_cycle_data(self, _) -> Iterable[Either[OMetaLifeCycleData]]:
+        """
+        Get the life cycle data of the table
+        """
+        try:
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,
+                database_name=self.context.get().database,
+                schema_name=self.context.get().database_schema,
+                table_name=self.context.get().table,
+                skip_es_search=True,
+            )
+            # table = self.metadata.get_by_name(entity=Table, fqn=table_fqn)
+            # if table:
+            yield from self.get_life_cycle_data(
+                entity=Table,
+                entity_name=self.context.get().table,
+                entity_fqn=table_fqn,
+                query=self.life_cycle_query.format(
+                    database_name=self.context.get().database,
+                    schema_name=self.context.get().database_schema,
+                ),
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="lifeCycle",
+                    error=f"Error Processing life cycle data: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )

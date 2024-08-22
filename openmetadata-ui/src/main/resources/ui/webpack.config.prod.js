@@ -33,8 +33,8 @@ module.exports = {
   // Output configuration
   output: {
     path: outputPath,
-    filename: 'openmetadata.bundle.js',
-    chunkFilename: '[name].[contenthash].js',
+    filename: 'openmetadata.[fullhash].js',
+    chunkFilename: '[name].[fullhash].js',
     publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
   },
 
@@ -96,6 +96,7 @@ module.exports = {
           path.resolve(__dirname, 'node_modules/react-toastify'),
           path.resolve(__dirname, 'node_modules/quill-emoji'),
           path.resolve(__dirname, 'node_modules/react-awesome-query-builder'),
+          path.resolve(__dirname, 'node_modules/katex'),
         ],
         // May need to handle files outside the source code
         // (from node_modules)
@@ -110,6 +111,7 @@ module.exports = {
           {
             loader: 'css-loader', // translates CSS into CommonJS
           },
+          'postcss-loader',
           {
             loader: 'less-loader', // compiles Less to CSS
             options: {
@@ -164,11 +166,13 @@ module.exports = {
     // File types to be handled
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.css', '.scss', '.svg'],
     fallback: {
-      http: require.resolve('stream-http'),
       https: require.resolve('https-browserify'),
       path: require.resolve('path-browserify'),
       fs: false,
-      url: require.resolve('url/'),
+      'process/browser': require.resolve('process/browser'),
+    },
+    alias: {
+      process: 'process/browser',
     },
   },
 
@@ -202,10 +206,6 @@ module.exports = {
         },
         {
           from: path.join(__dirname, 'public/swagger.html'),
-          to: outputPath,
-        },
-        {
-          from: path.join(__dirname, 'public/robots.txt'),
           to: outputPath,
         },
         {

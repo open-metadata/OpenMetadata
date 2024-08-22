@@ -15,7 +15,7 @@ Validate query parser logic
 
 from unittest import TestCase
 
-from sqllineage.core.models import Column
+from collate_sqllineage.core.models import Column
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.models import Dialect
@@ -206,7 +206,7 @@ class QueryParserTests(TestCase):
         """
         Validate we obtain information from Comon Table Expressions
         """
-        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS
          WITH cte_table AS (
            SELECT
              USERS.ID,
@@ -226,7 +226,6 @@ class QueryParserTests(TestCase):
         ;
         """
 
-        expected_tables = {"testdb.public.users"}
         expected_lineage = [
             (
                 Column("testdb.public.users.id"),
@@ -258,7 +257,7 @@ class QueryParserTests(TestCase):
         """
         Validate we obtain information from Comon Table Expressions
         """
-        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS
         SELECT
             ID,
             -- A comment here
@@ -295,7 +294,7 @@ class QueryParserTests(TestCase):
         """
         Validate we obtain information from Comon Table Expressions
         """
-        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS 
+        query = """CREATE TABLE TESTDB.PUBLIC.TARGET AS
         SELECT
             ID AS new_identifier,
             NAME new_name
@@ -313,6 +312,34 @@ class QueryParserTests(TestCase):
             ),
         ]
         expected_tables = {"testdb.public.users", "testdb.public.target"}
+
+        parser = LineageParser(query)
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, expected_tables)
+        self.assertEqual(
+            parser.column_lineage,
+            expected_lineage,
+        )
+
+        parser = LineageParser(query, Dialect.MYSQL)
+        tables = {str(table) for table in parser.involved_tables}
+        self.assertEqual(tables, expected_tables)
+        self.assertEqual(
+            parser.column_lineage,
+            expected_lineage,
+        )
+
+    def test_copy_query(self):
+        """
+        Validate Copy query is skipped appropriately without any errors
+        """
+        query = """COPY MY_TABLE col1,col2,col3
+        FROM 's3://bucket/schema/table.csv'
+        WITH CREDENTIALS ''
+        REGION 'US-east-2'
+        """
+        expected_lineage = []
+        expected_tables = set()
 
         parser = LineageParser(query)
         tables = {str(table) for table in parser.involved_tables}

@@ -13,13 +13,15 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/TableQueries/TableQueries.interface';
+import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
+import { ListParams } from '../interface/API.interface';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export interface ListStoredProcedureParams {
@@ -33,14 +35,6 @@ export interface ListStoredProcedureParams {
 
 const URL = '/storedProcedures';
 
-const configOptionsForPatch = {
-  headers: { 'Content-type': 'application/json-patch+json' },
-};
-
-const configOptions = {
-  headers: { 'Content-type': 'application/json' },
-};
-
 export const getStoredProceduresList = async (
   params?: ListStoredProcedureParams
 ) => {
@@ -51,46 +45,19 @@ export const getStoredProceduresList = async (
   return response.data;
 };
 
-export const getStoredProceduresDetails = async (
-  id: string,
-  arrQueryFields: string | string[]
-) => {
-  const url = getURLWithQueryFields(`${URL}/${id}`, arrQueryFields);
-
-  const response = await APIClient.get<StoredProcedure>(url);
-
-  return response.data;
-};
-
-export const getStoredProceduresByName = async (
-  name: string,
-  fields: string | string[],
-  include: Include = Include.NonDeleted
+export const getStoredProceduresByFqn = async (
+  fqn: string,
+  params?: ListParams
 ) => {
   const response = await APIClient.get<StoredProcedure>(
-    `${URL}/name/${name}?fields=${fields}`,
+    `${URL}/name/${getEncodedFqn(fqn)}`,
     {
       params: {
-        include,
+        ...params,
+        include: params?.include ?? Include.NonDeleted,
       },
     }
   );
-
-  return response.data;
-};
-
-export const getStoredProceduresDetailsByFQN = async (
-  storedProceduresName: string,
-  arrQueryFields?: string | string[],
-  include = Include.All
-) => {
-  const url = `${getURLWithQueryFields(
-    `${URL}/name/${storedProceduresName}`,
-    arrQueryFields,
-    `include=${include}`
-  )}`;
-
-  const response = await APIClient.get<StoredProcedure>(url);
 
   return response.data;
 };
@@ -102,7 +69,7 @@ export const patchStoredProceduresDetails = async (
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<StoredProcedure>
-  >(`${URL}/${id}`, data, configOptionsForPatch);
+  >(`${URL}/${id}`, data);
 
   return response.data;
 };
@@ -116,7 +83,7 @@ export const addStoredProceduresFollower = async (
     AxiosResponse<{
       changeDescription: { fieldsAdded: { newValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers`, userId, configOptions);
+  >(`${URL}/${id}/followers`, userId, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };
@@ -130,7 +97,7 @@ export const removeStoredProceduresFollower = async (
     AxiosResponse<{
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
-  >(`${URL}/${id}/followers/${userId}`, configOptions);
+  >(`${URL}/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
 
   return response.data;
 };

@@ -12,21 +12,25 @@
  *  limitations under the License.
  */
 
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import axiosClient from '.';
+import { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
+  AlertType,
   EventSubscription,
   Status,
-  SubscriptionType,
 } from '../generated/events/eventSubscription';
-import { SubscriptionResourceDescriptor } from '../generated/events/subscriptionResourceDescriptor';
+import { FilterResourceDescriptor } from '../generated/events/filterResourceDescriptor';
 import { Function } from '../generated/type/function';
+import { getEncodedFqn } from '../utils/StringsUtils';
 
 const BASE_URL = '/events/subscriptions';
 
 interface ListAlertsRequestParams {
   status?: Status;
-  alertType?: SubscriptionType;
+  alertType?: AlertType;
   before?: string;
   after?: string;
   include?: string;
@@ -55,7 +59,7 @@ export const getAlertsFromName = async (
   params?: Pick<ListAlertsRequestParams, 'include'>
 ) => {
   const response = await axiosClient.get<EventSubscription>(
-    `${BASE_URL}/name/${name}`,
+    `${BASE_URL}/name/${getEncodedFqn(name)}`,
     {
       params: {
         ...params,
@@ -80,13 +84,33 @@ export const getAllAlerts = async (params: ListAlertsRequestParams) => {
   return response.data;
 };
 
-export const createAlert = async (alert: EventSubscription) => {
+export const createNotificationAlert = async (
+  alert: CreateEventSubscription
+) => {
   const response = await axiosClient.post<EventSubscription>(BASE_URL, alert);
 
   return response.data;
 };
 
-export const updateAlert = async (alert: EventSubscription) => {
+export const updateNotificationAlert = async (
+  id: string,
+  data: Operation[]
+) => {
+  const configOptions = {
+    headers: { 'Content-type': 'application/json-patch+json' },
+  };
+
+  const response = await axiosClient.patch<
+    Operation[],
+    AxiosResponse<EventSubscription>
+  >(`${BASE_URL}/${id}`, data, configOptions);
+
+  return response.data;
+};
+
+export const updateNotificationAlertWithPut = async (
+  alert: CreateEventSubscription
+) => {
   const response = await axiosClient.put<EventSubscription>(BASE_URL, alert);
 
   return response.data;
@@ -106,16 +130,8 @@ export const getFilterFunctions = async () => {
 
 export const getResourceFunctions = async () => {
   const response = await axiosClient.get<
-    PagingResponse<SubscriptionResourceDescriptor[]>
-  >(`${BASE_URL}/resources`);
-
-  return response.data;
-};
-
-export const triggerEventById = async (id: string) => {
-  const response = await axiosClient.put<EventSubscription>(
-    `${BASE_URL}/trigger/${id}`
-  );
+    PagingResponse<FilterResourceDescriptor[]>
+  >(`${BASE_URL}/${AlertType.Notification}/resources`);
 
   return response.data;
 };

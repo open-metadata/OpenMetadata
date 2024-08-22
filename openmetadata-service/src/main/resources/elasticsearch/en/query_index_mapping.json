@@ -107,18 +107,12 @@
       },
       "displayName": {
         "type": "text",
-        "analyzer": "om_analyzer",
-        "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          }
-        }
+        "analyzer": "om_analyzer"
       },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "docs"
       },
       "version": {
         "type": "float"
@@ -173,90 +167,6 @@
           }
         }
       },
-      "votes": {
-        "properties": {
-          "upVotes": {
-            "type": "long"
-          },
-          "downVotes": {
-            "type": "long"
-          },
-          "upVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
-          },
-          "downVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "text"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
-          }
-        }
-      },
       "query": {
         "type": "text",
         "analyzer": "om_analyzer"
@@ -264,7 +174,7 @@
       "queryDate": {
         "type": "long"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -293,6 +203,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }
@@ -391,6 +302,113 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "domain" : {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "text"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "tier": {
+        "properties": {
+          "description": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "labelType": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "name": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "source": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "state": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "tagFQN": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
+        }
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
       }
     }
   }

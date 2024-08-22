@@ -13,12 +13,13 @@
 Test Metrics behavior
 """
 import datetime
+import math
 import os
 from unittest import TestCase
 from unittest.mock import patch
 from uuid import uuid4
 
-from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
+from sqlalchemy import TEXT, Column, Date, DateTime, Float, Integer, String, Time
 from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
@@ -70,7 +71,7 @@ class MetricsTest(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
             )
         ],
@@ -243,6 +244,71 @@ class MetricsTest(TestCase):
         assert (
             str(round(res.get(User.nickname.name).get(Metrics.NULL_RATIO.name), 2))
             == "0.67"
+        )
+
+    def test_non_numeric(self):
+        """
+        Check Null Count, Null Ratio
+        """
+
+        class NonNumericNumbers(Base):
+            __tablename__ = "non_numeric_numbers"
+            id = Column(Integer, primary_key=True)
+            float_col = Column(Float())  # date of employment
+
+        NonNumericNumbers.__table__.create(bind=self.engine)
+        with patch.object(
+            SQAProfilerInterface,
+            "_convert_table_to_orm_object",
+            return_value=NonNumericNumbers,
+        ):
+            sqa_profiler_interface = SQAProfilerInterface(
+                self.sqlite_conn,
+                None,
+                self.table_entity,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
+
+        data = [
+            NonNumericNumbers(float_col=math.nan),
+            NonNumericNumbers(float_col=math.inf),
+            NonNumericNumbers(float_col=-math.inf),
+            NonNumericNumbers(float_col=10),
+            NonNumericNumbers(float_col=20),
+            NonNumericNumbers(float_col=None),
+        ]
+        sqa_profiler_interface.session.add_all(data)
+        sqa_profiler_interface.session.commit()
+        count = Metrics.COUNT.value
+        null_count = Metrics.NULL_COUNT.value
+
+        # Build the ratio based on the other two metrics
+        null_ratio = Metrics.NULL_RATIO.value
+        profiler = Profiler(
+            count,
+            null_count,
+            null_ratio,
+            profiler_interface=sqa_profiler_interface,
+        )
+        res = profiler.compute_metrics()._column_results
+
+        assert (
+            res.get(NonNumericNumbers.float_col.name).get(Metrics.NULL_COUNT.name) == 2
+        )
+        assert (
+            str(
+                round(
+                    res.get(NonNumericNumbers.float_col.name).get(
+                        Metrics.NULL_RATIO.name
+                    ),
+                    2,
+                )
+            )
+            == "0.33"
         )
 
     def test_table_row_count(self):
@@ -749,7 +815,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(EmptyUser.age.name).get(Metrics.HISTOGRAM.name) is None
+        assert res.get(EmptyUser.age.name) is None
 
     def test_not_like_count(self):
         """
@@ -862,7 +928,9 @@ class MetricsTest(TestCase):
         assert res == 61
 
     def test_system_metric(self):
-        system = add_props(table=User)(Metrics.SYSTEM.value)
+        system = add_props(table=User, ometa_client=None, db_service=None)(
+            Metrics.SYSTEM.value
+        )
         session = self.sqa_profiler_interface.session
         system().sql(session)
 
@@ -872,7 +940,7 @@ class MetricsTest(TestCase):
             name="user",
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
                 )
             ],
@@ -919,7 +987,7 @@ class MetricsTest(TestCase):
             name="user",
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
                     customMetrics=[
                         CustomMetric(

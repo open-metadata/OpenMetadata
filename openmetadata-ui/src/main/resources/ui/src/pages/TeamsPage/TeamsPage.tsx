@@ -13,25 +13,30 @@
 
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
-import { cloneDeep, isEmpty, isUndefined } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import { cloneDeep, filter, isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { useHistory } from 'react-router-dom';
+
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import Loader from '../../components/common/Loader/Loader';
+import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import TeamDetailsV1 from '../../components/Settings/Team/TeamDetails/TeamDetailsV1';
+import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TeamDetailsV1 from '../../components/Team/TeamDetails/TeamDetailsV1';
-import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { CreateTeam, TeamType } from '../../generated/api/teams/createTeam';
 import { EntityReference } from '../../generated/entity/data/table';
 import { Team } from '../../generated/entity/teams/team';
+import { Include } from '../../generated/type/include';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
 import { searchData } from '../../rest/miscAPI';
 import {
   createTeam,
@@ -40,8 +45,9 @@ import {
   patchTeamDetail,
 } from '../../rest/teamsAPI';
 import { updateUserDetail } from '../../rest/userAPI';
+import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getSettingPath, getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -49,8 +55,7 @@ const TeamsPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn } = useParams<{ fqn: string }>();
-  const [currentFqn, setCurrentFqn] = useState<string>('');
+  const { fqn } = useFqn();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team>({} as Team);
 
@@ -65,7 +70,7 @@ const TeamsPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [assets, setAssets] = useState<number>(0);
   const [parentTeams, setParentTeams] = useState<Team[]>([]);
-  const { updateCurrentUser } = useAuthContext();
+  const { updateCurrentUser } = useApplicationStore();
 
   const [entityPermissions, setEntityPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -74,30 +79,10 @@ const TeamsPage = () => {
   const [isFetchAllTeamAdvancedDetails, setFetchAllTeamAdvancedDetails] =
     useState<boolean>(false);
 
-  const isGroupType = useMemo(
-    () => selectedTeam.teamType === TeamType.Group,
-    [selectedTeam]
-  );
-
   const hasViewPermission = useMemo(
     () => entityPermissions.ViewAll || entityPermissions.ViewBasic,
     [entityPermissions]
   );
-
-  const fetchPermissions = async (entityFqn: string) => {
-    setIsPageLoading(true);
-    try {
-      const perms = await getEntityPermissionByFqn(
-        ResourceEntity.TEAM,
-        entityFqn
-      );
-      setEntityPermissions(perms);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsPageLoading(false);
-    }
-  };
 
   const descriptionHandler = (value: boolean) => {
     setIsDescriptionEditable(value);
@@ -125,9 +110,9 @@ const TeamsPage = () => {
 
   const fetchAllTeamsBasicDetails = async (parentTeam?: string) => {
     try {
-      const { data } = await getTeams(undefined, {
-        parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
-        include: 'all',
+      const { data } = await getTeams({
+        parentTeam: parentTeam ?? 'organization',
+        include: Include.All,
       });
 
       const modifiedTeams: Team[] = data.map((team) => ({
@@ -151,13 +136,16 @@ const TeamsPage = () => {
     loading && setIsDataLoading((isDataLoading) => ++isDataLoading);
 
     try {
-      const { data } = await getTeams(
-        ['userCount', 'childrenCount', 'owns', 'parents'],
-        {
-          parentTeam: decodeURIComponent(parentTeam ?? '') ?? 'organization',
-          include: 'all',
-        }
-      );
+      const { data } = await getTeams({
+        parentTeam: parentTeam ?? 'organization',
+        include: Include.All,
+        fields: [
+          TabSpecificField.USER_COUNT,
+          TabSpecificField.CHILDREN_COUNT,
+          TabSpecificField.OWNS,
+          TabSpecificField.PARENTS,
+        ],
+      });
 
       const modifiedTeams: Team[] = data.map((team) => ({
         ...team,
@@ -187,7 +175,10 @@ const TeamsPage = () => {
   ) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(name, ['parents'], 'all');
+      const data = await getTeamByName(name, {
+        fields: TabSpecificField.PARENTS,
+        include: Include.All,
+      });
       if (data) {
         setParentTeams((prev) => (newTeam ? [data] : [data, ...prev]));
         if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -201,14 +192,14 @@ const TeamsPage = () => {
     }
   };
 
-  const fetchAssets = async () => {
-    if (selectedTeam.id && isGroupType) {
+  const fetchAssets = async (selectedTeam: Team) => {
+    if (selectedTeam.id && selectedTeam.teamType === TeamType.Group) {
       try {
         const res = await searchData(
           ``,
           0,
           0,
-          `owner.id:${selectedTeam.id}`,
+          `owners.id:${selectedTeam.id}`,
           '',
           '',
           SearchIndex.ALL
@@ -224,11 +215,15 @@ const TeamsPage = () => {
   const fetchTeamBasicDetails = async (name: string, loadPage = false) => {
     setIsPageLoading(loadPage);
     try {
-      const data = await getTeamByName(
-        name,
-        ['owner', 'parents', 'profile'],
-        'all'
-      );
+      const data = await getTeamByName(name, {
+        fields: [
+          TabSpecificField.USERS,
+          TabSpecificField.PARENTS,
+          TabSpecificField.PROFILE,
+          TabSpecificField.OWNERS,
+        ],
+        include: Include.All,
+      });
 
       setSelectedTeam(data);
       if (!isEmpty(data.parents) && data.parents?.[0].name) {
@@ -244,20 +239,30 @@ const TeamsPage = () => {
   const fetchTeamAdvancedDetails = async (name: string) => {
     setFetchingAdvancedDetails(true);
     try {
-      const data = await getTeamByName(
-        name,
-        ['users', 'defaultRoles', 'policies', 'childrenCount', 'domain'],
-        'all'
-      );
+      const data = await getTeamByName(name, {
+        fields: [
+          TabSpecificField.USERS,
+          TabSpecificField.DEFAULT_ROLES,
+          TabSpecificField.POLICIES,
+          TabSpecificField.CHILDREN_COUNT,
+          TabSpecificField.DOMAINS,
+        ],
+        include: Include.All,
+      });
 
       setSelectedTeam((prev) => ({ ...prev, ...data }));
-      fetchAssets();
+      fetchAssets(data);
     } catch (error) {
       showErrorToast(error as AxiosError, t('server.unexpected-response'));
     } finally {
       setFetchingAdvancedDetails(false);
     }
   };
+
+  const loadAdvancedDetails = useCallback(() => {
+    fetchTeamAdvancedDetails(fqn);
+    fetchAllTeamsBasicDetails(fqn);
+  }, [fqn]);
 
   /**
    * Take Team data as input and create the team
@@ -266,6 +271,8 @@ const TeamsPage = () => {
   const createNewTeam = async (data: Team) => {
     try {
       setIsLoading(true);
+      const domains =
+        data?.domains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
       const teamData: CreateTeam = {
         name: data.name,
         displayName: data.displayName,
@@ -273,11 +280,15 @@ const TeamsPage = () => {
         teamType: data.teamType as TeamType,
         parents: fqn ? [selectedTeam.id] : undefined,
         email: data.email || undefined,
+        domains,
+        isJoinable: data.isJoinable,
       };
+
       const res = await createTeam(teamData);
       if (res) {
         fetchTeamBasicDetails(selectedTeam.name, true);
         handleAddTeam(false);
+        loadAdvancedDetails();
       }
     } catch (error) {
       if (
@@ -319,40 +330,36 @@ const TeamsPage = () => {
     }
   };
 
-  const handleJoinTeamClick = (id: string, data: Operation[]) => {
-    updateUserDetail(id, data)
-      .then((res) => {
-        if (res) {
-          updateCurrentUser(res);
-
-          setSelectedTeam((prev) => ({ ...prev, ...res }));
-          showSuccessToast(t('server.join-team-success'), 2000);
-        } else {
-          throw t('server.join-team-error');
-        }
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(err, t('server.join-team-error'));
-      });
+  const handleJoinTeamClick = async (id: string, data: Operation[]) => {
+    try {
+      const response = await updateUserDetail(id, data);
+      const currentUser = getEntityReferenceFromEntity(
+        response,
+        EntityType.USER
+      );
+      setSelectedTeam((prev) => ({
+        ...prev,
+        users: prev.users ? [currentUser, ...prev.users] : [currentUser],
+      }));
+      updateCurrentUser(response);
+      showSuccessToast(t('server.join-team-success'), 2000);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.join-team-error'));
+    }
   };
 
-  const handleLeaveTeamClick = (id: string, data: Operation[]) => {
-    return new Promise<void>((resolve) => {
-      updateUserDetail(id, data)
-        .then((res) => {
-          if (res) {
-            updateCurrentUser(res);
-            setSelectedTeam((prev) => ({ ...prev, ...res }));
-            showSuccessToast(t('server.leave-team-success'), 2000);
-            resolve();
-          } else {
-            throw t('server.leave-team-error');
-          }
-        })
-        .catch((err: AxiosError) => {
-          showErrorToast(err, t('server.leave-team-error'));
-        });
-    });
+  const handleLeaveTeamClick = async (id: string, data: Operation[]) => {
+    try {
+      const response = await updateUserDetail(id, data);
+      updateCurrentUser(response);
+      setSelectedTeam((prev) => ({
+        ...prev,
+        users: filter(prev.users, (user) => user.id !== response.id),
+      }));
+      showSuccessToast(t('server.leave-team-success'), 2000);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.leave-team-error'));
+    }
   };
 
   /**
@@ -461,34 +468,35 @@ const TeamsPage = () => {
   const afterDeleteAction = (isSoftDelete?: boolean) => {
     isSoftDelete
       ? handleToggleDelete()
-      : history.push(
-          getSettingPath(getTeamsWithFqnPath(TeamType.Organization))
-        );
+      : history.push(getTeamsWithFqnPath(TeamType.Organization));
   };
 
   const toggleShowDeletedTeam = () => {
     setShowDeletedTeam((pre) => !pre);
   };
 
-  useEffect(() => {
-    if (hasViewPermission && currentFqn !== fqn) {
-      if (fqn) {
-        fetchTeamBasicDetails(fqn, true);
+  const init = useCallback(async () => {
+    setIsPageLoading(true);
+    try {
+      const teamPermissions = await getEntityPermissionByFqn(
+        ResourceEntity.TEAM,
+        fqn
+      );
+      setEntityPermissions(teamPermissions);
+      if (teamPermissions.ViewAll || teamPermissions.ViewBasic) {
+        await fetchTeamBasicDetails(fqn, true);
+        loadAdvancedDetails();
       }
-      setCurrentFqn(fqn);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsPageLoading(false);
     }
-  }, [entityPermissions, fqn]);
-
-  useEffect(() => {
-    fetchPermissions(fqn);
   }, [fqn]);
 
   useEffect(() => {
-    if (!isPageLoading && hasViewPermission && fqn) {
-      fetchTeamAdvancedDetails(fqn);
-      fetchAllTeamsBasicDetails(fqn);
-    }
-  }, [isPageLoading, entityPermissions, fqn]);
+    init();
+  }, [fqn]);
 
   useEffect(() => {
     if (isFetchAllTeamAdvancedDetails && fqn) {
@@ -509,7 +517,7 @@ const TeamsPage = () => {
   }
 
   return (
-    <>
+    <PageLayoutV1 pageTitle={t('label.team-plural')}>
       <TeamDetailsV1
         afterDeleteAction={afterDeleteAction}
         assetsCount={assets}
@@ -542,7 +550,7 @@ const TeamsPage = () => {
           onSave={(data) => createNewTeam(data)}
         />
       )}
-    </>
+    </PageLayoutV1>
   );
 };
 

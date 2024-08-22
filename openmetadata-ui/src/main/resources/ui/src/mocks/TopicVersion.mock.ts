@@ -23,7 +23,7 @@
  *  limitations under the License.
  */
 
-import { TopicVersionProp } from '../components/TopicVersion/TopicVersion.interface';
+import { TopicVersionProp } from '../components/Topic/TopicVersion/TopicVersion.interface';
 import {
   CleanupPolicy,
   MessagingServiceType,
@@ -91,7 +91,7 @@ export const topicVersionMockProps: TopicVersionProp = {
   version: '0.3',
   currentVersionData: mockTopicData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

@@ -20,9 +20,12 @@ from typing import Dict, List, Optional
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 
+from metadata.generated.schema.configuration.profilerConfiguration import MetricType
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.metrics.system.dml_operation import (
     DML_OPERATION_MAP,
@@ -46,7 +49,11 @@ from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import get_value_from_cache, set_cache
+from metadata.utils.profiler_utils import (
+    SnowflakeQueryResult,
+    get_value_from_cache,
+    set_cache,
+)
 
 logger = profiler_logger()
 
@@ -285,11 +292,48 @@ def _(
     return metric_results
 
 
+def _snowflake_build_query_result(
+    session: Session,
+    table: DeclarativeMeta,
+    database: str,
+    schema: str,
+    ometa_client: OpenMetadata,
+    db_service: DatabaseService,
+) -> List[SnowflakeQueryResult]:
+    """List and parse snowflake DML query results"""
+    rows = session.execute(
+        text(
+            INFORMATION_SCHEMA_QUERY.format(
+                tablename=table.__tablename__,  # type: ignore
+                insert=DatabaseDMLOperations.INSERT.value,
+                update=DatabaseDMLOperations.UPDATE.value,
+                delete=DatabaseDMLOperations.DELETE.value,
+                merge=DatabaseDMLOperations.MERGE.value,
+            )
+        )
+    )
+    query_results = []
+    for row in rows:
+        result = get_snowflake_system_queries(
+            row=row,
+            database=database,
+            schema=schema,
+            ometa_client=ometa_client,
+            db_service=db_service,
+        )
+        if result:
+            query_results.append(result)
+
+    return query_results
+
+
 @get_system_metrics_for_dialect.register(Dialects.Snowflake)
 def _(
     dialect: str,
     session: Session,
     table: DeclarativeMeta,
+    ometa_client: OpenMetadata,
+    db_service: DatabaseService,
     *args,
     **kwargs,
 ) -> Optional[List[Dict]]:
@@ -315,22 +359,14 @@ def _(
 
     metric_results: List[Dict] = []
 
-    rows = session.execute(
-        text(
-            INFORMATION_SCHEMA_QUERY.format(
-                tablename=table.__tablename__,  # type: ignore
-                insert=DatabaseDMLOperations.INSERT.value,
-                update=DatabaseDMLOperations.UPDATE.value,
-                delete=DatabaseDMLOperations.DELETE.value,
-                merge=DatabaseDMLOperations.MERGE.value,
-            )
-        )
+    query_results = _snowflake_build_query_result(
+        session=session,
+        table=table,
+        database=database,
+        schema=schema,
+        ometa_client=ometa_client,
+        db_service=db_service,
     )
-    query_results = []
-    for row in rows:
-        result = get_snowflake_system_queries(row, database, schema)
-        if result:
-            query_results.append(result)
 
     for query_result in query_results:
         rows_affected = None
@@ -395,7 +431,7 @@ class System(SystemMetric):
 
     @classmethod
     def name(cls):
-        return "system"
+        return MetricType.system.value
 
     def _manage_cache(self, max_size_in_bytes: int = MAX_SIZE_IN_BYTES) -> None:
         """manage cache and clears it if it exceeds the max size
@@ -409,12 +445,17 @@ class System(SystemMetric):
             logger.debug("Clearing system cache")
             SYSTEM_QUERY_RESULT_CACHE.clear()
 
+    def _validate_attrs(self, attr_list: List[str]) -> None:
+        """Validate the necessary attributes given via add_props"""
+        for attr in attr_list:
+            if not hasattr(self, attr):
+                raise AttributeError(
+                    f"System requires a table to be set: add_props({attr}=...)(Metrics.SYSTEM.value)"
+                )
+
     def sql(self, session: Session, **kwargs):
         """Implements the SQL logic to fetch system data"""
-        if not hasattr(self, "table"):
-            raise AttributeError(
-                "System requires a table to be set: add_props(table=...)(Metrics.COLUMN_COUNT)"
-            )
+        self._validate_attrs(["table", "ometa_client", "db_service"])
 
         conn_config = kwargs.get("conn_config")
 
@@ -423,6 +464,8 @@ class System(SystemMetric):
             session=session,
             table=self.table,  # pylint: disable=no-member
             conn_config=conn_config,
+            ometa_client=self.ometa_client,  # pylint: disable=no-member
+            db_service=self.db_service,  # pylint: disable=no-member
         )
         self._manage_cache()
         return system_metrics

@@ -34,6 +34,7 @@ const NoDataPlaceholder = ({
   size,
   className,
   children,
+  placeholderText,
 }: NoDataPlaceholderProps) => {
   const { t } = useTranslation();
 
@@ -49,7 +50,7 @@ const NoDataPlaceholder = ({
 
       <div className="m-t-xss text-center text-sm font-normal">
         <Typography.Text className="text-sm">
-          {t('message.no-data-available')}
+          {placeholderText ?? t('message.no-data-available')}
         </Typography.Text>
         {children ? children : ''}
       </div>

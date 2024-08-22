@@ -44,7 +44,8 @@ def test_connection(
     """
 
     def custom_executor():
-        return client.get_dashboards_list()
+        collections = client.get_collections_list_test_conn()
+        return client.get_dashboards_list_test_conn(collections)
 
     test_fn = {"GetDashboards": custom_executor}
 

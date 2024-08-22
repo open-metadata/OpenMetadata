@@ -41,7 +41,7 @@ class SupersetAuthenticationProvider(AuthenticationProvider):
         self.service_connection = self.config
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
-            base_url=config.hostPort,
+            base_url=str(config.hostPort),
             api_version="api/v1",
             auth_token=lambda: ("no_token", 0),
             auth_header="Authorization",
@@ -90,7 +90,7 @@ class SupersetAPIClient:
         self._auth_provider = SupersetAuthenticationProvider.create(config)
         get_verify_ssl = get_verify_ssl_fn(config.connection.verifySSL)
         client_config = ClientConfig(
-            base_url=config.hostPort,
+            base_url=str(config.hostPort),
             api_version="api/v1",
             auth_token=self._auth_provider.get_access_token,
             auth_header="Authorization",
@@ -98,6 +98,13 @@ class SupersetAPIClient:
             verify=get_verify_ssl(config.connection.sslConfig),
         )
         self.client = REST(client_config)
+
+    def get_dashboard_count(self) -> int:
+        resp_dashboards = self.client.get("/dashboard/?q=(page:0,page_size:1)")
+        if resp_dashboards:
+            dashboard_count = SupersetDashboardCount(**resp_dashboards)
+            return dashboard_count.count
+        return 0
 
     def fetch_total_dashboards(self) -> int:
         """
@@ -107,10 +114,7 @@ class SupersetAPIClient:
             int
         """
         try:
-            resp_dashboards = self.client.get("/dashboard/?q=(page:0,page_size:1)")
-            if resp_dashboards:
-                dashboard_count = SupersetDashboardCount(**resp_dashboards)
-                return dashboard_count.count
+            return self.get_dashboard_count()
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the dashboard count")
@@ -142,6 +146,13 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard list")
         return SupersetDashboardCount()
 
+    def get_chart_count(self) -> int:
+        resp_chart = self.client.get("/chart/?q=(page:0,page_size:1)")
+        if resp_chart:
+            chart_count = SupersetChart(**resp_chart)
+            return chart_count.count
+        return 0
+
     def fetch_total_charts(self) -> int:
         """
         Fetch the total number of charts
@@ -149,12 +160,8 @@ class SupersetAPIClient:
         Returns:
              int
         """
-
         try:
-            resp_chart = self.client.get("/chart/?q=(page:0,page_size:1)")
-            if resp_chart:
-                chart_count = SupersetChart(**resp_chart)
-                return chart_count.count
+            return self.get_chart_count()
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch the chart count")

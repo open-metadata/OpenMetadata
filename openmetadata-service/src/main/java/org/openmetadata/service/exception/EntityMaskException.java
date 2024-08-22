@@ -17,8 +17,9 @@ import javax.ws.rs.core.Response;
 import org.openmetadata.sdk.exception.WebServiceException;
 
 public class EntityMaskException extends WebServiceException {
+  private static final String ERROR_TYPE = "ENTITY_MASK_ERROR";
 
   public EntityMaskException(String message) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR, ERROR_TYPE, message);
   }
 }

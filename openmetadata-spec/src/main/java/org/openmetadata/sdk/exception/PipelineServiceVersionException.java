@@ -19,13 +19,14 @@ public class PipelineServiceVersionException extends WebServiceException {
 
   private static final String BY_NAME_MESSAGE =
       "Pipeline Service [%s] Version mismatch due to [%s].";
+  private static final String ERROR_TYPE = "PIPELINE_SERVICE_VERSION_MISMATCH";
 
   public PipelineServiceVersionException(String message) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, message);
+    super(Response.Status.INTERNAL_SERVER_ERROR, ERROR_TYPE, message);
   }
 
   private PipelineServiceVersionException(Response.Status status, String message) {
-    super(status, message);
+    super(status, ERROR_TYPE, message);
   }
 
   public static PipelineServiceVersionException byMessage(

@@ -17,30 +17,28 @@ import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  ChangeDescription,
-  CustomProperty,
-  Type,
-} from '../../../generated/entity/type';
+  OperationPermission,
+  ResourceEntity,
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { ChangeDescription, Type } from '../../../generated/entity/type';
+import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { getEntityExtentionDetailsFromEntityType } from '../../../utils/CustomProperties/CustomProperty.utils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { Transi18next } from '../../../utils/CommonUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { columnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getDiffByFieldName,
   getUpdatedExtensionDiffFields,
 } from '../../../utils/EntityVersionUtils';
-import { getDecodedFqn } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { usePermissionProvider } from '../../PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../PermissionProvider/PermissionProvider.interface';
 import ErrorPlaceHolder from '../ErrorWithPlaceholder/ErrorPlaceHolder';
 import Table from '../Table/Table';
 import {
@@ -59,32 +57,17 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
   isVersionView,
   hasPermission,
   entityDetails,
+  maxDataCap,
+  isRenderedInRightPanel = false,
 }: CustomPropertyProps<T>) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const [extentionDetails, setExtentionDetails] =
-    useState<ExtentionEntities[T]>();
+
   const [entityTypeDetail, setEntityTypeDetail] = useState<Type>({} as Type);
   const [entityTypeDetailLoading, setEntityTypeDetailLoading] =
     useState<boolean>(false);
-  const { fqn } = useParams<{ fqn: string; tab: string; version: string }>();
-  const decodedeFqn = getDecodedFqn(fqn);
-
-  const fetchExtentiondetails = async () => {
-    const response = await getEntityExtentionDetailsFromEntityType<T>(
-      entityType,
-      decodedeFqn
-    );
-
-    setExtentionDetails(response as ExtentionEntities[T]);
-  };
-
-  useEffect(() => {
-    fetchExtentiondetails();
-  }, [decodedeFqn]);
 
   const [typePermission, setPermission] = useState<OperationPermission>();
-  const versionDetails = entityDetails ?? extentionDetails;
 
   const fetchTypeDetail = async () => {
     setEntityTypeDetailLoading(true);
@@ -121,16 +104,15 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   const onExtensionUpdate = useCallback(
     async (updatedExtension: ExtentionEntities[T]) => {
-      if (!isUndefined(handleExtensionUpdate) && versionDetails) {
+      if (!isUndefined(handleExtensionUpdate) && entityDetails) {
         const updatedData = {
-          ...versionDetails,
+          ...entityDetails,
           extension: updatedExtension,
         };
         await handleExtensionUpdate(updatedData);
-        setExtentionDetails(updatedData);
       }
     },
-    [versionDetails, handleExtensionUpdate]
+    [entityDetails, handleExtensionUpdate]
   );
 
   const extensionObject: {
@@ -138,7 +120,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     addedKeysList?: string[];
   } = useMemo(() => {
     if (isVersionView) {
-      const changeDescription = versionDetails?.changeDescription;
+      const changeDescription = entityDetails?.changeDescription;
       const extensionDiff = getDiffByFieldName(
         EntityField.EXTENSION,
         changeDescription as ChangeDescription
@@ -150,19 +132,19 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         const addedFields = JSON.parse(newValues ? newValues : [])[0];
         if (addedFields) {
           return {
-            extensionObject: versionDetails?.extension,
+            extensionObject: entityDetails?.extension,
             addedKeysList: Object.keys(addedFields),
           };
         }
       }
 
-      if (versionDetails && extensionDiff.updated) {
-        return getUpdatedExtensionDiffFields(versionDetails, extensionDiff);
+      if (entityDetails && extensionDiff.updated) {
+        return getUpdatedExtensionDiffFields(entityDetails, extensionDiff);
       }
     }
 
-    return { extensionObject: versionDetails?.extension };
-  }, [isVersionView, versionDetails]);
+    return { extensionObject: entityDetails?.extension };
+  }, [isVersionView, entityDetails?.extension]);
 
   const tableColumn: ColumnsType<CustomProperty> = useMemo(() => {
     return [
@@ -170,8 +152,10 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 200,
+        ellipsis: true,
+        width: '50%',
         render: (_, record) => getEntityName(record),
+        sorter: columnSorter,
       },
       {
         title: t('label.value'),
@@ -181,9 +165,9 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           <PropertyValue
             extension={extensionObject.extensionObject}
             hasEditPermissions={hasEditAccess}
+            isRenderedInRightPanel={isRenderedInRightPanel}
             isVersionView={isVersionView}
-            propertyName={record.name}
-            propertyType={record.propertyType}
+            property={record}
             versionDataKeys={extensionObject.addedKeysList}
             onExtensionUpdate={onExtensionUpdate}
           />
@@ -191,11 +175,41 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
       },
     ];
   }, [
-    versionDetails?.extension,
+    entityDetails,
+    entityDetails?.extension,
     hasEditAccess,
     extensionObject,
     isVersionView,
     onExtensionUpdate,
+    isRenderedInRightPanel,
+  ]);
+
+  const viewAllBtn = useMemo(() => {
+    const customProp = entityTypeDetail.customProperties ?? [];
+
+    if (
+      maxDataCap &&
+      customProp.length >= maxDataCap &&
+      entityDetails.fullyQualifiedName
+    ) {
+      return (
+        <Link
+          to={entityUtilClassBase.getEntityLink(
+            entityType,
+            entityDetails.fullyQualifiedName,
+            EntityTabs.CUSTOM_PROPERTIES
+          )}>
+          {t('label.view-all')}
+        </Link>
+      );
+    }
+
+    return null;
+  }, [
+    entityTypeDetail.customProperties,
+    entityType,
+    entityDetails,
+    maxDataCap,
   ]);
 
   useEffect(() => {
@@ -222,35 +236,63 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
 
   if (
     isEmpty(entityTypeDetail.customProperties) &&
-    isUndefined(versionDetails?.extension)
+    isUndefined(entityDetails?.extension) &&
+    // in case of right panel, we don't want to show the placeholder
+    !isRenderedInRightPanel
   ) {
     return (
       <div className="flex-center tab-content-height">
-        <ErrorPlaceHolder className={className}>
-          <Typography.Paragraph>
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: t('label.custom-property-plural'),
-            })}
-          </Typography.Paragraph>
-        </ErrorPlaceHolder>
+        <ErrorPlaceHolder
+          className={className}
+          placeholderText={
+            <Transi18next
+              i18nKey="message.no-custom-properties-table"
+              renderElement={
+                <Link
+                  rel="noreferrer"
+                  target="_blank"
+                  to={{ pathname: CUSTOM_PROPERTIES_DOCS }}
+                />
+              }
+              values={{
+                docs: t('label.doc-plural-lowercase'),
+              }}
+            />
+          }
+        />
       </div>
     );
   }
 
   return isEmpty(entityTypeDetail.customProperties) &&
-    !isUndefined(versionDetails?.extension) ? (
-    <ExtensionTable extension={versionDetails?.extension} />
+    !isUndefined(entityDetails?.extension) ? (
+    <ExtensionTable extension={entityDetails?.extension} />
   ) : (
-    <Table
-      bordered
-      className="m-md"
-      columns={tableColumn}
-      data-testid="custom-properties-table"
-      dataSource={entityTypeDetail.customProperties ?? []}
-      loading={entityTypeDetailLoading}
-      pagination={false}
-      rowKey="name"
-      size="small"
-    />
+    <>
+      {!isEmpty(entityTypeDetail.customProperties) && (
+        <>
+          <div className="d-flex justify-between m-b-xs">
+            <Typography.Text className="right-panel-label">
+              {t('label.custom-property-plural')}
+            </Typography.Text>
+            {viewAllBtn}
+          </div>
+          <Table
+            bordered
+            columns={tableColumn}
+            data-testid="custom-properties-table"
+            dataSource={entityTypeDetail?.customProperties?.slice(
+              0,
+              maxDataCap
+            )}
+            loading={entityTypeDetailLoading}
+            pagination={false}
+            rowKey="name"
+            scroll={isRenderedInRightPanel ? { x: true } : undefined}
+            size="small"
+          />
+        </>
+      )}
+    </>
   );
 };

@@ -13,8 +13,9 @@
 
 import { AxiosResponse } from 'axios';
 import axiosClient from '.';
+import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { LoginConfiguration } from '../generated/configuration/loginConfiguration';
-import { LogoConfiguration } from '../generated/configuration/logoConfiguration';
+import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../generated/settings/settings';
 
 export const getSettingsConfigFromConfigType = async (
@@ -33,9 +34,9 @@ export const updateSettingsConfig = async (payload: Settings) => {
   return response;
 };
 
-export const getCustomLogoConfig = async () => {
-  const response = await axiosClient.get<LogoConfiguration>(
-    `system/config/customLogoConfiguration`
+export const getCustomUiThemePreference = async () => {
+  const response = await axiosClient.get<UIThemePreference>(
+    `system/config/customUiThemePreference`
   );
 
   return response.data;
@@ -49,15 +50,11 @@ export const getLoginConfig = async () => {
   return response.data;
 };
 
-export const testEmailConnection = async (email: string) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json' },
-  };
-
+export const testEmailConnection = async (data: { email: string }) => {
   const response = await axiosClient.put<string>(
     '/system/email/test',
-    email,
-    configOptions
+    data,
+    APPLICATION_JSON_CONTENT_TYPE_HEADER
   );
 
   return response;

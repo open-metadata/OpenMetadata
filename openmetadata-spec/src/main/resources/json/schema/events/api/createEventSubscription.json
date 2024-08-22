@@ -19,9 +19,9 @@
       "description": "A short description of the Alert, comprehensible to regular users.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this Alert.",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this Alert.",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "enabled": {
@@ -34,16 +34,6 @@
       "type": "integer",
       "default": 10
     },
-    "timeout": {
-      "description": "Connection timeout in seconds. (Default 10s).",
-      "type": "integer",
-      "default": 10
-    },
-    "readTimeout": {
-      "description": "Read timeout in seconds. (Default 12s).",
-      "type": "integer",
-      "default": 12
-    },
     "alertType": {
       "description": "Type of Alert",
       "$ref": "../eventSubscription.json#/definitions/alertType"
@@ -51,20 +41,42 @@
     "trigger": {
       "$ref": "../eventSubscription.json#/definitions/trigger"
     },
-    "filteringRules": {
-      "description": "Set of rules that the Alert Contains to allow conditional control for alerting.",
-      "$ref": "../eventSubscription.json#/definitions/filteringRules"
+    "resources": {
+      "description": "Defines a list of resources that triggers the Event Subscription, Eg All, User, Teams etc.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "subscriptionType": {
-      "$ref": "../eventSubscription.json#/definitions/subscriptionType"
-    },
-    "subscriptionConfig": {
-      "$ref": "../eventSubscription.json#/definitions/subscriptionConfig"
+    "destinations": {
+      "description": "Subscription Config.",
+      "type": "array",
+      "items": {
+        "$ref": "../../events/eventSubscription.json#/definitions/destination"
+      }
     },
     "provider" : {
       "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "retries": {
+      "description": "Number of times to retry callback on failure. (Default 3).",
+      "type": "integer",
+      "default": 3
+    },
+    "pollInterval": {
+      "description": "Poll Interval in seconds.",
+      "type": "integer",
+      "default": 10
+    },
+    "input": {
+      "description": "Input for the Filters.",
+      "$ref": "../eventSubscription.json#/definitions/alertFilteringInput"
+    },
+    "domain" : {
+      "description": "Fully qualified name of the domain the Table belongs to.",
+      "type": "string"
     }
   },
-  "required": ["name", "alertType", "subscriptionType"],
+  "required": ["name", "alertType"],
   "additionalProperties": false
 }

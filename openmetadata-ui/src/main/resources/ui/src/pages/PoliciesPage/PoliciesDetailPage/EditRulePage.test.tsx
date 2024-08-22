@@ -36,19 +36,13 @@ jest.mock(
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">BreadCrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
-
-jest.mock('../../../constants/GlobalSettings.constants', () => ({
-  GlobalSettingOptions: {
-    POLICIES: 'policies',
-  },
-}));
 
 jest.mock('../../../utils/CommonUtils', () => ({
   getEntityName: jest.fn(),

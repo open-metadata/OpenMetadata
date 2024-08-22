@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.UriInfo;
@@ -58,7 +59,10 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.Repository;
+import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.SuggestionRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UsageRepository;
@@ -81,18 +85,20 @@ public final class Entity {
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
 
   @Getter @Setter private static TokenRepository tokenRepository;
+  @Getter @Setter private static PolicyRepository policyRepository;
+  @Getter @Setter private static RoleRepository roleRepository;
   @Getter @Setter private static FeedRepository feedRepository;
   @Getter @Setter private static LineageRepository lineageRepository;
   @Getter @Setter private static UsageRepository usageRepository;
   @Getter @Setter private static SystemRepository systemRepository;
   @Getter @Setter private static ChangeEventRepository changeEventRepository;
   @Getter @Setter private static SearchRepository searchRepository;
-
+  @Getter @Setter private static SuggestionRepository suggestionRepository;
   // List of all the entities
-  private static final List<String> ENTITY_LIST = new ArrayList<>();
+  private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
   // Common field names
-  public static final String FIELD_OWNER = "owner";
+  public static final String FIELD_OWNERS = "owners";
   public static final String FIELD_NAME = "name";
   public static final String FIELD_DESCRIPTION = "description";
   public static final String FIELD_FOLLOWERS = "followers";
@@ -108,6 +114,7 @@ public final class Entity {
   public static final String FIELD_REVIEWERS = "reviewers";
   public static final String FIELD_EXPERTS = "experts";
   public static final String FIELD_DOMAIN = "domain";
+  public static final String FIELD_DOMAINS = "domains";
   public static final String FIELD_DATA_PRODUCTS = "dataProducts";
   public static final String FIELD_ASSETS = "assets";
 
@@ -128,6 +135,8 @@ public final class Entity {
   public static final String MLMODEL_SERVICE = "mlmodelService";
   public static final String METADATA_SERVICE = "metadataService";
   public static final String SEARCH_SERVICE = "searchService";
+
+  public static final String API_SERVICE = "apiService";
   //
   // Data asset entities
   //
@@ -146,6 +155,11 @@ public final class Entity {
   public static final String REPORT = "report";
   public static final String TOPIC = "topic";
   public static final String SEARCH_INDEX = "searchIndex";
+
+  public static final String API_COLLCECTION = "apiCollection";
+  public static final String API_ENDPOINT = "apiEndpoint";
+
+  public static final String API = "api";
   public static final String MLMODEL = "mlmodel";
   public static final String CONTAINER = "container";
   public static final String QUERY = "query";
@@ -161,6 +175,7 @@ public final class Entity {
   public static final String KPI = "kpi";
   public static final String TEST_CASE = "testCase";
   public static final String WEB_ANALYTIC_EVENT = "webAnalyticEvent";
+  public static final String DATA_INSIGHT_CUSTOM_CHART = "dataInsightCustomChart";
   public static final String DATA_INSIGHT_CHART = "dataInsightChart";
 
   //
@@ -193,6 +208,7 @@ public final class Entity {
   // Other entities
   public static final String EVENT_SUBSCRIPTION = "eventsubscription";
   public static final String THREAD = "THREAD";
+  public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";
 
   //
@@ -210,15 +226,11 @@ public final class Entity {
   //
   // Reserved names in OpenMetadata
   //
+  public static final String ADMIN_ROLE = "Admin";
   public static final String ADMIN_USER_NAME = "admin";
   public static final String ORGANIZATION_NAME = "Organization";
   public static final String ORGANIZATION_POLICY_NAME = "OrganizationPolicy";
   public static final String INGESTION_BOT_NAME = "ingestion-bot";
-  public static final String INGESTION_BOT_ROLE = "IngestionBotRole";
-  public static final String PROFILER_BOT_NAME = "profiler-bot";
-  public static final String PROFILER_BOT_ROLE = "ProfilerBotRole";
-  public static final String QUALITY_BOT_NAME = "quality-bot";
-  public static final String QUALITY_BOT_ROLE = "QualityBotRole";
   public static final String ALL_RESOURCES = "All";
 
   public static final String DOCUMENT = "document";
@@ -234,31 +246,16 @@ public final class Entity {
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.METADATA, METADATA_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.STORAGE, STORAGE_SERVICE);
     SERVICE_TYPE_ENTITY_MAP.put(ServiceType.SEARCH, SEARCH_SERVICE);
+    SERVICE_TYPE_ENTITY_MAP.put(ServiceType.API, API_SERVICE);
   }
-
-  //
-  // List of entities whose changes should not be published to the Activity Feed
-  //
-  public static final List<String> ACTIVITY_FEED_EXCLUDED_ENTITIES =
-      List.of(
-          TEAM,
-          ROLE,
-          POLICY,
-          BOT,
-          INGESTION_PIPELINE,
-          DATABASE_SERVICE,
-          PIPELINE_SERVICE,
-          DASHBOARD_SERVICE,
-          MESSAGING_SERVICE,
-          WORKFLOW,
-          TEST_SUITE,
-          DOCUMENT);
 
   private Entity() {}
 
   public static void initializeRepositories(OpenMetadataApplicationConfig config, Jdbi jdbi) {
     if (!initializedRepositories) {
       tokenRepository = new TokenRepository();
+      policyRepository = new PolicyRepository();
+      roleRepository = new RoleRepository();
       List<Class<?>> repositories = getRepositories();
       for (Class<?> clz : repositories) {
         if (Modifier.isAbstract(clz.getModifiers())) {
@@ -295,7 +292,6 @@ public final class Entity {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
     EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    Collections.sort(ENTITY_LIST);
 
     LOG.debug("Registering entity {} {}", clazz, entity);
   }
@@ -307,7 +303,6 @@ public final class Entity {
         entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    Collections.sort(ENTITY_LIST);
 
     LOG.debug("Registering entity time series {} {}", clazz, entity);
   }
@@ -325,8 +320,8 @@ public final class Entity {
     ResourceRegistry.addResource(entity, null, getEntityFields(clazz));
   }
 
-  public static List<String> getEntityList() {
-    return Collections.unmodifiableList(ENTITY_LIST);
+  public static Set<String> getEntityList() {
+    return Collections.unmodifiableSet(ENTITY_LIST);
   }
 
   public static EntityReference getEntityReference(EntityReference ref, Include include) {
@@ -354,9 +349,10 @@ public final class Entity {
     return repository.getReferenceByName(fqn, include);
   }
 
-  public static EntityReference getOwner(@NonNull EntityReference reference) {
-    EntityRepository<?> repository = getEntityRepository(reference.getType());
-    return repository.getOwner(reference);
+  public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
+    EntityRepository<? extends EntityInterface> repository =
+        getEntityRepository(reference.getType());
+    return repository.getOwners(reference);
   }
 
   public static void withHref(UriInfo uriInfo, List<EntityReference> list) {
@@ -373,11 +369,6 @@ public final class Entity {
     ref.withHref(href);
   }
 
-  /** Returns true if the change events of the given entity type should be published to the activity feed. */
-  public static boolean shouldDisplayEntityChangeOnFeed(@NonNull String entityType) {
-    return !ACTIVITY_FEED_EXCLUDED_ENTITIES.contains(entityType);
-  }
-
   public static Fields getFields(String entityType, List<String> fields) {
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
     return entityRepository.getFields(String.join(",", fields));
@@ -387,6 +378,12 @@ public final class Entity {
     return ref.getId() != null
         ? getEntity(ref.getType(), ref.getId(), fields, include)
         : getEntityByName(ref.getType(), ref.getFullyQualifiedName(), fields, include);
+  }
+
+  public static <T> T getEntityOrNull(
+      EntityReference entityReference, String field, Include include) {
+    if (entityReference == null) return null;
+    return Entity.getEntity(entityReference, field, include);
   }
 
   public static <T> T getEntity(EntityLink link, String fields, Include include) {
@@ -467,7 +464,12 @@ public final class Entity {
   public static void deleteEntity(
       String updatedBy, String entityType, UUID entityId, boolean recursive, boolean hardDelete) {
     EntityRepository<?> dao = getEntityRepository(entityType);
-    dao.delete(updatedBy, entityId, recursive, hardDelete);
+    try {
+      dao.find(entityId, Include.ALL);
+      dao.delete(updatedBy, entityId, recursive, hardDelete);
+    } catch (EntityNotFoundException e) {
+      LOG.warn("Entity {} is already deleted.", entityId);
+    }
   }
 
   public static void restoreEntity(String updatedBy, String entityType, UUID entityId) {
@@ -589,5 +591,13 @@ public final class Entity {
       return searchRepository.getSearchIndexFactory().buildIndex(entityType, entity);
     }
     throw new BadRequestException("searchrepository not initialized");
+  }
+
+  public static <T> T getDao() {
+    return (T) collectionDAO;
+  }
+
+  public static <T> T getSearchRepo() {
+    return (T) searchRepository;
   }
 }

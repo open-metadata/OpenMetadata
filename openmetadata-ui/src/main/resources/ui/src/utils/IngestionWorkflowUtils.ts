@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 import { RJSFSchema } from '@rjsf/utils';
+import { cloneDeep, isEmpty } from 'lodash';
 import { ServiceCategory } from '../enums/service.enum';
-import { PipelineType as WorkflowType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import {
+  Pipeline,
+  PipelineType as WorkflowType,
+} from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import dashboardMetadataPipeline from '../jsons/ingestionSchemas/dashboardServiceMetadataPipeline.json';
 import databaseMetadataPipeline from '../jsons/ingestionSchemas/databaseServiceMetadataPipeline.json';
 import databaseProfilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
@@ -32,6 +36,7 @@ export const getMetadataSchemaByServiceCategory = (
   serviceCategory: ServiceCategory
 ) => {
   switch (serviceCategory) {
+    case ServiceCategory.METADATA_SERVICES:
     case ServiceCategory.DATABASE_SERVICES:
       return databaseMetadataPipeline;
     case ServiceCategory.DASHBOARD_SERVICES:
@@ -64,6 +69,7 @@ export const getSchemaByWorkflowType = (
     displayName: {
       description: 'Display Name of the workflow',
       type: 'string',
+      title: 'Name',
     },
     name: {
       description: 'Name of the workflow',
@@ -142,4 +148,35 @@ export const getSchemaByWorkflowType = (
     },
     required: [...(rjsfSchema.required ?? []), 'name'],
   } as RJSFSchema;
+};
+
+/**
+ *
+ * @param workFlowData Pipeline
+ * @returns cleaned workflow data
+ */
+export const cleanWorkFlowData = (workFlowData: Pipeline): Pipeline => {
+  // clone the object to avoid mutation
+  const cleanedWorkFlowData = cloneDeep(workFlowData);
+  const keys = Object.keys(cleanedWorkFlowData);
+
+  /**
+   * Check if the object has includes and excludes and if they are empty
+   * if they are empty, remove the object from the workflow data
+   */
+  keys.forEach((key) => {
+    const value = cleanedWorkFlowData[key as keyof Pipeline];
+    if (
+      value &&
+      typeof value === 'object' &&
+      'excludes' in value &&
+      'includes' in value
+    ) {
+      if (isEmpty(value.excludes) && isEmpty(value.includes)) {
+        delete cleanedWorkFlowData[key as keyof Pipeline];
+      }
+    }
+  });
+
+  return cleanedWorkFlowData;
 };

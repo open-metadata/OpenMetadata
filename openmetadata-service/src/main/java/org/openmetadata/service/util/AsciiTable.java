@@ -3,15 +3,32 @@ package org.openmetadata.service.util;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AsciiTable {
+public record AsciiTable(
+    List<String> columns,
+    List<List<String>> rows,
+    boolean printHeader,
+    String nullText,
+    String emptyText) {
   private static final String DEFAULT_COLUMN_NAME = "(No column name)";
   private static final String DEFAULT_NO_VALUE = "-";
 
-  private final List<String> columns;
-  private final List<List<String>> rows;
-  private final boolean printHeader;
-  private final String nullText;
-  private final String emptyText;
+  private static final String logo =
+      """
+    |||||||
+  ||||   ||||      ____
+ ||||     ||||    / __ \\
+ ||||     ||||   | |  | | _ __    ___  _ __
+ |||||   |||||   | |  | || '_ \\  / _ \\| '_ \\
+ |||||||||||||   | |__| || |_) ||  __/| | | |
+ |||||||||||||    \\____/ | .__/  \\___||_| |_|
+ ||| ||||| |||    __  __ | |    _              _         _
+ |||  |||  |||   |  \\/  ||_|   | |            | |       | |
+ |||   |   |||   | \\  / |  ___ | |_  __ _   __| |  __ _ | |_  __ _
+ |||       |||   | |\\/| | / _ \\| __|/ _` | / _` | / _` || __|/ _` |
+ ||| || || |||   | |  | ||  __/| |_| (_| || (_| || (_| || |_| (_| |
+ ||| ||||| |||   |_|  |_| \\___| \\__|\\__,_| \\__,_| \\__,_| \\__|\\__,_|
+  |||||||||||
+    ||||||| """;
 
   public AsciiTable(
       List<String> columns,
@@ -35,7 +52,7 @@ public class AsciiTable {
   }
 
   /**
-   * @return The table rendered with column header and row data.
+   * Return table rendered with column header and row data.
    */
   public String render() {
     List<Integer> widths = new ArrayList<>();
@@ -122,5 +139,9 @@ public class AsciiTable {
 
   private String trimOrPad(String str, int length) {
     return trimOrPad(str, length, ' ');
+  }
+
+  public static String printOpenMetadataText() {
+    return logo;
   }
 }

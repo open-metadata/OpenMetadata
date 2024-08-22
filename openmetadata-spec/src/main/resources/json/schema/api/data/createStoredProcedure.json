@@ -11,7 +11,7 @@
   "properties": {
     "name": {
       "description": "Name of a Stored Procedure.",
-      "$ref": "../../entity/data/storedProcedure.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Stored Procedure.",
@@ -21,9 +21,9 @@
       "description": "Description of the Stored Procedure.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "owner": {
-      "description": "Owner of this entity",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this entity",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "tags": {

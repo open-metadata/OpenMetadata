@@ -18,6 +18,14 @@
     }
   },
   "properties": {
+    "receivers": {
+      "description": "List of receivers to send mail to",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
     "endpoint": {
       "description": "Endpoint to receive the webhook events over POST requests.",
       "type": "string",

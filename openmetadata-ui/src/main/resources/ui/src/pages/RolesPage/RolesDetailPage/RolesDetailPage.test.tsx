@@ -30,7 +30,7 @@ jest.mock('../../../rest/rolesAPIV1', () => ({
   patchRole: jest.fn().mockImplementation(() => Promise.resolve(ROLE_DATA)),
 }));
 
-jest.mock('../../../components/common/EntityDescription/Description', () =>
+jest.mock('../../../components/common/EntityDescription/DescriptionV1', () =>
   jest.fn().mockReturnValue(<div data-testid="description">Description</div>)
 );
 
@@ -45,7 +45,7 @@ jest.mock(
     jest.fn().mockReturnValue(<div data-testid="breadcrumb">Breadcrumb</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -62,6 +62,10 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getSettingPath: jest.fn(),
   getTeamsWithFqnPath: jest.fn(),
 }));
+
+jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
 
 describe('Test Roles Details Page', () => {
   it('Should render the detail component', async () => {

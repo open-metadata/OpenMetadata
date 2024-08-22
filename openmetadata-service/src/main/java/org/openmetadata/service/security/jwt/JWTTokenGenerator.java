@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.security.jwt;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.ADMIN_ROLE;
+import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
+
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
@@ -30,6 +34,7 @@ import java.time.ZoneId;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
@@ -41,7 +46,8 @@ import org.openmetadata.service.security.AuthenticationException;
 
 @Slf4j
 public class JWTTokenGenerator {
-  private static final String SUBJECT_CLAIM = "sub";
+  public static final String ROLES_CLAIM = "roles";
+  public static final String SUBJECT_CLAIM = "sub";
   private static final String EMAIL_CLAIM = "email";
   private static final String IS_BOT_CLAIM = "isBot";
   public static final String TOKEN_TYPE = "tokenType";
@@ -86,27 +92,54 @@ public class JWTTokenGenerator {
 
   public JWTAuthMechanism generateJWTToken(User user, JWTTokenExpiry expiry) {
     return getJwtAuthMechanism(
-        user.getName(), user.getEmail(), true, ServiceTokenType.BOT, getExpiryDate(expiry), expiry);
+        user.getName(),
+        getRoleListFromUser(user),
+        user.getIsAdmin(),
+        user.getEmail(),
+        true,
+        ServiceTokenType.BOT,
+        getExpiryDate(expiry),
+        expiry);
   }
 
   public JWTAuthMechanism generateJWTToken(
       String userName,
+      Set<String> roles,
+      boolean isAdmin,
       String email,
       long expiryInSeconds,
       boolean isBot,
       ServiceTokenType tokenType) {
     return getJwtAuthMechanism(
-        userName, email, isBot, tokenType, getCustomExpiryDate(expiryInSeconds), null);
+        userName,
+        roles,
+        isAdmin,
+        email,
+        isBot,
+        tokenType,
+        getCustomExpiryDate(expiryInSeconds),
+        null);
   }
 
   public JWTAuthMechanism getJwtAuthMechanism(
       String userName,
+      Set<String> roles,
+      boolean isAdmin,
       String email,
       boolean isBot,
       ServiceTokenType tokenType,
       Date expires,
       JWTTokenExpiry expiry) {
     try {
+      // Handle the Admin Role Here Since there is no Admin Role as such , just a isAdmin flag in
+      // User Schema
+      if (isAdmin) {
+        if (nullOrEmpty(roles)) {
+          roles = Set.of(ADMIN_ROLE);
+        } else {
+          roles.add(ADMIN_ROLE);
+        }
+      }
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
       Algorithm algorithm = Algorithm.RSA256(null, privateKey);
       String token =
@@ -114,6 +147,7 @@ public class JWTTokenGenerator {
               .withIssuer(issuer)
               .withKeyId(kid)
               .withClaim(SUBJECT_CLAIM, userName)
+              .withClaim(ROLES_CLAIM, roles.stream().toList())
               .withClaim(EMAIL_CLAIM, email)
               .withClaim(IS_BOT_CLAIM, isBot)
               .withClaim(TOKEN_TYPE, tokenType.value())

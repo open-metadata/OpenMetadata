@@ -13,8 +13,7 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
-import { searchQuery } from '../../../rest/searchAPI';
-import { getListTestCase } from '../../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCases } from './TestCases.component';
 
 const testCasePermission = {
@@ -32,7 +31,7 @@ const mockUseParam = { tab: DataQualityPageTabs.TEST_CASES } as {
 const mockUseHistory = { push: jest.fn() };
 const mockLocation = { search: '' };
 
-jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     permissions: {
       testCase: testCasePermission,
@@ -42,7 +41,7 @@ jest.mock('../../../components/PermissionProvider/PermissionProvider', () => ({
 jest.mock('../../../rest/testAPI', () => {
   return {
     ...jest.requireActual('../../../rest/testAPI'),
-    getListTestCase: jest
+    getListTestCaseBySearch: jest
       .fn()
       .mockImplementation(() =>
         Promise.resolve({ data: [], paging: { total: 0 } })
@@ -68,35 +67,26 @@ jest.mock('react-router-dom', () => {
     useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
-jest.mock('../../../components/common/NextPrevious/NextPrevious', () => {
+jest.mock('../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious.component</div>);
 });
-jest.mock(
-  '../../../components/common/SearchBarComponent/SearchBar.component',
-  () => {
-    return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
-  }
-);
-jest.mock(
-  '../../../components/ProfilerDashboard/component/DataQualityTab',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>DataQualityTab.component</div>);
-  }
-);
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={`error-placeholder-type-${type}`}>
-          ErrorPlaceHolder.component
-        </div>
-      ));
-  }
-);
+jest.mock('../../common/SearchBarComponent/SearchBar.component', () => {
+  return jest.fn().mockImplementation(() => <div>Searchbar.component</div>);
+});
+jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => <div>DataQualityTab.component</div>);
+});
+jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ type }) => (
+      <div data-testid={`error-placeholder-type-${type}`}>
+        ErrorPlaceHolder.component
+      </div>
+    ));
+});
 
 const mockProps = {
   summaryPanel: <div>SummaryPanel.component</div>,
@@ -116,32 +106,47 @@ describe('TestCases component', () => {
     expect(
       await screen.findByText('DataQualityTab.component')
     ).toBeInTheDocument();
+    expect(await screen.findByTestId('advanced-filter')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('status-select-filter')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('test-case-type-select-filter')
+    ).toBeInTheDocument();
   });
 
-  it('on page load getListTestCase API should call', async () => {
-    const mockGetListTestCase = getListTestCase as jest.Mock;
+  it('on page load getListTestCaseBySearch API should call', async () => {
+    const mockGetListTestCase = getListTestCaseBySearch as jest.Mock;
 
     render(<TestCases {...mockProps} />);
 
     expect(mockGetListTestCase).toHaveBeenCalledWith({
-      fields: 'testDefinition,testCaseResult,testSuite',
-      limit: 15,
-      orderByLastExecutionDate: true,
+      fields: ['testCaseResult', 'testSuite', 'incidentId'],
+      includeAllTests: true,
+      limit: 10,
+      offset: 0,
+      q: undefined,
+      testCaseStatus: undefined,
+      sortField: 'testCaseResult.timestamp',
+      sortType: 'desc',
     });
   });
 
-  it('should call searchQuery api, if there is search term in URL', async () => {
-    const mockSearchQuery = searchQuery as jest.Mock;
+  it('should call getListTestCaseBySearch api, if there is search term in URL', async () => {
+    const mockSearchQuery = getListTestCaseBySearch as jest.Mock;
     mockLocation.search = '?searchValue=sale';
 
     render(<TestCases {...mockProps} />);
 
     expect(mockSearchQuery).toHaveBeenCalledWith({
-      fetchSource: false,
-      pageNumber: 1,
-      pageSize: 15,
-      query: 'sale',
-      searchIndex: 'test_case_search_index',
+      fields: ['testCaseResult', 'testSuite', 'incidentId'],
+      includeAllTests: true,
+      limit: 10,
+      offset: 0,
+      q: '*sale*',
+      testCaseStatus: undefined,
+      sortField: 'testCaseResult.timestamp',
+      sortType: 'desc',
     });
   });
 });

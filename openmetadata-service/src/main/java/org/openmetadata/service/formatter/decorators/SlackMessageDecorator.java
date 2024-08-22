@@ -13,19 +13,15 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.slack.SlackAttachment;
-import org.openmetadata.service.events.subscription.slack.SlackMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackAttachment;
+import org.openmetadata.service.apps.bundles.changeEvent.slack.SlackMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
 
@@ -59,53 +55,74 @@ public class SlackMessageDecorator implements MessageDecorator<SlackMessage> {
     return "~";
   }
 
-  public String getEntityUrl(String entityType, String fqn) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
-        "<%s/%s/%s|%s>",
+        "<%s/%s/%s%s|%s>",
         getSmtpSettings().getOpenMetadataUrl(),
-        entityType,
+        prefix,
         fqn.trim().replaceAll(" ", "%20"),
+        nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams),
         fqn.trim());
   }
 
   @Override
-  public SlackMessage buildMessage(ChangeEvent event) {
-    SlackMessage slackMessage = new SlackMessage();
-    slackMessage.setUsername(event.getUserName());
-    if (event.getEntity() != null) {
-      String eventType;
-      if (event.getEntity() instanceof TestCase) {
-        eventType = "testSuite";
-      } else {
-        eventType = event.getEntityType();
-      }
-      String headerTxt;
-      String headerText;
-      if (eventType.equals(Entity.QUERY)) {
-        headerTxt = "%s posted on " + eventType;
-        headerText = String.format(headerTxt, event.getUserName());
-      } else {
-        headerTxt = "%s posted on " + eventType + " %s";
-        headerText =
-            String.format(
-                headerTxt,
-                event.getUserName(),
-                this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
-      }
-      slackMessage.setText(headerText);
+  public SlackMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getSlackMessage(createEntityMessage(publisherName, event));
+  }
+
+  @Override
+  public SlackMessage buildTestMessage(String publisherName) {
+    return getSlackTestMessage(publisherName);
+  }
+
+  @Override
+  public SlackMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getSlackMessage(createThreadMessage(publisherName, event));
+  }
+
+  private SlackMessage getSlackMessage(OutgoingMessage outgoingMessage) {
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      SlackMessage message = new SlackMessage();
+      List<SlackAttachment> attachmentList = new ArrayList<>();
+      outgoingMessage.getMessages().forEach(m -> attachmentList.add(getSlackAttachment(m)));
+      message.setUsername(outgoingMessage.getUserName());
+      message.setText(outgoingMessage.getHeader());
+      message.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
+      return message;
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
-    List<SlackAttachment> attachmentList = new ArrayList<>();
-    for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
+    throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private SlackMessage getSlackTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      SlackMessage message = new SlackMessage();
+      message.setUsername("Slack destination test");
+      message.setText("Slack has been successfully configured for alerts from: " + publisherName);
+
       SlackAttachment attachment = new SlackAttachment();
-      List<String> mark = new ArrayList<>();
-      mark.add("text");
-      attachment.setMarkdownIn(mark);
-      attachment.setText(entry.getValue());
+      attachment.setFallback("Slack destination test successful.");
+      attachment.setColor("#36a64f"); // Setting a green color to indicate success
+      attachment.setTitle("Test Successful");
+      attachment.setText(
+          "This is a test message from OpenMetadata confirming that your Slack destination is correctly set up to receive alerts.");
+      attachment.setFooter("OpenMetadata");
+      attachment.setTs(String.valueOf(System.currentTimeMillis() / 1000)); // Adding timestamp
+
+      List<SlackAttachment> attachmentList = new ArrayList<>();
       attachmentList.add(attachment);
+      message.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
+
+      return message;
     }
-    slackMessage.setAttachments(attachmentList.toArray(new SlackAttachment[0]));
-    return slackMessage;
+    throw new UnhandledServerException("Publisher name not found.");
+  }
+
+  private SlackAttachment getSlackAttachment(String message) {
+    SlackAttachment attachment = new SlackAttachment();
+    List<String> mark = new ArrayList<>();
+    mark.add("text");
+    attachment.setMarkdownIn(mark);
+    attachment.setText(message);
+    return attachment;
   }
 }

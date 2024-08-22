@@ -12,8 +12,18 @@
  */
 
 import { startCase } from 'lodash';
+import { FeedCounts } from '../interface/feed.interface';
 import i18n from '../utils/i18next/LocalUtil';
 import { EntityField } from './Feeds.constants';
+
+export const FEED_COUNT_INITIAL_DATA: FeedCounts = {
+  conversationCount: 0,
+  totalTasksCount: 0,
+  openTaskCount: 0,
+  closedTaskCount: 0,
+  totalCount: 0,
+  mentionCount: 0,
+};
 
 export const STEPS_FOR_IMPORT_ENTITY = [
   {

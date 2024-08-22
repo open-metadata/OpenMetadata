@@ -12,6 +12,9 @@
  */
 
 import { isUndefined } from 'lodash';
+import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
+import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
+import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { TabSpecificField } from '../enums/entity.enum';
 import {
   Pipeline,
@@ -19,10 +22,9 @@ import {
   TaskStatus,
 } from '../generated/entity/data/pipeline';
 import { sortTagsCaseInsensitive } from './CommonUtils';
-import { Icons } from './SvgUtils';
 
-export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNER},
-${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES}`;
+// eslint-disable-next-line max-len
+export const defaultFields = `${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.OWNERS},${TabSpecificField.TASKS}, ${TabSpecificField.PIPELINE_STATUS}, ${TabSpecificField.DOMAIN},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION}`;
 
 export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus || '';
@@ -31,19 +33,13 @@ export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return Icons.SUCCESS_BADGE;
+      return IconSuccessBadge;
 
     case StatusType.Failed:
-      return Icons.FAIL_BADGE;
-
-    case StatusType.Pending:
-      return Icons.PENDING_BADGE;
-
-    case StatusType.Skipped:
-      return Icons.SKIPPED_BADGE;
+      return IconFailBadge;
 
     default:
-      return '';
+      return IconSkippedBadge;
   }
 };
 

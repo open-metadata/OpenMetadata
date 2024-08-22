@@ -24,7 +24,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SESSION_TAG_QUERY,
@@ -41,9 +40,11 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: SnowflakeConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SnowflakeConnection = config.serviceConnection.root.config
         if not isinstance(connection, SnowflakeConnection):
             raise InvalidSourceException(
                 f"Expected SnowflakeConnection, but got {connection}"
@@ -61,7 +62,9 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             filters=self.get_filters(),
         )
 
-    def check_life_cycle_query(self, query_type: Optional[str]) -> bool:
+    def check_life_cycle_query(
+        self, query_type: Optional[str], query_text: Optional[str]
+    ) -> bool:
         """
         returns true if query is to be used for life cycle processing.
 
@@ -87,24 +90,8 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             )
 
     def get_table_query(self) -> Iterable[TableQuery]:
-        database = self.config.serviceConnection.__root__.config.database
-        if database:
-            use_db_query = f"USE DATABASE {database}"
-            self.engine.execute(use_db_query)
-            self.set_session_query_tag()
-            yield from super().get_table_query()
-        else:
-            query = "SHOW DATABASES"
-            results = self.engine.execute(query)
-            for res in results:
-                row = list(res)
-                use_db_query = f"USE DATABASE {row[1]}"
-                self.engine.execute(use_db_query)
-                logger.info(f"Ingesting from database: {row[1]}")
-                self.config.serviceConnection.__root__.config.database = row[1]
-                self.engine = get_connection(self.service_connection)
-                self.set_session_query_tag()
-                yield from super().get_table_query()
+        self.set_session_query_tag()
+        yield from super().get_table_query()
 
     def get_database_name(self, data: dict) -> str:  # pylint: disable=arguments-differ
         """

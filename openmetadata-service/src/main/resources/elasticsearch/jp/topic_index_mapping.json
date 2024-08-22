@@ -95,6 +95,9 @@
       "sourceUrl": {
         "type": "keyword"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "messageSchema": {
         "properties": {
           "schemaType": {
@@ -345,7 +348,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -436,7 +439,8 @@
         }
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "entityType": {
         "type": "keyword"
@@ -451,8 +455,21 @@
           }
         ]
       },
+      "field_suggest": {
+        "type": "completion"
+      },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

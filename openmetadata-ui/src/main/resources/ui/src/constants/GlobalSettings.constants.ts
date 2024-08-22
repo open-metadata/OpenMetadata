@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { ResourceEntity } from '../components/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
 
 export enum GlobalSettingsMenuCategory {
   ACCESS = 'access',
   NOTIFICATIONS = 'notifications',
-  CUSTOM_ATTRIBUTES = 'customAttributes',
-  DATA_QUALITY = 'dataQuality',
-  OPEN_METADATA = 'openMetadata',
-  INTEGRATIONS = 'integrations',
+  CUSTOM_PROPERTIES = 'customProperties',
+  PREFERENCES = 'preferences',
   MEMBERS = 'members',
   SERVICES = 'services',
+  BOTS = 'bots',
+  APPLICATIONS = 'apps',
 }
 
 export enum GlobalSettingOptions {
@@ -33,12 +33,13 @@ export enum GlobalSettingOptions {
   POLICIES = 'policies',
   DATABASES = 'databases',
   DATABASE = 'database',
-  DATABASE_SCHEMA = 'databaseSchema',
+  DATABASE_SCHEMA = 'databaseSchemas',
   MESSAGING = 'messaging',
   METADATA = 'metadata',
   DASHBOARDS = 'dashboards',
   PIPELINES = 'pipelines',
-  MLMODELS = 'mlModels',
+  MLMODELS = 'mlmodels',
+  STORED_PROCEDURES = 'storedProcedures',
   WEBHOOK = 'webhook',
   SLACK = 'slack',
   BOTS = 'bots',
@@ -46,23 +47,33 @@ export enum GlobalSettingOptions {
   MSTEAMS = 'msteams',
   ACTIVITY_FEED = 'activityFeeds',
   SEARCH = 'search',
+  SEARCH_INDEXES = 'searchIndexes',
   DATA_INSIGHT = 'dataInsight',
   EMAIL = 'email',
-  ALERTS = 'alerts',
+  NOTIFICATIONS = 'notifications',
   ALERT = 'alert',
+  OBSERVABILITY = 'observability',
   GLOSSARY_TERM = 'glossaryTerm',
-  ADD_ALERTS = 'add-alerts',
-  EDIT_ALERTS = 'edit-alert',
+  ADD_NOTIFICATION = 'add-notification',
+  EDIT_NOTIFICATION = 'edit-notification',
+  ADD_OBSERVABILITY = 'add-observability',
   STORAGES = 'storages',
   DATA_INSIGHT_REPORT_ALERT = 'dataInsightReport',
   ADD_DATA_INSIGHT_REPORT_ALERT = 'add-data-insight-report',
   EDIT_DATA_INSIGHT_REPORT_ALERT = 'edit-data-insight-report',
-  CUSTOM_LOGO = 'customLogo',
   LOGIN_CONFIGURATION = 'loginConfiguration',
   CUSTOMIZE_LANDING_PAGE = 'customizeLandingPage',
   TOPICS = 'topics',
   CONTAINERS = 'containers',
   APPLICATIONS = 'apps',
+  OM_HEALTH = 'om-health',
+  PROFILER_CONFIGURATION = 'profiler-configuration',
+  APPEARANCE = 'appearance',
+  DASHBOARD_DATA_MODEL = 'dashboardDataModels',
+  DATA_OBSERVABILITY = 'dataObservability',
+  APIS = 'apiServices',
+  API_COLLECTIONS = 'apiCollections',
+  API_ENDPOINTS = 'apiEndpoints',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [

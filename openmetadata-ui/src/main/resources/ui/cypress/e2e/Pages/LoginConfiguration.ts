@@ -1,3 +1,5 @@
+import { GlobalSettingOptions } from '../../constants/settings.constant';
+
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,15 +12,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-describe('template spec', () => {
+describe('Login configuration', { tags: 'Settings' }, () => {
   beforeEach(() => {
     cy.login();
-    cy.get('[data-testid="app-bar-item-settings"]').click();
 
-    cy.get('[data-testid="settings-left-panel"]')
-      .contains('Login Configuration')
-      .scrollIntoView()
-      .click();
+    cy.settingClick(GlobalSettingOptions.LOGIN_CONFIGURATION);
   });
 
   /* ==== Test Created with Cypress Studio ==== */
@@ -36,7 +34,7 @@ describe('template spec', () => {
     cy.get('[data-testid="access-block-time"]').should('have.text', '500');
     cy.get('[data-testid="jwt-token-expiry-time"]').should(
       'have.text',
-      '5000 Milliseconds'
+      '5000 Seconds'
     );
     /* ==== End Cypress Studio ==== */
   });

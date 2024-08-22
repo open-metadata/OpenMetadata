@@ -297,7 +297,7 @@
       "deleted": {
         "type": "text"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -360,107 +360,12 @@
       "followers": {
         "type": "keyword"
       },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
       "votes" : {
-        "properties": {
-          "upVotes": {
-            "type": "long"
-          },
-          "downVotes": {
-            "type": "long"
-          },
-          "upVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "displayName": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "keyword"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
-          },
-          "downVoters": {
-            "properties": {
-              "id": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 36
-                  }
-                }
-              },
-              "type": {
-                "type": "keyword"
-              },
-              "name": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "displayName": {
-                "type": "keyword",
-                "fields": {
-                  "keyword": {
-                    "type": "keyword",
-                    "ignore_above": 256
-                  }
-                }
-              },
-              "fullyQualifiedName": {
-                "type": "keyword"
-              },
-              "description": {
-                "type": "text"
-              },
-              "deleted": {
-                "type": "text"
-              },
-              "href": {
-                "type": "text"
-              }
-            }
-          }
-        }
+       "type": "object"
       },
       "code": {
         "type": "keyword"
@@ -559,6 +464,9 @@
             "type": "text"
           }
         }
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

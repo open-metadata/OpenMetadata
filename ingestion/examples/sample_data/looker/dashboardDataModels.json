@@ -5,7 +5,7 @@
     "description": "Orders explore from Sample Data",
     "dataModelType":  "LookMlExplore",
     "serviceType": "Looker",
-    "sql":  "SELECT CASE\n           WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n           WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n           WHEN stage_of_development = 'Phase I/II'\n                or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n           WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n           WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n       END AS clinical_stage,\n       COUNT(*) AS count\nFROM covid_vaccines\nGROUP BY CASE\n             WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n             WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n             WHEN stage_of_development = 'Phase I/II'\n                  or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n             WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n             WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n         END\nORDER BY count DESC\nLIMIT 10000\nOFFSET 0;\n",
+    "sql":  "view: orders {\n  sql_table_name: orders ;;\n\n  dimension: \"1. Phase I\" {\n    type: string\n    sql: ${TABLE}.status ;;\n  }\n\n  dimension: \"4. Authorized\" {\n    type: int\n    sql: ${TABLE}.amount ;;\n  }\n}",
     "columns": [
       {
         "name": "0. Pre-clinical",
@@ -50,7 +50,7 @@
     "description": "Operations Explore from Sample Data",
     "dataModelType":  "LookMlExplore",
     "serviceType": "Looker",
-    "sql":  "SELECT country_name AS country_name,\n       COUNT(*) AS count,\n       count(country_name) AS \"COUNT(Country_Name)\"\nFROM covid_vaccines\nGROUP BY country_name\nLIMIT 10000\nOFFSET 0;",
+    "sql":  "view: operations {\n  sql_table_name: customers ;;\n\n  dimension: \"country_name\" {\n    type: string\n    sql: ${TABLE}.country ;;\n  }\n\n  dimension: \"count\" {\n    type: int\n    sql: ${TABLE}.amount ;;\n  }\n}",
     "columns": [
       {
         "name": "country_name",
@@ -85,7 +85,7 @@
     "description": "Operations View from Sample Data",
     "dataModelType":  "LookMlView",
     "serviceType": "Looker",
-    "sql":  "SELECT country_name AS country_name,\n       COUNT(*) AS count,\n       count(country_name) AS \"COUNT(Country_Name)\"\nFROM covid_vaccines\nGROUP BY country_name\nLIMIT 10000\nOFFSET 0;",
+    "sql":  "view: operations {\n  sql_table_name: customers ;;\n\n  dimension: \"country_name\" {\n    type: string\n    sql: ${TABLE}.country ;;\n  }\n\n  dimension: \"count\" {\n    type: int\n    sql: ${TABLE}.amount ;;\n  }\n}",
     "columns": [
       {
         "name": "country_name",
@@ -120,7 +120,7 @@
     "description": "Orders View from Sample Data",
     "dataModelType":  "LookMlView",
     "serviceType": "Looker",
-    "sql":  "SELECT CASE\n           WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n           WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n           WHEN stage_of_development = 'Phase I/II'\n                or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n           WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n           WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n       END AS clinical_stage,\n       COUNT(*) AS count\nFROM covid_vaccines\nGROUP BY CASE\n             WHEN stage_of_development = 'Pre-clinical' THEN '0. Pre-clinical'\n             WHEN stage_of_development = 'Phase I' THEN '1. Phase I'\n             WHEN stage_of_development = 'Phase I/II'\n                  or stage_of_development = 'Phase II' THEN '2. Phase II or Combined I/II'\n             WHEN stage_of_development = 'Phase III' THEN '3. Phase III'\n             WHEN stage_of_development = 'Authorized' THEN '4. Authorized'\n         END\nORDER BY count DESC\nLIMIT 10000\nOFFSET 0;\n",
+    "sql":  "view: orders {\n  sql_table_name: orders ;;\n\n  dimension: \"1. Phase I\" {\n    type: string\n    sql: ${TABLE}.status ;;\n  }\n\n  dimension: \"4. Authorized\" {\n    type: int\n    sql: ${TABLE}.amount ;;\n  }\n}",
     "columns": [
       {
         "name": "0. Pre-clinical",

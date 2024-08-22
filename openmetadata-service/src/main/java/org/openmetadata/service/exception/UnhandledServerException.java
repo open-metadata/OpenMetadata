@@ -20,11 +20,20 @@ public class UnhandledServerException extends WebServiceException {
   private static final String MESSAGE =
       "An exception with message [%s] was thrown while processing request.";
 
+  public static final String UNHANDLED_ERROR = "UNHANDLED_SERVER_EXCEPTION";
+
   public UnhandledServerException(String exceptionMessage) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, String.format(MESSAGE, exceptionMessage));
+    super(
+        Response.Status.INTERNAL_SERVER_ERROR,
+        UNHANDLED_ERROR,
+        String.format(MESSAGE, exceptionMessage));
   }
 
   public UnhandledServerException(String exceptionMessage, Throwable cause) {
-    super(Response.Status.INTERNAL_SERVER_ERROR, String.format(MESSAGE, exceptionMessage), cause);
+    super(
+        Response.Status.INTERNAL_SERVER_ERROR,
+        UNHANDLED_ERROR,
+        String.format(MESSAGE, exceptionMessage),
+        cause);
   }
 }

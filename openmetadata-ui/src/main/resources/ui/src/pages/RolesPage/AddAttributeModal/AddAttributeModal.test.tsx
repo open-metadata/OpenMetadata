@@ -31,7 +31,7 @@ jest.mock(
   () => jest.fn().mockReturnValue(<div data-testid="previewer">Previewer</div>)
 );
 
-jest.mock('../../../components/Loader/Loader', () =>
+jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
@@ -42,6 +42,13 @@ jest.mock('../../../utils/CommonUtils', () => ({
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
+
+jest.mock(
+  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  () => {
+    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
+  }
+);
 
 const onSave = jest.fn();
 const onCancel = jest.fn();

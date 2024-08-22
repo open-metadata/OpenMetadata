@@ -33,7 +33,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.source.database.datalake.metadata import DatalakeSource
 from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.json import JSONDataFrameReader
-from metadata.utils.datalake.datalake_utils import get_columns
+from metadata.utils.datalake.datalake_utils import (
+    GenericDataFrameColumnParser,
+    JsonDataFrameColumnParser,
+)
 
 mock_datalake_config = {
     "source": {
@@ -50,7 +53,7 @@ mock_datalake_config = {
                         "endPointURL": "https://endpoint.com/",
                     }
                 },
-                "bucketName": "bucket name",
+                "bucketName": "my_bucket",
             }
         },
         "sourceConfig": {
@@ -94,6 +97,7 @@ MOCK_GCS_SCHEMA = [
 ]
 
 EXPECTED_SCHEMA = ["my_bucket"]
+EXPECTED_GCS_SCHEMA = ["my_bucket"]
 
 
 MOCK_DATABASE_SERVICE = DatabaseService(
@@ -230,6 +234,60 @@ EXAMPLE_JSON_COL_3 = [
 
 
 EXAMPLE_JSON_COL_4 = deepcopy(EXAMPLE_JSON_COL_3)
+
+EXAMPLE_JSON_TEST_5 = """
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Person",
+  "type": "object",
+  "properties": {
+    "firstName": {
+      "type": "string",
+      "title": "First Name",
+      "description": "The person's first name."
+    },
+    "lastName": {
+      "title": "Last Name",
+      "type": "string",
+      "description": "The person's last name."
+    },
+    "age": {
+      "type": "integer",
+      "description": "Age in years.",
+      "minimum": 0
+    }
+  },
+  "required": ["firstName", "lastName"]
+}
+"""
+
+EXAMPLE_JSON_COL_5 = [
+    Column(
+        name="Person",
+        dataType="RECORD",
+        children=[
+            Column(
+                name="firstName",
+                dataType="STRING",
+                description="The person's first name.",
+                displayName="First Name",
+            ),
+            Column(
+                name="lastName",
+                dataType="STRING",
+                description="The person's last name.",
+                displayName="Last Name",
+            ),
+            Column(
+                name="age",
+                dataType="INT",
+                description="Age in years.",
+            ),
+        ],
+    )
+]
+
+
 EXAMPLE_JSON_COL_4[3].children[3].children = [
     Column(
         name="lat",
@@ -413,23 +471,21 @@ class DatalakeUnitTest(TestCase):
     def __init__(self, methodName, test_connection) -> None:
         super().__init__(methodName)
         test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.parse_obj(mock_datalake_config)
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
         self.datalake_source = DatalakeSource.create(
             mock_datalake_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.datalake_source.context.__dict__["database"] = MOCK_DATABASE.name.__root__
-        self.datalake_source.context.__dict__[
+        self.datalake_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.root
+        self.datalake_source.context.get().__dict__[
             "database_service"
-        ] = MOCK_DATABASE_SERVICE.name.__root__
+        ] = MOCK_DATABASE_SERVICE.name.root
 
     def test_s3_schema_filer(self):
-        self.datalake_source.client.list_buckets = lambda: MOCK_S3_SCHEMA
-        assert list(self.datalake_source.fetch_s3_bucket_names()) == EXPECTED_SCHEMA
-
-    def test_gcs_schema_filer(self):
-        self.datalake_source.client.list_buckets = lambda: MOCK_GCS_SCHEMA
-        assert list(self.datalake_source.fetch_gcs_bucket_names()) == EXPECTED_SCHEMA
+        self.datalake_source.client._client.list_buckets = lambda: MOCK_S3_SCHEMA
+        assert list(self.datalake_source.get_database_schema_names()) == EXPECTED_SCHEMA
 
     def test_json_file_parse(self):
         """
@@ -449,10 +505,10 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_1 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_1, decode=True
-        )[0]
+        )[0][0]
         actual_df_2 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_2, decode=True
-        )[0]
+        )[0][0]
 
         assert actual_df_1.compare(exp_df_list).empty
         assert actual_df_2.compare(exp_df_obj).empty
@@ -461,15 +517,26 @@ class DatalakeUnitTest(TestCase):
 
         actual_df_3 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_3, decode=True
-        )[0]
-        actual_cols_3 = get_columns(actual_df_3)
+        )[0][0]
+        actual_cols_3 = GenericDataFrameColumnParser._get_columns(
+            actual_df_3
+        )  # pylint: disable=protected-access
         assert actual_cols_3 == EXAMPLE_JSON_COL_3
 
         actual_df_4 = JSONDataFrameReader.read_from_json(
             key="file.json", json_text=EXAMPLE_JSON_TEST_4, decode=True
-        )[0]
-        actual_cols_4 = get_columns(actual_df_4)
+        )[0][0]
+        actual_cols_4 = GenericDataFrameColumnParser._get_columns(
+            actual_df_4
+        )  # pylint: disable=protected-access
         assert actual_cols_4 == EXAMPLE_JSON_COL_4
+
+        actual_df_5, raw_data = JSONDataFrameReader.read_from_json(
+            key="file.json", json_text=EXAMPLE_JSON_TEST_5, decode=True
+        )
+        json_parser = JsonDataFrameColumnParser(actual_df_5[0], raw_data=raw_data)
+        actual_cols_5 = json_parser.get_columns()
+        assert actual_cols_5 == EXAMPLE_JSON_COL_5
 
     def test_avro_file_parse(self):
         columns = AvroDataFrameReader.read_from_avro(AVRO_SCHEMA_FILE)
@@ -479,3 +546,103 @@ class DatalakeUnitTest(TestCase):
 
         columns = AvroDataFrameReader.read_from_avro(AVRO_DATA_FILE)
         assert EXPECTED_AVRO_COL_2 == columns.columns  # pylint: disable=no-member
+
+
+mock_datalake_gcs_config = {
+    "source": {
+        "type": "datalake",
+        "serviceName": "local_datalake",
+        "serviceConnection": {
+            "config": {
+                "type": "Datalake",
+                "configSource": {
+                    "securityConfig": {
+                        "gcpConfig": {
+                            "type": "service_account",
+                            "projectId": "project_id",
+                            "privateKeyId": "private_key_id",
+                            "privateKey": "private_key",
+                            "clientEmail": "gcpuser@project_id.iam.gserviceaccount.com",
+                            "clientId": "1234",
+                            "authUri": "https://accounts.google.com/o/oauth2/auth",
+                            "tokenUri": "https://oauth2.googleapis.com/token",
+                            "authProviderX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                            "clientX509CertUrl": "https://www.googleapis.com/oauth2/v1/certs",
+                        }
+                    }
+                },
+                "bucketName": "my_bucket",
+                "prefix": "prefix",
+            }
+        },
+        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
+    },
+    "sink": {"type": "metadata-rest", "config": {}},
+    "workflowConfig": {
+        "loggerLevel": "DEBUG",
+        "openMetadataServerConfig": {
+            "hostPort": "http://localhost:8585/api",
+            "authProvider": "openmetadata",
+            "securityConfig": {
+                "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
+            },
+        },
+    },
+}
+
+mock_multiple_project_id = deepcopy(mock_datalake_gcs_config)
+
+mock_multiple_project_id["source"]["serviceConnection"]["config"]["configSource"][
+    "securityConfig"
+]["gcpConfig"]["projectId"] = ["project_id", "project_id2"]
+
+
+class DatalakeGCSUnitTest(TestCase):
+    """
+    Datalake Source Unit Tests
+    """
+
+    @patch(
+        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
+    )
+    @patch("metadata.utils.credentials.validate_private_key")
+    @patch("google.cloud.storage.Client")
+    def __init__(self, methodName, _, __, test_connection) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(
+            mock_datalake_gcs_config
+        )
+        self.datalake_source = DatalakeSource.create(
+            mock_datalake_gcs_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.datalake_source.context.get().__dict__[
+            "database"
+        ] = MOCK_DATABASE.name.root
+        self.datalake_source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
+
+    @patch(
+        "metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection"
+    )
+    @patch("google.cloud.storage.Client")
+    @patch("metadata.utils.credentials.validate_private_key")
+    def test_multiple_project_id_implementation(
+        self, validate_private_key, storage_client, test_connection
+    ):
+        print(mock_multiple_project_id)
+        self.datalake_source_multiple_project_id = DatalakeSource.create(
+            mock_multiple_project_id["source"],
+            OpenMetadataWorkflowConfig.model_validate(
+                mock_multiple_project_id
+            ).workflowConfig.openMetadataServerConfig,
+        )
+
+    def test_gcs_schema_filer(self):
+        self.datalake_source.client._client.list_buckets = lambda: MOCK_GCS_SCHEMA
+        assert (
+            list(self.datalake_source.get_database_schema_names())
+            == EXPECTED_GCS_SCHEMA
+        )

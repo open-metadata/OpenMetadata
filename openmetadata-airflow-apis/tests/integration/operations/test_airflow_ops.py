@@ -122,7 +122,7 @@ class TestAirflowOps(TestCase):
         service_id = str(
             cls.metadata.get_by_name(
                 entity=DatabaseService, fqn="test-service-ops"
-            ).id.__root__
+            ).id.root
         )
 
         cls.metadata.delete(
@@ -232,7 +232,7 @@ class TestAirflowOps(TestCase):
             id=uuid.uuid4(),
             pipelineType=PipelineType.metadata,
             name="my_new_dag",
-            description=Markdown(__root__="A test DAG"),
+            description=Markdown("A test DAG"),
             fullyQualifiedName="test-service-ops.my_new_dag",
             sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
             openMetadataServerConnection=self.conn,

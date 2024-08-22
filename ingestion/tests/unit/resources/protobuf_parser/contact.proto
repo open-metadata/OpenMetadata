@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option java_package = "group.org.prod.schemas.contact";
+option java_outer_classname = "ContactProto";
+
+message Contact {
+  string email = 1;
+  string phone = 2;
+}

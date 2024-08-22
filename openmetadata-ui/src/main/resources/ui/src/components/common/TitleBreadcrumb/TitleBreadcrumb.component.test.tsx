@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { getAllByTestId, getByTestId, render } from '@testing-library/react';
+import {
+  getAllByTestId,
+  getByTestId,
+  render,
+  screen,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import TitleBreadcrumb from './TitleBreadcrumb.component';
@@ -64,5 +69,32 @@ describe('Test Breadcrumb Component', () => {
     expect(lastLink).not.toHaveAttribute('href');
 
     expect(lastLink).toHaveClass('cursor-text');
+  });
+
+  it('Should work if link object is provided', () => {
+    const links = [
+      {
+        name: 'home',
+        url: '/',
+      },
+      {
+        name: 'services',
+        url: {
+          pathname: '/services',
+        },
+      },
+      {
+        name: 'database',
+        url: '',
+      },
+    ];
+
+    render(<TitleBreadcrumb titleLinks={links} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const serviceLink = screen.getByText('services');
+
+    expect(serviceLink).toHaveAttribute('href', '/services');
   });
 });

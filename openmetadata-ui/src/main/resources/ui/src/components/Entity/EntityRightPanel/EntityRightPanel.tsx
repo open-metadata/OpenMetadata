@@ -12,17 +12,24 @@
  */
 import { Space } from 'antd';
 import { EntityTags } from 'Models';
-import React, { FC } from 'react';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
+import { TablePartition } from '../../../generated/entity/data/table';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
-import DataProductsContainer from '../../DataProductsContainer/DataProductsContainer.component';
+import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import type {
+  ExtentionEntities,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 
-interface EntityRightPanelProps {
+interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   dataProducts: EntityReference[];
   editTagPermission: boolean;
   entityType: EntityType;
@@ -36,9 +43,14 @@ interface EntityRightPanelProps {
   domain?: EntityReference;
   onTagSelectionChange?: (selectedTags: EntityTags[]) => Promise<void>;
   onThreadLinkSelect?: (value: string, threadType?: ThreadType) => void;
+  viewAllPermission?: boolean;
+  customProperties?: ExtentionEntities[T];
+  tablePartition?: TablePartition;
+  editCustomAttributePermission?: boolean;
+  onExtensionUpdate?: (updatedTable: ExtentionEntities[T]) => Promise<void>;
 }
 
-const EntityRightPanel: FC<EntityRightPanelProps> = ({
+const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   domain,
   dataProducts,
   entityFQN,
@@ -52,7 +64,12 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
   entityId,
   showTaskHandler = true,
   showDataProductContainer = true,
-}) => {
+  viewAllPermission,
+  customProperties,
+  tablePartition,
+  editCustomAttributePermission,
+  onExtensionUpdate,
+}: EntityRightPanelProps<T>) => {
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
 
@@ -94,6 +111,20 @@ const EntityRightPanel: FC<EntityRightPanelProps> = ({
         {KnowledgeArticles && (
           <KnowledgeArticles entityId={entityId} entityType={entityType} />
         )}
+        {customProperties && (
+          <CustomPropertyTable<T>
+            isRenderedInRightPanel
+            entityDetails={customProperties}
+            entityType={entityType as T}
+            handleExtensionUpdate={onExtensionUpdate}
+            hasEditAccess={Boolean(editCustomAttributePermission)}
+            hasPermission={Boolean(viewAllPermission)}
+            maxDataCap={5}
+          />
+        )}
+        {tablePartition ? (
+          <PartitionedKeys tablePartition={tablePartition} />
+        ) : null}
       </Space>
       {afterSlot}
     </>

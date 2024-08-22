@@ -49,6 +49,7 @@
       "default": null
     },
     "secretsManagerProvider": {
+      "description": "Secrets Manager Provider to use for fetching secrets.",
       "$ref": "../../security/secrets/secretsManagerProvider.json",
       "default": "db"
     }

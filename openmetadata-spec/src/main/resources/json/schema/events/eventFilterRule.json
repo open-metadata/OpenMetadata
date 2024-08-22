@@ -5,9 +5,32 @@
   "description": "Describes an Event Filter Rule",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.EventFilterRule",
+  "definitions": {
+    "effect" : {
+      "type" : "string",
+      "enum" : [
+        "include",
+        "exclude"
+      ],
+      "default": "include"
+    },
+    "prefixCondition": {
+      "description": "Prefix Condition to be applied to the Condition.",
+      "type": "string",
+      "enum": [
+        "AND",
+        "OR"
+      ],
+      "default": "AND"
+    }
+  },
   "properties": {
     "name": {
       "description": "Name of this Event Filter.",
+      "type": "string"
+    },
+    "displayName": {
+      "description": "Display Name of the Filter.",
       "type": "string"
     },
     "fullyQualifiedName": {
@@ -19,15 +42,30 @@
       "$ref": "../type/basic.json#/definitions/markdown"
     },
     "effect" : {
-      "type" : "string",
-      "enum" : [
-        "include",
-        "exclude"
-      ]
+      "$ref": "#/definitions/effect"
     },
     "condition" : {
       "description": "Expression in SpEL used for matching of a `Rule` based on entity, resource, and environmental attributes.",
       "$ref" : "../type/basic.json#/definitions/expression"
+    },
+    "arguments": {
+      "description": "Arguments to the Condition.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "inputType": {
+      "type": "string",
+      "enum": [
+        "static",
+        "runtime",
+        "none"
+      ]
+    },
+    "prefixCondition": {
+      "description": "Prefix Condition to be applied to the Condition.",
+      "$ref": "#/definitions/prefixCondition"
     }
   },
   "required": ["effect", "condition"],

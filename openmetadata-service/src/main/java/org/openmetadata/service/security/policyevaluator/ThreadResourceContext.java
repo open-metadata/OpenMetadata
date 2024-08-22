@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
@@ -8,22 +9,17 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 
 /** Conversation threads require special handling */
-public class ThreadResourceContext implements ResourceContextInterface {
-  // User who created the thread is the owner of thread entity
-  private final String createdBy;
-
-  public ThreadResourceContext(String createdBy) {
-    this.createdBy = createdBy;
-  }
-
+public record ThreadResourceContext(String createdBy) implements ResourceContextInterface {
   @Override
   public String getResource() {
     return Entity.THREAD;
   }
 
   @Override
-  public EntityReference getOwner() {
-    return Entity.getEntityReferenceByName(Entity.USER, createdBy, Include.NON_DELETED);
+  public List<EntityReference> getOwners() {
+    List<EntityReference> owners = new ArrayList<>();
+    owners.add(Entity.getEntityReferenceByName(Entity.USER, createdBy, Include.NON_DELETED));
+    return owners;
   }
 
   @Override
@@ -33,6 +29,12 @@ public class ThreadResourceContext implements ResourceContextInterface {
 
   @Override
   public EntityInterface getEntity() {
+    return null;
+  }
+
+  // TODO: Fix this this should be thread.getEntity().getDomain()
+  @Override
+  public EntityReference getDomain() {
     return null;
   }
 }

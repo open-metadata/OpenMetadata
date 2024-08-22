@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
@@ -77,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
   static final String FIELDS =
-      "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
+      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -86,8 +87,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return pipeline;
   }
 
-  public PipelineResource(Authorizer authorizer) {
-    super(Entity.PIPELINE, authorizer);
+  public PipelineResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PIPELINE, authorizer, limits);
   }
 
   @Override
@@ -344,6 +345,35 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchPipeline",
+      summary = "Update a pipeline by name.",
+      description = "Update an existing pipeline using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response updateDescription(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the pipeline", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
+  }
+
   @PUT
   @Operation(
       operationId = "createOrUpdatePipeline",
@@ -383,7 +413,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
                     schema = @Schema(implementation = Pipeline.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Pipeline addPipelineStatus(
+  public Response addPipelineStatus(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -395,8 +425,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    Pipeline pipeline = repository.addPipelineStatus(fqn, pipelineStatus);
-    return addHref(uriInfo, pipeline);
+    return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
 
   @GET

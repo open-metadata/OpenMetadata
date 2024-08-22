@@ -29,11 +29,12 @@ import React, {
   ReactNode,
   useImperativeHandle,
 } from 'react';
-import { oidcTokenKey } from '../../../constants/constants';
 import { SamlSSOClientConfig } from '../../../generated/configuration/authenticationConfiguration';
 import { postSamlLogout } from '../../../rest/miscAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { AccessTokenResponse, refreshSAMLToken } from '../../../rest/auth-API';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 
 interface Props {
@@ -43,8 +44,28 @@ interface Props {
 
 const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children, onLogoutSuccess }: Props, ref) => {
-    const { setIsAuthenticated, authConfig } = useAuthContext();
+    const {
+      setIsAuthenticated,
+      authConfig,
+      getOidcToken,
+      getRefreshToken,
+      setRefreshToken,
+      setOidcToken,
+    } = useApplicationStore();
     const config = authConfig?.samlConfiguration as SamlSSOClientConfig;
+
+    const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
+      const refreshToken = getRefreshToken();
+
+      const response = await refreshSAMLToken({
+        refreshToken: refreshToken as string,
+      });
+
+      setRefreshToken(response.refreshToken);
+      setOidcToken(response.accessToken);
+
+      return Promise.resolve(response);
+    };
 
     const login = async () => {
       if (config.idp.authorityUrl) {
@@ -55,7 +76,7 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
     };
 
     const logout = () => {
-      const token = localStorage.getItem(oidcTokenKey);
+      const token = getOidcToken();
       if (token) {
         postSamlLogout({ token })
           .then(() => {
@@ -83,7 +104,7 @@ const SamlAuthenticator = forwardRef<AuthenticatorRef, Props>(
         logout();
       },
       async renewIdToken() {
-        return Promise.resolve('');
+        return handleSilentSignIn();
       },
     }));
 

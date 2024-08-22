@@ -45,10 +45,6 @@
             "type": "keyword",
             "ignore_above": 256,
             "normalizer": "lowercase_normalizer"
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
           }
         }
       },
@@ -66,19 +62,15 @@
             "type": "keyword",
             "normalizer": "lowercase_normalizer",
             "ignore_above": 256
-          },
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
           }
         }
       },
       "description": {
         "type": "text",
         "analyzer": "om_analyzer",
-        "index_options": "freqs"
+        "index_options": "docs"
       },
-      "teamType": { 
+      "teamType": {
         "type": "text"
       },
       "version": {
@@ -257,6 +249,9 @@
       "deleted": {
         "type": "text"
       },
+      "isBot": {
+        "type": "boolean"
+      },
       "entityType": {
         "type": "keyword"
       },
@@ -269,8 +264,17 @@
             "path": "deleted"
           }
         ]
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
 }
-

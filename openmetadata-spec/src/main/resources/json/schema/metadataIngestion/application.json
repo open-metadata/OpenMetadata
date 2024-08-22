@@ -3,6 +3,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "OpenMetadataApplicationConfig",
   "description": "OpenMetadata Ingestion Framework definition for Applications, i.e., the YAML shape we require.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.OpenMetadataAppConfig",
   "type": "object",
   "properties": {
     "workflowConfig": {
@@ -16,6 +17,10 @@
     "appConfig": {
       "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/appConfig",
       "description": "External Application configuration"
+    },
+    "appPrivateConfig": {
+      "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/privateConfig",
+      "description": "External Application Private configuration"
     },
     "ingestionPipelineFQN": {
       "description": "Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline",

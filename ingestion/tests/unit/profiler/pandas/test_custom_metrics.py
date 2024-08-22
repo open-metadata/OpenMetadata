@@ -21,7 +21,7 @@ from uuid import uuid4
 import boto3
 import botocore
 import pandas as pd
-from moto import mock_s3
+from moto import mock_aws
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
@@ -33,6 +33,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.tests.customMetric import CustomMetric
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.interface.pandas.profiler_interface import (
     PandasProfilerInterface,
 )
@@ -41,7 +42,7 @@ from metadata.profiler.processor.core import Profiler
 BUCKET_NAME = "MyBucket"
 
 
-@mock_s3
+@mock_aws
 class MetricsTest(TestCase):
     """
     Run checks on different metrics
@@ -67,11 +68,36 @@ class MetricsTest(TestCase):
     table_entity = Table(
         id=uuid4(),
         name="user",
+        databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
-            )
+            ),
+            EntityColumn(
+                name=ColumnName("first_name"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("last_name"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("city"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("country"),
+                dataType=DataType.STRING,
+            ),
+            EntityColumn(
+                name=ColumnName("birthdate"),
+                dataType=DataType.DATE,
+            ),
+            EntityColumn(
+                name=ColumnName("age"),
+                dataType=DataType.INT,
+            ),
         ],
     )
 
@@ -115,9 +141,8 @@ class MetricsTest(TestCase):
             self.s3_keys.append(key)
             self.client.upload_file(Filename=path, Bucket=BUCKET_NAME, Key=key)
 
-        with patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=self.dfs,
         ):
             self.sqa_profiler_interface = PandasProfilerInterface(
@@ -136,11 +161,38 @@ class MetricsTest(TestCase):
         table_entity = Table(
             id=uuid4(),
             name="user",
+            databaseSchema=EntityReference(
+                id=uuid4(), type="databaseSchema", name="name"
+            ),
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
-                )
+                ),
+                EntityColumn(
+                    name=ColumnName("first_name"),
+                    dataType=DataType.STRING,
+                ),
+                EntityColumn(
+                    name=ColumnName("last_name"),
+                    dataType=DataType.STRING,
+                ),
+                EntityColumn(
+                    name=ColumnName("city"),
+                    dataType=DataType.STRING,
+                ),
+                EntityColumn(
+                    name=ColumnName("country"),
+                    dataType=DataType.STRING,
+                ),
+                EntityColumn(
+                    name=ColumnName("birthdate"),
+                    dataType=DataType.DATE,
+                ),
+                EntityColumn(
+                    name=ColumnName("age"),
+                    dataType=DataType.INT,
+                ),
             ],
             customMetrics=[
                 CustomMetric(
@@ -153,9 +205,8 @@ class MetricsTest(TestCase):
                 ),
             ],
         )
-        with patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=self.dfs,
         ):
             self.sqa_profiler_interface = PandasProfilerInterface(
@@ -185,9 +236,12 @@ class MetricsTest(TestCase):
         table_entity = Table(
             id=uuid4(),
             name="user",
+            databaseSchema=EntityReference(
+                id=uuid4(), type="databaseSchema", name="name"
+            ),
             columns=[
                 EntityColumn(
-                    name=ColumnName(__root__="id"),
+                    name=ColumnName("id"),
                     dataType=DataType.INT,
                     customMetrics=[
                         CustomMetric(
@@ -204,9 +258,8 @@ class MetricsTest(TestCase):
                 )
             ],
         )
-        with patch.object(
-            PandasProfilerInterface,
-            "_convert_table_to_list_of_dataframe_objects",
+        with patch(
+            "metadata.mixins.pandas.pandas_mixin.fetch_dataframe",
             return_value=self.dfs,
         ):
             self.sqa_profiler_interface = PandasProfilerInterface(

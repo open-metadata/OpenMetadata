@@ -12,10 +12,11 @@
  */
 import { ReactNode } from 'react';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import { OperationPermission } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from '../../../components/TableQueries/TableQueries.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
+import { APICollection } from '../../../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -28,6 +29,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
@@ -38,7 +40,9 @@ import { SearchService } from '../../../generated/entity/services/searchService'
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
 import { ServicesType } from '../../../interface/service.interface';
+import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export type DataAssetsType =
   | Table
@@ -59,7 +63,10 @@ export type DataAssetsType =
   | MlmodelService
   | MetadataService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIService
+  | APICollection
+  | APIEndpoint;
 
 export type DataAssetsWithoutServiceField =
   | DatabaseService
@@ -69,11 +76,12 @@ export type DataAssetsWithoutServiceField =
   | MlmodelService
   | MetadataService
   | StorageService
-  | SearchService;
+  | SearchService
+  | APIService;
 
 export type DataAssetsWithFollowersField = Exclude<
   DataAssetsType,
-  DataAssetsWithoutServiceField | Database | DatabaseSchema
+  DataAssetsWithoutServiceField | Database | DatabaseSchema | APICollection
 >;
 
 export type DataAssetsWithServiceField = Exclude<
@@ -87,13 +95,14 @@ export type DataAssetWithDomains =
 
 export type DataAssetsHeaderProps = {
   permissions: OperationPermission;
+  openTaskCount?: number;
   allowSoftDelete?: boolean;
   showDomain?: boolean;
   isRecursiveDelete?: boolean;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
-  onOwnerUpdate: (owner?: EntityReference) => Promise<void>;
+  onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
   onVersionClick?: () => void;
   onFollowClick?: () => Promise<void>;
   onRestoreDataAsset: () => Promise<void>;
@@ -101,6 +110,7 @@ export type DataAssetsHeaderProps = {
   onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
+  extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
 } & (
   | DataAssetTable
   | DataAssetTopic
@@ -121,6 +131,9 @@ export type DataAssetsHeaderProps = {
   | DataAssetMetadataService
   | DataAssetStorageService
   | DataAssetSearchService
+  | DataAssetApiService
+  | DataAssetAPICollection
+  | DataAssetAPIEndpoint
 );
 
 export interface DataAssetTable {
@@ -207,6 +220,21 @@ export interface DataAssetStorageService {
 export interface DataAssetSearchService {
   dataAsset: ServicesType;
   entityType: EntityType.SEARCH_SERVICE;
+}
+
+export interface DataAssetApiService {
+  dataAsset: ServicesType;
+  entityType: EntityType.API_SERVICE;
+}
+
+export interface DataAssetAPICollection {
+  dataAsset: APICollection;
+  entityType: EntityType.API_COLLECTION;
+}
+
+export interface DataAssetAPIEndpoint {
+  dataAsset: APIEndpoint;
+  entityType: EntityType.API_ENDPOINT;
 }
 
 export interface DataAssetHeaderInfo {

@@ -39,6 +39,9 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.mariaDBConnection import (
+    MariaDBConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.singleStoreConnection import (
     SingleStoreConnection,
 )
@@ -74,6 +77,9 @@ from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
 )
 from metadata.profiler.interface.sqlalchemy.databricks.profiler_interface import (
     DatabricksProfilerInterface,
+)
+from metadata.profiler.interface.sqlalchemy.mariadb.profiler_interface import (
+    MariaDBProfilerInterface,
 )
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -322,7 +328,6 @@ class ProfilerInterfaceTest(TestCase):
         self.assertEqual(50, actual)
 
     def test_table_config_casting(self):
-
         expected = TableConfig(
             profileSample=200,
             profileSampleType=ProfileSampleType.PERCENTAGE,
@@ -369,6 +374,7 @@ class ProfilerInterfaceTest(TestCase):
             TrinoConnection.__name__: TrinoProfilerInterface,
             UnityCatalogConnection.__name__: UnityCatalogProfilerInterface,
             DatabricksConnection.__name__: DatabricksProfilerInterface,
+            MariaDBConnection.__name__: MariaDBProfilerInterface,
         }
 
         # Register profiles

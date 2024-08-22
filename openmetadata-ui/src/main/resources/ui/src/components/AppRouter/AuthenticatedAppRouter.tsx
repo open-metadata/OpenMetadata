@@ -13,27 +13,52 @@
 
 import React, { FunctionComponent, useMemo } from 'react';
 import { Redirect, Route, Switch } from 'react-router-dom';
-import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
-import AddDomain from '../../components/Domain/AddDomain/AddDomain.component';
-import DomainPage from '../../components/Domain/DomainPage.component';
-import { ROUTES } from '../../constants/constants';
+import {
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  ROUTES,
+} from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/policy';
 import AddCustomMetricPage from '../../pages/AddCustomMetricPage/AddCustomMetricPage';
 import { CustomizablePage } from '../../pages/CustomizablePage/CustomizablePage';
 import DataQualityPage from '../../pages/DataQuality/DataQualityPage';
+import ForbiddenPage from '../../pages/ForbiddenPage/ForbiddenPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
-import { useApplicationConfigContext } from '../ApplicationConfigProvider/ApplicationConfigProvider';
-import { usePermissionProvider } from '../PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../PermissionProvider/PermissionProvider.interface';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
-const GlobalSettingPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/GlobalSettingPage/GlobalSettingPage'))
+const DomainRouter = withSuspenseFallback(
+  React.lazy(
+    () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
+  )
+);
+const SettingsRouter = withSuspenseFallback(
+  React.lazy(
+    () => import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
+  )
+);
+const EntityRouter = withSuspenseFallback(
+  React.lazy(
+    () => import(/* webpackChunkName: "EntityRouter" */ './EntityRouter')
+  )
+);
+const ClassificationRouter = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "ClassificationRouter" */ './ClassificationRouter'
+      )
+  )
+);
+const GlossaryRouter = withSuspenseFallback(
+  React.lazy(
+    () => import(/* webpackChunkName: "GlossaryRouter" */ './GlossaryRouter')
+  )
 );
 
-const MyDataPageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/MyDataPage/MyDataPageV1.component'))
+const MyDataPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/MyDataPage/MyDataPage.component'))
 );
 
 const TestSuiteIngestionPage = withSuspenseFallback(
@@ -57,7 +82,8 @@ const AddDataQualityTestPage = withSuspenseFallback(
 
 const AddCustomProperty = withSuspenseFallback(
   React.lazy(
-    () => import('../CustomEntityDetail/AddCustomProperty/AddCustomProperty')
+    () =>
+      import('../Settings/CustomProperty/AddCustomProperty/AddCustomProperty')
   )
 );
 
@@ -65,11 +91,6 @@ const MarketPlacePage = withSuspenseFallback(
   React.lazy(() => import('../../pages/MarketPlacePage/MarketPlacePage'))
 );
 
-const PipelineDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/PipelineDetails/PipelineDetailsPage.component')
-  )
-);
 const BotDetailsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/BotDetailsPage/BotDetailsPage'))
 );
@@ -79,20 +100,6 @@ const ServicePage = withSuspenseFallback(
 
 const SwaggerPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/SwaggerPage'))
-);
-const TagsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TagsPage/TagsPage'))
-);
-const ClassificationVersionPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/ClassificationVersionPage/ClassificationVersionPage')
-  )
-);
-const TopicDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/TopicDetails/TopicDetailsPage.component')
-  )
 );
 const TourPageComponent = withSuspenseFallback(
   React.lazy(() => import('../../pages/TourPage/TourPage.component'))
@@ -106,19 +113,6 @@ const DomainVersionPage = withSuspenseFallback(
     () =>
       import('../../components/Domain/DomainVersion/DomainVersion.component')
   )
-);
-
-const GlossaryVersionPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import(
-        '../../components/Glossary/GlossaryVersion/GlossaryVersion.component'
-      )
-  )
-);
-
-const AddGlossaryPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/AddGlossary/AddGlossaryPage.component'))
 );
 
 const AddIngestionPage = withSuspenseFallback(
@@ -136,7 +130,7 @@ const MarketPlaceAppDetails = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../components/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
+        '../Settings/Applications/MarketPlaceAppDetails/MarketPlaceAppDetails.component'
       )
   )
 );
@@ -159,70 +153,17 @@ const CreateUserPage = withSuspenseFallback(
     () => import('../../pages/CreateUserPage/CreateUserPage.component')
   )
 );
-const DashboardDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/DashboardDetailsPage/DashboardDetailsPage.component')
-  )
-);
-const DatabaseDetails = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/DatabaseDetailsPage/DatabaseDetailsPage')
-  )
-);
-const DatabaseSchemaPageComponent = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/DatabaseSchemaPage/DatabaseSchemaPage.component')
-  )
-);
-
-const DataModelDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/DataModelPage/DataModelPage.component'))
-);
-
-const StoredProcedureDetailsPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/StoredProcedure/StoredProcedurePage'))
-);
-
-const TableDetailsPageV1 = withSuspenseFallback(
-  React.lazy(() => import('../../pages/TableDetailsPageV1/TableDetailsPageV1'))
-);
 const EditIngestionPage = withSuspenseFallback(
   React.lazy(
     () => import('../../pages/EditIngestionPage/EditIngestionPage.component')
   )
 );
-const EntityVersionPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/EntityVersionPage/EntityVersionPage.component')
-  )
-);
 const ServiceVersionPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/ServiceVersionPage/ServiceVersionPage'))
 );
-const DatabaseVersionPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/DatabaseVersionPage/DatabaseVersionPage')
-  )
-);
-const DatabaseSchemaVersionPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/DatabaseSchemaVersionPage/DatabaseSchemaVersionPage')
-  )
-);
+
 const ExplorePageV1 = withSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
-);
-
-const GlossaryPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/Glossary/GlossaryPage/GlossaryPage.component')
-  )
-);
-
-const MlModelPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/MlModelPage/MlModelPage.component'))
 );
 
 const RequestDescriptionPage = withSuspenseFallback(
@@ -253,47 +194,8 @@ const UpdateTagsPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
-const AddRolePage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/RolesPage/AddRolePage/AddRolePage'))
-);
-const AddPolicyPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/PoliciesPage/AddPolicyPage/AddPolicyPage')
-  )
-);
-
-const EditEmailConfigPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/EditEmailConfigPage/EditEmailConfigPage.component')
-  )
-);
-const EditCustomLogoConfigPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/EditCustomLogoConfig/EditCustomLogoConfig')
-  )
-);
-
-const AddRulePage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/PoliciesPage/PoliciesDetailPage/AddRulePage')
-  )
-);
-const EditRulePage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/PoliciesPage/PoliciesDetailPage/EditRulePage')
-  )
-);
-
-const TestCaseDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () =>
-      import('../../pages/TestCaseDetailsPage/TestCaseDetailsPage.component')
-  )
-);
-
-const LogsViewer = withSuspenseFallback(
-  React.lazy(() => import('../../pages/LogsViewer/LogsViewer.component'))
+const LogsViewerPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/LogsViewerPage/LogsViewerPage'))
 );
 
 const DataInsightPage = withSuspenseFallback(
@@ -312,17 +214,7 @@ const EditKPIPage = withSuspenseFallback(
 
 const AddTestSuitePage = withSuspenseFallback(
   React.lazy(
-    () => import('../../components/TestSuite/TestSuiteStepper/TestSuiteStepper')
-  )
-);
-
-const ContainerPage = withSuspenseFallback(
-  React.lazy(() => import('../../pages/ContainerPage/ContainerPage'))
-);
-
-const SearchIndexDetailsPage = withSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/SearchIndexDetailsPage/SearchIndexDetailsPage')
+    () => import('../DataQuality/TestSuite/TestSuiteStepper/TestSuiteStepper')
   )
 );
 
@@ -333,53 +225,37 @@ const AddQueryPage = withSuspenseFallback(
   React.lazy(() => import('../../pages/AddQueryPage/AddQueryPage.component'))
 );
 
-const PageNotFound = withSuspenseFallback(
-  React.lazy(() => import('../../pages/PageNotFound/PageNotFound'))
+const IncidentManagerPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/IncidentManager/IncidentManagerPage'))
 );
 
-const EditLoginConfiguration = withSuspenseFallback(
+const IncidentManagerDetailPage = withSuspenseFallback(
   React.lazy(
     () =>
       import(
-        '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage'
+        '../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage'
       )
+  )
+);
+
+const ObservabilityAlertsPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage')
+  )
+);
+
+const AlertDetailsPage = withSuspenseFallback(
+  React.lazy(() => import('../../pages/AlertDetailsPage/AlertDetailsPage'))
+);
+
+const AddObservabilityPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
   )
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
-  const { routeElements } = useApplicationConfigContext();
-
-  const glossaryPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(ResourceEntity.GLOSSARY, permissions),
-    [permissions]
-  );
-
-  const domainPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(ResourceEntity.DOMAIN, permissions),
-    [permissions]
-  );
-
-  const dataProductPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.DATA_PRODUCT,
-        permissions
-      ),
-    [permissions]
-  );
-
-  const tagCategoryPermission = useMemo(
-    () =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.CLASSIFICATION,
-        permissions
-      ),
-
-    [permissions]
-  );
 
   const createBotPermission = useMemo(
     () =>
@@ -390,7 +266,9 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   return (
     <Switch>
-      <Route exact component={MyDataPageV1} path={ROUTES.MY_DATA} />
+      <Route exact component={ForbiddenPage} path={ROUTES.FORBIDDEN} />
+
+      <Route exact component={MyDataPage} path={ROUTES.MY_DATA} />
       <Route exact component={TourPageComponent} path={ROUTES.TOUR} />
       <Route exact component={ExplorePageV1} path={ROUTES.EXPLORE} />
       <Route component={ExplorePageV1} path={ROUTES.EXPLORE_WITH_TAB} />
@@ -399,8 +277,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={EditConnectionFormPage}
         path={ROUTES.EDIT_SERVICE_CONNECTION}
       />
-      <Route exact component={ServicePage} path={ROUTES.SERVICE} />
-      <Route exact component={ServicePage} path={ROUTES.SERVICE_WITH_TAB} />
+      <Route
+        exact
+        component={ServicePage}
+        path={[ROUTES.SERVICE_WITH_TAB, ROUTES.SERVICE]}
+      />
+
       <Route exact component={AddServicePage} path={ROUTES.ADD_SERVICE} />
       <Route exact component={QueryPage} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
       <Route exact component={AddQueryPage} path={ROUTES.ADD_QUERY} />
@@ -444,254 +326,22 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       />
 
       <Route exact component={SwaggerPage} path={ROUTES.SWAGGER} />
-      <AdminProtectedRoute
-        exact
-        component={TagsPage}
-        hasPermission={tagCategoryPermission}
-        path={ROUTES.TAGS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={TagsPage}
-        hasPermission={tagCategoryPermission}
-        path={ROUTES.TAG_DETAILS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={ClassificationVersionPage}
-        hasPermission={tagCategoryPermission}
-        path={ROUTES.TAG_VERSION}
-      />
-
-      <Route
-        exact
-        component={DataProductsPage}
-        path={ROUTES.DATA_PRODUCT_VERSION}
-      />
       <Route exact component={DomainVersionPage} path={ROUTES.DOMAIN_VERSION} />
-      <Route
-        exact
-        component={() => <GlossaryVersionPage isGlossary />}
-        path={ROUTES.GLOSSARY_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION}
-      />
-      <Route
-        exact
-        component={GlossaryVersionPage}
-        path={ROUTES.GLOSSARY_TERMS_VERSION_TAB}
-      />
-      <Route
-        exact
-        component={DatabaseVersionPage}
-        path={ROUTES.DATABASE_VERSION}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaVersionPage}
-        path={ROUTES.SCHEMA_VERSION}
-      />
-      <Route exact component={EntityVersionPage} path={ROUTES.ENTITY_VERSION} />
+
       <Route
         exact
         component={ServiceVersionPage}
         path={ROUTES.SERVICE_VERSION}
       />
-      <Route
-        exact
-        component={EntityVersionPage}
-        path={ROUTES.ENTITY_VERSION_WITH_TAB}
-      />
-      <Route exact component={DatabaseDetails} path={ROUTES.DATABASE_DETAILS} />
-      <Route
-        exact
-        component={DatabaseDetails}
-        path={ROUTES.DATABASE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DatabaseDetails}
-        path={ROUTES.DATABASE_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaPageComponent}
-        path={ROUTES.SCHEMA_DETAILS}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaPageComponent}
-        path={ROUTES.SCHEMA_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DatabaseSchemaPageComponent}
-        path={ROUTES.SCHEMA_DETAILS_WITH_SUB_TAB}
-      />
-      <Route exact component={TableDetailsPageV1} path={ROUTES.TABLE_DETAILS} />
-      <Route
-        exact
-        component={TableDetailsPageV1}
-        path={ROUTES.TABLE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={TableDetailsPageV1}
-        path={ROUTES.TABLE_DETAILS_WITH_SUB_TAB}
-      />
-      <Route exact component={TopicDetailsPage} path={ROUTES.TOPIC_DETAILS} />
-      <Route
-        exact
-        component={TopicDetailsPage}
-        path={ROUTES.TOPIC_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={TopicDetailsPage}
-        path={ROUTES.TOPIC_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={DashboardDetailsPage}
-        path={ROUTES.DASHBOARD_DETAILS}
-      />
-      <Route
-        exact
-        component={DashboardDetailsPage}
-        path={ROUTES.DASHBOARD_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DashboardDetailsPage}
-        path={ROUTES.DASHBOARD_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={DataModelDetailsPage}
-        path={ROUTES.DATA_MODEL_DETAILS}
-      />
-      <Route
-        exact
-        component={DataModelDetailsPage}
-        path={ROUTES.DATA_MODEL_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={DataModelDetailsPage}
-        path={ROUTES.DATA_MODEL_DETAILS_WITH_SUB_TAB}
-      />
-
-      <Route
-        exact
-        component={StoredProcedureDetailsPage}
-        path={ROUTES.STORED_PROCEDURE_DETAILS}
-      />
-      <Route
-        exact
-        component={StoredProcedureDetailsPage}
-        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={StoredProcedureDetailsPage}
-        path={ROUTES.STORED_PROCEDURE_DETAILS_WITH_SUB_TAB}
-      />
-
-      <Route
-        exact
-        component={PipelineDetailsPage}
-        path={ROUTES.PIPELINE_DETAILS}
-      />
-      <Route
-        exact
-        component={PipelineDetailsPage}
-        path={ROUTES.PIPELINE_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={PipelineDetailsPage}
-        path={ROUTES.PIPELINE_DETAILS_WITH_SUB_TAB}
-      />
-
-      <Route exact component={ContainerPage} path={ROUTES.CONTAINER_DETAILS} />
-      <Route
-        exact
-        component={ContainerPage}
-        path={ROUTES.CONTAINER_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={ContainerPage}
-        path={ROUTES.CONTAINER_DETAILS_WITH_SUB_TAB}
-      />
-      <Route
-        exact
-        component={SearchIndexDetailsPage}
-        path={ROUTES.SEARCH_INDEX_DETAILS}
-      />
-      <Route
-        exact
-        component={SearchIndexDetailsPage}
-        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={SearchIndexDetailsPage}
-        path={ROUTES.SEARCH_INDEX_DETAILS_WITH_SUB_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_ACTION}
-      />
-      <Route exact component={UserPage} path={ROUTES.USER_PROFILE} />
-      <Route exact component={UserPage} path={ROUTES.USER_PROFILE_WITH_TAB} />
-      <Route
-        exact
-        component={UserPage}
-        path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
-      />
-
-      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
-      <Route
-        exact
-        component={MlModelPage}
-        path={ROUTES.MLMODEL_DETAILS_WITH_SUB_TAB}
-      />
-
-      <Route
-        exact
-        component={MlModelPage}
-        path={ROUTES.MLMODEL_DETAILS_WITH_TAB}
-      />
 
       <Route
         exact
         component={UserPage}
-        path={ROUTES.USER_PROFILE_WITH_SUB_TAB}
-      />
-
-      <Route exact component={MlModelPage} path={ROUTES.MLMODEL_DETAILS} />
-      <Route
-        exact
-        component={MlModelPage}
-        path={ROUTES.MLMODEL_DETAILS_WITH_SUB_TAB}
+        path={[
+          ROUTES.USER_PROFILE_WITH_SUB_TAB,
+          ROUTES.USER_PROFILE_WITH_TAB,
+          ROUTES.USER_PROFILE,
+        ]}
       />
 
       <Route
@@ -709,52 +359,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         )}
         path={ROUTES.ADD_CUSTOM_METRIC}
       />
-      <AdminProtectedRoute
-        exact
-        component={DataProductsPage}
-        hasPermission={dataProductPermission}
-        path={ROUTES.DATA_PRODUCT_DETAILS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DataProductsPage}
-        hasPermission={dataProductPermission}
-        path={ROUTES.DATA_PRODUCT_DETAILS_WITH_TAB}
-      />
 
-      <Route exact component={AddDomain} path={ROUTES.ADD_DOMAIN} />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={ROUTES.DOMAIN}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={ROUTES.DOMAIN_DETAILS}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DomainPage}
-        hasPermission={domainPermission}
-        path={ROUTES.DOMAIN_DETAILS_WITH_TAB}
-      />
-
-      <Route exact component={AddGlossaryPage} path={ROUTES.ADD_GLOSSARY} />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={GlossaryPage}
-        hasPermission={glossaryPermission}
-        path={ROUTES.GLOSSARY_DETAILS_WITH_SUBTAB}
-      />
       <AdminProtectedRoute
         exact
         component={CreateUserPage}
@@ -791,114 +396,81 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route exact component={RequestTagsPage} path={ROUTES.REQUEST_TAGS} />
       <Route exact component={UpdateTagsPage} path={ROUTES.UPDATE_TAGS} />
 
-      {/* keep these route above the setting route always */}
-      <AdminProtectedRoute
-        exact
-        component={AddRolePage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.ROLE,
-          permissions
-        )}
-        path={ROUTES.ADD_ROLE}
-      />
-      <AdminProtectedRoute
-        exact
-        component={AddPolicyPage}
-        hasPermission={checkPermission(
-          Operation.Create,
-          ResourceEntity.POLICY,
-          permissions
-        )}
-        path={ROUTES.ADD_POLICY}
-      />
-      <Route exact component={AddRulePage} path={ROUTES.ADD_POLICY_RULE} />
-      <AdminProtectedRoute
-        exact
-        component={EditEmailConfigPage}
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_EMAIL_CONFIG}
-      />
-      <AdminProtectedRoute
-        exact
-        component={EditCustomLogoConfigPage}
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGO_CONFIG}
-      />
-      <AdminProtectedRoute
-        exact
-        component={EditLoginConfiguration}
-        hasPermission={false}
-        path={ROUTES.SETTINGS_EDIT_CUSTOM_LOGIN_CONFIG}
-      />
-      <Route exact component={EditRulePage} path={ROUTES.EDIT_POLICY_RULE} />
-
-      <Route exact component={GlobalSettingPage} path={ROUTES.SETTINGS} />
-      <Route
-        exact
-        component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB}
-      />
-      <Route
-        exact
-        component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB_FQN}
-      />
-      <Route
-        exact
-        component={GlobalSettingPage}
-        path={ROUTES.SETTINGS_WITH_TAB_FQN_ACTION}
-      />
       <Route
         exact
         component={TestSuiteDetailsPage}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
-      <Route exact component={LogsViewer} path={ROUTES.LOGS} />
+      <Route exact component={LogsViewerPage} path={ROUTES.LOGS} />
       <Route
         exact
         component={TestSuiteIngestionPage}
-        path={ROUTES.TEST_SUITES_ADD_INGESTION}
-      />
-      <Route
-        exact
-        component={TestSuiteIngestionPage}
-        path={ROUTES.TEST_SUITES_EDIT_INGESTION}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DataQualityPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
-          permissions
-        )}
-        path={ROUTES.DATA_QUALITY_WITH_TAB}
-      />
-      <AdminProtectedRoute
-        exact
-        component={DataQualityPage}
-        hasPermission={userPermissions.hasViewPermissions(
-          ResourceEntity.TEST_SUITE,
-          permissions
-        )}
-        path={ROUTES.DATA_QUALITY}
+        path={[
+          ROUTES.TEST_SUITES_ADD_INGESTION,
+          ROUTES.TEST_SUITES_EDIT_INGESTION,
+        ]}
       />
 
       <AdminProtectedRoute
         exact
-        component={TestCaseDetailsPage}
+        component={DataQualityPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_SUITE,
+          permissions
+        )}
+        path={[ROUTES.DATA_QUALITY_WITH_TAB, ROUTES.DATA_QUALITY]}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={IncidentManagerPage}
         hasPermission={userPermissions.hasViewPermissions(
           ResourceEntity.TEST_CASE,
           permissions
         )}
-        path={ROUTES.TEST_CASE_DETAILS}
+        path={ROUTES.INCIDENT_MANAGER}
       />
-      <Route exact component={DataInsightPage} path={ROUTES.DATA_INSIGHT} />
+
+      <AdminProtectedRoute
+        exact
+        component={IncidentManagerDetailPage}
+        hasPermission={userPermissions.hasViewPermissions(
+          ResourceEntity.TEST_CASE,
+          permissions
+        )}
+        path={[
+          ROUTES.INCIDENT_MANAGER_DETAILS,
+          ROUTES.INCIDENT_MANAGER_DETAILS_WITH_TAB,
+        ]}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={ObservabilityAlertsPage}
+        path={ROUTES.OBSERVABILITY_ALERTS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AlertDetailsPage}
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS}
+      />
+
+      <AdminProtectedRoute
+        exact
+        component={AddObservabilityPage}
+        path={[
+          ROUTES.ADD_OBSERVABILITY_ALERTS,
+          ROUTES.EDIT_OBSERVABILITY_ALERTS,
+        ]}
+      />
+
       <Route
         exact
         component={DataInsightPage}
-        path={ROUTES.DATA_INSIGHT_WITH_TAB}
+        path={[ROUTES.DATA_INSIGHT_WITH_TAB, ROUTES.DATA_INSIGHT]}
       />
+
       <Route exact component={AddKPIPage} path={ROUTES.ADD_KPI} />
       <Route exact component={EditKPIPage} path={ROUTES.EDIT_KPI} />
       <Route exact component={AddTestSuitePage} path={ROUTES.ADD_TEST_SUITES} />
@@ -911,8 +483,31 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={CustomizablePage}
         path={ROUTES.CUSTOMIZE_PAGE}
       />
-      {routeElements}
-      <Route exact component={PageNotFound} path={ROUTES.NOT_FOUND} />
+
+      <Route component={ClassificationRouter} path="/tags" />
+      <Route
+        component={GlossaryRouter}
+        path={['/glossary', '/glossary-term']}
+      />
+      <Route component={SettingsRouter} path="/settings" />
+      <Route component={DomainRouter} path="/domain" />
+
+      <Route
+        component={EntityRouter}
+        path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}
+      />
+
+      <Route
+        exact
+        path={[
+          ROUTES.SIGNIN,
+          ROUTES.REGISTER,
+          ROUTES.SIGNIN,
+          ROUTES.FORGOT_PASSWORD,
+        ]}>
+        <Redirect to={ROUTES.MY_DATA} />
+      </Route>
+
       <Redirect to={ROUTES.NOT_FOUND} />
     </Switch>
   );

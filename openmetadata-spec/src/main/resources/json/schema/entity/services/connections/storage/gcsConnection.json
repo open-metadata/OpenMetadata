@@ -4,7 +4,7 @@
   "title": "GCS Connection",
   "description": "GCS Connection.",
   "type": "object",
-  "javaType": "org.openmetadata.schema.services.connections.storage.GcsConnection",
+  "javaType": "org.openmetadata.schema.services.connections.storage.GCSConnection",
   "definitions": {
     "gcsType": {
       "description": "Gcs service type",
@@ -24,6 +24,15 @@
       "title": "GCP Credentials",
       "description": "GCP Credentials",
       "$ref": "../../../../security/credentials/gcpCredentials.json"
+    },
+    "bucketNames": {
+      "title": "Bucket Names",
+      "description": "Bucket Names of the data source.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": null
     },
     "connectionOptions": {
       "title": "Connection Options",

@@ -14,13 +14,18 @@
 import { isEqual } from 'lodash';
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { WILD_CARD_CHAR } from '../constants/char.constants';
-import { SettledStatus } from '../enums/axios.enum';
+import { SettledStatus } from '../enums/Axios.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { SearchResponse } from '../interface/search.interface';
 import { getSearchedTeams, getSearchedUsers } from '../rest/miscAPI';
 import { User } from './../generated/entity/teams/user';
 import { formatTeamsResponse, formatUsersResponse } from './APIUtils';
 import { getImages } from './CommonUtils';
+import {
+  getImageWithResolutionAndFallback,
+  ImageQuality,
+} from './ProfilerUtils';
+import userClassBase from './UserClassBase';
 
 export const getUserDataFromOidc = (
   userData: User,
@@ -97,4 +102,25 @@ export const searchFormattedUsersAndTeams = async (
   } catch (error) {
     return { users: [], teams: [], usersTotal: 0, teamsTotal: 0 };
   }
+};
+
+export const getUserWithImage = (user: User) => {
+  const profile =
+    getImageWithResolutionAndFallback(
+      ImageQuality['6x'],
+      user.profile?.images
+    ) ?? '';
+
+  if (!profile && user.isBot) {
+    user = {
+      ...user,
+      profile: {
+        images: {
+          image: userClassBase.getBotLogo(user.name) ?? '',
+        },
+      },
+    };
+  }
+
+  return user;
 };

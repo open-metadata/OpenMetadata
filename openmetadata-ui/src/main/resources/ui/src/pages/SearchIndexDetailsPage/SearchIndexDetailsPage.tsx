@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual } from 'lodash';
+import { isEmpty, isEqual, isUndefined, omitBy } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,27 +24,32 @@ import ActivityFeedProvider, {
 } from '../../components/ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import ActivityThreadPanel from '../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import QueryViewer from '../../components/common/QueryViewer/QueryViewer.component';
+import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import EntityLineageComponent from '../../components/Entity/EntityLineage/EntityLineage.component';
+import SampleDataWithMessages from '../../components/Database/SampleDataWithMessages/SampleDataWithMessages';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
-import Loader from '../../components/Loader/Loader';
+import Lineage from '../../components/Lineage/Lineage.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import LineageProvider from '../../context/LineageProvider/LineageProvider';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import SampleDataWithMessages from '../../components/SampleDataWithMessages/SampleDataWithMessages';
-import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
-import { getVersionPath } from '../../constants/constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import {
@@ -53,6 +58,10 @@ import {
 } from '../../generated/api/feed/createThread';
 import { Tag } from '../../generated/entity/classification/tag';
 import { SearchIndex, TagLabel } from '../../generated/entity/data/searchIndex';
+import LimitWrapper from '../../hoc/LimitWrapper';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -69,11 +78,7 @@ import {
 } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import {
-  defaultFields,
-  getSearchIndexTabPath,
-} from '../../utils/SearchIndexUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
+import { defaultFields } from '../../utils/SearchIndexUtils';
 import { getTagsWithoutTier, getTierTags } from '../../utils/TableUtils';
 import { createTagObject, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
@@ -82,15 +87,17 @@ import SearchIndexFieldsTab from './SearchIndexFieldsTab/SearchIndexFieldsTab';
 function SearchIndexDetailsPage() {
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: searchIndexFQN, tab: activeTab = EntityTabs.FIELDS } =
-    useParams<{ fqn: string; tab: string }>();
+  const { tab: activeTab = EntityTabs.FIELDS } = useParams<{ tab: string }>();
+  const { fqn: decodedSearchIndexFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const [loading, setLoading] = useState<boolean>(true);
   const [searchIndexDetails, setSearchIndexDetails] = useState<SearchIndex>();
-  const [feedCount, setFeedCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const [isEdit, setIsEdit] = useState(false);
   const [threadLink, setThreadLink] = useState<string>('');
   const [threadType, setThreadType] = useState<ThreadType>(
@@ -104,16 +111,13 @@ function SearchIndexDetailsPage() {
     [searchIndexPermissions]
   );
 
-  const decodedSearchIndexFQN = useMemo(
-    () => getDecodedFqn(searchIndexFQN),
-    [searchIndexFQN]
-  );
-
   const fetchSearchIndexDetails = async () => {
     setLoading(true);
     try {
       const fields = defaultFields;
-      const details = await getSearchIndexDetailsByFQN(searchIndexFQN, fields);
+      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
+        fields,
+      });
 
       setSearchIndexDetails(details);
       addToRecentViewed({
@@ -141,7 +145,7 @@ function SearchIndexDetailsPage() {
   const {
     tier,
     searchIndexTags,
-    owner,
+    owners,
     version,
     followers = [],
     description,
@@ -214,21 +218,34 @@ function SearchIndexDetailsPage() {
     [getEntityPermissionByFqn]
   );
 
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
   const getEntityFeedCount = () =>
-    getFeedCounts(EntityType.SEARCH_INDEX, decodedSearchIndexFQN, setFeedCount);
+    getFeedCounts(
+      EntityType.SEARCH_INDEX,
+      decodedSearchIndexFQN,
+      handleFeedCount
+    );
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
-      history.push(getSearchIndexTabPath(searchIndexFQN, activeKey));
+      history.push(
+        getEntityDetailsPath(
+          EntityType.SEARCH_INDEX,
+          decodedSearchIndexFQN,
+          activeKey
+        )
+      );
     }
   };
-
   const saveUpdatedSearchIndexData = useCallback(
     (updatedData: SearchIndex) => {
-      if (!searchIndexDetails) {
-        return updatedData;
-      }
-      const jsonPatch = compare(searchIndexDetails, updatedData);
+      const jsonPatch = compare(
+        omitBy(searchIndexDetails, isUndefined),
+        updatedData
+      );
 
       return patchSearchIndexDetails(searchIndexId, jsonPatch);
     },
@@ -260,29 +277,23 @@ function SearchIndexDetailsPage() {
           [key]: res[key],
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: SearchIndex['owner']) => {
+    async (newOwners?: SearchIndex['owners']) => {
       if (!searchIndexDetails) {
         return;
       }
       const updatedSearchIndexDetails = {
         ...searchIndexDetails,
-        owner: newOwner
-          ? {
-              ...owner,
-              ...newOwner,
-            }
-          : undefined,
+        owners: newOwners,
       };
-      await onSearchIndexUpdate(updatedSearchIndexDetails, 'owner');
+      await onSearchIndexUpdate(updatedSearchIndexDetails, 'owners');
     },
-    [owner, searchIndexDetails]
+    [owners, searchIndexDetails]
   );
 
   const onDescriptionUpdate = async (updatedHTML: string) => {
@@ -348,70 +359,15 @@ function SearchIndexDetailsPage() {
   const onExtensionUpdate = useCallback(
     async (updatedData: SearchIndex) => {
       searchIndexDetails &&
-        (await saveUpdatedSearchIndexData({
-          ...searchIndexDetails,
-          extension: updatedData.extension,
-        }));
+        (await onSearchIndexUpdate(
+          {
+            ...searchIndexDetails,
+            extension: updatedData.extension,
+          },
+          'extension'
+        ));
     },
     [saveUpdatedSearchIndexData, searchIndexDetails]
-  );
-
-  const fieldsTab = useMemo(
-    () => (
-      <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
-        <Col className="p-t-sm m-l-lg tab-content-height p-r-lg" flex="auto">
-          <div className="d-flex flex-col gap-4">
-            <DescriptionV1
-              description={searchIndexDetails?.description}
-              entityFqn={decodedSearchIndexFQN}
-              entityName={entityName}
-              entityType={EntityType.SEARCH_INDEX}
-              hasEditAccess={editDescriptionPermission}
-              isEdit={isEdit}
-              owner={searchIndexDetails?.owner}
-              showActions={!searchIndexDetails?.deleted}
-              onCancel={onCancel}
-              onDescriptionEdit={onDescriptionEdit}
-              onDescriptionUpdate={onDescriptionUpdate}
-              onThreadLinkSelect={onThreadLinkSelect}
-            />
-            <SearchIndexFieldsTab
-              entityFqn={decodedSearchIndexFQN}
-              fields={searchIndexDetails?.fields ?? []}
-              hasDescriptionEditAccess={editDescriptionPermission}
-              hasTagEditAccess={editTagsPermission}
-              isReadOnly={searchIndexDetails?.deleted}
-              onThreadLinkSelect={onThreadLinkSelect}
-              onUpdate={onFieldsUpdate}
-            />
-          </div>
-        </Col>
-        <Col
-          className="entity-tag-right-panel-container"
-          data-testid="entity-right-panel"
-          flex="320px">
-          <EntityRightPanel
-            dataProducts={searchIndexDetails?.dataProducts ?? []}
-            domain={searchIndexDetails?.domain}
-            editTagPermission={editTagsPermission}
-            entityFQN={decodedSearchIndexFQN}
-            entityId={searchIndexDetails?.id ?? ''}
-            entityType={EntityType.SEARCH_INDEX}
-            selectedTags={searchIndexTags}
-            onTagSelectionChange={handleTagSelection}
-            onThreadLinkSelect={onThreadLinkSelect}
-          />
-        </Col>
-      </Row>
-    ),
-    [
-      isEdit,
-      searchIndexDetails,
-      onDescriptionEdit,
-      onDescriptionUpdate,
-      editTagsPermission,
-      editDescriptionPermission,
-    ]
   );
 
   const tabs = useMemo(() => {
@@ -421,12 +377,81 @@ function SearchIndexDetailsPage() {
           <TabsLabel id={EntityTabs.FIELDS} name={t('label.field-plural')} />
         ),
         key: EntityTabs.FIELDS,
-        children: fieldsTab,
+        children: (
+          <Row gutter={[0, 16]} id="schemaDetails" wrap={false}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
+              <ResizablePanels
+                firstPanel={{
+                  className: 'entity-resizable-panel-container',
+                  children: (
+                    <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
+                      <DescriptionV1
+                        description={searchIndexDetails?.description}
+                        entityFqn={decodedSearchIndexFQN}
+                        entityName={entityName}
+                        entityType={EntityType.SEARCH_INDEX}
+                        hasEditAccess={editDescriptionPermission}
+                        isDescriptionExpanded={isEmpty(
+                          searchIndexDetails?.fields
+                        )}
+                        isEdit={isEdit}
+                        owner={searchIndexDetails?.owners}
+                        showActions={!searchIndexDetails?.deleted}
+                        onCancel={onCancel}
+                        onDescriptionEdit={onDescriptionEdit}
+                        onDescriptionUpdate={onDescriptionUpdate}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                      <SearchIndexFieldsTab
+                        entityFqn={decodedSearchIndexFQN}
+                        fields={searchIndexDetails?.fields ?? []}
+                        hasDescriptionEditAccess={editDescriptionPermission}
+                        hasTagEditAccess={editTagsPermission}
+                        isReadOnly={searchIndexDetails?.deleted}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                        onUpdate={onFieldsUpdate}
+                      />
+                    </div>
+                  ),
+                  minWidth: 800,
+                  flex: 0.87,
+                }}
+                secondPanel={{
+                  children: (
+                    <div data-testid="entity-right-panel">
+                      <EntityRightPanel<EntityType.SEARCH_INDEX>
+                        customProperties={searchIndexDetails}
+                        dataProducts={searchIndexDetails?.dataProducts ?? []}
+                        domain={searchIndexDetails?.domain}
+                        editCustomAttributePermission={
+                          editCustomAttributePermission
+                        }
+                        editTagPermission={editTagsPermission}
+                        entityFQN={decodedSearchIndexFQN}
+                        entityId={searchIndexDetails?.id ?? ''}
+                        entityType={EntityType.SEARCH_INDEX}
+                        selectedTags={searchIndexTags}
+                        viewAllPermission={viewAllPermission}
+                        onExtensionUpdate={onExtensionUpdate}
+                        onTagSelectionChange={handleTagSelection}
+                        onThreadLinkSelect={onThreadLinkSelect}
+                      />
+                    </div>
+                  ),
+                  minWidth: 320,
+                  flex: 0.13,
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
+                }}
+              />
+            </Col>
+          </Row>
+        ),
       },
       {
         label: (
           <TabsLabel
-            count={feedCount}
+            count={feedCount.totalCount}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}
@@ -436,11 +461,14 @@ function SearchIndexDetailsPage() {
         children: (
           <ActivityFeedProvider>
             <ActivityFeedTab
+              refetchFeed
+              entityFeedTotalCount={feedCount.totalCount}
               entityType={EntityType.SEARCH_INDEX}
               fqn={searchIndexDetails?.fullyQualifiedName ?? ''}
-              owner={searchIndexDetails?.owner}
+              owners={searchIndexDetails?.owners}
               onFeedUpdate={getEntityFeedCount}
               onUpdateEntityDetails={fetchSearchIndexDetails}
+              onUpdateFeedCount={handleFeedCount}
             />
           </ActivityFeedProvider>
         ),
@@ -468,12 +496,14 @@ function SearchIndexDetailsPage() {
         label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
         key: EntityTabs.LINEAGE,
         children: (
-          <EntityLineageComponent
-            deleted={searchIndexDetails?.deleted}
-            entity={searchIndexDetails as SourceType}
-            entityType={EntityType.SEARCH_INDEX}
-            hasEditAccess={editLineagePermission}
-          />
+          <LineageProvider>
+            <Lineage
+              deleted={deleted}
+              entity={searchIndexDetails as SourceType}
+              entityType={EntityType.SEARCH_INDEX}
+              hasEditAccess={editLineagePermission}
+            />
+          </LineageProvider>
         ),
       },
       {
@@ -499,30 +529,41 @@ function SearchIndexDetailsPage() {
           />
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable
-            entityType={EntityType.SEARCH_INDEX}
-            handleExtensionUpdate={onExtensionUpdate}
-            hasEditAccess={editCustomAttributePermission}
-            hasPermission={viewAllPermission}
-          />
+        children: searchIndexDetails && (
+          <div className="m-sm">
+            <CustomPropertyTable<EntityType.SEARCH_INDEX>
+              entityDetails={searchIndexDetails}
+              entityType={EntityType.SEARCH_INDEX}
+              handleExtensionUpdate={onExtensionUpdate}
+              hasEditAccess={editCustomAttributePermission}
+              hasPermission={viewAllPermission}
+            />
+          </div>
         ),
       },
     ];
 
     return allTabs;
   }, [
-    fieldsTab,
     activeTab,
     searchIndexDetails,
-    feedCount,
+    feedCount.conversationCount,
+    feedCount.totalTasksCount,
     entityName,
     onExtensionUpdate,
+    handleFeedCount,
     getEntityFeedCount,
     viewSampleDataPermission,
     editLineagePermission,
     editCustomAttributePermission,
     viewAllPermission,
+    isEdit,
+    searchIndexDetails,
+    searchIndexDetails?.extension,
+    onDescriptionEdit,
+    onDescriptionUpdate,
+    editTagsPermission,
+    editDescriptionPermission,
   ]);
 
   const onTierUpdate = useCallback(
@@ -589,7 +630,6 @@ function SearchIndexDetailsPage() {
 
         return { ...prev, followers: newFollowers };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -598,7 +638,7 @@ function SearchIndexDetailsPage() {
         })
       );
     }
-  }, [USERId, searchIndexId, getEntityFeedCount]);
+  }, [USERId, searchIndexId]);
 
   const unFollowSearchIndex = useCallback(async () => {
     try {
@@ -616,7 +656,6 @@ function SearchIndexDetailsPage() {
           ),
         };
       });
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -625,15 +664,14 @@ function SearchIndexDetailsPage() {
         })
       );
     }
-  }, [USERId, searchIndexId, getEntityFeedCount]);
+  }, [USERId, searchIndexId]);
 
   const onUpdateVote = async (data: QueryVote, id: string) => {
     try {
       await updateSearchIndexVotes(id, data);
-      const details = await getSearchIndexDetailsByFQN(
-        searchIndexFQN,
-        defaultFields
-      );
+      const details = await getSearchIndexDetailsByFQN(decodedSearchIndexFQN, {
+        fields: defaultFields,
+      });
       setSearchIndexDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -653,7 +691,11 @@ function SearchIndexDetailsPage() {
   const versionHandler = useCallback(() => {
     version &&
       history.push(
-        getVersionPath(EntityType.SEARCH_INDEX, searchIndexFQN, version + '')
+        getVersionPath(
+          EntityType.SEARCH_INDEX,
+          decodedSearchIndexFQN,
+          version + ''
+        )
       );
   }, [version]);
 
@@ -673,17 +715,17 @@ function SearchIndexDetailsPage() {
   }, []);
 
   useEffect(() => {
-    if (searchIndexFQN) {
-      fetchResourcePermission(searchIndexFQN);
+    if (decodedSearchIndexFQN) {
+      fetchResourcePermission(decodedSearchIndexFQN);
     }
-  }, [searchIndexFQN]);
+  }, [decodedSearchIndexFQN]);
 
   useEffect(() => {
     if (viewPermission) {
       fetchSearchIndexDetails();
       getEntityFeedCount();
     }
-  }, [searchIndexFQN, viewPermission]);
+  }, [decodedSearchIndexFQN, viewPermission]);
 
   const onThreadPanelClose = () => {
     setThreadLink('');
@@ -692,7 +734,6 @@ function SearchIndexDetailsPage() {
   const createThread = async (data: CreateThread) => {
     try {
       await postThread(data);
-      getEntityFeedCount();
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -732,6 +773,7 @@ function SearchIndexDetailsPage() {
             afterDomainUpdateAction={afterDomainUpdateAction}
             dataAsset={searchIndexDetails}
             entityType={EntityType.SEARCH_INDEX}
+            openTaskCount={feedCount.openTaskCount}
             permissions={searchIndexPermissions}
             onDisplayNameUpdate={handleDisplayNameUpdate}
             onFollowClick={handleFollowSearchIndex}
@@ -745,7 +787,6 @@ function SearchIndexDetailsPage() {
 
         <Col span={24}>
           <Tabs
-            destroyInactiveTabPane
             activeKey={activeTab ?? EntityTabs.FIELDS}
             className="entity-details-page-tabs"
             data-testid="tabs"
@@ -753,6 +794,10 @@ function SearchIndexDetailsPage() {
             onChange={handleTabChange}
           />
         </Col>
+
+        <LimitWrapper resource="searchIndex">
+          <></>
+        </LimitWrapper>
 
         {threadLink ? (
           <ActivityThreadPanel

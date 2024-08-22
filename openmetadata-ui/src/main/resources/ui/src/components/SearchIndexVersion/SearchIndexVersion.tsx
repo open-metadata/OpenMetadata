@@ -21,12 +21,9 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../components/Loader/Loader';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
-import VersionTable from '../../components/VersionTable/VersionTable.component';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { getVersionPathWithTab } from '../../constants/constants';
+import { getVersionPath } from '../../constants/constants';
 import { EntityField } from '../../constants/Feeds.constants';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ChangeDescription } from '../../generated/entity/data/searchIndex';
@@ -38,15 +35,17 @@ import {
   getEntityVersionTags,
 } from '../../utils/EntityVersionUtils';
 import { getUpdatedSearchIndexFields } from '../../utils/SearchIndexVersionUtils';
-import { getEncodedFqn } from '../../utils/StringsUtils';
-import DataProductsContainer from '../DataProductsContainer/DataProductsContainer.component';
+import Loader from '../common/Loader/Loader';
+import TabsLabel from '../common/TabsLabel/TabsLabel.component';
+import DataProductsContainer from '../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import VersionTable from '../Entity/VersionTable/VersionTable.component';
 import { SearchIndexVersionProps } from './SearchIndexVersion.interface';
 
 const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
   version,
   currentVersionData,
   isVersionLoading,
-  owner,
+  owners,
   domain,
   dataProducts,
   tier,
@@ -64,8 +63,8 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const encodedFQN = useMemo(
-    () => getEncodedFqn(currentVersionData.fullyQualifiedName ?? ''),
+  const entityFqn = useMemo(
+    () => currentVersionData.fullyQualifiedName ?? '',
     [currentVersionData.fullyQualifiedName ?? '']
   );
 
@@ -74,11 +73,11 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
       () =>
         getCommonExtraInfoForVersionDetails(
           changeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [changeDescription, owner, tier, domain]
+      [changeDescription, owners, tier, domain]
     );
 
   const fields = useMemo(() => {
@@ -87,9 +86,9 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.SEARCH_INDEX,
-        encodedFQN,
+        entityFqn,
         String(version),
         activeKey
       )
@@ -143,7 +142,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
                 <Col span={24}>
                   <VersionTable
                     columnName={getPartialNameFromTableFQN(
-                      encodedFQN,
+                      entityFqn,
                       [FqnPart.SearchIndexField],
                       FQN_SEPARATOR_CHAR
                     )}
@@ -196,7 +195,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
         ),
       },
     ],
-    [description, encodedFQN, fields, currentVersionData, entityPermissions]
+    [description, entityFqn, fields, currentVersionData, entityPermissions]
   );
 
   return (
@@ -235,6 +234,7 @@ const SearchIndexVersion: React.FC<SearchIndexVersionProps> = ({
 
       <EntityVersionTimeLine
         currentVersion={toString(version)}
+        entityType={EntityType.SEARCH_INDEX}
         versionHandler={versionHandler}
         versionList={versionList}
         onBack={backHandler}

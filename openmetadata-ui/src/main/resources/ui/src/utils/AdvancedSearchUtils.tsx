@@ -16,7 +16,11 @@ import { Button, Checkbox, MenuProps, Space, Typography } from 'antd';
 import i18next from 'i18next';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
-import { RenderSettings } from 'react-awesome-query-builder';
+import {
+  AsyncFetchListValues,
+  RenderSettings,
+} from 'react-awesome-query-builder';
+import { ReactComponent as IconDeleteColored } from '../assets/svg/ic-delete-colored.svg';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchDropdownOption } from '../components/SearchDropdown/SearchDropdown.interface';
@@ -24,8 +28,11 @@ import {
   COMMON_DROPDOWN_ITEMS,
   DOMAIN_DATAPRODUCT_DROPDOWN_ITEMS,
   GLOSSARY_ASSETS_DROPDOWN_ITEMS,
+  LINEAGE_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { NOT_INCLUDE_AGGREGATION_QUICK_FILTER } from '../constants/explore.constants';
 import { AdvancedFields } from '../enums/AdvancedSearch.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   Bucket,
@@ -38,16 +45,16 @@ import {
   TableSearchSource,
   TopicSearchSource,
 } from '../interface/search.interface';
+import { getTags } from '../rest/tagAPI';
 import { getCountBadge } from '../utils/CommonUtils';
 import { getEntityName } from './EntityUtils';
 import searchClassBase from './SearchClassBase';
-import SVGIcons, { Icons } from './SvgUtils';
 
 export const getDropDownItems = (index: string) => {
   return searchClassBase.getDropDownItems(index);
 };
 
-export const getAssetsPageQuickFilters = (type: AssetsOfEntity) => {
+export const getAssetsPageQuickFilters = (type?: AssetsOfEntity) => {
   switch (type) {
     case AssetsOfEntity.DOMAIN:
     case AssetsOfEntity.DATA_PRODUCT:
@@ -55,6 +62,8 @@ export const getAssetsPageQuickFilters = (type: AssetsOfEntity) => {
 
     case AssetsOfEntity.GLOSSARY:
       return [...GLOSSARY_ASSETS_DROPDOWN_ITEMS];
+    case AssetsOfEntity.LINEAGE:
+      return [...LINEAGE_DROPDOWN_ITEMS];
     default:
       return [...COMMON_DROPDOWN_ITEMS];
   }
@@ -132,14 +141,13 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     );
   } else if (type === 'delGroup') {
     return (
-      <SVGIcons
+      <Icon
         alt={i18next.t('label.delete-entity', {
           entity: i18next.t('label.group'),
         })}
-        className="action action--DELETE cursor-pointer "
-        height={16}
-        icon={Icons.DELETE_COLORED}
-        width={16}
+        className="action action--DELETE cursor-pointer align-middle"
+        component={IconDeleteColored}
+        style={{ fontSize: '16px' }}
         onClick={props?.onClick as () => void}
       />
     );
@@ -163,7 +171,8 @@ export const generateSearchDropdownLabel = (
   option: SearchDropdownOption,
   checked: boolean,
   searchKey: string,
-  showProfilePicture: boolean
+  showProfilePicture: boolean,
+  hideCounts = false
 ) => {
   return (
     <div className="d-flex justify-between">
@@ -177,7 +186,6 @@ export const generateSearchDropdownLabel = (
           <ProfilePicture
             displayName={option.label}
             name={option.label || ''}
-            textClass="text-xs"
             width="18"
           />
         )}
@@ -192,7 +200,7 @@ export const generateSearchDropdownLabel = (
           />
         </Typography.Text>
       </Space>
-      {getCountBadge(option.count, 'm-r-sm', false)}
+      {!hideCounts && getCountBadge(option.count, 'm-r-sm', false)}
     </div>
   );
 };
@@ -201,7 +209,8 @@ export const getSearchDropdownLabels = (
   optionsArray: SearchDropdownOption[],
   checked: boolean,
   searchKey = '',
-  showProfilePicture = false
+  showProfilePicture = false,
+  hideCounts = false
 ): MenuProps['items'] => {
   if (isArray(optionsArray)) {
     const sortedOptions = optionsArray.sort(
@@ -214,7 +223,8 @@ export const getSearchDropdownLabels = (
         option,
         checked,
         searchKey,
-        showProfilePicture
+        showProfilePicture,
+        hideCounts
       ),
     }));
   } else {
@@ -387,9 +397,31 @@ export const getOptionsFromAggregationBucket = (buckets: Bucket[]) => {
     return [];
   }
 
-  return buckets.map((option) => ({
-    key: option.key,
-    label: option.key,
-    count: option.doc_count ?? 0,
-  }));
+  return buckets
+    .filter(
+      (item) =>
+        !NOT_INCLUDE_AGGREGATION_QUICK_FILTER.includes(item.key as EntityType)
+    )
+    .map((option) => ({
+      key: option.key,
+      label: option.key,
+      count: option.doc_count ?? 0,
+    }));
+};
+
+export const getTierOptions: () => Promise<AsyncFetchListValues> = async () => {
+  try {
+    const { data: tiers } = await getTags({
+      parent: 'Tier',
+    });
+
+    const tierFields = tiers.map((tier) => ({
+      title: tier.fullyQualifiedName, // tier.name,
+      value: tier.fullyQualifiedName,
+    }));
+
+    return tierFields;
+  } catch (error) {
+    return [];
+  }
 };

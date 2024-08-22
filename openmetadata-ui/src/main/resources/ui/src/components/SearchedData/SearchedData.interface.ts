@@ -17,6 +17,8 @@ import { Style } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/type/tagLabel';
 import {
+  APICollectionSearchSource,
+  APIEndpointSearchSource,
   ContainerSearchSource,
   DashboardDataModelSearchSource,
   DashboardSearchSource,
@@ -59,6 +61,8 @@ export type SourceType = (
   | Pick<StoredProcedureSearchSource, Fields | 'storedProcedureCode'>
   | Pick<DashboardSearchSource | MlmodelSearchSource, Fields | 'usageSummary'>
   | Pick<SearchIndexSearchSource, Fields>
+  | Pick<APICollectionSearchSource, Fields>
+  | Pick<APIEndpointSearchSource, Fields>
   | Pick<
       Exclude<
         ExploreSearchSource,
@@ -73,23 +77,24 @@ export type SourceType = (
         | TestCaseSearchSource
         | SearchIndexSearchSource
         | StoredProcedureSearchSource
-        | DashboardDataModelSearchSource
+        | APICollectionSearchSource
+        | APIEndpointSearchSource
       >,
       Fields
     >
 ) & {
-  id: string;
+  id?: string;
   tier?: string | TagLabel;
   tags?: TagLabel[];
   entityType?: string;
   service?: EntityReference;
   style?: Style;
-  owner?: Partial<
+  owners?: Partial<
     Pick<
       EntityReference,
       'name' | 'displayName' | 'id' | 'type' | 'fullyQualifiedName' | 'deleted'
     >
-  >;
+  >[];
 };
 
 export interface SearchedDataProps {

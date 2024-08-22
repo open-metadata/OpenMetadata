@@ -28,7 +28,7 @@ const mockProp: PropertyInputProps = {
   isLoading: false,
 };
 
-jest.mock('../../../components/InlineEdit/InlineEdit.component', () => {
+jest.mock('../InlineEdit/InlineEdit.component', () => {
   return jest.fn().mockImplementation(({ children, onSave }) => (
     <div data-testid="inline-edit">
       {children}

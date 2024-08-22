@@ -84,6 +84,12 @@ openmetadata-ui/src/main/resources/ui/cypress/screenshots
 openmetadata-ui/src/main/resources/ui/cypress/videos
 openmetadata-ui/src/main/resources/ui/cypress/fixtures
 
+# Playwright artifacts
+openmetadata-ui/src/main/resources/ui/playwright/output/
+openmetadata-ui/src/main/resources/ui/playwright/e2e/.cache/
+openmetadata-ui/src/main/resources/ui/playwright/.env
+openmetadata-ui/src/main/resources/ui/playwright/.auth
+
 #UI - Dereferenced Schemas
 openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
 openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
@@ -124,3 +130,6 @@ scan-requirements.txt
 
 # CLI e2e tests
 ingestion/tests/cli_e2e/**/*test.yaml
+
+# GX artifacts
+/ingestion/tests/integration/great_expectations/gx/*

@@ -46,7 +46,12 @@ class Step(ABC, Closeable):
 
     @classmethod
     @abstractmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
         pass
 
     def get_status(self) -> Status:
@@ -73,6 +78,7 @@ class Summary(StepSummary):
         return Summary(
             name=step.name,
             records=len(step.status.records),
+            updated_records=len(step.status.updated_records),
             warnings=len(step.status.warnings),
             errors=len(step.status.failures),
             filtered=len(step.status.filtered),
@@ -81,8 +87,8 @@ class Summary(StepSummary):
 
     def __str__(self):
         return (
-            f"{self.name} Summary: [{self.records} Records, {self.warnings} Warnings,"
-            f" {self.errors} Errors, {self.filtered} Filtered]"
+            f"{self.name} Summary: [{self.records} Records, [{self.updated_records} Updated Records,"
+            f" {self.warnings} Warnings, {self.errors} Errors, {self.filtered} Filtered]"
         )
 
 

@@ -9,7 +9,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies this test case.",
-      "$ref": "../../type/basic.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/testCaseEntityName"
     },
     "description": {
       "description": "Description of the testcase.",
@@ -36,12 +36,17 @@
         "$ref": "../../tests/testCase.json#/definitions/testCaseParameterValue"
       }
     },
-    "owner": {
-      "description": "Owner of this test",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this test",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "computePassedFailedRowCount": {
       "description": "Compute the passed and failed row count for the test case.",
+      "type": "boolean",
+      "default": false
+    },
+    "useDynamicAssertion": {
+      "description": "If the test definition supports it, use dynamic assertion to evaluate the test case.",
       "type": "boolean",
       "default": false
     }

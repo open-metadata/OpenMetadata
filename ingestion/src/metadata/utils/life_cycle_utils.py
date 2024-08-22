@@ -27,12 +27,12 @@ QUERY_TYPES_DICT = {
 }
 
 
-select_pattern = re.compile(r"^\s*(SELECT|SHOW|DESCRIBE)", re.IGNORECASE)
-create_pattern = re.compile(r"^\s*CREATE", re.IGNORECASE)
+select_pattern = re.compile(r".*\s*(SELECT|SHOW|DESCRIBE)", re.IGNORECASE)
+create_pattern = re.compile(r".*\s*CREATE", re.IGNORECASE)
 update_pattern = re.compile(
-    r"^\s*(UPDATE|INSERT|DELETE|MERGE|TRUNCATE_TABLE|ALTER)", re.IGNORECASE
+    r".*\s*(UPDATE|INSERT|DELETE|MERGE|TRUNCATE_TABLE|ALTER)", re.IGNORECASE
 )
-drop_pattern = re.compile(r"^\s*DROP", re.IGNORECASE)
+drop_pattern = re.compile(r".*\s*DROP", re.IGNORECASE)
 
 logger = utils_logger()
 
@@ -58,11 +58,11 @@ def _get_query_type_from_regex(create_query) -> Optional[Any]:
     """
     Method to get the query type from regex
     """
-    if re.match(create_pattern, create_query.query.__root__):
+    if re.match(create_pattern, create_query.query.root):
         return "created"
-    if re.match(update_pattern, create_query.query.__root__):
+    if re.match(update_pattern, create_query.query.root):
         return "updated"
-    if re.match(select_pattern, create_query.query.__root__):
+    if re.match(select_pattern, create_query.query.root):
         return "accessed"
     return None
 

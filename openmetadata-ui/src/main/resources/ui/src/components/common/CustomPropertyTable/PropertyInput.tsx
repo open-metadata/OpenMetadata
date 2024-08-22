@@ -13,7 +13,7 @@
 
 import { Input } from 'antd';
 import React, { ChangeEvent, FC, useState } from 'react';
-import InlineEdit from '../../../components/InlineEdit/InlineEdit.component';
+import InlineEdit from '../InlineEdit/InlineEdit.component';
 
 export interface PropertyInputProps {
   isLoading: boolean;
@@ -47,6 +47,7 @@ export const PropertyInput: FC<PropertyInputProps> = ({
   return (
     <InlineEdit isLoading={isLoading} onCancel={onCancel} onSave={handleSave}>
       <Input
+        allowClear
         className="w-64"
         data-testid="value-input"
         id="value"

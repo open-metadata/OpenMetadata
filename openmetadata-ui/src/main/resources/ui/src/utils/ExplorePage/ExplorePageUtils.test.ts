@@ -17,6 +17,7 @@ import {
   getCombinedFields,
   getCombinedQueryFilterObject,
   getQueryFiltersArray,
+  getQuickFilterWithDeletedFlag,
 } from './ExplorePageUtils';
 import {
   mockAdvancedSearchQueryFilters,
@@ -64,5 +65,106 @@ describe('ExplorePageUtils test', () => {
     );
 
     expect(queryFilterArrayEmpty).toEqual([]);
+  });
+
+  describe('getQuickFilterWithDeletedFlag', () => {
+    const defaultQuery = {
+      query: {
+        bool: {
+          must: [
+            {
+              match: {
+                deleted: true,
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    it('returns default query with added deleted match when quickFilter is an empty string', () => {
+      const result = getQuickFilterWithDeletedFlag('', true);
+
+      expect(result).toEqual(defaultQuery);
+    });
+
+    it('appends deleted match to existing query structure', () => {
+      const quickFilter = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                match: {
+                  active: true,
+                },
+              },
+            ],
+          },
+        },
+      });
+      const result = getQuickFilterWithDeletedFlag(quickFilter, false);
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              {
+                match: {
+                  active: true,
+                },
+              },
+              {
+                match: {
+                  deleted: false,
+                },
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    it('handles malformed JSON strings gracefully by returning default query', () => {
+      const result = getQuickFilterWithDeletedFlag(
+        'this is not a json string',
+        true
+      );
+
+      expect(result).toEqual(defaultQuery);
+    });
+
+    it('returns default query when quickFilter JSON lacks a `query.bool.must` structure', () => {
+      const quickFilter = JSON.stringify({
+        somethingElse: {
+          different: true,
+        },
+      });
+      const result = getQuickFilterWithDeletedFlag(quickFilter, true);
+
+      expect(result).toEqual(defaultQuery);
+    });
+
+    it('returns modified query when quickFilter is correct and showDeleted is false', () => {
+      const quickFilter = JSON.stringify({
+        query: {
+          bool: {
+            must: [
+              {
+                match: {
+                  active: true,
+                },
+              },
+            ],
+          },
+        },
+      });
+      const result = getQuickFilterWithDeletedFlag(quickFilter, false);
+
+      expect(result.query.bool.must).toContainEqual({
+        match: {
+          deleted: false,
+        },
+      });
+    });
   });
 });

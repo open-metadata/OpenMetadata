@@ -14,6 +14,7 @@
 import { fireEvent, render } from '@testing-library/react';
 import React from 'react';
 import { act } from 'react-test-renderer';
+import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { getUsers } from '../../rest/userAPI';
 import { MOCK_USER_DATA } from './MockUserPageData';
@@ -56,13 +57,33 @@ jest.mock('../../rest/miscAPI', () => ({
   ),
 }));
 
+jest.mock('../../utils/GlobalSettingsUtils', () => ({
+  getSettingPageEntityBreadCrumb: jest.fn().mockImplementation(() => [
+    {
+      name: 'setting',
+      url: ROUTES.SETTINGS,
+    },
+  ]),
+}));
+
+jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 jest.mock('../../components/common/Table/Table', () => {
   return jest.fn().mockImplementation(() => <table>mockTable</table>);
 });
 
-jest.mock('../../components/Loader/Loader', () => {
+jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
+
+jest.mock(
+  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>);
+  }
+);
 
 describe('Test UserListPage component', () => {
   it('users api should called on initial load', async () => {

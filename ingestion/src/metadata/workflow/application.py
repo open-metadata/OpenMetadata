@@ -15,9 +15,6 @@ from abc import ABC, abstractmethod
 from typing import List, Optional
 
 from metadata.config.common import WorkflowExecutionError
-from metadata.generated.schema.entity.applications.configuration.applicationConfig import (
-    AppConfig,
-)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -50,20 +47,35 @@ class AppRunner(Step, ABC):
     """Class that knows how to execute the Application logic."""
 
     def __init__(
-        self, config: AppConfig.__fields__["__root__"].type_, metadata: OpenMetadata
+        self,
+        config: OpenMetadataApplicationConfig,
+        metadata: OpenMetadata,
     ):
-        self.config = config
+        self.app_config = config.appConfig.root if config.appConfig else None
+        self.private_config = (
+            config.appPrivateConfig.root if config.appPrivateConfig else None
+        )
         self.metadata = metadata
 
         super().__init__()
+
+    @property
+    def name(self) -> str:
+        return "AppRunner"
 
     @abstractmethod
     def run(self) -> None:
         """App logic to execute"""
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata) -> "Step":
-        return cls(config=config_dict, metadata=metadata)
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "Step":
+        config = OpenMetadataApplicationConfig.model_validate(config_dict)
+        return cls(config=config, metadata=metadata)
 
 
 class ApplicationWorkflow(BaseWorkflow, ABC):
@@ -73,10 +85,9 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
     runner: Optional[AppRunner]
 
     def __init__(self, config_dict: dict):
-
         self.runner = None  # Will be passed in post-init
         # TODO: Create a parse_gracefully method
-        self.config = OpenMetadataApplicationConfig.parse_obj(config_dict)
+        self.config = OpenMetadataApplicationConfig.model_validate(config_dict)
 
         # Applications are associated to the OpenMetadata Service
         self.service_type: ServiceType = ServiceType.Metadata
@@ -110,9 +121,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
 
         try:
             self.runner = runner_class(
-                config=self.config.appConfig.__root__
-                if self.config.appConfig
-                else None,
+                config=self.config,
                 metadata=self.metadata,
             )
         except Exception as exc:
@@ -129,7 +138,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
         return self.runner.get_status().calculate_success()
 
     def get_failures(self) -> List[StackTraceError]:
-        return self.source.get_status().failures
+        return self.workflow_steps()[0].get_status().failures
 
     def workflow_steps(self) -> List[Step]:
         return [self.runner]
@@ -141,7 +150,7 @@ class ApplicationWorkflow(BaseWorkflow, ABC):
             and self.calculate_success() < SUCCESS_THRESHOLD_VALUE
         ):
             raise WorkflowExecutionError(
-                f"{self.source.name} reported errors: {Summary.from_step(self.source)}"
+                f"{self.runner.name} reported errors: {Summary.from_step(self.runner)}"
             )
 
         if raise_warnings and self.runner.get_status().warnings:

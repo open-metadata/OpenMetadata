@@ -17,7 +17,6 @@ import { MemoryRouter } from 'react-router-dom';
 import TableDataCardV2 from './TableDataCardV2';
 
 jest.mock('../../../utils/TableUtils', () => ({
-  getEntityLink: jest.fn().mockReturnValue('EntityLink'),
   getServiceIcon: jest.fn(),
   getEntityIcon: jest.fn().mockReturnValue(<p>icon</p>),
   getUsagePercentile: jest
@@ -34,7 +33,7 @@ jest.mock('../../../constants/constants', () => ({
     .mockImplementation((path) => `/dataset/${path}`),
 }));
 
-jest.mock('../../TableDataCardBody/TableDataCardBody', () => {
+jest.mock('../../Database/TableDataCardBody/TableDataCardBody', () => {
   return jest.fn().mockReturnValue(<p>TableDataCardBody</p>);
 });
 

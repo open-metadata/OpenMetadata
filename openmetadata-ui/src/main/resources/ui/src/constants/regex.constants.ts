@@ -24,13 +24,15 @@ export const FQN_REGEX = new RegExp(
  * strings that contain a combination of letters, alphanumeric characters, hyphens,
  * spaces, periods, single quotes, ampersands, and parentheses, with support for Unicode characters.
  */
-export const ENTITY_NAME_REGEX = /^[\p{L}\p{M}\w\- .'&()%]+$/u;
+export const ENTITY_NAME_REGEX = /^((?!::).)*$/;
+
+export const TAG_NAME_REGEX = /^[\p{L}\p{M}\w\- .&()]+$/u;
 
 export const delimiterRegex = /[\\[\]\\()\\;\\,\\|\\{}\\``\\/\\<>\\^]/g;
 export const nameWithSpace = /\s/g;
 
 export const passwordRegex =
-  /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,16}$/g;
+  /^(?=.*\d)(?=.*[A-Z])(?=.*[a-z])(?=.*[^\w\d\s:])([^\s]){8,56}$/g;
 
 export const allowedNameRegEx = /[`!@#$%^&*()+=[\]{};:"\\|,.<>/?~]/;
 
@@ -48,3 +50,7 @@ export const VALID_OBJECT_KEY_REGEX = /^[_$a-zA-Z][_$a-zA-Z0-9]*$/;
 export const HEX_COLOR_CODE_REGEX = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
 
 export const TASK_SANITIZE_VALUE_REGEX = /^"|"$/g;
+
+export const TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX = /^\d{13}$/;
+
+export const ALL_ASTERISKS_REGEX = /^\*+$/;

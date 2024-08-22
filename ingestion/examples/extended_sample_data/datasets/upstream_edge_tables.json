@@ -1,0 +1,1324 @@
+{
+    "tables": [
+        {
+            "name": "dim_address_end",
+            "description": "This dimension table contains the billing and shipping addresses of customers. You can join this table with the sales table to generate lists of the billing and shipping addresses. Customers can enter their addresses more than once, so the same address can appear in more than one row in this table. This table contains one row per customer address.",
+            "version": 0.1,
+            "updatedAt": 1638354087391,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/3cda8ecb-f4c6-4ed4-8506-abe965b54b86",
+            "tableType": "Regular",
+            "retentionPeriod": "10D",
+            "columns": [
+                {
+                    "name": "address_id",
+                    "dataType": "NUMERIC",
+                    "dataTypeDisplay": "numeric",
+                    "description": "Unique identifier for the address.",
+                    "tags": [],
+                    "ordinalPosition": 1
+                },
+                {
+                    "name": "shop_id",
+                    "dataType": "NUMERIC",
+                    "dataTypeDisplay": "numeric",
+                    "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
+                    "tags": [],
+                    "ordinalPosition": 2
+                },
+                {
+                    "name": "first_name",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "First name of the customer.",
+                    "tags": [],
+                    "ordinalPosition": 3
+                },
+                {
+                    "name": "last_name",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "Last name of the customer.",
+                    "tags": [],
+                    "ordinalPosition": 4
+                },
+                {
+                    "name": "address1",
+                    "dataType": "VARCHAR",
+                    "dataLength": 500,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The first address line. For example, 150 Elgin St.",
+                    "tags": [],
+                    "ordinalPosition": 5
+                },
+                {
+                    "name": "address2",
+                    "dataType": "VARCHAR",
+                    "dataLength": 500,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The second address line. For example, Suite 800.",
+                    "tags": [],
+                    "ordinalPosition": 6
+                },
+                {
+                    "name": "company",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The name of the customer's business, if one exists.",
+                    "tags": [],
+                    "ordinalPosition": 7
+                },
+                {
+                    "name": "city",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The name of the city. For example, Palo Alto.",
+                    "tags": [],
+                    "ordinalPosition": 8
+                },
+                {
+                    "name": "region",
+                    "dataType": "VARCHAR",
+                    "dataLength": 512,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.",
+                    "tags": [],
+                    "ordinalPosition": 9
+                },
+                {
+                    "name": "zip",
+                    "dataType": "VARCHAR",
+                    "dataLength": 10,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The ZIP or postal code. For example, 90210.",
+                    "tags": [],
+                    "ordinalPosition": 10,
+                    "customMetrics": [
+                        {
+                            "name": "CountOfLAZipCode",
+                            "columnName": "zip",
+                            "expression": "SELECT COUNT(zip) FROM dim_address WHERE zip LIKE '900%'"
+                        },
+                        {
+                            "name": "CountOfOrangeCountyZipCode",
+                            "columnName": "zip",
+                            "expression": "SELECT COUNT(zip) FROM dim_address WHERE zip LIKE '92%'"
+                        }
+                    ]
+                },
+                {
+                    "name": "country",
+                    "dataType": "VARCHAR",
+                    "dataLength": 50,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The full name of the country. For example, Canada.",
+                    "tags": [],
+                    "ordinalPosition": 11
+                },
+                {
+                    "name": "phone",
+                    "dataType": "VARCHAR",
+                    "dataLength": 15,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The phone number of the customer.",
+                    "tags": [],
+                    "ordinalPosition": 12,
+                    "customMetrics": [
+                        {
+                            "name": "CountOfNonUsPhoneNumbers",
+                            "columnName": "phone",
+                            "expression": "SELECT COUNT(phone) FROM dim_address WHERE phone NOT LIKE '1%'"
+                        }
+                    ]
+                }
+            ],
+            "tableConstraints": [
+                {
+                    "constraintType": "PRIMARY_KEY",
+                    "columns": [
+                        "address_id",
+                        "shop_id"
+                    ]
+                }
+            ],
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "usageSummary": {
+                "dailyStats": {
+                    "count": 73,
+                    "percentileRank": 45
+                },
+                "weeklyStats": {
+                    "count": 73,
+                    "percentileRank": 45
+                },
+                "monthlyStats": {
+                    "count": 67,
+                    "percentileRank": 45
+                },
+                "date": "2021-12-01"
+            },
+            "followers": [],
+            "joins": {
+                "startDate": "2021-11-01",
+                "dayCount": 30,
+                "columnJoins": [
+                    {
+                        "columnName": "shop_id",
+                        "joinedWith": [
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.\"dim.shop\".shop_id",
+                                "joinCount": 35
+                            }
+                        ]
+                    },
+                    {
+                        "columnName": "address_id",
+                        "joinedWith": [
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
+                                "joinCount": 49
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
+                                "joinCount": 49
+                            }
+                        ]
+                    }
+                ]
+            },
+            "sampleData": {
+                "columns": [
+                    "address_id",
+                    "shop_id",
+                    "first_name",
+                    "last_name",
+                    "address1",
+                    "address2",
+                    "company",
+                    "city",
+                    "region",
+                    "zip",
+                    "country",
+                    "phone"
+                ],
+                "rows": [
+                    [
+                        "bc35100e-2da5-48bb-bfc8-667dafe66532",
+                        "70424951-bc97-4b20-9ce7-be37c4619361",
+                        "Zachary",
+                        "Brett",
+                        "9054 Maria Circle Apt. 296",
+                        "48348 Victoria Valleys Suite 144",
+                        "Robinson Inc",
+                        "Stephanieport",
+                        "048 Moore Turnpike Apt. 061",
+                        "30839",
+                        "Latvia",
+                        "(381)575-6692"
+                    ],
+                    [
+                        "d9a5b1a0-bf92-4b71-884d-9818308d040d",
+                        "ffdc81e4-b0dc-47b2-8240-8540ba6c3029",
+                        "Melissa",
+                        "Amy",
+                        "6212 William Plaza Suite 362",
+                        "741 Eric Bypass",
+                        "Todd, Henderson and Jenkins",
+                        "Petersonstad",
+                        "363 Gary Mills",
+                        "91794",
+                        "Lesotho",
+                        "828-855-9883"
+                    ],
+                    [
+                        "facf92d7-05ea-43d2-ba2a-067d63dee60c",
+                        "a8d30187-1409-4606-9259-322a4f6caf74",
+                        "Amber",
+                        "Albert",
+                        "3170 Warren Orchard Apt. 834",
+                        "3204 Brewer Shoal Suite 324",
+                        "Davila-Snyder",
+                        "Nicoleland",
+                        "023 Paul Course",
+                        "14086",
+                        "Sweden",
+                        "438-959-1151"
+                    ],
+                    [
+                        "bab9a506-e23d-4c53-9402-d070e7704376",
+                        "e02e1fac-b650-4db8-8c9d-5fa5edf5d863",
+                        "Heidi",
+                        "Kelly",
+                        "30942 Gonzalez Stravenue",
+                        "3158 Watts Green",
+                        "Moore PLC",
+                        "West Erica",
+                        "6294 Elliott Ville",
+                        "07418",
+                        "Saint Martin",
+                        "(830)112-9566x8681"
+                    ],
+                    [
+                        "67ff12ae-5d40-4795-9a82-3afa62a4aea1",
+                        "bf45dc22-8d23-49d9-9d87-7b4bd2dd1762",
+                        "Adam",
+                        "Anna",
+                        "986 Walker Unions",
+                        "5798 Ross Spur Apt. 510",
+                        "Schultz, Allen and Price",
+                        "West Brandyton",
+                        "07379 Alejandra Manors",
+                        "09192",
+                        "Cambodia",
+                        "(859)222-9872x9188"
+                    ],
+                    [
+                        "97831db3-23df-424e-b2e3-19f196874002",
+                        "cfc3c305-748b-4992-9fef-ddd0aa7ce927",
+                        "Tracey",
+                        "Kaitlin",
+                        "1810 Fletcher Islands",
+                        "6988 Steven Vista Apt. 738",
+                        "Patel-Evans",
+                        "Powellbury",
+                        "8856 Lambert Forest Apt. 010",
+                        "49826",
+                        "Turks and Caicos Islands",
+                        "195.384.1264x84605"
+                    ],
+                    [
+                        "a405990b-732f-431e-b3ad-0ce05a484671",
+                        "f53ff51f-3365-4029-ae67-a679e1dca626",
+                        "Carmen",
+                        "Jessica",
+                        "58361 Audrey Parks Apt. 128",
+                        "864 Phillips Squares",
+                        "Perez Inc",
+                        "Laurieshire",
+                        "407 Nicole Greens",
+                        "06175",
+                        "Kenya",
+                        "(565)853-4978x18062"
+                    ],
+                    [
+                        "d3be5a1e-10f0-46e6-8033-d15766e73047",
+                        "ffeea1b4-eb28-452a-8b06-2408e36b1a94",
+                        "Melinda",
+                        "Paul",
+                        "09590 Gonzales Camp Apt. 092",
+                        "146 Carlson Manor Suite 961",
+                        "Mills Ltd",
+                        "South Wendy",
+                        "6273 Victor Springs Apt. 655",
+                        "68154",
+                        "United Arab Emirates",
+                        "(209)678-7748x53000"
+                    ],
+                    [
+                        "52636d10-1505-4f0a-894a-52a194cdba26",
+                        "8c021bf4-f33a-4d41-b55f-78d801a45d5e",
+                        "Jacob",
+                        "Jamie",
+                        "0952 Colon Greens",
+                        "00913 Natalie Tunnel Apt. 769",
+                        "Sullivan Group",
+                        "Longbury",
+                        "03714 April Landing",
+                        "74874",
+                        "Turkey",
+                        "(038)859-4310x9693"
+                    ],
+                    [
+                        "b2a1279b-392f-404f-88e0-f755d2bd3c14",
+                        "2351209a-94b2-4b20-a517-1eef888c0d5b",
+                        "Allen",
+                        "Dean",
+                        "8492 Smith Plains Apt. 986",
+                        "420 Hodges Inlet Suite 088",
+                        "Thornton-Mcknight",
+                        "Gregoryborough",
+                        "56904 Tony Branch Suite 945",
+                        "88544",
+                        "Mauritania",
+                        "001-198-032-8011x00683"
+                    ],
+                    [
+                        "3a7cc826-4e7d-46de-a13d-895d5319a881",
+                        "1a03bf40-3f40-460e-b170-2fadea8bdbee",
+                        "Jill",
+                        "Diana",
+                        "092 Jose Unions",
+                        "36896 Serrano Plaza",
+                        "Wilson and Sons",
+                        "North Justinchester",
+                        "750 Contreras Bridge Apt. 456",
+                        "77859",
+                        "Kazakhstan",
+                        "311.331.9899x4838"
+                    ],
+                    [
+                        "d4891b70-a002-41a9-a072-a1d3ef99c4d9",
+                        "e49ad3aa-2c30-4148-81f8-4e2980467d1c",
+                        "Jonathan",
+                        "Lauren",
+                        "4416 Christina Ville",
+                        "44992 Katie Inlet Suite 965",
+                        "Bennett, Hicks and Davidson",
+                        "Lake Kendra",
+                        "67281 Lee Drive Suite 987",
+                        "27227",
+                        "Jersey",
+                        "950.930.9189x591"
+                    ],
+                    [
+                        "fbc3eeda-75b3-41f6-91a3-d671e3cc17d6",
+                        "c3c73e91-020d-4fee-a1a9-e9781d684d9a",
+                        "Gary",
+                        "Jonathan",
+                        "71309 Theresa Trail",
+                        "29432 Brenda Overpass",
+                        "Mccarthy-Huang",
+                        "Lake Amanda",
+                        "000 William Ranch",
+                        "93218",
+                        "Kazakhstan",
+                        "001-109-449-4210x33965"
+                    ],
+                    [
+                        "684360f0-48c0-4bf7-9476-6231b7861c0b",
+                        "18d728f1-8ec6-4e94-9725-fcd2ed719723",
+                        "Karen",
+                        "Paul",
+                        "2867 Hunter Center Apt. 091",
+                        "46974 Peter Drives Suite 073",
+                        "Stephens, Wall and Johnson",
+                        "Mcdowellfurt",
+                        "33302 Mcintosh Orchard Apt. 884",
+                        "17017",
+                        "Gambia",
+                        "484-039-6675"
+                    ],
+                    [
+                        "ec768cba-fc73-484a-bfc2-792e1bf29342",
+                        "9c85fb32-1109-4409-a87d-75112fc3708f",
+                        "Edgar",
+                        "Hailey",
+                        "70196 Moore Canyon",
+                        "885 Jimenez Parkways",
+                        "Gomez Group",
+                        "Marktown",
+                        "44624 Lawrence Springs Apt. 502",
+                        "71815",
+                        "Hungary",
+                        "(777)526-6200"
+                    ],
+                    [
+                        "128eae16-fc8d-4d0e-9f07-78b6e4825709",
+                        "530c610e-ab24-4f28-8d7f-684bb05817c8",
+                        "Don",
+                        "Edgar",
+                        "040 Jessica Mews Apt. 149",
+                        "3454 Lopez Neck",
+                        "Clark, Simon and Griffith",
+                        "Rickborough",
+                        "549 Jeffrey Stream",
+                        "71662",
+                        "Korea",
+                        "4911281340"
+                    ],
+                    [
+                        "341c94b3-cac4-46f0-bcba-33ccb52eacec",
+                        "9f80457c-dd0e-4c4d-ab1f-cf76f734ad1c",
+                        "Kevin",
+                        "Kimberly",
+                        "29504 Moore Grove",
+                        "0079 Williams Pine Suite 274",
+                        "Gregory-Mcgrath",
+                        "Cantufort",
+                        "5849 Paige River",
+                        "72224",
+                        "Zambia",
+                        "(112)074-5447"
+                    ],
+                    [
+                        "d05acf85-8f05-40e8-bd8b-00a751ed4b16",
+                        "a8214997-3076-4732-be67-66e0169f894d",
+                        "Candace",
+                        "Donna",
+                        "1110 Powers Neck Suite 716",
+                        "50101 Pamela Orchard Apt. 576",
+                        "Brown, Hunter and Adkins",
+                        "Adrianaville",
+                        "4326 Orr Extensions",
+                        "94064",
+                        "Haiti",
+                        "001-843-960-7631x732"
+                    ],
+                    [
+                        "44886c82-0e01-4b65-bf46-235d4d1e4e17",
+                        "c0055521-b8d3-4ad8-86c3-cf310b5719c9",
+                        "Holly",
+                        "Tony",
+                        "562 Shaw Burgs",
+                        "568 Reed Vista",
+                        "Ramirez Group",
+                        "West Aaronfurt",
+                        "6008 Brianna Lock Suite 088",
+                        "46723",
+                        "Uganda",
+                        "343.960.6582"
+                    ],
+                    [
+                        "3ba1f5ff-fcd9-4315-8e72-14b716496a3c",
+                        "3dc80460-e52c-4e94-a3dc-e9234f73e016",
+                        "Melissa",
+                        "Jessica",
+                        "4076 Lisa Unions",
+                        "46781 Brittany Route",
+                        "Williams Inc",
+                        "Harmonmouth",
+                        "4349 Hughes Grove Suite 834",
+                        "94032",
+                        "South Georgia and the South Sandwich Islands",
+                        "195-206-6214x45451"
+                    ],
+                    [
+                        "f757641c-963a-4696-9314-7f19f2df79fa",
+                        "8d3afcc6-3662-4d23-899a-b9c37108f522",
+                        "Larry",
+                        "Brian",
+                        "1698 Brittany Ridges",
+                        "00442 Terry Via",
+                        "Gallagher Group",
+                        "Smithton",
+                        "4835 Long Hills",
+                        "96036",
+                        "Japan",
+                        "(592)844-2557x28538"
+                    ],
+                    [
+                        "a2c68229-75c5-43a5-b18b-8a8b504d4f9d",
+                        "d78f0b90-d3a9-4568-b7de-8bb45423b25b",
+                        "Gary",
+                        "Luis",
+                        "909 Carolyn Highway Apt. 717",
+                        "549 Steve Walks Suite 058",
+                        "Serrano, Harrison and Beard",
+                        "South Kimberly",
+                        "18324 Briana Point",
+                        "36285",
+                        "Macao",
+                        "392.711.2369x14285"
+                    ],
+                    [
+                        "2a89cec7-1cf5-4c9c-ad79-745a1984e36f",
+                        "4035c32c-7a03-409f-a8f4-bb3ff3d7c91d",
+                        "Brittany",
+                        "Brenda",
+                        "2691 Brandon Plaza",
+                        "13209 Alexis Cove Suite 182",
+                        "Durham LLC",
+                        "New Christyton",
+                        "080 Peters Track",
+                        "97880",
+                        "Gabon",
+                        "+1-604-197-7676x09064"
+                    ],
+                    [
+                        "a391bf33-6665-4caa-a2d7-de3132bf60d3",
+                        "88156561-0c36-4053-a1d7-b58fac121003",
+                        "Debbie",
+                        "Sharon",
+                        "600 Keller Trafficway",
+                        "18809 Peter Village",
+                        "Vazquez, Allen and Washington",
+                        "Singhmouth",
+                        "5628 Terrence Locks Suite 798",
+                        "20287",
+                        "Anguilla",
+                        "001-151-880-6914x699"
+                    ],
+                    [
+                        "19bcef03-483c-4225-bb61-aafe48a2f981",
+                        "8a35b2d9-8f65-484f-b735-8eb42c2bbfec",
+                        "Mark",
+                        "Ashley",
+                        "3124 Kenneth Mountains Suite 321",
+                        "111 Carter Drives Apt. 942",
+                        "Hill PLC",
+                        "Port Shannonville",
+                        "6035 Calderon Ramp",
+                        "25829",
+                        "Angola",
+                        "441.553.9413x20451"
+                    ]
+                ]
+            },
+            "tableProfile": {
+                "timestamp": 1634366539,
+                "columnCount": 12,
+                "rowCount": 725,
+                "customMetrics": [
+                    {
+                        "name": "CountOfUSAddress",
+                        "value": 15467
+                    },
+                    {
+                        "name": "CountOfFRAddress",
+                        "value": 1467
+                    }
+                ],
+                "columnProfile": [
+                    {
+                        "name": "address_id",
+                        "uniqueCount": 9,
+                        "uniqueProportion": 0.52805369,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "shop_id",
+                        "uniqueCount": 29,
+                        "uniqueProportion": 0.2290940013,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "first_name",
+                        "uniqueCount": 13,
+                        "uniqueProportion": 0.1327792,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "last_name",
+                        "uniqueCount": 23,
+                        "uniqueProportion": 0.177126,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "address1",
+                        "uniqueCount": 53,
+                        "uniqueProportion": 0.0396391,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "address2",
+                        "uniqueCount": 76,
+                        "uniqueProportion": 0.0690369,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "company",
+                        "uniqueCount": 23,
+                        "uniqueProportion": 0.1210963,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "city",
+                        "uniqueCount": 6,
+                        "uniqueProportion": 0.024072,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "region",
+                        "uniqueCount": 3,
+                        "uniqueProportion": 0.1478114,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "zip",
+                        "uniqueCount": 11,
+                        "uniqueProportion": 0.1383472,
+                        "distinctCount": 0,
+                        "distinctProportion": 0,
+                        "customMetrics": [
+                            {
+                                "name": "CountOfLAZipCode",
+                                "value": 3456
+                            },
+                            {
+                                "name": "CountOfOrangeCountyZipCode",
+                                "value": 2345
+                            }
+                        ]
+                    },
+                    {
+                        "name": "country",
+                        "uniqueCount": 13,
+                        "uniqueProportion": 0.1601013,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "phone",
+                        "uniqueCount": 8,
+                        "uniqueProportion": 0.1297079,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    }
+                ]
+            },
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            },
+            "customMetrics": [
+                {
+                    "name": "CountOfUSAddress",
+                    "expression": "SELECT COUNT(address_id) FROM dim_address WHERE country = 'US'"
+                },
+                {
+                    "name": "CountOfFRAddress",
+                    "expression": "SELECT COUNT(address_id) FROM dim_address WHERE country = 'FR'"
+                }
+            ]
+        },
+        {
+            "id": "1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+            "name": "dim_address_clean_end",
+            "description": "Created from dim_address after a small cleanup.",
+            "version": 0.1,
+            "updatedAt": 1638354087591,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/1cda9ecb-f4c6-4ed4-8506-abe965b64c87",
+            "tableType": "Regular",
+            "columns": [
+                {
+                    "name": "address_id",
+                    "dataType": "NUMERIC",
+                    "dataTypeDisplay": "numeric",
+                    "description": "Unique identifier for the address.",
+                    "tags": [],
+                    "ordinalPosition": 1
+                },
+                {
+                    "name": "shop_id",
+                    "dataType": "NUMERIC",
+                    "dataTypeDisplay": "numeric",
+                    "description": "The ID of the store. This column is a foreign key reference to the shop_id column in the dim_shop table.",
+                    "tags": [],
+                    "ordinalPosition": 2
+                },
+                {
+                    "name": "first_name",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "First name of the customer.",
+                    "tags": [],
+                    "ordinalPosition": 3
+                },
+                {
+                    "name": "last_name",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "Last name of the customer.",
+                    "tags": [],
+                    "ordinalPosition": 4
+                },
+                {
+                    "name": "address",
+                    "dataType": "VARCHAR",
+                    "dataLength": 500,
+                    "dataTypeDisplay": "varchar",
+                    "description": "Clean address",
+                    "tags": [],
+                    "ordinalPosition": 5
+                },
+                {
+                    "name": "company",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The name of the customer's business, if one exists.",
+                    "tags": [],
+                    "ordinalPosition": 7
+                },
+                {
+                    "name": "city",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The name of the city. For example, Palo Alto.",
+                    "tags": [],
+                    "ordinalPosition": 8
+                },
+                {
+                    "name": "region",
+                    "dataType": "VARCHAR",
+                    "dataLength": 512,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The name of the region, such as a province or state, where the customer is located. For example, Ontario or New York. This column is the same as CustomerAddress.province in the Admin API.",
+                    "tags": [],
+                    "ordinalPosition": 9
+                },
+                {
+                    "name": "zip",
+                    "dataType": "VARCHAR",
+                    "dataLength": 10,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The ZIP or postal code. For example, 90210.",
+                    "tags": [],
+                    "ordinalPosition": 10
+                },
+                {
+                    "name": "country",
+                    "dataType": "VARCHAR",
+                    "dataLength": 50,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The full name of the country. For example, Canada.",
+                    "tags": [],
+                    "ordinalPosition": 11
+                },
+                {
+                    "name": "phone",
+                    "dataType": "VARCHAR",
+                    "dataLength": 15,
+                    "dataTypeDisplay": "varchar",
+                    "description": "The phone number of the customer.",
+                    "tags": [],
+                    "ordinalPosition": 12
+                }
+            ],
+            "tableConstraints": [
+                {
+                    "constraintType": "PRIMARY_KEY",
+                    "columns": [
+                        "address_id",
+                        "shop_id"
+                    ]
+                }
+            ],
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "usageSummary": {
+                "dailyStats": {
+                    "count": 87,
+                    "percentileRank": 45
+                },
+                "weeklyStats": {
+                    "count": 87,
+                    "percentileRank": 45
+                },
+                "monthlyStats": {
+                    "count": 87,
+                    "percentileRank": 45
+                },
+                "date": "2021-12-01"
+            },
+            "followers": [],
+            "sampleData": {
+                "columns": [
+                    "address_id",
+                    "shop_id",
+                    "first_name",
+                    "last_name",
+                    "address",
+                    "company",
+                    "city",
+                    "region",
+                    "zip",
+                    "country",
+                    "phone"
+                ],
+                "rows": [
+                    [
+                        "bc35100e-2da5-48bb-bfc8-667dafe66532",
+                        "70424951-bc97-4b20-9ce7-be37c4619361",
+                        "Zachary",
+                        "Brett",
+                        "9054 Maria Circle Apt. 296",
+                        "Robinson Inc",
+                        "Stephanieport",
+                        "048 Moore Turnpike Apt. 061",
+                        "30839",
+                        "Latvia",
+                        "(381)575-6692"
+                    ],
+                    [
+                        "d9a5b1a0-bf92-4b71-884d-9818308d040d",
+                        "ffdc81e4-b0dc-47b2-8240-8540ba6c3029",
+                        "Melissa",
+                        "Amy",
+                        "6212 William Plaza Suite 362",
+                        "Todd, Henderson and Jenkins",
+                        "Petersonstad",
+                        "363 Gary Mills",
+                        "91794",
+                        "Lesotho",
+                        "828-855-9883"
+                    ],
+                    [
+                        "facf92d7-05ea-43d2-ba2a-067d63dee60c",
+                        "a8d30187-1409-4606-9259-322a4f6caf74",
+                        "Amber",
+                        "Albert",
+                        "3170 Warren Orchard Apt. 834",
+                        "Davila-Snyder",
+                        "Nicoleland",
+                        "023 Paul Course",
+                        "14086",
+                        "Sweden",
+                        "438-959-1151"
+                    ],
+                    [
+                        "bab9a506-e23d-4c53-9402-d070e7704376",
+                        "e02e1fac-b650-4db8-8c9d-5fa5edf5d863",
+                        "Heidi",
+                        "Kelly",
+                        "30942 Gonzalez Stravenue",
+                        "Moore PLC",
+                        "West Erica",
+                        "6294 Elliott Ville",
+                        "07418",
+                        "Saint Martin",
+                        "(830)112-9566x8681"
+                    ],
+                    [
+                        "67ff12ae-5d40-4795-9a82-3afa62a4aea1",
+                        "bf45dc22-8d23-49d9-9d87-7b4bd2dd1762",
+                        "Adam",
+                        "Anna",
+                        "986 Walker Unions",
+                        "Schultz, Allen and Price",
+                        "West Brandyton",
+                        "07379 Alejandra Manors",
+                        "09192",
+                        "Cambodia",
+                        "(859)222-9872x9188"
+                    ],
+                    [
+                        "97831db3-23df-424e-b2e3-19f196874002",
+                        "cfc3c305-748b-4992-9fef-ddd0aa7ce927",
+                        "Tracey",
+                        "Kaitlin",
+                        "1810 Fletcher Islands",
+                        "Patel-Evans",
+                        "Powellbury",
+                        "8856 Lambert Forest Apt. 010",
+                        "49826",
+                        "Turks and Caicos Islands",
+                        "195.384.1264x84605"
+                    ],
+                    [
+                        "a405990b-732f-431e-b3ad-0ce05a484671",
+                        "f53ff51f-3365-4029-ae67-a679e1dca626",
+                        "Carmen",
+                        "Jessica",
+                        "58361 Audrey Parks Apt. 128",
+                        "Perez Inc",
+                        "Laurieshire",
+                        "407 Nicole Greens",
+                        "06175",
+                        "Kenya",
+                        "(565)853-4978x18062"
+                    ],
+                    [
+                        "d3be5a1e-10f0-46e6-8033-d15766e73047",
+                        "ffeea1b4-eb28-452a-8b06-2408e36b1a94",
+                        "Melinda",
+                        "Paul",
+                        "09590 Gonzales Camp Apt. 092",
+                        "Mills Ltd",
+                        "South Wendy",
+                        "6273 Victor Springs Apt. 655",
+                        "68154",
+                        "United Arab Emirates",
+                        "(209)678-7748x53000"
+                    ],
+                    [
+                        "52636d10-1505-4f0a-894a-52a194cdba26",
+                        "8c021bf4-f33a-4d41-b55f-78d801a45d5e",
+                        "Jacob",
+                        "Jamie",
+                        "0952 Colon Greens",
+                        "Sullivan Group",
+                        "Longbury",
+                        "03714 April Landing",
+                        "74874",
+                        "Turkey",
+                        "(038)859-4310x9693"
+                    ],
+                    [
+                        "b2a1279b-392f-404f-88e0-f755d2bd3c14",
+                        "2351209a-94b2-4b20-a517-1eef888c0d5b",
+                        "Allen",
+                        "Dean",
+                        "8492 Smith Plains Apt. 986",
+                        "Thornton-Mcknight",
+                        "Gregoryborough",
+                        "56904 Tony Branch Suite 945",
+                        "88544",
+                        "Mauritania",
+                        "001-198-032-8011x00683"
+                    ],
+                    [
+                        "3a7cc826-4e7d-46de-a13d-895d5319a881",
+                        "1a03bf40-3f40-460e-b170-2fadea8bdbee",
+                        "Jill",
+                        "Diana",
+                        "092 Jose Unions",
+                        "Wilson and Sons",
+                        "North Justinchester",
+                        "750 Contreras Bridge Apt. 456",
+                        "77859",
+                        "Kazakhstan",
+                        "311.331.9899x4838"
+                    ],
+                    [
+                        "d4891b70-a002-41a9-a072-a1d3ef99c4d9",
+                        "e49ad3aa-2c30-4148-81f8-4e2980467d1c",
+                        "Jonathan",
+                        "Lauren",
+                        "4416 Christina Ville",
+                        "Bennett, Hicks and Davidson",
+                        "Lake Kendra",
+                        "67281 Lee Drive Suite 987",
+                        "27227",
+                        "Jersey",
+                        "950.930.9189x591"
+                    ],
+                    [
+                        "fbc3eeda-75b3-41f6-91a3-d671e3cc17d6",
+                        "c3c73e91-020d-4fee-a1a9-e9781d684d9a",
+                        "Gary",
+                        "Jonathan",
+                        "71309 Theresa Trail",
+                        "Mccarthy-Huang",
+                        "Lake Amanda",
+                        "000 William Ranch",
+                        "93218",
+                        "Kazakhstan",
+                        "001-109-449-4210x33965"
+                    ]
+                ]
+            },
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        },
+        {
+            "name": "dim.api/client_end",
+            "description": "This dimension table contains a row for each channel or app that your customers use to create orders. Some examples of these include Facebook and Online Store. You can join this table with the sales table to measure channel performance.",
+            "version": 0.1,
+            "updatedAt": 1638354087454,
+            "updatedBy": "anonymous",
+            "href": "http://localhost:8585/api/v1/tables/753833e0-f526-47b6-8555-97f5bb2882d5",
+            "tableType": "Regular",
+            "columns": [
+                {
+                    "name": "api_client_id",
+                    "dataType": "NUMERIC",
+                    "dataTypeDisplay": "numeric",
+                    "description": "ID of the API client that called the Shopify API. For example, the ID for the online store is 580111.",
+                    "tags": [],
+                    "ordinalPosition": 1
+                },
+                {
+                    "name": "title",
+                    "dataType": "VARCHAR",
+                    "dataLength": 100,
+                    "dataTypeDisplay": "varchar",
+                    "description": "Full name of the app or channel. For example, Point of Sale, Online Store.",
+                    "tags": [],
+                    "ordinalPosition": 2
+                }
+            ],
+            "database": {
+                "id": "50da1ff8-4e1d-4967-8931-45edbf4dd908",
+                "type": "database",
+                "name": "sample_data.ecommerce_db",
+                "description": "This **mock** database contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databases/50da1ff8-4e1d-4967-8931-45edbf4dd908"
+            },
+            "tags": [],
+            "usageSummary": {
+                "dailyStats": {
+                    "count": 85,
+                    "percentileRank": 36
+                },
+                "weeklyStats": {
+                    "count": 85,
+                    "percentileRank": 36
+                },
+                "monthlyStats": {
+                    "count": 85,
+                    "percentileRank": 36
+                },
+                "date": "2021-12-01"
+            },
+            "followers": [],
+            "joins": {
+                "startDate": "2021-11-01",
+                "dayCount": 30,
+                "columnJoins": [
+                    {
+                        "columnName": "api_client_id",
+                        "joinedWith": [
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.api_client_id",
+                                "joinCount": 30
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.customer_id",
+                                "joinCount": 30
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.order_id",
+                                "joinCount": 30
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.shop_id",
+                                "joinCount": 30
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_order.user_id",
+                                "joinCount": 30
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.api_client_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.billing_address_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.customer_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.location_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.order_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.product_variant_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shipping_address_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.shop_id",
+                                "joinCount": 55
+                            },
+                            {
+                                "fullyQualifiedName": "sample_data.ecommerce_db.shopify.fact_sale.user_id",
+                                "joinCount": 55
+                            }
+                        ]
+                    }
+                ]
+            },
+            "sampleData": {
+                "columns": [
+                    "api_client_id",
+                    "title"
+                ],
+                "rows": [
+                    [
+                        "081bb68c-8517-43e7-9a28-6a19fef8b57b",
+                        "Series page society."
+                    ],
+                    [
+                        "8f778142-0b2a-4e79-9b70-770012f8ecf3",
+                        "Program able leave."
+                    ],
+                    [
+                        "45d9513d-bf96-4e97-aaa1-cdf9fae8b686",
+                        "Recognize paper."
+                    ],
+                    [
+                        "53bf1c17-bc1b-4a67-8098-1719af0a10a1",
+                        "Become officer seek."
+                    ],
+                    [
+                        "dc3b5e7d-8daa-4258-a016-9da71c12bfd4",
+                        "Box remember onto."
+                    ],
+                    [
+                        "88e76f19-9637-4602-ad45-4033298d61b8",
+                        "Both administration."
+                    ],
+                    [
+                        "c1fd8340-e8bb-4aa3-857e-9ce3f962eef9",
+                        "Must smile attack."
+                    ],
+                    [
+                        "7612984b-c271-4c34-98d2-3261c1d34272",
+                        "Catch campaign."
+                    ],
+                    [
+                        "7304aa3c-33dc-45b0-bd73-87125807e879",
+                        "Use provide left."
+                    ],
+                    [
+                        "a87102e5-115f-4a99-8276-065cd15fb653",
+                        "Point yeah."
+                    ],
+                    [
+                        "18d61d8b-ea59-4d58-8bec-4549dd3a9e61",
+                        "Democratic cold."
+                    ],
+                    [
+                        "bbb55ed1-3afb-41f7-b547-2b95f47bfb7b",
+                        "Despite brother."
+                    ],
+                    [
+                        "701b206d-a8e2-448c-9293-d886f1e2324c",
+                        "Environmental."
+                    ],
+                    [
+                        "c5b55540-b3b2-44b8-a691-6ebd0d3b49ef",
+                        "Seek guy account."
+                    ],
+                    [
+                        "1e1c9c4b-0a3e-499c-9531-552188bab24e",
+                        "Turn something push."
+                    ],
+                    [
+                        "6f78b737-e8b8-427f-97f3-9a0b00cc99b5",
+                        "Age tax very."
+                    ],
+                    [
+                        "75c47d28-bf60-45c7-bf8c-0e99d42e08ac",
+                        "Successful single."
+                    ],
+                    [
+                        "e76f8c4a-138f-4c52-8169-74d5d66423e0",
+                        "Only bar head ball."
+                    ],
+                    [
+                        "a3ecc6c2-6525-4353-9f34-1dcf020cf237",
+                        "Difference among."
+                    ],
+                    [
+                        "989f5855-edae-47f0-b474-83038c092993",
+                        "Member attack."
+                    ],
+                    [
+                        "96793d22-7a70-409a-8720-e3a4a48944c4",
+                        "Identify face floor."
+                    ],
+                    [
+                        "cf1ecdca-1466-4ca9-ad95-adc153e02456",
+                        "Determine guy field."
+                    ],
+                    [
+                        "97a0d6b7-bb46-449b-a45a-a8874888f6c9",
+                        "Practice represent."
+                    ],
+                    [
+                        "9937cb82-1627-433b-8656-f7909971a7e7",
+                        "First each threat."
+                    ],
+                    [
+                        "3beab500-cb33-4776-b6b2-5e79728daa79",
+                        "Step he news space."
+                    ]
+                ]
+            },
+            "tableProfile": {
+                "timestamp": 1634366539,
+                "columnCount": 2,
+                "rowCount": 685,
+                "columnProfile": [
+                    {
+                        "name": "api_client_id",
+                        "uniqueCount": 9,
+                        "uniqueProportion": 0.87924166,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    },
+                    {
+                        "name": "title",
+                        "uniqueCount": 29,
+                        "uniqueProportion": 0.4712713414,
+                        "distinctCount": 0,
+                        "distinctProportion": 0
+                    }
+                ]
+            },
+            "databaseSchema": {
+                "id": "d7be1e2c-b3dc-11ec-b909-0242ac120002",
+                "type": "databaseSchema",
+                "name": "sample_data.ecommerce_db.shopify",
+                "description": "This **mock** Schema contains tables related to shopify sales and orders with related dimension tables.",
+                "href": "http://localhost:8585/api/v1/databaseSchemas/d7be1e2c-b3dc-11ec-b909-0242ac120002"
+            }
+        }
+    ]
+}

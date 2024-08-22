@@ -35,6 +35,7 @@ class AWSServices(Enum):
     QUICKSIGHT = "quicksight"
     ATHENA = "athena"
     RDS = "rds"
+    LAKE_FORMATION = "lakeformation"
 
 
 class AWSAssumeRoleException(Exception):
@@ -46,7 +47,7 @@ class AWSAssumeRoleException(Exception):
 class AWSAssumeRoleCredentialWrapper(BaseModel):
     accessKeyId: str
     secretAccessKey: CustomSecretStr
-    sessionToken: Optional[str]
+    sessionToken: Optional[str] = None
 
 
 class AWSClient:
@@ -58,7 +59,7 @@ class AWSClient:
         self.config = (
             config
             if isinstance(config, AWSCredentials)
-            else (AWSCredentials.parse_obj(config) if config else config)
+            else (AWSCredentials.model_validate(config) if config else config)
         )
 
     @staticmethod
@@ -147,7 +148,7 @@ class AWSClient:
             session = self.create_session()
             if self.config.endPointURL is not None:
                 return session.client(
-                    service_name=service_name, endpoint_url=self.config.endPointURL
+                    service_name=service_name, endpoint_url=str(self.config.endPointURL)
                 )
             return session.client(service_name=service_name)
 
@@ -159,7 +160,7 @@ class AWSClient:
         session = self.create_session()
         if self.config.endPointURL is not None:
             return session.resource(
-                service_name=service_name, endpoint_url=self.config.endPointURL
+                service_name=service_name, endpoint_url=str(self.config.endPointURL)
             )
         return session.resource(service_name=service_name)
 
@@ -189,3 +190,6 @@ class AWSClient:
 
     def get_athena_client(self):
         return self.get_client(AWSServices.ATHENA.value)
+
+    def get_lake_formation_client(self):
+        return self.get_client(AWSServices.LAKE_FORMATION.value)

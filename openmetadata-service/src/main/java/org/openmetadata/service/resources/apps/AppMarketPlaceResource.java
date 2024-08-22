@@ -44,12 +44,14 @@ import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -67,9 +69,9 @@ import org.openmetadata.service.util.ResultList;
 public class AppMarketPlaceResource
     extends EntityResource<AppMarketPlaceDefinition, AppMarketPlaceRepository> {
   public static final String COLLECTION_PATH = "/v1/apps/marketplace/";
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
 
-  static final String FIELDS = "owner,tags";
+  static final String FIELDS = "owners,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -95,8 +97,8 @@ public class AppMarketPlaceResource
     }
   }
 
-  public AppMarketPlaceResource(Authorizer authorizer) {
-    super(Entity.APP_MARKET_PLACE_DEF, authorizer);
+  public AppMarketPlaceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.APP_MARKET_PLACE_DEF, authorizer, limits);
   }
 
   public static class AppMarketPlaceDefinitionList extends ResultList<AppMarketPlaceDefinition> {
@@ -211,7 +213,10 @@ public class AppMarketPlaceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    AppMarketPlaceDefinition definition =
+        getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
+    return definition;
   }
 
   @GET
@@ -247,7 +252,10 @@ public class AppMarketPlaceResource
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    AppMarketPlaceDefinition definition =
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include);
+    definition.setPreview(ApplicationHandler.getInstance().isPreview(definition.getName()));
+    return definition;
   }
 
   @GET
@@ -331,6 +339,35 @@ public class AppMarketPlaceResource
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchApplication",
+      summary = "Updates an App by name.",
+      description = "Update an existing App using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patchApplication(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT
@@ -442,7 +479,8 @@ public class AppMarketPlaceResource
             .withAppScreenshots(create.getAppScreenshots())
             .withFeatures(create.getFeatures())
             .withSourcePythonClass(create.getSourcePythonClass())
-            .withAllowConfiguration(create.getAllowConfiguration());
+            .withAllowConfiguration(create.getAllowConfiguration())
+            .withSystem(create.getSystem());
 
     // Validate App
     validateApplication(app);

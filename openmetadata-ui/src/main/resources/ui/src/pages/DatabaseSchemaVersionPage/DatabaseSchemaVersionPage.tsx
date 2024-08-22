@@ -20,25 +20,25 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
+import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import DataAssetsVersionHeader from '../../components/DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
-import DataProductsContainer from '../../components/DataProductsContainer/DataProductsContainer.component';
+import DataProductsContainer from '../../components/DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../components/Loader/Loader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import TabsLabel from '../../components/TabsLabel/TabsLabel.component';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
 import {
-  getDatabaseSchemaDetailsPath,
-  getVersionPathWithTab,
+  getEntityDetailsPath,
+  getVersionPath,
   INITIAL_PAGING_VALUE,
 } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import {
+  OperationPermission,
+  ResourceEntity,
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
@@ -47,6 +47,7 @@ import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
 import SchemaTablesTab from '../../pages/DatabaseSchemaPage/SchemaTablesTab';
 import {
   getDatabaseSchemaDetailsByFQN,
@@ -61,21 +62,16 @@ import {
   getCommonExtraInfoForVersionDetails,
 } from '../../utils/EntityVersionUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 
 function DatabaseSchemaVersionPage() {
   const { t } = useTranslation();
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const {
-    fqn: databaseSchemaFQN,
-    version,
-    tab,
-  } = useParams<{
-    fqn: string;
+  const { version, tab } = useParams<{
     version: string;
     tab: EntityTabs;
   }>();
+  const { fqn: decodedEntityFQN } = useFqn();
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [tableData, setTableData] = useState<PagingResponse<Table[]>>({
     data: [],
@@ -100,12 +96,7 @@ function DatabaseSchemaVersionPage() {
     [servicePermissions]
   );
 
-  const decodedEntityFQN = useMemo(
-    () => getDecodedFqn(databaseSchemaFQN),
-    [databaseSchemaFQN]
-  );
-
-  const { tier, owner, breadcrumbLinks, changeDescription, deleted, domain } =
+  const { tier, owners, breadcrumbLinks, changeDescription, deleted, domain } =
     useMemo(
       () =>
         getBasicEntityInfoFromVersionData(
@@ -120,11 +111,11 @@ function DatabaseSchemaVersionPage() {
       () =>
         getCommonExtraInfoForVersionDetails(
           currentVersionData.changeDescription as ChangeDescription,
-          owner,
+          owners,
           tier,
           domain
         ),
-      [currentVersionData.changeDescription, owner, tier, domain]
+      [currentVersionData.changeDescription, owners, tier, domain]
     );
 
   const fetchResourcePermission = useCallback(async () => {
@@ -132,24 +123,22 @@ function DatabaseSchemaVersionPage() {
       setIsLoading(true);
       const permission = await getEntityPermissionByFqn(
         ResourceEntity.DATABASE,
-        databaseSchemaFQN
+        decodedEntityFQN
       );
 
       setServicePermissions(permission);
     } finally {
       setIsLoading(false);
     }
-  }, [databaseSchemaFQN, getEntityPermissionByFqn, setServicePermissions]);
+  }, [decodedEntityFQN, getEntityPermissionByFqn, setServicePermissions]);
 
   const fetchVersionsList = useCallback(async () => {
     try {
       setIsLoading(true);
 
-      const { id } = await getDatabaseSchemaDetailsByFQN(
-        databaseSchemaFQN,
-        '',
-        Include.All
-      );
+      const { id } = await getDatabaseSchemaDetailsByFQN(decodedEntityFQN, {
+        include: Include.All,
+      });
       setDatabaseId(id ?? '');
 
       const versions = await getDatabaseSchemaVersions(id ?? '');
@@ -158,7 +147,7 @@ function DatabaseSchemaVersionPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [viewVersionPermission, databaseSchemaFQN]);
+  }, [viewVersionPermission, decodedEntityFQN]);
 
   const fetchCurrentVersionData = useCallback(
     async (id: string) => {
@@ -182,14 +171,14 @@ function DatabaseSchemaVersionPage() {
       try {
         const res = await getTableList({
           ...params,
-          databaseSchema: getDecodedFqn(databaseSchemaFQN),
+          databaseSchema: decodedEntityFQN,
         });
         setTableData(res);
       } finally {
         setIsTableDataLoading(false);
       }
     },
-    [databaseSchemaFQN]
+    [decodedEntityFQN]
   );
 
   const { displayName, tags, description } = useMemo(
@@ -211,26 +200,32 @@ function DatabaseSchemaVersionPage() {
     () => ({
       versionHandler: (newVersion = version) => {
         history.push(
-          getVersionPathWithTab(
+          getVersionPath(
             EntityType.DATABASE_SCHEMA,
-            databaseSchemaFQN,
+            decodedEntityFQN,
             newVersion,
             tab
           )
         );
       },
       backHandler: () => {
-        history.push(getDatabaseSchemaDetailsPath(decodedEntityFQN));
+        history.push(
+          getEntityDetailsPath(
+            EntityType.DATABASE_SCHEMA,
+            decodedEntityFQN,
+            tab
+          )
+        );
       },
     }),
-    [databaseSchemaFQN, decodedEntityFQN, tab]
+    [decodedEntityFQN, decodedEntityFQN, tab]
   );
 
   const handleTabChange = (activeKey: string) => {
     history.push(
-      getVersionPathWithTab(
+      getVersionPath(
         EntityType.DATABASE_SCHEMA,
-        databaseSchemaFQN,
+        decodedEntityFQN,
         String(version),
         activeKey
       )
@@ -360,6 +355,7 @@ function DatabaseSchemaVersionPage() {
 
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={EntityType.DATABASE_SCHEMA}
           versionHandler={versionHandler}
           versionList={versionList}
           onBack={backHandler}
@@ -386,16 +382,16 @@ function DatabaseSchemaVersionPage() {
   ]);
 
   useEffect(() => {
-    if (!isEmpty(databaseSchemaFQN)) {
+    if (!isEmpty(decodedEntityFQN)) {
       fetchResourcePermission();
     }
-  }, [databaseSchemaFQN]);
+  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchVersionsList();
     }
-  }, [databaseSchemaFQN, viewVersionPermission]);
+  }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (databaseId) {

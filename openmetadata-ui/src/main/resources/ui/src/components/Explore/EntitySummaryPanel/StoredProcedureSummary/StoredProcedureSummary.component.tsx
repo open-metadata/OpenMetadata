@@ -23,9 +23,9 @@ import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityOverview,
 } from '../../../../utils/EntityUtils';
+import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
-import SchemaEditor from '../../../SchemaEditor/SchemaEditor';
-import SummaryPanelSkeleton from '../../../Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
+import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 import { StoredProcedureSummaryProps } from './StoredProcedureSummary.interface';
 
@@ -61,15 +61,10 @@ const StoredProcedureSummary = ({
           entityDetail={entityDetails}
           tags={
             tags ??
-            getSortedTagsWithHighlight({
-              tags: entityDetails.tags,
-              sortTagsBasedOnGivenTagFQNs: get(
-                highlights,
-                'tag.name',
-                [] as string[]
-              ),
-            }) ??
-            []
+            getSortedTagsWithHighlight(
+              entityDetails.tags,
+              get(highlights, 'tag.name')
+            )
           }
         />
         <Divider className="m-y-xs" />
@@ -85,11 +80,11 @@ const StoredProcedureSummary = ({
             </Col>
             <Col span={24}>
               <SchemaEditor
-                editorClass="custom-code-mirror-theme custom-query-editor"
+                editorClass="custom-code-mirror-theme summary-panel-custom-query-editor"
                 mode={{ name: CSMode.SQL }}
                 options={{
                   styleActiveLine: false,
-                  readOnly: 'nocursor',
+                  readOnly: true,
                 }}
                 value={
                   (

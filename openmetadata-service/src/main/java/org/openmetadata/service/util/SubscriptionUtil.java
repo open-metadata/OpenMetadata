@@ -13,16 +13,22 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Invocation;
@@ -32,21 +38,26 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.SubscriptionAction;
-import org.openmetadata.schema.api.events.CreateEventSubscription;
-import org.openmetadata.schema.entity.events.TriggerConfig;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Post;
 import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.SubscriptionPublisher;
+import org.openmetadata.service.apps.bundles.changeEvent.Destination;
+import org.openmetadata.service.events.subscription.AlertsRuleEvaluator;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.quartz.CronScheduleBuilder;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.SecurityUtil;
 
 @Slf4j
 public class SubscriptionUtil {
@@ -58,7 +69,7 @@ public class SubscriptionUtil {
       This Method Return a list of Admin Emails or Slack/MsTeams/Generic/GChat Webhook Urls for Admin User
       DataInsightReport and EmailPublisher need a list of Emails, while others need a webhook Endpoint.
   */
-  public static Set<String> getAdminsData(CreateEventSubscription.SubscriptionType type) {
+  public static Set<String> getAdminsData(SubscriptionDestination.SubscriptionType type) {
     Set<String> data = new HashSet<>();
     UserRepository userEntityRepository = (UserRepository) Entity.getEntityRepository(USER);
     ResultList<User> result;
@@ -70,24 +81,39 @@ public class SubscriptionUtil {
         result =
             userEntityRepository.listAfter(
                 null, userEntityRepository.getFields("email,profile"), listFilter, 50, after);
-        result
-            .getData()
-            .forEach(
-                user -> {
-                  if (type == CreateEventSubscription.SubscriptionType.EMAIL
-                      || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
-                    data.add(user.getEmail());
-                  } else {
-                    Profile userProfile = user.getProfile();
-                    data.addAll(getWebhookUrlsFromProfile(userProfile, user.getId(), USER, type));
-                  }
-                });
+        data.addAll(getEmailOrWebhookEndpointForUsers(result.getData(), type));
         after = result.getPaging().getAfter();
       } while (after != null);
     } catch (Exception ex) {
       LOG.error("Failed in listing all Users , Reason", ex);
     }
     return data;
+  }
+
+  public static Set<String> getEmailOrWebhookEndpointForUsers(
+      List<User> users, SubscriptionDestination.SubscriptionType type) {
+    if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
+      return users.stream().map(User::getEmail).collect(Collectors.toSet());
+    } else {
+      return users.stream()
+          .map(user -> getWebhookUrlFromProfile(user.getProfile(), user.getId(), USER, type))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .collect(Collectors.toSet());
+    }
+  }
+
+  public static Set<String> getEmailOrWebhookEndpointForTeams(
+      List<Team> users, SubscriptionDestination.SubscriptionType type) {
+    if (type == SubscriptionDestination.SubscriptionType.EMAIL) {
+      return users.stream().map(Team::getEmail).collect(Collectors.toSet());
+    } else {
+      return users.stream()
+          .map(team -> getWebhookUrlFromProfile(team.getProfile(), team.getId(), TEAM, type))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .collect(Collectors.toSet());
+    }
   }
 
   /*
@@ -97,7 +123,7 @@ public class SubscriptionUtil {
   */
 
   public static Set<String> getOwnerOrFollowers(
-      CreateEventSubscription.SubscriptionType type,
+      SubscriptionDestination.SubscriptionType type,
       CollectionDAO daoCollection,
       UUID entityId,
       String entityType,
@@ -106,73 +132,212 @@ public class SubscriptionUtil {
     try {
       List<CollectionDAO.EntityRelationshipRecord> ownerOrFollowers =
           daoCollection.relationshipDAO().findFrom(entityId, entityType, relationship.ordinal());
-      ownerOrFollowers.forEach(
-          owner -> {
-            if (type == CreateEventSubscription.SubscriptionType.EMAIL
-                || type == CreateEventSubscription.SubscriptionType.DATA_INSIGHT) {
-              if (USER.equals(owner.getType())) {
-                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
-                data.add(user.getEmail());
-              } else {
-                Team team = Entity.getEntity(TEAM, owner.getId(), "", Include.NON_DELETED);
-                data.add(team.getEmail());
-              }
-            } else {
-              Profile profile = null;
-              if (USER.equals(owner.getType())) {
-                User user = Entity.getEntity(USER, owner.getId(), "", Include.NON_DELETED);
-                profile = user.getProfile();
-              } else if (TEAM.equals(owner.getType())) {
-                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", Include.NON_DELETED);
-                profile = team.getProfile();
-              }
-              data.addAll(getWebhookUrlsFromProfile(profile, owner.getId(), owner.getType(), type));
-            }
-          });
+      // Users
+      List<User> users =
+          ownerOrFollowers.stream()
+              .filter(e -> USER.equals(e.getType()))
+              .map(user -> (User) Entity.getEntity(USER, user.getId(), "", Include.NON_DELETED))
+              .toList();
+      data.addAll(getEmailOrWebhookEndpointForUsers(users, type));
+
+      // Teams
+      List<Team> teams =
+          ownerOrFollowers.stream()
+              .filter(e -> TEAM.equals(e.getType()))
+              .map(team -> (Team) Entity.getEntity(TEAM, team.getId(), "", Include.NON_DELETED))
+              .toList();
+      data.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
     } catch (Exception ex) {
       LOG.error("Failed in listing all Owners/Followers, Reason : ", ex);
     }
     return data;
   }
 
-  private static Set<String> getWebhookUrlsFromProfile(
-      Profile profile, UUID id, String entityType, CreateEventSubscription.SubscriptionType type) {
-    Set<String> webhookUrls = new HashSet<>();
-    if (profile != null) {
-      Webhook webhookConfig =
-          switch (type) {
-            case SLACK_WEBHOOK -> profile.getSubscription().getSlack();
-            case MS_TEAMS_WEBHOOK -> profile.getSubscription().getMsTeams();
-            case G_CHAT_WEBHOOK -> profile.getSubscription().getgChat();
-            case GENERIC_WEBHOOK -> profile.getSubscription().getGeneric();
-            default -> null;
-          };
-      if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
-        webhookUrls.add(webhookConfig.getEndpoint().toString());
-      } else {
-        LOG.debug(
-            "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is invalid for type {}, webhookConfig {} ",
-            id,
-            entityType,
-            type.value(),
-            webhookConfig);
+  private static Set<String> getTaskAssignees(
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
+      ChangeEvent event) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
+    Set<String> receiversList = new HashSet<>();
+    Map<UUID, Team> teams = new HashMap<>();
+    Map<UUID, User> users = new HashMap<>();
+
+    Team tempTeamVar = null;
+    User tempUserVar = null;
+
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.ASSIGNEES)) {
+      List<EntityReference> assignees = thread.getTask().getAssignees();
+      if (!nullOrEmpty(assignees)) {
+        for (EntityReference reference : assignees) {
+          if (Entity.USER.equals(reference.getType())) {
+            tempUserVar = Entity.getEntity(USER, reference.getId(), "profile", Include.NON_DELETED);
+            users.put(tempUserVar.getId(), tempUserVar);
+          } else if (TEAM.equals(reference.getType())) {
+            tempTeamVar = Entity.getEntity(TEAM, reference.getId(), "profile", Include.NON_DELETED);
+            teams.put(tempTeamVar.getId(), tempTeamVar);
+          }
+        }
       }
-    } else {
-      LOG.debug(
-          "[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ",
-          id,
-          type);
+
+      for (Post post : thread.getPosts()) {
+        tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
+        List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(post.getMessage());
+        for (MessageParser.EntityLink link : mentions) {
+          if (USER.equals(link.getEntityType())) {
+            tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+            users.put(tempUserVar.getId(), tempUserVar);
+          } else if (TEAM.equals(link.getEntityType())) {
+            tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+            teams.put(tempTeamVar.getId(), tempTeamVar);
+          }
+        }
+      }
     }
-    return webhookUrls;
+
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.OWNERS)) {
+      try {
+        tempUserVar =
+            Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
+      } catch (Exception ex) {
+        LOG.warn("Thread created by unknown user: {}", thread.getCreatedBy());
+      }
+    }
+
+    // Users
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+
+    // Teams
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
+
+    return receiversList;
+  }
+
+  public static Set<String> handleConversationNotification(
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
+      ChangeEvent event) {
+    Thread thread = AlertsRuleEvaluator.getThread(event);
+    Set<String> receiversList = new HashSet<>();
+    Map<UUID, Team> teams = new HashMap<>();
+    Map<UUID, User> users = new HashMap<>();
+
+    Team tempTeamVar = null;
+    User tempUserVar = null;
+
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.MENTIONS)) {
+      List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());
+      for (MessageParser.EntityLink link : mentions) {
+        if (USER.equals(link.getEntityType())) {
+          tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+          users.put(tempUserVar.getId(), tempUserVar);
+        } else if (TEAM.equals(link.getEntityType())) {
+          tempTeamVar = Entity.getEntity(link, "", Include.NON_DELETED);
+          teams.put(tempTeamVar.getId(), tempTeamVar);
+        }
+      }
+
+      for (Post post : thread.getPosts()) {
+        tempUserVar = Entity.getEntityByName(USER, post.getFrom(), "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
+        mentions = MessageParser.getEntityLinks(post.getMessage());
+        for (MessageParser.EntityLink link : mentions) {
+          if (USER.equals(link.getEntityType())) {
+            tempUserVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+            users.put(tempUserVar.getId(), tempUserVar);
+          } else if (TEAM.equals(link.getEntityType())) {
+            tempTeamVar = Entity.getEntity(link, "profile", Include.NON_DELETED);
+            teams.put(tempTeamVar.getId(), tempTeamVar);
+          }
+        }
+      }
+    }
+
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.OWNERS)) {
+      try {
+        tempUserVar =
+            Entity.getEntityByName(USER, thread.getCreatedBy(), "profile", Include.NON_DELETED);
+        users.put(tempUserVar.getId(), tempUserVar);
+      } catch (Exception ex) {
+        LOG.warn("Thread created by unknown user: {}", thread.getCreatedBy());
+      }
+    }
+
+    // Users
+    receiversList.addAll(getEmailOrWebhookEndpointForUsers(users.values().stream().toList(), type));
+
+    // Teams
+    receiversList.addAll(getEmailOrWebhookEndpointForTeams(teams.values().stream().toList(), type));
+
+    return receiversList;
+  }
+
+  private static Optional<String> getWebhookUrlFromProfile(
+      Profile profile, UUID id, String entityType, SubscriptionDestination.SubscriptionType type) {
+    if (profile != null) {
+      SubscriptionConfig subscriptionConfig = profile.getSubscription();
+      if (subscriptionConfig != null) {
+        Webhook webhookConfig =
+            switch (type) {
+              case SLACK -> profile.getSubscription().getSlack();
+              case MS_TEAMS -> profile.getSubscription().getMsTeams();
+              case G_CHAT -> profile.getSubscription().getgChat();
+              case WEBHOOK -> profile.getSubscription().getGeneric();
+              default -> null;
+            };
+        if (webhookConfig != null && !CommonUtil.nullOrEmpty(webhookConfig.getEndpoint())) {
+          return Optional.of(webhookConfig.getEndpoint().toString());
+        } else {
+          LOG.debug(
+              "[GetWebhookUrlsFromProfile] Owner with id {} type {}, will not get any Notification as not webhook config is missing for type {}, webhookConfig {} ",
+              id,
+              entityType,
+              type.value(),
+              webhookConfig);
+        }
+      }
+    }
+    LOG.debug(
+        "[GetWebhookUrlsFromProfile] Failed to Get Profile for Owner with ID : {} and type {} ",
+        id,
+        type);
+    return Optional.empty();
   }
 
   public static Set<String> buildReceiversListFromActions(
       SubscriptionAction action,
-      CreateEventSubscription.SubscriptionType type,
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
       CollectionDAO daoCollection,
       UUID entityId,
       String entityType) {
     Set<String> receiverList = new HashSet<>();
+
+    if (category.equals(SubscriptionDestination.SubscriptionCategory.USERS)) {
+      if (nullOrEmpty(action.getReceivers())) {
+        throw new IllegalArgumentException(
+            "Email Alert Invoked with Illegal Type and Settings. Emtpy or Null Users Recipients List");
+      }
+      List<User> users =
+          action.getReceivers().stream()
+              .map(user -> (User) Entity.getEntityByName(USER, user, "", Include.NON_DELETED))
+              .toList();
+      receiverList.addAll(getEmailOrWebhookEndpointForUsers(users, type));
+    } else if (category.equals(SubscriptionDestination.SubscriptionCategory.TEAMS)) {
+      if (nullOrEmpty(action.getReceivers())) {
+        throw new IllegalArgumentException(
+            "Email Alert Invoked with Illegal Type and Settings. Emtpy or Null Teams Recipients List");
+      }
+      List<Team> teams =
+          action.getReceivers().stream()
+              .map(team -> (Team) Entity.getEntityByName(TEAM, team, "", Include.NON_DELETED))
+              .toList();
+      receiverList.addAll(getEmailOrWebhookEndpointForTeams(teams, type));
+    } else {
+      receiverList = action.getReceivers() == null ? receiverList : action.getReceivers();
+    }
+
     // Send to Admins
     if (Boolean.TRUE.equals(action.getSendToAdmins())) {
       receiverList.addAll(getAdminsData(type));
@@ -193,46 +358,74 @@ public class SubscriptionUtil {
     return receiverList;
   }
 
-  public static List<Invocation.Builder> getTargetsForWebhook(
+  public static Set<String> getTargetsForAlert(
       SubscriptionAction action,
-      CreateEventSubscription.SubscriptionType type,
-      Client client,
-      CollectionDAO daoCollection,
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
       ChangeEvent event) {
-    EntityInterface entityInterface = getEntity(event);
+    Set<String> receiverUrls = new HashSet<>();
+    if (event.getEntityType().equals(THREAD)) {
+      Thread thread = AlertsRuleEvaluator.getThread(event);
+      switch (thread.getType()) {
+        case Task -> receiverUrls.addAll(getTaskAssignees(category, type, event));
+        case Conversation -> receiverUrls.addAll(
+            handleConversationNotification(category, type, event));
+          // TODO: For Announcement, Immediate Consumer needs to be Notified (find information from
+          // Lineage)
+      }
+    } else {
+      EntityInterface entityInterface = getEntity(event);
+      receiverUrls.addAll(
+          buildReceiversListFromActions(
+              action,
+              category,
+              type,
+              Entity.getCollectionDAO(),
+              entityInterface.getId(),
+              event.getEntityType()));
+    }
+
+    return receiverUrls;
+  }
+
+  public static List<Invocation.Builder> getTargetsForWebhookAlert(
+      SubscriptionAction action,
+      SubscriptionDestination.SubscriptionCategory category,
+      SubscriptionDestination.SubscriptionType type,
+      Client client,
+      ChangeEvent event) {
     List<Invocation.Builder> targets = new ArrayList<>();
-    Set<String> receiversUrls =
-        buildReceiversListFromActions(
-            action, type, daoCollection, entityInterface.getId(), event.getEntityType());
-    for (String url : receiversUrls) {
-      targets.add(client.target(url).request());
+    for (String url : getTargetsForAlert(action, category, type, event)) {
+      targets.add(appendHeadersToTarget(client, url));
     }
     return targets;
   }
 
+  public static Invocation.Builder appendHeadersToTarget(Client client, String uri) {
+    Map<String, String> authHeaders = SecurityUtil.authHeaders("admin@open-metadata.org");
+    return SecurityUtil.addHeaders(client.target(uri), authHeaders);
+  }
+
   public static void postWebhookMessage(
-      SubscriptionPublisher publisher, Invocation.Builder target, Object message)
-      throws InterruptedException {
+      Destination<ChangeEvent> destination, Invocation.Builder target, Object message) {
     long attemptTime = System.currentTimeMillis();
     Response response =
         target.post(javax.ws.rs.client.Entity.entity(message, MediaType.APPLICATION_JSON_TYPE));
     LOG.debug(
-        "Subscription Publisher Posted Message {}:{} received response {}",
-        publisher.getEventSubscription().getName(),
-        publisher.getEventSubscription().getBatchSize(),
+        "Subscription Destination Posted Message {}:{} received response {}",
+        destination.getSubscriptionDestination().getId(),
+        message,
         response.getStatusInfo());
     if (response.getStatus() >= 300 && response.getStatus() < 400) {
       // 3xx response/redirection is not allowed for callback. Set the webhook state as in error
-      publisher.setErrorStatus(
+      destination.setErrorStatus(
           attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
     } else if (response.getStatus() >= 400 && response.getStatus() < 600) {
       // 4xx, 5xx response retry delivering events after timeout
-      publisher.setNextBackOff();
-      publisher.setAwaitingRetry(
+      destination.setAwaitingRetry(
           attemptTime, response.getStatus(), response.getStatusInfo().getReasonPhrase());
-      Thread.sleep(publisher.getCurrentBackOff());
     } else if (response.getStatus() == 200) {
-      publisher.setSuccessStatus(System.currentTimeMillis());
+      destination.setSuccessStatus(System.currentTimeMillis());
     }
   }
 
@@ -241,26 +434,5 @@ public class SubscriptionUtil {
     clientBuilder.connectTimeout(connectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(readTimeout, TimeUnit.SECONDS);
     return clientBuilder.build();
-  }
-
-  public static CronScheduleBuilder getCronSchedule(TriggerConfig trigger) {
-    if (trigger.getTriggerType() == TriggerConfig.TriggerType.SCHEDULED) {
-      TriggerConfig.ScheduleInfo scheduleInfo = trigger.getScheduleInfo();
-      switch (scheduleInfo) {
-        case DAILY:
-          return CronScheduleBuilder.dailyAtHourAndMinute(0, 0);
-        case WEEKLY:
-          return CronScheduleBuilder.weeklyOnDayAndHourAndMinute(7, 0, 0);
-        case MONTHLY:
-          return CronScheduleBuilder.monthlyOnDayAndHourAndMinute(1, 0, 0);
-        case CUSTOM:
-          if (!CommonUtil.nullOrEmpty(trigger.getCronExpression())) {
-            return CronScheduleBuilder.cronSchedule(trigger.getCronExpression());
-          } else {
-            throw new IllegalArgumentException("Missing Cron Expression for Custom Schedule.");
-          }
-      }
-    }
-    throw new IllegalArgumentException("Invalid Trigger Type, Can only be Scheduled.");
   }
 }

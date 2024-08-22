@@ -13,22 +13,31 @@
 
 package org.openmetadata.service.util;
 
-import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.JWT;
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import javax.json.JsonPatch;
+import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -38,7 +47,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
-import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -79,7 +88,7 @@ public final class UserUtil {
         if (authProvider.equals(AuthProvider.BASIC)) {
           if (originalUser.getAuthenticationMechanism() == null
               || originalUser.getAuthenticationMechanism().equals(new AuthenticationMechanism())) {
-            String randomPwd = getPassword();
+            String randomPwd = getPassword(username);
             updateUserWithHashedPwd(updatedUser, randomPwd);
             EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
           }
@@ -104,7 +113,7 @@ public final class UserUtil {
       updatedUser = user(username, domain, username).withIsAdmin(isAdmin).withIsEmailVerified(true);
       // Update Auth Mechanism if not present, and send mail to the user
       if (authProvider.equals(AuthProvider.BASIC)) {
-        String randomPwd = getPassword();
+        String randomPwd = getPassword(username);
         updateUserWithHashedPwd(updatedUser, randomPwd);
         EmailUtil.sendInviteMailToAdmin(updatedUser, randomPwd);
       }
@@ -116,10 +125,13 @@ public final class UserUtil {
     }
   }
 
-  private static String getPassword() {
+  private static String getPassword(String username) {
     try {
-      EmailUtil.testConnection();
-      return PasswordUtil.generateRandomPassword();
+      if (Boolean.TRUE.equals(EmailUtil.getSmtpSettings().getEnableSmtpServer())
+          && !ADMIN_USER_NAME.equals(username)) {
+        EmailUtil.testConnection();
+        return PasswordUtil.generateRandomPassword();
+      }
     } catch (Exception ex) {
       LOG.info("Password set to Default.");
     }
@@ -150,14 +162,8 @@ public final class UserUtil {
   }
 
   public static User user(String name, String domain, String updatedBy) {
-    return new User()
-        .withId(UUID.randomUUID())
-        .withName(name)
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(name))
-        .withEmail(name + "@" + domain)
-        .withUpdatedBy(updatedBy)
-        .withUpdatedAt(System.currentTimeMillis())
-        .withIsBot(false);
+    return getUser(
+        updatedBy, new CreateUser().withName(name).withEmail(name + "@" + domain).withIsBot(false));
   }
 
   /**
@@ -218,14 +224,126 @@ public final class UserUtil {
     }
   }
 
-  public static List<EntityReference> getRoleForBot(String botName) {
-    String botRole =
-        switch (botName) {
-          case Entity.INGESTION_BOT_NAME -> Entity.INGESTION_BOT_ROLE;
-          case Entity.QUALITY_BOT_NAME -> Entity.QUALITY_BOT_ROLE;
-          case Entity.PROFILER_BOT_NAME -> Entity.PROFILER_BOT_ROLE;
-          default -> throw new IllegalArgumentException("No role found for the bot " + botName);
-        };
-    return listOf(RoleResource.getRole(botRole));
+  public static EntityReference getUserOrBot(String name) {
+    EntityReference userOrBot;
+    try {
+      userOrBot = Entity.getEntityReferenceByName(Entity.USER, name, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      userOrBot = Entity.getEntityReferenceByName(Entity.BOT, name, NON_DELETED);
+    }
+    return userOrBot;
+  }
+
+  public static Set<String> getRoleListFromUser(User user) {
+    if (nullOrEmpty(user.getRoles())) {
+      return new HashSet<>();
+    }
+    return listOrEmpty(user.getRoles()).stream()
+        .map(EntityReference::getName)
+        .collect(Collectors.toSet());
+  }
+
+  public static List<EntityReference> validateAndGetRolesRef(Set<String> rolesList) {
+    if (nullOrEmpty(rolesList)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> references = new ArrayList<>();
+
+    // Fetch the roles from the database
+    for (String role : rolesList) {
+      // Admin role is not present in the roles table, it is just a flag in the user table
+      if (!role.equals(ADMIN_ROLE)) {
+        try {
+          Role fetchedRole = Entity.getEntityByName(Entity.ROLE, role, "id", NON_DELETED, true);
+          references.add(fetchedRole.getEntityReference());
+        } catch (EntityNotFoundException ex) {
+          LOG.error("[ReSyncRoles] Role not found: {}", role, ex);
+        }
+      }
+    }
+    return references;
+  }
+
+  public static Set<String> getRolesFromAuthorizationToken(
+      CatalogSecurityContext catalogSecurityContext) {
+    return catalogSecurityContext.getUserRoles();
+  }
+
+  public static boolean isRolesSyncNeeded(Set<String> fromToken, Set<String> fromDB) {
+    // Check if there are roles in the token that are not present in the DB
+    for (String role : fromToken) {
+      if (!fromDB.contains(role)) {
+        return true;
+      }
+    }
+
+    // Check if there are roles in the DB that are not present in the token
+    for (String role : fromDB) {
+      if (!fromToken.contains(role)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  public static boolean reSyncUserRolesFromToken(
+      UriInfo uriInfo, User user, Set<String> rolesFromToken) {
+    boolean syncUser = false;
+
+    User updatedUser = JsonUtils.deepCopy(user, User.class);
+    // Check if Admin User
+    if (rolesFromToken.contains(ADMIN_ROLE)) {
+      if (Boolean.FALSE.equals(user.getIsAdmin())) {
+        syncUser = true;
+        updatedUser.setIsAdmin(true);
+      }
+
+      // Remove the Admin Role from the list
+      rolesFromToken.remove(ADMIN_ROLE);
+    }
+
+    Set<String> rolesFromUser = getRoleListFromUser(user);
+
+    // Check if roles are different
+    if (!nullOrEmpty(rolesFromToken) && isRolesSyncNeeded(rolesFromToken, rolesFromUser)) {
+      syncUser = true;
+      List<EntityReference> rolesReferenceFromToken = validateAndGetRolesRef(rolesFromToken);
+      updatedUser.setRoles(rolesReferenceFromToken);
+    }
+
+    if (syncUser) {
+      LOG.info("Syncing User Roles for User: {}", user.getName());
+      JsonPatch patch = JsonUtils.getJsonPatch(user, updatedUser);
+
+      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      userRepository.patch(uriInfo, user.getId(), user.getName(), patch);
+
+      // Set the updated roles to the original user
+      user.setRoles(updatedUser.getRoles());
+    }
+
+    return syncUser;
+  }
+
+  public static User getUser(String updatedBy, CreateUser create) {
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName(create.getName().toLowerCase())
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
+        .withEmail(create.getEmail().toLowerCase())
+        .withDescription(create.getDescription())
+        .withDisplayName(create.getDisplayName())
+        .withIsBot(create.getIsBot())
+        .withIsAdmin(create.getIsAdmin())
+        .withProfile(create.getProfile())
+        .withPersonas(create.getPersonas())
+        .withDefaultPersona(create.getDefaultPersona())
+        .withTimezone(create.getTimezone())
+        .withUpdatedBy(updatedBy.toLowerCase())
+        .withUpdatedAt(System.currentTimeMillis())
+        .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
+        .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
+        .withDomains(EntityUtil.getEntityReferences(Entity.DOMAIN, create.getDomains()));
   }
 }

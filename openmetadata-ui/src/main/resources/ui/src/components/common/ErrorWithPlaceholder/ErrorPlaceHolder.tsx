@@ -13,7 +13,6 @@
 
 import React from 'react';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
-
 import AssignErrorPlaceHolder from './AssignErrorPlaceHolder';
 import CreateErrorPlaceHolder from './CreateErrorPlaceHolder';
 import CustomNoDataPlaceHolder from './CustomNoDataPlaceHolder';
@@ -34,6 +33,7 @@ const ErrorPlaceHolder = ({
   permission,
   buttonId,
   icon,
+  placeholderText,
 }: ErrorPlaceholderProps) => {
   const getErrorPlaceHolder = () => {
     switch (type) {
@@ -45,6 +45,7 @@ const ErrorPlaceHolder = ({
             doc={doc}
             heading={heading}
             permission={permission}
+            placeholderText={placeholderText}
             size={size}
             onClick={onClick}
           />
@@ -64,7 +65,12 @@ const ErrorPlaceHolder = ({
 
       case ERROR_PLACEHOLDER_TYPE.FILTER:
         return (
-          <FilterErrorPlaceHolder className={className} doc={doc} size={size} />
+          <FilterErrorPlaceHolder
+            className={className}
+            doc={doc}
+            placeholderText={placeholderText}
+            size={size}
+          />
         );
 
       case ERROR_PLACEHOLDER_TYPE.PERMISSION:
@@ -82,7 +88,10 @@ const ErrorPlaceHolder = ({
 
       default:
         return (
-          <NoDataPlaceholder className={className} size={size}>
+          <NoDataPlaceholder
+            className={className}
+            placeholderText={placeholderText}
+            size={size}>
             {children}
           </NoDataPlaceholder>
         );

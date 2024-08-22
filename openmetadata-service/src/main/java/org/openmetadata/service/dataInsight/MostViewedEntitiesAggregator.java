@@ -2,7 +2,6 @@ package org.openmetadata.service.dataInsight;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import org.openmetadata.schema.dataInsight.type.MostViewedEntities;
 
 public abstract class MostViewedEntitiesAggregator<A, B, M, S>
@@ -20,13 +19,12 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S>
     for (B entityFqnBucket : getBuckets(entityFqnBuckets)) {
       String tableFqn = getKeyAsString(entityFqnBucket);
       S sumPageViews = getAggregations(entityFqnBucket, "pageViews");
-      M ownerBucket = getBucketAggregation(entityFqnBucket, "owner");
+      M ownerBucket = getBucketAggregation(entityFqnBucket, "owners");
       M entityTypeBucket = getBucketAggregation(entityFqnBucket, "entityType");
       M entityHrefBucket = getBucketAggregation(entityFqnBucket, "entityHref");
       String owner = getFirstValueFromBucketOrNull(ownerBucket);
       String entityType = getFirstValueFromBucketOrNull(entityTypeBucket);
       String entityHref = getFirstValueFromBucketOrNull(entityHrefBucket);
-      Optional<Double> pageViews = getValue(sumPageViews);
 
       data.add(
           new MostViewedEntities()
@@ -34,13 +32,13 @@ public abstract class MostViewedEntitiesAggregator<A, B, M, S>
               .withOwner(owner)
               .withEntityType(entityType)
               .withEntityHref(entityHref)
-              .withPageViews(pageViews.orElse(null)));
+              .withPageViews(getValue(sumPageViews)));
     }
 
     return data;
   }
 
-  protected abstract Optional<Double> getValue(S sumPageViews);
+  protected abstract Double getValue(S sumPageViews);
 
   protected abstract M getBucketAggregation(B bucket, String key);
 

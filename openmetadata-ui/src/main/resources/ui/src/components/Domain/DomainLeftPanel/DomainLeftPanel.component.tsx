@@ -14,26 +14,26 @@ import { Button, Col, Menu, MenuProps, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import GlossaryV1Skeleton from '../../../components/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
+import GlossaryV1Skeleton from '../../common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
 import { DomainLeftPanelProps } from './DomainLeftPanel.interface';
 
 const DomainsLeftPanel = ({ domains }: DomainLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { fqn } = useParams<{ fqn: string }>();
-  const domainFqn = fqn ? decodeURIComponent(fqn) : null;
+  const { fqn: domainFqn } = useFqn();
   const history = useHistory();
 
   const createDomainsPermission = useMemo(

@@ -14,7 +14,6 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import QueryString from 'qs';
 import {
   CreateIngestionPipeline,
   PipelineType,
@@ -22,11 +21,13 @@ import {
 import {
   IngestionPipeline,
   PipelineStatus,
+  Type,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { PipelineServiceClientResponse } from '../generated/entity/services/ingestionPipelines/pipelineServiceClientResponse';
 import { Paging } from '../generated/type/paging';
-import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewer/LogsViewer.interfaces';
-import { getURLWithQueryFields } from '../utils/APIUtils';
+import { ListParams } from '../interface/API.interface';
+import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
 
 export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
@@ -40,40 +41,12 @@ export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {
 
 export const getIngestionPipelineByFqn = async (
   fqn: string,
-  arrQueryFields?: Array<string>
+  params?: ListParams
 ) => {
-  const url = getURLWithQueryFields(
-    `/services/ingestionPipelines/name/${fqn}`,
-    arrQueryFields
+  const response = await APIClient.get<IngestionPipeline>(
+    `/services/ingestionPipelines/name/${getEncodedFqn(fqn)}`,
+    { params }
   );
-
-  const response = await APIClient.get<IngestionPipeline>(url);
-
-  return response.data;
-};
-
-/**
- * "Get an ingestion pipeline by its fully qualified name."
- *
- * The function takes two parameters:
- *
- * * `fqn`: The fully qualified name of the ingestion pipeline.
- * * `arrQueryFields`: An array of query fields to include in the response
- * @param {string} fqn - The fully qualified name of the ingestion pipeline.
- * @param [arrQueryFields] - An array of strings that represent the query fields you want to include in
- * the request.
- * @returns IngestionPipeline
- */
-export const getIngestionPipelineByName = async (
-  fqn: string,
-  arrQueryFields?: Array<string>
-) => {
-  const url = getURLWithQueryFields(
-    `/services/ingestionPipelines/name/${fqn}`,
-    arrQueryFields
-  );
-
-  const response = await APIClient.get<IngestionPipeline>(url);
 
   return response.data;
 };
@@ -81,11 +54,12 @@ export const getIngestionPipelineByName = async (
 export const getIngestionPipelines = async (data: {
   arrQueryFields: Array<string>;
   serviceFilter?: string;
-  paging?: string;
+  paging?: Omit<Paging, 'total'>;
   pipelineType?: PipelineType[];
   testSuite?: string;
   serviceType?: string;
   limit?: number;
+  applicationType?: Type;
 }) => {
   const {
     arrQueryFields,
@@ -95,25 +69,24 @@ export const getIngestionPipelines = async (data: {
     testSuite,
     serviceType,
     limit,
+    applicationType,
   } = data;
-  const queryParamString = QueryString.stringify({
+
+  const params = {
+    fields: arrQueryFields.join(','),
     service: serviceFilter,
     testSuite,
     pipelineType: pipelineType?.length ? pipelineType.join(',') : undefined,
     serviceType,
     limit,
-  });
-
-  const url = `${getURLWithQueryFields(
-    '/services/ingestionPipelines',
-    arrQueryFields,
-    queryParamString
-  )}${paging ? paging : ''}`;
+    applicationType,
+    ...paging,
+  };
 
   const response = await APIClient.get<{
     data: IngestionPipeline[];
     paging: Paging;
-  }>(url);
+  }>(`/services/ingestionPipelines`, { params });
 
   return response.data;
 };
@@ -133,10 +106,10 @@ export const deployIngestionPipelineById = (
   return APIClient.post(`/services/ingestionPipelines/deploy/${id}`);
 };
 
-export const enableDisableIngestionPipelineById = (
-  id: string
-): Promise<AxiosResponse> => {
-  return APIClient.post(`/services/ingestionPipelines/toggleIngestion/${id}`);
+export const enableDisableIngestionPipelineById = (id: string) => {
+  return APIClient.post<unknown, AxiosResponse<IngestionPipeline>>(
+    `/services/ingestionPipelines/toggleIngestion/${id}`
+  );
 };
 
 export const deleteIngestionPipelineById = (
@@ -146,25 +119,13 @@ export const deleteIngestionPipelineById = (
 };
 
 export const updateIngestionPipeline = async (
-  data: CreateIngestionPipeline
+  id: string,
+  data: Operation[]
 ) => {
-  const response = await APIClient.put<
-    CreateIngestionPipeline,
-    AxiosResponse<IngestionPipeline>
-  >(`/services/ingestionPipelines`, data);
-
-  return response.data;
-};
-
-export const patchIngestionPipeline = async (id: string, data: Operation[]) => {
-  const configOptions = {
-    headers: { 'Content-type': 'application/json-patch+json' },
-  };
-
   const response = await APIClient.patch<
     Operation[],
     AxiosResponse<IngestionPipeline>
-  >(`/services/ingestionPipelines/${id}`, data, configOptions);
+  >(`/services/ingestionPipelines/${id}`, data);
 
   return response.data;
 };
@@ -203,11 +164,11 @@ export const postKillIngestionPipelineById = (
 };
 
 export const getRunHistoryForPipeline = async (
-  id: string,
+  fqn: string,
   params: { startTs: number; endTs: number }
 ) => {
   const response = await APIClient.get<PagingResponse<PipelineStatus[]>>(
-    `/services/ingestionPipelines/${id}/pipelineStatus`,
+    `/services/ingestionPipelines/${getEncodedFqn(fqn)}/pipelineStatus`,
     {
       params,
     }

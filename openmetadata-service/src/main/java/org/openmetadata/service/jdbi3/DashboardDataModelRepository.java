@@ -137,7 +137,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     // Relationships and fields such as href are derived and not stored as part of json
     EntityReference service = dashboardDataModel.getService();
 
-    // Don't store owner, database, href and tags as JSON. Build it on the fly based on
+    // Don't store owners, database, href and tags as JSON. Build it on the fly based on
     // relationships
     dashboardDataModel.withService(null);
 
@@ -160,8 +160,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getColumns(),
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
-    dashboardDataModel.setSourceHash(
-        fields.contains("sourceHash") ? dashboardDataModel.getSourceHash() : null);
     if (dashboardDataModel.getService() == null) {
       dashboardDataModel.withService(getContainer(dashboardDataModel.getId()));
     }

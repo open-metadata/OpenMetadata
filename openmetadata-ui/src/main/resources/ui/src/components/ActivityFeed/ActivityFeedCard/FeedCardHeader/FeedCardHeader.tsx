@@ -17,11 +17,14 @@ import { isUndefined } from 'lodash';
 import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getUserPath } from '../../../../constants/constants';
 import { ThreadType } from '../../../../generated/entity/feed/thread';
+import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getEntityFieldDisplay,
@@ -31,6 +34,7 @@ import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import { FeedHeaderProp } from '../ActivityFeedCard.interface';
+import './feed-card-header-v1.style.less';
 
 const FeedCardHeader: FC<FeedHeaderProp> = ({
   className,
@@ -43,6 +47,11 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   feedType,
   task,
 }) => {
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: createdBy ?? '',
+  });
+
   const { t } = useTranslation();
 
   const { task: taskDetails } = task;
@@ -78,12 +87,12 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
         data-testid="tasklink"
         to={getTaskDetailPath(task)}
         onClick={(e) => e.stopPropagation()}>
-        <span>
+        <span className="m-x-xss">
           {`#${taskDetails?.id} `}
           {taskDetails?.type}
         </span>
       </Link>
-      <span>{t('label.for-lowercase')}</span>
+      <span className="m-r-xss">{t('label.for-lowercase')}</span>
       {isEntityFeed ? (
         <span data-testid="headerText-entityField">
           {getEntityFieldDisplay(entityField)}
@@ -105,22 +114,16 @@ const FeedCardHeader: FC<FeedHeaderProp> = ({
   );
 
   const getAnnouncementLinkElement = entityCheck && (
-    <span>
-      {t('message.made-announcement-for-entity', { entity: entityType })}{' '}
-      <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-        <Link
-          className="break-all"
-          data-testid="entitylink"
-          to={prepareFeedLink(entityType, entityFQN)}>
-          {entityDisplayName(entityType, entityFQN)}
-        </Link>
-      </EntityPopOverCard>
-    </span>
+    <span>{t('message.made-announcement')} </span>
   );
 
   return (
-    <div className={classNames('d-inline-block', className)}>
-      <UserPopOverCard userName={createdBy}>{createdBy}</UserPopOverCard>
+    <div className={classNames('d-inline-block feed-header', className)}>
+      <UserPopOverCard userName={createdBy}>
+        <Link className="thread-author m-r-xss" to={getUserPath(createdBy)}>
+          {getEntityName(user)}
+        </Link>
+      </UserPopOverCard>
 
       {feedType === ThreadType.Conversation && getFeedLinkElement}
       {feedType === ThreadType.Task && getTaskLinkElement}

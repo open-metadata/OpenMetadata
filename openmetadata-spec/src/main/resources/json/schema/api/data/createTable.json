@@ -10,7 +10,7 @@
   "properties": {
     "name": {
       "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
-      "$ref": "../../entity/data/table.json#/definitions/entityName"
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "displayName": {
       "description": "Display Name that identifies this table.",
@@ -31,6 +31,9 @@
       },
       "default": null
     },
+    "dataModel": {
+      "$ref": "../../entity/data/table.json#/definitions/dataModel"
+    },
     "tableConstraints": {
       "type": "array",
       "items": {
@@ -44,9 +47,9 @@
     "tableProfilerConfig": {
       "$ref": "../../entity/data/table.json#/definitions/tableProfilerConfig"
     },
-    "owner": {
-      "description": "Owner of this entity",
-      "$ref": "../../type/entityReference.json",
+    "owners": {
+      "description": "Owners of this entity",
+      "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
     "databaseSchema": {
@@ -61,8 +64,8 @@
       },
       "default": null
     },
-    "viewDefinition": {
-      "description": "View Definition in SQL. Applies to TableType.View only",
+    "schemaDefinition": {
+      "description": "DDL for Tables and Views",
       "$ref": "../../type/basic.json#/definitions/sqlQuery",
       "default": null
     },

@@ -13,51 +13,60 @@
 
 package org.openmetadata.sdk.exception;
 
-import io.dropwizard.jersey.errors.ErrorMessage;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
 
+@Getter
 public abstract class WebServiceException extends RuntimeException {
-  @Getter private final transient Response response;
+  private final transient Response response;
 
-  protected WebServiceException(Response.Status status, String msg) {
+  protected WebServiceException(Response response, String msg) {
+    super(msg);
+    this.response = response;
+  }
+
+  protected WebServiceException(Response.Status status, String errorType, String msg) {
     super(msg);
     response =
         Response.status(status)
-            .entity(convertToErrorResponseMessage(msg))
+            .entity(convertToErrorResponseMessage(errorType, msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
   }
 
-  protected WebServiceException(int status, String msg) {
+  protected WebServiceException(int status, String errorType, String msg) {
     super(msg);
     response =
         Response.status(status)
-            .entity(new ErrorMessage(status, msg))
+            .entity(convertToErrorResponseMessage(errorType, msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
   }
 
-  protected WebServiceException(Response.Status status, String msg, Throwable cause) {
+  protected WebServiceException(
+      Response.Status status, String errorType, String msg, Throwable cause) {
     super(msg, cause);
     response =
         Response.status(status)
-            .entity(convertToErrorResponseMessage(msg))
+            .entity(convertToErrorResponseMessage(errorType, msg))
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
   }
 
-  private static ErrorResponse convertToErrorResponseMessage(String msg) {
-    return new ErrorResponse(msg);
+  private static ErrorResponse convertToErrorResponseMessage(String errorType, String msg) {
+    return new ErrorResponse(errorType, msg);
   }
 
   private static class ErrorResponse {
     /** Response message. */
     @Getter private final String responseMessage;
 
-    ErrorResponse(String responseMessage) {
+    @Getter private final String errorType;
+
+    ErrorResponse(String errorType, String responseMessage) {
       this.responseMessage = responseMessage;
+      this.errorType = errorType;
     }
   }
 }

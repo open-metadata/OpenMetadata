@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.table import (
     TableConstraint,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
@@ -195,6 +196,7 @@ class SqlColumnHandlerMixin:
             ]
         return Column(**parsed_string)
 
+    @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
     ) -> Tuple[
@@ -271,7 +273,7 @@ class SqlColumnHandlerMixin:
                     col_data_length = 1 if col_data_length is None else col_data_length
                     om_column = Column(
                         name=ColumnName(
-                            __root__=column["name"]
+                            root=column["name"]
                             # Passing whitespace if column name is an empty string
                             # since pydantic doesn't accept empty string
                             if column["name"]
@@ -289,8 +291,9 @@ class SqlColumnHandlerMixin:
                         ordinalPosition=column.get("ordinalPosition"),
                     )
                     if precision:
-                        om_column.precision = precision[0]
-                        om_column.scale = precision[1]
+                        # Precision and scale must be integer values
+                        om_column.precision = int(precision[0])
+                        om_column.scale = int(precision[1])
 
                 else:
                     col_obj = self._process_complex_col_type(

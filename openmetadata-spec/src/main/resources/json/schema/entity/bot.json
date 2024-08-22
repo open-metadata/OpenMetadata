@@ -13,7 +13,7 @@
     },
     "name": {
       "description": "Name of the bot.",
-      "$ref": "../entity/teams/user.json#/definitions/entityName"
+      "$ref": "../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
       "description": "FullyQualifiedName same as `name`.",
@@ -58,6 +58,10 @@
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "domain" : {
+      "description": "Domain the asset belongs to. When not set, the asset inherits the domain from the parent it belongs to.",
+      "$ref": "../type/entityReference.json"
     }
   },
   "required": ["id", "name", "botUser"],

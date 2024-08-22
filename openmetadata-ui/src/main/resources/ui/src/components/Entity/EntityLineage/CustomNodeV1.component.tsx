@@ -11,226 +11,262 @@
  *  limitations under the License.
  */
 
-import { DownOutlined, SearchOutlined, UpOutlined } from '@ant-design/icons';
-import { Button, Input } from 'antd';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button } from 'antd';
 import classNames from 'classnames';
-import { isEmpty } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { NodeProps, useUpdateNodeInternals } from 'reactflow';
-import { BORDER_COLOR } from '../../../constants/constants';
-import { EntityType } from '../../../enums/entity.enum';
-import { getEntityName } from '../../../utils/EntityUtils';
-import SVGIcons from '../../../utils/SvgUtils';
-import { getConstraintIcon } from '../../../utils/TableUtils';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  getIncomers,
+  getOutgoers,
+  Handle,
+  NodeProps,
+  Position,
+} from 'reactflow';
+import { ReactComponent as IconTimesCircle } from '../../../assets/svg/ic-times-circle.svg';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { EntityLineageNodeType } from '../../../enums/entity.enum';
+import { checkUpstreamDownstream } from '../../../utils/EntityLineageUtils';
 import './custom-node.less';
-import { getColumnHandle, getHandle } from './CustomNode.utils';
+import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
-import { ModifiedColumn } from './EntityLineage.interface';
+import { EdgeTypeEnum } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
+import NodeChildren from './NodeChildren/NodeChildren.component';
 
 const CustomNodeV1 = (props: NodeProps) => {
-  const { t } = useTranslation();
-  const updateNodeInternals = useUpdateNodeInternals();
-  const { data, type, isConnectable, selected, id } = props;
-  /* eslint-disable-next-line */
+  const { data, type, isConnectable } = props;
+
   const {
-    columns,
-    label,
-    removeNodeHandler,
-    handleColumnClick,
-    onNodeExpand,
     isEditMode,
-    isExpanded,
-    isNewNode,
-    isTraced,
-    selectedColumns = [],
-    lineageLeafNodes,
-    isNodeLoading,
-    loadNodeHandler,
-    onSelect,
-    node,
-  } = data;
-  const [searchValue, setSearchValue] = useState('');
-  const [filteredColumns, setFilteredColumns] = useState<ModifiedColumn[]>([]);
-  const [showAllColumns, setShowAllColumns] = useState(false);
+    tracedNodes,
+    selectedNode,
+    nodes,
+    edges,
+    upstreamDownstreamData,
+    onNodeCollapse,
+    removeNodeHandler,
+    loadChildNodesHandler,
+  } = useLineageProvider();
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    const value = e.target.value;
-    setSearchValue(value);
+  const { label, isNewNode, node = {}, isRootNode } = data;
+  const nodeType = isEditMode ? EntityLineageNodeType.DEFAULT : type;
+  const isSelected = selectedNode === node;
+  const { id, lineage, fullyQualifiedName } = node;
 
-    if (value.trim() === '') {
-      // If search value is empty, show all columns or the default number of columns
-      const filterColumns = Object.values(columns || {}) as ModifiedColumn[];
-      setFilteredColumns(
-        showAllColumns ? filterColumns : filterColumns.slice(0, 5)
-      );
-    } else {
-      // Filter columns based on search value
-      const filtered = (
-        Object.values(columns || {}) as ModifiedColumn[]
-      ).filter((column) =>
-        getEntityName(column).toLowerCase().includes(value.toLowerCase())
-      );
-      setFilteredColumns(filtered);
-    }
-  };
+  const [isTraced, setIsTraced] = useState<boolean>(false);
 
-  const handleShowMoreClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    setShowAllColumns(true);
-    setFilteredColumns(Object.values(columns));
-  };
+  const getActiveNode = useCallback(
+    (nodeId) => {
+      return nodes.find((item) => item.id === nodeId);
+    },
+    [id, nodes]
+  );
+
+  const { hasDownstream, hasUpstream } = useMemo(() => {
+    return checkUpstreamDownstream(id, lineage ?? []);
+  }, [id, lineage]);
+
+  const { hasOutgoers, hasIncomers, isUpstreamLeafNode, isDownstreamLeafNode } =
+    useMemo(() => {
+      const activeNode = getActiveNode(id);
+      if (!activeNode) {
+        return {
+          hasOutgoers: false,
+          hasIncomers: false,
+          isUpstreamLeafNode: false,
+          isDownstreamLeafNode: false,
+        };
+      }
+      const outgoers = getOutgoers(activeNode, nodes, edges);
+      const incomers = getIncomers(activeNode, nodes, edges);
+
+      return {
+        hasOutgoers: outgoers.length > 0,
+        hasIncomers: incomers.length > 0,
+        isUpstreamLeafNode: incomers.length === 0 && hasUpstream,
+        isDownstreamLeafNode: outgoers.length === 0 && hasDownstream,
+      };
+    }, [id, nodes, edges, hasUpstream, hasDownstream]);
+
+  const { isUpstreamNode, isDownstreamNode } = useMemo(() => {
+    return {
+      isUpstreamNode: upstreamDownstreamData.upstreamNodes.some(
+        (item) => item.fullyQualifiedName === fullyQualifiedName
+      ),
+      isDownstreamNode: upstreamDownstreamData.downstreamNodes.some(
+        (item) => item.fullyQualifiedName === fullyQualifiedName
+      ),
+    };
+  }, [fullyQualifiedName, upstreamDownstreamData]);
+
+  const onExpand = useCallback(
+    (direction: EdgeTypeEnum) => {
+      loadChildNodesHandler(node, direction);
+    },
+    [loadChildNodesHandler, node]
+  );
+
+  const onCollapse = useCallback(
+    (direction = EdgeTypeEnum.DOWN_STREAM) => {
+      const node = getActiveNode(id);
+      if (node) {
+        onNodeCollapse(node, direction);
+      }
+    },
+    [loadChildNodesHandler, props, id]
+  );
 
   const nodeLabel = useMemo(() => {
-    if (isNewNode && !node) {
+    if (isNewNode) {
       return label;
     } else {
       return (
         <>
           <LineageNodeLabelV1 node={node} />
-          {selected && isEditMode ? (
+          {isSelected && isEditMode && !isRootNode ? (
             <Button
               className="lineage-node-remove-btn bg-body-hover"
+              data-testid="lineage-node-remove-btn"
               icon={
-                <SVGIcons
+                <Icon
                   alt="times-circle"
-                  icon="icon-times-circle"
-                  width="16px"
+                  className="align-middle"
+                  component={IconTimesCircle}
+                  style={{ fontSize: '16px' }}
                 />
               }
               type="link"
-              onClick={() => removeNodeHandler?.(props)}
+              onClick={() => removeNodeHandler(props)}
             />
           ) : null}
         </>
       );
     }
-  }, [node, isNewNode, label, selected, isEditMode]);
+  }, [node.id, isNewNode, label, isSelected, isEditMode]);
+
+  const getExpandCollapseHandles = useCallback(() => {
+    if (isEditMode) {
+      return null;
+    }
+
+    return (
+      <>
+        {hasOutgoers &&
+          (isDownstreamNode || isRootNode) &&
+          getCollapseHandle(EdgeTypeEnum.DOWN_STREAM, onCollapse)}
+        {isDownstreamLeafNode &&
+          (isDownstreamNode || isRootNode) &&
+          getExpandHandle(EdgeTypeEnum.DOWN_STREAM, () =>
+            onExpand(EdgeTypeEnum.DOWN_STREAM)
+          )}
+        {hasIncomers &&
+          (isUpstreamNode || isRootNode) &&
+          getCollapseHandle(EdgeTypeEnum.UP_STREAM, () =>
+            onCollapse(EdgeTypeEnum.UP_STREAM)
+          )}
+        {isUpstreamLeafNode &&
+          (isUpstreamNode || isRootNode) &&
+          getExpandHandle(EdgeTypeEnum.UP_STREAM, () =>
+            onExpand(EdgeTypeEnum.UP_STREAM)
+          )}
+      </>
+    );
+  }, [
+    node.id,
+    nodes,
+    edges,
+    hasOutgoers,
+    hasIncomers,
+    isUpstreamLeafNode,
+    isDownstreamLeafNode,
+    isUpstreamNode,
+    isDownstreamNode,
+    isEditMode,
+    isRootNode,
+  ]);
+
+  const getHandle = useCallback(() => {
+    switch (nodeType) {
+      case EntityLineageNodeType.OUTPUT:
+        return (
+          <>
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Left}
+              type="target"
+            />
+            {getExpandCollapseHandles()}
+          </>
+        );
+
+      case EntityLineageNodeType.INPUT:
+        return (
+          <>
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Right}
+              type="source"
+            />
+            {getExpandCollapseHandles()}
+          </>
+        );
+
+      case EntityLineageNodeType.NOT_CONNECTED:
+        return null;
+
+      default:
+        return (
+          <>
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Left}
+              type="target"
+            />
+            <Handle
+              className="lineage-node-handle"
+              id={id}
+              isConnectable={isConnectable}
+              position={Position.Right}
+              type="source"
+            />
+            {getExpandCollapseHandles()}
+          </>
+        );
+    }
+  }, [
+    node.id,
+    nodeType,
+    isConnectable,
+    isDownstreamLeafNode,
+    isUpstreamLeafNode,
+    loadChildNodesHandler,
+  ]);
 
   useEffect(() => {
-    updateNodeInternals(id);
-    if (!isExpanded) {
-      setShowAllColumns(false);
-    } else if (!isEmpty(columns) && Object.values(columns).length < 5) {
-      setShowAllColumns(true);
-    }
-  }, [isEditMode, isExpanded, columns]);
-
-  useEffect(() => {
-    if (!isEmpty(columns)) {
-      setFilteredColumns(
-        Object.values(columns).slice(0, 5) as ModifiedColumn[]
-      );
-    }
-  }, [columns]);
+    setIsTraced(tracedNodes.includes(id));
+  }, [tracedNodes, id]);
 
   return (
     <div
       className={classNames(
         'lineage-node p-0',
-        selected || data.selected
-          ? 'custom-node-header-active'
-          : 'custom-node-header-normal',
+        isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
         { 'custom-node-header-tracing': isTraced }
-      )}>
-      {getHandle(
-        node,
-        type,
-        isConnectable,
-        lineageLeafNodes,
-        isNodeLoading,
-        'lineage-node-handle',
-        onSelect,
-        loadNodeHandler
       )}
+      data-testid={`lineage-node-${fullyQualifiedName}`}>
+      {getHandle()}
       <div className="lineage-node-content">
         <div className="label-container bg-white">{nodeLabel}</div>
-
-        {node && node.type === EntityType.TABLE && (
-          <div className="column-container bg-grey-1 p-sm">
-            <Button
-              className="flex-center text-primary rounded-4"
-              size="small"
-              type="text"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNodeExpand?.(!isExpanded, node);
-              }}>
-              {t('label.column-plural')}
-              {isExpanded ? (
-                <UpOutlined style={{ fontSize: '12px' }} />
-              ) : (
-                <DownOutlined style={{ fontSize: '12px' }} />
-              )}
-            </Button>
-
-            {isExpanded && (
-              <div className="m-t-md">
-                <div className="search-box">
-                  <Input
-                    placeholder={t('label.search-entity', {
-                      entity: t('label.column-plural'),
-                    })}
-                    suffix={<SearchOutlined color={BORDER_COLOR} />}
-                    value={searchValue}
-                    onChange={handleSearchChange}
-                  />
-                </div>
-
-                <section className="m-t-md" id="table-columns">
-                  <div className="border rounded-4">
-                    {filteredColumns.map((column) => {
-                      const isColumnTraced = selectedColumns.includes(
-                        column.fullyQualifiedName
-                      );
-
-                      return (
-                        <div
-                          className={classNames(
-                            'custom-node-column-container',
-                            isColumnTraced
-                              ? 'custom-node-header-tracing'
-                              : 'custom-node-column-lineage-normal bg-white'
-                          )}
-                          data-testid="column"
-                          key={column.fullyQualifiedName}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleColumnClick(column.fullyQualifiedName);
-                          }}>
-                          {getColumnHandle(
-                            column.type,
-                            isConnectable,
-                            'lineage-column-node-handle',
-                            column.fullyQualifiedName
-                          )}
-                          {getConstraintIcon({ constraint: column.constraint })}
-                          <p className="p-xss">{getEntityName(column)}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                {!showAllColumns && (
-                  <Button
-                    className="m-t-xs text-primary"
-                    type="text"
-                    onClick={handleShowMoreClick}>
-                    {t('label.show-more-entity', {
-                      entity: t('label.column-plural'),
-                    })}
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        <NodeChildren isConnectable={isConnectable} node={node} />
       </div>
     </div>
   );
 };
 
-export default CustomNodeV1;
+export default memo(CustomNodeV1);

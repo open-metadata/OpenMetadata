@@ -16,14 +16,15 @@ supporting sqlalchemy abstraction layer
 """
 
 import concurrent.futures
+import math
 import threading
 import traceback
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Dict, List, Optional
 
 from sqlalchemy import Column, inspect, text
-from sqlalchemy.exc import ProgrammingError, ResourceClosedError
+from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
 from sqlalchemy.orm import scoped_session
 
 from metadata.generated.schema.entity.data.table import CustomMetricProfile, TableData
@@ -37,10 +38,9 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.metrics.static.mean import Mean
 from metadata.profiler.metrics.static.stddev import StdDev
 from metadata.profiler.metrics.static.sum import Sum
-from metadata.profiler.orm.functions.table_metric_construct import (
-    table_metric_construct_factory,
-)
+from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
@@ -186,12 +186,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         # pylint: disable=protected-access
         try:
             dialect = runner._session.get_bind().dialect.name
-            row = table_metric_construct_factory.construct(
+            table_metric_computer: TableMetricComputer = TableMetricComputer(
                 dialect,
                 runner=runner,
                 metrics=metrics,
                 conn_config=self.service_connection_config,
+                entity=self.table_entity,
             )
+            row = table_metric_computer.compute()
             if row:
                 return dict(row)
             return None
@@ -231,7 +233,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 ],
             )
             return dict(row)
-        except ProgrammingError as exc:
+        except (ProgrammingError, DBAPIError) as exc:
             return self._programming_error_static_metric(
                 runner, column, exc, session, metrics
             )
@@ -348,7 +350,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     crs.scalar()
                 )  # raise MultipleResultsFound if more than one row is returned
                 custom_metrics.append(
-                    CustomMetricProfile(name=metric.name.__root__, value=row)
+                    CustomMetricProfile(name=metric.name.root, value=row)
                 )
 
             except Exception as exc:
@@ -449,6 +451,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     column=metric_func.column,
                     sample=sample,
                 )
+                if row:
+                    for k, v in row.items():
+                        # Replace NaN values with None
+                        if isinstance(v, float) and math.isnan(v):
+                            logger.warning(
+                                "NaN data detected and will be cast to null in OpenMetadata to maintain database parity"
+                            )
+                            row[k] = None
             except Exception as exc:
                 error = (
                     f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
@@ -480,7 +490,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     self.compute_metrics_in_thread,
                     metric_func,
                 )
-                for metric_func in metric_funcs
+                for metric_func in MetricFilter.filter_empty_metrics(metric_funcs)
             ]
 
             for future in futures:
@@ -505,9 +515,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                         profile_results["columns"][column].update(
                             {
                                 "name": column,
-                                "timestamp": int(
-                                    datetime.now(tz=timezone.utc).timestamp() * 1000
-                                ),
+                                "timestamp": int(datetime.now().timestamp() * 1000),
                                 **profile,
                             }
                         )
@@ -580,9 +588,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
         """
         Override Programming Error for Static Metrics
         """
-        logger.error(
-            f"Skipping metrics due to {exc} for {runner.table.__tablename__}.{column.name}"
-        )
+        raise exc
 
     def get_columns(self):
         """get columns from entity"""

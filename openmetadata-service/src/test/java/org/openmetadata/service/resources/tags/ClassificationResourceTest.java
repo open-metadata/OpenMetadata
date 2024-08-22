@@ -78,7 +78,7 @@ public class ClassificationResourceTest
     assertResponseContains(
         () -> updateEntity(create, Status.CREATED, ADMIN_AUTH_HEADERS),
         BAD_REQUEST,
-        "name size must be between 2 and 64");
+        "name size must be between 1 and 256");
   }
 
   @Test
@@ -93,7 +93,10 @@ public class ClassificationResourceTest
 
   @Override
   public CreateClassification createRequest(String name) {
-    return new CreateClassification().withName(name).withDescription("description");
+    return new CreateClassification()
+        .withName(name)
+        .withDescription("description")
+        .withProvider(ProviderType.USER);
   }
 
   @Override

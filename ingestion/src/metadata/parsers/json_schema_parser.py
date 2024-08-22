@@ -16,7 +16,9 @@ Utils module to parse the jsonschema
 import json
 import traceback
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Type
+
+from pydantic import BaseModel
 
 from metadata.generated.schema.type.schema import FieldModel
 from metadata.utils.logger import ingestion_logger
@@ -36,20 +38,25 @@ class JsonSchemaDataTypes(Enum):
     NULL = "null"
     RECORD = "object"
     ARRAY = "array"
+    UNKNOWN = "unknown"
 
 
-def parse_json_schema(schema_text: str) -> Optional[List[FieldModel]]:
+def parse_json_schema(
+    schema_text: str, cls: Type[BaseModel] = FieldModel
+) -> Optional[List[FieldModel]]:
     """
     Method to parse the jsonschema
     """
     try:
         json_schema_data = json.loads(schema_text)
         field_models = [
-            FieldModel(
+            cls(
                 name=json_schema_data.get("title", "default"),
                 dataType=JsonSchemaDataTypes(json_schema_data.get("type")).name,
                 description=json_schema_data.get("description"),
-                children=get_json_schema_fields(json_schema_data.get("properties")),
+                children=get_json_schema_fields(
+                    json_schema_data.get("properties", {}), cls=cls
+                ),
             )
         ]
         return field_models
@@ -59,7 +66,9 @@ def parse_json_schema(schema_text: str) -> Optional[List[FieldModel]]:
     return None
 
 
-def get_json_schema_fields(properties) -> Optional[List[FieldModel]]:
+def get_json_schema_fields(
+    properties, cls: Type[BaseModel] = FieldModel
+) -> Optional[List[FieldModel]]:
     """
     Recursively convert the parsed schema into required models
     """
@@ -67,9 +76,10 @@ def get_json_schema_fields(properties) -> Optional[List[FieldModel]]:
     for key, value in properties.items():
         try:
             field_models.append(
-                FieldModel(
-                    name=value.get("title", key),
-                    dataType=JsonSchemaDataTypes(value.get("type")).name,
+                cls(
+                    name=key,
+                    displayName=value.get("title"),
+                    dataType=JsonSchemaDataTypes(value.get("type", "unknown")).name,
                     description=value.get("description"),
                     children=get_json_schema_fields(value.get("properties"))
                     if value.get("type") == "object"

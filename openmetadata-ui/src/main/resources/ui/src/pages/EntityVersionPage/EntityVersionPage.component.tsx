@@ -21,37 +21,32 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import APIEndpointVersion from '../../components/APIEndpoint/APIEndpointVersion/APIEndpointVersion';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import ContainerVersion from '../../components/ContainerVersion/ContainerVersion.component';
-import DashboardVersion from '../../components/DashboardVersion/DashboardVersion.component';
-import DataModelVersion from '../../components/DataModelVersion/DataModelVersion.component';
-import Loader from '../../components/Loader/Loader';
-import MlModelVersion from '../../components/MlModelVersion/MlModelVersion.component';
+import Loader from '../../components/common/Loader/Loader';
+import ContainerVersion from '../../components/Container/ContainerVersion/ContainerVersion.component';
+import DashboardVersion from '../../components/Dashboard/DashboardVersion/DashboardVersion.component';
+import DataModelVersion from '../../components/Dashboard/DataModel/DataModelVersion/DataModelVersion.component';
+import StoredProcedureVersion from '../../components/Database/StoredProcedureVersion/StoredProcedureVersion.component';
+import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
+import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
+import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
+import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
+import TopicVersion from '../../components/Topic/TopicVersion/TopicVersion.component';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import PipelineVersion from '../../components/PipelineVersion/PipelineVersion.component';
-import SearchIndexVersion from '../../components/SearchIndexVersion/SearchIndexVersion';
-import StoredProcedureVersion from '../../components/StoredProcedureVersion/StoredProcedureVersion.component';
-import TableVersion from '../../components/TableVersion/TableVersion.component';
-import TopicVersion from '../../components/TopicVersion/TopicVersion.component';
-import {
-  getContainerDetailPath,
-  getDashboardDetailsPath,
-  getDataModelDetailsPath,
-  getMlModelDetailsPath,
-  getPipelineDetailsPath,
-  getStoredProcedureDetailPath,
-  getTableTabPath,
-  getTopicDetailsPath,
-  getVersionPath,
-  getVersionPathWithTab,
-} from '../../constants/constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
@@ -62,14 +57,21 @@ import { StoredProcedure } from '../../generated/entity/data/storedProcedure';
 import { Table } from '../../generated/entity/data/table';
 import { Topic } from '../../generated/entity/data/topic';
 import { EntityHistory } from '../../generated/type/entityHistory';
+import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import { useFqn } from '../../hooks/useFqn';
+import {
+  getApiEndPointByFQN,
+  getApiEndPointVersion,
+  getApiEndPointVersions,
+} from '../../rest/apiEndpointsAPI';
 import {
   getDashboardByFqn,
   getDashboardVersion,
   getDashboardVersions,
 } from '../../rest/dashboardAPI';
 import {
-  getDataModelDetailsByFQN,
+  getDataModelByFqn,
   getDataModelVersion,
   getDataModelVersionsList,
 } from '../../rest/dataModelsAPI';
@@ -94,7 +96,7 @@ import {
   getContainerVersions,
 } from '../../rest/storageAPI';
 import {
-  getStoredProceduresDetailsByFQN,
+  getStoredProceduresByFqn,
   getStoredProceduresVersion,
   getStoredProceduresVersionsList,
 } from '../../rest/storedProceduresAPI';
@@ -108,11 +110,13 @@ import {
   getTopicVersion,
   getTopicVersions,
 } from '../../rest/topicsAPI';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityBreadcrumbs, getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { getSearchIndexTabPath } from '../../utils/SearchIndexUtils';
-import { getDecodedFqn } from '../../utils/StringsUtils';
 import { getTierTags } from '../../utils/TableUtils';
+import APICollectionVersionPage from '../APICollectionPage/APICollectionVersionPage';
+import DatabaseSchemaVersionPage from '../DatabaseSchemaVersionPage/DatabaseSchemaVersionPage';
+import DatabaseVersionPage from '../DatabaseVersionPage/DatabaseVersionPage';
 import './EntityVersionPage.less';
 
 export type VersionData =
@@ -124,7 +128,8 @@ export type VersionData =
   | Container
   | SearchIndex
   | StoredProcedure
-  | DashboardDataModel;
+  | DashboardDataModel
+  | APIEndpoint;
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -134,17 +139,13 @@ const EntityVersionPage: FunctionComponent = () => {
     {} as VersionData
   );
 
-  const {
-    entityType,
-    version,
-    fqn: entityFQN,
-    tab,
-  } = useParams<{
+  const { entityType, version, tab } = useParams<{
     entityType: EntityType;
     version: string;
-    fqn: string;
     tab: EntityTabs;
   }>();
+
+  const { fqn: decodedEntityFQN } = useFqn();
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const [entityPermissions, setEntityPermissions] =
@@ -155,79 +156,31 @@ const EntityVersionPage: FunctionComponent = () => {
   );
   const [isVersionLoading, setIsVersionLoading] = useState<boolean>(true);
 
-  const backHandler = useCallback(() => {
-    const decodedEntityFQN = getDecodedFqn(entityFQN);
-    switch (entityType) {
-      case EntityType.TABLE:
-        history.push(getTableTabPath(entityFQN, tab));
-
-        break;
-
-      case EntityType.TOPIC:
-        history.push(getTopicDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.DASHBOARD:
-        history.push(getDashboardDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.PIPELINE:
-        history.push(getPipelineDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.MLMODEL:
-        history.push(getMlModelDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.CONTAINER:
-        history.push(getContainerDetailPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.SEARCH_INDEX:
-        history.push(getSearchIndexTabPath(entityFQN, tab));
-
-        break;
-
-      case EntityType.DASHBOARD_DATA_MODEL:
-        history.push(getDataModelDetailsPath(decodedEntityFQN, tab));
-
-        break;
-
-      case EntityType.STORED_PROCEDURE:
-        history.push(getStoredProcedureDetailPath(decodedEntityFQN, tab));
-
-        break;
-
-      default:
-        break;
-    }
-  }, [entityType, entityFQN, tab]);
+  const backHandler = useCallback(
+    () => history.push(getEntityDetailsPath(entityType, decodedEntityFQN, tab)),
+    [entityType, decodedEntityFQN, tab]
+  );
 
   const versionHandler = useCallback(
     (newVersion = version) => {
       if (tab) {
         history.push(
-          getVersionPathWithTab(entityType, entityFQN, newVersion, tab)
+          getVersionPath(entityType, decodedEntityFQN, newVersion, tab)
         );
       } else {
-        history.push(getVersionPath(entityType, entityFQN, newVersion));
+        history.push(getVersionPath(entityType, decodedEntityFQN, newVersion));
       }
     },
-    [entityType, entityFQN, tab]
+    [entityType, decodedEntityFQN, tab]
   );
 
   const fetchResourcePermission = useCallback(
     async (resourceEntity: ResourceEntity) => {
-      if (!isEmpty(entityFQN)) {
+      if (!isEmpty(decodedEntityFQN)) {
         try {
           const permission = await getEntityPermissionByFqn(
             resourceEntity,
-            entityFQN
+            decodedEntityFQN
           );
 
           setEntityPermissions(permission);
@@ -236,77 +189,17 @@ const EntityVersionPage: FunctionComponent = () => {
         }
       }
     },
-    [entityFQN, getEntityPermissionByFqn, setEntityPermissions]
+    [decodedEntityFQN, getEntityPermissionByFqn, setEntityPermissions]
   );
 
   const fetchEntityPermissions = useCallback(async () => {
     setIsLoading(true);
     try {
-      switch (entityType) {
-        case EntityType.TABLE: {
-          await fetchResourcePermission(ResourceEntity.TABLE);
-
-          break;
-        }
-        case EntityType.TOPIC: {
-          await fetchResourcePermission(ResourceEntity.TOPIC);
-
-          break;
-        }
-        case EntityType.DASHBOARD: {
-          await fetchResourcePermission(ResourceEntity.DASHBOARD);
-
-          break;
-        }
-        case EntityType.PIPELINE: {
-          await fetchResourcePermission(ResourceEntity.PIPELINE);
-
-          break;
-        }
-        case EntityType.MLMODEL: {
-          await fetchResourcePermission(ResourceEntity.ML_MODEL);
-
-          break;
-        }
-        case EntityType.CONTAINER: {
-          await fetchResourcePermission(ResourceEntity.CONTAINER);
-
-          break;
-        }
-        case EntityType.SEARCH_INDEX: {
-          await fetchResourcePermission(ResourceEntity.SEARCH_INDEX);
-
-          break;
-        }
-        case EntityType.DASHBOARD_DATA_MODEL: {
-          await fetchResourcePermission(ResourceEntity.DASHBOARD_DATA_MODEL);
-
-          break;
-        }
-        case EntityType.STORED_PROCEDURE: {
-          await fetchResourcePermission(ResourceEntity.STORED_PROCEDURE);
-
-          break;
-        }
-        case EntityType.DATABASE: {
-          await fetchResourcePermission(ResourceEntity.DATABASE);
-
-          break;
-        }
-        case EntityType.DATABASE_SCHEMA: {
-          await fetchResourcePermission(ResourceEntity.DATABASE_SCHEMA);
-
-          break;
-        }
-        case EntityType.GLOSSARY_TERM: {
-          await fetchResourcePermission(ResourceEntity.GLOSSARY_TERM);
-
-          break;
-        }
-        default: {
-          break;
-        }
-      }
+      await fetchResourcePermission(
+        entityUtilClassBase.getResourceEntityFromEntityType(
+          entityType
+        ) as ResourceEntity
+      );
     } finally {
       setIsLoading(false);
     }
@@ -322,7 +215,9 @@ const EntityVersionPage: FunctionComponent = () => {
     try {
       switch (entityType) {
         case EntityType.TABLE: {
-          const { id } = await getTableDetailsByFQN(entityFQN, '');
+          const { id } = await getTableDetailsByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -334,7 +229,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.TOPIC: {
-          const { id } = await getTopicByFqn(entityFQN, '');
+          const { id } = await getTopicByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -346,7 +243,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD: {
-          const { id } = await getDashboardByFqn(entityFQN, '');
+          const { id } = await getDashboardByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -358,7 +257,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.PIPELINE: {
-          const { id } = await getPipelineByFqn(entityFQN, '');
+          const { id } = await getPipelineByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -370,7 +271,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.MLMODEL: {
-          const { id } = await getMlModelByFQN(entityFQN, '');
+          const { id } = await getMlModelByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -382,7 +285,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.CONTAINER: {
-          const { id } = await getContainerByName(entityFQN, '');
+          const { id } = await getContainerByName(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -394,7 +299,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.SEARCH_INDEX: {
-          const { id } = await getSearchIndexDetailsByFQN(entityFQN, '');
+          const { id } = await getSearchIndexDetailsByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id);
 
@@ -406,7 +313,9 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.DASHBOARD_DATA_MODEL: {
-          const { id } = await getDataModelDetailsByFQN(entityFQN, '');
+          const { id } = await getDataModelByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id ?? '');
 
@@ -418,11 +327,26 @@ const EntityVersionPage: FunctionComponent = () => {
         }
 
         case EntityType.STORED_PROCEDURE: {
-          const { id } = await getStoredProceduresDetailsByFQN(entityFQN, '');
+          const { id } = await getStoredProceduresByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
 
           setEntityId(id ?? '');
 
           const versions = await getStoredProceduresVersionsList(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
+        case EntityType.API_ENDPOINT: {
+          const { id } = await getApiEndPointByFQN(decodedEntityFQN, {
+            include: Include.All,
+          });
+
+          setEntityId(id ?? '');
+
+          const versions = await getApiEndPointVersions(id ?? '');
 
           setVersionList(versions);
 
@@ -435,7 +359,7 @@ const EntityVersionPage: FunctionComponent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [entityType, entityFQN, viewVersionPermission]);
+  }, [entityType, decodedEntityFQN, viewVersionPermission]);
 
   const fetchCurrentVersion = useCallback(
     async (id: string) => {
@@ -513,6 +437,13 @@ const EntityVersionPage: FunctionComponent = () => {
 
               break;
             }
+            case EntityType.API_ENDPOINT: {
+              const currentVersion = await getApiEndPointVersion(id, version);
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
 
             default:
               break;
@@ -525,9 +456,9 @@ const EntityVersionPage: FunctionComponent = () => {
     [entityType, version, viewVersionPermission]
   );
 
-  const { owner, domain, tier, slashedEntityName } = useMemo(() => {
+  const { owners, domain, tier, slashedEntityName } = useMemo(() => {
     return {
-      owner: currentVersionData.owner,
+      owners: currentVersionData.owners,
       tier: getTierTags(currentVersionData.tags ?? []),
       domain: currentVersionData.domain,
       slashedEntityName: getEntityBreadcrumbs(currentVersionData, entityType),
@@ -543,6 +474,8 @@ const EntityVersionPage: FunctionComponent = () => {
       return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
     }
 
+    let VersionPage = null;
+
     switch (entityType) {
       case EntityType.TABLE: {
         return (
@@ -554,7 +487,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -573,7 +506,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTopicName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -593,7 +526,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedDashboardName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -613,7 +546,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedPipelineName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -633,7 +566,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedMlModelName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -653,7 +586,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -672,7 +605,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}
@@ -689,8 +622,9 @@ const EntityVersionPage: FunctionComponent = () => {
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}
+            entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedDataModelName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -710,7 +644,7 @@ const EntityVersionPage: FunctionComponent = () => {
             domain={domain}
             entityPermissions={entityPermissions}
             isVersionLoading={isVersionLoading}
-            owner={owner}
+            owners={owners}
             slashedTableName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
@@ -720,20 +654,56 @@ const EntityVersionPage: FunctionComponent = () => {
         );
       }
 
+      case EntityType.API_ENDPOINT: {
+        return (
+          <APIEndpointVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData as APIEndpoint}
+            domain={domain}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            slashedApiEndpointName={slashedEntityName}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+
+      case EntityType.DATABASE: {
+        return <DatabaseVersionPage />;
+      }
+
+      case EntityType.DATABASE_SCHEMA: {
+        return <DatabaseSchemaVersionPage />;
+      }
+
+      case EntityType.DATA_PRODUCT: {
+        return <DataProductsPage />;
+      }
+
+      case EntityType.API_COLLECTION: {
+        return <APICollectionVersionPage />;
+      }
+
       default:
-        return null;
+        VersionPage = entityUtilClassBase.getEntityDetailComponent(entityType);
+
+        return VersionPage && <VersionPage />;
     }
   };
 
   useEffect(() => {
     fetchEntityPermissions();
-  }, [entityFQN]);
+  }, [decodedEntityFQN]);
 
   useEffect(() => {
     if (viewVersionPermission) {
       fetchEntityVersions();
     }
-  }, [entityFQN, viewVersionPermission]);
+  }, [decodedEntityFQN, viewVersionPermission]);
 
   useEffect(() => {
     if (entityId) {

@@ -100,7 +100,7 @@ pre {
   color: inherit;
 }
 .error-text {
-  color: #ff4c3b;
+  color: @error-color;
 }
 .text-white {
   color: @white;
@@ -111,25 +111,37 @@ pre {
 .text-grey-muted {
   color: @text-grey-muted;
 }
+.text-grey-3 {
+  color: @grey-3;
+}
 .text-grey-body {
-  color: @text-color-secondary;
+  color: @text-color;
 }
 .text-link-color {
-  color: @link-color;
+  color: @primary-color;
 }
 .text-gray-400 {
-  color: #9ca3af;
+  color: @grey-7;
 }
 .text-body {
-  color: @text-color-secondary;
+  color: @text-color;
+}
+.text-hover-body {
+  &:hover {
+    color: @text-color;
+  }
 }
 
 .text-success {
-  color: #008376;
+  color: @success-color;
 }
 
 .text-failure {
-  color: #cb2431;
+  color: @failed-color;
+}
+
+.text-warning-7 {
+  color: @yellow-7;
 }
 
 a.ant-typography,
@@ -142,4 +154,9 @@ a.ant-typography,
 // font style
 .font-italic {
   font-style: italic;
+}
+
+// line height
+.line-height-16 {
+  line-height: 16px;
 }

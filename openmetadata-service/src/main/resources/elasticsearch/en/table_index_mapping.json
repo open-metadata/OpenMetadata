@@ -75,7 +75,8 @@
       },
       "description": {
         "type": "text",
-        "analyzer": "om_analyzer"
+        "analyzer": "om_analyzer",
+        "index_options": "docs"
       },
       "version": {
         "type": "float"
@@ -122,7 +123,8 @@
           },
           "description": {
             "type": "text",
-            "analyzer": "om_analyzer"
+            "analyzer": "om_analyzer",
+            "index_options": "docs"
           },
           "fullyQualifiedName": {
             "type": "keyword",
@@ -140,7 +142,8 @@
                 "type": "keyword"
               },
               "description": {
-                "type": "text"
+                "type": "text",
+                "index_options": "docs"
               },
               "source": {
                 "type": "keyword"
@@ -301,7 +304,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -565,6 +568,9 @@
           }
         }
       },
+      "lineage": {
+        "type" : "object"
+      },
       "serviceType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -593,6 +599,16 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

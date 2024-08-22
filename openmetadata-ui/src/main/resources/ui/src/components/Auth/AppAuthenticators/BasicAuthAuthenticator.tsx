@@ -23,8 +23,9 @@ import {
   AccessTokenResponse,
   getAccessTokenOnExpiry,
 } from '../../../rest/auth-API';
-import localState from '../../../utils/LocalStorageUtils';
-import { useAuthContext } from '../AuthProviders/AuthProvider';
+
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import Loader from '../../common/Loader/Loader';
 import { useBasicAuth } from '../AuthProviders/BasicAuthProvider';
 
 interface BasicAuthenticatorInterface {
@@ -35,10 +36,17 @@ const BasicAuthenticator = forwardRef(
   ({ children }: BasicAuthenticatorInterface, ref) => {
     const { handleLogout } = useBasicAuth();
     const { t } = useTranslation();
-    const { setIsAuthenticated, authConfig } = useAuthContext();
+    const {
+      setIsAuthenticated,
+      authConfig,
+      getRefreshToken,
+      setRefreshToken,
+      setOidcToken,
+      isApplicationLoading,
+    } = useApplicationStore();
 
     const handleSilentSignIn = async (): Promise<AccessTokenResponse> => {
-      const refreshToken = localState.getRefreshToken();
+      const refreshToken = getRefreshToken();
 
       if (
         authConfig?.provider !== AuthProvider.Basic &&
@@ -51,8 +59,8 @@ const BasicAuthenticator = forwardRef(
         refreshToken: refreshToken as string,
       });
 
-      localState.setRefreshToken(response.refreshToken);
-      localState.setOidcToken(response.accessToken);
+      setRefreshToken(response.refreshToken);
+      setOidcToken(response.accessToken);
 
       return Promise.resolve(response);
     };
@@ -66,6 +74,17 @@ const BasicAuthenticator = forwardRef(
         return handleSilentSignIn();
       },
     }));
+
+    /**
+     * isApplicationLoading is true when the application is loading in AuthProvider
+     * and is false when the application is loaded.
+     * If the application is loading, show the loader.
+     * If the user is authenticated, show the AppContainer.
+     * If the user is not authenticated, show the UnAuthenticatedAppRouter.
+     * */
+    if (isApplicationLoading) {
+      return <Loader fullScreen />;
+    }
 
     return <Fragment>{children}</Fragment>;
   }

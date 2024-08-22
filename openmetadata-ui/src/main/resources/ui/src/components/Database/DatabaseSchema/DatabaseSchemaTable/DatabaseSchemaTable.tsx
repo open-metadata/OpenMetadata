@@ -16,20 +16,21 @@ import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useLocation } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
 } from '../../../../constants/constants';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import { useFqn } from '../../../../hooks/useFqn';
 import { getDatabaseSchemas } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { schemaTableColumns } from '../../../../utils/Database/Database.util';
-import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -41,14 +42,13 @@ import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
 export const DatabaseSchemaTable = ({
   isDatabaseDeleted,
 }: Readonly<DatabaseSchemaTableProps>) => {
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
   const location = useLocation();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
 
-  const decodedDatabaseFQN = useMemo(() => getDecodedFqn(fqn), [fqn]);
   const searchValue = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -81,7 +81,7 @@ export const DatabaseSchemaTable = ({
           after: params?.after,
           before: params?.before,
           include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
-          fields: ['owner', 'usageSummary'],
+          fields: [TabSpecificField.OWNERS, TabSpecificField.USAGE_SUMMARY],
         });
 
         setSchemas(data);
@@ -108,7 +108,9 @@ export const DatabaseSchemaTable = ({
         queryFilter: {
           query: {
             bool: {
-              must: [{ term: { 'database.fullyQualifiedName': fqn } }],
+              must: [
+                { term: { 'database.fullyQualifiedName': decodedDatabaseFQN } },
+              ],
             },
           },
         },
@@ -159,7 +161,7 @@ export const DatabaseSchemaTable = ({
 
   useEffect(() => {
     fetchDatabaseSchema();
-  }, [fqn, pageSize, showDeletedSchemas, isDatabaseDeleted]);
+  }, [decodedDatabaseFQN, pageSize, showDeletedSchemas, isDatabaseDeleted]);
 
   return (
     <Row gutter={[16, 16]}>

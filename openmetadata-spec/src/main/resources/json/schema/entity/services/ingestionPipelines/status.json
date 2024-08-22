@@ -39,6 +39,11 @@
           "type": "integer",
           "default": 0
         },
+        "updated_records": {
+          "description": "Number of successfully updated records.",
+          "type": "integer",
+          "default": 0
+        },
         "warnings": {
           "description": "Number of records raising warnings.",
           "type": "integer",

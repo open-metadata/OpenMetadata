@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -14,7 +14,6 @@ import { Button, Modal } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../DomainPage.interface';
@@ -28,15 +27,10 @@ const AddSubDomainModal = ({
   const { t } = useTranslation();
   const [form] = useForm();
 
-  const handleFormSubmit = async (
-    formData: CreateDomain | CreateDataProduct
-  ) => {
-    onSubmit(formData as CreateDomain);
-  };
-
   return (
     <Modal
       cancelText={t('label.cancel')}
+      className="add-subdomain-modal"
       closable={false}
       footer={[
         <Button key="cancel-btn" type="link" onClick={onCancel}>
@@ -62,7 +56,7 @@ const AddSubDomainModal = ({
         loading={false}
         type={DomainFormType.SUBDOMAIN}
         onCancel={onCancel}
-        onSubmit={handleFormSubmit}
+        onSubmit={(formData) => onSubmit(formData as CreateDomain)}
       />
     </Modal>
   );

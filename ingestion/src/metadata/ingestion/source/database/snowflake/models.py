@@ -11,9 +11,11 @@
 """
 Snowflake models
 """
-from typing import Optional
+import urllib
+from datetime import datetime
+from typing import List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from requests.utils import quote
 
 from metadata.generated.schema.entity.data.storedProcedure import Language
@@ -33,16 +35,16 @@ class SnowflakeStoredProcedure(BaseModel):
     """Snowflake stored procedure list query results"""
 
     name: str = Field(..., alias="NAME")
-    owner: Optional[str] = Field(..., alias="OWNER")
+    owner: Optional[str] = Field(None, alias="OWNER")
     language: str = Field(..., alias="LANGUAGE")
-    definition: str = Field(None, alias="DEFINITION")
+    definition: Optional[str] = Field(None, alias="DEFINITION")
     signature: Optional[str] = Field(
-        ..., alias="SIGNATURE", description="Used to build the source URL"
+        None, alias="SIGNATURE", description="Used to build the source URL"
     )
-    comment: Optional[str] = Field(..., alias="COMMENT")
+    comment: Optional[str] = Field(None, alias="COMMENT")
 
     # Update the signature to clean it up on read
-    @validator("signature")
+    @field_validator("signature")
     def clean_signature(  # pylint: disable=no-self-argument
         cls, signature
     ) -> Optional[str]:
@@ -58,7 +60,8 @@ class SnowflakeStoredProcedure(BaseModel):
         try:
             clean_signature = signature.replace("(", "").replace(")", "")
             if not clean_signature:
-                return None
+                # If removing the () leaves us with nothing, then just return the parenthesis
+                return "()"
 
             signature_list = clean_signature.split(",")
             clean_signature_list = [elem.split(" ")[-1] for elem in signature_list]
@@ -67,3 +70,28 @@ class SnowflakeStoredProcedure(BaseModel):
         except Exception as exc:
             logger.warning(f"Error cleaning up Stored Procedure signature - [{exc}]")
             return signature
+
+    def unquote_signature(self) -> Optional[str]:
+        return urllib.parse.unquote(self.signature) if self.signature else "()"
+
+
+class SnowflakeTable(BaseModel):
+    """Models the items returned from the Table and View Queries used to get the entities to process.
+    :name: Holds the table/view name.
+    :deleted: Holds either a datetime if the table was deleted or None.
+    """
+
+    name: str
+    deleted: Optional[datetime] = None
+
+
+class SnowflakeTableList(BaseModel):
+    """Understands how to return the deleted and not deleted tables/views from a given list."""
+
+    tables: List[SnowflakeTable]
+
+    def get_deleted(self) -> List[SnowflakeTable]:
+        return [table for table in self.tables if table.deleted]
+
+    def get_not_deleted(self) -> List[SnowflakeTable]:
+        return [table for table in self.tables if not table.deleted]

@@ -13,22 +13,20 @@
 Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
-from datetime import datetime, timezone
-from typing import Optional
 
+from metadata.data_quality.builders.i_validator_builder import IValidatorBuilder
+from metadata.data_quality.builders.pandas_validator_builder import (
+    PandasValidatorBuilder,
+)
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
-from metadata.data_quality.validations.validator import Validator
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
-from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
-from metadata.utils.importer import import_test_case_class
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -62,45 +60,14 @@ class PandasTestSuiteInterface(TestSuiteInterface, PandasInterfaceMixin):
         # add partition logic to test suite
         self.dfs = self.return_ometa_dataframes_sampled(
             service_connection_config=self.service_connection_config,
-            client=get_connection(self.service_connection_config).client,
+            client=get_connection(self.service_connection_config).client._client,
             table=self.table_entity,
             profile_sample_config=self.table_sample_config,
         )
         if self.dfs and self.table_partition_config:
             self.dfs = self.get_partitioned_df(self.dfs)
 
-    def run_test_case(
-        self,
-        test_case: TestCase,
-    ) -> Optional[TestCaseResult]:
-        """Run table tests where platformsTest=OpenMetadata
-
-        Args:
-            test_case: test case object to execute
-
-        Returns:
-            TestCaseResult object
-        """
-
-        try:
-            TestHandler = import_test_case_class(  # pylint: disable=invalid-name
-                self.ometa_client.get_by_id(
-                    TestDefinition, test_case.testDefinition.id
-                ).entityType.value,
-                "pandas",
-                test_case.testDefinition.fullyQualifiedName,
-            )
-
-            test_handler = TestHandler(
-                self.dfs,
-                test_case=test_case,
-                execution_date=int(datetime.now(tz=timezone.utc).timestamp() * 1000),
-            )
-
-            return Validator(validator_obj=test_handler).validate()
-        except Exception as err:
-            logger.error(
-                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
-            )
-
-            raise RuntimeError(err)
+    def _get_validator_builder(
+        self, test_case: TestCase, entity_type: str
+    ) -> IValidatorBuilder:
+        return PandasValidatorBuilder(self.dfs, test_case, entity_type)

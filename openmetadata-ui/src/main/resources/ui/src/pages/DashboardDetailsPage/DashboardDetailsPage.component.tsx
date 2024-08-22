@@ -16,20 +16,23 @@ import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { useHistory } from 'react-router-dom';
+
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import DashboardDetails from '../../components/DashboardDetails/DashboardDetails.component';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import { getVersionPath } from '../../constants/constants';
+import Loader from '../../components/common/Loader/Loader';
+import DashboardDetails from '../../components/Dashboard/DashboardDetails/DashboardDetails.component';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import { getVersionPath, ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
 import { updateChart } from '../../rest/chartAPI';
 import {
   addFollower,
@@ -59,11 +62,11 @@ export type ChartType = {
 
 const DashboardDetailsPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { fqn: dashboardFQN } = useParams<{ fqn: string }>();
+  const { fqn: dashboardFQN } = useFqn();
   const [dashboardDetails, setDashboardDetails] = useState<Dashboard>(
     {} as Dashboard
   );
@@ -118,7 +121,7 @@ const DashboardDetailsPage = () => {
       if (viewUsagePermission) {
         fields += `,${TabSpecificField.USAGE_SUMMARY}`;
       }
-      const res = await getDashboardByFqn(dashboardFQN, fields);
+      const res = await getDashboardByFqn(dashboardFQN, { fields });
 
       const { id, fullyQualifiedName, charts: ChartIds, serviceType } = res;
       setDashboardDetails(res);
@@ -149,6 +152,10 @@ const DashboardDetailsPage = () => {
     } catch (error) {
       if ((error as AxiosError).response?.status === 404) {
         setIsError(true);
+      } else if (
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+      ) {
+        history.replace(ROUTES.FORBIDDEN);
       } else {
         showErrorToast(
           error as AxiosError,
@@ -305,7 +312,9 @@ const DashboardDetailsPage = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDashboardVotes(id, data);
-      const details = await getDashboardByFqn(dashboardFQN, defaultFields);
+      const details = await getDashboardByFqn(dashboardFQN, {
+        fields: defaultFields,
+      });
       setDashboardDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);

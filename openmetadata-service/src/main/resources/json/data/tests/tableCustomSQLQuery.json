@@ -28,6 +28,8 @@
         "dataType": "NUMBER",
         "required": false
       }
-    ]
+    ],
+    "provider": "system",
+    "dataQualityDimension": "SQL"
   }
   

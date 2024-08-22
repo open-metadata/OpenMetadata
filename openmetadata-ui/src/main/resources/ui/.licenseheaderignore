@@ -51,6 +51,12 @@
 /cypress/videos
 /cypress/plugins
 
+# Playwright
+/playwright/output/
+/playwright/e2e/.cache/
+/playwright/.env
+/playwright/.auth
+
 # webpack
 /webpack
 

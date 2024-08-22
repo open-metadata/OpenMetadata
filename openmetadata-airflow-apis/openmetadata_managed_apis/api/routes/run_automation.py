@@ -61,6 +61,7 @@ def get_fn(blueprint: Blueprint) -> Callable:
                 automation_workflow.openMetadataServerConnection.secretsManagerLoader,
             )
 
+            # Should this be triggered async?
             execute(automation_workflow)
 
             return ApiResponse.success(

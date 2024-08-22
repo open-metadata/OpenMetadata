@@ -14,10 +14,8 @@
 import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, Space, Typography } from 'antd';
 import { FormProps, useForm } from 'antd/lib/form/Form';
-import { toString } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import {
   CreateGlossary,
   EntityReference,
@@ -26,15 +24,19 @@ import {
   FieldProp,
   FieldTypes,
   FormItemLayout,
+  HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
-import { useAuthContext } from '../../Auth/AuthProviders/AuthProvider';
-import { UserTeam } from '../../common/AssigneeList/AssigneeList.interface';
+
+import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
+import { EntityType } from '../../../enums/entity.enum';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { UserTag } from '../../common/UserTag/UserTag.component';
-import { UserTagSize } from '../../common/UserTag/UserTag.interface';
+import './add-glossary.less';
 import { AddGlossaryProps } from './AddGlossary.interface';
 
 const AddGlossary = ({
@@ -47,40 +49,56 @@ const AddGlossary = ({
 }: AddGlossaryProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
+  const { activeDomainEntityRef } = useDomainStore();
 
-  const selectedOwner = Form.useWatch<EntityReference | undefined>(
-    'owner',
+  const selectedOwners =
+    Form.useWatch<EntityReference | EntityReference[]>('owners', form) ?? [];
+
+  const ownersList = Array.isArray(selectedOwners)
+    ? selectedOwners
+    : [selectedOwners];
+
+  const reviewersData =
+    Form.useWatch<EntityReference | EntityReference[]>('reviewers', form) ?? [];
+
+  const selectedDomain = Form.useWatch<EntityReference | undefined>(
+    'domain',
     form
   );
-  const reviewersList =
-    Form.useWatch<EntityReference[]>('reviewers', form) ?? [];
+
+  const reviewersList = Array.isArray(reviewersData)
+    ? reviewersData
+    : [reviewersData];
+
+  const isMutuallyExclusive = Form.useWatch<boolean | undefined>(
+    'mutuallyExclusive',
+    form
+  );
 
   const handleSave: FormProps['onFinish'] = (formData) => {
-    const {
-      name,
-      displayName,
-      description,
-      tags,
-      mutuallyExclusive,
-      reviewers = [],
-      owner,
-    } = formData;
+    const { name, displayName, description, tags, mutuallyExclusive } =
+      formData;
 
-    const selectedOwner = owner ?? {
-      id: currentUser?.id,
-      type: 'user',
-    };
+    const selectedOwners =
+      ownersList.length > 0
+        ? ownersList
+        : [
+            {
+              id: currentUser?.id ?? '',
+              type: 'user',
+            },
+          ];
+
     const data: CreateGlossary = {
       name: name.trim(),
       displayName: displayName?.trim(),
       description: description,
-      reviewers: reviewers
-        .map((d: EntityReference) => toString(d.fullyQualifiedName))
-        .filter(Boolean),
-      owner: selectedOwner,
+      reviewers: reviewersList.filter(Boolean),
+      owners: selectedOwners,
       tags: tags || [],
       mutuallyExclusive: Boolean(mutuallyExclusive),
+      domain: selectedDomain?.fullyQualifiedName,
     };
     onSave(data);
   };
@@ -109,20 +127,7 @@ const AddGlossary = ({
       props: {
         'data-testid': 'name',
       },
-      rules: [
-        {
-          pattern: ENTITY_NAME_REGEX,
-          message: t('message.entity-name-validation'),
-        },
-        {
-          min: 1,
-          max: 128,
-          message: `${t('message.entity-maximum-size', {
-            entity: `${t('label.name')}`,
-            max: '128',
-          })}`,
-        },
-      ],
+      rules: NAME_FIELD_RULES,
     },
     {
       name: 'displayName',
@@ -148,6 +153,15 @@ const AddGlossary = ({
         height: 'auto',
         readonly: !allowAccess,
       },
+      rules: [
+        {
+          required: true,
+          whitespace: true,
+          message: t('label.field-required', {
+            field: t('label.description'),
+          }),
+        },
+      ],
     },
     {
       name: 'tags',
@@ -164,16 +178,22 @@ const AddGlossary = ({
       label: t('label.mutually-exclusive'),
       type: FieldTypes.SWITCH,
       required: false,
+      helperText: t('message.mutually-exclusive-alert', {
+        entity: t('label.glossary'),
+        'child-entity': t('label.glossary-term'),
+      }),
+      helperTextType: HelperTextType.ALERT,
+      showHelperText: Boolean(isMutuallyExclusive),
       props: {
         'data-testid': 'mutually-exclusive-button',
       },
       id: 'root/mutuallyExclusive',
-      formItemLayout: FormItemLayout.HORIZONATAL,
+      formItemLayout: FormItemLayout.HORIZONTAL,
     },
   ];
 
   const ownerField: FieldProp = {
-    name: 'owner',
+    name: 'owners',
     id: 'root/owner',
     required: false,
     label: t('label.owner'),
@@ -188,10 +208,11 @@ const AddGlossary = ({
           type="primary"
         />
       ),
+      multiple: { user: true, team: false },
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
-      valuePropName: 'owner',
+      valuePropName: 'owners',
       trigger: 'onUpdate',
     },
   };
@@ -201,7 +222,7 @@ const AddGlossary = ({
     id: 'root/reviewers',
     required: false,
     label: t('label.reviewer-plural'),
-    type: FieldTypes.USER_MULTI_SELECT,
+    type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
       popoverProps: { placement: 'topLeft' },
@@ -213,18 +234,47 @@ const AddGlossary = ({
           type="primary"
         />
       ),
+      multiple: { user: true, team: false },
+      previewSelected: true,
+      label: t('label.reviewer-plural'),
     },
-    formItemLayout: FormItemLayout.HORIZONATAL,
+    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
       valuePropName: 'selectedUsers',
       trigger: 'onUpdate',
-      initialValue: [],
+    },
+  };
+
+  const domainsField: FieldProp = {
+    name: 'domain',
+    id: 'root/domain',
+    required: false,
+    label: t('label.domain'),
+    type: FieldTypes.DOMAIN_SELECT,
+    props: {
+      selectedDomain: activeDomainEntityRef,
+      children: (
+        <Button
+          data-testid="add-domain"
+          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+          size="small"
+          type="primary"
+        />
+      ),
+    },
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    formItemProps: {
+      valuePropName: 'selectedDomain',
+      trigger: 'onUpdate',
+      initialValue: activeDomainEntityRef,
     },
   };
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div className="max-width-md w-9/10 service-form-container">
             <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
@@ -237,36 +287,32 @@ const AddGlossary = ({
             <div className="add-glossary" data-testid="add-glossary">
               <Form form={form} layout="vertical" onFinish={handleSave}>
                 {generateFormFields(formFields)}
-                <div className="m-t-xss">
+                <div className="m-y-xs">
                   {getField(ownerField)}
-                  {selectedOwner && (
-                    <div className="m-y-xs" data-testid="owner-container">
-                      <UserTag
-                        id={selectedOwner.name ?? selectedOwner.id}
-                        isTeam={selectedOwner.type === UserTeam.Team}
-                        name={getEntityName(selectedOwner)}
-                        size={UserTagSize.small}
-                      />
-                    </div>
+                  {Boolean(ownersList.length) && (
+                    <Space wrap data-testid="owner-container" size={[8, 8]}>
+                      <OwnerLabel owners={ownersList} />
+                    </Space>
+                  )}
+                </div>
+                <div className="m-y-xs">
+                  {getField(reviewersField)}
+                  {Boolean(reviewersList.length) && (
+                    <Space wrap data-testid="reviewers-container" size={[8, 8]}>
+                      <OwnerLabel owners={reviewersList} />
+                    </Space>
                   )}
                 </div>
                 <div className="m-t-xss">
-                  {getField(reviewersField)}
-                  {Boolean(reviewersList.length) && (
-                    <Space
-                      wrap
-                      className="m-y-xs"
-                      data-testid="reviewers-container"
-                      size={[8, 8]}>
-                      {reviewersList.map((d, index) => (
-                        <UserTag
-                          id={d.name ?? d.id}
-                          key={index}
-                          name={getEntityName(d)}
-                          size={UserTagSize.small}
-                        />
-                      ))}
-                    </Space>
+                  {getField(domainsField)}
+                  {selectedDomain && (
+                    <DomainLabel
+                      domain={selectedDomain}
+                      entityFqn=""
+                      entityId=""
+                      entityType={EntityType.GLOSSARY}
+                      hasPermission={false}
+                    />
                   )}
                 </div>
 
@@ -301,13 +347,9 @@ const AddGlossary = ({
       })}
       secondPanel={{
         children: rightPanel,
-        className: 'p-md service-doc-panel',
-        minWidth: 60,
-        overlay: {
-          displayThreshold: 200,
-          header: t('label.setup-guide'),
-          rotation: 'counter-clockwise',
-        },
+        className: 'p-md p-t-xl content-resizable-panel-container',
+        minWidth: 400,
+        flex: 0.3,
       }}
     />
   );

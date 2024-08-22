@@ -52,7 +52,8 @@ def get_connection(connection: TableauConnection) -> TableauClient:
     get_verify_ssl = get_verify_ssl_fn(connection.verifySSL)
     try:
         return TableauClient(
-            config=tableau_server_config,
+            tableau_server_config=tableau_server_config,
+            config=connection,
             env=connection.env,
             ssl_verify=get_verify_ssl(connection.sslConfig),
             pagination_limit=connection.paginationLimit,
@@ -77,6 +78,14 @@ def test_connection(
 
     test_fn = {
         "ServerInfo": client.server_info,
+        # The Tableau server_info API doesn't provide direct access to the API version.
+        # This is due to the "api_version" being a mandatory field for the tableau library's connection class.
+        # Without this information, requests to the Tableau server cannot be made,
+        # including fetching the server info containing the "api_version".
+        # Consequently, we'll compare the declared api_version with the server's api_version during the test connection
+        # once the tableau library's connection class is initialized.
+        "ValidateApiVersion": client.test_api_version,
+        "ValidateSiteUrl": client.test_site_url,
         "GetWorkbooks": partial(
             extract_pages,
             query_func=client.query_workbooks_for_site,
@@ -110,8 +119,8 @@ def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, An
     """
     tableau_server_config = {
         f"{connection.env}": {
-            "server": connection.hostPort,
-            "api_version": connection.apiVersion,
+            "server": str(connection.hostPort),
+            "api_version": str(connection.apiVersion),
             "site_name": connection.siteName if connection.siteName else "",
             "site_url": connection.siteUrl if connection.siteUrl else "",
         }

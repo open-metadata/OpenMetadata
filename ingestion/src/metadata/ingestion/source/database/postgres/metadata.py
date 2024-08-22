@@ -15,13 +15,15 @@ import traceback
 from collections import namedtuple
 from typing import Iterable, Optional, Tuple
 
+from sqlalchemy import String as SqlAlchemyString
 from sqlalchemy import sql
 from sqlalchemy.dialects.postgresql.base import PGDialect, ischema_names
 from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
-    IntervalType,
+    PartitionColumnDetails,
+    PartitionIntervalTypes,
     TablePartition,
     TableType,
 )
@@ -31,11 +33,10 @@ from metadata.generated.schema.entity.services.connections.database.postgresConn
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
-from metadata.generated.schema.entity.teams.team import Team
-from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
@@ -51,11 +52,13 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DB_NAMES,
     POSTGRES_GET_TABLE_NAMES,
     POSTGRES_PARTITION_DETAILS,
+    POSTGRES_SCHEMA_COMMENTS,
 )
 from metadata.ingestion.source.database.postgres.utils import (
     get_column_info,
     get_columns,
     get_etable_owner,
+    get_foreign_keys,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -65,8 +68,11 @@ from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
+    get_all_table_ddls,
     get_all_table_owners,
     get_all_view_definitions,
+    get_schema_descriptions,
+    get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
 
@@ -76,9 +82,9 @@ logger = ingestion_logger()
 
 
 INTERVAL_TYPE_MAP = {
-    "list": IntervalType.COLUMN_VALUE.value,
-    "hash": IntervalType.COLUMN_VALUE.value,
-    "range": IntervalType.TIME_UNIT.value,
+    "list": PartitionIntervalTypes.COLUMN_VALUE,
+    "hash": PartitionIntervalTypes.COLUMN_VALUE,
+    "range": PartitionIntervalTypes.TIME_UNIT,
 }
 
 RELKIND_MAP = {
@@ -97,6 +103,7 @@ ischema_names.update(
         "point": POINT,
         "polygon": POLYGON,
         "box": create_sqlalchemy_type("BOX"),
+        "bpchar": SqlAlchemyString,
         "circle": create_sqlalchemy_type("CIRCLE"),
         "line": create_sqlalchemy_type("LINE"),
         "lseg": create_sqlalchemy_type("LSEG"),
@@ -105,6 +112,7 @@ ischema_names.update(
         "pg_snapshot": create_sqlalchemy_type("PG_SNAPSHOT"),
         "tsquery": create_sqlalchemy_type("TSQUERY"),
         "txid_snapshot": create_sqlalchemy_type("TXID_SNAPSHOT"),
+        "xid": SqlAlchemyString,
         "xml": create_sqlalchemy_type("XML"),
     }
 )
@@ -121,7 +129,11 @@ PGDialect.get_all_table_owners = get_all_table_owners
 PGDialect.get_table_owner = get_table_owner
 PGDialect.ischema_names = ischema_names
 
+Inspector.get_all_table_ddls = get_all_table_ddls
+Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
+
+PGDialect.get_foreign_keys = get_foreign_keys
 
 
 class PostgresSource(CommonDbSourceService, MultiDBSource):
@@ -130,15 +142,32 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
     Database metadata from Postgres Source
     """
 
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+        super().__init__(config, metadata)
+        self.schema_desc_map = {}
+
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: PostgresConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: PostgresConnection = config.serviceConnection.root.config
         if not isinstance(connection, PostgresConnection):
             raise InvalidSourceException(
                 f"Expected PostgresConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    def get_schema_description(self, schema_name: str) -> Optional[str]:
+        """
+        Method to fetch the schema description
+        """
+        return self.schema_desc_map.get(schema_name)
+
+    def set_schema_description_map(self) -> None:
+        self.schema_desc_map = get_schema_descriptions(
+            self.engine, POSTGRES_SCHEMA_COMMENTS
+        )
 
     def query_table_names_and_types(
         self, schema_name: str
@@ -168,30 +197,34 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         yield from self._execute_database_query(POSTGRES_GET_DB_NAMES)
 
     def get_database_names(self) -> Iterable[str]:
-        if not self.config.serviceConnection.__root__.config.ingestAllDatabases:
-            configured_db = self.config.serviceConnection.__root__.config.database
+        if not self.config.serviceConnection.root.config.ingestAllDatabases:
+            configured_db = self.config.serviceConnection.root.config.database
             self.set_inspector(database_name=configured_db)
+            self.set_schema_description_map()
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.database_service,
+                    service_name=self.context.get().database_service,
                     database_name=new_database,
                 )
 
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
-                    database_fqn
-                    if self.source_config.useFqnForFiltering
-                    else new_database,
+                    (
+                        database_fqn
+                        if self.source_config.useFqnForFiltering
+                        else new_database
+                    ),
                 ):
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
                 try:
                     self.set_inspector(database_name=new_database)
+                    self.set_schema_description_map()
                     yield new_database
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
@@ -203,16 +236,22 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         self, table_name: str, schema_name: str, inspector
     ) -> Tuple[bool, TablePartition]:
         result = self.engine.execute(
-            POSTGRES_PARTITION_DETAILS.format(
-                table_name=table_name, schema_name=schema_name
-            )
+            POSTGRES_PARTITION_DETAILS, table_name=table_name, schema_name=schema_name
         ).all()
+
         if result:
             partition_details = TablePartition(
-                intervalType=INTERVAL_TYPE_MAP.get(
-                    result[0].partition_strategy, IntervalType.COLUMN_VALUE.value
-                ),
-                columns=[row.column_name for row in result if row.column_name],
+                columns=[
+                    PartitionColumnDetails(
+                        columnName=row.column_name,
+                        intervalType=INTERVAL_TYPE_MAP.get(
+                            row.partition_strategy, PartitionIntervalTypes.COLUMN_VALUE
+                        ),
+                        interval=None,
+                    )
+                    for row in result
+                    if row.column_name
+                ]
             )
             return True, partition_details
         return False, None
@@ -226,7 +265,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
         try:
             result = self.engine.execute(
                 POSTGRES_GET_ALL_TABLE_PG_POLICY.format(
-                    database_name=self.context.database,
+                    database_name=self.context.get().database,
                     schema_name=schema_name,
                 )
             ).all()
@@ -234,8 +273,10 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                 row = list(res)
                 fqn_elements = [name for name in row[2:] if name]
                 yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn._build(  # pylint: disable=protected-access
-                        self.context.database_service, *fqn_elements
+                    tag_fqn=FullyQualifiedEntityName(
+                        fqn._build(  # pylint: disable=protected-access
+                            self.context.get().database_service, *fqn_elements
+                        )
                     ),
                     tags=[row[1]],
                     classification_name=self.service_connection.classificationName,
@@ -251,33 +292,3 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
-
-    def get_owner_details(self, schema_name: str, table_name: str):
-        """
-        Returns owner's entity reference
-        """
-        owner = None
-        owner_name = self.inspector.get_table_owner(
-            connection=self.connection, table_name=table_name, schema=schema_name
-        )
-        if not owner_name:
-            return owner_name
-        user_owner_fqn = fqn.build(
-            self.metadata, entity_type=User, user_name=owner_name
-        )
-        if user_owner_fqn:
-            owner = self.metadata.get_entity_reference(entity=User, fqn=user_owner_fqn)
-        else:
-            team_owner_fqn = fqn.build(
-                self.metadata, entity_type=Team, team_name=owner_name
-            )
-            if team_owner_fqn:
-                owner = self.metadata.get_entity_reference(
-                    entity=Team, fqn=team_owner_fqn
-                )
-            else:
-                logger.warning(
-                    "Unable to ingest owner from Postgres since no user or"
-                    f" team was found with name {owner_name}"
-                )
-        return owner

@@ -11,8 +11,10 @@
 """
 Redshift usage module
 """
+import re
 from abc import ABC
 from datetime import datetime
+from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
     RedshiftConnection,
@@ -36,9 +38,11 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
     filters: str
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata):
-        config: WorkflowSource = WorkflowSource.parse_obj(config_dict)
-        connection: RedshiftConnection = config.serviceConnection.__root__.config
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: RedshiftConnection = config.serviceConnection.root.config
         if not isinstance(connection, RedshiftConnection):
             raise InvalidSourceException(
                 f"Expected RedshiftConnection, but got {connection}"
@@ -55,3 +59,17 @@ class RedshiftQueryParserSource(QueryParserSource, ABC):
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,
         )
+
+    def check_life_cycle_query(
+        self, query_type: Optional[str], query_text: Optional[str]
+    ) -> bool:
+        """
+        returns true if query is to be used for life cycle processing.
+
+        Override if we have specific parameters
+        """
+        create_pattern = re.compile(r".*\s*CREATE", re.IGNORECASE)
+        insert_pattern = re.compile(r".*\s*INSERT", re.IGNORECASE)
+        if re.match(create_pattern, query_text) or re.match(insert_pattern, query_text):
+            return True
+        return False

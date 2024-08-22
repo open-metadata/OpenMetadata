@@ -13,14 +13,14 @@
 
 import { act, render, screen } from '@testing-library/react';
 import React from 'react';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getDatabaseSchemaDetailsByFQN } from '../../rest/databaseAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseSchemaPageComponent from './DatabaseSchemaPage.component';
 import {
   mockGetDatabaseSchemaDetailsByFQNData,
-  mockGetFeedCountData,
   mockPatchDatabaseSchemaDetailsData,
   mockPostThreadData,
 } from './mocks/DatabaseSchemaPage.mock';
@@ -29,7 +29,7 @@ const mockEntityPermissionByFqn = jest
   .fn()
   .mockImplementation(() => DEFAULT_ENTITY_PERMISSION);
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
@@ -73,7 +73,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/TabsLabel/TabsLabel.component', () =>
+jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
   jest.fn().mockImplementation(({ name }) => <div>{name}</div>)
 );
 
@@ -115,15 +115,11 @@ jest.mock('../../rest/tableAPI', () => ({
 
 jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation((error) => error),
+  getFeedCounts: jest.fn().mockImplementation(() => FEED_COUNT_INITIAL_DATA),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
   getDatabaseSchemaVersionPath: jest.fn().mockImplementation((path) => path),
-}));
-
-jest.mock('../../utils/EntityUtils', () => ({
-  getEntityFeedLink: jest.fn(),
-  getEntityName: jest.fn().mockImplementation((obj) => obj.name),
 }));
 
 jest.mock('../../utils/TableUtils', () => ({
@@ -137,7 +133,7 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../components/Loader/Loader', () =>
+jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>testLoader</div>)
 );
 
@@ -145,16 +141,13 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)
 );
 
-jest.mock('../../components/PermissionProvider/PermissionProvider', () => ({
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockImplementation(() => ({
     getEntityPermissionByFqn: mockEntityPermissionByFqn,
   })),
 }));
 
 jest.mock('../../rest/feedsAPI', () => ({
-  getFeedCount: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockGetFeedCountData)),
   postThread: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockPostThreadData)),
@@ -183,7 +176,15 @@ const mockParams = {
   tab: 'table',
 };
 
-const API_FIELDS = ['owner', 'usageSummary', 'tags', 'domain', 'votes'];
+const API_FIELDS = [
+  'owners',
+  'usageSummary',
+  'tags',
+  'domain',
+  'votes',
+  'extension',
+  'dataProducts',
+];
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
@@ -236,11 +237,10 @@ describe('Tests for DatabaseSchemaPage', () => {
       render(<DatabaseSchemaPageComponent />);
     });
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.fqn,
-      API_FIELDS,
-      'all'
-    );
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
+      fields: API_FIELDS.join(','),
+      include: 'all',
+    });
   });
 
   it('DatabaseSchemaPage should fetch storedProcedure with basic fields', async () => {
@@ -271,11 +271,10 @@ describe('Tests for DatabaseSchemaPage', () => {
       render(<DatabaseSchemaPageComponent />);
     });
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.fqn,
-      API_FIELDS,
-      'all'
-    );
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
+      fields: API_FIELDS.join(','),
+      include: 'all',
+    });
 
     expect(await screen.findByText('testDataAssetsHeader')).toBeInTheDocument();
     expect(await screen.findByTestId('tabs')).toBeInTheDocument();
@@ -293,11 +292,10 @@ describe('Tests for DatabaseSchemaPage', () => {
       render(<DatabaseSchemaPageComponent />);
     });
 
-    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(
-      mockParams.fqn,
-      API_FIELDS,
-      'all'
-    );
+    expect(getDatabaseSchemaDetailsByFQN).toHaveBeenCalledWith(mockParams.fqn, {
+      fields: API_FIELDS.join(','),
+      include: 'all',
+    });
 
     expect(await screen.findByText('testSchemaTablesTab')).toBeInTheDocument();
   });

@@ -16,15 +16,15 @@ import { Tag as AntdTag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import i18next from 'i18next';
 import { omit } from 'lodash';
-import { EntityTags, TagOption } from 'Models';
+import { EntityTags } from 'Models';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
+import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
-import Loader from '../components/Loader/Loader';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { getExplorePath } from '../constants/constants';
-import { SettledStatus } from '../enums/axios.enum';
+import { SettledStatus } from '../enums/Axios.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Classification } from '../generated/entity/classification/classification';
@@ -39,7 +39,7 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
-import { fetchGlossaryTerms, getGlossaryTermlist } from './GlossaryUtils';
+import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -48,7 +48,10 @@ export const getClassifications = async (
 ) => {
   try {
     const listOfClassifications: Array<Classification> = [];
-    const classifications = await getAllClassifications(fields, 1000);
+    const classifications = await getAllClassifications({
+      fields,
+      limit: 1000,
+    });
     const classificationList = classifications.data.map(
       (category: Classification) => {
         return {
@@ -59,7 +62,7 @@ export const getClassifications = async (
     );
     if (classificationList.length && callGetClassificationByName) {
       const promiseArr = classificationList.map((category: Classification) =>
-        getClassificationByName(category.name, fields)
+        getClassificationByName(category.name, { fields })
       );
 
       const categories = await Promise.allSettled(promiseArr);
@@ -78,24 +81,6 @@ export const getClassifications = async (
 };
 
 /**
- * This method returns all the tags present in the system
- * @returns tags: Tag[]
- */
-export const getAllTagsForOptions = async () => {
-  let tags: Tag[] = [];
-  try {
-    const { data } = await getTags({ limit: 1000 });
-
-    tags = data;
-  } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error(error);
-  }
-
-  return tags;
-};
-
-/**
  * Return tags based on classifications
  * @param classifications -- Parent for tags
  * @param paging
@@ -110,7 +95,6 @@ export const getTaglist = async (
 
     const tagsListPromise = classifications.map((classification) =>
       getTags({
-        arrQueryFields: '',
         parent: classification.name,
         after: paging?.after,
         before: paging?.before,
@@ -157,8 +141,8 @@ export const getTableTags = (
 };
 
 //  Will return tag with ellipses if it exceeds the limit
-export const getTagDisplay = (tag: string) => {
-  const tagLevelsArray = tag.split(FQN_SEPARATOR_CHAR);
+export const getTagDisplay = (tag?: string) => {
+  const tagLevelsArray = tag?.split(FQN_SEPARATOR_CHAR) ?? [];
 
   if (tagLevelsArray.length > 3) {
     return `${tagLevelsArray[0]}...${tagLevelsArray
@@ -167,37 +151,6 @@ export const getTagDisplay = (tag: string) => {
   }
 
   return tag;
-};
-
-export const fetchTagsAndGlossaryTerms = async () => {
-  const responses = await Promise.allSettled([
-    getAllTagsForOptions(),
-    fetchGlossaryTerms(),
-  ]);
-
-  let tagsAndTerms: TagOption[] = [];
-  if (responses[0].status === SettledStatus.FULFILLED && responses[0].value) {
-    tagsAndTerms = responses[0].value.map((tag) => {
-      return {
-        fqn: tag.fullyQualifiedName ?? tag.name,
-        source: 'Classification',
-      };
-    });
-  }
-  if (
-    responses[1].status === SettledStatus.FULFILLED &&
-    responses[1].value &&
-    responses[1].value.length > 0
-  ) {
-    const glossaryTerms: TagOption[] = getGlossaryTermlist(
-      responses[1].value
-    ).map((tag) => {
-      return { fqn: tag, source: 'Glossary' };
-    });
-    tagsAndTerms = [...tagsAndTerms, ...glossaryTerms];
-  }
-
-  return tagsAndTerms;
 };
 
 export const getTagTooltip = (fqn: string, description?: string) => (
@@ -317,8 +270,8 @@ export const fetchGlossaryList = async (
     query: searchQueryParam ? `*${searchQueryParam}*` : '*',
     pageNumber: page,
     pageSize: 10,
-    queryFilter: {},
-    searchIndex: SearchIndex.GLOSSARY,
+    queryFilter: getQueryFilterToIncludeApprovedTerm(),
+    searchIndex: SearchIndex.GLOSSARY_TERM,
   });
 
   const hits = glossaryResponse.hits.hits;

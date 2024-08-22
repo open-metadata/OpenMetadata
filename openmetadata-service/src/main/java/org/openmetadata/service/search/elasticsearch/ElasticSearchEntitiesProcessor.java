@@ -10,11 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
+import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.ProcessorException;
+import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -32,7 +34,7 @@ public class ElasticSearchEntitiesProcessor
   @Override
   public BulkRequest process(
       ResultList<? extends EntityInterface> input, Map<String, Object> contextData)
-      throws ProcessorException {
+      throws SearchIndexException {
     String entityType = (String) contextData.get(ENTITY_TYPE_KEY);
     if (CommonUtil.nullOrEmpty(entityType)) {
       throw new IllegalArgumentException(
@@ -53,14 +55,18 @@ public class ElasticSearchEntitiesProcessor
           0);
       updateStats(input.getData().size(), 0);
     } catch (Exception e) {
-      LOG.debug(
-          "[EsEntitiesProcessor] Batch Stats :- Submitted : {} Success: {} Failed: {}",
-          input.getData().size(),
-          0,
-          input.getData().size());
+      IndexingError error =
+          new IndexingError()
+              .withErrorSource(IndexingError.ErrorSource.PROCESSOR)
+              .withSubmittedCount(input.getData().size())
+              .withFailedCount(input.getData().size())
+              .withSuccessCount(0)
+              .withMessage(
+                  "Entities Processor Encountered Failure. Converting requests to Es Request.")
+              .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
+      LOG.debug("[EsEntitiesProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
       updateStats(0, input.getData().size());
-      throw new ProcessorException(
-          "[EsEntitiesProcessor] Batch encountered Exception. Failing Completely.", e);
+      throw new SearchIndexException(error);
     }
     return requests;
   }
@@ -78,10 +84,13 @@ public class ElasticSearchEntitiesProcessor
   public static UpdateRequest getUpdateRequest(String entityType, EntityInterface entity) {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
     UpdateRequest updateRequest =
-        new UpdateRequest(indexMapping.getIndexName(), entity.getId().toString());
+        new UpdateRequest(
+            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
+            entity.getId().toString());
     updateRequest.doc(
         JsonUtils.pojoToJson(
-            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity)).buildESDoc()),
+            Objects.requireNonNull(Entity.buildSearchIndex(entityType, entity))
+                .buildSearchIndexDoc()),
         XContentType.JSON);
     updateRequest.docAsUpsert(true);
     return updateRequest;

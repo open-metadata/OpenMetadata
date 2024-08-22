@@ -23,20 +23,20 @@ import {
 } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../components/PermissionProvider/PermissionProvider.interface';
 import { ROUTES } from '../../constants/constants';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { DataInsightChartType } from '../../generated/dataInsight/dataInsightChartResult';
 import { Operation } from '../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../interface/data-insight.interface';
+import { SystemChartType } from '../../rest/DataInsightAPI';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import './data-insight.less';
-import DataInsightClassBase from './DataInsightClassBase';
+import { default as dataInsightClassBase } from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
-import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import DataInsightProvider from './DataInsightProvider';
 
 const DataInsightPage = () => {
@@ -44,12 +44,14 @@ const DataInsightPage = () => {
 
   const { permissions } = usePermissionProvider();
   const history = useHistory();
+  const LeftPanel = dataInsightClassBase.getLeftPanel();
   const isHeaderVisible = useMemo(
     () =>
       [
         DataInsightTabs.DATA_ASSETS,
         DataInsightTabs.KPIS,
         DataInsightTabs.APP_ANALYTICS,
+        'dashboard',
       ].includes(tab),
     [tab]
   );
@@ -69,10 +71,14 @@ const DataInsightPage = () => {
     [permissions]
   );
 
-  const [selectedChart, setSelectedChart] = useState<DataInsightChartType>();
+  const [selectedChart, setSelectedChart] = useState<
+    SystemChartType | DataInsightChartType
+  >();
 
-  const handleScrollToChart = (chartType: DataInsightChartType) => {
-    if (ENTITIES_CHARTS.includes(chartType)) {
+  const handleScrollToChart = (
+    chartType: SystemChartType | DataInsightChartType
+  ) => {
+    if (ENTITIES_CHARTS.includes(chartType as SystemChartType)) {
       history.push(getDataInsightPathWithFqn(DataInsightTabs.DATA_ASSETS));
     } else {
       history.push(getDataInsightPathWithFqn(DataInsightTabs.APP_ANALYTICS));
@@ -98,7 +104,7 @@ const DataInsightPage = () => {
           (tab === DataInsightTabs.APP_ANALYTICS ||
             tab === DataInsightTabs.DATA_ASSETS),
         noKPIPermission: !viewKPIPermission && tab === DataInsightTabs.KPIS,
-        dataInsightTabs: DataInsightClassBase.getDataInsightTab(),
+        dataInsightTabs: dataInsightClassBase.getDataInsightTab(),
       };
 
       return data;
@@ -119,9 +125,7 @@ const DataInsightPage = () => {
   }
 
   return (
-    <PageLayoutV1
-      leftPanel={<DataInsightLeftPanel />}
-      pageTitle={t('label.data-insight')}>
+    <PageLayoutV1 leftPanel={<LeftPanel />} pageTitle={t('label.data-insight')}>
       <DataInsightProvider>
         <Row
           className="page-container"

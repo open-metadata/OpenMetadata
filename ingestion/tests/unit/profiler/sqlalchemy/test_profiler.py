@@ -43,6 +43,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteScheme,
 )
 from metadata.generated.schema.tests.customMetric import CustomMetric
+from metadata.generated.schema.type.basic import Timestamp
 from metadata.ingestion.source import sqa_types
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -82,7 +83,7 @@ class ProfilerTest(TestCase):
         name="user",
         columns=[
             EntityColumn(
-                name=ColumnName(__root__="id"),
+                name=ColumnName("id"),
                 dataType=DataType.INT,
                 customMetrics=[
                     CustomMetric(
@@ -176,7 +177,7 @@ class ProfilerTest(TestCase):
             thirdQuartile=31.0,
             interQuartileRange=1.0,
             nonParametricSkew=2.0,
-            histogram=Histogram(boundaries=["30.00 and up"], frequencies=[2]),
+            histogram=Histogram(boundaries=["30.000 and up"], frequencies=[2]),
         )
 
     def test_required_metrics(self):
@@ -237,7 +238,7 @@ class ProfilerTest(TestCase):
         profiler._check_profile_and_handle(
             CreateTableProfileRequest(
                 tableProfile=TableProfile(
-                    timestamp=datetime.now().timestamp(), columnCount=10
+                    timestamp=Timestamp(int(datetime.now().timestamp())), columnCount=10
                 )
             )
         )
@@ -246,7 +247,8 @@ class ProfilerTest(TestCase):
             profiler._check_profile_and_handle(
                 CreateTableProfileRequest(
                     tableProfile=TableProfile(
-                        timestamp=datetime.now().timestamp(), profileSample=100
+                        timestamp=Timestamp(int(datetime.now().timestamp())),
+                        profileSample=100,
                     )
                 )
             )
@@ -262,7 +264,7 @@ class ProfilerTest(TestCase):
         for metric in metrics:
             if metric.metrics:
                 if isinstance(metric.metrics[0], CustomMetric):
-                    assert metric.metrics[0].name.__root__ == "custom_metric"
+                    assert metric.metrics[0].name.root == "custom_metric"
                 else:
                     assert metric.metrics[0].name() == "firstQuartile"
 
@@ -328,7 +330,7 @@ class ProfilerTest(TestCase):
                     if not isinstance(m, CustomMetric)
                 )
                 assert all(
-                    custom_metric_filter.count(m.name.__root__)
+                    custom_metric_filter.count(m.name.root)
                     for m in metric.metrics
                     if isinstance(m, CustomMetric)
                 )

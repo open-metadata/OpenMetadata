@@ -22,6 +22,13 @@ jest.mock('react-router-dom', () => ({
     tab: 'tables',
   }),
 }));
+jest.mock('./FilterErrorPlaceHolder', () => {
+  return jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="FilterErrorPlaceHolder">FilterErrorPlaceHolder</div>
+    );
+});
 
 const mockErrorMessage =
   'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
@@ -53,7 +60,7 @@ describe('Test Error placeholder ingestion Component', () => {
     const noDataES = getByTestId(container, 'no-search-results');
     const searchFilterPlaceholder = getByTestId(
       noDataES,
-      'search-error-placeholder'
+      'FilterErrorPlaceHolder'
     );
 
     expect(searchFilterPlaceholder).toBeInTheDocument();

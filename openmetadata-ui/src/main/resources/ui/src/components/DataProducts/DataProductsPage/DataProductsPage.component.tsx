@@ -18,9 +18,15 @@ import { toString } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory, useParams } from 'react-router-dom';
+import {
+  getEntityDetailsPath,
+  getVersionPath,
+} from '../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
+import { useFqn } from '../../../hooks/useFqn';
 import {
   deleteDataProduct,
   getDataProductByName,
@@ -28,30 +34,25 @@ import {
   getDataProductVersionsList,
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
-import {
-  getDataProductsDetailsPath,
-  getDataProductVersionsPath,
-  getDomainPath,
-} from '../../../utils/RouterUtils';
+import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import Loader from '../../Loader/Loader';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import DataProductsDetailsPage from '../DataProductsDetailsPage/DataProductsDetailsPage.component';
 
 const DataProductsPage = () => {
   const { t } = useTranslation();
   const history = useHistory();
-  const { fqn, version } = useParams<{ fqn: string; version: string }>();
+  const { version } = useParams<{ version: string }>();
+  const { fqn: dataProductFqn } = useFqn();
   const [isMainContentLoading, setIsMainContentLoading] = useState(true);
   const [dataProduct, setDataProduct] = useState<DataProduct>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
   const [selectedVersionData, setSelectedVersionData] = useState<DataProduct>();
-
-  const dataProductFqn = fqn ? decodeURIComponent(fqn) : '';
 
   const handleDataProductUpdate = async (updatedData: DataProduct) => {
     if (dataProduct) {
@@ -63,7 +64,10 @@ const DataProductsPage = () => {
 
         if (dataProduct?.name !== updatedData.name) {
           history.push(
-            getDataProductsDetailsPath(response.fullyQualifiedName ?? '')
+            getEntityDetailsPath(
+              EntityType.DATA_PRODUCT,
+              response.fullyQualifiedName ?? ''
+            )
           );
         }
       } catch (error) {
@@ -99,10 +103,14 @@ const DataProductsPage = () => {
   const fetchDataProductByFqn = async (fqn: string) => {
     setIsMainContentLoading(true);
     try {
-      const data = await getDataProductByName(
-        encodeURIComponent(fqn),
-        'domain,owner,experts,assets'
-      );
+      const data = await getDataProductByName(fqn, {
+        fields: [
+          TabSpecificField.DOMAIN,
+          TabSpecificField.OWNERS,
+          TabSpecificField.EXPERTS,
+          TabSpecificField.ASSETS,
+        ],
+      });
       setDataProduct(data);
 
       if (version) {
@@ -145,13 +153,16 @@ const DataProductsPage = () => {
   };
 
   const onVersionChange = (selectedVersion: string) => {
-    const path = getDataProductVersionsPath(fqn, selectedVersion);
+    const path = getVersionPath(
+      EntityType.DATA_PRODUCT,
+      dataProductFqn,
+      selectedVersion
+    );
     history.push(path);
   };
 
   const onBackHandler = () => {
-    const path = getDataProductsDetailsPath(fqn);
-    history.push(path);
+    history.push(getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn));
   };
 
   useEffect(() => {
@@ -171,7 +182,7 @@ const DataProductsPage = () => {
           <p>
             {t('message.no-entity-found-for-name', {
               entity: t('label.data-product'),
-              name: fqn,
+              name: dataProductFqn,
             })}
           </p>
           <Button
@@ -206,6 +217,7 @@ const DataProductsPage = () => {
       {version && (
         <EntityVersionTimeLine
           currentVersion={toString(version)}
+          entityType={EntityType.DATA_PRODUCT}
           versionHandler={onVersionChange}
           versionList={versionList}
           onBack={onBackHandler}

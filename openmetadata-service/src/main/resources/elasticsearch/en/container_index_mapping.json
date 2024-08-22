@@ -66,6 +66,10 @@
         "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
           "ngram": {
             "type": "text",
             "analyzer": "om_ngram"
@@ -74,7 +78,7 @@
       },
       "description": {
         "type": "text",
-        "index_options": "freqs",
+        "index_options": "docs",
         "analyzer": "om_analyzer"
       },
       "version": {
@@ -92,6 +96,12 @@
       },
       "sourceUrl": {
         "type": "keyword"
+      },
+      "fullPath": {
+        "type": "keyword"
+      },
+      "lineage": {
+        "type" : "object"
       },
       "parent": {
         "properties": {
@@ -146,10 +156,6 @@
                     "type": "keyword",
                     "ignore_above": 256,
                     "normalizer": "lowercase_normalizer"
-                  },
-                  "ngram": {
-                    "type": "text",
-                    "analyzer": "om_ngram"
                   }
                 }
               },
@@ -389,7 +395,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -544,6 +550,16 @@
       },
       "service_suggest": {
         "type": "completion"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }

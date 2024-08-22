@@ -20,8 +20,8 @@ import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg'
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
-import { OperationPermission } from '../components/PermissionProvider/PermissionProvider.interface';
-import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ProviderType } from '../generated/entity/bot';
 import { Tag } from '../generated/entity/classification/tag';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
@@ -228,7 +228,7 @@ export const getClassificationExtraDropdownContent = (
                   ? t('message.enable-classification-description')
                   : t('message.disable-classification-description')
               }
-              icon={<IconDisableTag color={DE_ACTIVE_COLOR} width="18px" />}
+              icon={IconDisableTag}
               id="enable-disable"
               name={
                 isClassificationDisabled

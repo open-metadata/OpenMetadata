@@ -17,7 +17,7 @@ import traceback
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, ConfigDict
 from pydomo import Domo
 
 from metadata.generated.schema.entity.services.connections.dashboard.domoDashboardConnection import (
@@ -43,8 +43,7 @@ class DomoBaseModel(BaseModel):
     Domo basic configurations
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     id: str
     name: str
@@ -64,10 +63,10 @@ class DomoDashboardDetails(DomoBaseModel):
     Response from Domo API
     """
 
-    cardIds: Optional[List[int]]
-    collectionIds: Optional[List[int]]
-    description: Optional[str]
-    owners: Optional[List[DomoOwner]]
+    cardIds: Optional[List[int]] = None
+    collectionIds: Optional[List[int]] = None
+    description: Optional[str] = None
+    owners: Optional[List[DomoOwner]] = None
 
 
 class DomoChartMetadataDetails(BaseModel):
@@ -75,10 +74,9 @@ class DomoChartMetadataDetails(BaseModel):
     Metadata Details in chart
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
-    chartType: Optional[str]
+    chartType: Optional[str] = None
 
 
 class DomoChartDetails(DomoBaseModel):
@@ -87,7 +85,7 @@ class DomoChartDetails(DomoBaseModel):
     """
 
     metadata: DomoChartMetadataDetails
-    description: Optional[str]
+    description: Optional[str] = None
 
 
 class DomoClient:
@@ -103,14 +101,10 @@ class DomoClient:
         ],
     ):
         self.config = config
-        self.config.instanceDomain = (
-            self.config.instanceDomain[:-1]
-            if self.config.instanceDomain.endswith("/")
-            else self.config.instanceDomain
-        )
         HEADERS.update({"X-DOMO-Developer-Token": self.config.accessToken})
         client_config: ClientConfig = ClientConfig(
-            base_url=self.config.instanceDomain,
+            # AnyUrl string ends with / and the domo API does not respond properly if it has 2 // at the end
+            base_url=str(self.config.instanceDomain)[:-1],
             api_version="api/",
             auth_header="Authorization",
             auth_token=lambda: ("no_token", 0),
@@ -132,7 +126,7 @@ class DomoClient:
 
             if isinstance(response, list) and len(response) > 0:
                 return DomoChartDetails(
-                    id=response[0]["id"],
+                    id=str(response[0]["id"]),
                     name=response[0]["title"],
                     metadata=DomoChartMetadataDetails(
                         chartType=response[0].get("metadata", {}).get("chartType", "")
@@ -145,8 +139,6 @@ class DomoClient:
             logger.debug(traceback.format_exc())
 
         return None
-
-    # def get_owner_details(self, owner_id) -> dict:
 
     def get_pipelines(self):
         try:

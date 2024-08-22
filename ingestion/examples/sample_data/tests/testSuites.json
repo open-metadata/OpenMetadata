@@ -14,15 +14,11 @@
                     "parameterValues": [
                         {
                             "name": "columnCount",
-                            "value": 10
+                            "value": "10"
                         }
                     ],
                     "resolutions": {
                         "sequenceOne": [
-                            {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
                             {
                                 "testCaseResolutionStatusType": "Ack",
                                 "severity": "Severity1"
@@ -99,23 +95,15 @@
                     "parameterValues": [
                         {
                             "name": "minColValue",
-                            "value": 1
+                            "value": "1"
                         },
                         {
                             "name": "maxColValue",
-                            "value": 10
+                            "value": "10"
                         }
                     ],
                     "resolutions": {
                         "sequenceOne": [
-                            {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
-                            {
-                                "testCaseResolutionStatusType": "Ack",
-                                "severity": "Severity1"
-                            },
                             {
                                 "testCaseResolutionStatusType": "Assigned",
                                 "severity": "Severity1",
@@ -177,19 +165,15 @@
                     "parameterValues": [
                         {
                             "name": "minValueForMaxInCol",
-                            "value": 50
+                            "value": "50"
                         },
                         {
                             "name": "maxValueForMaxInCol",
-                            "value": 100
+                            "value": "100"
                         }
                     ],
                     "resolutions": {
                         "sequenceOne": [
-                            {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
                             {
                                 "testCaseResolutionStatusType": "Ack",
                                 "severity": "Severity1"
@@ -252,22 +236,10 @@
                     "description": "test the number of column in table is between x and y",
                     "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
                     "testDefinitionName": "columnValuesToBeBetween",
-                    "parameterValues": [
-                        {
-                            "name": "min",
-                            "value": 90001
-                        },
-                        {
-                            "name": "max",
-                            "value": 96162
-                        }
-                    ],
+                    "parameterValues": [],
+                    "useDynamicAssertion": true,
                     "resolutions": {
                         "sequenceOne": [
-                            {
-                                "testCaseResolutionStatusType": "New",
-                                "severity": "Severity1"
-                            },
                             {
                                 "testCaseResolutionStatusType": "Ack",
                                 "severity": "Severity1"
@@ -339,6 +311,49 @@
                             }
                         ]
                     }
+                },
+                {
+                    "name": "column_values_to_be_between_with_sample_rows",
+                    "description": "example of failing test with sample rows",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address::columns::zip>",
+                    "testDefinitionName": "columnValuesToBeBetween",
+                    "parameterValues": [
+                        {
+                            "name": "min",
+                            "value": "90001"
+                        },
+                        {
+                            "name": "max",
+                            "value": "96162"
+                        }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "diff_with_production",
+                    "description": "compare with production data",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        }
+                    ],
+                    "resolutions": {}
+                },
+                {
+                    "name": "diff_columns",
+                    "description": "compare with a table with different columns",
+                    "entityLink": "<#E::table::sample_data.ecommerce_db.shopify.dim_address>",
+                    "testDefinitionName": "tableDiff",
+                    "parameterValues": [
+                        {
+                            "name": "table2",
+                            "value": "sample_data.ecommerce_db.shopify.production_dim_address"
+                        }
+                    ],
+                    "resolutions": {}
                 }
             ]
         }

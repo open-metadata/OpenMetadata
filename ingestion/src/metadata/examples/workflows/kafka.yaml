@@ -14,6 +14,19 @@ source:
         # example of scema registry config, for more info about accepted values visit:
         # https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient
         #basic.auth.user.info: username:password
+      # schemaRegistrySSL:
+      #   caCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample caCertificateData
+      #     -----END CERTIFICATE-----
+      #   sslCertificate: |
+      #     -----BEGIN CERTIFICATE-----
+      #     sample sslCertificateData
+      #     -----END CERTIFICATE-----
+      #   sslKey: |
+      #     -----BEGIN RSA PRIVATE KEY
+      #     sample sslKeyData
+      #     -----END RSA PRIVATE KEY
   sourceConfig:
     config:
       type: MessagingMetadata
@@ -25,7 +38,7 @@ sink:
   type: metadata-rest
   config: {}
 workflowConfig:
-  loggerLevel: DEBUG
+#  loggerLevel: INFO # DEBUG, INFO, WARN or ERROR
   openMetadataServerConfig:
     hostPort: http://localhost:8585/api
     authProvider: openmetadata

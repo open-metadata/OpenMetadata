@@ -172,11 +172,11 @@ def get_connection(connection: ElasticsearchConnection) -> Elasticsearch:
         ssl_context = get_ssl_context(connection.sslConfig)
 
     return Elasticsearch(
-        connection.hostPort,
+        str(connection.hostPort),
         http_auth=basic_auth,
         api_key=api_key,
         ssl_context=ssl_context,
-        **connection.connectionArguments.__root__,
+        **connection.connectionArguments.root,
     )
 
 
@@ -191,9 +191,12 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
+    def test_get_search_indexes():
+        client.indices.get_alias(expand_wildcards="open")
+
     test_fn = {
         "CheckAccess": client.info,
-        "GetSearchIndexes": client.indices.get_alias,
+        "GetSearchIndexes": test_get_search_indexes,
     }
 
     test_connection_steps(

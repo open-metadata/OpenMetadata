@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { PipelineVersionProp } from '../components/PipelineVersion/PipelineVersion.interface';
+import { PipelineVersionProp } from '../components/Pipeline/PipelineVersion/PipelineVersion.interface';
 import {
   PipelineServiceType,
   StatusType,
@@ -115,7 +115,7 @@ export const pipelineVersionMockProps: PipelineVersionProp = {
   version: '0.3',
   currentVersionData: mockPipelineData,
   isVersionLoading: false,
-  owner: mockOwner,
+  owners: mockOwner,
   domain: mockDomain,
   dataProducts: [],
   tier: mockTier,

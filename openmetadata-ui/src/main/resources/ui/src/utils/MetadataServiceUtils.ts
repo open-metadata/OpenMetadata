@@ -14,6 +14,7 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
+import alationSinkConnection from '../jsons/connectionSchemas/connections/metadata/alationSinkConnection.json';
 import amundsenConnection from '../jsons/connectionSchemas/connections/metadata/amundsenConnection.json';
 import atlasConnection from '../jsons/connectionSchemas/connections/metadata/atlasConnection.json';
 import openMetadataConnection from '../jsons/connectionSchemas/connections/metadata/openMetadataConnection.json';
@@ -34,6 +35,11 @@ export const getMetadataConfig = (type: MetadataServiceType) => {
     }
     case MetadataServiceType.OpenMetadata: {
       schema = openMetadataConnection;
+
+      break;
+    }
+    case MetadataServiceType.AlationSink: {
+      schema = alationSinkConnection;
 
       break;
     }

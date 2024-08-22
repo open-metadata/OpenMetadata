@@ -14,9 +14,8 @@ import { defineConfig } from 'cypress';
 import plugins from './cypress/plugins/index.js';
 
 export default defineConfig({
-  projectId: 'a9yxci',
-  viewportWidth: 1240,
-  viewportHeight: 660,
+  viewportWidth: 1440,
+  viewportHeight: 768,
   watchForFileChanges: false,
   videoUploadOnPasses: false,
   defaultCommandTimeout: 5000,
@@ -27,9 +26,17 @@ export default defineConfig({
     experimentalStudio: true,
     // We've imported your old cypress plugins here.
     // You may want to clean this up later by importing these.
+
     setupNodeEvents(on, config) {
-      return plugins(on, config);
+      plugins(on, config);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      require('@cypress/grep/src/plugin')(config);
+
+      return config;
     },
-    specPattern: 'cypress/e2e/**/*.{js,jsx,ts,tsx}',
+    specPattern: ['cypress/e2e/**/*.{js,jsx,ts,tsx}'],
+    env: {
+      isOss: true,
+    },
   },
 });

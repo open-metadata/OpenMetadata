@@ -28,8 +28,10 @@
 // Import commands.js using ES2015 syntax:
 import './commands';
 
+import registerCypressGrep from '@cypress/grep';
 import postgreSQL from 'cypress-postgresql';
 postgreSQL.loadDBCommands();
+registerCypressGrep();
 
 // Alternatively you can use CommonJS syntax:
 // require('./commands')

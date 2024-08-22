@@ -100,12 +100,12 @@ def get_connection(connection: HiveConnection) -> Engine:
             in {HiveScheme.hive, HiveScheme.hive_http, HiveScheme.hive_https}
             else "auth_mechanism"
         )
-        connection.connectionArguments.__root__[auth_key] = connection.auth.value
+        connection.connectionArguments.root[auth_key] = connection.auth.value
 
     if connection.kerberosServiceName:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.__root__[
+        connection.connectionArguments.root[
             "kerberos_service_name"
         ] = connection.kerberosServiceName
 
@@ -126,7 +126,6 @@ def get_metastore_connection(connection: Any) -> Engine:
 
 @get_metastore_connection.register
 def _(connection: PostgresConnection):
-
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
     from metadata.ingestion.source.database.hive.metastore_dialects.postgres import (  # nopycln: import
@@ -153,7 +152,6 @@ def _(connection: PostgresConnection):
 
 @get_metastore_connection.register
 def _(connection: MysqlConnection):
-
     # import required to load sqlalchemy plugin
     # pylint: disable=import-outside-toplevel,unused-import
     from metadata.ingestion.source.database.hive.metastore_dialects.mysql import (  # nopycln: import

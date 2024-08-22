@@ -11,20 +11,22 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { t } from 'i18next';
 import { isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import React from 'react';
 import { Link } from 'react-router-dom';
-import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
+import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import RichTextEditorPreviewer from '../components/common/RichTextEditor/RichTextEditorPreviewer';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
+import { OwnerType } from '../enums/user.enum';
 import { Database } from '../generated/entity/data/database';
 import { Pipeline } from '../generated/entity/data/pipeline';
+import { EntityReference } from '../generated/entity/type';
 import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage';
 import { getEntityName } from './EntityUtils';
 import { getLinkForFqn } from './ServiceUtils';
@@ -41,6 +43,7 @@ export const getServiceMainTabColumns = (
     render: (_, record: ServicePageData) => {
       return (
         <Link
+          data-testid={record.name}
           to={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}>
           <Typography.Paragraph
             data-testid="child-asset-name-link"
@@ -87,16 +90,21 @@ export const getServiceMainTabColumns = (
     : []),
   {
     title: t('label.owner'),
-    dataIndex: 'owner',
-    key: 'owner',
-    render: (owner: ServicePageData['owner']) =>
-      !isUndefined(owner) ? (
-        <Space data-testid="owner-data">
-          <ProfilePicture name={owner.name ?? ''} width="24" />
-          <Typography.Text data-testid={`${owner.name}-owner-name`}>
-            {getEntityName(owner)}
-          </Typography.Text>
-        </Space>
+    dataIndex: 'owners',
+    key: 'owners',
+    render: (owners: ServicePageData['owners']) =>
+      !isUndefined(owners) && owners.length > 0 ? (
+        owners.map((owner: EntityReference) => (
+          <UserPopOverCard
+            showUserName
+            data-testid="owner-data"
+            displayName={owner.displayName}
+            key={owner.id}
+            profileWidth={20}
+            type={owner.type as OwnerType}
+            userName={owner.name ?? ''}
+          />
+        ))
       ) : (
         <Typography.Text data-testid="no-owner-text">--</Typography.Text>
       ),

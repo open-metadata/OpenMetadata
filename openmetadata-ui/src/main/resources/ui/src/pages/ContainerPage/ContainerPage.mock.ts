@@ -20,14 +20,16 @@ export const CONTAINER_DATA = {
   updatedAt: 1679567030351,
   updatedBy: 'admin',
   href: 'http://localhost:8585/api/v1/containers/5d11e32a-8673-4a84-a9be-ccd9651ba9fc',
-  owner: {
-    id: '28b43857-288b-4e4e-8fac-c9cd34e06393',
-    type: 'team',
-    name: 'Applications',
-    fullyQualifiedName: 'Applications',
-    deleted: false,
-    href: 'http://localhost:8585/api/v1/teams/28b43857-288b-4e4e-8fac-c9cd34e06393',
-  },
+  owners: [
+    {
+      id: '28b43857-288b-4e4e-8fac-c9cd34e06393',
+      type: 'team',
+      name: 'Applications',
+      fullyQualifiedName: 'Applications',
+      deleted: false,
+      href: 'http://localhost:8585/api/v1/teams/28b43857-288b-4e4e-8fac-c9cd34e06393',
+    },
+  ],
   service: {
     id: 'cbc2a5e8-b7d3-4140-9a44-a4b331e5372f',
     type: 'storageService',
@@ -87,4 +89,9 @@ export const CONTAINER_DATA = {
     },
   ],
   deleted: false,
+};
+
+export const CONTAINER_DATA_1 = {
+  ...CONTAINER_DATA,
+  dataModel: {},
 };

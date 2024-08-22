@@ -18,6 +18,8 @@ import React, { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import CloseIcon from '../../../components/Modals/CloseIcon.component';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityName } from '../../../utils/EntityUtils';
 import {
   entityDisplayName,
   getEntityField,
@@ -26,13 +28,13 @@ import {
   getEntityType,
   getFeedPanelHeaderText,
 } from '../../../utils/FeedUtils';
-import { getEntityLink } from '../../../utils/TableUtils';
 import { FeedPanelHeaderProp } from './ActivityFeedPanel.interface';
 
 const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   className,
   entityLink,
   noun,
+  feed,
   onShowNewConversation,
   threadType,
   onCancel,
@@ -44,7 +46,11 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   const entityField = getEntityField(entityLink);
 
   return (
-    <header className={classNames('d-flex justify-between p-y-md', className)}>
+    <header
+      className={classNames(
+        'd-flex justify-between items-center p-y-md',
+        className
+      )}>
       <p data-testid="header-title">
         <span data-testid="header-noun">
           {noun ? noun : getFeedPanelHeaderText(threadType)}{' '}
@@ -57,8 +63,12 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
             <Link
               className="break-all"
               data-testid="entitylink"
-              to={getEntityLink(entityType, entityFQN)}>
-              <span>{entityDisplayName(entityType, entityFQN)}</span>
+              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+              <span>
+                {feed?.entityRef
+                  ? getEntityName(feed.entityRef)
+                  : entityDisplayName(entityType, entityFQN)}
+              </span>
             </Link>
           )}
         </span>

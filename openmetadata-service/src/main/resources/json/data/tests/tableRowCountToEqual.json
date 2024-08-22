@@ -13,5 +13,7 @@
       "dataType": "INT",
       "required": true
     }
-  ]
+  ],
+  "provider": "system",
+  "dataQualityDimension": "Integrity"
 }

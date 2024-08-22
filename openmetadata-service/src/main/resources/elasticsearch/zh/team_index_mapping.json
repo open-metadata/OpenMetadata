@@ -32,7 +32,7 @@
       "description": {
         "type": "text"
       },
-      "teamType": { 
+      "teamType": {
         "type": "text"
       },
       "version": {
@@ -203,6 +203,9 @@
       "deleted": {
         "type": "text"
       },
+      "isBot": {
+        "type": "boolean"
+      },
       "entityType": {
         "type": "keyword"
       },
@@ -215,8 +218,17 @@
             "path": "deleted"
           }
         ]
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
 }
-

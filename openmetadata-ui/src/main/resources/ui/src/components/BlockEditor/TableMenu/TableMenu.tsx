@@ -26,13 +26,13 @@ interface TableMenuProps {
 
 const TableMenu = (props: TableMenuProps) => {
   const { editor } = props;
-  const { view } = editor;
+  const { view, isEditable } = editor;
   const menuRef = useRef<HTMLDivElement>(null);
   const tableMenuPopup = useRef<Instance | null>(null);
 
   const handleMouseDown = useCallback((event: MouseEvent) => {
     const target = event.target as HTMLElement;
-    const table = target?.closest('[data-om-table]');
+    const table = target?.closest('.tableWrapper');
 
     if (table?.contains(target)) {
       tableMenuPopup.current?.setProps({
@@ -44,7 +44,7 @@ const TableMenu = (props: TableMenuProps) => {
   }, []);
 
   useEffect(() => {
-    if (menuRef.current) {
+    if (menuRef.current && isEditable) {
       menuRef.current.remove();
       menuRef.current.style.visibility = 'visible';
 
@@ -67,7 +67,7 @@ const TableMenu = (props: TableMenuProps) => {
       tableMenuPopup.current?.destroy();
       tableMenuPopup.current = null;
     };
-  }, []);
+  }, [isEditable]);
 
   useEffect(() => {
     document.addEventListener('mousedown', handleMouseDown);

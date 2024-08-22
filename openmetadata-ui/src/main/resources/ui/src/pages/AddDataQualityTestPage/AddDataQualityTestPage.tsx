@@ -13,25 +13,29 @@
 
 import { AxiosError } from 'axios';
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import AddDataQualityTestV1 from '../../components/AddDataQualityTest/AddDataQualityTestV1';
-import Loader from '../../components/Loader/Loader';
+import Loader from '../../components/common/Loader/Loader';
+import AddDataQualityTestV1 from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTestV1';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { Table } from '../../generated/entity/data/table';
+import { useFqn } from '../../hooks/useFqn';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const AddDataQualityTestPage = () => {
-  const { entityTypeFQN } = useParams<{ entityTypeFQN: string }>();
+  const { fqn } = useFqn();
   const [table, setTable] = useState({} as Table);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchTableData = async () => {
     setIsLoading(true);
     try {
-      const table = await getTableDetailsByFQN(
-        entityTypeFQN,
-        'testSuite,customMetrics,columns'
-      );
+      const table = await getTableDetailsByFQN(fqn, {
+        fields: [
+          TabSpecificField.TESTSUITE,
+          TabSpecificField.CUSTOM_METRICS,
+          TabSpecificField.COLUMNS,
+        ],
+      });
       setTable(table);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -42,14 +46,14 @@ const AddDataQualityTestPage = () => {
 
   useEffect(() => {
     fetchTableData();
-  }, [entityTypeFQN]);
+  }, [fqn]);
 
   if (isLoading) {
     return <Loader />;
   }
 
   return (
-    <div className="self-center">
+    <div className="self-center" data-testid="add-data-quality-test-page">
       <AddDataQualityTestV1 table={table} />
     </div>
   );

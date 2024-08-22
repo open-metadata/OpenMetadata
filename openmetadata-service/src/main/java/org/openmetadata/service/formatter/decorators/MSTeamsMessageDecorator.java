@@ -13,16 +13,14 @@
 
 package org.openmetadata.service.formatter.decorators;
 
-import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
-import static org.openmetadata.service.formatter.util.FormatterUtil.getFormattedMessages;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.subscription.msteams.TeamsMessage;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.apps.bundles.changeEvent.msteams.TeamsMessage;
+import org.openmetadata.service.exception.UnhandledServerException;
 
 public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
 
@@ -57,35 +55,72 @@ public class MSTeamsMessageDecorator implements MessageDecorator<TeamsMessage> {
   }
 
   @Override
-  public String getEntityUrl(String entityType, String fqn) {
+  public String getEntityUrl(String prefix, String fqn, String additionalParams) {
     return String.format(
-        "[%s](/%s/%s)", fqn.trim(), getSmtpSettings().getOpenMetadataUrl(), entityType);
+        "[%s](/%s/%s%s)",
+        fqn.trim(),
+        getSmtpSettings().getOpenMetadataUrl(),
+        prefix,
+        nullOrEmpty(additionalParams) ? "" : String.format("/%s", additionalParams));
   }
 
   @Override
-  public TeamsMessage buildMessage(ChangeEvent event) {
-    TeamsMessage teamsMessage = new TeamsMessage();
-    teamsMessage.setSummary("Change Event From OMD");
-    TeamsMessage.Section teamsSections = new TeamsMessage.Section();
-    if (event.getEntity() != null) {
-      String headerTxt = "%s posted on " + event.getEntityType() + " %s";
-      String headerText =
-          String.format(
-              headerTxt,
-              event.getUserName(),
-              this.getEntityUrl(event.getEntityType(), event.getEntityFullyQualifiedName()));
-      teamsSections.setActivityTitle(headerText);
+  public TeamsMessage buildEntityMessage(String publisherName, ChangeEvent event) {
+    return getTeamMessage(createEntityMessage(publisherName, event));
+  }
+
+  @Override
+  public TeamsMessage buildTestMessage(String publisherName) {
+    return getTeamTestMessage(publisherName);
+  }
+
+  @Override
+  public TeamsMessage buildThreadMessage(String publisherName, ChangeEvent event) {
+    return getTeamMessage(createThreadMessage(publisherName, event));
+  }
+
+  private TeamsMessage getTeamMessage(OutgoingMessage outgoingMessage) {
+    if (!outgoingMessage.getMessages().isEmpty()) {
+      TeamsMessage teamsMessage = new TeamsMessage();
+      teamsMessage.setSummary("Change Event From OpenMetadata");
+
+      // Sections
+      TeamsMessage.Section teamsSections = new TeamsMessage.Section();
+      teamsSections.setActivityTitle(outgoingMessage.getHeader());
+      List<TeamsMessage.Section> attachmentList = new ArrayList<>();
+      outgoingMessage
+          .getMessages()
+          .forEach(m -> attachmentList.add(getTeamsSection(teamsSections.getActivityTitle(), m)));
+
+      teamsMessage.setSections(attachmentList);
+      return teamsMessage;
     }
-    Map<MessageParser.EntityLink, String> messages =
-        getFormattedMessages(this, event.getChangeDescription(), getEntity(event));
-    List<TeamsMessage.Section> attachmentList = new ArrayList<>();
-    for (Map.Entry<MessageParser.EntityLink, String> entry : messages.entrySet()) {
-      TeamsMessage.Section section = new TeamsMessage.Section();
-      section.setActivityTitle(teamsSections.getActivityTitle());
-      section.setActivityText(entry.getValue());
-      attachmentList.add(section);
+    throw new UnhandledServerException("No messages found for the event");
+  }
+
+  private TeamsMessage getTeamTestMessage(String publisherName) {
+    if (!publisherName.isEmpty()) {
+      TeamsMessage teamsMessage = new TeamsMessage();
+      teamsMessage.setSummary(
+          "This is a test message from OpenMetadata to confirm your Microsoft Teams destination is configured correctly.");
+
+      // Sections
+      TeamsMessage.Section teamsSection = new TeamsMessage.Section();
+      teamsSection.setActivityTitle("Alert: " + publisherName);
+
+      List<TeamsMessage.Section> sectionList = new ArrayList<>();
+      sectionList.add(teamsSection);
+
+      teamsMessage.setSections(sectionList);
+      return teamsMessage;
     }
-    teamsMessage.setSections(attachmentList);
-    return teamsMessage;
+    throw new UnhandledServerException("Publisher name not found.");
+  }
+
+  private TeamsMessage.Section getTeamsSection(String activityTitle, String message) {
+    TeamsMessage.Section section = new TeamsMessage.Section();
+    section.setActivityTitle(activityTitle);
+    section.setActivityText(message);
+    return section;
   }
 }

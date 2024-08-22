@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import DocumentTitle from '../../../components/DocumentTitle/DocumentTitle';
+import { ReactComponent as CollapseIcon } from '../../../assets/svg/ic-collapse.svg';
+import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import PanelContainer from './PanelContainer/PanelContainer';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
@@ -26,18 +29,24 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   pageTitle,
   hideSecondPanel = false,
 }) => {
+  const { t } = useTranslation();
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+
+  const handleCollapse = () => {
+    setIsRightPanelCollapsed((prev) => !prev);
+  };
+
   return (
     <>
-      <DocumentTitle title={pageTitle} />
+      {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'bg-white')}
-        orientation={orientation}
-        style={{ height: 'calc(100vh - 64px)' }}>
+        className={classNames(className, 'bg-white resizable-panels-layout')}
+        orientation={orientation}>
         <ReflexElement
-          propagateDimensions
-          className={classNames(firstPanel.className, {
-            'full-width': hideSecondPanel,
+          className={classNames(firstPanel.className, 'resizable-first-panel', {
+            'full-width': hideSecondPanel || isRightPanelCollapsed,
           })}
+          data-testid={firstPanel.className}
           flex={firstPanel.flex}
           minSize={firstPanel.minWidth}
           onStopResize={(args) => {
@@ -49,28 +58,54 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         </ReflexElement>
 
         <ReflexSplitter
-          className={classNames('splitter', { hidden: hideSecondPanel })}>
-          <div
-            className={classNames({
-              'panel-grabber-vertical': orientation === 'vertical',
-              'panel-grabber-horizontal': orientation === 'horizontal',
-            })}>
-            <div
-              className={classNames('handle-icon', {
-                'handle-icon-vertical ': orientation === 'vertical',
-                'handle-icon-horizontal': orientation === 'horizontal',
+          className={classNames(
+            'splitter',
+            { hidden: hideSecondPanel },
+            { collapsed: isRightPanelCollapsed }
+          )}>
+          <Tooltip
+            placement={isRightPanelCollapsed ? 'left' : 'top'}
+            title={
+              isRightPanelCollapsed ? t('label.expand') : t('label.collapse')
+            }>
+            <Button
+              className={classNames('collapse-button', {
+                collapsed: isRightPanelCollapsed,
               })}
-            />
-          </div>
+              data-testid="collapse-button"
+              type="ghost"
+              onClick={handleCollapse}>
+              <CollapseIcon className="collapse-icon" />
+            </Button>
+          </Tooltip>
+          {!isRightPanelCollapsed && (
+            <div
+              className={classNames({
+                'panel-grabber-vertical': orientation === 'vertical',
+                'panel-grabber-horizontal': orientation === 'horizontal',
+              })}>
+              <div
+                className={classNames('handle-icon', {
+                  'handle-icon-vertical ': orientation === 'vertical',
+                  'handle-icon-horizontal': orientation === 'horizontal',
+                })}
+              />
+            </div>
+          )}
         </ReflexSplitter>
 
         <ReflexElement
-          propagateDimensions
-          className={classNames(secondPanel.className, {
-            hidden: hideSecondPanel,
-          })}
-          flex={secondPanel.flex}
-          minSize={secondPanel.minWidth}
+          className={classNames(
+            secondPanel.className,
+            'resizable-second-panel',
+            {
+              hidden: hideSecondPanel,
+              'right-panel-collapsed': isRightPanelCollapsed,
+            }
+          )}
+          data-testid={secondPanel.className}
+          flex={isRightPanelCollapsed ? 0 : secondPanel.flex}
+          minSize={isRightPanelCollapsed ? 0 : secondPanel.minWidth}
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>

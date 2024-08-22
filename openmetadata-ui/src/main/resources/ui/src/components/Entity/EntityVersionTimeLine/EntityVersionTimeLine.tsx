@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,181 +12,186 @@
  *  limitations under the License.
  */
 
-import { Col, Divider, Drawer, Row, Typography } from 'antd';
+import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
-import { capitalize, isEmpty, toString } from 'lodash';
-import React, { Fragment, useMemo, useState } from 'react';
+import { isEmpty, toString } from 'lodash';
+import React, { forwardRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { getUserPath } from '../../../constants/constants';
+import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
-import { getUserById } from '../../../rest/userAPI';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getSummary, isMajorVersion } from '../../../utils/EntityVersionUtils';
+import {
+  getSummary,
+  renderVersionButton,
+} from '../../../utils/EntityVersionUtils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import CloseIcon from '../../Modals/CloseIcon.component';
+import './entity-version-timeline.less';
+import {
+  EntityVersionButtonProps,
+  EntityVersionTimelineProps,
+} from './EntityVersionTimeline.interface';
 
-type Props = {
-  versionList: EntityHistory;
-  currentVersion: string;
-  versionHandler: (v: string) => void;
-  onBack: () => void;
-};
-type VersionType = 'all' | 'major' | 'minor';
+export const VersionButton = forwardRef<
+  HTMLDivElement,
+  EntityVersionButtonProps
+>(({ version, onVersionSelect, selected, isMajorVersion, className }, ref) => {
+  const { t } = useTranslation();
 
-const EntityVersionTimeLine: React.FC<Props> = ({
+  const {
+    updatedBy,
+    version: versionNumber,
+    changeDescription,
+    updatedAt,
+    glossary,
+  } = version;
+  const [, , user] = useUserProfile({
+    permission: true,
+    name: updatedBy,
+  });
+
+  const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
+
+  return (
+    <div
+      className={classNames(
+        'timeline-content p-b-md cursor-pointer',
+        className
+      )}
+      ref={ref}
+      onClick={() => onVersionSelect(toString(versionNumber))}>
+      <div className="timeline-wrapper">
+        <span
+          className={classNames(
+            'timeline-rounder',
+            {
+              selected,
+            },
+            {
+              major: isMajorVersion,
+            }
+          )}
+          data-testid={`version-selector-${versionText}`}
+        />
+        <span className={classNames('timeline-line')} />
+      </div>
+      <div>
+        <Typography.Text
+          className={classNames('d-flex font-medium', {
+            'text-primary': selected,
+          })}>
+          <span>{versionText}</span>
+          {isMajorVersion ? (
+            <span
+              className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
+              style={{ backgroundColor: '#EEEAF8' }}>
+              {t('label.major')}
+            </span>
+          ) : null}
+        </Typography.Text>
+        <div
+          className={classNames('text-xs font-normal break-all', {
+            'diff-description': selected,
+          })}>
+          {getSummary({
+            changeDescription: changeDescription,
+            isGlossaryTerm: !isEmpty(glossary),
+          })}
+        </div>
+        <div className="text-xs d-flex gap-1 items-center flex-wrap">
+          <UserPopOverCard
+            className="font-italic"
+            profileWidth={16}
+            userName={updatedBy}>
+            <Link className="thread-author m-r-xss" to={getUserPath(updatedBy)}>
+              {getEntityName(user)}
+            </Link>
+          </UserPopOverCard>
+          <span className="font-medium font-italic version-timestamp">
+            {formatDateTime(updatedAt)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   versionList = {} as EntityHistory,
   currentVersion,
   versionHandler,
   onBack,
-}: Props) => {
+  entityType,
+}) => {
   const { t } = useTranslation();
-  const [versionType] = useState<VersionType>('all');
-  const [uname, setUname] = useState<string>('');
 
-  const fetchUserName = async (id: string) => {
-    try {
-      const userData = await getUserById(id, 'displayName');
+  const { resourceLimit, getResourceLimit } = useLimitStore();
 
-      const name: string = getEntityName(userData);
-      setUname(name);
-    } catch (err) {
-      setUname(id);
-    }
-  };
+  useEffect(() => {
+    entityType && getResourceLimit(entityType);
+  }, [entityType]);
+
+  const { configuredLimit: { maxVersions } = { maxVersions: -1 } } =
+    resourceLimit[entityType ?? ''] ?? {};
 
   const versions = useMemo(() => {
-    let versionTypeList = [];
-    const list = versionList.versions ?? [];
+    const maxAllowed = maxVersions ?? -1;
+    let versions = versionList.versions ?? [];
 
-    switch (versionType) {
-      case 'major':
-        versionTypeList = list.filter((v) => {
-          const currV = JSON.parse(v);
+    let hiddenVersions = [];
 
-          return isMajorVersion(
-            parseFloat(currV?.changeDescription?.previousVersion)
-              .toFixed(1)
-              .toString(),
-            parseFloat(currV?.version).toFixed(1).toString()
-          );
-        });
-
-        break;
-      case 'minor':
-        versionTypeList = list.filter((v) => {
-          const currV = JSON.parse(v);
-
-          return !isMajorVersion(
-            parseFloat(currV?.changeDescription?.previousVersion)
-              .toFixed(1)
-              .toString(),
-            parseFloat(currV?.version).toFixed(1).toString()
-          );
-        });
-
-        break;
-      case 'all':
-      default:
-        versionTypeList = list;
-
-        break;
+    if (maxAllowed > 0) {
+      versions = versionList.versions?.slice(0, maxAllowed) ?? [];
+      hiddenVersions = versionList.versions?.slice(maxAllowed) ?? [];
     }
 
-    return versionTypeList.length ? (
-      versionTypeList.map((v, i) => {
-        const currV = JSON.parse(v);
-        const userId: string = currV?.updatedBy;
-        fetchUserName(userId);
-        {
-          userId === 'admin' ? setUname('admin') : ' ';
-        }
-        const majorVersionChecks = () => {
-          return (
-            isMajorVersion(
-              parseFloat(currV?.changeDescription?.previousVersion)
-                .toFixed(1)
-                .toString(),
-              parseFloat(currV?.version).toFixed(1).toString()
-            ) && versionType === 'all'
-          );
-        };
-        const versionText = `v${parseFloat(currV?.version).toFixed(1)}`;
-
-        return (
-          <Fragment key={currV.version}>
-            {i === 0 ? (
-              <div className="timeline-content cursor-pointer">
-                <div className="timeline-wrapper">
-                  <span className="timeline-line-se" />
-                </div>
-              </div>
-            ) : null}
-            <div
-              className="timeline-content p-b-md cursor-pointer"
-              onClick={() => versionHandler(toString(currV?.version))}>
-              <div className="timeline-wrapper">
-                <span
-                  className={classNames(
-                    'timeline-rounder',
-                    {
-                      selected: toString(currV?.version) === currentVersion,
-                    },
-                    {
-                      major: majorVersionChecks(),
-                    }
-                  )}
-                  data-testid={`version-selector-${versionText}`}
-                />
-                <span className={classNames('timeline-line')} />
-              </div>
-              <div>
-                <Typography.Text
-                  className={classNames('d-flex font-medium', {
-                    'text-primary': toString(currV?.version) === currentVersion,
-                  })}>
-                  <span>{versionText}</span>
-                  {majorVersionChecks() ? (
-                    <span
-                      className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
-                      style={{ backgroundColor: '#EEEAF8' }}>
-                      {t('label.major')}
-                    </span>
-                  ) : null}
-                </Typography.Text>
-                <div
-                  className={classNames('text-xs font-normal break-all', {
-                    'diff-description':
-                      toString(currV?.version) === currentVersion,
-                  })}>
-                  {getSummary({
-                    changeDescription: currV?.changeDescription,
-                    isGlossaryTerm: !isEmpty(currV?.glossary),
-                  })}
-                </div>
-                <p className="text-xs font-italic">
-                  <span className="font-medium">{uname}</span>
-                  <span className="text-grey-muted">
-                    {' '}
-                    {t('label.updated-on')}{' '}
-                  </span>
-                  <span className="font-medium">
-                    {new Date(currV?.updatedAt).toLocaleDateString('en-CA', {
-                      hour: 'numeric',
-                      minute: 'numeric',
-                    })}
-                  </span>
-                </p>
-              </div>
+    return (
+      <div className="relative h-full">
+        {versions.length ? (
+          <div className="timeline-content cursor-pointer">
+            <div className="timeline-wrapper">
+              <span className="timeline-line-se" />
             </div>
-          </Fragment>
-        );
-      })
-    ) : (
-      <p className="text-grey-muted d-flex justify-center items-center">
-        {t('message.no-version-type-available', {
-          type: capitalize(versionType),
+          </div>
+        ) : null}
+
+        {versions?.map((v) => {
+          return renderVersionButton(v, currentVersion, versionHandler);
         })}
-      </p>
+        {hiddenVersions?.length > 0 ? (
+          <>
+            <Tooltip title={`+${hiddenVersions.length} more versions`}>
+              <div className="version-hidden">
+                {hiddenVersions.map((v) =>
+                  renderVersionButton(v, currentVersion, versionHandler)
+                )}
+              </div>
+            </Tooltip>
+            <div className="version-pricing-reached">
+              <Typography.Title className="font-medium" level={4}>
+                Unlock all of your version history
+              </Typography.Title>
+              <Typography.Text className="text-grey-muted font-normal">
+                Upgrade to paid plan for access to all of your version history.
+              </Typography.Text>
+
+              <Button
+                block
+                className="m-t-lg"
+                href="/settings/billing/plans"
+                type="primary">
+                See Upgrade Options
+              </Button>
+            </div>
+          </>
+        ) : null}
+      </div>
     );
-  }, [versionList, currentVersion, versionHandler, versionType]);
+  }, [versionList, currentVersion, versionHandler]);
 
   return (
     <Drawer

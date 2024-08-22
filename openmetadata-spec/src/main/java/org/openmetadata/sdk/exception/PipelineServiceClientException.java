@@ -16,14 +16,15 @@ package org.openmetadata.sdk.exception;
 import javax.ws.rs.core.Response;
 
 public class PipelineServiceClientException extends WebServiceException {
-  private static final String BY_NAME_MESSAGE = "Airflow Exception [%s] due to [%s].";
+  private static final String BY_NAME_MESSAGE = "Pipeline Exception [%s] due to [%s].";
+  private static final String ERROR_TYPE = "PIPELINE_SERVICE_ERROR";
 
   public PipelineServiceClientException(String message) {
-    super(Response.Status.BAD_REQUEST, message);
+    super(Response.Status.BAD_REQUEST, ERROR_TYPE, message);
   }
 
   private PipelineServiceClientException(Response.Status status, String message) {
-    super(status, message);
+    super(status, ERROR_TYPE, message);
   }
 
   public static PipelineServiceClientException byMessage(

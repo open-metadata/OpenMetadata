@@ -59,13 +59,13 @@
         "type": "text",
         "analyzer": "om_analyzer",
         "fields": {
-          "ngram": {
-            "type": "text",
-            "analyzer": "om_ngram"
-          },
           "keyword": {
             "type": "keyword",
             "ignore_above": 256
+          },
+          "ngram": {
+            "type": "text",
+            "analyzer": "om_ngram"
           }
         }
       },
@@ -78,7 +78,7 @@
       },
       "description": {
         "type": "text",
-        "index_options": "freqs",
+        "index_options": "docs",
         "analyzer": "om_analyzer"
       },
       "version": {
@@ -157,7 +157,7 @@
       "column_suggest": {
         "type": "completion"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -300,6 +300,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "lineage": {
+        "type" : "object"
+      },
       "dataModelType": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
@@ -326,8 +329,7 @@
           "description": {
             "type": "text",
             "index_options": "docs",
-            "analyzer": "om_analyzer",
-            "norms": false
+            "analyzer": "om_analyzer"
           },
           "fullyQualifiedName": {
             "type": "text"
@@ -419,7 +421,20 @@
             "type": "text"
           }
         }
-      }
+      },
+      "extension": {
+        "type": "object"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
+      "descriptionStatus": {
+        "type": "keyword"
       }
     }
   }
+}

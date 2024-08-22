@@ -29,7 +29,6 @@ def bigquery_type_mapper(_type_map: dict, col: Column):
     from sqlalchemy_bigquery import STRUCT
 
     def build_struct(_type_map: dict, col: Column):
-
         structs = []
         for child in col.children:
             if child.dataType != DataType.STRUCT:
@@ -37,10 +36,10 @@ def bigquery_type_mapper(_type_map: dict, col: Column):
                     type_ = _type_map.get(child.dataType)(item_type=child.arrayDataType)
                 else:
                     type_ = _type_map.get(child.dataType)
-                structs.append((child.name.__root__, type_))
+                structs.append((child.name.root, type_))
             else:
                 nested_structs = build_struct(_type_map, child)
-                structs.append((child.name.__root__, STRUCT(*nested_structs)))
+                structs.append((child.name.root, STRUCT(*nested_structs)))
         return structs
 
     return STRUCT(*build_struct(_type_map, col))

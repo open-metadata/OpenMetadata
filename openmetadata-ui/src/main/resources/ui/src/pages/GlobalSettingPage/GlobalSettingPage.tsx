@@ -11,115 +11,88 @@
  *  limitations under the License.
  */
 
-import { Menu, MenuProps } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
-import React, { useMemo } from 'react';
+import { Col, Row } from 'antd';
+import { isEmpty, isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import GlobalSettingRouter from '../../components/AppRouter/GlobalSettingRouter';
-import LeftPanelCard from '../../components/common/LeftPanelCard/LeftPanelCard';
+import { useHistory } from 'react-router-dom';
+import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
-import {
-  GlobalSettingOptions,
-  GlobalSettingsMenuCategory,
-} from '../../constants/GlobalSettings.constants';
-import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../enums/ElasticSearch.enum';
-import { TeamType } from '../../generated/entity/teams/team';
+import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
+import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
+import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
 import {
   getGlobalSettingMenuItem,
-  getGlobalSettingsMenuWithPermission,
-  MenuList,
+  SettingMenuItem,
 } from '../../utils/GlobalSettingsUtils';
-import {
-  getSettingPath,
-  getSettingsPathWithFqn,
-  getTeamsWithFqnPath,
-} from '../../utils/RouterUtils';
+import { getSettingPath } from '../../utils/RouterUtils';
 import './global-setting-page.style.less';
 
 const GlobalSettingPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
-  const { tab, settingCategory } =
-    useParams<{ tab: string; settingCategory: string }>();
 
   const { permissions } = usePermissionProvider();
-
   const { isAdminUser } = useAuth();
 
-  const menuItems: ItemType[] = useMemo(
+  const [settings, setSettings] = useState<SettingMenuItem[]>([]);
+
+  const settingItems = useMemo(
     () =>
-      getGlobalSettingsMenuWithPermission(permissions, isAdminUser).reduce(
-        (acc: ItemType[], curr: MenuList) => {
-          const menuItem = getGlobalSettingMenuItem({
-            label: curr.category,
-            key: curr.key,
-            category: curr.category,
-            children: curr.items,
-            type: 'group',
-            isBeta: curr.isBeta,
-          });
-          if (menuItem.children?.length) {
-            return [...acc, menuItem];
-          } else {
-            return acc;
+      globalSettingsClassBase
+        .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+        .filter((curr: SettingMenuItem) => {
+          const menuItem = getGlobalSettingMenuItem(curr);
+
+          if (!isUndefined(menuItem.isProtected)) {
+            return menuItem.isProtected;
           }
-        },
-        [] as ItemType[]
-      ),
-    [permissions]
+
+          if (menuItem.items && menuItem.items.length > 0) {
+            return true;
+          }
+
+          return false;
+        }),
+    [permissions, isAdminUser]
   );
 
-  const onClick: MenuProps['onClick'] = (e) => {
-    // As we are setting key as "category.option" and extracting here category and option
-    const [category, option] = e.key.split('.');
+  const handleSettingItemClick = useCallback((category: string) => {
+    history.push(getSettingPath(category));
+  }, []);
 
-    switch (option) {
-      case GlobalSettingOptions.TEAMS:
-        history.push(getTeamsWithFqnPath(TeamType.Organization));
+  useEffect(() => {
+    setSettings(settingItems);
+  }, []);
 
-        break;
-      case GlobalSettingOptions.SEARCH:
-        if (category === GlobalSettingsMenuCategory.OPEN_METADATA) {
-          history.push(
-            getSettingsPathWithFqn(
-              category,
-              option,
-              ELASTIC_SEARCH_RE_INDEX_PAGE_TABS.ON_DEMAND
-            )
-          );
-        } else {
-          history.push(getSettingPath(category, option));
-        }
-
-        break;
-      default:
-        history.push(getSettingPath(category, option));
-
-        break;
-    }
-  };
-
-  const leftPanel = menuItems.length ? (
-    <LeftPanelCard id="settings">
-      <Menu
-        className="custom-menu"
-        data-testid="global-setting-left-panel"
-        items={menuItems}
-        mode="inline"
-        selectedKeys={[`${settingCategory}.${tab}`]}
-        onClick={onClick}
-      />
-    </LeftPanelCard>
-  ) : null;
+  if (isEmpty(settingItems)) {
+    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+  }
 
   return (
-    <PageLayoutV1 leftPanel={leftPanel} pageTitle={t('label.setting-plural')}>
-      <div className="page-container h-full">
-        <GlobalSettingRouter />
-      </div>
+    <PageLayoutV1 pageTitle={t('label.setting-plural')}>
+      <Row className="page-container" gutter={[0, 20]}>
+        <Col span={24}>
+          <PageHeader data={PAGE_HEADERS.SETTING} />
+        </Col>
+
+        <Col span={24}>
+          <Row gutter={[20, 20]}>
+            {settings.map((setting) => (
+              <Col key={setting?.key} span={6}>
+                <SettingItemCard
+                  data={setting}
+                  onClick={handleSettingItemClick}
+                />
+              </Col>
+            ))}
+          </Row>
+        </Col>
+      </Row>
     </PageLayoutV1>
   );
 };

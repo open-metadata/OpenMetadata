@@ -12,7 +12,7 @@
 """
 Validator for column values to be between test case
 """
-
+import math
 from typing import Optional
 
 from sqlalchemy import Column, inspect
@@ -38,7 +38,7 @@ class ColumnValuesToBeBetweenValidator(
             Column: column
         """
         return self.get_column_name(
-            self.test_case.entityLink.__root__,
+            self.test_case.entityLink.root,
             inspect(self.runner.table).c,
         )
 
@@ -63,11 +63,16 @@ class ColumnValuesToBeBetweenValidator(
             NotImplementedError:
         """
         row_count = self._compute_row_count(self.runner, column)
+        filters = []
+        if not isinstance(min_bound, (int, float)) or min_bound > -math.inf:
+            filters.append((column, "lt", min_bound))
+        if not isinstance(min_bound, (int, float)) or max_bound < math.inf:
+            filters.append((column, "gt", max_bound))
         failed_rows = self._compute_row_count_between(
             self.runner,
             column,
             {
-                "filters": [(column, "gt", max_bound), (column, "lt", min_bound)],
+                "filters": filters,
                 "or_filter": True,
             },
         )

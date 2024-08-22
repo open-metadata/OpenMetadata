@@ -12,41 +12,13 @@
  */
 import { Button, Space } from 'antd';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isEmpty, toNumber } from 'lodash';
 import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../../components/Loader/Loader';
-import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
-import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
-import {
-  StatusType,
-  TestConnectionStepResult,
-  Workflow,
-  WorkflowStatus,
-  WorkflowType,
-} from '../../../generated/entity/automations/workflow';
-import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
-import {
-  addWorkflow,
-  deleteWorkflowById,
-  getTestConnectionDefinitionByName,
-  getWorkflowById,
-  triggerWorkflowById,
-} from '../../../rest/workflowAPI';
-import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
-import {
-  getServiceType,
-  getTestConnectionName,
-  shouldTestConnection,
-} from '../../../utils/ServiceUtils';
-
 import { ReactComponent as FailIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as WarningIcon } from '../../../assets/svg/ic-warning.svg';
 import { ReactComponent as SuccessIcon } from '../../../assets/svg/success-badge.svg';
-import { Transi18next } from '../../../utils/CommonUtils';
-import { TestConnectionProps, TestStatus } from './TestConnection.interface';
-import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
-
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import {
   FETCHING_EXPIRY_TIME,
@@ -60,13 +32,40 @@ import {
   TEST_CONNECTION_WARNING_MESSAGE,
   WORKFLOW_COMPLETE_STATUS,
 } from '../../../constants/Services.constant';
+import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
+import { ConfigClass } from '../../../generated/entity/automations/testServiceConnection';
+import {
+  StatusType,
+  TestConnectionStepResult,
+  Workflow,
+  WorkflowStatus,
+  WorkflowType,
+} from '../../../generated/entity/automations/workflow';
+import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
+import {
+  addWorkflow,
+  deleteWorkflowById,
+  getTestConnectionDefinitionByName,
+  getWorkflowById,
+  triggerWorkflowById,
+} from '../../../rest/workflowAPI';
+import { Transi18next } from '../../../utils/CommonUtils';
+import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
+import {
+  getServiceType,
+  getTestConnectionName,
+  shouldTestConnection,
+} from '../../../utils/ServiceUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../Loader/Loader';
 import './test-connection.style.less';
+import { TestConnectionProps, TestStatus } from './TestConnection.interface';
+import TestConnectionModal from './TestConnectionModal/TestConnectionModal';
 
 const TestConnection: FC<TestConnectionProps> = ({
   isTestingDisabled,
-  formData,
+  getData,
   serviceCategory,
   connectionType,
   serviceName,
@@ -108,11 +107,6 @@ const TestConnection: FC<TestConnectionProps> = ({
    * Current workflow reference
    */
   const currentWorkflowRef = useRef(currentWorkflow);
-
-  // derived variables
-  const updatedFormData = useMemo(() => {
-    return formatFormDataForSubmit(formData);
-  }, [formData]);
 
   const serviceType = useMemo(() => {
     return getServiceType(serviceCategory);
@@ -185,6 +179,8 @@ const TestConnection: FC<TestConnectionProps> = ({
     setIsTestingConnection(true);
     setMessage(TEST_CONNECTION_TESTING_MESSAGE);
     handleResetState();
+
+    const updatedFormData = formatFormDataForSubmit(getData());
 
     // current interval id
     let intervalId: number | undefined;
@@ -408,7 +404,9 @@ const TestConnection: FC<TestConnectionProps> = ({
             </div>
           </Space>
           <Button
-            className="text-primary"
+            className={classNames({
+              'text-primary': !isTestConnectionDisabled,
+            })}
             data-testid="test-connection-btn"
             disabled={isTestConnectionDisabled}
             loading={isTestingConnection}

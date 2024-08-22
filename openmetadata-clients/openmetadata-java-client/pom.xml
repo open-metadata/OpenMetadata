@@ -5,7 +5,7 @@
     <parent>
         <artifactId>openmetadata-clients</artifactId>
         <groupId>org.open-metadata</groupId>
-        <version>1.3.0-SNAPSHOT</version>
+        <version>1.5.0-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -78,12 +78,12 @@
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.20.0</version>
+            <version>1.22.0</version>
         </dependency>
         <dependency>
             <groupId>com.microsoft.azure</groupId>
             <artifactId>msal4j</artifactId>
-            <version>1.14.0</version>
+            <version>1.15.1</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -238,6 +238,7 @@
                             <output>
                                 ${project.build.directory}/generated-sources/swagger
                             </output>
+                            <skipOperationExample>true</skipOperationExample>
                         </configuration>
                     </execution>
                 </executions>

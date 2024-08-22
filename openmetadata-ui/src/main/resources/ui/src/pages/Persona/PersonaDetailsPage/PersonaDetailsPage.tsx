@@ -10,36 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Row, Tabs } from 'antd';
-import Col from 'antd/es/grid/col';
+import Icon from '@ant-design/icons/lib/components/Icon';
+import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import React, { useCallback, useEffect, useState } from 'react';
+import { isUndefined } from 'lodash';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
+import Loader from '../../../components/common/Loader/Loader';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
-import Loader from '../../../components/Loader/Loader';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { usePermissionProvider } from '../../../components/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../components/PermissionProvider/PermissionProvider.interface';
-import { UsersTab } from '../../../components/Users/UsersTab/UsersTabs.component';
+import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getSettingPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 export const PersonaDetailsPage = () => {
-  const { fqn } = useParams<{ fqn: string }>();
+  const { fqn } = useFqn();
   const history = useHistory();
   const [personaDetails, setPersonaDetails] = useState<Persona>();
   const [isLoading, setIsLoading] = useState(true);
@@ -50,6 +57,23 @@ export const PersonaDetailsPage = () => {
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const breadcrumb = useMemo(
+    () => [
+      {
+        name: t('label.persona-plural'),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        ),
+      },
+      {
+        name: getEntityName(personaDetails),
+        url: '',
+      },
+    ],
+    [personaDetails]
+  );
 
   useEffect(() => {
     getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
@@ -109,23 +133,6 @@ export const PersonaDetailsPage = () => {
     }
   };
 
-  const handleRestorePersona = async () => {
-    if (!personaDetails) {
-      return;
-    }
-    const updatedData = { ...personaDetails };
-    const diff = compare(personaDetails, updatedData);
-
-    try {
-      const response = await updatePersona(personaDetails?.id, diff);
-      setPersonaDetails(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsEdit(false);
-    }
-  };
-
   const handlePersonaUpdate = useCallback(
     async (data: Partial<Persona>) => {
       if (!personaDetails) {
@@ -165,27 +172,38 @@ export const PersonaDetailsPage = () => {
     );
   };
 
-  if (isLoading || !personaDetails) {
+  if (isLoading) {
     return <Loader />;
+  }
+
+  if (isUndefined(personaDetails)) {
+    return <NoDataPlaceholder size={SIZE.LARGE} />;
   }
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md" gutter={[16, 16]}>
+      <Row className="m-b-md page-container" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
-            <PageHeader
-              data={{
-                header: personaDetails.displayName,
-                subHeader: personaDetails.name,
-              }}
-            />
+            <div className="w-full">
+              <TitleBreadcrumb titleLinks={breadcrumb} />
+
+              <EntityHeaderTitle
+                className="m-t-xs"
+                displayName={personaDetails.displayName}
+                icon={
+                  <Icon component={IconPersona} style={{ fontSize: '36px' }} />
+                }
+                name={personaDetails?.name}
+                serviceName={personaDetails.name}
+              />
+            </div>
             <ManageButton
               afterDeleteAction={handleAfterDeleteAction}
               allowSoftDelete={false}
               canDelete={entityPermission.EditAll || entityPermission.Delete}
               deleted={false}
-              displayName={personaDetails.displayName}
+              displayName={getEntityName(personaDetails)}
               editDisplayNamePermission={
                 entityPermission.EditAll || entityPermission.EditDescription
               }
@@ -194,7 +212,6 @@ export const PersonaDetailsPage = () => {
               entityName={personaDetails.name}
               entityType={EntityType.PERSONA}
               onEditDisplayName={handleDisplayNameUpdate}
-              onRestoreEntity={handleRestorePersona}
             />
           </div>
         </Col>
@@ -231,7 +248,10 @@ export const PersonaDetailsPage = () => {
                 multiSelect
                 selectedUsers={personaDetails.users ?? []}
                 onUpdate={(users) => handlePersonaUpdate({ users })}>
-                <Button size="small" type="primary">
+                <Button
+                  data-testid="add-persona-button"
+                  size="small"
+                  type="primary">
                   {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               </UserSelectableList>

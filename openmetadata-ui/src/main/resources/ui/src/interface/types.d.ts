@@ -93,6 +93,7 @@ declare module 'Models' {
     deleted?: boolean;
     entityType?: string;
     changeDescription?: ChangeDescription;
+    columns?: TableColumn[];
   };
 
   export type SearchedUsersAndTeams = {
@@ -145,7 +146,8 @@ declare module 'Models' {
     | 'mlmodelServices'
     | 'metadataServices'
     | 'storageServices'
-    | 'searchServices';
+    | 'searchServices'
+    | 'apiServices';
 
   export type SearchDataFunctionType = {
     queryString: string;
@@ -274,4 +276,11 @@ declare module 'Models' {
     fullyQualifiedName?: string;
     children?: TagsData[];
   };
+
+  export interface DateRangeObject {
+    startTs: number;
+    endTs: number;
+    key?: string;
+    title?: string;
+  }
 }

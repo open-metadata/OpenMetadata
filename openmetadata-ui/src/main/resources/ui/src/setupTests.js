@@ -89,6 +89,7 @@ jest.mock('utils/i18next/LocalUtil', () => ({
     t: (key) => key,
   }),
   t: (key) => key,
+  dir: jest.fn().mockReturnValue('ltr'),
 }));
 /**
  * mock react-i18next
@@ -97,7 +98,7 @@ jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: jest.fn().mockReturnValue({
     t: (key) => key,
-    i18n: { language: 'en-US' },
+    i18n: { language: 'en-US', dir: jest.fn().mockReturnValue('ltr') },
   }),
 }));
 

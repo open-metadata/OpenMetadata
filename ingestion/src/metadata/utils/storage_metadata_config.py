@@ -17,8 +17,12 @@ from functools import singledispatch
 
 import requests
 
+from metadata.clients.azure_client import AzureClient
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.datalake.gcsConfig import (
+    GCSConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.datalake.s3Config import (
     S3Config,
@@ -28,6 +32,9 @@ from metadata.generated.schema.metadataIngestion.storage.manifestMetadataConfig 
 )
 from metadata.generated.schema.metadataIngestion.storage.storageMetadataADLSConfig import (
     StorageMetadataAdlsConfig,
+)
+from metadata.generated.schema.metadataIngestion.storage.storageMetadataGCSConfig import (
+    StorageMetadataGcsConfig,
 )
 from metadata.generated.schema.metadataIngestion.storage.storageMetadataHttpConfig import (
     StorageMetadataHttpConfig,
@@ -39,6 +46,7 @@ from metadata.generated.schema.metadataIngestion.storage.storageMetadataS3Config
     StorageMetadataS3Config,
 )
 from metadata.readers.file.config_source_factory import get_reader
+from metadata.utils.credentials import set_google_credentials
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -71,7 +79,8 @@ def _(config: StorageMetadataLocalConfig) -> ManifestMetadataConfig:
             logger.debug(f"Reading [manifestFilePath] from: {config.manifestFilePath}")
             with open(config.manifestFilePath, "r", encoding="utf-8") as manifest:
                 metadata_manifest = manifest.read()
-        return ManifestMetadataConfig.parse_obj(json.loads(metadata_manifest))
+            return ManifestMetadataConfig.model_validate(json.loads(metadata_manifest))
+        raise StorageMetadataConfigException("Manifest file path not provided")
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -90,7 +99,7 @@ def _(config: StorageMetadataHttpConfig) -> ManifestMetadataConfig:
             raise StorageMetadataConfigException(
                 "Manifest file not found in file server"
             )
-        return ManifestMetadataConfig.parse_obj(http_manifest.json())
+        return ManifestMetadataConfig.model_validate(http_manifest.json())
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -123,7 +132,7 @@ def _(config: StorageMetadataS3Config) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
@@ -146,21 +155,7 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
             else STORAGE_METADATA_MANIFEST_FILE_NAME
         )
 
-        from azure.identity import (  # pylint: disable=import-outside-toplevel
-            ClientSecretCredential,
-        )
-        from azure.storage.blob import (  # pylint: disable=import-outside-toplevel
-            BlobServiceClient,
-        )
-
-        blob_client = BlobServiceClient(
-            account_url=f"https://{config.securityConfig.accountName}.blob.core.windows.net/",
-            credential=ClientSecretCredential(
-                config.securityConfig.tenantId,
-                config.securityConfig.clientId,
-                config.securityConfig.clientSecret.get_secret_value(),
-            ),
-        )
+        blob_client = AzureClient(config.securityConfig).create_blob_client()
 
         reader = get_reader(
             config_source=AzureConfig(securityConfig=config.securityConfig),
@@ -168,9 +163,43 @@ def _(config: StorageMetadataAdlsConfig) -> ManifestMetadataConfig:
         )
 
         manifest = reader.read(path=path, bucket_name=bucket_name)
-        return ManifestMetadataConfig.parse_obj(json.loads(manifest))
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
     except Exception as exc:
         logger.debug(traceback.format_exc())
         raise StorageMetadataConfigException(
-            f"Error fetching manifest file from s3: {exc}"
+            f"Error fetching manifest file from adls: {exc}"
+        )
+
+
+@get_manifest.register
+def _(config: StorageMetadataGcsConfig) -> ManifestMetadataConfig:
+    try:
+        bucket_name, prefix = (
+            config.prefixConfig.containerName,
+            config.prefixConfig.objectPrefix,
+        )
+
+        path = (
+            f"{prefix}/{STORAGE_METADATA_MANIFEST_FILE_NAME}"
+            if prefix
+            else STORAGE_METADATA_MANIFEST_FILE_NAME
+        )
+
+        from google.cloud.storage import (  # pylint: disable=import-outside-toplevel
+            Client,
+        )
+
+        set_google_credentials(gcp_credentials=config.securityConfig)
+        gcs_client = Client()
+        reader = get_reader(
+            config_source=GCSConfig(securityConfig=config.securityConfig),
+            client=gcs_client,
+        )
+
+        manifest = reader.read(path=path, bucket_name=bucket_name)
+        return ManifestMetadataConfig.model_validate(json.loads(manifest))
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        raise StorageMetadataConfigException(
+            f"Error fetching manifest file from gcs: {exc}"
         )

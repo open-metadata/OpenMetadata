@@ -1,0 +1,42 @@
+{
+    
+    "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/flinkConnection.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "FlinkConnection",
+    "description": "Flink Metadata Connection Config",
+    "type": "object",
+    "javaType": "org.openmetadata.schema.services.connections.pipeline.FlinkConnection",
+    "definitions": {
+      "FlinkType": {
+        "description": "Service type.",
+        "type": "string",
+        "enum": ["Flink"],
+        "default": "Flink"
+      }
+    },
+    "properties": {
+      "type": {
+        "title": "Service Type",
+        "description": "Service Type",
+        "$ref": "#/definitions/FlinkType",
+        "default": "Flink"
+      },
+      "hostPort": {
+        "expose": true,
+        "title": "Host And Port",
+        "description": "Pipeline Service Management/UI URI.",
+        "type": "string",
+        "format": "uri",
+        "default": "https://api.flink.com"
+      },
+      "verifySSL": {
+        "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/verifySSL",
+        "default": "no-ssl"
+      },
+      "sslConfig": {
+        "$ref": "../../../../security/ssl/verifySSLConfig.json#/definitions/sslConfig"
+      }
+    },
+    "additionalProperties": false,
+    "required": ["hostPort"]
+}

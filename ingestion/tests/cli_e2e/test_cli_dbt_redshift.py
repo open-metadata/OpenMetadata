@@ -68,10 +68,16 @@ class DbtCliTest(CliDBTBase.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) >= 10)
-        self.assertTrue(len(source_status.records) >= self.expected_tables())
+        self.assertTrue(
+            (len(source_status.records) + len(source_status.updated_records))
+            >= self.expected_tables()
+        )
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
-        self.assertTrue(len(sink_status.records) > self.expected_tables())
+        self.assertTrue(
+            (len(sink_status.records) + len(sink_status.updated_records))
+            > self.expected_tables()
+        )
 
     def assert_for_dbt_ingestion(
         self, source_status: Status, sink_status: Status
@@ -79,7 +85,12 @@ class DbtCliTest(CliDBTBase.TestSuite):
         self.assertTrue(len(source_status.failures) == 0)
         self.assertTrue(len(source_status.warnings) == 0)
         self.assertTrue(len(source_status.filtered) == 0)
-        self.assertTrue(len(source_status.records) >= 0)
+        self.assertTrue(
+            (len(source_status.records) + len(source_status.updated_records)) >= 0
+        )
         self.assertTrue(len(sink_status.failures) == 0)
         self.assertTrue(len(sink_status.warnings) == 0)
-        self.assertTrue(len(sink_status.records) >= self.expected_records())
+        self.assertTrue(
+            (len(sink_status.records) + len(sink_status.updated_records))
+            >= self.expected_records()
+        )

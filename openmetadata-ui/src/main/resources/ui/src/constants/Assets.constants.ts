@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AssetsUnion } from '../components/Assets/AssetsSelectionModal/AssetSelectionModal.interface';
+import { AssetsUnion } from '../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import i18n from '../utils/i18next/LocalUtil';
@@ -53,7 +53,7 @@ export const AssetsFilterOptions: Array<{
   {
     label: i18n.t('label.glossary-plural'),
     key: EntityType.GLOSSARY_TERM,
-    value: SearchIndex.GLOSSARY,
+    value: SearchIndex.GLOSSARY_TERM,
   },
   {
     label: i18n.t('label.stored-procedure-plural'),
@@ -131,219 +131,23 @@ export const AssetsFilterOptions: Array<{
     key: EntityType.SEARCH_SERVICE,
     value: SearchIndex.SEARCH_SERVICE,
   },
-];
-
-export const ASSET_SUB_MENU_FILTER: Array<{
-  label: string;
-  key: EntityType;
-  children: {
-    label: string;
-    value: EntityType;
-    key: SearchIndex;
-  }[];
-}> = [
   {
-    key: EntityType.DOMAIN,
-    label: i18n.t('label.domain-plural'),
-    children: [
-      {
-        key: SearchIndex.DOMAIN,
-        label: i18n.t('label.domain-plural'),
-        value: EntityType.DOMAIN,
-      },
-      {
-        key: SearchIndex.DATA_PRODUCT,
-        label: i18n.t('label.data-product-plural'),
-        value: EntityType.DATA_PRODUCT,
-      },
-    ],
+    label: i18n.t('label.entity-service', {
+      entity: i18n.t('label.api-uppercase'),
+    }),
+    key: EntityType.API_SERVICE,
+    value: SearchIndex.API_SERVICE_INDEX,
   },
   {
-    label: i18n.t('label.database-plural'),
-    key: EntityType.DATABASE,
-    children: [
-      {
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.database'),
-        }),
-        value: EntityType.DATABASE_SERVICE,
-        key: SearchIndex.DATABASE_SERVICE,
-      },
-      {
-        key: SearchIndex.DATABASE,
-        label: i18n.t('label.database'),
-        value: EntityType.DATABASE,
-      },
-      {
-        key: SearchIndex.DATABASE_SCHEMA,
-        label: i18n.t('label.database-schema'),
-        value: EntityType.DATABASE_SCHEMA,
-      },
-      {
-        key: SearchIndex.TABLE,
-        label: i18n.t('label.table'),
-        value: EntityType.TABLE,
-      },
-      {
-        key: SearchIndex.STORED_PROCEDURE,
-        label: i18n.t('label.stored-procedure'),
-        value: EntityType.STORED_PROCEDURE,
-      },
-    ],
+    label: i18n.t('label.api-collection-plural'),
+    key: EntityType.API_COLLECTION,
+    value: SearchIndex.API_COLLECTION_INDEX,
   },
   {
-    key: EntityType.TOPIC,
-    label: i18n.t('label.messaging-plural'),
-    children: [
-      {
-        key: SearchIndex.MESSAGING_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.messaging'),
-        }),
-        value: EntityType.MESSAGING_SERVICE,
-      },
-      {
-        key: SearchIndex.TOPIC,
-        label: i18n.t('label.topic'),
-        value: EntityType.TOPIC,
-      },
-    ],
+    label: i18n.t('label.api-endpoint-plural'),
+    key: EntityType.API_ENDPOINT,
+    value: SearchIndex.API_ENDPOINT_INDEX,
   },
-  {
-    key: EntityType.DASHBOARD,
-    label: i18n.t('label.dashboard-plural'),
-    children: [
-      {
-        key: SearchIndex.DASHBOARD_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.dashboard'),
-        }),
-        value: EntityType.DASHBOARD_SERVICE,
-      },
-      {
-        key: SearchIndex.DASHBOARD,
-        label: i18n.t('label.dashboard'),
-        value: EntityType.DASHBOARD,
-      },
-      {
-        key: SearchIndex.DASHBOARD_DATA_MODEL,
-        label: i18n.t('label.dashboard-data-model-plural'),
-        value: EntityType.DASHBOARD_DATA_MODEL,
-      },
-    ],
-  },
-  {
-    key: EntityType.MLMODEL,
-    label: i18n.t('label.machine-learning'),
-    children: [
-      {
-        key: SearchIndex.ML_MODEL_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.ml-model'),
-        }),
-        value: EntityType.MLMODEL_SERVICE,
-      },
-      {
-        key: SearchIndex.MLMODEL,
-        label: i18n.t('label.ml-model'),
-        value: EntityType.MLMODEL,
-      },
-    ],
-  },
-  {
-    key: EntityType.PIPELINE,
-    label: i18n.t('label.pipeline-plural'),
-    children: [
-      {
-        key: SearchIndex.PIPELINE_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.pipeline'),
-        }),
-        value: EntityType.PIPELINE_SERVICE,
-      },
-      {
-        key: SearchIndex.PIPELINE,
-        label: i18n.t('label.pipeline'),
-        value: EntityType.PIPELINE,
-      },
-    ],
-  },
-  {
-    key: EntityType.CONTAINER,
-    label: i18n.t('label.storage'),
-    children: [
-      {
-        key: SearchIndex.STORAGE_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.storage'),
-        }),
-        value: EntityType.STORAGE_SERVICE,
-      },
-      {
-        key: SearchIndex.CONTAINER,
-        label: i18n.t('label.container'),
-        value: EntityType.CONTAINER,
-      },
-    ],
-  },
-  {
-    key: EntityType.SEARCH_INDEX,
-    label: i18n.t('label.search'),
-    children: [
-      {
-        key: SearchIndex.SEARCH_SERVICE,
-        label: i18n.t('label.entity-service', {
-          entity: i18n.t('label.search'),
-        }),
-        value: EntityType.SEARCH_SERVICE,
-      },
-      {
-        key: SearchIndex.SEARCH_INDEX,
-        label: i18n.t('label.search-index'),
-        value: EntityType.SEARCH_INDEX,
-      },
-    ],
-  },
-  {
-    key: EntityType.GOVERN,
-    label: i18n.t('label.governance'),
-    children: [
-      {
-        key: SearchIndex.GLOSSARY,
-        label: i18n.t('label.glossary-plural'),
-        value: EntityType.GLOSSARY_TERM,
-      },
-      {
-        key: SearchIndex.TAG,
-        label: i18n.t('label.tag-plural'),
-        value: EntityType.TAG,
-      },
-    ],
-  },
-];
-
-export const ASSETS_INDEXES = [
-  SearchIndex.TABLE,
-  SearchIndex.TOPIC,
-  SearchIndex.DASHBOARD,
-  SearchIndex.PIPELINE,
-  SearchIndex.MLMODEL,
-  SearchIndex.CONTAINER,
-  SearchIndex.STORED_PROCEDURE,
-  SearchIndex.DASHBOARD_DATA_MODEL,
-  SearchIndex.DATABASE,
-  SearchIndex.DATABASE_SCHEMA,
-  SearchIndex.SEARCH_INDEX,
-  SearchIndex.DATABASE_SERVICE,
-  SearchIndex.MESSAGING_SERVICE,
-  SearchIndex.DASHBOARD_SERVICE,
-  SearchIndex.ML_MODEL_SERVICE,
-  SearchIndex.PIPELINE_SERVICE,
-  SearchIndex.STORAGE_SERVICE,
-  SearchIndex.SEARCH_SERVICE,
-  SearchIndex.DOMAIN,
-  SearchIndex.DATA_PRODUCT,
-  SearchIndex.TAG,
 ];
 
 export const ASSET_MENU_KEYS = [
@@ -356,4 +160,23 @@ export const ASSET_MENU_KEYS = [
   EntityType.CONTAINER,
   EntityType.SEARCH_INDEX,
   EntityType.GOVERN,
+];
+
+export const NON_SERVICE_TYPE_ASSETS = [
+  EntityType.GLOSSARY,
+  EntityType.GLOSSARY_TERM,
+  EntityType.CLASSIFICATION,
+  EntityType.TAG,
+  EntityType.DATA_PRODUCT,
+  EntityType.DOMAIN,
+  EntityType.TEST_CASE,
+  EntityType.TEST_SUITE,
+  EntityType.EVENT_SUBSCRIPTION,
+  EntityType.BOT,
+  EntityType.TEAM,
+  EntityType.APPLICATION,
+  EntityType.PERSONA,
+  EntityType.ROLE,
+  EntityType.POLICY,
+  EntityType.KPI,
 ];

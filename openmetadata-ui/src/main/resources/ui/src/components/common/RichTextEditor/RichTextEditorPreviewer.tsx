@@ -20,7 +20,10 @@ import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import { formatContent, isHTMLString } from '../../../utils/BlockEditorUtils';
 import { getTrimmedContent } from '../../../utils/CommonUtils';
-import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
+import {
+  customHTMLRenderer,
+  replaceLatex,
+} from './CustomHtmlRederer/CustomHtmlRederer';
 import './rich-text-editor-previewer.less';
 import { PreviewerProp } from './RichTextEditor.interface';
 
@@ -31,10 +34,10 @@ const RichTextEditorPreviewer = ({
   textVariant = 'black',
   showReadMoreBtn = true,
   maxLength = DESCRIPTION_MAX_PREVIEW_CHARACTERS,
+  isDescriptionExpanded = false,
 }: PreviewerProp) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
-
   // initially read more will be false
   const [readMore, setReadMore] = useState<boolean>(false);
 
@@ -71,8 +74,9 @@ const RichTextEditorPreviewer = ({
     const targetNodeDataTestId = targetNode.getAttribute('data-testid');
 
     if (targetNodeDataTestId === 'code-block-copy-icon' && previousSibling) {
-      const content =
-        targetNode.parentElement?.getAttribute('data-content') ?? '';
+      const codeNode = previousSibling.previousElementSibling;
+
+      const content = codeNode?.textContent ?? '';
 
       try {
         await navigator.clipboard.writeText(content);
@@ -94,17 +98,24 @@ const RichTextEditorPreviewer = ({
     return () => window.removeEventListener('mousedown', handleMouseDownEvent);
   }, [handleMouseDownEvent]);
 
+  useEffect(() => {
+    setReadMore(Boolean(isDescriptionExpanded));
+  }, [isDescriptionExpanded]);
+
   return (
     <div
-      className={classNames('rich-text-editor-container', className)}
-      data-testid="viewer-container">
+      className={classNames('rich-text-editor-container', className, {
+        'text-right': i18n.dir() === 'rtl',
+      })}
+      data-testid="viewer-container"
+      dir={i18n.dir()}>
       <div
         className={classNames('markdown-parser', textVariant)}
         data-testid="markdown-parser">
         <Viewer
           extendedAutolinks
           customHTMLRenderer={customHTMLRenderer}
-          initialValue={viewerValue}
+          initialValue={replaceLatex(viewerValue)}
           key={uniqueId()}
           linkAttributes={{ target: '_blank' }}
         />

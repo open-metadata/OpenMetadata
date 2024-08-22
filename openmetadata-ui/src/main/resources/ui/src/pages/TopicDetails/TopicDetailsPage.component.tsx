@@ -21,22 +21,25 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useParams } from 'react-router-dom';
-import { useAuthContext } from '../../components/Auth/AuthProviders/AuthProvider';
+import { useHistory } from 'react-router-dom';
+
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/Loader/Loader';
-import { usePermissionProvider } from '../../components/PermissionProvider/PermissionProvider';
+import Loader from '../../components/common/Loader/Loader';
+import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
+import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
+import { getVersionPath, ROUTES } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../components/PermissionProvider/PermissionProvider.interface';
-import { QueryVote } from '../../components/TableQueries/TableQueries.interface';
-import TopicDetails from '../../components/TopicDetails/TopicDetails.component';
-import { getVersionPath } from '../../constants/constants';
+} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { CreateThread } from '../../generated/api/feed/createThread';
 import { Topic } from '../../generated/entity/data/topic';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useFqn } from '../../hooks/useFqn';
 import { postThread } from '../../rest/feedsAPI';
 import {
   addFollower,
@@ -56,12 +59,12 @@ import { showErrorToast } from '../../utils/ToastUtils';
 
 const TopicDetailsPage: FunctionComponent = () => {
   const { t } = useTranslation();
-  const { currentUser } = useAuthContext();
+  const { currentUser } = useApplicationStore();
   const USERId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: topicFQN } = useParams<{ fqn: string }>();
+  const { fqn: topicFQN } = useFqn();
   const [topicDetails, setTopicDetails] = useState<Topic>({} as Topic);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
@@ -124,14 +127,17 @@ const TopicDetailsPage: FunctionComponent = () => {
   const fetchTopicDetail = async (topicFQN: string) => {
     setLoading(true);
     try {
-      const res = await getTopicByFqn(topicFQN, [
-        TabSpecificField.OWNER,
-        TabSpecificField.FOLLOWERS,
-        TabSpecificField.TAGS,
-        TabSpecificField.DOMAIN,
-        TabSpecificField.DATA_PRODUCTS,
-        TabSpecificField.VOTES,
-      ]);
+      const res = await getTopicByFqn(topicFQN, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.DOMAIN,
+          TabSpecificField.DATA_PRODUCTS,
+          TabSpecificField.VOTES,
+          TabSpecificField.EXTENSION,
+        ].join(','),
+      });
       const { id, fullyQualifiedName, serviceType } = res;
 
       setTopicDetails(res);
@@ -147,6 +153,10 @@ const TopicDetailsPage: FunctionComponent = () => {
     } catch (error) {
       if ((error as AxiosError).response?.status === 404) {
         setIsError(true);
+      } else if (
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+      ) {
+        history.replace(ROUTES.FORBIDDEN);
       } else {
         showErrorToast(
           error as AxiosError,
@@ -236,12 +246,14 @@ const TopicDetailsPage: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateTopicVotes(id, data);
-      const details = await getTopicByFqn(topicFQN, [
-        TabSpecificField.OWNER,
-        TabSpecificField.FOLLOWERS,
-        TabSpecificField.TAGS,
-        TabSpecificField.VOTES,
-      ]);
+      const details = await getTopicByFqn(topicFQN, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.FOLLOWERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.VOTES,
+        ].join(','),
+      });
       setTopicDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
