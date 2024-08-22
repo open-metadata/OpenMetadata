@@ -29,7 +29,11 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_MEDIUM,
+  ROUTES,
+} from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -129,9 +133,12 @@ const PoliciesListPage = () => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        render: (_, record) => (
-          <RichTextEditorPreviewer markdown={record?.description ?? ''} />
-        ),
+        render: (_, record) =>
+          isEmpty(record?.description) ? (
+            NO_DATA_PLACEHOLDER
+          ) : (
+            <RichTextEditorPreviewer markdown={record?.description || ''} />
+          ),
       },
       {
         title: t('label.role-plural'),
