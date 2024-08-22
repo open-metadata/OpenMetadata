@@ -85,6 +85,7 @@ function CustomizeMyData({
   const [followedData, setFollowedData] = useState<Array<EntityReference>>();
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
 
   const handlePlaceholderWidgetKey = useCallback((value: string) => {
     setPlaceholderWidgetKey(value);
@@ -244,6 +245,13 @@ function CustomizeMyData({
     fetchMyData();
   }, []);
 
+  const handleSave = async () => {
+    setSaving(true);
+    await onSaveLayout();
+
+    setSaving(false);
+  };
+
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
@@ -279,21 +287,24 @@ function CustomizeMyData({
             <Space>
               <Button
                 data-testid="cancel-button"
+                disabled={saving}
                 size="small"
                 onClick={handleCancel}>
                 {t('label.cancel')}
               </Button>
               <Button
                 data-testid="reset-button"
+                disabled={saving}
                 size="small"
                 onClick={handleOpenResetModal}>
                 {t('label.reset')}
               </Button>
               <Button
                 data-testid="save-button"
+                loading={saving}
                 size="small"
                 type="primary"
-                onClick={onSaveLayout}>
+                onClick={handleSave}>
                 {t('label.save')}
               </Button>
             </Space>
@@ -321,6 +332,7 @@ function CustomizeMyData({
           {widgets}
         </ReactGridLayout>
       </PageLayoutV1>
+
       {isWidgetModalOpen && (
         <AddWidgetModal
           addedWidgetsList={addedWidgetsList}
