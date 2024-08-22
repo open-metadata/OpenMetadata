@@ -65,6 +65,7 @@ from metadata.ingestion.source.database.postgres.utils import (
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -75,6 +76,11 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+import_side_effects(
+    "metadata.ingestion.source.database.postgres.converter_orm",
+    "metadata.ingestion.source.database.postgres.metrics",
+)
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
