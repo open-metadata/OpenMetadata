@@ -33,9 +33,6 @@ const mockProps: CronEditorProp = {
 const getHourDescription = (value: string) =>
   `label.schedule-to-run-every hour ${value} past the hour`;
 
-const getMinuteDescription = (value: string) =>
-  `label.schedule-to-run-every ${value}`;
-
 const getDayDescription = () => 'label.schedule-to-run-every day at 00:00';
 
 const handleScheduleEverySelector = async (text: string) => {
