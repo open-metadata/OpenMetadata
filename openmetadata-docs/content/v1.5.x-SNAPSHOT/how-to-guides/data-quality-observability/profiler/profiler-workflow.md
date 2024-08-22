@@ -1,12 +1,11 @@
 ---
 title: Profiler Workflow
-slug: /quality-and-observability/profiler
+slug: /how-to-guides/data-quality-observability/profiler/workflow
 ---
 
 # Profiler Workflow
 
 Learn how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality.
-
 
 {% note %}
 
@@ -20,39 +19,34 @@ After the metadata ingestion has been done correctly, we can configure and deplo
 This Pipeline will be in charge of feeding the Profiler tab of the Table Entity, as well as running any tests configured in the Entity.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/profiler-summary-table.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-summary-table.png"
   alt="Table profile summary page"
   caption="Table profile summary page"
  /%}
 
-
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/profiler-summary-column.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-summary-column.png"
   alt="Column profile summary page"
   caption="Column profile summary page"
  /%}
-
-
 
 ### 1. Add a Profiler Ingestion
 From the Service Page, go to the Ingestions tab to add a new ingestion and click on Add Profiler Ingestion.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/add-profiler-workflow.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/add-profiler-workflow.png"
   alt="Add a profiler service"
   caption="Add a profiler service"
  /%}
-
 
 ### 2. Configure the Profiler Ingestion
 Here you can enter the Profiler Ingestion details.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/configure-profiler-workflow.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/configure-profiler-workflow.png"
   alt="Set profiler configuration"
   caption="Set profiler configuration"
  /%}
-
 
 #### Profiler Options
 **Name**  
@@ -116,13 +110,13 @@ After clicking Next, you will be redirected to the Scheduling form. This will be
 Once you have created your profiler you can adjust some behavior at the table level by going to the table and clicking on the profiler tab 
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/accessing-table-profile-settings.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/accessing-table-profile-settings.png"
   alt="table profile settings"
   caption="table profile settings"
  /%}
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/table-profile-summary-view.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/table-profile-summary-view.png"
   alt="table profile settings"
   caption="table profile settings"
  /%}
@@ -174,7 +168,7 @@ Once you have picked the `Interval Type` you will need to define the configurati
 The behavior of the profiler can be configured at the platform level. Navigating to `Settings > Preferences > Profiler Configuration` you will find settings to adjust the behavior of the profiler.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/profiler-global-configuration.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/profiler-global-configuration.png"
   alt="table profile global settings"
   caption="table profile global settings"
  /%}
@@ -183,7 +177,7 @@ The behavior of the profiler can be configured at the platform level. Navigating
 Select the data type you want to disable all metric for. Then toggle disable on. When running the profiler all metric computation will be skipped for the data type.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/disable-metric-computation.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/disable-metric-computation.png"
   alt="table profile global settings"
   caption="table profile global settings"
  /%}
@@ -192,7 +186,7 @@ Select the data type you want to disable all metric for. Then toggle disable on.
 Select the data type you want to disable a metric for. Then in the `Metric Type` section select the metric you to compute (or unselect the ones you don't want to compute). When running the profiler the unselected metric will not be computed.
 
 {% image
-  src="/images/v1.5/features/ingestion/workflows/profiler/disable-specific-metric-computation.png"
+  src="/images/v1.4/features/ingestion/workflows/profiler/disable-specific-metric-computation.png"
   alt="table profile global settings"
   caption="table profile global settings"
  /%}
@@ -420,8 +414,6 @@ workflowConfig:
 {% /codeBlock %}
 
 {% /codePreview %}
-
-- You can learn more about how to configure and run the Profiler Workflow to extract Profiler data and execute the Data Quality from [here](/connectors/ingestion/workflows/profiler)
 
 ### 2. Run with the CLI
 

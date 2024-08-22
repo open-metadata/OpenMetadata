@@ -560,6 +560,19 @@ public final class EntityUtil {
     return references;
   }
 
+  // Get EntityReference by ID, used in extension(for Page)
+  @SuppressWarnings("unused")
+  public static List<EntityReference> getEntityReferencesById(String entityType, List<UUID> ids) {
+    if (nullOrEmpty(ids)) {
+      return null;
+    }
+    List<EntityReference> references = new ArrayList<>();
+    for (UUID id : ids) {
+      references.add(Entity.getEntityReferenceById(entityType, id, NON_DELETED));
+    }
+    return references;
+  }
+
   public static Column getColumn(Table table, String columnName) {
     return table.getColumns().stream()
         .filter(c -> c.getName().equals(columnName))

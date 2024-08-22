@@ -30,7 +30,6 @@ import AppliedFilterText from '../../components/Explore/AppliedFilterText/Applie
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
 import SortingDropDown from '../../components/Explore/SortingDropDown';
-import { NULL_OPTION_KEY } from '../../constants/AdvancedSearch.constants';
 import {
   entitySortingFields,
   SEARCH_INDEXING_APPLICATION,
@@ -39,11 +38,13 @@ import {
 } from '../../constants/explore.constants';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../enums/common.enum';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import { getDropDownItems } from '../../utils/AdvancedSearchUtils';
 import { Transi18next } from '../../utils/CommonUtils';
 import { highlightEntityNameAndDescription } from '../../utils/EntityUtils';
-import { getSelectedValuesFromQuickFilter } from '../../utils/ExploreUtils';
+import {
+  getExploreQueryFilterMust,
+  getSelectedValuesFromQuickFilter,
+} from '../../utils/ExploreUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 import Loader from '../common/Loader/Loader';
@@ -178,34 +179,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   };
 
   const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const must = [] as Array<QueryFieldInterface>;
-
-    // Mapping the selected advanced search quick filter dropdown values
-    // to form a queryFilter to pass as a search parameter
-    data.forEach((filter) => {
-      if (!isEmpty(filter.value)) {
-        const should = [] as Array<QueryFieldInterface>;
-        filter.value?.forEach((filterValue) => {
-          const term = {
-            [filter.key]: filterValue.key,
-          };
-
-          if (filterValue.key === NULL_OPTION_KEY) {
-            should.push({
-              bool: {
-                must_not: { exists: { field: filter.key } },
-              },
-            });
-          } else {
-            should.push({ term });
-          }
-        });
-
-        if (should.length > 0) {
-          must.push({ bool: { should } });
-        }
-      }
-    });
+    const must = getExploreQueryFilterMust(data);
 
     onChangeAdvancedSearchQuickFilters(
       isEmpty(must)
