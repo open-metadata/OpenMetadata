@@ -870,3 +870,13 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
     },
   });
 };
+
+export const filterSelectOptions = (
+  input: string,
+  option?: { label: string; value: string }
+) => {
+  return (
+    toLower(option?.label).includes(toLower(input)) ||
+    toLower(option?.value).includes(toLower(input))
+  );
+};

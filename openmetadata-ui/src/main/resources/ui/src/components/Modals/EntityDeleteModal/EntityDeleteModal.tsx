@@ -142,6 +142,11 @@ const EntityDeleteModal = ({
           type="text"
           value={name}
           onChange={handleOnChange}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && isNameMatching) {
+              handleSave();
+            }
+          }}
         />
       </div>
     </Modal>
