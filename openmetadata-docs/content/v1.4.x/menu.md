@@ -885,7 +885,7 @@ site_menu:
     url: /releases/all-releases
   - category: Releases / All Releases / 1.4.7 Release
     url: /releases/all-releases/#1.4.7-release
-    - category: Releases / All Releases / 1.4.6 Release
+  - category: Releases / All Releases / 1.4.6 Release
     url: /releases/all-releases/#1.4.6-release
   - category: Releases / All Releases / 1.4.5 Release
     url: /releases/all-releases/#1.4.5-release
