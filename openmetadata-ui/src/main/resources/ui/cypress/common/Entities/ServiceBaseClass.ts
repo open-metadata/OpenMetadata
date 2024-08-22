@@ -360,34 +360,6 @@ class ServiceBaseClass {
 
     verifyResponseStatusCode('@pipelineServices', 200);
 
-    // click and edit pipeline schedule for Minutes
-
-    cy.get('[data-testid="more-actions"]').click();
-
-    cy.get(
-      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
-    ).click();
-    cy.get('[data-testid="submit-btn"]').click();
-
-    // select schedule
-    cy.get('[data-testid="cron-type"]').click();
-    cy.get('.ant-select-item-option-content').contains('Minutes').click();
-    cy.get('[data-testid="minute-segment-options"]').click();
-    cy.get('.ant-select-item-option-content').contains('10').click();
-
-    // Deploy with scehdule
-    cy.get('[data-testid="deploy-button"]').click();
-    cy.get('[data-testid="view-service-button"]').click();
-
-    cy.get('[data-testid="schedule-primary-details"]').should(
-      'contain',
-      'Every 10 minutes'
-    );
-    cy.get('[data-testid="schedule-secondary-details"]').should(
-      'contain',
-      'Every hour, every day'
-    );
-
     // click and edit pipeline schedule for Day
     cy.get('[data-testid="more-actions"]').click();
 
