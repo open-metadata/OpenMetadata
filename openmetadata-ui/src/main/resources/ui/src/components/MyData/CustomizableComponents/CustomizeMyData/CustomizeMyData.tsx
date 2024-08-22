@@ -31,7 +31,6 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import DataInsightProvider from '../../../../pages/DataInsightPage/DataInsightProvider';
 import '../../../../pages/MyDataPage/my-data.less';
 import { getUserById } from '../../../../rest/userAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
@@ -256,95 +255,84 @@ function CustomizeMyData({
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
-  const isTotalDataAssetWidgetPresent = layout.some((widget) =>
-    widget.i.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)
-  );
-
-  const pageContent = (
-    <PageLayoutV1
-      header={
-        <Col
-          className="bg-white d-flex justify-between border-bottom p-sm"
-          data-testid="customize-landing-page-header"
-          span={24}>
-          <div className="d-flex gap-2 items-center">
-            <Typography.Title
-              className="m-0"
-              data-testid="customize-page-title"
-              level={5}>
-              <Transi18next
-                i18nKey="message.customize-landing-page-header"
-                renderElement={
-                  <Link
-                    style={{ color: theme.primaryColor, fontSize: '16px' }}
-                    to={getPersonaDetailsPath(decodedPersonaFQN)}
-                  />
-                }
-                values={{
-                  persona: isNil(personaDetails)
-                    ? decodedPersonaFQN
-                    : getEntityName(personaDetails),
-                }}
-              />
-            </Typography.Title>
-          </div>
-          <Space>
-            <Button
-              data-testid="cancel-button"
-              disabled={saving}
-              size="small"
-              onClick={handleCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="reset-button"
-              disabled={saving}
-              size="small"
-              onClick={handleOpenResetModal}>
-              {t('label.reset')}
-            </Button>
-            <Button
-              data-testid="save-button"
-              loading={saving}
-              size="small"
-              type="primary"
-              onClick={handleSave}>
-              {t('label.save')}
-            </Button>
-          </Space>
-        </Col>
-      }
-      headerClassName="m-0 p-0"
-      mainContainerClassName="p-t-0"
-      pageContainerStyle={{
-        backgroundImage: `url(${gridBgImg})`,
-      }}
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.landing-page'),
-      })}>
-      <ReactGridLayout
-        className="grid-container"
-        cols={4}
-        draggableHandle=".drag-widget-icon"
-        isResizable={false}
-        margin={[
-          customizePageClassBase.landingPageWidgetMargin,
-          customizePageClassBase.landingPageWidgetMargin,
-        ]}
-        rowHeight={customizePageClassBase.landingPageRowHeight}
-        onLayoutChange={handleLayoutUpdate}>
-        {widgets}
-      </ReactGridLayout>
-    </PageLayoutV1>
-  );
-
   return (
     <ActivityFeedProvider>
-      {isTotalDataAssetWidgetPresent ? (
-        <DataInsightProvider>{pageContent}</DataInsightProvider>
-      ) : (
-        pageContent
-      )}
+      <PageLayoutV1
+        header={
+          <Col
+            className="bg-white d-flex justify-between border-bottom p-sm"
+            data-testid="customize-landing-page-header"
+            span={24}>
+            <div className="d-flex gap-2 items-center">
+              <Typography.Title
+                className="m-0"
+                data-testid="customize-page-title"
+                level={5}>
+                <Transi18next
+                  i18nKey="message.customize-landing-page-header"
+                  renderElement={
+                    <Link
+                      style={{ color: theme.primaryColor, fontSize: '16px' }}
+                      to={getPersonaDetailsPath(decodedPersonaFQN)}
+                    />
+                  }
+                  values={{
+                    persona: isNil(personaDetails)
+                      ? decodedPersonaFQN
+                      : getEntityName(personaDetails),
+                  }}
+                />
+              </Typography.Title>
+            </div>
+            <Space>
+              <Button
+                data-testid="cancel-button"
+                disabled={saving}
+                size="small"
+                onClick={handleCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="reset-button"
+                disabled={saving}
+                size="small"
+                onClick={handleOpenResetModal}>
+                {t('label.reset')}
+              </Button>
+              <Button
+                data-testid="save-button"
+                loading={saving}
+                size="small"
+                type="primary"
+                onClick={handleSave}>
+                {t('label.save')}
+              </Button>
+            </Space>
+          </Col>
+        }
+        headerClassName="m-0 p-0"
+        mainContainerClassName="p-t-0"
+        pageContainerStyle={{
+          backgroundImage: `url(${gridBgImg})`,
+        }}
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.landing-page'),
+        })}>
+        <ReactGridLayout
+          className="grid-container"
+          cols={4}
+          draggableHandle=".drag-widget-icon"
+          isResizable={false}
+          margin={[
+            customizePageClassBase.landingPageWidgetMargin,
+            customizePageClassBase.landingPageWidgetMargin,
+          ]}
+          rowHeight={customizePageClassBase.landingPageRowHeight}
+          onLayoutChange={handleLayoutUpdate}>
+          {widgets}
+        </ReactGridLayout>
+      </PageLayoutV1>
+
       {isWidgetModalOpen && (
         <AddWidgetModal
           addedWidgetsList={addedWidgetsList}

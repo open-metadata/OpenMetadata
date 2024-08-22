@@ -39,7 +39,6 @@ import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
 import { TOTAL_ENTITY_CHART_COLOR } from '../../../../constants/DataInsight.constants';
 import { SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
-import { useDataInsightProvider } from '../../../../pages/DataInsightPage/DataInsightProvider';
 import {
   DataInsightCustomChartResult,
   getChartPreviewByName,
@@ -68,7 +67,6 @@ const TotalDataAssetsWidget = ({
   selectedGridSize,
 }: TotalDataAssetsWidgetProps) => {
   const { t } = useTranslation();
-  const { kpi } = useDataInsightProvider();
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [chartData, setChartData] =
     React.useState<DataInsightCustomChartResult>();
@@ -161,7 +159,7 @@ const TotalDataAssetsWidget = ({
       className="total-data-insight-card"
       data-testid="total-assets-widget"
       id={SystemChartType.TotalDataAssets}
-      loading={kpi.isLoading || isLoading}>
+      loading={isLoading}>
       {isEditView && (
         <Row gutter={8} justify="end">
           <Col>

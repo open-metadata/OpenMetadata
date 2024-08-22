@@ -27,7 +27,6 @@ import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
 import {
   AssetsType,
   EntityType,
@@ -46,7 +45,6 @@ import { getWidgetFromKey } from '../../utils/CustomizableLandingPageUtils';
 import customizePageClassBase from '../../utils/CustomizePageClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
-import DataInsightProvider from '../DataInsightPage/DataInsightProvider';
 import './my-data.less';
 
 const ReactGridLayout = WidthProvider(RGL);
@@ -179,10 +177,6 @@ const MyDataPage = () => {
     ]
   );
 
-  const isTotalDataAssetWidgetPresent = layout.some((widget) =>
-    widget.i.startsWith(LandingPageWidgetKeys.TOTAL_DATA_ASSETS)
-  );
-
   const fetchAnnouncements = useCallback(async () => {
     try {
       setIsAnnouncementLoading(true);
@@ -211,41 +205,35 @@ const MyDataPage = () => {
     );
   }
 
-  const pageContent = (
-    <PageLayoutV1 mainContainerClassName="p-t-0" pageTitle={t('label.my-data')}>
-      {isLoading ? (
-        <div className="ant-layout-content flex-center">
-          <Loader />
-        </div>
-      ) : (
-        <>
-          <ReactGridLayout
-            className="bg-white"
-            cols={4}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={100}>
-            {widgets}
-          </ReactGridLayout>
-          <LimitWrapper resource="dataAssets">
-            <br />
-          </LimitWrapper>
-        </>
-      )}
-    </PageLayoutV1>
-  );
-
   return (
     <ActivityFeedProvider>
-      {isTotalDataAssetWidgetPresent ? (
-        <DataInsightProvider>{pageContent}</DataInsightProvider>
-      ) : (
-        pageContent
-      )}
+      <PageLayoutV1
+        mainContainerClassName="p-t-0"
+        pageTitle={t('label.my-data')}>
+        {isLoading ? (
+          <div className="ant-layout-content flex-center">
+            <Loader />
+          </div>
+        ) : (
+          <>
+            <ReactGridLayout
+              className="bg-white"
+              cols={4}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={100}>
+              {widgets}
+            </ReactGridLayout>
+            <LimitWrapper resource="dataAssets">
+              <br />
+            </LimitWrapper>
+          </>
+        )}
+      </PageLayoutV1>
     </ActivityFeedProvider>
   );
 };
