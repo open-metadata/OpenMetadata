@@ -198,7 +198,6 @@ export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;
 export const DOMO = domo;
 export const SAGEMAKER = sagemaker;
-// export const ADLS = adls;
 export const AMAZON_S3 = amazonS3;
 export const GCS = gcs;
 export const MS_AZURE = msAzure;
