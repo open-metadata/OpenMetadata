@@ -36,8 +36,14 @@ const testCases = [
 ];
 const user1 = generateRandomUser();
 const user2 = generateRandomUser();
-const userName1 = `${user1.firstName}${user1.lastName}`;
-const userName2 = `${user2.firstName}${user2.lastName}`;
+const userData1 = {
+  displayName: `${user1.firstName}${user1.lastName}`,
+  name: user1.email.split('@')[0],
+};
+const userData2 = {
+  displayName: `${user2.firstName}${user2.lastName}`,
+  name: user2.email.split('@')[0],
+};
 const userIds: string[] = [];
 
 const goToProfilerTab = () => {
@@ -101,9 +107,11 @@ const assignIncident = (testCaseName: string) => {
   interceptURL('GET', '/api/v1/users/name/*', 'userList');
   cy.get('#testCaseResolutionStatusDetails_assignee').click();
   cy.wait('@userList');
-  cy.get('#testCaseResolutionStatusDetails_assignee').type(userName1);
+  cy.get('#testCaseResolutionStatusDetails_assignee').type(
+    userData1.displayName
+  );
   verifyResponseStatusCode('@searchAssignee', 200);
-  cy.get(`[data-testid="${userName1.toLocaleLowerCase()}"]`).click();
+  cy.get(`[data-testid="${userData1.name.toLocaleLowerCase()}"]`).click();
   interceptURL(
     'POST',
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
@@ -269,9 +277,9 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
       interceptURL('GET', '/api/v1/users/name/*', 'userList');
       cy.get('[data-testid="select-assignee"]').click();
       cy.wait('@userList');
-      cy.get('[data-testid="select-assignee"]').type(userName2);
+      cy.get('[data-testid="select-assignee"]').type(userData2.displayName);
       verifyResponseStatusCode('@searchAssignee', 200);
-      cy.get(`[data-testid="${userName2.toLocaleLowerCase()}"]`).click();
+      cy.get(`[data-testid="${userData2.name.toLocaleLowerCase()}"]`).click();
 
       interceptURL(
         'POST',

@@ -73,6 +73,7 @@ export const visitProfileSection = () => {
   cy.get('[data-testid="access-token"] > .ant-space-item').click();
 };
 export const softDeleteUser = (username: string, displayName: string) => {
+  cy.get('[data-testid="loader"]').should('not.exist');
   // Search the created user
   interceptURL(
     'GET',
@@ -113,6 +114,8 @@ export const restoreUser = (username: string, editedUserName: string) => {
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
 
   verifyResponseStatusCode('@getUsers', 200);
+
+  cy.get('[data-testid="loader"]').should('not.exist');
   // Click on deleted user toggle
   cy.get('[data-testid="show-deleted"]').click();
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
@@ -138,6 +141,7 @@ export const permanentDeleteUser = (username: string, displayName: string) => {
   interceptURL('GET', '/api/v1/users/name/*', 'getUser');
   verifyResponseStatusCode('@getUsers', 200);
   verifyResponseStatusCode('@getUser', 200);
+  cy.get('[data-testid="loader"]').should('not.exist');
   interceptURL('GET', '/api/v1/search/query*', 'searchUser');
   cy.get('[data-testid="searchbar"]').type(username);
   verifyResponseStatusCode('@searchUser', 200);
@@ -347,6 +351,8 @@ export const resetPassword = (password: string, newPassword: string) => {
 export const editRole = (username: string, role: string) => {
   interceptURL('GET', '/api/v1/users?*', 'getUsers');
   verifyResponseStatusCode('@getUsers', 200);
+
+  cy.get('[data-testid="loader"]').should('not.exist');
 
   // Search the created user
   interceptURL(
