@@ -21,6 +21,7 @@ source:
   sourceConfig:
     config:
       type: DatabaseMetadata
+      includeDDL: true
       schemaFilterPattern:
         includes:
         - do_not_touch

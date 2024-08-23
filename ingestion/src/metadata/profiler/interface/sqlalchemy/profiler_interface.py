@@ -21,7 +21,7 @@ import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
@@ -451,14 +451,16 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     column=metric_func.column,
                     sample=sample,
                 )
-                if row:
-                    for k, v in row.items():
-                        # Replace NaN values with None
-                        if isinstance(v, float) and math.isnan(v):
-                            logger.warning(
-                                "NaN data detected and will be cast to null in OpenMetadata to maintain database parity"
-                            )
-                            row[k] = None
+                if row and isinstance(row, dict):
+                    row = self._validate_nulls(row)
+
+                # System metrics return a list of dictionaries, with UPDATE, INSERT or DELETE ops results
+                if row and metric_func.metric_type == MetricTypes.System:
+                    row = [
+                        self._validate_nulls(r) if isinstance(r, dict) else r
+                        for r in row
+                    ]
+
             except Exception as exc:
                 error = (
                     f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
@@ -475,6 +477,17 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 column = None
 
             return row, column, metric_func.metric_type.value
+
+    @staticmethod
+    def _validate_nulls(row: Dict[str, Any]) -> Dict[str, Any]:
+        """Detect if we are computing NaNs and replace them with None"""
+        for k, v in row.items():
+            if isinstance(v, float) and math.isnan(v):
+                logger.warning(
+                    "NaN data detected and will be cast to null in OpenMetadata to maintain database parity"
+                )
+                row[k] = None
+        return row
 
     # pylint: disable=use-dict-literal
     def get_all_metrics(

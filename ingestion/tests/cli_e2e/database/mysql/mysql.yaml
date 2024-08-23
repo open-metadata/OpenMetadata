@@ -17,6 +17,7 @@ source:
       includeTables: true
       includeViews: true
       type: DatabaseMetadata
+      includeDDL: true
 sink:
   type: metadata-rest
   config: {}
