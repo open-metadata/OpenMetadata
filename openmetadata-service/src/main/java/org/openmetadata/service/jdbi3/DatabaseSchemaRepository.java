@@ -162,7 +162,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public EntityInterface getParentEntity(DatabaseSchema entity, String fields) {
-    return Entity.getEntity(entity.getDatabase(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getDatabase(), fields, ALL);
   }
 
   @Override

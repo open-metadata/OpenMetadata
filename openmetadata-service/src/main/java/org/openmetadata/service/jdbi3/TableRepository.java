@@ -72,7 +72,6 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionType;
@@ -697,7 +696,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public EntityInterface getParentEntity(Table entity, String fields) {
-    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getDatabaseSchema(), fields, ALL);
   }
 
   @Override
