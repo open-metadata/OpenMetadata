@@ -445,7 +445,6 @@ export const isPercentageSystemGraph = (graph: SystemChartType) => {
     SystemChartType.PercentageOfDataAssetWithOwner,
     SystemChartType.PercentageOfServiceWithDescription,
     SystemChartType.PercentageOfServiceWithOwner,
-    SystemChartType.TotalDataAssetsByTier,
   ].includes(graph);
 };
 
