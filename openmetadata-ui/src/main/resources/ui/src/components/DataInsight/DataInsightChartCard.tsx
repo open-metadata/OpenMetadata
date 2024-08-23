@@ -510,7 +510,12 @@ export const DataInsightChartCard = ({
                 label={rightSidePanelLabel}
                 progress={round(totalValue, 2)}
                 showProgress={isPercentageGraph}
-                suffix={isPercentageGraph ? '%' : ''}
+                suffix={
+                  isPercentageGraph ||
+                  type === SystemChartType.TotalDataAssetsByTier
+                    ? '%'
+                    : ''
+                }
                 target={targetValue}
               />
             </Col>
@@ -538,10 +543,7 @@ export const DataInsightChartCard = ({
                           activeKeys.length ? activeKeys.includes(entity) : true
                         }
                         label={`${round(latestData[entity] ?? 0, 2)}${
-                          isPercentageGraph &&
-                          type !== SystemChartType.TotalDataAssetsByTier
-                            ? '%'
-                            : ''
+                          isPercentageGraph ? '%' : ''
                         }`}
                         pluralize={
                           ![
