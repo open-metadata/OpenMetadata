@@ -299,3 +299,9 @@ ADD COLUMN taskAssigneesIds TEXT GENERATED ALWAYS AS (
 
 CREATE INDEX idx_task_assignees_ids_fulltext
 ON thread_entity USING GIN (to_tsvector('simple', taskAssigneesIds));
+
+
+-- Add indexes on thread_entity and entity_relationship to improve count/feed api performance
+CREATE INDEX idx_thread_entity_entityId_createdAt ON thread_entity (entityId, createdAt);
+CREATE INDEX idx_thread_entity_id_type_status ON thread_entity (id, type, taskStatus);
+CREATE INDEX idx_er_fromEntity_fromId_toEntity_relation ON entity_relationship (fromEntity, fromId, toEntity, relation);
