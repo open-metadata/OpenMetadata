@@ -253,7 +253,8 @@ export class DatabaseClass extends EntityClass {
     page: Page,
     owner1: string[],
     owner2: string[],
-    type: 'Teams' | 'Users' = 'Users'
+    type: 'Teams' | 'Users' = 'Users',
+    isEditPermission = true
   ): Promise<void> {
     if (type === 'Teams') {
       await addOwner({
@@ -263,22 +264,24 @@ export class DatabaseClass extends EntityClass {
         endpoint: this.endpoint,
         dataTestId: 'data-assets-header',
       });
-      await updateOwner({
-        page,
-        owner: owner2[0],
-        type,
-        endpoint: this.endpoint,
-        dataTestId: 'data-assets-header',
-      });
-      await this.verifyOwnerPropagation(page, owner2[0]);
+      if (isEditPermission) {
+        await updateOwner({
+          page,
+          owner: owner2[0],
+          type,
+          endpoint: this.endpoint,
+          dataTestId: 'data-assets-header',
+        });
+        await this.verifyOwnerPropagation(page, owner2[0]);
 
-      await removeOwner({
-        page,
-        endpoint: this.endpoint,
-        ownerName: owner2[0],
-        type,
-        dataTestId: 'data-assets-header',
-      });
+        await removeOwner({
+          page,
+          endpoint: this.endpoint,
+          ownerName: owner2[0],
+          type,
+          dataTestId: 'data-assets-header',
+        });
+      }
     } else {
       await addMultiOwner({
         page,
@@ -288,22 +291,24 @@ export class DatabaseClass extends EntityClass {
         endpoint: this.endpoint,
         type,
       });
-      await addMultiOwner({
-        page,
-        ownerNames: owner2,
-        activatorBtnDataTestId: 'edit-owner',
-        resultTestId: 'data-assets-header',
-        endpoint: this.endpoint,
-        type,
-      });
-      await this.verifyOwnerPropagation(page, owner2[0]);
-      await removeOwner({
-        page,
-        endpoint: this.endpoint,
-        ownerName: owner2[0],
-        type,
-        dataTestId: 'data-assets-header',
-      });
+      if (isEditPermission) {
+        await addMultiOwner({
+          page,
+          ownerNames: owner2,
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'data-assets-header',
+          endpoint: this.endpoint,
+          type,
+        });
+        await this.verifyOwnerPropagation(page, owner2[0]);
+        await removeOwner({
+          page,
+          endpoint: this.endpoint,
+          ownerName: owner2[0],
+          type,
+          dataTestId: 'data-assets-header',
+        });
+      }
     }
   }
 
