@@ -19,14 +19,10 @@ const teamURL =
   '/api/v1/search/query?q=*%20AND%20teamType:Group&from=0&size=10&index=team_search_index&sort_field=displayName.keyword&sort_order=asc';
 
 export const generateRandomUser = () => {
-  const firstName = `firstName-${uuid()}`;
-  const lastName = `lastName-${uuid()}`;
-  const email = `${firstName}.${lastName}@example.com`;
-
   return {
-    firstName,
-    lastName,
-    email,
+    firstName: `firstName-${uuid()}`,
+    lastName: `lastName-${uuid()}`,
+    email: `user${uuid()}@example.com`,
     password: 'User@OMD123',
   };
 };
