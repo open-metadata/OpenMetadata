@@ -10,8 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { descriptionBox, redirectToHomePage, uuid } from '../../utils/common';
+import { removePolicyFromRole } from '../../utils/roles';
+import { settingClick } from '../../utils/sidebar';
 
 const policies = {
   dataConsumerPolicy: 'Data Consumer Policy',
@@ -28,22 +31,6 @@ const errorMessageValidation = {
 const roleName = `Role-test-${uuid()}`;
 const description = `This is ${roleName} description`;
 
-const removePolicyFromRole = async (page: Page, policyName: string) => {
-  // Clicking on remove action for added policy
-  await page.locator(`[data-testid="remove-action-${policyName}"]`).click();
-
-  const modalText = await page.locator('.ant-modal-body').textContent();
-
-  expect(modalText).toBe(
-    `Are you sure you want to remove the ${policyName} from ${roleName}?`
-  );
-
-  await page.locator('[type="button"]:has-text("Confirm")').click();
-};
-
-const navigateToRolesPage = async (page: Page) =>
-  await page.goto('/settings/access/roles');
-
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -55,7 +42,7 @@ test('Roles page should work properly', async ({ page }) => {
   test.slow(true);
 
   await test.step('Add new role and check all tabs data', async () => {
-    await navigateToRolesPage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.locator('[data-testid="add-role"]').click();
 
     // Asserting navigation
@@ -123,7 +110,7 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Add new role without selecting data', async () => {
-    await navigateToRolesPage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.locator('[data-testid="add-role"]').click();
 
     // Asserting navigation
@@ -146,7 +133,7 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Edit created role', async () => {
-    await navigateToRolesPage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
     // Edit description
     await page.getByRole('link', { name: roleName }).click();
     await page.locator('[data-testid="edit-description"]').click();
@@ -164,7 +151,7 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Add new policy to created role', async () => {
-    await navigateToRolesPage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.getByRole('link', { name: roleName }).click();
     // Asserting navigation
     await page.locator('[data-testid="add-policy"]').click();
@@ -187,10 +174,10 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Remove added policy from created role', async () => {
-    await navigateToRolesPage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.getByRole('link', { name: roleName }).click();
     // Asserting navigation
-    await removePolicyFromRole(page, policies.organizationPolicy);
+    await removePolicyFromRole(page, policies.organizationPolicy, roleName);
 
     // Validating if the policy is removed successfully
     await expect(page.locator('.ant-table-row').last()).not.toContainText(
@@ -199,10 +186,10 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Check if last policy is not removed', async () => {
-    await navigateToRolesPage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.getByRole('link', { name: roleName }).click();
     // Removing second policy from the role
-    await removePolicyFromRole(page, policies.dataStewardPolicy);
+    await removePolicyFromRole(page, policies.dataStewardPolicy, roleName);
 
     // Validating if the policy is removed successfully
     await expect(page.locator('.ant-table-row').last()).not.toContainText(
@@ -210,7 +197,7 @@ test('Roles page should work properly', async ({ page }) => {
     );
 
     // Removing the last policy and validating the error message
-    await removePolicyFromRole(page, policies.dataConsumerPolicy);
+    await removePolicyFromRole(page, policies.dataConsumerPolicy, roleName);
 
     await expect(page.locator('.Toastify__toast-body')).toContainText(
       errorMessageValidation.lastPolicyCannotBeRemoved
@@ -221,7 +208,7 @@ test('Roles page should work properly', async ({ page }) => {
   });
 
   await test.step('Delete created Role', async () => {
-    await navigateToRolesPage(page);
+    await settingClick(page, GlobalSettingOptions.ROLES);
     await page.locator(`[data-testid="delete-action-${roleName}"]`).click();
     await page
       .locator('[data-testid="confirmation-text-input"]')
