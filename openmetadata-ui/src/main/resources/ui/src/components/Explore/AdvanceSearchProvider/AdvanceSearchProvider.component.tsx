@@ -234,20 +234,20 @@ export const AdvanceSearchProvider = ({
       if (isArray(searchIndex)) {
         for await (const index of searchIndex) {
           if (!EntitiesSupportedCustomProperties.includes(index)) {
-            continue;
+            continue; // Skip if entity type does not support custom properties
           }
 
           const entityType = getEntityTypeFromSearchIndex(index);
 
           if (!entityType) {
-            continue;
+            continue; // Skip if entity type is not found
           }
 
           try {
             const propertyTypes = await fetchCustomPropertyType(entityType);
-            Object.assign(subfields, propertyTypes);
+            Object.assign(subfields, propertyTypes); // Merge the subfields after each API call
           } catch (error) {
-            continue;
+            continue; // continue the loop if error occurs in one API call
           }
         }
 
@@ -262,11 +262,7 @@ export const AdvanceSearchProvider = ({
           return subfields;
         }
 
-        const propertyTypes = await fetchCustomPropertyType(entityType);
-
-        Object.assign(subfields, propertyTypes);
-
-        return subfields;
+        return await fetchCustomPropertyType(entityType);
       }
     } catch (error) {
       // Error
