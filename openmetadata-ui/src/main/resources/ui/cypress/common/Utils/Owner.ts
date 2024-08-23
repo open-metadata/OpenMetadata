@@ -21,7 +21,7 @@ const teamURL =
 export const generateRandomUser = () => {
   const firstName = `firstName-${uuid()}`;
   const lastName = `lastName-${uuid()}`;
-  const email = `${firstName}${lastName}@example.com`;
+  const email = `${firstName}.${lastName}@example.com`;
 
   return {
     firstName,
