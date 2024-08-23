@@ -76,6 +76,10 @@ interface DataInsightChartCardProps {
   listAssets?: boolean;
 }
 
+interface AbsoluteValuesResult {
+  results: Array<{ count: number; day: number }>;
+}
+
 export const DataInsightChartCard = ({
   type,
   header,
@@ -84,6 +88,12 @@ export const DataInsightChartCard = ({
 }: DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>({
+    results: [],
+  });
+  const [totalAssets, setTotalAssets] = useState<DataInsightCustomChartResult>({
+    results: [],
+  });
+  const [absoluteValues, setAbsoluteValues] = useState<AbsoluteValuesResult>({
     results: [],
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -100,6 +110,8 @@ export const DataInsightChartCard = ({
 
   const { rightSideEntityList, latestData, graphData, changeInValue } =
     useMemo(() => {
+      let changeInValue = 0;
+
       const results = chartData.results ?? [];
       const timeStampResults = groupBy(results, 'day');
 
@@ -123,21 +135,127 @@ export const DataInsightChartCard = ({
         'day'
       );
 
-      const total = reduce(latestData, (acc, value) => acc + value, 0);
-
-      const firstRecordTotal = reduce(
-        omit(first(finalData) ?? {}, 'day'),
-        (acc, value) => acc + value,
-        0
-      );
-
       const uniqueLabels = Object.entries(latestData)
         .sort(([, valueA], [, valueB]) => valueB - valueA)
         .map(([key]) => key);
 
-      const changeInValue = firstRecordTotal
-        ? ((total - firstRecordTotal) / firstRecordTotal) * 100
-        : 0;
+      if (type === SystemChartType.TotalDataAssets) {
+        const lastValue = reduce(latestData, (acc, value) => acc + value, 0);
+        const firstValue = reduce(
+          omit(first(finalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        changeInValue = firstValue
+          ? ((lastValue - firstValue) / firstValue) * 100
+          : 0;
+      } else if (type === SystemChartType.TotalDataAssetsByTier) {
+        // TotalDataAssetsByTier when Considering NoTier as well it has the TotalAssets
+        const lastTotalAssetsValue = reduce(
+          latestData,
+          (acc, value) => acc + value,
+          0
+        );
+        const firstTotalAssetsValue = reduce(
+          omit(first(finalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        // Process Absolute Values for Tier
+        const graphResults = Object.entries(timeStampResults).map(
+          ([key, value]) => {
+            const keys = value
+              .filter((curr) => curr.group !== 'NoTier')
+              .reduce((acc, curr) => {
+                return { ...acc, [curr.group ?? 'count']: curr.count };
+              }, {});
+
+            return {
+              day: +key,
+              ...keys,
+            };
+          }
+        );
+
+        const tierFinalData = sortBy(graphResults, 'day');
+
+        const lastAbsoluteValue = reduce(
+          omit(last(tierFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+        const firstAbsoluteValue = reduce(
+          omit(first(tierFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        const firstPercentValue = firstTotalAssetsValue
+          ? (firstAbsoluteValue / firstTotalAssetsValue) * 100
+          : 0;
+        const lastPercentValue = lastTotalAssetsValue
+          ? (lastAbsoluteValue / lastTotalAssetsValue) * 100
+          : 0;
+
+        changeInValue = lastPercentValue - firstPercentValue;
+      } else {
+        // Process TotalAssets
+        const totalAssetsResults = totalAssets.results ?? [];
+        const totalAssetsTimeStampResults = groupBy(totalAssetsResults, 'day');
+
+        const totalAssetsGraphResults = Object.entries(
+          totalAssetsTimeStampResults
+        ).map(([key, value]) => {
+          const keys = value.reduce((acc, curr) => {
+            return { ...acc, [curr.group ?? 'count']: curr.count };
+          }, {});
+
+          return {
+            day: +key,
+            ...keys,
+          };
+        });
+
+        const totalAssetsFinalData = sortBy(totalAssetsGraphResults, 'day');
+
+        const lastTotalAssetsValue = reduce(
+          omit(last(totalAssetsFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+        const firstTotalAssetsValue = reduce(
+          omit(first(totalAssetsFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        // Process Absolute Values
+        const absoluteValuesResults = absoluteValues.results ?? [];
+
+        const absoluteValuesFinalData = sortBy(absoluteValuesResults, 'day');
+
+        const lastAbsoluteValue = reduce(
+          omit(last(absoluteValuesFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+        const firstAbsoluteValue = reduce(
+          omit(first(absoluteValuesFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        const firstPercentValue = firstTotalAssetsValue
+          ? (firstAbsoluteValue / firstTotalAssetsValue) * 100
+          : 0;
+        const lastPercentValue = lastTotalAssetsValue
+          ? (lastAbsoluteValue / lastTotalAssetsValue) * 100
+          : 0;
+
+        changeInValue = lastPercentValue - firstPercentValue;
+      }
 
       return {
         rightSideEntityList: uniqueLabels.filter((entity) =>
@@ -210,12 +328,60 @@ export const DataInsightChartCard = ({
         chartFilter.team,
         chartFilter.tier
       );
+      if (
+        ![
+          SystemChartType.TotalDataAssets,
+          SystemChartType.TotalDataAssetsByTier,
+        ].includes(type)
+      ) {
+        const totalAssetsResponse = await getChartPreviewByName(
+          SystemChartType.TotalDataAssets,
+          {
+            start: chartFilter.startTs,
+            end: chartFilter.endTs,
+            filter,
+          }
+        );
+        setTotalAssets(totalAssetsResponse);
+      }
+
+      if (
+        [
+          SystemChartType.PercentageOfServiceWithDescription,
+          SystemChartType.PercentageOfDataAssetWithDescription,
+        ].includes(type)
+      ) {
+        const absoluteValuesResponse = await getChartPreviewByName(
+          SystemChartType.NumberOfDataAssetWithDescription,
+          {
+            start: chartFilter.startTs,
+            end: chartFilter.endTs,
+            filter,
+          }
+        );
+        setAbsoluteValues(absoluteValuesResponse);
+      } else if (
+        [
+          SystemChartType.PercentageOfServiceWithOwner,
+          SystemChartType.PercentageOfDataAssetWithOwner,
+        ].includes(type)
+      ) {
+        const absoluteValuesResponse = await getChartPreviewByName(
+          SystemChartType.NumberOfDataAssetWithOwner,
+          {
+            start: chartFilter.startTs,
+            end: chartFilter.endTs,
+            filter,
+          }
+        );
+        setAbsoluteValues(absoluteValuesResponse);
+      }
+
       const response = await getChartPreviewByName(type, {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
         filter,
       });
-
       setChartData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -372,7 +538,10 @@ export const DataInsightChartCard = ({
                           activeKeys.length ? activeKeys.includes(entity) : true
                         }
                         label={`${round(latestData[entity] ?? 0, 2)}${
-                          isPercentageGraph ? '%' : ''
+                          isPercentageGraph &&
+                          type !== SystemChartType.TotalDataAssetsByTier
+                            ? '%'
+                            : ''
                         }`}
                         pluralize={
                           ![
