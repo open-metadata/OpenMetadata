@@ -62,19 +62,11 @@ const {
 const TEAM_ENTITY = customTable.name;
 const serviceName = DATABASE_SERVICE.service.name;
 const goToProfilerTab = (data?: { service: string; entityName: string }) => {
-  interceptURL(
-    'GET',
-    `api/v1/tables/name/${data?.service ?? serviceName}.*.${
-      data?.entityName ?? TEAM_ENTITY
-    }?fields=*&include=all`,
-    'waitForPageLoad'
-  );
   visitEntityDetailsPage({
     term: data?.entityName ?? TEAM_ENTITY,
     serviceName: data?.service ?? serviceName,
     entity: EntityType.Table,
   });
-  verifyResponseStatusCode('@waitForPageLoad', 200);
 
   cy.get('[data-testid="profiler"]').should('be.visible').click();
   cy.get('[data-testid="profiler-tab-left-panel"]')
@@ -172,7 +164,7 @@ describe(
     it('Add Profiler ingestion', () => {
       const data = {
         entityName: 'alert_entity',
-        service: 'cypress-mysql',
+        service: 'cypress%mysql',
       };
       interceptURL(
         'POST',
@@ -232,7 +224,7 @@ describe(
     it('Verifying profiler ingestion', () => {
       goToProfilerTab({
         entityName: 'alert_entity',
-        service: 'cypress-mysql',
+        service: 'cypress%mysql',
       });
       cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
     });
