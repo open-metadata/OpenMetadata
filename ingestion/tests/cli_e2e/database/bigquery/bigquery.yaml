@@ -19,6 +19,7 @@ source:
   sourceConfig:
     config:
       type: DatabaseMetadata
+      includeDDL: true
 sink:
   type: metadata-rest
   config: {}
