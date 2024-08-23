@@ -51,7 +51,6 @@ test.describe.serial('Data Insight settings page should work properly', () => {
 
     await appResponse;
 
-    // Verify response status code (this is done implicitly by the route fulfillment)
     // Click on the edit button
     await page.getByTestId('edit-button').click();
 
@@ -72,18 +71,15 @@ test.describe.serial('Data Insight settings page should work properly', () => {
 
     await toastNotification(page, 'Schedule saved successfully');
 
-    // Verify response status code (this is done implicitly by the route fulfillment)
     // Verify cron string
-    const cronString = await page
-      .locator('[data-testid="cron-string"]')
-      .textContent();
-
-    expect(cronString).toContain('At 06:00 AM');
+    await expect(page.locator('[data-testid="cron-string"]')).toContainText(
+      'At 06:00 AM'
+    );
   });
 
   test('Uninstall application', async ({ page }) => {
     const appResponse = page.waitForResponse(
-      `/api/v1/apps/name/DataInsightsApplication?fields=owners%2Cpipelines&include=all`
+      `/api/v1/apps/name/DataInsightsApplication?fields=*`
     );
 
     // Click on the config button
@@ -93,7 +89,6 @@ test.describe.serial('Data Insight settings page should work properly', () => {
 
     await appResponse;
 
-    // Verify response status code (this is done implicitly by the route fulfillment)
     // Click on the manage button
     await page.click('[data-testid="manage-button"]');
 
@@ -105,16 +100,15 @@ test.describe.serial('Data Insight settings page should work properly', () => {
 
     await toastNotification(page, 'Application uninstalled successfully');
 
-    await page
-      .locator('[data-testid="data-insights-application-card"]')
-      .waitFor({ state: 'hidden' });
+    await expect(
+      page.locator('[data-testid="data-insights-application-card"]')
+    ).toBeHidden();
   });
 
   test('Install application', async ({ page }) => {
     // Click on the add application button
     await page.click('[data-testid="add-application"]');
 
-    // Verify response status code (this is done implicitly by the route fulfillment)
     // Click on the config button
     await page.click(
       '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
@@ -152,18 +146,17 @@ test.describe.serial('Data Insight settings page should work properly', () => {
     // Click on the deploy button
     await page.click('[data-testid="deploy-button"]');
 
-    // Verify response status code (this is done implicitly by the route fulfillment)
     // Verify the application card is visible
 
-    await page
-      .locator('[data-testid="data-insights-application-card"]')
-      .waitFor({ state: 'visible' });
+    await expect(
+      page.locator('[data-testid="data-insights-application-card"]')
+    ).toBeVisible();
   });
 
   if (process.env.PLAYWRIGHT_IS_OSS) {
     test('Run application', async ({ page }) => {
       const appResponse = page.waitForResponse(
-        `/api/v1/apps/name/DataInsightsApplication?fields=owners%2Cpipelines&include=all`
+        `/api/v1/apps/name/DataInsightsApplication?fields=*`
       );
 
       // Click on the config button
@@ -173,11 +166,12 @@ test.describe.serial('Data Insight settings page should work properly', () => {
 
       await appResponse;
 
-      // Verify response status code (this is done implicitly by the route fulfillment)
       // Click on the run now button
       await page.click('[data-testid="run-now-button"]');
 
       const { apiContext } = await getApiContext(page);
+
+      await page.waitForTimeout(2000);
 
       // Check data insight success status (assuming this is a custom function you need to implement)
       await expect
@@ -207,14 +201,14 @@ test.describe.serial('Data Insight settings page should work properly', () => {
       await page.click('[data-testid="logs"]');
 
       // Verify the stats component contains 'Success'
-      expect(page.locator('[data-testid="stats-component"]')).toHaveText(
-        'Success'
-      );
+      await expect(
+        page.locator('[data-testid="stats-component"]')
+      ).toContainText('Success');
 
       // Verify the app entity stats history table is visible
-      page
-        .locator('[data-testid="app-entity-stats-history-table"]')
-        .waitFor({ state: 'visible' });
+      await expect(
+        page.locator('[data-testid="app-entity-stats-history-table"]')
+      ).toBeVisible();
     });
   }
 });
