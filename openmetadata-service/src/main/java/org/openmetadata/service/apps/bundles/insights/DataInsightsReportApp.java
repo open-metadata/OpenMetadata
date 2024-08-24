@@ -220,10 +220,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     if (previousCount == 0D) {
       // it should be undefined
       return new DataInsightTotalAssetTemplate(
-          currentCount, 0D, timeConfig.numberOfDaysChange(), dateMap);
+          String.valueOf(currentCount.intValue()), 0D, timeConfig.numberOfDaysChange(), dateMap);
     } else {
       return new DataInsightTotalAssetTemplate(
-          currentCount,
+          String.valueOf(currentCount.intValue()),
           ((currentCount - previousCount) / previousCount) * 100,
           timeConfig.numberOfDaysChange(),
           dateMap);
