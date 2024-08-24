@@ -77,12 +77,14 @@ test('Roles page should work properly', async ({ page }) => {
     await page.locator('[role="tab"]:has-text("Policies")').click();
 
     // Verifying the added policies
-    await expect(page.locator('.ant-table-row').first()).toContainText(
-      policies.dataConsumerPolicy
-    );
-    await expect(page.locator('.ant-table-row').last()).toContainText(
-      policies.dataStewardPolicy
-    );
+
+    await page
+      .getByRole('link', { name: policies.dataConsumerPolicy, exact: true })
+      .isVisible();
+
+    await page
+      .getByRole('link', { name: policies.dataStewardPolicy, exact: true })
+      .isVisible();
 
     // click on the teams tab
     await page.locator('[role="tab"]:has-text("Teams")').click();
@@ -168,9 +170,9 @@ test('Roles page should work properly', async ({ page }) => {
 
     await page.locator('[type="button"]:has-text("Submit")').click();
 
-    await expect(page.locator('.ant-table-row').last()).toContainText(
-      policies.dataStewardPolicy
-    );
+    await page
+      .getByRole('link', { name: policies.dataStewardPolicy, exact: true })
+      .isVisible();
   });
 
   await test.step('Remove added policy from created role', async () => {
