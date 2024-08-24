@@ -11,13 +11,27 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+const user = new UserClass();
 
 test.describe('Tour should work properly', () => {
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await user.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await user.delete(apiContext);
+    await afterAction();
+  });
+
   test.beforeEach('Visit entity details page', async ({ page }) => {
+    await user.login(page);
     await redirectToHomePage(page);
   });
 

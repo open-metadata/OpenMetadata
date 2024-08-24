@@ -255,7 +255,7 @@ export class DatabaseClass extends EntityClass {
     owner2: string[],
     type: 'Teams' | 'Users' = 'Users',
     isEditPermission = true
-  ): Promise<void> {
+  ) {
     if (type === 'Teams') {
       await addOwner({
         page,
