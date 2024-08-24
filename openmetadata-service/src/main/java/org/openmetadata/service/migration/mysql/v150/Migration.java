@@ -6,6 +6,7 @@ import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migrat
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migratePolicies;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.migrateTestCaseDimension;
 import static org.openmetadata.service.migration.utils.v150.MigrationUtil.updateDataInsightsApplication;
+import static org.openmetadata.service.migration.utils.v150.MigrationUtil.updateEmailTemplates;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
@@ -26,5 +27,6 @@ public class Migration extends MigrationProcessImpl {
     deleteLegacyDataInsightPipelines(pipelineServiceClient);
     updateDataInsightsApplication();
     migrateAutomatorOwner(handle, collectionDAO);
+    updateEmailTemplates(collectionDAO);
   }
 }

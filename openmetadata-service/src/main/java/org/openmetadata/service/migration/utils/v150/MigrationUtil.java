@@ -138,6 +138,13 @@ public class MigrationUtil {
     }
   }
 
+  public static void updateEmailTemplates(CollectionDAO collectionDAO) {
+    CollectionDAO.DocStoreDAO dao = collectionDAO.docStoreDAO();
+
+    // delete emailTemplates, it will be fetched from initSeedData
+    dao.deleteEmailTemplates();
+  }
+
   public static void updateDataInsightsApplication() {
     // Delete DataInsightsApplication - It will be recreated on AppStart
     AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
