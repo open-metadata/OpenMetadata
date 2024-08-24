@@ -28,7 +28,7 @@ export const SERVICE_CATEGORIES = {
 export const REDSHIFT = {
   serviceType: 'Redshift',
   serviceName: `redshift-ct-test-${uniqueID}`,
-  tableName: 'boolean_test',
+  tableName: 'raw_payments',
   DBTTable: 'customers',
   description: `This is Redshift-ct-test-${uniqueID} description`,
 };

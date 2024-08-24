@@ -444,7 +444,7 @@ const AppearanceConfigSettingsPage = () => {
             </div>
 
             <Space
-              className="w-full justify-end"
+              className="w-full justify-end appearance-cta-buttons"
               data-testid="cta-buttons"
               size={16}>
               <Button
