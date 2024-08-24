@@ -136,7 +136,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public EntityInterface getParentEntity(TestCase entity, String fields) {
-    return Entity.getEntity(entity.getTestSuite(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getTestSuite(), fields, ALL);
   }
 
   @Override
