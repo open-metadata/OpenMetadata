@@ -121,7 +121,7 @@ export const getEditIngestionPath = (
   path = path
     .replace(PLACEHOLDER_ROUTE_SERVICE_CAT, serviceCategory)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(serviceFQN))
-    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, ingestionFQN)
+    .replace(PLACEHOLDER_ROUTE_INGESTION_FQN, getEncodedFqn(ingestionFQN))
     .replace(PLACEHOLDER_ROUTE_INGESTION_TYPE, ingestionType);
 
   return path;

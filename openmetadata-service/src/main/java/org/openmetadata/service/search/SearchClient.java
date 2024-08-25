@@ -7,7 +7,6 @@ import java.security.KeyStoreException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.json.JsonArray;
@@ -193,14 +192,6 @@ public interface SearchClient {
 
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
-
-  TreeMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException;
 
   Response listDataInsightChartResult(
       Long startTs,

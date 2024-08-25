@@ -9,7 +9,9 @@ source:
       hostPort: $E2E_VERTICA_HOST_PORT
       database: VMart
   sourceConfig:
-    config: {}
+    config:
+      type: DatabaseMetadata
+      includeDDL: true
 sink:
   type: metadata-rest
   config: {}

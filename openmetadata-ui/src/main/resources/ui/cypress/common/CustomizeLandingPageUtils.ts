@@ -80,7 +80,7 @@ export const navigateToLandingPage = () => {
   interceptURL('GET', `/api/v1/feed*`, 'getFeedsData');
   interceptURL(
     'GET',
-    `/api/v1/analytics/dataInsights/charts/aggregate*`,
+    `/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data?*`,
     'getDataInsightReport'
   );
 
