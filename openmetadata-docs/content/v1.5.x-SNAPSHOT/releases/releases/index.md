@@ -14,6 +14,316 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.5/releases/latest.md" /%}
 
+# 1.4.8 Release
+
+{% note noteType="Tip" %}
+**August 6th, 2024**
+{% /note %}
+
+- Make `Include ddl` disabled by default 
+- Made DDL configuration consistent with views
+- Fix user profile task listing.
+- Fix import/export UI flow ${CollateIconWithLinkMD}.
+- Improve SAML logging backend.
+- Add Unity Catalog Lineage Dialect.
+- Clean idle connections during ingestion.
+- Fix Databricks Describe Table during metadata ingestion.
+- Glossary Upload now shows permissions errors for non-owners.
+- Fix task not showing in the right panel after clicking, in the Activity Feed.
+- Support multiple dbt run_results.json for a single manifest for improved performance.
+
+# 1.4.7 Release
+
+{% note noteType="Tip" %}
+**August 6th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.7-release).
+
+## Improvements
+
+- Resolved issue with Azure login related to email principal claims.
+
+# 1.4.6 Release
+
+{% note noteType="Tip" %}
+**August 2nd, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.6-release).
+
+## Improvements
+
+- Fix lineage PATCH API for ingestion.
+- Fix Trino Azure config secret masking.
+- Fix setuptools version due to yanked setuptools release.
+- Fix MSSQL busy connection error during test connection.
+- Fixed test case summary updates.
+- Fixed Test Suite indexing.
+- Fix repeated alerts being sent after no changes in the Entity.
+- Fixed an issue handling users with capital letters.
+- Centralize OIDC flow handling.
+- Fixed Ingestion Pipeline alert URL.
+
+# 1.4.5 Release
+
+{% note noteType="Tip" %}
+**July 19th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.5-release).
+
+## Improvements
+
+- Improve query filtering with prepared statements.
+- Bug fix in regex to match test case when using sampled data.
+- Bug fix in global profiler config for Snowflake, Redshift, and BigQuery.
+- Bug fix for Arg mismatch for DataModels in QlikSense.
+
+# 1.4.4 Release
+
+{% note noteType="Tip" %}
+**July 4th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.4-release).
+
+## Improvements
+
+- Introduced SSL for Salesforce
+- Fixed the claim mappings and usernames
+- Fixed issues in Salesforce connector
+- FIxed issues in Alation connector
+- Verified for changes in new env for claim mapping
+
+# 1.4.3 Release
+
+{% note noteType="Tip" %}
+**June 15th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.3-release).
+
+## Improvements
+
+- Fixed User Signup Flow Issue missing authorize.
+- Fixed vulnerabilities for azure-identity and msal4j.
+
+# 1.4.2 Release
+
+{% note noteType="Tip" %}
+**June 10th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.2-release).
+
+## Enhancements
+
+- In OpenMetadata, we support connecting the data assets to the knowledge articles. The knowledge articles that are pulled from the Alation connector have image URLs. We have enhanced the Alation connector to download and display the images in the Knowledge Articles.
+- Test cases can now be filtered by Service, Tag, and Tier.
+
+## Changes
+
+- One team or multiple users can be selected as reviewers for a Glossary term.,
+- Updated the openmetadata.yaml to remove WebAnalyticsHandler.,
+- Add appType as part of the schema in the ingestion pipeline.,
+- We now sanitize the Activity Feed editor content.
+
+## Improvements
+
+- Fixed the lineage view for tables with many columns.
+- Fixed an issue with updating the lineage edge descriptions.
+- Fixed an issue with Null Schema Field.
+- Fixed the glossary term review process issues.
+- Fixed the Kafka SSL connection arguments.
+- Fixed an issue with dbt ingestion pipeline that was occurring due to non enum values.
+- Fixed an issue with Announcements.
+- Fixed redirection issues for Tags and Glossary Terms.
+- Fixed a minor issue with filtering the Profiler.
+- Fixed the registration Issue with Event Handlers.
+- Fixed the sign-in issues with SAML.
+- Fixed issues with partition migration with Redshift services.
+- Fixed an issue with the Quicksight connector.
+- Fixed some minor issues with the user Profile page.
+- Fixed some issues with the Teams page.
+
+# 1.4.1 Release
+
+{% note noteType="Tip" %}
+**May 27th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.1-release).
+
+In 1.4.1, we provide migration fixes on top of the 1.4.0 release. Do check out the 1.4.0 release highlights below.
+
+# 1.4.0 Release 🎉
+
+{% note noteType="Tip" %}
+**May 21th, 2024**
+
+[OpenMetadata 1.4.0 Release](https://blog.open-metadata.org/openmetadata-release-1-4-0-f6fb11ec34d7)
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.0-release).
+
+## Backward Incompatible Changes
+
+### Tooling
+- Metadata Backup/Recovery is deprecated. No further support will be provided.
+- Users are advised to use database native tools to backup and store it in their object store for recovery.
+- `bootstrap/bootstrap_storage.sh` has been deprecated in favor of bootstrap/openmetadata-ops.sh
+
+### UI
+- Activity has been improved. New update specific cards display critical information such as data quality test case updates, description, tag update or removal.
+- For Lineage, the Expand All button has been removed. A new Layers button is introduced at the bottom left corner. With the Layers button, you can add Column Level Lineage or Data Observability details to your Lineage view.
+- View Definition is now renamed as Schema Definition.
+- Adding Glossary Term view is improved. Now we show glossary terms hierarchically enabling a better understanding of how the terms are setup while adding it to a table or dashboard.
+- For Classification, users can set classification to be mutually exclusive only at the time of creation. Once created, you cannot change it back to mutually non-exclusive or vice-versa. This is to prevent conflicts of adding multiple tags that belong to same classification and later turning the mutually exclusive flag back to true.
+
+### API
+- Table Schema's `ViewDefinition` is now renamed to `SchemaDefinition` to capture Tables' Create Schema.
+- Bulk Import API now creates entities if they are not present during the import.
+- Table's TestSuite is migrated to EntityReference. Previously it used to store entire payload of TestSuite.
+
+## Automator (Collate only)
+
+{% youtube videoId="zdh4yzHw4w0" start="0:00" end="2:29" width="560px" height="315px" /%}
+
+- Easily maintain high-quality metadata at scale with automations. The Automator streamlines governance processes from ownership assignments to tagging, ensuring compliance and consistency.
+- You can update the properties of your assets by filtering by service, owner, domain, or any other supported property from the advanced search.
+- Easily see which assets have been selected by jumping to the Explore page in one click.
+- For tables, data models, topics, and search indexes, you can apply the action to their columns or fields.
+- We added support for the following actions: adding and removing owner, tier, domain, tags, glossary terms and descriptions, ML PII tagging, and propagation of tags and glossary terms through lineage.
+
+## Bulk Upload Data Assets (Collate only)
+
+{% youtube videoId="CXxDdS6AifY" start="0:00" end="2:19" width="560px" height="315px" /%}
+
+- Bulk upload/download database, schema, and table entities from/into a CSV file for quick edition or creation.
+- Supports an inline editor to validate/update assets before performing the upload.
+- APIs are available in OSS.
+
+## Data Quality Improvements
+{% youtube videoId="UNOHvBMVcYM" start="0:00" end="1:28" width="560px" height="315px" /%}
+
+- The Table schema page now shows the Data Quality tests for each column.
+- Improved filtering options for test suite and test cases.
+- We have improved how the UI fetches the Data Quality details for improved performance.
+- We now compute Unique and Count in the same query to avoid inconsistency due to the high frequency of data insertion.
+- Fixed the issue with removing the test case description upon the test case display name change.
+- Support has been added for an empty string as a missing count.
+
+## Data Profiler
+- Implemented a global profiler configuration page, allowing admin to exclude certain metric computations for specific data types.
+- Added profiler support for Redshift complex types and DynamoDB.
+- Fixed an issue with performing sum operations for large values in profiler ingestion.
+- Fixed the histogram unit's issues with scientific notation.
+
+## Incident Manager
+- We now display a sample of failed rows for the latest failed test cases. Once the issue is resolved, the failed sample will be deleted. (Collate Only)
+- Fixed the Date time filter for the Incident Manager.
+- Notifications are sent for the tasks created by the Incident Manager.
+
+## Lineage Improvements
+https://www.youtube.com/watch?v=KZdVb8DiHJs - Video on Column Lineage Search
+
+- Column Lineage Search
+
+{% youtube videoId="KZdVb8DiHJs" start="0:00" end="0:30" width="560px" height="315px" /%}
+
+- Lineage Layers
+
+{% youtube videoId="wtBMeLvA6Sw" start="0:00" end="0:43" width="560px" height="315px" /%}
+
+- OpenMetadata already supports Column-level lineage, and now we have introduced Task-level lineage for Pipelines, Chart-level lineage for Dashboards, Feature-level lineage for ML Models, Field-level lineage for Topics, and columns for dashboard Data Models.
+- Automated column-level lineage is now supported for Tableau, Superset, QlikCloud, and QlikSense between Data Models and Tables.
+- The child nodes in a lineage graph are sorted in alphabetical order.
+- Improved the log of failed-to-parse queries.
+- Fixed an issue with automated column-level lineage overwriting the pipeline lineage and manual column lineage.
+- Snowflake & Databricks now support automated lineage between external tables and their origin storage container.
+- Lineage can be exported as a CSV file.
+- OpenMetadata spark agent now supports automated lineage between tables and their origin storage container.
+- Fixed an issue with parsing lineage queries for Redshift.
+- Now, we support pipeline as an edge between any two entity types.
+- We now parse PowerBi DAX files for lineage.
+- Support has been added for dynamic tables.
+
+## Data Insights
+- Previously, the data insights reports displayed only the percentage coverage of ownership and description. Now, users can drill down to view the data assets with no owner or description.
+- Improved the UX for data insight filters.
+
+## Cost Analysis (Collate Only)
+- Lifecycle data for Cost Analysis has been implemented for BigQuery, Snowflake, and Redshift.
+
+## Custom Theme
+
+{% youtube videoId="-NiU1flBHs0" start="0:00" end="1:02" width="560px" height="315px" /%}
+
+- Previously supported adding logo, monogram, and favicon to your OpenMetadata instance.
+- Now, it supports customizing the theme with colors to suit your company branding.
+
+## Landing Page Widgets (Collate Only)
+
+{% youtube videoId="Kakfa-lYGOU" start="0:00" end="0:59" width="560px" height="315px" /%}
+
+- A widget was added to list the pipelines that belong to a user or their team.
+- Added a Data Quality Widget to list the summary of data quality tests belonging to a user or their team.
+
+## Ingestion Performance Improvements
+- Bigquery, Redshift, and Snowflake now support incremental metadata ingestions by scanning DML operations on the query history.
+- Database Services now support parallelizing the metadata ingestion at each schema.
+
+## Connectors
+- Now supports a new connector for QlikCloud.
+- New Kafka Connect connector
+- We now parse complex protobuf schemas for Kafka
+- Improved model storage ingestion for Sagemaker and Mlflow.
+- Added an option to include or exclude drafts from dashboards.
+- Added an option to include or exclude paused pipelines in Airflow.
+- Revamped SSL support to allow users to upload the required certificates directly in the UI.
+- The character support has been enhanced for tag ingestion to include /.
+- In the Oracle connector, we rolled back to use all_ tables instead of dba_.
+- Added support for Azure auth in Trino.
+- For QlikSense, we have added an option to disable SSL validation.
+
+## Custom Properties
+
+{% youtube videoId="lZoSeKkErBk" start="0:00" end="1:07" width="560px" height="315px" /%}
+
+- Custom Properties now allow linking other assets in the platform, such as Tables, Dashboards, etc. To enable this, create a Custom Property as an Entity Reference or Entity Reference List.
+
+## Glossary
+- The glossary term parent can now be changed from the Details page.
+- On the data assets page, glossary terms are displayed by hierarchy.
+
+## Alerts & Notification Improvements
+- The Activity Feed provides more contextual information, removing the need to move to entity pages.
+- Alerts give more accurate information about the entity, as well as conversations and tasks.
+
+## Localization
+- Fixed localization issues in the confirmation logic for the delete function.
+- Fixed the search index language configuration.
+
+## Roles
+- Now, roles can be inherited from the user configuration in SSO.
+
+## Search
+- You can now filter by assets without a description or an owner.
+- Improved the match results for search results.
+
+## Others
+- The description is auto-expanded when the data asset has no data and has the space to accommodate a lengthy description.
+- User email IDs have been masked and are only visible to Admins.
+- Users can filter Queries by owner, tag, and creation date in the UI.
+- Added a button in the Query Editor to copy the Query.
+- Improved Elasticsearch re-indexing.
+- Improved the charts based on custom metrics.
+- Improved the usage of the refresh token.
+- Redundant scroll bars have been removed from the UI.
+- Improved the bot role binding to provide more control over which roles are passed to the system bots.
+
+
 # 1.3.4 Release 🎉
 
 {% note noteType="Tip" %}
