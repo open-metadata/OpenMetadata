@@ -53,7 +53,7 @@ public class MigrationUtil {
               row -> {
                 try {
                   // Prepare the current json objects
-                  JsonObject json = JsonUtils.readJson((String) row.get("json")).asJsonObject();
+                  JsonObject json = JsonUtils.readJson(row.get("json").toString()).asJsonObject();
                   JsonObject sourceConfig = json.getJsonObject("sourceConfig");
                   JsonObject config = sourceConfig.getJsonObject("config");
                   JsonObject appConfig = config.getJsonObject("appConfig");
