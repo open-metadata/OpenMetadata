@@ -21,7 +21,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -93,10 +92,13 @@ public class DataInsightsEntityEnricherProcessor
     while (!historyDone) {
       EntityRepository.EntityHistoryWithOffset entityHistoryWithOffset =
           entityRepository.listVersionsWithOffset(entity.getId(), 100, nextOffset);
-      EntityHistory entityHistory = entityHistoryWithOffset.entityHistory();
+      List<Object> versions = entityHistoryWithOffset.entityHistory().getVersions();
+      if (versions.isEmpty()) {
+        break;
+      }
       nextOffset = entityHistoryWithOffset.nextOffset();
 
-      for (Object version : entityHistory.getVersions()) {
+      for (Object version : versions) {
         EntityInterface versionEntity =
             JsonUtils.readOrConvertValue(
                 version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
