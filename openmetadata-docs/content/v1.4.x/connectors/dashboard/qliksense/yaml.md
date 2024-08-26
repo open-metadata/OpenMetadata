@@ -17,6 +17,7 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-qlik-sense-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
@@ -194,5 +195,30 @@ source:
 {% /codeBlock %}
 
 {% /codePreview %}
+
+## Securing Qlik Sense Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and Qlik Sense, there are two ways to communicate: defining the certificate file path or using the certificates value. Navigate to the `Advanced Config` section. 
+
+When using the local certificate file path, ensure that the certificates are accessible from the Airflow Server. You can specify the path for the `client certificate`, `client key certificate`, and `root certificate`. 
+
+Alternatively, when using the certificates value, you can provide the CA certificate used for SSL validation by specifying the `CA Certificate` (rootCertificateData). If both client and server require mutual authentication, you can upload all three: `CA Certificate`, `SSL Certificate`(clientCertificate), and `SSL Key`(clientKeyCertificate).
+
+Refer to the guide on how to generate authentication certificates so that OpenMetadata can communicate with Qlik Sense [here](/connectors/dashboard/qliksense/certificates).
+
+```yaml
+      certificates:
+        # pass certificate paths
+        clientCertificate: /path/to/client.pem
+        clientKeyCertificate: /path/to/client_key.pem
+        rootCertificate: /path/to/root.pem
+```
+
+```yaml
+        # pass certificate values
+        clientCertificateData: -----BEGIN CERTIFICATE-----\n....\n.....\n-----END CERTIFICATE-----\n
+        clientKeyCertificateData: -----BEGIN RSA PRIVATE KEY-----\n....\n....\n-----END RSA PRIVATE KEY-----\n
+        rootCertificateData: -----BEGIN CERTIFICATE-----\n....\n...-----END CERTIFICATE-----\n
+```
 
 {% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
