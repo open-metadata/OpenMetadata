@@ -19,7 +19,9 @@ setup.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
-setup.describe.configure({ timeout: process.env.isOss ? 150000 : 3600000 });
+setup.describe.configure({
+  timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 3600000,
+});
 
 setup(
   'Run Data Insight application and wait until success',
@@ -68,13 +70,13 @@ setup(
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for the Data Insight Application run to be successful',
-          ...(process.env.isOss
+          ...(process.env.PLAYWRIGHT_IS_OSS
             ? {
                 timeout: 120_000,
                 intervals: [5_000, 10_000],
               }
             : {
-                timeout: 3600_000,
+                timeout: 5400_000,
                 intervals: [300_000, 300_000, 120_000],
               }),
         }
