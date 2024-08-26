@@ -718,7 +718,7 @@ API:
   {
     id: 43,
     version: 'v1.5.0',
-    description: `Released on 23rd August 2024.`,
+    description: `Released on 26th August 2024.`,
     features: [
       {
         title: `Data Observability with Anomaly Detection (Collate)`,
@@ -851,7 +851,13 @@ In the latest release, several updates and enhancements have been made to the JS
 **Include DDL:**
         
 - During the Database Metadata ingestion, we can optionally pick up the DDL for both tables and views. During the metadata ingestion, we use the view DDLs to generate the View Lineage.
-- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.`,
+- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.
+
+**Secrets Manager**
+Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. It won't appear anymore in your dag_generated_configs in Airflow.
+
+**Python SDK**
+The \`metadata insight\` command has been removed. Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.`,
       [`Data Observability with Anomaly Detection ${CollateIconWithLinkMD}`]: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
 
 1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
