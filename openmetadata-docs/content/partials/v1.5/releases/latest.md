@@ -102,17 +102,25 @@ OpenMetadata has been driving innovation in Data Quality in Open Source. Many or
 
 In 1.5.0, we are bringing in **Anomaly Detection** based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents
 
+{% youtube videoId="BPuNC8vPcsw" start="0:00" end="1:01" width="560px" height="315px" /%}
+
 ## Enhanced Data Quality Dashboard (Collate)
 
 We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.
 
+{% youtube videoId="bXcQBtZuyoU" start="0:00" end="2:10" width="560px" height="315px" /%}
+
 ## Freshness Data Quality Tests (Collate)
 Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.
+
+{% youtube videoId="QRcR3m9cCGo" start="0:00" end="1:09" width="560px" height="315px" /%}
 
 ## Data Diff Data Quality Tests
 Data quality checks are important not only within a single table but also between different tables. These data diff checks can ensure key data remains unchanged after transformation, or conversely, ensure that the transformations were actually performed.
 
 We are introducing the **table difference data quality test** to validate that multiple appearances of the same information remain consistent. Note that the test allows you to specify which column to use as a key and which columns you want to compare, and even add filters in the data to give you more control over multiple use cases.
+
+{% youtube videoId="oxZVS_UGrE4" start="0:00" end="2:22" width="560px" height="315px" /%}
 
 ## Domains RBAC & Subdomains
 OpenMetadata introduced Domains & Data Products in 1.3.0. Since then, many large organizations have started using Domains & Data Products to achieve better ownership and collaboration around domains that can span multiple teams.
@@ -124,12 +132,16 @@ With the 1.5.0 release, we are adding more stricter controls around Domain. Now,
 
 This will help large companies to use a single OpenMetadata platform to unify all of their data and teams but also provide more stringent controls to segment the data between domains
 
+{% youtube videoId="r-_HaewjgTQ" start="0:00" end="0:44" width="560px" height="315px" /%}
+
 ## Improved Explore Page & Data Asset Widget
 OpenMetadata, with its simple UI/UX and data collaboration features, is becoming more attractive to non-technical users as well. Data Governance teams are using OpenMetadata to add glossary terms and policies around metadata. Teams using Collate SaaS product are taking advantage of our Automations feature to gain productivity in their governance tasks.
 
 Our new improved navigation on the Explore page will help users navigate hierarchically and find the data they are looking for. Users will see the data assets now grouped by `service name -> database -> schema -> tables/stored procedures`.
 
 We are also making the discovery of data more accessible for users introducing a data asset widget, which will group the assets by platform type. This will help users find their data if they are working on a specific platform such as Looker or Snowflake they can easily click on that icon and get to the data.
+
+{% youtube videoId="45ekUIRO1Ec" start="0:00" end="1:11" width="560px" height="315px" /%}
 
 ## Pipeline Status Widget
 We are also adding another widget you can use to customize the Landing Page of the User Personas in your organization.
@@ -142,6 +154,8 @@ The Internet runs using APIs, both producing and consuming data. Organizations t
 On top of the many supported connectors across Databases, Dashboards, ML Models, etc. We believe that providing support for API Services as data assets will help to get the full picture of how the data is coming through from various services and landing into databases, going to warehouses and BI tools.
 
 In 1.5.0 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.
+
+{% youtube videoId="b9wrVnM3u80" start="0:00" end="0:33" width="560px" height="315px" /%}
 
 ## Glossary Improvements
 OpenMetadata supports multiple glossaries, an import/export and review process, and bulk asset tagging with glossary terms. Many teams are taking advantage of these features, and with an amazing open-source community, we are receiving great feedback on improving glossary functionality.
