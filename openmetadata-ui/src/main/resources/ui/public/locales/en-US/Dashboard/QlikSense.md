@@ -108,6 +108,20 @@ You will have to replace new lines with `\n` and the final private key that you 
 ```
 $$
 
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`ssl_ca`)
+$$
+
+$$section
+### SSL Certificate $(id="sslCertificate")
+The SSL certificate used for client authentication (`ssl_cert`)
+$$
+
+$$section
+### SSL Key $(id="sslKey")
+The private key associated with the SSL certificate (`ssl_key`)
+$$
 
 $$section
 ### Staging Directory Path $(id="stagingDir")

@@ -109,9 +109,16 @@ Client SSL configuration in case we are connection to a host with SSL enabled.
 $$
 
 $$section
-### Certificate Path $(id="certificatePath")
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation (`ssl_ca`)
+$$
 
-CA certificate path in the instance where the ingestion run. E.g., `/path/to/public.cert`. 
+$$section
+### SSL Certificate $(id="sslCertificate")
+The SSL certificate used for client authentication (`ssl_cert`)
+$$
 
-Will be used if Verify SSL is set to `validate`.
+$$section
+### SSL Key $(id="sslKey")
+The private key associated with the SSL certificate (`ssl_key`)
 $$
