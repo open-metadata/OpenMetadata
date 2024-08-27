@@ -13,7 +13,8 @@ Test SAP Hana source
 """
 from pathlib import Path
 
-from metadata.ingestion.source.database.saphana.cdata_parser import parse_registry, ViewType
+from metadata.ingestion.source.database.saphana.cdata_parser import parse_registry, ViewType, ParsedLineage, \
+    ColumnMapping
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 
@@ -24,6 +25,31 @@ def test_parse_analytic_view() -> None:
     with open(RESOURCES_DIR / "cdata_analytic_view.xml") as file:
         cdata = file.read()
         parser = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
-        parser(cdata)
+        parsed_lineage: ParsedLineage = parser(cdata)
 
-    ...
+    assert parsed_lineage
+    assert len(parsed_lineage.mappings) == 6
+    assert parsed_lineage.sources == {"SBOOK"}
+    assert parsed_lineage.mappings[0] == ColumnMapping(
+        source_table="SBOOK",
+        source="MANDT",
+        target="MANDT",
+    )
+
+
+def test_parse_attribute_view() -> None:
+    """Read the resource and parse the file"""
+
+    with open(RESOURCES_DIR / "cdata_attribute_view.xml") as file:
+        cdata = file.read()
+        parser = parse_registry.registry.get(ViewType.ATTRIBUTE_VIEW.value)
+        parsed_lineage: ParsedLineage = parser(cdata)
+
+    assert parsed_lineage
+    assert len(parsed_lineage.mappings) == 15
+    assert parsed_lineage.sources == {"SCARR", "SFLIGHT"}
+    assert parsed_lineage.mappings[0] == ColumnMapping(
+        source_table="SFLIGHT",
+        source="MANDT",
+        target="MANDT",
+    )

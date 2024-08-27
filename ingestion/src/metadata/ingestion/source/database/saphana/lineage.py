@@ -25,7 +25,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source, InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_test_connection_fn
-from metadata.ingestion.source.database.saphana.cdata_parser import CDATAParser
 from metadata.ingestion.source.database.saphana.models import SapHanaLineageModel
 from metadata.ingestion.source.database.saphana.queries import SAPHANA_LINEAGE
 from metadata.utils.logger import ingestion_logger
