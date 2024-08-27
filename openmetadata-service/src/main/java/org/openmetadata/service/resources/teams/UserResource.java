@@ -18,6 +18,7 @@ import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
@@ -27,6 +28,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_S
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
 import static org.openmetadata.service.util.UserUtil.getUser;
@@ -189,6 +191,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
+  }
+
+  private boolean isEmailServiceEnabled() {
+    SmtpSettings smtpSettings = getSmtpSettings();
+    if (!nullOrEmpty(smtpSettings)) {
+      return smtpSettings.getEnableSmtpServer();
+    }
+    return false;
   }
 
   public UserResource(
@@ -643,7 +653,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
-    if (isBasicAuth() && isEmailServiceEnabled) {
+    if (isBasicAuth() && isEmailServiceEnabled()) {
       try {
         authHandler.sendInviteMailToUser(
             uriInfo,

@@ -111,6 +111,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
+  private boolean isEmailServiceEnabled() {
+    SmtpSettings smtpSettings = getSmtpSettings();
+    if (!nullOrEmpty(smtpSettings)) {
+      return smtpSettings.getEnableSmtpServer();
+    }
+    return false;
+  }
+
   @Override
   public User registerUser(RegistrationRequest newRegistrationRequest) {
     if (isSelfSignUpAvailable) {
@@ -173,7 +181,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void sendEmailVerification(UriInfo uriInfo, User user) throws IOException {
-    if (isEmailServiceEnabled) {
+    if (isEmailServiceEnabled()) {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
@@ -310,7 +318,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordSuccessfulLogin(userName);
 
     // in case admin updates , send email to user
-    if (request.getRequestType() == USER && isEmailServiceEnabled) {
+    if (request.getRequestType() == USER && isEmailServiceEnabled()) {
       // Send mail
       sendInviteMailToUser(
           uriInfo,
