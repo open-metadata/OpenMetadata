@@ -134,7 +134,7 @@ export const OwnerLabel = ({
             })}
             {remainingOwnersCount > 0 && (
               <Button
-                className="more-owners-button text-xs"
+                className="more-owners-button text-xs h-auto"
                 size="small"
                 type="link"
                 onClick={() => setShowAllOwners(!showAllOwners)}>
@@ -152,7 +152,7 @@ export const OwnerLabel = ({
               />
             </div>
             <Typography.Text
-              className={classNames('font-medium text-xs', className)}
+              className={classNames('no-owner font-medium text-xs', className)}
               data-testid="owner-link">
               {placeHolder ??
                 t('label.no-entity', { entity: t('label.owner') })}

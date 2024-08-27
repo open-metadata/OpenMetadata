@@ -30,7 +30,7 @@ export interface SelectTestSuiteProps {
 
 export interface TestCaseFormProps {
   initialValue?: CreateTestCase;
-  onSubmit: (data: CreateTestCase) => void;
+  onSubmit: (data: CreateTestCase) => Promise<void>;
   onCancel: (data: CreateTestCase) => void;
   table: Table;
 }

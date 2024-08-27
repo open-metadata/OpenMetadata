@@ -17,6 +17,7 @@ import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
 import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
@@ -26,7 +27,6 @@ import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
 import {
@@ -124,7 +124,7 @@ export const getGroupLabel = (index: string) => {
       break;
     case SearchIndex.GLOSSARY_TERM:
       label = i18next.t('label.glossary-term-plural');
-      GroupIcon = IconTable;
+      GroupIcon = GlossaryTermIcon;
 
       break;
     case SearchIndex.TAG:
@@ -222,9 +222,10 @@ export const getSuggestionElement = (
   const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : searchClassBase.getEntityName(entitySource);
+      : entitySource.fullyQualifiedName ??
+        searchClassBase.getEntityName(entitySource);
 
-  const retn = (
+  return (
     <Button
       block
       className="text-left truncate p-0"
@@ -251,8 +252,6 @@ export const getSuggestionElement = (
       </Link>
     </Button>
   );
-
-  return retn;
 };
 
 export const filterOptionsByIndex = (

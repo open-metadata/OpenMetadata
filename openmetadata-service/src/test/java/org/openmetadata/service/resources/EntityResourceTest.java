@@ -3223,8 +3223,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected final void assertFieldLists(
-      List<FieldChange> expectedList, List<FieldChange> actualList) throws IOException {
+  protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
+      throws IOException {
     expectedList.sort(EntityUtil.compareFieldChange);
     actualList.sort(EntityUtil.compareFieldChange);
     assertEquals(expectedList.size(), actualList.size());
@@ -3856,6 +3856,76 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
     assertNull(entity.getDomain().getInherited());
+  }
+
+  public void verifyOwnersInSearch(EntityReference entity, List<EntityReference> expectedOwners)
+      throws IOException {
+    RestClient searchClient = getSearchClient();
+    String entityType = entity.getType();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        String.format(
+            "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            entity.getId().toString());
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertEquals(expectedOwners.size(), hitsList.size());
+    LinkedHashMap<String, Object> source =
+        (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
+    List<EntityReference> owners = extractEntities(source, "owners");
+    assertOwners(expectedOwners, owners);
+  }
+
+  public void verifyDomainInSearch(EntityReference entity, EntityReference expectedDomain)
+      throws IOException {
+    RestClient searchClient = getSearchClient();
+    String entityType = entity.getType();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        String.format(
+            "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            entity.getId().toString());
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertEquals(1, hitsList.size());
+    LinkedHashMap<String, Object> source =
+        (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
+    EntityReference domain = JsonUtils.convertValue(source.get("domain"), EntityReference.class);
+    assertEquals(expectedDomain.getId(), domain.getId());
+  }
+
+  private List<EntityReference> extractEntities(
+      LinkedHashMap<String, Object> source, String field) {
+    List<LinkedHashMap<String, Object>> ownersList =
+        (List<LinkedHashMap<String, Object>>) source.get(field);
+    List<EntityReference> owners = new ArrayList<>();
+    for (LinkedHashMap<String, Object> ownerMap : ownersList) {
+      EntityReference owner = JsonUtils.convertValue(ownerMap, EntityReference.class);
+      owners.add(owner);
+    }
+    return owners;
   }
 
   public static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {

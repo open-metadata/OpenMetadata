@@ -33,6 +33,9 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
 from metadata.ingestion.connections.headers import inject_query_header_by_conn
 from metadata.ingestion.connections.secrets import connection_with_options_secrets
 from metadata.utils.constants import BUILDER_PASSWORD_ATTR
+from metadata.utils.logger import cli_logger
+
+logger = cli_logger()
 
 
 @connection_with_options_secrets
@@ -152,6 +155,9 @@ def _add_password(url: str, connection) -> str:
                         Region=connection.authType.awsConfig.awsRegion,
                     )
                 )
+    if not password:
+        logger.warning("No password has been provided in connection")
+        password = SecretStr("")
     url += f":{quote_plus(password.get_secret_value())}"
     return url
 

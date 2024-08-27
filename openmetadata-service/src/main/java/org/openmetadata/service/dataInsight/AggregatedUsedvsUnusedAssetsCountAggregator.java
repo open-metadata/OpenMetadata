@@ -19,8 +19,7 @@ public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
     H histogramBucket = getHistogramBucket(this.aggregations);
     List<Object> data = new ArrayList<>();
     for (B bucket : getBuckets(histogramBucket)) {
-      String dateTimeString = getKeyAsString(bucket);
-      Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
+      Long timestamp = getKeyAsEpochTimestamp(bucket);
       S totalUnused = getAggregations(bucket, "totalUnused");
       S totalUsed = getAggregations(bucket, "totalUsed");
       Double used = Objects.requireNonNullElse(getValue(totalUsed), 0.0);
@@ -47,7 +46,7 @@ public abstract class AggregatedUsedvsUnusedAssetsCountAggregator<A, H, B, S>
 
   protected abstract List<? extends B> getBuckets(H histogramBucket);
 
-  protected abstract String getKeyAsString(B bucket);
+  protected abstract long getKeyAsEpochTimestamp(B bucket);
 
   protected abstract S getAggregations(B bucket, String key);
 

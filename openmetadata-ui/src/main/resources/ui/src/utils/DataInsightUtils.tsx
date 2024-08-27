@@ -17,14 +17,12 @@ import { t } from 'i18next';
 import {
   first,
   get,
-  groupBy,
   isEmpty,
   isInteger,
   isString,
   isUndefined,
   last,
   round,
-  sortBy,
   startCase,
   sumBy,
   toNumber,
@@ -72,14 +70,6 @@ import {
 import { axisTickFormatter } from './ChartUtils';
 import { pluralize } from './CommonUtils';
 import { customFormatDateTime, formatDate } from './date-time/DateTimeUtils';
-
-const checkIsPercentageGraph = (dataInsightChartType: DataInsightChartType) =>
-  [
-    DataInsightChartType.PercentageOfEntitiesWithDescriptionByType,
-    DataInsightChartType.PercentageOfEntitiesWithOwnerByType,
-    DataInsightChartType.PercentageOfServicesWithDescription,
-    DataInsightChartType.PercentageOfServicesWithOwner,
-  ].includes(dataInsightChartType);
 
 export const renderLegend = (
   legendData: LegendProps,
@@ -243,122 +233,6 @@ const getLatestCount = (latestData = {}) => {
  *
  * @param rawData raw chart data
  * @param dataInsightChartType chart type
- * @returns latest percentage for the chart
- */
-const getLatestPercentage = (
-  rawData: DataInsightChartResult['data'] = [],
-  dataInsightChartType: DataInsightChartType
-) => {
-  let totalEntityCount = 0;
-  let totalEntityWithDescription = 0;
-  let totalEntityWithOwner = 0;
-
-  const modifiedData = rawData
-    .map((raw) => {
-      const timestamp = raw.timestamp;
-      if (timestamp) {
-        return {
-          ...raw,
-          timestamp,
-        };
-      }
-
-      return;
-    })
-    .filter(Boolean);
-
-  const sortedData = sortBy(modifiedData, 'timestamp');
-  const groupDataByTimeStamp = groupBy(sortedData, 'timestamp');
-  const latestData = last(sortedData);
-  if (latestData) {
-    const latestChartRecords = groupDataByTimeStamp[latestData.timestamp];
-
-    latestChartRecords.forEach((record) => {
-      totalEntityCount += record?.entityCount ?? 0;
-      totalEntityWithDescription += record?.completedDescription ?? 0;
-      totalEntityWithOwner += record?.hasOwner ?? 0;
-    });
-    switch (dataInsightChartType) {
-      case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-      case DataInsightChartType.PercentageOfServicesWithDescription:
-        return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
-          2
-        );
-
-      case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-      case DataInsightChartType.PercentageOfServicesWithOwner:
-        return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
-
-      default:
-        return 0;
-    }
-  }
-
-  return 0;
-};
-
-/**
- *
- * @param rawData raw chart data
- * @param dataInsightChartType chart type
- * @returns old percentage for the chart
- */
-const getOldestPercentage = (
-  rawData: DataInsightChartResult['data'] = [],
-  dataInsightChartType: DataInsightChartType
-) => {
-  let totalEntityCount = 0;
-  let totalEntityWithDescription = 0;
-  let totalEntityWithOwner = 0;
-
-  const modifiedData = rawData
-    .map((raw) => {
-      const timestamp = raw.timestamp;
-      if (timestamp) {
-        return {
-          ...raw,
-          timestamp,
-        };
-      }
-
-      return;
-    })
-    .filter(Boolean);
-
-  const sortedData = sortBy(modifiedData, 'timestamp');
-  const groupDataByTimeStamp = groupBy(sortedData, 'timestamp');
-  const oldestData = first(sortedData);
-  if (oldestData) {
-    const oldestChartRecords = groupDataByTimeStamp[oldestData.timestamp];
-
-    oldestChartRecords.forEach((record) => {
-      totalEntityCount += record?.entityCount ?? 0;
-      totalEntityWithDescription += record?.completedDescription ?? 0;
-      totalEntityWithOwner += record?.hasOwner ?? 0;
-    });
-    switch (dataInsightChartType) {
-      case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-      case DataInsightChartType.PercentageOfServicesWithDescription:
-        return ((totalEntityWithDescription / totalEntityCount) * 100).toFixed(
-          2
-        );
-
-      case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-      case DataInsightChartType.PercentageOfServicesWithOwner:
-        return ((totalEntityWithOwner / totalEntityCount) * 100).toFixed(2);
-
-      default:
-        return 0;
-    }
-  }
-
-  return 0;
-};
-
-/**
- *
- * @param rawData raw chart data
- * @param dataInsightChartType chart type
  * @returns formatted chart for graph
  */
 const getGraphFilteredData = (
@@ -370,11 +244,11 @@ const getGraphFilteredData = (
 
   const filteredData = rawData
     .map((data) => {
-      if (data.timestamp && (data.entityType || data.serviceName)) {
+      if (data.timestamp && data.entityType) {
         let value;
         const timestamp = customFormatDateTime(data.timestamp, 'MMM dd');
-        if (!entities.includes(data.entityType ?? data.serviceName ?? '')) {
-          entities.push(data.entityType ?? data.serviceName ?? '');
+        if (!entities.includes(data.entityType ?? '')) {
+          entities.push(data.entityType ?? '');
         }
 
         if (!timestamps.includes(timestamp)) {
@@ -382,21 +256,6 @@ const getGraphFilteredData = (
         }
 
         switch (dataInsightChartType) {
-          case DataInsightChartType.TotalEntitiesByType:
-            value = data.entityCount;
-
-            break;
-          case DataInsightChartType.PercentageOfEntitiesWithDescriptionByType:
-          case DataInsightChartType.PercentageOfServicesWithDescription:
-            value = (data.completedDescriptionFraction ?? 0) * 100;
-
-            break;
-          case DataInsightChartType.PercentageOfEntitiesWithOwnerByType:
-          case DataInsightChartType.PercentageOfServicesWithOwner:
-            value = (data.hasOwnerFraction ?? 0) * 100;
-
-            break;
-
           case DataInsightChartType.PageViewsByEntities:
             value = data.pageViews;
 
@@ -409,7 +268,7 @@ const getGraphFilteredData = (
         return {
           timestamp: timestamp,
           timestampValue: data.timestamp,
-          [data.entityType ?? data.serviceName ?? '']: value,
+          [data.entityType ?? '']: value,
         };
       }
 
@@ -430,8 +289,6 @@ export const getGraphDataByEntityType = (
   rawData: DataInsightChartResult['data'] = [],
   dataInsightChartType: DataInsightChartType
 ) => {
-  const isPercentageGraph = checkIsPercentageGraph(dataInsightChartType);
-
   const { filteredData, entities, timestamps } = getGraphFilteredData(
     rawData,
     dataInsightChartType
@@ -440,30 +297,17 @@ export const getGraphDataByEntityType = (
   const graphData = prepareGraphData(timestamps, filteredData);
   const latestData = last(graphData) as Record<string, number>;
   const oldData = first(graphData);
-  const latestPercentage = toNumber(
-    isPercentageGraph
-      ? getLatestPercentage(rawData, dataInsightChartType)
-      : getLatestCount(latestData)
-  );
-  const oldestPercentage = toNumber(
-    isPercentageGraph
-      ? getOldestPercentage(rawData, dataInsightChartType)
-      : getLatestCount(oldData)
-  );
+  const latestPercentage = toNumber(getLatestCount(latestData));
+  const oldestPercentage = toNumber(getLatestCount(oldData));
 
   const relativePercentage = latestPercentage - oldestPercentage;
 
   return {
     data: graphData,
     entities,
-    total: isPercentageGraph
-      ? getLatestPercentage(rawData, dataInsightChartType)
-      : getLatestCount(latestData),
-    relativePercentage: isPercentageGraph
-      ? relativePercentage
-      : (relativePercentage / oldestPercentage) * 100,
+    total: getLatestCount(latestData),
+    relativePercentage: (relativePercentage / oldestPercentage) * 100,
     latestData,
-    isPercentageGraph,
   };
 };
 

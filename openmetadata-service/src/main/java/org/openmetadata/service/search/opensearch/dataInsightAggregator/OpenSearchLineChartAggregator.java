@@ -1,9 +1,9 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -19,6 +19,7 @@ import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.search.aggregations.Aggregation;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
+import os.org.opensearch.search.aggregations.Aggregations;
 import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
@@ -46,13 +47,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
 
-    Timestamp endTimeStamp = new Timestamp(end + MILLISECONDS_IN_DAY);
-    Timestamp startTimeStamp = new Timestamp(start);
-
-    QueryBuilder queryFilter =
-        new RangeQueryBuilder("@timestamp")
-            .gte(startTimeStamp.toLocalDateTime().toString() + "Z")
-            .lte(endTimeStamp.toLocalDateTime().toString() + "Z");
+    QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
 
     if (lineChart.getGroupBy() != null) {
       String[] includeArr = null;
@@ -89,9 +84,13 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       List<FormulaHolder> formulas) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     LineChart lineChart = JsonUtils.convertValue(diChart.getChartDetails(), LineChart.class);
+    List<Aggregation> aggregationList =
+        Optional.ofNullable(searchResponse.getAggregations())
+            .orElse(new Aggregations(new ArrayList<>()))
+            .asList();
     if (lineChart.getGroupBy() != null) {
       List<DataInsightCustomChartResult> diChartResults = new ArrayList<>();
-      for (Aggregation arg : searchResponse.getAggregations().asList()) {
+      for (Aggregation arg : aggregationList) {
         ParsedTerms parsedTerms = (ParsedTerms) arg;
         for (Terms.Bucket bucket : parsedTerms.getBuckets()) {
           diChartResults.addAll(
@@ -106,8 +105,7 @@ public class OpenSearchLineChartAggregator implements OpenSearchDynamicChartAggr
       return resultList;
     }
     List<DataInsightCustomChartResult> results =
-        processAggregations(
-            searchResponse.getAggregations().asList(), lineChart.getFormula(), null, formulas);
+        processAggregations(aggregationList, lineChart.getFormula(), null, formulas);
     resultList.setResults(results);
     if (lineChart.getKpiDetails() != null) {
       resultList.setKpiDetails(lineChart.getKpiDetails());

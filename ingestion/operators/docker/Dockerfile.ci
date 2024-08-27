@@ -59,6 +59,14 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 
 ENV LD_LIBRARY_PATH=/instantclient
 
+# Install DB2 iAccess Driver
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
+  && apt update \
+  && apt install ibm-iaccess; \
+  fi
+
 WORKDIR ingestion/
 
 # For the dev build, we copy all files
@@ -76,15 +84,14 @@ ARG INGESTION_DEPENDENCY="all"
 RUN pip install ".[airflow]"
 RUN pip install ".[${INGESTION_DEPENDENCY}]"
 
+# Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  pip install ".[db2]"; \
+  fi
+
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
 COPY ingestion/operators/docker/*.py .
-
-# Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) == "arm64" ]]; \
-    then \
-    pip install "ibm-db-sa~=0.4"; \
-    fi
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error

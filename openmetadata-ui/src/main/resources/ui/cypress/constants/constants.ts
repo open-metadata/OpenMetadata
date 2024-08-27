@@ -351,20 +351,20 @@ export const ANNOUNCEMENT_ENTITIES = [
 
 export const HTTP_CONFIG_SOURCE = {
   DBT_CATALOG_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/catalog.json',
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/catalog.json',
   DBT_MANIFEST_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/manifest.json',
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/manifest.json',
   DBT_RUN_RESULTS_FILE_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/run_results.json',
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/run_results.json',
 };
 
 export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_two',
-  dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
+  dbtQuery: 'select * from "dev"."dbt_automate_upgrade_tests"."stg_orders"',
   dbtLineageNodeLabel: 'customers',
-  dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
-  dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
+  dbtLineageNode: 'dev.dbt_automate_upgrade_tests.stg_customers',
+  dataQualityTest1: 'unique_customers_customer_id',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
 

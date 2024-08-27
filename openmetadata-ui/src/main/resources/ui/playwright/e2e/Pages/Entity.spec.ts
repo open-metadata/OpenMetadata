@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { test } from '@playwright/test';
+import { isUndefined } from 'lodash';
 import { CustomPropertySupportedEntityList } from '../../constant/customProperty';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
@@ -24,13 +25,17 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import {
+  assignDomain,
   createNewPage,
   getApiContext,
   getAuthContext,
   getToken,
   redirectToHomePage,
+  removeDomain,
+  verifyDomainPropagation,
 } from '../../utils/common';
 import { CustomPropertyTypeByName } from '../../utils/customProperty';
+import { visitServiceDetailsPage } from '../../utils/service';
 
 const entities = [
   ApiEndpointClass,
@@ -74,6 +79,37 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    test('Domain Propagation', async ({ page }) => {
+      const serviceCategory = entity.serviceCategory;
+      if (serviceCategory) {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: entity.service.name,
+            type: serviceCategory,
+          },
+          false
+        );
+
+        await assignDomain(page, EntityDataClass.domain1.responseData);
+        await verifyDomainPropagation(
+          page,
+          EntityDataClass.domain1.responseData,
+          entity.entityResponseData?.['fullyQualifiedName']
+        );
+
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: entity.service.name,
+            type: serviceCategory,
+          },
+          false
+        );
+        await removeDomain(page);
+      }
+    });
+
     test('User as Owner Add, Update and Remove', async ({ page }) => {
       test.slow(true);
 
@@ -113,6 +149,42 @@ entities.forEach((EntityClass) => {
       );
     });
 
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test('Tag Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.tagChildren({
+          page: page,
+          tag1: 'PersonalData.Personal',
+          tag2: 'PII.None',
+          rowId: entity.childrenSelectorId ?? '',
+          rowSelector:
+            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+        });
+      });
+    }
+
+    // Run only if entity has children
+    if (!isUndefined(entity.childrenTabId)) {
+      test('Glossary Term Add, Update and Remove for child entities', async ({
+        page,
+      }) => {
+        await page.getByTestId(entity.childrenTabId ?? '').click();
+
+        await entity.glossaryTermChildren({
+          page: page,
+          glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+          glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+          rowId: entity.childrenSelectorId ?? '',
+          rowSelector:
+            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+        });
+      });
+    }
+
     test(`Announcement create & delete`, async ({ page }) => {
       await entity.announcement(
         page,
@@ -148,7 +220,7 @@ entities.forEach((EntityClass) => {
 
         await test.step(`Set ${titleText} Custom Property`, async () => {
           for (const type of properties) {
-            await entity.setCustomProperty(
+            await entity.updateCustomProperty(
               page,
               entity.customPropertyValue[type].property,
               entity.customPropertyValue[type].value

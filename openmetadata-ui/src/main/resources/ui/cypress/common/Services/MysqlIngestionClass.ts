@@ -24,12 +24,50 @@ class MysqlIngestionClass extends ServiceBaseClass {
   name: string;
   tableFilter: string;
   constructor() {
-    super(Services.Database, 'cypress-mysql', 'Mysql', 'bot_entity');
+    super(Services.Database, 'cypress%mysql', 'Mysql', 'bot_entity');
     this.tableFilter = 'bot_entity{enter} alert_entity{enter} chart_entity';
   }
 
   createService() {
     super.createService();
+
+    // Edit Ingestion pipeline
+    cy.contains('td', 'metadata') // find the element with the text
+      .parent('tr') // find the parent 'tr'
+      .find('[data-testid="more-actions"]')
+      .click();
+
+    interceptURL(
+      'GET',
+      '/api/v1/services/ingestionPipelines/name/*',
+      'getIngestionDetails'
+    );
+
+    cy.get(
+      '[data-testid="actions-dropdown"]:visible [data-testid="edit-button"]'
+    ).click();
+
+    verifyResponseStatusCode('@getIngestionDetails', 200);
+
+    cy.get('#root\\/enableDebugLog').scrollIntoView().click();
+
+    cy.get('[data-testid="submit-btn"]').scrollIntoView().click();
+
+    interceptURL(
+      'PATCH',
+      '/api/v1/services/ingestionPipelines/*',
+      'updateIngestionPipeline'
+    );
+    interceptURL(
+      'POST',
+      '/api/v1/services/ingestionPipelines/deploy/*',
+      'deployIngestionPipeline'
+    );
+
+    cy.get('[data-testid="deploy-button"]').scrollIntoView().click();
+
+    verifyResponseStatusCode('@updateIngestionPipeline', 200);
+    verifyResponseStatusCode('@deployIngestionPipeline', 200);
   }
 
   fillConnectionDetails() {

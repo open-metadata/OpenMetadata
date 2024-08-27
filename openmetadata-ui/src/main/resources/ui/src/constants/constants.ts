@@ -20,6 +20,7 @@ import { ReactComponent as IconFailedBadge } from '../assets/svg/fail-badge.svg'
 import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { COOKIE_VERSION } from '../components/Modals/WhatsNewModal/whatsNewData';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
+import { Status } from '../generated/entity/applications/appRunRecord';
 import { getPartialNameFromFQN } from '../utils/CommonUtils';
 import i18n from '../utils/i18next/LocalUtil';
 import { getSettingPath } from '../utils/RouterUtils';
@@ -136,6 +137,7 @@ export const ROUTES = {
   SILENT_CALLBACK: '/silent-callback',
   NOT_FOUND: '/404',
   FORBIDDEN: '/403',
+  UNAUTHORISED: '/unauthorised',
   MY_DATA: '/my-data',
   TOUR: '/tour',
   REPORTS: '/reports',
@@ -588,4 +590,15 @@ export const STATUS_ICON = {
   success: IconSuccessBadge,
   failed: IconFailedBadge,
   completed: IconCompleteBadge,
+};
+
+export const STATUS_LABEL = {
+  [Status.Active]: 'Active',
+  [Status.ActiveError]: 'Active With Error',
+  [Status.Completed]: 'Completed',
+  [Status.Failed]: 'Failed',
+  [Status.Running]: 'Running',
+  [Status.Started]: 'Started',
+  [Status.Stopped]: 'Stopped',
+  [Status.Success]: 'Success',
 };

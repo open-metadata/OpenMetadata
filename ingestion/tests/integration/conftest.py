@@ -5,14 +5,17 @@ from typing import List, Tuple, Type
 import pytest
 
 from _openmetadata_testutils.ometa import int_admin_ometa
-from ingestion.src.metadata.ingestion.api.common import Entity
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseMetadataConfigType,
+)
 from metadata.generated.schema.metadataIngestion.workflow import LogLevels
+from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
 
 if not sys.version_info >= (3, 9):
-    collect_ignore = ["trino"]
+    collect_ignore = ["trino", "kafka"]
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -59,7 +62,7 @@ def workflow_config(metadata):
     }
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def profiler_config(db_service, workflow_config, sink_config):
     return {
         "source": {
@@ -82,7 +85,7 @@ def profiler_config(db_service, workflow_config, sink_config):
     }
 
 
-@pytest.fixture()
+@pytest.fixture(scope="module")
 def run_workflow():
     def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
@@ -152,8 +155,28 @@ def create_service_request():
     raise NotImplementedError("Implement in the test module")
 
 
-@pytest.fixture()
-def patch_passwords_for_db_services(db_service, unmask_password, monkeypatch):
+@pytest.fixture(scope="module")
+def monkeymodule():
+    with pytest.MonkeyPatch.context() as mp:
+        yield mp
+
+
+@pytest.fixture(scope="module")
+def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
+    """Patch the password for all db services returned by the metadata service.
+
+    Usage:
+
+    def test_my_test(db_service, patch_passwords_for_db_services):
+        ...
+
+    OR
+
+    @pytest.usefixtures("patch_passwords_for_db_services")
+    def test_my_test(db_service):
+        ...
+    """
+
     def override_password(getter):
         def inner(*args, **kwargs):
             result = getter(*args, **kwargs)
@@ -164,12 +187,12 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeypatch):
 
         return inner
 
-    monkeypatch.setattr(
+    monkeymodule.setattr(
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name",
         override_password(OpenMetadata.get_by_name),
     )
 
-    monkeypatch.setattr(
+    monkeymodule.setattr(
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id",
         override_password(OpenMetadata.get_by_id),
     )
@@ -187,3 +210,19 @@ def cleanup_fqns(metadata):
         entity = metadata.get_by_name(etype, fqn, fields=["*"])
         if entity:
             metadata.delete(etype, entity.id, recursive=True, hard_delete=True)
+
+
+@pytest.fixture(scope="module")
+def ingestion_config(db_service, metadata, workflow_config, sink_config):
+    return {
+        "source": {
+            "type": db_service.connection.config.type.value.lower(),
+            "serviceName": db_service.fullyQualifiedName.root,
+            "sourceConfig": {
+                "config": {"type": DatabaseMetadataConfigType.DatabaseMetadata.value}
+            },
+            "serviceConnection": db_service.connection.model_dump(),
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }

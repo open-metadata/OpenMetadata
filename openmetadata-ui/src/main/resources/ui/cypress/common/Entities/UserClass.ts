@@ -202,9 +202,9 @@ class UsersTestClass {
     interceptURL('PATCH', '/api/v1/users/*', 'updateName');
     cy.get('[data-testid="inline-save-btn"]').click();
     verifyResponseStatusCode('@updateName', 200);
-
-    cy.get('[data-testid="user-name"]').should('contain', 'Add Display Name');
-
+    cy.get(
+      '[data-testid="user-profile-details"] [data-testid="user-name"]'
+    ).should('not.exist');
     cy.get('.ant-collapse-expand-icon > .anticon > svg').click();
     cy.get('[data-testid="edit-teams-button"]').click();
     interceptURL('PATCH', '/api/v1/users/*', 'updateTeam');

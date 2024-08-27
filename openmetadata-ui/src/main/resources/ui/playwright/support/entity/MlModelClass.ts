@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -38,18 +39,21 @@ export class MlModelClass extends EntityClass {
       },
     },
   };
+
+  children = [
+    {
+      name: 'sales',
+      dataType: 'numerical',
+      description: 'Sales amount',
+    },
+  ];
+
   entity = {
     name: `pw-mlmodel-${uuid()}`,
     displayName: `pw-mlmodel-${uuid()}`,
     service: this.service.name,
     algorithm: 'Time Series',
-    mlFeatures: [
-      {
-        name: 'sales',
-        dataType: 'numerical',
-        description: 'Sales amount',
-      },
-    ],
+    mlFeatures: this.children,
   };
 
   serviceResponseData: ResponseDataType;
@@ -59,6 +63,9 @@ export class MlModelClass extends EntityClass {
     super(EntityTypeEndpoint.MlModel);
     this.service.name = name ?? this.service.name;
     this.type = 'MlModel';
+    this.childrenTabId = 'features';
+    this.childrenSelectorId = `feature-card-${this.children[0].name}`;
+    this.serviceCategory = SERVICE_TYPE.MLModels;
   }
 
   async create(apiContext: APIRequestContext) {

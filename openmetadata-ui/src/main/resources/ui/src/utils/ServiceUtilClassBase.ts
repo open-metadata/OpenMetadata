@@ -25,6 +25,7 @@ import {
   BIGTABLE,
   CLICKHOUSE,
   COUCHBASE,
+  CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
   DASHBOARD_DEFAULT,
@@ -88,6 +89,7 @@ import {
   SPLINE,
   SQLITE,
   SUPERSET,
+  SYNAPSE,
   TABLEAU,
   TERADATA,
   TOPIC_DEFAULT,
@@ -227,6 +229,8 @@ class ServiceUtilClassBase {
   public getServiceLogo(type: string) {
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
+      case this.DatabaseServiceTypeSmallCase.CustomDatabase:
+        return DATABASE_DEFAULT;
       case this.DatabaseServiceTypeSmallCase.Mysql:
         return MYSQL;
 
@@ -344,6 +348,12 @@ class ServiceUtilClassBase {
       case this.DatabaseServiceTypeSmallCase.Teradata:
         return TERADATA;
 
+      case this.DatabaseServiceTypeSmallCase.Synapse:
+        return SYNAPSE;
+
+      case this.MessagingServiceTypeSmallCase.CustomMessaging:
+        return TOPIC_DEFAULT;
+
       case this.MessagingServiceTypeSmallCase.Kafka:
         return KAFKA;
 
@@ -353,6 +363,8 @@ class ServiceUtilClassBase {
       case this.MessagingServiceTypeSmallCase.Kinesis:
         return KINESIS;
 
+      case this.DashboardServiceTypeSmallCase.CustomDashboard:
+        return DASHBOARD_DEFAULT;
       case this.DashboardServiceTypeSmallCase.Superset:
         return SUPERSET;
 
@@ -388,6 +400,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Lightdash:
         return LIGHT_DASH;
+
+      case this.PipelineServiceTypeSmallCase.CustomPipeline:
+        return PIPELINE_DEFAULT;
 
       case this.PipelineServiceTypeSmallCase.Airflow:
         return AIRFLOW;
@@ -431,6 +446,9 @@ class ServiceUtilClassBase {
       case this.PipelineServiceTypeSmallCase.Flink:
         return FLINK;
 
+      case this.MlModelServiceTypeSmallCase.CustomMlModel:
+        return ML_MODEL_DEFAULT;
+
       case this.MlModelServiceTypeSmallCase.Mlflow:
         return MLFLOW;
 
@@ -451,11 +469,17 @@ class ServiceUtilClassBase {
       case this.MetadataServiceTypeSmallCase.OpenMetadata:
         return LOGO;
 
+      case this.StorageServiceTypeSmallCase.CustomStorage:
+        return CUSTOM_STORAGE_DEFAULT;
+
       case this.StorageServiceTypeSmallCase.S3:
         return AMAZON_S3;
 
       case this.StorageServiceTypeSmallCase.Gcs:
         return GCS;
+
+      case this.SearchServiceTypeSmallCase.CustomSearch:
+        return CUSTOM_SEARCH_DEFAULT;
 
       case this.SearchServiceTypeSmallCase.ElasticSearch:
         return ELASTIC_SEARCH;
@@ -480,6 +504,8 @@ class ServiceUtilClassBase {
           logo = ML_MODEL_DEFAULT;
         } else if (serviceTypes.storageServices.includes(type)) {
           logo = CUSTOM_STORAGE_DEFAULT;
+        } else if (serviceTypes.searchServices.includes(type)) {
+          logo = CUSTOM_SEARCH_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }
