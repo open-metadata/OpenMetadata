@@ -17,6 +17,7 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-superset-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/superset/yaml"} /%}
 
@@ -102,5 +103,15 @@ You can use Postgres Connection when you have SSO enabled and your Superset is b
 {% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
+
+## Securing Superset Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and Superset, navigate to the `Advanced Config` section. We need to update the `Certificate Path` and ensure that the certificates are accessible from the Airflow Server.
+
+  {% image
+  src="/images/v1.5/connectors/ssl_superset.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
 
 {% partial file="/v1.5/connectors/troubleshooting.md" /%}

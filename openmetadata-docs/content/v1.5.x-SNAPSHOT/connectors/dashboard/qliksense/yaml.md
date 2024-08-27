@@ -198,7 +198,7 @@ source:
 
 ## Securing Qlik Sense Connection with SSL in OpenMetadata
 
-To establish secure connections between OpenMetadata and Qlik Sense, there are two ways to communicate: defining the certificate file path or using the certificates value. Navigate to the `Advanced Config` section. 
+To establish secure connections between OpenMetadata and Qlik Sense, there are two ways to communicate: defining the certificate file path or using the certificates value. 
 
 When using the local certificate file path, ensure that the certificates are accessible from the Airflow Server. You can specify the path for the `client certificate`, `client key certificate`, and `root certificate`. 
 

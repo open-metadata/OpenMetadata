@@ -17,6 +17,7 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-superset-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
 
@@ -185,6 +186,14 @@ source:
 
 {% /codePreview %}
 
+## Securing Superset Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and Superset, in the `YAML` under `sslConfig`, we need to add `caCertificate` and update the certificate path. Ensure that the certificates are accessible from the Airflow Server.
+
+```yaml
+    sslConfig:
+      caCertificate: /path/to/cacert.crt
+```
 
 {% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
 
