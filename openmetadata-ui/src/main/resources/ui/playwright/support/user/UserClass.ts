@@ -22,10 +22,21 @@ type ResponseDataType = {
   fullyQualifiedName: string;
 };
 
+type UserData = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+};
+
 export class UserClass {
-  data = generateRandomUsername();
+  data: UserData;
 
   responseData: ResponseDataType;
+
+  constructor(data?: UserData) {
+    this.data = data ? data : generateRandomUsername();
+  }
 
   async create(apiContext: APIRequestContext) {
     const response = await apiContext.post('/api/v1/users/signup', {
