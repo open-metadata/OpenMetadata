@@ -1,5 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,11 +38,12 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestCaseCondition());
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
-    conditions.add(getDomainCondition());
+    conditions.add(getDomainCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getAssignee());
     conditions.add(getEventSubscriptionAlertType());
+    conditions.add(getApiCollectionCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -102,12 +105,21 @@ public class ListFilter extends Filter<ListFilter> {
     return testSuiteName == null ? "" : getFqnPrefixCondition(null, testSuiteName, "testSuite");
   }
 
-  private String getDomainCondition() {
+  private String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
     return domainId == null
         ? ""
-        : "(id in (SELECT toId FROM entity_relationship WHERE fromEntity='domain' AND fromId=:domainId AND "
-            + "relation=10))";
+        : String.format(
+            "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+                + "relation=10))",
+            nullOrEmpty(tableName) ? "id" : String.format("%s.id", tableName), domainId);
+  }
+
+  public String getApiCollectionCondition(String apiEndpoint) {
+    String apiCollection = queryParams.get("apiCollection");
+    return apiCollection == null
+        ? ""
+        : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
   }
 
   private String getEntityFQNHashCondition() {

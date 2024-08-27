@@ -72,6 +72,7 @@ from metadata.generated.schema.type.basic import (
     Timestamp,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 
@@ -137,8 +138,12 @@ class OMetaTableTest(TestCase):
     user: User = metadata.create_or_update(
         data=CreateUserRequest(name="random-user", email="random@user.com"),
     )
-    owner = EntityReference(
-        id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+    owners = EntityReferenceList(
+        root=[
+            EntityReference(
+                id=user.id, type="user", fullyQualifiedName=user.fullyQualifiedName.root
+            )
+        ]
     )
 
     service = CreateDatabaseServiceRequest(
@@ -222,7 +227,7 @@ class OMetaTableTest(TestCase):
 
         self.assertEqual(res.name, self.entity.name)
         self.assertEqual(res.databaseSchema.id, self.entity.databaseSchema.id)
-        self.assertEqual(res.owner, None)
+        self.assertEqual(res.owners, EntityReferenceList(root=[]))
 
     def test_update(self):
         """
@@ -231,8 +236,8 @@ class OMetaTableTest(TestCase):
 
         res_create = self.metadata.create_or_update(data=self.create)
 
-        updated = self.create.dict(exclude_unset=True)
-        updated["owner"] = self.owner
+        updated = self.create.model_dump(exclude_unset=True)
+        updated["owners"] = self.owners
         updated_entity = CreateTableRequest(**updated)
 
         res = self.metadata.create_or_update(data=updated_entity)
@@ -243,7 +248,7 @@ class OMetaTableTest(TestCase):
             updated_entity.databaseSchema.root,
         )
         self.assertEqual(res_create.id, res.id)
-        self.assertEqual(res.owner.id, self.user.id)
+        self.assertEqual(res.owners.root[0].id, self.user.id)
 
     def test_get_name(self):
         """
@@ -517,7 +522,7 @@ class OMetaTableTest(TestCase):
         # Validate that we can properly add user information
         query_with_user = CreateQueryRequest(
             query="select * from second_awesome",
-            users=[self.owner.fullyQualifiedName],
+            users=[self.owners.root[0].fullyQualifiedName],
             service=FullyQualifiedEntityName(self.service.name.root),
         )
 
@@ -536,7 +541,7 @@ class OMetaTableTest(TestCase):
             None,
         )
         assert len(query_with_owner.users) == 1
-        assert query_with_owner.users[0].id == self.owner.id
+        assert query_with_owner.users[0].id == self.owners.root[0].id
 
     def test_list_versions(self):
         """

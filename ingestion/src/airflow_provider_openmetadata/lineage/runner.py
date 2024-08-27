@@ -200,7 +200,7 @@ class AirflowLineageRunner:
             return self.metadata.patch(
                 entity=Pipeline,
                 source=pipeline,
-                destination=pipeline.copy(update=pipeline_request.__dict__),
+                destination=pipeline.model_copy(update=pipeline_request.__dict__),
                 allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
                 restrict_update_fields=RESTRICT_UPDATE_LIST,
             )

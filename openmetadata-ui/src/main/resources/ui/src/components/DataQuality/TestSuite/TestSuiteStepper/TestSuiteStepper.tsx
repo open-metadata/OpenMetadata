@@ -62,15 +62,17 @@ const TestSuiteStepper = () => {
       return curr.id ? [...ids, curr.id] : ids;
     }, [] as string[]);
     try {
-      const owner = {
-        id: currentUser?.id ?? '',
-        type: OwnerType.USER,
-      };
+      const owners = [
+        {
+          id: currentUser?.id ?? '',
+          type: OwnerType.USER,
+        },
+      ];
 
       const response = await createTestSuites({
         name: testSuiteResponse?.name ?? '',
         description: testSuiteResponse?.description,
-        owner,
+        owners,
       });
       setTestSuiteResponse(response);
       await addTestCaseToLogicalTestSuite({
@@ -131,7 +133,9 @@ const TestSuiteStepper = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -175,7 +179,7 @@ const TestSuiteStepper = () => {
             )}
           />
         ),
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

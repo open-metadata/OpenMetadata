@@ -12,8 +12,10 @@
 """
 Common Class For Profiler Converter.
 """
+from typing import Dict, Set
 
 import sqlalchemy
+from sqlalchemy.sql.sqltypes import TypeEngine
 
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source import sqa_types
@@ -48,8 +50,8 @@ class CommonMapTypes:
         DataType.CHAR: sqlalchemy.CHAR,
         DataType.VARCHAR: sqlalchemy.VARCHAR,
         DataType.BOOLEAN: sqlalchemy.BOOLEAN,
-        DataType.BINARY: sqlalchemy.LargeBinary,
-        DataType.VARBINARY: sqlalchemy.VARBINARY,
+        DataType.BINARY: CustomTypes.BYTES.value,
+        DataType.VARBINARY: CustomTypes.BYTES.value,
         DataType.ARRAY: CustomTypes.ARRAY.value,
         DataType.BLOB: CustomTypes.BYTES.value,
         DataType.LONGBLOB: sqlalchemy.LargeBinary,
@@ -78,10 +80,10 @@ class CommonMapTypes:
         return self.return_custom_type(col, table_service_type)
 
     def return_custom_type(self, col: Column, _):
-        return self._TYPE_MAP.get(col.dataType)
+        return self._TYPE_MAP.get(col.dataType, CustomTypes.UNDETERMINED.value)
 
     @staticmethod
-    def map_sqa_to_om_types() -> dict:
+    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:
         """returns an ORM type"""
         return {
             sqlalchemy.NUMERIC: {DataType.NUMBER, DataType.NUMERIC},

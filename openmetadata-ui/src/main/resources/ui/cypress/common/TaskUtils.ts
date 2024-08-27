@@ -19,7 +19,9 @@ import {
 
 const owner = 'admin';
 const assignee = 'adam.matthews2';
+const assigneeDisplayName = 'Adam Matthews';
 const secondAssignee = 'aaron_johnson0';
+const secondAssigneeDisplayName = 'Aaron Johnson';
 
 export type TaskDetails = {
   assignee?: string;
@@ -44,9 +46,14 @@ export const verifyTaskDetails = (
       expect(matches).to.not.be.null;
     });
 
+  // creator of the task
   cy.get('[data-testid="owner-link"]').should('contain', owner);
 
-  cy.get(`[data-testid="${taskAssignee ?? assignee}"]`).should('be.visible');
+  // assignee of the task
+  cy.get('[data-testid="task-assignees"] [data-testid="owner-link"]').should(
+    'contain',
+    taskAssignee ?? assigneeDisplayName
+  );
 };
 
 export const editAssignee = () => {
@@ -71,7 +78,14 @@ export const editAssignee = () => {
 
   verifyResponseStatusCode('@editAssignee', 200);
 
-  cy.get(`[data-testid="${assignee}"]`).should('be.visible');
+  cy.get('[data-testid="task-assignees"] [data-testid="owner-link"]').should(
+    'contain',
+    assigneeDisplayName
+  );
+  cy.get('[data-testid="task-assignees"] [data-testid="owner-link"]').should(
+    'contain',
+    secondAssigneeDisplayName
+  );
 };
 
 export const createDescriptionTask = (
@@ -99,6 +113,10 @@ export const createDescriptionTask = (
     );
     // select value from dropdown
     verifyResponseStatusCode('@suggestApi', 200);
+
+    cy.get(
+      '.ant-select-dropdown .rc-virtual-list .rc-virtual-list-holder-inner'
+    ).should('be.visible');
 
     cy.get(`[data-testid="${value.assignee ?? assignee}"]`)
       .should('be.visible')

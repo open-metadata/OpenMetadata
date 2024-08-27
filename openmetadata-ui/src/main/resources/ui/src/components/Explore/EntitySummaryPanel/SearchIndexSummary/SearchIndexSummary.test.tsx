@@ -143,6 +143,7 @@ describe('SearchIndexSummary component tests', () => {
             ...mockSearchIndexEntityDetails,
             tags: [
               {
+                name: 'Tier1',
                 tagFQN: 'Tier.Tier1',
                 labelType: LabelType.Manual,
                 description: '',

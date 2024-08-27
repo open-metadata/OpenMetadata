@@ -22,6 +22,7 @@ import {
 import { t } from 'i18next';
 import {
   cloneDeep,
+  get,
   isEmpty,
   isEqual,
   isObject,
@@ -36,11 +37,17 @@ import {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
+import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
+import { VersionButton } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { EntityField } from '../constants/Feeds.constants';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import { Column as ContainerColumn } from '../generated/entity/data/container';
 import { Column as DataModelColumn } from '../generated/entity/data/dashboardDataModel';
+import { Glossary } from '../generated/entity/data/glossary';
+import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Column as TableColumn } from '../generated/entity/data/table';
 import { Field } from '../generated/entity/data/topic';
 import {
@@ -591,12 +598,17 @@ export const getEntityReferenceDiffFromFieldName = (
 
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
-  owner?: EntityReference,
+  owners?: EntityReference[],
   tier?: TagLabel,
   domain?: EntityReference
 ) => {
-  const { entityRef: ownerRef, entityDisplayName: ownerDisplayName } =
-    getEntityReferenceDiffFromFieldName('owner', changeDescription, owner);
+  // const { entityRef: ownerRef, entityDisplayName: ownerDisplayName } =
+  //   getEntityReferenceDiffFromFieldName('owners', changeDescription, owners);
+
+  const { owners: ownerRef, ownerDisplayName } = getOwnerDiff(
+    owners ?? [],
+    changeDescription
+  );
 
   const { entityDisplayName: domainDisplayName } =
     getEntityReferenceDiffFromFieldName('domain', changeDescription, domain);
@@ -898,7 +910,7 @@ export const getBasicEntityInfoFromVersionData = (
   entityType: EntityType
 ) => ({
   tier: getTierTags(currentVersionData.tags ?? []),
-  owner: currentVersionData.owner,
+  owners: currentVersionData.owners,
   domain: (currentVersionData as Exclude<VersionEntityTypes, MetadataService>)
     .domain,
   breadcrumbLinks: getEntityBreadcrumbs(currentVersionData, entityType),
@@ -923,3 +935,128 @@ export const getCommonDiffsFromVersionData = (
     currentVersionData.description
   ),
 });
+
+export const renderVersionButton = (
+  version: string,
+  current: string,
+  versionHandler: (version: string) => void,
+  className?: string
+) => {
+  const currV = JSON.parse(version);
+
+  const majorVersionChecks = () => {
+    return isMajorVersion(
+      parseFloat(currV?.changeDescription?.previousVersion)
+        .toFixed(1)
+        .toString(),
+      parseFloat(currV?.version).toFixed(1).toString()
+    );
+  };
+
+  return (
+    <Fragment key={currV.version}>
+      <VersionButton
+        className={className}
+        isMajorVersion={majorVersionChecks()}
+        selected={toString(currV.version) === current}
+        version={currV}
+        onVersionSelect={versionHandler}
+      />
+    </Fragment>
+  );
+};
+
+const getOwnerLabelName = (
+  reviewer: EntityReference,
+  operation: EntityChangeOperations
+) => {
+  switch (operation) {
+    case EntityChangeOperations.ADDED:
+      return getAddedDiffElement(getEntityName(reviewer));
+    case EntityChangeOperations.DELETED:
+      return getRemovedDiffElement(getEntityName(reviewer));
+    case EntityChangeOperations.UPDATED:
+    case EntityChangeOperations.NORMAL:
+    default:
+      return getEntityName(reviewer);
+  }
+};
+
+export const getOwnerDiff = (
+  defaultItems: EntityReference[],
+  changeDescription?: ChangeDescription,
+  ownerField = TabSpecificField.OWNERS
+) => {
+  const fieldDiff = getDiffByFieldName(
+    ownerField,
+    changeDescription as ChangeDescription
+  );
+
+  const addedItems: EntityReference[] = JSON.parse(
+    getChangedEntityNewValue(fieldDiff) ?? '[]'
+  );
+  const deletedItems: EntityReference[] = JSON.parse(
+    getChangedEntityOldValue(fieldDiff) ?? '[]'
+  );
+
+  const unchangedItems = defaultItems.filter(
+    (item: EntityReference) =>
+      !addedItems.find((addedItem: EntityReference) => addedItem.id === item.id)
+  );
+
+  const allItems = [
+    ...unchangedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.NORMAL,
+    })),
+    ...addedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.ADDED,
+    })),
+    ...deletedItems.map((item) => ({
+      item,
+      operation: EntityChangeOperations.DELETED,
+    })),
+  ];
+
+  return {
+    owners: allItems.map(({ item }) => item),
+    ownerDisplayName: allItems.map(({ item, operation }) =>
+      getOwnerLabelName(item, operation)
+    ),
+  };
+};
+
+export const getOwnerVersionLabel = (
+  entity: Glossary | GlossaryTerm,
+  isVersionView: boolean,
+  ownerField = TabSpecificField.OWNERS, // Can be owners, experts, reviewers all are OwnerLabels
+  hasPermission = true
+) => {
+  const defaultItems: EntityReference[] = get(entity, ownerField, []);
+
+  if (isVersionView) {
+    const { owners, ownerDisplayName } = getOwnerDiff(
+      defaultItems,
+      entity.changeDescription,
+      ownerField
+    );
+
+    if (!isEmpty(owners)) {
+      return <OwnerLabel ownerDisplayName={ownerDisplayName} owners={owners} />;
+    }
+  }
+
+  if (defaultItems.length > 0) {
+    return (
+      <OwnerLabel
+        ownerDisplayName={defaultItems.map((item: EntityReference) =>
+          getOwnerLabelName(item, EntityChangeOperations.NORMAL)
+        )}
+        owners={defaultItems}
+      />
+    );
+  }
+
+  return hasPermission ? null : <div>{NO_DATA_PLACEHOLDER}</div>;
+};

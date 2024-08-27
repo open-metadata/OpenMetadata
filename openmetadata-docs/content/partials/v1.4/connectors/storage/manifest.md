@@ -121,23 +121,51 @@ Again, this information will be added on top of the inferred schema from the dat
 
 ### Global Manifest
 
-You can also manage a **single** manifest file to centralize the ingestion process for any container. In that case,
+You can also manage a **single** manifest file to centralize the ingestion process for any container, named `openmetadata_storage_manifest.json`. For example:
+
+In that case,
 you will need to add a `containerName` entry to the structure above. For example:
 
-```yaml
+{% codePreview %}
+
+{% codeInfoContainer %}
+
+{% codeInfo srNumber=1 %}
+
+The fields shown above (`dataPath`, `structureFormat`, `isPartitioned`, etc.) are still valid. 
+
+{% /codeInfo %}
+
+{% codeInfo srNumber=2 %}
+
+**Container Name**: Since we are using a single manifest for all your containers, the field `containerName` will
+help us identify which container (or Bucket in S3, etc.), contains the presented information.
+
+{% /codeInfo %}
+
+{% /codeInfoContainer %}
+
+{% codeBlock fileName="openmetadata-global.json" %}
+
+```json {% srNumber=1 %}
 {
   "entries": [
     {
       "dataPath": "transactions",
       "structureFormat": "csv",
       "isPartitioned": false,
+```
+
+```json {% srNumber=2 %}
       "containerName": "collate-demo-storage"
     }
   ]
 }
 ```
 
-You can also keep local manifests in each container, but if possible, we will always try to pick up the global manifest
-during the ingestion.
+{% /codeBlock %}
 
-We will look for a file named `openmetadata_storage_manifest.json`.
+{% /codePreview %}
+
+You can also keep local manifests `openmetadata.json` in each container, but if possible, we will always try to pick up the global manifest
+during the ingestion.

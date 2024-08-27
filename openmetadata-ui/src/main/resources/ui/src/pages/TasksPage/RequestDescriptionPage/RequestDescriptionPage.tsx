@@ -47,6 +47,7 @@ import {
   fetchOptions,
   getBreadCrumbList,
   getTaskAssignee,
+  getTaskEntityFQN,
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -64,7 +65,7 @@ const RequestDescription = () => {
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
-  const { fqn: decodedEntityFQN } = useFqn();
+  const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -75,6 +76,11 @@ const RequestDescription = () => {
   const [assignees, setAssignees] = useState<Array<Option>>([]);
   const [suggestion, setSuggestion] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const entityFQN = useMemo(
+    () => getTaskEntityFQN(entityType, fqn),
+    [fqn, entityType]
+  );
 
   const taskMessage = useMemo(
     () =>
@@ -116,7 +122,7 @@ const RequestDescription = () => {
       const data: CreateThread = {
         from: currentUser?.name as string,
         message: value.title || taskMessage,
-        about: getEntityFeedLink(entityType, decodedEntityFQN, getTaskAbout()),
+        about: getEntityFeedLink(entityType, entityFQN, getTaskAbout()),
         taskDetails: {
           assignees: assignees.map((assignee) => ({
             id: assignee.value,
@@ -138,7 +144,7 @@ const RequestDescription = () => {
           history.push(
             entityUtilClassBase.getEntityLink(
               entityType,
-              decodedEntityFQN,
+              entityFQN,
               EntityTabs.ACTIVITY_FEED,
               ActivityFeedTabs.TASKS
             )
@@ -152,8 +158,8 @@ const RequestDescription = () => {
   };
 
   useEffect(() => {
-    fetchEntityDetail(entityType, decodedEntityFQN, setEntityData);
-  }, [decodedEntityFQN, entityType]);
+    fetchEntityDetail(entityType, entityFQN, setEntityData);
+  }, [entityFQN, entityType]);
 
   useEffect(() => {
     const defaultAssignee = getTaskAssignee(entityData as Glossary);
@@ -174,7 +180,9 @@ const RequestDescription = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -280,6 +288,7 @@ const RequestDescription = () => {
       }}
       pageTitle={t('label.task')}
       secondPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,
         children: (

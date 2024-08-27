@@ -57,6 +57,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DashboardServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -73,10 +74,10 @@ public class DashboardServiceResource
     extends ServiceEntityResource<
         DashboardService, DashboardServiceRepository, DashboardConnection> {
   public static final String COLLECTION_PATH = "v1/services/dashboardServices";
-  static final String FIELDS = "owner,domain";
+  static final String FIELDS = "owners,domain";
 
-  public DashboardServiceResource(Authorizer authorizer) {
-    super(Entity.DASHBOARD_SERVICE, authorizer, ServiceType.DASHBOARD);
+  public DashboardServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DASHBOARD_SERVICE, authorizer, limits, ServiceType.DASHBOARD);
   }
 
   public static class DashboardServiceList extends ResultList<DashboardService> {

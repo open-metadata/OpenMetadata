@@ -31,7 +31,7 @@
     "indexName": "chart_search_index",
     "alias": "chart",
     "indexMappingFile": "/elasticsearch/%s/chart_index_mapping.json",
-    "parentAliases": ["dashboard", "dashboardService", "dataAsset"],
+    "parentAliases": ["dashboard", "dashboardService", "all", "dataAsset"],
     "childAliases": []
   },
   "dashboard": {
@@ -94,14 +94,14 @@
     "indexName": "test_case_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
-    "parentAliases": ["testSuite"],
+    "parentAliases": ["testSuite", "all"],
     "childAliases": ["testCaseResolutionStatus"]
   },
   "testSuite": {
     "indexName": "test_suite_search_index",
     "indexMappingFile": "/elasticsearch/%s/test_suite_index_mapping.json",
     "alias": "testSuite",
-    "parentAliases": [],
+    "parentAliases": ["all"],
     "childAliases": ["testCase", "testCaseResolutionStatus"]
   },
   "dataProduct": {
@@ -249,6 +249,27 @@
     "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
     "parentAliases": ["all"],
+    "childAliases": ["mlmodel"]
+  },
+  "apiService": {
+    "indexName": "api_service_search_index",
+    "indexMappingFile": "/elasticsearch/%s/api_service_index_mapping.json",
+    "alias": "apiService",
+    "parentAliases": ["all"],
+    "childAliases": ["apiCollection", "apiEndpoint"]
+  },
+  "apiCollection": {
+    "indexName": "api_collection_search_index",
+    "alias": "apiCollection",
+    "indexMappingFile": "/elasticsearch/%s/api_collection_index_mapping.json",
+    "parentAliases": ["apiService", "all", "dataAsset"],
+    "childAliases": ["apiEndpoint"]
+  },
+  "apiEndpoint": {
+    "indexName": "api_endpoint_search_index",
+    "alias": "apiEndpoint",
+    "indexMappingFile": "/elasticsearch/%s/api_endpoint_index_mapping.json",
+    "parentAliases": ["apiService", "apiCollection", "all", "dataAsset"],
     "childAliases": []
   },
   "testCaseResolutionStatus": {

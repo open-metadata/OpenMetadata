@@ -37,7 +37,6 @@ import {
   removeOwner,
 } from '../../common/Utils/Owner';
 import { assignTags, removeTags } from '../../common/Utils/Tags';
-import { GLOSSARY_DROPDOWN_ITEMS } from '../../constants/advancedSearchQuickFilters.constants';
 import {
   COLUMN_NAME_FOR_APPLY_GLOSSARY_TERM,
   DELETE_TERM,
@@ -160,7 +159,10 @@ const removeAssetsFromGlossaryTerm = (glossaryTerm, glossary) => {
 const deleteGlossaryTerm = ({ name, fullyQualifiedName }) => {
   visitGlossaryTermPage(name, fullyQualifiedName);
 
-  cy.get('[data-testid="manage-button"]').should('be.visible').click();
+  cy.get('[data-testid="manage-button"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
   cy.get('[data-testid="delete-button"]')
     .scrollIntoView()
     .should('be.visible')
@@ -198,7 +200,10 @@ const goToAssetsTab = (
 ) => {
   visitGlossaryTermPage(name, fqn, fetchPermission);
 
-  cy.get('[data-testid="assets"]').should('be.visible').click();
+  cy.get('[data-testid="assets"]')
+    .scrollIntoView()
+    .should('be.visible')
+    .click();
   cy.get('.ant-tabs-tab-active').contains('Assets').should('be.visible');
 };
 
@@ -376,7 +381,10 @@ const approveGlossaryTermWorkflow = ({ glossary, glossaryTerm }) => {
 
   interceptURL('PUT', '/api/v1/feed/tasks/*/resolve', 'resolveTask');
 
-  cy.get('[data-testid="approve-task"]').click();
+  // approve the task
+  cy.get(
+    '[data-testid="glossary-accept-reject-task-dropdown"] .ant-btn-compact-first-item > span'
+  ).click();
 
   verifyResponseStatusCode('@resolveTask', 200);
 
@@ -472,29 +480,6 @@ const deleteUser = () => {
   });
 };
 
-const verifyStatusFilterInExplore = (statusField: string) => {
-  const fieldName = Cypress._.toLower(statusField);
-  const glossaryTermStatusFilter = GLOSSARY_DROPDOWN_ITEMS.find(
-    (item) => item.key === 'status'
-  );
-
-  cy.sidebarClick(SidebarItem.EXPLORE);
-  cy.get(`[data-testid="glossary terms-tab"]`).scrollIntoView().click();
-  cy.get(`[data-testid="search-dropdown-${glossaryTermStatusFilter.label}"]`)
-    .scrollIntoView()
-    .click();
-  cy.get(`[data-testid=${fieldName}]`)
-    .should('exist')
-    .and('be.visible')
-    .click();
-
-  const querySearchURL = `/api/v1/search/query?*index=glossary_term_search_index*query_filter=*should*${glossaryTermStatusFilter.key}*${fieldName}*`;
-
-  interceptURL('GET', querySearchURL, 'querySearchAPI');
-  cy.get('[data-testid="update-btn"]').click();
-  verifyResponseStatusCode('@querySearchAPI', 200);
-};
-
 describe('Glossary page should work properly', { tags: 'Governance' }, () => {
   before(() => {
     // Prerequisites - Create a user with data consumer role
@@ -519,7 +504,7 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
         interceptURL('GET', `/api/v1/teams/**`, 'getTeams');
         interceptURL(
           'GET',
-          `/api/v1/users?fields=teams%2Croles&limit=25&team=${appName}`,
+          `/api/v1/users?fields=*&limit=25&team=${appName}`,
           'teamUsers'
         );
 
@@ -588,16 +573,13 @@ describe('Glossary page should work properly', { tags: 'Governance' }, () => {
     cy.reload();
     addOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
     cy.reload();
-    removeOwner('Alex Pollard', GLOSSARY_OWNER_LINK_TEST_ID);
+    removeOwner('Alex Pollard', 'Users', GLOSSARY_OWNER_LINK_TEST_ID);
   });
 
   it('Create glossary term should work properly', () => {
     createGlossaryTerms(GLOSSARY_1);
     createGlossaryTerms(GLOSSARY_2);
     createGlossaryTerms(GLOSSARY_3);
-
-    verifyStatusFilterInExplore('Approved');
-    verifyStatusFilterInExplore('Draft');
   });
 
   it('Updating data of glossary should work properly', () => {

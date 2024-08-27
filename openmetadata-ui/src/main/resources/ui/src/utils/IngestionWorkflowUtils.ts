@@ -36,6 +36,7 @@ export const getMetadataSchemaByServiceCategory = (
   serviceCategory: ServiceCategory
 ) => {
   switch (serviceCategory) {
+    case ServiceCategory.METADATA_SERVICES:
     case ServiceCategory.DATABASE_SERVICES:
       return databaseMetadataPipeline;
     case ServiceCategory.DASHBOARD_SERVICES:

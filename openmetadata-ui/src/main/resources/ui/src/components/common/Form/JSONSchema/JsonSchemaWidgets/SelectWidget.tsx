@@ -14,15 +14,18 @@ import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
 import { capitalize } from 'lodash';
 import React, { FC } from 'react';
+import TreeSelectWidget from './TreeSelectWidget';
 
-const SelectWidget: FC<WidgetProps> = ({
-  onFocus,
-  onBlur,
-  onChange,
-  ...rest
-}) => {
+const SelectWidget: FC<WidgetProps> = (props) => {
+  if (props.schema.uiFieldType === 'treeSelect') {
+    return <TreeSelectWidget {...props} />;
+  }
+
+  const { onFocus, onBlur, onChange, ...rest } = props;
+
   return (
     <Select
+      allowClear
       autoFocus={rest.autofocus}
       className="d-block w-full"
       data-testid="select-widget"

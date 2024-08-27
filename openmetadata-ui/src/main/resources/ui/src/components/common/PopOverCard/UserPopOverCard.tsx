@@ -32,6 +32,8 @@ import {
   getUserPath,
   TERM_ADMIN,
 } from '../../../constants/constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -39,7 +41,6 @@ import { getUserByName } from '../../../rest/userAPI';
 import { getNonDeletedTeams } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getUserWithImage } from '../../../utils/UserDataUtils';
-import { UserTeam } from '../AssigneeList/AssigneeList.interface';
 import Loader from '../Loader/Loader';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 
@@ -106,12 +107,12 @@ const UserRoles = React.memo(({ userName }: { userName: string }) => {
 const PopoverContent = React.memo(
   ({
     userName,
-    type = UserTeam.User,
+    type = OwnerType.USER,
   }: {
     userName: string;
-    type: UserTeam;
+    type: OwnerType;
   }) => {
-    const isTeam = type === UserTeam.Team;
+    const isTeam = type === OwnerType.TEAM;
     const [, , user = {}] = useUserProfile({
       permission: true,
       name: userName,
@@ -125,7 +126,9 @@ const PopoverContent = React.memo(
     const getUserWithAdditionalDetails = useCallback(async () => {
       try {
         setLoading(true);
-        let user = await getUserByName(userName, { fields: 'teams, roles' });
+        let user = await getUserByName(userName, {
+          fields: [TabSpecificField.TEAMS, TabSpecificField.ROLES],
+        });
         user = getUserWithImage(user);
 
         updateUserProfilePics({
@@ -172,18 +175,18 @@ const PopoverTitle = React.memo(
   ({
     userName,
     profilePicture,
-    type = UserTeam.User,
+    type = OwnerType.USER,
   }: {
     userName: string;
     profilePicture: JSX.Element;
-    type: UserTeam;
+    type: OwnerType;
   }) => {
     const history = useHistory();
 
     const [, , userData] = useUserProfile({
       permission: true,
       name: userName,
-      isTeam: type === UserTeam.Team,
+      isTeam: type === OwnerType.TEAM,
     });
 
     const onTitleClickHandler = (path: string) => {
@@ -218,7 +221,7 @@ const PopoverTitle = React.memo(
 interface Props extends HTMLAttributes<HTMLDivElement> {
   userName: string;
   displayName?: ReactNode;
-  type?: UserTeam;
+  type?: OwnerType;
   showUserName?: boolean;
   showUserProfile?: boolean;
   profileWidth?: number;
@@ -228,7 +231,7 @@ interface Props extends HTMLAttributes<HTMLDivElement> {
 const UserPopOverCard: FC<Props> = ({
   userName,
   displayName,
-  type = UserTeam.User,
+  type = OwnerType.USER,
   showUserName = false,
   showUserProfile = true,
   children,
@@ -238,7 +241,7 @@ const UserPopOverCard: FC<Props> = ({
   const profilePicture = (
     <ProfilePicture
       avatarType="outlined"
-      isTeam={type === UserTeam.Team}
+      isTeam={type === OwnerType.TEAM}
       name={userName}
       width={`${profileWidth}`}
     />
@@ -268,7 +271,7 @@ const UserPopOverCard: FC<Props> = ({
           )}
           data-testid={userName}
           to={
-            type === UserTeam.Team
+            type === OwnerType.TEAM
               ? getTeamAndUserDetailsPath(userName)
               : getUserPath(userName ?? '')
           }>

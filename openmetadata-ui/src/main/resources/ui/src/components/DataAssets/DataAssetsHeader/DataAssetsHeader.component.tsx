@@ -36,7 +36,11 @@ import {
 } from '../../../constants/constants';
 import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { Container } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
@@ -55,6 +59,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { getTierTags } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
+import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
@@ -63,6 +68,7 @@ import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.compon
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
+import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -76,13 +82,17 @@ import {
 export const ExtraInfoLabel = ({
   label,
   value,
+  dataTestId,
 }: {
   label: string;
   value: string | number;
+  dataTestId?: string;
 }) => (
   <>
     <Divider className="self-center" type="vertical" />
-    <Typography.Text className="self-center text-xs whitespace-nowrap">
+    <Typography.Text
+      className="self-center text-xs whitespace-nowrap"
+      data-testid={dataTestId}>
       {!isEmpty(label) && (
         <span className="text-grey-muted">{`${label}: `}</span>
       )}
@@ -167,6 +177,7 @@ export const DataAssetsHeader = ({
       [
         EntityType.DATABASE,
         EntityType.DATABASE_SCHEMA,
+        EntityType.API_COLLECTION,
         ...SERVICE_TYPES,
       ].includes(entityType),
     [entityType]
@@ -228,7 +239,7 @@ export const DataAssetsHeader = ({
     setIsBreadcrumbLoading(true);
     try {
       const response = await getContainerByName(parentName, {
-        fields: 'parent',
+        fields: TabSpecificField.PARENT,
       });
       const updatedParent = [response, ...parents];
       if (response?.parent?.fullyQualifiedName) {
@@ -327,7 +338,7 @@ export const DataAssetsHeader = ({
       () => ({
         editDomainPermission: permissions.EditAll && !dataAsset.deleted,
         editOwnerPermission:
-          (permissions.EditAll || permissions.EditOwner) && !dataAsset.deleted,
+          (permissions.EditAll || permissions.EditOwners) && !dataAsset.deleted,
         editTierPermission:
           (permissions.EditAll || permissions.EditTags) && !dataAsset.deleted,
       }),
@@ -372,16 +383,20 @@ export const DataAssetsHeader = ({
                 )}
                 <OwnerLabel
                   hasPermission={editOwnerPermission}
-                  owner={dataAsset?.owner}
+                  owners={dataAsset?.owners}
                   onUpdate={onOwnerUpdate}
                 />
                 <Divider className="self-center" type="vertical" />
                 <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                   <Space data-testid="header-tier-container">
                     {tier ? (
-                      <span className="font-medium text-xs" data-testid="Tier">
-                        {getEntityName(tier)}
-                      </span>
+                      <TagsV1
+                        startWith={TAG_START_WITH.SOURCE_ICON}
+                        tag={tier}
+                        tagProps={{
+                          'data-testid': 'Tier',
+                        }}
+                      />
                     ) : (
                       <span className="font-medium text-xs" data-testid="Tier">
                         {t('label.no-entity', {

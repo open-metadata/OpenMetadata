@@ -115,9 +115,9 @@
       },
       "default": null
     },
-    "owner": {
-      "description": "Owner of this pipeline service.",
-      "$ref": "../../type/entityReference.json"
+    "owners": {
+      "description": "Owners of this pipeline service.",
+      "$ref": "../../type/entityReferenceList.json"
     },
     "href": {
       "description": "Link to the resource corresponding to this pipeline service.",

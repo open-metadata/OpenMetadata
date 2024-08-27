@@ -24,6 +24,9 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
+import { APICollection } from '../../../generated/entity/data/apiCollection';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Chart } from '../../../generated/entity/data/chart';
 import { Container } from '../../../generated/entity/data/container';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
@@ -37,6 +40,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
 import { DatabaseService } from '../../../generated/entity/services/databaseService';
 import { MessagingService } from '../../../generated/entity/services/messagingService';
@@ -50,6 +54,9 @@ import searchClassBase from '../../../utils/SearchClassBase';
 import { stringToHTML } from '../../../utils/StringsUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
+import APICollectionSummary from './APICollectionSummary/APICollectionSummary';
+import APIEndpointSummary from './APIEndpointSummary/APIEndpointSummary';
+import ChartSummary from './ChartSummary/ChartSummary.component';
 import ContainerSummary from './ContainerSummary/ContainerSummary.component';
 import DashboardSummary from './DashboardSummary/DashboardSummary.component';
 import DatabaseSchemaSummary from './DatabaseSchemaSummary/DatabaseSchemaSummary.component';
@@ -145,6 +152,14 @@ export default function EntitySummaryPanel({
         return (
           <DashboardSummary
             entityDetails={entity as Dashboard}
+            highlights={highlights}
+          />
+        );
+
+      case EntityType.CHART:
+        return (
+          <ChartSummary
+            entityDetails={entity as Chart}
             highlights={highlights}
           />
         );
@@ -279,6 +294,28 @@ export default function EntitySummaryPanel({
             entityDetails={entity as SearchService}
             highlights={highlights}
             type={ExplorePageTabs.SEARCH_INDEX_SERVICE}
+          />
+        );
+      case EntityType.API_SERVICE:
+        return (
+          <ServiceSummary
+            entityDetails={entity as APIService}
+            highlights={highlights}
+            type={ExplorePageTabs.API_SERVICE}
+          />
+        );
+      case EntityType.API_ENDPOINT:
+        return (
+          <APIEndpointSummary
+            entityDetails={entity as APIEndpoint}
+            highlights={highlights}
+          />
+        );
+      case EntityType.API_COLLECTION:
+        return (
+          <APICollectionSummary
+            entityDetails={entity as APICollection}
+            highlights={highlights}
           />
         );
 

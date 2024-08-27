@@ -47,6 +47,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
   INITIAL_PAGING_VALUE,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -54,6 +55,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -219,7 +221,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         decodedDatabaseSchemaFQN,
         {
           // eslint-disable-next-line max-len
-          fields: `${TabSpecificField.OWNER},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+          fields: `${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
           include: Include.All,
         }
       );
@@ -229,6 +231,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       setShowDeletedTables(response.deleted ?? false);
     } catch (err) {
       // Error
+      if ((err as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsSchemaDetailsLoading(false);
     }
@@ -319,11 +324,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   );
 
   const handleUpdateOwner = useCallback(
-    async (owner: DatabaseSchema['owner']) => {
+    async (owners: DatabaseSchema['owners']) => {
       try {
         const updatedData = {
           ...databaseSchema,
-          owner: owner,
+          owners,
         };
 
         const response = await saveUpdatedDatabaseSchemaData(
@@ -340,7 +345,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         );
       }
     },
-    [databaseSchema, databaseSchema?.owner]
+    [databaseSchema, databaseSchema?.owners]
   );
 
   const handleTagsUpdate = async (selectedTags?: Array<EntityTags>) => {
@@ -579,10 +584,10 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       key: EntityTabs.TABLE,
       children: (
         <Row gutter={[0, 16]} wrap={false}>
-          <Col className="tab-content-height" span={24}>
+          <Col className="tab-content-height-with-resizable-panel" span={24}>
             <ResizablePanels
-              applyDefaultStyle={false}
               firstPanel={{
+                className: 'entity-resizable-panel-container',
                 children: (
                   <div className="p-t-sm m-x-lg">
                     <SchemaTablesTab
@@ -630,7 +635,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
                 ),
                 minWidth: 320,
                 flex: 0.13,
-                className: 'entity-resizable-right-panel-container',
+                className:
+                  'entity-resizable-right-panel-container entity-resizable-panel-container',
               }}
             />
           </Col>
@@ -703,7 +709,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       const response = await getDatabaseSchemaDetailsByFQN(
         decodedDatabaseSchemaFQN,
         {
-          fields: 'owner,usageSummary,tags,votes',
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.USAGE_SUMMARY,
+            TabSpecificField.TAGS,
+            TabSpecificField.VOTES,
+          ],
           include: Include.All,
         }
       );

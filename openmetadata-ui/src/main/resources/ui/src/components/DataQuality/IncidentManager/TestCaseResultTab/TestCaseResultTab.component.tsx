@@ -29,6 +29,7 @@ import { CSMode } from '../../../../enums/codemirror.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 
+import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
 import { TestCaseParameterValue } from '../../../../generated/tests/testCase';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { updateTestCaseById } from '../../../../rest/testAPI';
@@ -44,7 +45,11 @@ import testCaseResultTabClassBase from './TestCaseResultTabClassBase';
 
 const TestCaseResultTab = () => {
   const { t } = useTranslation();
-  const { testCase: testCaseData, setTestCase } = useTestCaseStore();
+  const {
+    testCase: testCaseData,
+    setTestCase,
+    showAILearningBanner,
+  } = useTestCaseStore();
   const additionalComponent =
     testCaseResultTabClassBase.getAdditionalComponents();
   const [isDescriptionEdit, setIsDescriptionEdit] = useState<boolean>(false);
@@ -115,6 +120,45 @@ const TestCaseResultTab = () => {
     []
   );
 
+  const AlertComponent = useMemo(
+    () => testCaseResultTabClassBase.getAlertBanner(),
+    []
+  );
+
+  const testCaseParams = useMemo(() => {
+    if (testCaseData?.useDynamicAssertion) {
+      return (
+        <label
+          className="d-inline-flex items-center gap-2 text-grey-muted parameter-value-container"
+          data-testid="dynamic-assertion">
+          <Icon component={StarIcon} /> {t('label.dynamic-assertion')}
+        </label>
+      );
+    } else if (!isEmpty(withoutSqlParams)) {
+      return (
+        <Space className="parameter-value-container parameter-value" size={6}>
+          {withoutSqlParams.map((param, index) => (
+            <Space key={param.name} size={4}>
+              <Typography.Text className="text-grey-muted">
+                {`${param.name}:`}
+              </Typography.Text>
+              <Typography.Text>{param.value}</Typography.Text>
+              {withoutSqlParams.length - 1 !== index && (
+                <Divider type="vertical" />
+              )}
+            </Space>
+          ))}
+        </Space>
+      );
+    }
+
+    return (
+      <Typography.Text type="secondary">
+        {t('label.no-parameter-available')}
+      </Typography.Text>
+    );
+  }, [withoutSqlParams, testCaseData]);
+
   return (
     <Row
       className="p-lg test-case-result-tab"
@@ -139,42 +183,25 @@ const TestCaseResultTab = () => {
             <Typography.Text className="right-panel-label">
               {t('label.parameter-plural')}
             </Typography.Text>
-            {hasEditPermission && Boolean(withoutSqlParams.length) && (
-              <Tooltip
-                title={t('label.edit-entity', {
-                  entity: t('label.parameter'),
-                })}>
-                <Icon
-                  component={EditIcon}
-                  data-testid="edit-parameter-icon"
-                  style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                  onClick={() => setIsParameterEdit(true)}
-                />
-              </Tooltip>
-            )}
+            {hasEditPermission &&
+              Boolean(
+                withoutSqlParams.length || testCaseData?.useDynamicAssertion
+              ) && (
+                <Tooltip
+                  title={t('label.edit-entity', {
+                    entity: t('label.parameter'),
+                  })}>
+                  <Icon
+                    component={EditIcon}
+                    data-testid="edit-parameter-icon"
+                    style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
+                    onClick={() => setIsParameterEdit(true)}
+                  />
+                </Tooltip>
+              )}
           </Space>
 
-          {!isEmpty(withoutSqlParams) && !isUndefined(withoutSqlParams) ? (
-            <Space
-              className="parameter-value-container parameter-value"
-              size={6}>
-              {withoutSqlParams.map((param, index) => (
-                <Space key={param.name} size={4}>
-                  <Typography.Text className="text-grey-muted">
-                    {`${param.name}:`}
-                  </Typography.Text>
-                  <Typography.Text>{param.value}</Typography.Text>
-                  {withoutSqlParams.length - 1 !== index && (
-                    <Divider type="vertical" />
-                  )}
-                </Space>
-              ))}
-            </Space>
-          ) : (
-            <Typography.Text type="secondary">
-              {t('label.no-parameter-available')}
-            </Typography.Text>
-          )}
+          {testCaseParams}
         </Space>
       </Col>
 
@@ -193,6 +220,7 @@ const TestCaseResultTab = () => {
               </Col>
               <Col span={24}>
                 <SchemaEditor
+                  className="query-editor-min-h-60"
                   editorClass="table-query-editor"
                   mode={{ name: CSMode.SQL }}
                   options={{
@@ -206,6 +234,13 @@ const TestCaseResultTab = () => {
         </Col>
       ) : null}
 
+      {showAILearningBanner &&
+        testCaseData?.useDynamicAssertion &&
+        AlertComponent && (
+          <Col span={24}>
+            <AlertComponent />
+          </Col>
+        )}
       {testCaseData && (
         <Col className="test-case-result-tab-graph" span={24}>
           <TestSummary data={testCaseData} />

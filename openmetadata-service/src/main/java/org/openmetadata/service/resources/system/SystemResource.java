@@ -38,7 +38,7 @@ import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -63,7 +63,7 @@ public class SystemResource {
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   private JwtFilter jwtFilter;
 
   public SystemResource(Authorizer authorizer) {

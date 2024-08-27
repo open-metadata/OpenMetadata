@@ -51,6 +51,8 @@ export const AddTestCaseList = ({
   submitText,
   filters,
   selectedTest,
+  onChange,
+  showButton = true,
 }: AddTestCaseModalProps) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState<string>();
@@ -104,7 +106,7 @@ export const AddTestCaseList = ({
   const handleSubmit = async () => {
     setIsLoading(true);
     const testCaseIds = [...(selectedItems?.values() ?? [])];
-    onSubmit(testCaseIds);
+    onSubmit?.(testCaseIds);
     setIsLoading(false);
   };
 
@@ -137,6 +139,9 @@ export const AddTestCaseList = ({
           (item) => item.id !== id && selectedItemMap.set(item.id, item)
         );
 
+        const testCases = [...(selectedItemMap?.values() ?? [])];
+        onChange?.(testCases);
+
         return selectedItemMap;
       });
     } else {
@@ -149,6 +154,8 @@ export const AddTestCaseList = ({
           id,
           items.find((test) => test.id === id)
         );
+        const testCases = [...(selectedItemMap?.values() ?? [])];
+        onChange?.(testCases);
 
         return selectedItemMap;
       });
@@ -190,7 +197,7 @@ export const AddTestCaseList = ({
 
                 return (
                   <Space
-                    className="m-b-md border rounded-4 p-sm cursor-pointer"
+                    className="m-b-md border rounded-4 p-sm cursor-pointer bg-white"
                     direction="vertical"
                     onClick={() => handleCardClick(test)}>
                     <Space className="justify-between w-full">
@@ -201,7 +208,10 @@ export const AddTestCaseList = ({
                         {getEntityName(test)}
                       </Typography.Paragraph>
 
-                      <Checkbox checked={selectedItems?.has(test.id ?? '')} />
+                      <Checkbox
+                        checked={selectedItems?.has(test.id ?? '')}
+                        data-testid={`checkbox-${test.name}`}
+                      />
                     </Space>
                     <Typography.Paragraph
                       className="m-0 w-max-500"
@@ -257,18 +267,22 @@ export const AddTestCaseList = ({
         />
       </Col>
       {renderList}
-      <Col className="d-flex justify-end items-center p-y-xss gap-4" span={24}>
-        <Button data-testid="cancel" type="link" onClick={onCancel}>
-          {cancelText ?? t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="submit"
-          loading={isLoading}
-          type="primary"
-          onClick={handleSubmit}>
-          {submitText ?? t('label.submit')}
-        </Button>
-      </Col>
+      {showButton && (
+        <Col
+          className="d-flex justify-end items-center p-y-xss gap-4"
+          span={24}>
+          <Button data-testid="cancel" type="link" onClick={onCancel}>
+            {cancelText ?? t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="submit"
+            loading={isLoading}
+            type="primary"
+            onClick={handleSubmit}>
+            {submitText ?? t('label.submit')}
+          </Button>
+        </Col>
+      )}
     </Row>
   );
 };

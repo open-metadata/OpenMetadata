@@ -12,6 +12,7 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
@@ -24,7 +25,6 @@ import TurndownService from 'turndown';
 import { ReactComponent as AddIcon } from '../assets/svg/added-icon.svg';
 import { ReactComponent as UpdatedIcon } from '../assets/svg/updated-icon.svg';
 import { MentionSuggestionsItem } from '../components/ActivityFeed/FeedEditor/FeedEditor.interface';
-import { UserTeam } from '../components/common/AssigneeList/AssigneeList.interface';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   EntityField,
@@ -40,6 +40,7 @@ import {
 } from '../constants/Feeds.constants';
 import { EntityType, FqnPart, TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { OwnerType } from '../enums/user.enum';
 import {
   CardStyle,
   EntityTestResultSummaryObject,
@@ -199,7 +200,8 @@ export async function suggestions(
             ENTITY_URL_MAP[entityType as EntityUrlMapType],
             hit._source.name
           ),
-          type: hit._index === SearchIndex.USER ? UserTeam.User : UserTeam.Team,
+          type:
+            hit._index === SearchIndex.USER ? OwnerType.USER : OwnerType.TEAM,
           name: hit._source.name,
           displayName: hit._source.displayName,
         };
@@ -560,6 +562,7 @@ export const entityDisplayName = (entityType: string, entityFQN: string) => {
     case EntityType.METADATA_SERVICE:
     case EntityType.STORAGE_SERVICE:
     case EntityType.SEARCH_SERVICE:
+    case EntityType.API_SERVICE:
     case EntityType.TYPE:
       displayName = getPartialNameFromFQN(entityFQN, ['service']);
 
@@ -640,21 +643,24 @@ export const getFeedChangeFieldLabel = (fieldName?: EntityField) => {
 };
 
 export const getFieldOperationIcon = (fieldOperation?: FieldOperation) => {
-  let Icon = UpdatedIcon;
+  let icon;
 
   switch (fieldOperation) {
     case FieldOperation.Added:
-      Icon = AddIcon;
+      icon = AddIcon;
 
       break;
-    case FieldOperation.Updated:
     case FieldOperation.Deleted:
-      Icon = UpdatedIcon;
+      icon = UpdatedIcon;
 
       break;
   }
 
-  return <Icon height={16} width={16} />;
+  return (
+    icon && (
+      <Icon component={icon} height={16} name={fieldOperation} width={16} />
+    )
+  );
 };
 
 export const getTestCaseNameListForResult = (

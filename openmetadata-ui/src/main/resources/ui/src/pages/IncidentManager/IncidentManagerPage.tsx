@@ -39,7 +39,7 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { DEFAULT_SELECTED_RANGE } from '../../constants/profiler.constant';
+import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
@@ -84,13 +84,20 @@ import { Option } from '../TasksPage/TasksPage.interface';
 import { TestCaseIncidentStatusData } from './IncidentManager.interface';
 
 const IncidentManagerPage = () => {
+  const defaultRange = useMemo(
+    () => ({
+      key: 'last30days',
+      title: PROFILER_FILTER_RANGE.last30days.title,
+    }),
+    []
+  );
   const [testCaseListData, setTestCaseListData] =
     useState<TestCaseIncidentStatusData>({
       data: [],
       isLoading: true,
     });
   const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
-    startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
+    startTs: getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days),
     endTs: getCurrentMillis(),
   });
   const [users, setUsers] = useState<{
@@ -428,7 +435,7 @@ const IncidentManagerPage = () => {
         width: 150,
         render: (value?: Assigned) => (
           <OwnerLabel
-            owner={value?.assignee}
+            owners={value?.assignee ? [value.assignee] : []}
             placeHolder={t('label.no-entity', { entity: t('label.assignee') })}
           />
         ),
@@ -506,6 +513,7 @@ const IncidentManagerPage = () => {
           </Space>
           <DatePickerMenu
             showSelectedCustomRange
+            defaultDateRange={defaultRange}
             handleDateRangeChange={handleDateRangeChange}
           />
         </Col>

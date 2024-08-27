@@ -179,7 +179,7 @@
         "extension": {
           "type": "object"
         },
-        "owner": {
+        "owners": {
           "properties": {
             "id": {
               "type": "keyword",
@@ -265,7 +265,8 @@
           }
         },
         "serviceType": {
-          "type": "keyword"
+          "type": "keyword",
+          "normalizer": "lowercase_normalizer"
         },
         "database": {
           "properties": {
@@ -367,6 +368,12 @@
         },
         "sourceUrl": {
           "type": "text"
+        },
+        "totalVotes": {
+          "type": "long"
+        },
+        "votes" : {
+          "type": "object"
         },
         "descriptionStatus": {
           "type": "keyword"

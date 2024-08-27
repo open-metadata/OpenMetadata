@@ -12,7 +12,7 @@
  */
 
 import { t } from 'i18next';
-import { sortBy } from 'lodash';
+import { isEmpty, sortBy } from 'lodash';
 import {
   AsyncFetchListValues,
   AsyncFetchListValuesResult,
@@ -97,14 +97,14 @@ class AdvancedSearchClassBase {
       },
     },
 
-    'columns.name.keyword': {
-      label: t('label.column'),
+    tableType: {
+      label: t('label.table-type'),
       type: 'select',
       mainWidgetProps: this.mainWidgetProps,
       fieldSettings: {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.TABLE,
-          entityField: EntityFields.COLUMN,
+          entityField: EntityFields.TABLE_TYPE,
         }),
         useAsyncSearch: true,
       },
@@ -141,6 +141,54 @@ class AdvancedSearchClassBase {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.TOPIC,
           entityField: EntityFields.SCHEMA_FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to API endpoints
+   */
+  apiEndpointQueryBuilderFields: Fields = {
+    'requestSchema.schemaFields.name.keyword': {
+      label: t('label.request-schema-field'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          entityField: EntityFields.REQUEST_SCHEMA_FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    'responseSchema.schemaFields.name.keyword': {
+      label: t('label.response-schema-field'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.API_ENDPOINT_INDEX,
+          entityField: EntityFields.RESPONSE_SCHEMA_FIELD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to Glossary
+   */
+  glossaryQueryBuilderFields: Fields = {
+    status: {
+      label: t('label.status'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.GLOSSARY_TERM,
+          entityField: EntityFields.GLOSSARY_TERM_STATUS,
         }),
         useAsyncSearch: true,
       },
@@ -255,18 +303,6 @@ class AdvancedSearchClassBase {
         asyncFetch: this.autocomplete({
           searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
           entityField: EntityFields.DATA_MODEL_TYPE,
-        }),
-        useAsyncSearch: true,
-      },
-    },
-    'columns.name.keyword': {
-      label: t('label.data-model-column'),
-      type: 'select',
-      mainWidgetProps: this.mainWidgetProps,
-      fieldSettings: {
-        asyncFetch: this.autocomplete({
-          searchIndex: SearchIndex.DASHBOARD_DATA_MODEL,
-          entityField: EntityFields.COLUMN,
         }),
         useAsyncSearch: true,
       },
@@ -397,7 +433,7 @@ class AdvancedSearchClassBase {
         defaultValue: true,
       },
 
-      'owner.displayName.keyword': {
+      'owners.displayName.keyword': {
         label: t('label.owner'),
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
@@ -490,6 +526,36 @@ class AdvancedSearchClassBase {
     };
   }
 
+  // Since the column field key 'columns.name.keyword` is common in table and data model,
+  // Following function is used to get the column field config based on the search index
+  // or if it is an explore page
+  public getColumnConfig = (entitySearchIndex: SearchIndex[]) => {
+    const searchIndexWithColumns = entitySearchIndex.filter(
+      (index) =>
+        index === SearchIndex.TABLE ||
+        index === SearchIndex.DASHBOARD_DATA_MODEL ||
+        index === SearchIndex.DATA_ASSET ||
+        index === SearchIndex.ALL
+    );
+
+    return !isEmpty(searchIndexWithColumns)
+      ? {
+          'columns.name.keyword': {
+            label: t('label.column'),
+            type: 'select',
+            mainWidgetProps: this.mainWidgetProps,
+            fieldSettings: {
+              asyncFetch: this.autocomplete({
+                searchIndex: searchIndexWithColumns,
+                entityField: EntityFields.COLUMN,
+              }),
+              useAsyncSearch: true,
+            },
+          },
+        }
+      : {};
+  };
+
   /**
    * Get entity specific fields for the query builder
    */
@@ -506,6 +572,7 @@ class AdvancedSearchClassBase {
       [SearchIndex.CONTAINER]: this.containerQueryBuilderFields,
       [SearchIndex.SEARCH_INDEX]: this.searchIndexQueryBuilderFields,
       [SearchIndex.DASHBOARD_DATA_MODEL]: this.dataModelQueryBuilderFields,
+      [SearchIndex.API_ENDPOINT_INDEX]: this.apiEndpointQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
@@ -515,6 +582,19 @@ class AdvancedSearchClassBase {
         ...this.containerQueryBuilderFields,
         ...this.searchIndexQueryBuilderFields,
         ...this.dataModelQueryBuilderFields,
+        ...this.apiEndpointQueryBuilderFields,
+      },
+      [SearchIndex.DATA_ASSET]: {
+        ...this.tableQueryBuilderFields,
+        ...this.pipelineQueryBuilderFields,
+        ...this.dashboardQueryBuilderFields,
+        ...this.topicQueryBuilderFields,
+        ...this.mlModelQueryBuilderFields,
+        ...this.containerQueryBuilderFields,
+        ...this.searchIndexQueryBuilderFields,
+        ...this.dataModelQueryBuilderFields,
+        ...this.apiEndpointQueryBuilderFields,
+        ...this.glossaryQueryBuilderFields,
       },
     };
 
@@ -556,6 +636,7 @@ class AdvancedSearchClassBase {
       ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
+      ...this.getColumnConfig(entitySearchIndex),
     };
 
     // Sort the fields according to the label
@@ -573,6 +654,7 @@ class AdvancedSearchClassBase {
     isExplorePage?: boolean
   ) => BasicConfig = (tierOptions, entitySearchIndex, isExplorePage) => {
     const searchIndexWithServices = [
+      SearchIndex.DATA_ASSET,
       SearchIndex.TABLE,
       SearchIndex.DASHBOARD,
       SearchIndex.PIPELINE,
@@ -589,6 +671,9 @@ class AdvancedSearchClassBase {
       SearchIndex.ML_MODEL_SERVICE,
       SearchIndex.SEARCH_SERVICE,
       SearchIndex.STORAGE_SERVICE,
+      SearchIndex.API_SERVICE_INDEX,
+      SearchIndex.API_ENDPOINT_INDEX,
+      SearchIndex.API_COLLECTION_INDEX,
     ];
 
     const shouldAddServiceField =

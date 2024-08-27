@@ -2,21 +2,38 @@ from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Column, MetaData, String, create_engine
+from sqlalchemy import Column as SAColumn
+from sqlalchemy import MetaData, String, create_engine
 from sqlalchemy.orm import declarative_base
 
 from metadata.data_quality.validations.runtime_param_setter.table_diff_params_setter import (
     TableDiffParamsSetter,
 )
 from metadata.generated.schema.entity.data.table import (
+    Column,
+    ColumnName,
+    DataType,
     PartitionIntervalTypes,
     PartitionProfilerConfig,
+    Table,
 )
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
+
+MOCK_TABLE = Table(
+    id=uuid4(),
+    name="user",
+    databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="name"),
+    columns=[
+        Column(
+            name=ColumnName("id"),
+            dataType=DataType.INT,
+        ),
+    ],
+)
 
 
 @pytest.mark.parametrize(
@@ -30,7 +47,7 @@ from metadata.profiler.processor.sampler.sqlalchemy.sampler import SQASampler
 )
 def test_get_data_diff_url(input, expected):
     assert (
-        TableDiffParamsSetter(None, None, None, None).get_data_diff_url(
+        TableDiffParamsSetter(None, None, MOCK_TABLE, None).get_data_diff_url(
             input, "service.database.schema.table"
         )
         == expected
@@ -65,13 +82,13 @@ def test_partitioned_where_clause(input, expected):
 
     class MyTable(Base):
         __tablename__ = "customer"
-        id = Column(String(30), primary_key=True)
-        my_column = Column(String(30))
+        id = SAColumn(String(30), primary_key=True)
+        my_column = SAColumn(String(30))
 
     metadata_obj.create_all(engine)
     mock_sampler = SQASampler(session, MyTable, Mock())
     mock_sampler._partition_details = input
-    setter = TableDiffParamsSetter(None, None, None, mock_sampler)
+    setter = TableDiffParamsSetter(None, None, MOCK_TABLE, mock_sampler)
     test_case = TestCase(
         name="test",
         testDefinition=EntityReference(id=uuid4(), type="testDefinition"),

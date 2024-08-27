@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.resources.dqtests;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
@@ -34,11 +47,11 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
-import javax.json.JsonPatch;
 import javax.ws.rs.client.WebTarget;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -83,6 +96,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -117,7 +131,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .createRequest(test)
             .withName("testCase'_ Table")
             .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withColumns(
                 List.of(
                     new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT),
@@ -127,7 +141,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10),
                     new Column().withName(C3).withDisplayName("c3").withDataType(BIGINT)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     TEST_TABLE1 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     tableReq =
         tableResourceTest
@@ -141,7 +155,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     TEST_TABLE2 = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     TABLE_LINK = String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName());
     TABLE_LINK_2 = String.format("<#E::table::%s>", TEST_TABLE2.getFullyQualifiedName());
@@ -562,7 +576,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         .createRequest(test)
         .withName(test.getDisplayName() + "_sensitiveTableTest")
         .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withColumns(
             List.of(
                 new Column()
@@ -684,7 +698,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                             .withDisplayName("c1")
                             .withDataType(ColumnDataType.VARCHAR)
                             .withDataLength(10)))
-                .withOwner(USER1_REF);
+                .withOwners(List.of(USER1_REF));
         Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
         tables.add(table);
         CreateTestSuite createTestSuite =
@@ -756,7 +770,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       .withDisplayName("c1")
                       .withDataType(ColumnDataType.VARCHAR)
                       .withDataLength(10)))
-          .withOwner(USER1_REF);
+          .withOwners(List.of(USER1_REF));
       Table table = tableResourceTest.createEntity(tableReq, ADMIN_AUTH_HEADERS);
       tables.add(table);
       CreateTestSuite createTestSuite =
@@ -779,10 +793,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       new TestCaseParameterValue().withValue("20").withName("missingCountValue")));
       if (i == 2) {
         // create 1 test cases with USER21_TEAM as owner
-        create.withOwner(TEAM21.getEntityReference());
+        create.withOwners(List.of(TEAM21.getEntityReference()));
       } else if (i % 2 == 0) {
         // create 2 test cases with USER1_REF as owner
-        create.withOwner(USER2_REF);
+        create.withOwners(List.of(USER2_REF));
       }
       TestCase testCase = createEntity(create, ADMIN_AUTH_HEADERS);
       testCases.add(testCase);
@@ -911,6 +925,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertNotNull(testCase.getEntityLink());
     assertNotNull(testCase.getName());
     assertNotNull(testCase.getId());
+
+    // Test return only the specified dimension
+    queryParams.clear();
+    queryParams.put("dataQualityDimension", "Completeness");
+    allEntities = listEntitiesFromSearch(queryParams, testCasesNum, 0, ADMIN_AUTH_HEADERS);
+    assertNotEquals(0, allEntities.getData().size());
   }
 
   @Test
@@ -929,7 +949,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                     .withDataType(ColumnDataType.VARCHAR)
                     .withDataLength(10)
                     .withTags(List.of(PII_SENSITIVE_TAG_LABEL))))
-        .withOwner(USER1_REF)
+        .withOwners(List.of(USER1_REF))
         .withDomain(DOMAIN1.getFullyQualifiedName())
         .withTags(List.of(PERSONAL_DATA_TAG_LABEL, TIER1_TAG_LABEL));
     Table table = tableResourceTest.createEntity(createTable, ADMIN_AUTH_HEADERS);
@@ -959,11 +979,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Map<String, String> queryParams = new HashMap<>();
     queryParams.put("entityLink", String.format("<#E::table::%s>", table.getFullyQualifiedName()));
     queryParams.put("includeAllTests", "true");
-    queryParams.put("fields", "domain,owner,tags");
+    queryParams.put("fields", "domain,owners,tags");
     ResultList<TestCase> testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
     assertEquals(2, testCases.getData().size());
     for (TestCase testCase : testCases.getData()) {
-      assertEquals(table.getOwner().getId(), testCase.getOwner().getId());
+      assertOwners(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
@@ -983,7 +1003,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       assertEquals(expectedTags, actualTags);
     }
 
-    createTable.setOwner(USER2_REF);
+    createTable.setOwners(List.of(USER2_REF));
     createTable.setDomain(DOMAIN.getFullyQualifiedName());
     createTable.setTags(List.of(USER_ADDRESS_TAG_LABEL));
     createTable.withColumns(
@@ -998,7 +1018,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     testCases = listEntitiesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
 
     for (TestCase testCase : testCases.getData()) {
-      assertEquals(table.getOwner().getId(), testCase.getOwner().getId());
+      assertOwners(table.getOwners(), testCase.getOwners());
       assertEquals(table.getDomain().getId(), testCase.getDomain().getId());
       List<TagLabel> tags = testCase.getTags();
       HashSet<String> actualTags =
@@ -1089,7 +1109,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     String original = JsonUtils.pojoToJson(testCaseResult);
     testCaseResult.setTestCaseStatus(TestCaseStatus.Failed);
-    JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
+    JsonNode patch = TestUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
 
     patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2021-09-09"), patch);
 
@@ -1341,7 +1361,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Patch the test case result adding the resolved status
     TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
     String original = JsonUtils.pojoToJson(testCaseResult);
-    JsonPatch patch = JsonUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
+    JsonNode patch = TestUtils.getJsonPatch(original, JsonUtils.pojoToJson(testCaseResult));
     patchTestCaseResult(testCase.getFullyQualifiedName(), dateToTimestamp("2023-08-14"), patch);
 
     // add a new test case result for the 16th and check the state is correctly updated
@@ -1613,7 +1633,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withUpdatedAt(System.currentTimeMillis())
                 .withUpdatedBy(USER1_REF)
                 .withSeverity(Severity.Severity1));
-    JsonPatch patch = JsonUtils.getJsonPatch(original, updated);
+    JsonNode patch = TestUtils.getJsonPatch(original, updated);
     TestCaseResolutionStatus patched =
         patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch);
     TestCaseResolutionStatus stored = getTestCaseFailureStatus(testCaseFailureStatus.getId());
@@ -1641,7 +1661,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withUpdatedAt(System.currentTimeMillis())
                 .withUpdatedBy(USER1_REF)
                 .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned));
-    JsonPatch patch = JsonUtils.getJsonPatch(original, updated);
+    JsonNode patch = TestUtils.getJsonPatch(original, updated);
 
     assertResponse(
         () -> patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch),
@@ -2007,6 +2027,36 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         () -> createEntity(invalidTestCaseMixedTypes, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Value");
   }
 
+  @Test
+  void test_testCaseEsDocCleanUp(TestInfo testInfo) {
+    TestCase testCase =
+        new TestCase()
+            .withId(UUID.randomUUID())
+            .withChangeDescription(new ChangeDescription())
+            .withTestSuites(
+                List.of(
+                    new TestSuite()
+                        .withId(UUID.randomUUID())
+                        .withChangeDescription(new ChangeDescription()),
+                    new TestSuite()
+                        .withId(UUID.randomUUID())
+                        .withChangeDescription(new ChangeDescription())));
+
+    Map<String, Object> doc = JsonUtils.convertValue(testCase, Map.class);
+
+    TestCaseIndex testCaseIndex = new TestCaseIndex(testCase);
+    testCaseIndex.removeNonIndexableFields(doc);
+    assertNull(doc.get("changeDescription"));
+    List<Map<String, Object>> testSuites = (List<Map<String, Object>>) doc.get("testSuites");
+    assertNull(testSuites.get(0).get("changeDescription"));
+
+    // Remove changeDescription logic handles null testSuites
+    testCase.setTestSuites(null);
+    doc = JsonUtils.convertValue(testCase, Map.class);
+    testCaseIndex = new TestCaseIndex(testCase);
+    testCaseIndex.removeNonIndexableFields(doc);
+  }
+
   public void deleteTestCaseResult(String fqn, Long timestamp, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult/" + timestamp);
@@ -2021,7 +2071,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             .createRequest(test)
             .withName(test.getDisplayName())
             .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withColumns(
                 List.of(
                     new Column()
@@ -2029,7 +2079,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                         .withDisplayName("c1")
                         .withDataType(ColumnDataType.VARCHAR)
                         .withDataLength(10)))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
@@ -2182,7 +2232,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeaders);
   }
 
-  private TestCaseResult patchTestCaseResult(String testCaseFqn, Long timestamp, JsonPatch patch)
+  private TestCaseResult patchTestCaseResult(String testCaseFqn, Long timestamp, JsonNode patch)
       throws HttpResponseException {
     WebTarget target = getCollection().path("/" + testCaseFqn + "/testCaseResult/" + timestamp);
     return TestUtils.patch(target, patch, TestCaseResult.class, ADMIN_AUTH_HEADERS);
@@ -2265,14 +2315,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), null, ADMIN_AUTH_HEADERS);
-    assertListNull(entity.getOwner(), entity.getTestSuite(), entity.getTestDefinition());
+    assertListNull(entity.getOwners(), entity.getTestSuite(), entity.getTestDefinition());
 
-    fields = "owner,testSuite,testDefinition";
+    fields = "owners,testSuite,testDefinition";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNotNull(entity.getOwner(), entity.getTestSuite(), entity.getTestDefinition());
+    assertListNotNull(entity.getOwners(), entity.getTestSuite(), entity.getTestDefinition());
     return entity;
   }
 
@@ -2364,7 +2414,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
-      UUID testCaseFailureStatusId, JsonPatch patch) throws HttpResponseException {
+      UUID testCaseFailureStatusId, JsonNode patch) throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
     return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
   }
@@ -2650,6 +2700,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         createRequest("invalid::Name", "description", "displayName", null);
     assertResponseContains(
         () -> createEntity(request3, ADMIN_AUTH_HEADERS), BAD_REQUEST, "name must match");
+  }
+
+  @Test
+  void createUpdate_DynamicAssertionTests(TestInfo testInfo) throws IOException {
+    CreateTestCase create = createRequest(testInfo).withUseDynamicAssertion(true);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertTrue(testCase.getUseDynamicAssertion());
+    CreateTestCase update = create.withUseDynamicAssertion(false);
+    updateEntity(update, OK, ADMIN_AUTH_HEADERS);
+    testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertFalse(testCase.getUseDynamicAssertion());
   }
 
   private void putInspectionQuery(TestCase testCase, String sql, Map<String, String> authHeaders)

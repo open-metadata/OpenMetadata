@@ -33,6 +33,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
@@ -41,6 +42,7 @@ import {
   ProviderType,
 } from '../../generated/events/eventSubscription';
 import { Paging } from '../../generated/type/paging';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -67,6 +69,7 @@ const NotificationListPage = () => {
     showPagination,
     paging,
   } = usePaging();
+  const { getResourceLimit } = useLimitStore();
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -114,6 +117,7 @@ const NotificationListPage = () => {
   const handleAlertDelete = useCallback(async () => {
     try {
       setSelectedAlert(undefined);
+      await getResourceLimit('eventsubscription', true, true);
       fetchAlerts();
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -187,6 +191,7 @@ const NotificationListPage = () => {
                   <Button
                     className="flex flex-center"
                     data-testid={`alert-edit-${record.name}`}
+                    disabled={record.provider === ProviderType.System}
                     icon={<EditIcon height={16} />}
                     type="text"
                   />
@@ -219,15 +224,21 @@ const NotificationListPage = () => {
         <Col span={24}>
           <div className="d-flex justify-between">
             <PageHeader data={PAGE_HEADERS.NOTIFICATION} />
-            <Link
-              to={getSettingPath(
-                GlobalSettingsMenuCategory.NOTIFICATIONS,
-                GlobalSettingOptions.ADD_NOTIFICATION
-              )}>
-              <Button data-testid="create-notification" type="primary">
+            <LimitWrapper resource="eventsubscription">
+              <Button
+                data-testid="create-notification"
+                type="primary"
+                onClick={() =>
+                  history.push(
+                    getSettingPath(
+                      GlobalSettingsMenuCategory.NOTIFICATIONS,
+                      GlobalSettingOptions.ADD_NOTIFICATION
+                    )
+                  )
+                }>
                 {t('label.add-entity', { entity: t('label.alert') })}
               </Button>
-            </Link>
+            </LimitWrapper>
           </div>
         </Col>
         <Col span={24}>

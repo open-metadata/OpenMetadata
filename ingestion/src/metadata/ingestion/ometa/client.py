@@ -21,6 +21,7 @@ from requests.exceptions import HTTPError
 
 from metadata.config.common import ConfigModel
 from metadata.ingestion.ometa.credentials import URL, get_api_version
+from metadata.ingestion.ometa.ttl_cache import TTLCache
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ometa_logger
 
@@ -30,6 +31,12 @@ logger = ometa_logger()
 class RetryException(Exception):
     """
     API Client retry exception
+    """
+
+
+class LimitsException(Exception):
+    """
+    API Client Feature Limit exception
     """
 
 
@@ -97,7 +104,8 @@ class ClientConfig(ConfigModel):
     api_version: Optional[str] = "v1"
     retry: Optional[int] = 3
     retry_wait: Optional[int] = 30
-    retry_codes: List[int] = [429, 504]
+    limit_codes: List[int] = [429]
+    retry_codes: List[int] = [504]
     auth_token: Optional[Callable] = None
     access_token: Optional[str] = None
     expires_in: Optional[int] = None
@@ -107,8 +115,10 @@ class ClientConfig(ConfigModel):
     allow_redirects: Optional[bool] = False
     auth_token_mode: Optional[str] = "Bearer"
     verify: Optional[Union[bool, str]] = None
+    ttl_cache: int = 60
 
 
+# pylint: disable=too-many-instance-attributes
 class REST:
     """
     REST client wrapper to manage requests with
@@ -124,9 +134,12 @@ class REST:
         self._retry = self.config.retry
         self._retry_wait = self.config.retry_wait
         self._retry_codes = self.config.retry_codes
+        self._limit_codes = self.config.limit_codes
         self._auth_token = self.config.auth_token
         self._auth_token_mode = self.config.auth_token_mode
         self._verify = self.config.verify
+
+        self._limits_reached = TTLCache(config.ttl_cache)
 
     def _request(  # pylint: disable=too-many-arguments
         self,
@@ -139,6 +152,9 @@ class REST:
         headers: dict = None,
     ):
         # pylint: disable=too-many-locals
+        if path in self._limits_reached:
+            raise LimitsException(f"Skipping request - limits reached for {path}")
+
         if not headers:
             headers = {"Content-type": "application/json"}
         base_url = base_url or self._base_url
@@ -194,6 +210,10 @@ class REST:
         while retry >= 0:
             try:
                 return self._one_request(method, url, opts, retry)
+            except LimitsException as exc:
+                logger.error(f"Feature limit exceeded for {url}")
+                self._limits_reached.add(path)
+                raise exc
             except RetryException:
                 retry_wait = self._retry_wait * (total_retries - retry + 1)
                 logger.warning(
@@ -217,6 +237,7 @@ class REST:
         Returns the body json in the 200 status.
         """
         retry_codes = self._retry_codes
+        limit_codes = self._limit_codes
         try:
             resp = self._session.request(method, url, **opts)
             resp.raise_for_status()
@@ -234,6 +255,8 @@ class REST:
             # retry if we hit Rate Limit
             if resp.status_code in retry_codes and retry > 0:
                 raise RetryException() from http_error
+            if resp.status_code in limit_codes:
+                raise LimitsException() from http_error
             if "code" in resp.text:
                 error = resp.json()
                 if "code" in error:

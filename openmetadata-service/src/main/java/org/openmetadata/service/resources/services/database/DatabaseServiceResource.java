@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -79,7 +80,7 @@ import org.openmetadata.service.util.ResultList;
 public class DatabaseServiceResource
     extends ServiceEntityResource<DatabaseService, DatabaseServiceRepository, DatabaseConnection> {
   public static final String COLLECTION_PATH = "v1/services/databaseServices/";
-  static final String FIELDS = "pipelines,owner,tags,domain";
+  static final String FIELDS = "pipelines,owners,tags,domain";
 
   @Override
   public DatabaseService addHref(UriInfo uriInfo, DatabaseService service) {
@@ -94,8 +95,8 @@ public class DatabaseServiceResource
     return null;
   }
 
-  public DatabaseServiceResource(Authorizer authorizer) {
-    super(Entity.DATABASE_SERVICE, authorizer, ServiceType.DATABASE);
+  public DatabaseServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATABASE_SERVICE, authorizer, limits, ServiceType.DATABASE);
   }
 
   public static class DatabaseServiceList extends ResultList<DatabaseService> {

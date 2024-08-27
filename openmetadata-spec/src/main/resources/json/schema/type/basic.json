@@ -68,22 +68,34 @@
       "type": "string"
     },
     "date": {
-      "$comment" : "@om-field-type",
       "description": "Date in ISO 8601 format in UTC. Example - '2018-11-13'.",
       "type": "string",
       "format": "date"
     },
     "dateTime": {
-      "$comment" : "@om-field-type",
       "description": "Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.",
       "type": "string",
       "format": "date-time"
     },
     "time": {
-      "$comment" : "@om-field-type",
       "description": "time in ISO 8601 format. Example - '20:20:39+00:00'.",
       "type": "string",
       "format": "time"
+    },
+    "date-cp": {
+      "$comment" : "@om-field-type",
+      "description": "Date as defined in custom property.",
+      "type": "string"
+    },
+    "dateTime-cp": {
+      "$comment" : "@om-field-type",
+      "description": "Date and time as defined in custom property.",
+      "type": "string"
+    },
+    "time-cp": {
+      "$comment" : "@om-field-type",
+      "description": "Time as defined in custom property.",
+      "type": "string"
     },
     "enum": {
       "$comment" : "@om-field-type",

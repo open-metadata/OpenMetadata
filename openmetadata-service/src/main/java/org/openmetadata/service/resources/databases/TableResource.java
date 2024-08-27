@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -90,7 +91,7 @@ import org.openmetadata.service.util.ResultList;
 public class TableResource extends EntityResource<Table, TableRepository> {
   public static final String COLLECTION_PATH = "v1/tables/";
   static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owner,customMetrics,columns,"
+      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domain,dataProducts,lifeCycle,sourceHash";
 
   @Override
@@ -102,8 +103,8 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     return table;
   }
 
-  public TableResource(Authorizer authorizer) {
-    super(Entity.TABLE, authorizer);
+  public TableResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TABLE, authorizer, limits);
   }
 
   @Override
@@ -700,7 +701,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_SAMPLE_DATA);
     ResourceContext<?> resourceContext = getResourceContextById(id);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     Table table = repository.getSampleData(id, authorizePII);
     return addHref(uriInfo, table);
@@ -841,7 +842,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         new OperationContext(entityType, MetadataOperation.VIEW_DATA_PROFILE);
     ResourceContext<?> resourceContext = getResourceContextByName(fqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
 
     return Response.status(Response.Status.OK)
         .entity(JsonUtils.pojoToJson(repository.getLatestTableProfile(fqn, authorizePII)))
@@ -932,7 +933,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             fqn); // get table fqn for the resource context (vs column fqn)
     ResourceContext<?> resourceContext = getResourceContextByName(tableFqn);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwner());
+    boolean authorizePII = authorizer.authorizePII(securityContext, resourceContext.getOwners());
     return repository.getColumnProfiles(fqn, startTs, endTs, authorizePII);
   }
 
@@ -1250,7 +1251,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
         .withDescription(create.getDescription())
         .withName(create.getName())
         .withColumnName(create.getColumnName())
-        .withOwner(create.getOwner())
+        .withOwners(create.getOwners())
         .withExpression(create.getExpression())
         .withUpdatedBy(securityContext.getUserPrincipal().getName())
         .withUpdatedAt(System.currentTimeMillis());

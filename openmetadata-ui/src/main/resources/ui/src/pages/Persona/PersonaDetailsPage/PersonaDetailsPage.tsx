@@ -10,20 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
+import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
+import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserSelectableList } from '../../../components/common/UserSelectableList/UserSelectableList.component';
+import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityName } from '../../../components/Modals/EntityNameModal/EntityNameModal.interface';
-import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import {
@@ -54,6 +57,23 @@ export const PersonaDetailsPage = () => {
   );
 
   const { getEntityPermissionByFqn } = usePermissionProvider();
+
+  const breadcrumb = useMemo(
+    () => [
+      {
+        name: t('label.persona-plural'),
+        url: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.PERSONA
+        ),
+      },
+      {
+        name: getEntityName(personaDetails),
+        url: '',
+      },
+    ],
+    [personaDetails]
+  );
 
   useEffect(() => {
     getEntityPermissionByFqn(ResourceEntity.PERSONA, fqn).then(
@@ -165,12 +185,19 @@ export const PersonaDetailsPage = () => {
       <Row className="m-b-md page-container" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
-            <PageHeader
-              data={{
-                header: personaDetails.displayName,
-                subHeader: personaDetails.name,
-              }}
-            />
+            <div className="w-full">
+              <TitleBreadcrumb titleLinks={breadcrumb} />
+
+              <EntityHeaderTitle
+                className="m-t-xs"
+                displayName={personaDetails.displayName}
+                icon={
+                  <Icon component={IconPersona} style={{ fontSize: '36px' }} />
+                }
+                name={personaDetails?.name}
+                serviceName={personaDetails.name}
+              />
+            </div>
             <ManageButton
               afterDeleteAction={handleAfterDeleteAction}
               allowSoftDelete={false}

@@ -65,6 +65,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.teams.RoleResource;
@@ -87,8 +88,8 @@ import org.openmetadata.service.util.UserUtil;
 public class BotResource extends EntityResource<Bot, BotRepository> {
   public static final String COLLECTION_PATH = "/v1/bots/";
 
-  public BotResource(Authorizer authorizer) {
-    super(Entity.BOT, authorizer);
+  public BotResource(Authorizer authorizer, Limits limits) {
+    super(Entity.BOT, authorizer, limits);
   }
 
   @Override

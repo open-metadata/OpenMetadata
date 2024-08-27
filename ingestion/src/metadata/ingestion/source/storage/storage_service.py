@@ -41,6 +41,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
@@ -100,13 +101,20 @@ class StorageServiceTopology(ServiceTopology):
         producer="get_containers",
         stages=[
             NodeStage(
+                type_=OMetaTagAndClassification,
+                context="tags",
+                processor="yield_tag_details",
+                nullable=True,
+                store_all_in_context=True,
+            ),
+            NodeStage(
                 type_=Container,
                 context="container",
                 processor="yield_create_container_requests",
                 consumer=["objectstore_service"],
                 nullable=True,
                 use_cache=True,
-            )
+            ),
         ],
     )
 
@@ -121,7 +129,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     config: WorkflowSource
     metadata: OpenMetadata
     # Big union of types we want to fetch dynamically
-    service_connection: StorageConnection.__fields__["config"].annotation
+    service_connection: StorageConnection.model_fields["config"].annotation
 
     topology = StorageServiceTopology()
     context = TopologyContextManager(topology)
@@ -188,6 +196,22 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     def prepare(self):
         """By default, nothing needs to be taken care of when loading the source"""
 
+    def yield_container_tags(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+
+    def yield_tag_details(
+        self, container_details: Any
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """
+        From topology. To be run for each container
+        """
+        if self.source_config.includeTags:
+            yield from self.yield_container_tags(container_details) or []
+
     def register_record(self, container_request: CreateContainerRequest) -> None:
         """
         Mark the container record as scanned and update
@@ -205,7 +229,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             entity_type=Container,
             service_name=self.context.get().objectstore_service,
             parent_container=parent_container,
-            container_name=container_request.name.root,
+            container_name=fqn.quote_name(container_request.name.root),
         )
 
         self.container_source_state.add(container_fqn)

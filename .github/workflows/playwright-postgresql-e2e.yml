@@ -98,6 +98,7 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: npx playwright test
         env:
+          PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
           PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}

@@ -17,7 +17,10 @@ import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIGHT_GREEN_COLOR } from '../../../../constants/constants';
+import {
+  LIGHT_GREEN_COLOR,
+  PAGE_SIZE_MEDIUM,
+} from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
@@ -50,6 +53,7 @@ function AddWidgetModal({
       setLoading(true);
       const response = await getAllKnowledgePanels({
         fqnPrefix: 'KnowledgePanel',
+        limit: PAGE_SIZE_MEDIUM,
       });
 
       setWidgetsList(response.data);
@@ -83,8 +87,10 @@ function AddWidgetModal({
           label: (
             <Space data-testid={`${widget.name}-widget-tab-label`}>
               <span>{widget.name}</span>
-              {addedWidgetsList.some((w) =>
-                w.startsWith(widget.fullyQualifiedName)
+              {addedWidgetsList.some(
+                (w) =>
+                  w.startsWith(widget.fullyQualifiedName) &&
+                  !w.includes('EmptyWidgetPlaceholder')
               ) && (
                 <CheckOutlined
                   className="m-l-xs"

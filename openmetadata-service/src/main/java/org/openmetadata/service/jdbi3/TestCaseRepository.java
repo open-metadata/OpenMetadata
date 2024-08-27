@@ -8,7 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_NO_CHANGE;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -77,9 +77,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String INCIDENTS_FIELD = "incidentId";
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private static final String UPDATE_FIELDS =
-      "owner,entityLink,testSuite,testSuites,testDefinition";
+      "owners,entityLink,testSuite,testSuites,testDefinition";
   private static final String PATCH_FIELDS =
-      "owner,entityLink,testSuite,testDefinition,computePassedFailedRowCount";
+      "owners,entityLink,testSuite,testDefinition,computePassedFailedRowCount,useDynamicAssertion";
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
 
@@ -112,8 +112,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner,domain,tags,columns", ALL);
-    inheritOwner(testCase, fields, table);
+    Table table = Entity.getEntity(entityLink, "owners,domain,tags,columns", ALL);
+    inheritOwners(testCase, fields, table);
     inheritDomain(testCase, fields, table);
     inheritTags(testCase, fields, table);
   }
@@ -136,7 +136,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public EntityInterface getParentEntity(TestCase entity, String fields) {
-    return Entity.getEntity(entity.getTestSuite(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getTestSuite(), fields, ALL);
   }
 
   @Override
@@ -162,7 +162,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // set the test case result state in the test case entity if the state has changed
     if (!Objects.equals(original, updated)) {
       TestCase testCase =
-          Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
+          Entity.getEntityByName(TEST_CASE, fqn, "testDefinition,testSuites", Include.NON_DELETED);
       setTestCaseResult(testCase, updated, false);
     }
 
@@ -314,7 +314,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
     ArrayList<String> fields =
-        new ArrayList<>(List.of("testDefinition", FIELD_OWNER, FIELD_TAGS, TEST_SUITE_FIELD));
+        new ArrayList<>(
+            List.of("testDefinition", FIELD_OWNERS, FIELD_TAGS, TEST_SUITE_FIELD, "testSuites"));
 
     // set the test case resolution status reference if test failed, by either
     // creating a new incident or returning the stateId of an unresolved incident
@@ -426,7 +427,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String updatedBy, String fqn, Long timestamp) {
     // Validate the request content
     TestCase testCase =
-        Entity.getEntityByName(TEST_CASE, fqn, "testDefinition", Include.NON_DELETED);
+        Entity.getEntityByName(TEST_CASE, fqn, "testDefinition,testSuites", Include.NON_DELETED);
     TestCaseResult storedTestCaseResult =
         JsonUtils.readValue(
             daoCollection
@@ -766,7 +767,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public TestCase addFailedRowsSample(
       TestCase testCase, TableData tableData, boolean validateColumns) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owner", ALL);
+    Table table = Entity.getEntity(entityLink, FIELD_OWNERS, ALL);
     // Validate all the columns
     if (validateColumns) {
       for (String columnName : tableData.getColumns()) {
@@ -790,12 +791,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             "failedRowsSample",
             JsonUtils.pojoToJson(tableData));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
+    // deep copy the test case to avoid updating the cached entity
+    testCase = JsonUtils.deepCopy(testCase, TestCase.class);
     return testCase.withFailedRowsSample(tableData);
   }
 
   @Transaction
   public TestCase addInspectionQuery(UriInfo uri, UUID testCaseId, String sql) {
-    TestCase original = get(uri, testCaseId, getFields(PATCH_FIELDS));
+    TestCase original = get(uri, testCaseId, getFields("*"));
     TestCase updated =
         JsonUtils.readValue(JsonUtils.pojoToJson(original), TestCase.class)
             .withInspectionQuery(sql);
@@ -972,12 +975,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           "computePassedFailedRowCount",
           original.getComputePassedFailedRowCount(),
           updated.getComputePassedFailedRowCount());
+      recordChange(
+          "useDynamicAssertion",
+          original.getUseDynamicAssertion(),
+          updated.getUseDynamicAssertion());
       recordChange("testCaseResult", original.getTestCaseResult(), updated.getTestCaseResult());
     }
   }
 
   public TableData getSampleData(TestCase testCase, boolean authorizePII) {
-    Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), "owner", ALL);
+    Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), FIELD_OWNERS, ALL);
     // Validate the request content
     TableData sampleData =
         JsonUtils.readValue(
@@ -995,7 +1002,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           Entity.TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
       List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
       table.setTags(tags);
-      return maskSampleData(testCase.getFailedRowsSample(), table, table.getColumns());
+      return maskSampleData(sampleData, table, table.getColumns());
     }
     return sampleData;
   }

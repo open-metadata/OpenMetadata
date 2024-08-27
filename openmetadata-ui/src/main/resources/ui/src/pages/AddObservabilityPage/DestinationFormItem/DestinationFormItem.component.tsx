@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Form, Row } from 'antd';
+import { Button, Col, Divider, Form, Row } from 'antd';
 import { isEmpty, isNil } from 'lodash';
-import React from 'react';
+import React, { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
-import { listLengthValidator } from '../../../utils/Alerts/AlertsUtil';
+import {
+  getConnectionTimeoutField,
+  listLengthValidator,
+} from '../../../utils/Alerts/AlertsUtil';
 import './destination-form-item.less';
 import DestinationSelectItem from './DestinationSelectItem/DestinationSelectItem';
 
@@ -33,6 +36,7 @@ function DestinationFormItem() {
     <FormCardSection
       heading={t('label.destination')}
       subHeading={t('message.alerts-destination-description')}>
+      {getConnectionTimeoutField()}
       <Form.List
         name={['destinations']}
         rules={[
@@ -46,13 +50,19 @@ function DestinationFormItem() {
               data-testid="destination-list"
               gutter={[16, 16]}
               key="destinations">
-              {fields.map(({ key, name }) => (
-                <DestinationSelectItem
-                  id={name}
-                  key={key}
-                  remove={remove}
-                  selectorKey={key}
-                />
+              {fields.map(({ key, name }, index) => (
+                <Fragment key={key}>
+                  <DestinationSelectItem
+                    id={name}
+                    remove={remove}
+                    selectorKey={key}
+                  />
+                  {index < fields.length - 1 && (
+                    <Col span={24}>
+                      <Divider className="m-y-xs p-x-xs" />
+                    </Col>
+                  )}
+                </Fragment>
               ))}
 
               <Col span={24}>

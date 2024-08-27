@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.convertInputListToString;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getEntity;
 import static org.openmetadata.service.events.subscription.AlertsRuleEvaluator.getThread;
+import static org.openmetadata.service.formatter.entity.IngestionPipelineFormatter.getIngestionPipelineUrl;
 import static org.openmetadata.service.resources.feeds.MessageParser.replaceEntityLinks;
 
 import java.time.Instant;
@@ -63,9 +64,11 @@ public interface MessageDecorator<T> {
 
   String getEntityUrl(String prefix, String fqn, String additionalInput);
 
-  T buildEntityMessage(ChangeEvent event);
+  T buildEntityMessage(String publisherName, ChangeEvent event);
 
-  T buildThreadMessage(ChangeEvent event);
+  T buildTestMessage(String publisherName);
+
+  T buildThreadMessage(String publisherName, ChangeEvent event);
 
   default String buildEntityUrl(String entityType, EntityInterface entityInterface) {
     String fqn = entityInterface.getFullyQualifiedName();
@@ -92,6 +95,11 @@ public interface MessageDecorator<T> {
     if (entityType.equals(Entity.TAG)) {
       // Tags need to be redirected to Classification Page
       return getEntityUrl("tags", fqn.split("\\.")[0], "");
+    }
+
+    // IngestionPipeline
+    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
+      return getIngestionPipelineUrl(this, entityType, entityInterface);
     }
 
     return getEntityUrl(entityType, fqn, "");
@@ -126,18 +134,27 @@ public interface MessageDecorator<T> {
       return getEntityUrl("tags", fqn.split("\\.")[0], "");
     }
 
+    // IngestionPipeline
+    if (entityType.equals(Entity.INGESTION_PIPELINE)) {
+      return getIngestionPipelineUrl(this, entityType, entityInterface);
+    }
+
     return getEntityUrl(entityType, fqn, activeTab);
   }
 
-  default T buildOutgoingMessage(ChangeEvent event) {
+  default T buildOutgoingMessage(String publisherName, ChangeEvent event) {
     if (event.getEntityType().equals(Entity.THREAD)) {
-      return buildThreadMessage(event);
+      return buildThreadMessage(publisherName, event);
     } else if (Entity.getEntityList().contains(event.getEntityType())) {
-      return buildEntityMessage(event);
+      return buildEntityMessage(publisherName, event);
     } else {
       throw new IllegalArgumentException(
           "Cannot Build Message, Unsupported Entity Type: " + event.getEntityType());
     }
+  }
+
+  default T buildOutgoingTestMessage(String publisherName) {
+    return buildTestMessage(publisherName);
   }
 
   default String getPlaintextDiff(String oldValue, String newValue) {
@@ -184,7 +201,7 @@ public interface MessageDecorator<T> {
     return diff;
   }
 
-  default OutgoingMessage createEntityMessage(ChangeEvent event) {
+  default OutgoingMessage createEntityMessage(String publisherName, ChangeEvent event) {
     OutgoingMessage message = new OutgoingMessage();
     message.setUserName(event.getUserName());
     EntityInterface entityInterface = getEntity(event);
@@ -198,13 +215,13 @@ public interface MessageDecorator<T> {
       String headerTxt;
       String headerText;
       if (eventType.equals(Entity.QUERY)) {
-        headerTxt = "%s posted on " + eventType;
-        headerText = String.format(headerTxt, event.getUserName());
+        headerTxt = "[%s] %s posted on " + eventType;
+        headerText = String.format(headerTxt, publisherName, event.getUserName());
       } else {
         String entityUrl = this.buildEntityUrl(event.getEntityType(), entityInterface);
         message.setEntityUrl(entityUrl);
-        headerTxt = "%s posted on " + eventType + " %s";
-        headerText = String.format(headerTxt, event.getUserName(), entityUrl);
+        headerTxt = "[%s] %s posted on " + eventType + " %s";
+        headerText = String.format(headerTxt, publisherName, event.getUserName(), entityUrl);
       }
       message.setHeader(headerText);
     }
@@ -215,7 +232,7 @@ public interface MessageDecorator<T> {
     return message;
   }
 
-  default OutgoingMessage createThreadMessage(ChangeEvent event) {
+  default OutgoingMessage createThreadMessage(String publisherName, ChangeEvent event) {
     OutgoingMessage message = new OutgoingMessage();
     message.setUserName(event.getUserName());
     Thread thread = getThread(event);
@@ -235,12 +252,15 @@ public interface MessageDecorator<T> {
           case THREAD_CREATED -> {
             headerMessage =
                 String.format(
-                    "@%s started a conversation for asset %s", thread.getCreatedBy(), assetUrl);
+                    "[%s] @%s started a conversation for asset %s",
+                    publisherName, thread.getCreatedBy(), assetUrl);
             attachmentList.add(replaceEntityLinks(thread.getMessage()));
           }
           case POST_CREATED -> {
             headerMessage =
-                String.format("@%s posted a message on asset %s", thread.getCreatedBy(), assetUrl);
+                String.format(
+                    "[%s] @%s posted a message on asset %s",
+                    publisherName, thread.getCreatedBy(), assetUrl);
             attachmentList.add(
                 String.format(
                     "@%s : %s", thread.getCreatedBy(), replaceEntityLinks(thread.getMessage())));
@@ -256,8 +276,8 @@ public interface MessageDecorator<T> {
           case THREAD_UPDATED -> {
             headerMessage =
                 String.format(
-                    "@%s posted update on Conversation for asset %s",
-                    thread.getUpdatedBy(), assetUrl);
+                    "[%s] @%s posted update on Conversation for asset %s",
+                    publisherName, thread.getUpdatedBy(), assetUrl);
             attachmentList.add(replaceEntityLinks(thread.getMessage()));
           }
         }
@@ -267,8 +287,8 @@ public interface MessageDecorator<T> {
           case THREAD_CREATED -> {
             headerMessage =
                 String.format(
-                    "@%s created a Task for %s %s",
-                    thread.getCreatedBy(), entityLink.getEntityType(), assetUrl);
+                    "[%s] @%s created a Task for %s %s",
+                    publisherName, thread.getCreatedBy(), entityLink.getEntityType(), assetUrl);
             attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
             attachmentList.add(
                 String.format(
@@ -282,8 +302,8 @@ public interface MessageDecorator<T> {
           case POST_CREATED -> {
             headerMessage =
                 String.format(
-                    "@%s posted a message on the Task with Id : %s for Asset %s",
-                    thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
+                    "[%s] @%s posted a message on the Task with Id : %s for Asset %s",
+                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
             thread
                 .getPosts()
                 .forEach(
@@ -296,8 +316,8 @@ public interface MessageDecorator<T> {
           case THREAD_UPDATED -> {
             headerMessage =
                 String.format(
-                    "@%s posted update on the Task with Id : %s for Asset %s",
-                    thread.getUpdatedBy(), thread.getTask().getId(), assetUrl);
+                    "[%s] @%s posted update on the Task with Id : %s for Asset %s",
+                    publisherName, thread.getUpdatedBy(), thread.getTask().getId(), assetUrl);
             attachmentList.add(String.format("Task Type : %s", thread.getTask().getType().value()));
             attachmentList.add(
                 String.format(
@@ -311,15 +331,15 @@ public interface MessageDecorator<T> {
           case TASK_CLOSED -> {
             headerMessage =
                 String.format(
-                    "@%s closed Task with Id : %s for Asset %s",
-                    thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
+                    "[%s] @%s closed Task with Id : %s for Asset %s",
+                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
             attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
           }
           case TASK_RESOLVED -> {
             headerMessage =
                 String.format(
-                    "@%s resolved Task with Id : %s for Asset %s",
-                    thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
+                    "[%s] @%s resolved Task with Id : %s for Asset %s",
+                    publisherName, thread.getCreatedBy(), thread.getTask().getId(), assetUrl);
             attachmentList.add(String.format("Current Status : %s", thread.getTask().getStatus()));
           }
         }
@@ -328,7 +348,9 @@ public interface MessageDecorator<T> {
         switch (event.getEventType()) {
           case THREAD_CREATED -> {
             headerMessage =
-                String.format("**@%s** posted an **Announcement**", thread.getCreatedBy());
+                String.format(
+                    "[%s] **@%s** posted an **Announcement**",
+                    publisherName, thread.getCreatedBy());
             attachmentList.add(
                 String.format("Description : %s", thread.getAnnouncement().getDescription()));
             attachmentList.add(
@@ -354,7 +376,8 @@ public interface MessageDecorator<T> {
           case THREAD_UPDATED -> {
             headerMessage =
                 String.format(
-                    "**@%s** posted an update on  **Announcement**", thread.getUpdatedBy());
+                    "[%s] **@%s** posted an update on  **Announcement**",
+                    publisherName, thread.getUpdatedBy());
             attachmentList.add(
                 String.format("Description : %s", thread.getAnnouncement().getDescription()));
             attachmentList.add(

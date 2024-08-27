@@ -43,11 +43,13 @@ import {
 } from '../../constants/GlobalSettings.constants';
 import { ADMIN_ONLY_ACTION } from '../../constants/HelperTextUtil';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
+import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { searchData } from '../../rest/miscAPI';
@@ -79,6 +81,7 @@ const UserListPageV1 = () => {
   const showRestore = showDeletedUser && !isDataLoading;
   const [isLoading, setIsLoading] = useState(false);
   const [searchValue, setSearchValue] = useState<string>('');
+  const { getResourceLimit } = useLimitStore();
   const {
     currentPage,
     handlePageChange,
@@ -111,7 +114,11 @@ const UserListPageV1 = () => {
     try {
       const { data, paging: userPaging } = await getUsers({
         isBot: false,
-        fields: 'profile,teams,roles',
+        fields: [
+          TabSpecificField.PROFILE,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES,
+        ].join(','),
         limit: pageSize,
         ...params,
       });
@@ -424,12 +431,14 @@ const UserListPageV1 = () => {
             </span>
 
             {isAdminUser && (
-              <Button
-                data-testid="add-user"
-                type="primary"
-                onClick={handleAddNewUser}>
-                {t('label.add-entity', { entity: t('label.user') })}
-              </Button>
+              <LimitWrapper resource="user">
+                <Button
+                  data-testid="add-user"
+                  type="primary"
+                  onClick={handleAddNewUser}>
+                  {t('label.add-entity', { entity: t('label.user') })}
+                </Button>
+              </LimitWrapper>
             )}
           </Space>
         </Col>
@@ -499,7 +508,11 @@ const UserListPageV1 = () => {
         </Modal>
 
         <DeleteWidgetModal
-          afterDeleteAction={() => handleSearch('')}
+          afterDeleteAction={async () => {
+            handleSearch('');
+            // Update current count when Create / Delete operation performed
+            await getResourceLimit('user', true, true);
+          }}
           allowSoftDelete={!showDeletedUser}
           entityId={selectedUser?.id || ''}
           entityName={getEntityName(selectedUser)}

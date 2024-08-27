@@ -22,6 +22,12 @@ Configure and schedule GCS metadata workflows from the CLI:
 
 ## Requirements
 
+To run the GCS ingestion, you will need to install:
+
+```bash
+pip3 install "openmetadata-ingestion[datalake-gcs]"
+```
+
 {%inlineCallout icon="description" bold="OpenMetadata 1.0 or later" href="/deployment"%}
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
@@ -98,7 +104,8 @@ source:
     config:
       type: GCS
       credentials:
-        gcpConfig: <path to file>
+        gcpConfig: 
+        path: <path to file>
 ```
 
 - If you want to use [ADC authentication](https://cloud.google.com/docs/authentication#adc) for GCP you can just leave
@@ -162,7 +169,7 @@ source:
             Super secret key
             -----END PRIVATE KEY-----
           clientEmail: client@mail.com
-          clientId: 1234
+          clientId: "1234"
           # authUri: https://accounts.google.com/o/oauth2/auth (default)
           # tokenUri: https://oauth2.googleapis.com/token (default)
           # authProviderX509CertUrl: https://www.googleapis.com/oauth2/v1/certs (default)

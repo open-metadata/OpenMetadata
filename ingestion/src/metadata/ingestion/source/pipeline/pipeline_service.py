@@ -20,6 +20,7 @@ from typing_extensions import Annotated
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -36,6 +37,7 @@ from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -45,6 +47,8 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
+from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_pipeline
 from metadata.utils.logger import ingestion_logger
@@ -120,7 +124,7 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     source_config: PipelineServiceMetadataPipeline
     config: WorkflowSource
     # Big union of types we want to fetch dynamically
-    service_connection: PipelineConnection.__fields__["config"].annotation
+    service_connection: PipelineConnection.model_fields["config"].annotation
 
     topology = PipelineServiceTopology()
     context = TopologyContextManager(topology)
@@ -177,10 +181,43 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def yield_pipeline_lineage(
         self, pipeline_details: Any
-    ) -> Iterable[Either[AddLineageRequest]]:
+    ) -> Iterable[Either[OMetaLineageRequest]]:
         """Yields lineage if config is enabled"""
         if self.source_config.includeLineage:
-            yield from self.yield_pipeline_lineage_details(pipeline_details) or []
+            for lineage in self.yield_pipeline_lineage_details(pipeline_details) or []:
+                if lineage.right is not None:
+                    yield Either(
+                        right=OMetaLineageRequest(
+                            lineage_request=lineage.right,
+                            override_lineage=self.source_config.overrideLineage,
+                        )
+                    )
+                else:
+                    yield lineage
+
+    def _get_table_fqn_from_om(self, table_details: TableDetails) -> Optional[str]:
+        """
+        Based on partial schema and table names look for matching table object in open metadata.
+        :param schema: schema name
+        :param table: table name
+        :return: fully qualified name of a Table in Open Metadata
+        """
+        result = None
+        services = self.get_db_service_names()
+        for db_service in services:
+            result = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=db_service,
+                database_name=None,
+                schema_name=table_details.schema,
+                table_name=table_details.name,
+            )
+            if result:
+                return result
+        raise FQNNotFoundException(
+            f"Table FQN not found for table: {table_details} within services: {services}"
+        )
 
     def yield_tag(self, *args, **kwargs) -> Iterable[Either[OMetaTagAndClassification]]:
         """Method to fetch pipeline tags"""

@@ -1,7 +1,7 @@
 package org.openmetadata.service.resources.automations;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -50,13 +50,14 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -81,13 +82,13 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "Workflow")
 public class WorkflowResource extends EntityResource<Workflow, WorkflowRepository> {
   public static final String COLLECTION_PATH = "/v1/automations/workflows";
-  static final String FIELDS = "owner";
+  static final String FIELDS = "owners";
 
-  private PipelineServiceClient pipelineServiceClient;
+  private PipelineServiceClientInterface pipelineServiceClient;
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
 
-  public WorkflowResource(Authorizer authorizer) {
-    super(Entity.WORKFLOW, authorizer);
+  public WorkflowResource(Authorizer authorizer, Limits limits) {
+    super(Entity.WORKFLOW, authorizer, limits);
   }
 
   @Override
@@ -160,14 +161,14 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(
               description = "Filter by status",
               schema = @Schema(implementation = WorkflowStatus.class))
-          @QueryParam("status")
+          @QueryParam("workflowStatus")
           String status) {
     ListFilter filter = new ListFilter(include);
     if (workflowType != null) {
       filter.addQueryParam("workflowType", workflowType);
     }
     if (status != null) {
-      filter.addQueryParam("status", status);
+      filter.addQueryParam("workflowStatus", status);
     }
     ResultList<Workflow> workflows =
         super.listInternal(
@@ -356,7 +357,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
-    EntityUtil.Fields fields = getFields(FIELD_OWNER);
+    EntityUtil.Fields fields = getFields(FIELD_OWNERS);
     Workflow workflow = repository.get(uriInfo, id, fields);
     workflow.setOpenMetadataServerConnection(
         new OpenMetadataConnectionBuilder(openMetadataApplicationConfig).build());

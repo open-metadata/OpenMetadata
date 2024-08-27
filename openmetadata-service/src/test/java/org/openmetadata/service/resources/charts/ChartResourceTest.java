@@ -15,10 +15,12 @@ package org.openmetadata.service.resources.charts;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static javax.ws.rs.core.Response.Status.OK;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
@@ -29,6 +31,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
@@ -37,8 +40,10 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChartType;
@@ -46,6 +51,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.charts.ChartResource.ChartList;
+import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -184,7 +190,7 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
     CreateDashboardService createDashboardService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create chart under it
@@ -203,16 +209,16 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
             ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
-    assertListNull(chart.getOwner(), chart.getFollowers(), chart.getTags());
+    assertListNull(chart.getOwners(), chart.getFollowers(), chart.getTags());
 
-    // .../charts?fields=owner
-    fields = "owner,followers,tags";
+    // .../charts?fields=owners
+    fields = "owners,followers,tags";
     chart =
         byName
             ? getEntityByName(chart.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(chart.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(chart.getService(), chart.getServiceType());
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return chart;
   }
 
@@ -279,6 +285,99 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
         chart, originalJson, ADMIN_AUTH_HEADERS, CHANGE_CONSOLIDATED, change);
   }
 
+  @Test
+  public void testChartWithDashboards() throws IOException {
+    DashboardResourceTest dashboardResourceTest = new DashboardResourceTest();
+    // Create a new CreateChart request with a populated "dashboards" field
+    CreateChart request =
+        createRequest("chartWithDashboards")
+            .withService(METABASE_REFERENCE.getName())
+            .withDashboards(DASHBOARD_REFERENCES);
+    Chart chart = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
+
+    // Validate that the created Chart entity has the expected "dashboards" field
+    assertNotNull(chart.getDashboards());
+    assertEquals(3, chart.getDashboards().size());
+    assertEquals("dashboard0", chart.getDashboards().get(0).getName());
+    assertEquals("dashboard1", chart.getDashboards().get(1).getName());
+    assertEquals("dashboard2", chart.getDashboards().get(2).getName());
+
+    // Check that each dashboard  contains the newly created chart in their charts field
+    for (EntityReference dashboardRef : chart.getDashboards()) {
+      Dashboard dashboard =
+          dashboardResourceTest.getEntity(dashboardRef.getId(), "charts", ADMIN_AUTH_HEADERS);
+      assertNotNull(dashboard.getCharts());
+      assertTrue(
+          dashboard.getCharts().stream()
+              .map(EntityReference::getId)
+              .anyMatch(chart.getId()::equals));
+    }
+
+    // Create a new Dashboard entity
+    CreateDashboard createDashboardRequest =
+        new CreateDashboard().withName("dashboard3").withService(METABASE_REFERENCE.getName());
+    Dashboard dashboard3 =
+        dashboardResourceTest.createAndCheckEntity(createDashboardRequest, ADMIN_AUTH_HEADERS);
+
+    // Update the "dashboards" field of the Chart entity with PATCH request with newly created
+    // dashboard3
+    String originalJson = JsonUtils.pojoToJson(chart);
+    ChangeDescription change = getChangeDescription(chart, MINOR_UPDATE);
+    fieldDeleted(change, "dashboards", chart.getDashboards());
+    fieldAdded(change, "dashboards", List.of(dashboard3.getEntityReference()));
+    chart.withDashboards(List.of(dashboard3.getEntityReference()));
+    chart = patchEntityAndCheck(chart, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Retrieve the Chart entity and validate that the retrieved entity has the updated "dashboards"
+    // field
+    chart = getEntity(chart.getId(), "dashboards", ADMIN_AUTH_HEADERS);
+    assertNotNull(chart.getDashboards());
+    assertEquals(1, chart.getDashboards().size());
+    assertEquals("dashboard3", chart.getDashboards().get(0).getName());
+
+    // Verify dashboard3 contains the respective chart
+    dashboard3 = dashboardResourceTest.getEntity(dashboard3.getId(), "charts", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        dashboard3.getCharts().stream()
+            .map(EntityReference::getId)
+            .anyMatch(chart.getId()::equals));
+
+    // Create a new Dashboard entity
+    createDashboardRequest =
+        new CreateDashboard().withName("dashboard4").withService(METABASE_REFERENCE.getName());
+    Dashboard dashboard4 =
+        dashboardResourceTest.createAndCheckEntity(createDashboardRequest, ADMIN_AUTH_HEADERS);
+
+    // Update the "dashboards" field of the Chart entity with PUT request with newly created
+    // dashboard4
+    change = getChangeDescription(chart, MINOR_UPDATE);
+    fieldDeleted(change, "dashboards", chart.getDashboards());
+    fieldAdded(change, "dashboards", List.of(dashboard4.getEntityReference()));
+    chart.withDashboards(List.of(dashboard4.getEntityReference()));
+    updateAndCheckEntity(
+        request.withDashboards(List.of(dashboard4.getEntityReference().getFullyQualifiedName())),
+        OK,
+        ADMIN_AUTH_HEADERS,
+        MINOR_UPDATE,
+        change);
+
+    // Verify dashboard4 contains the respective chart
+    dashboard4 = dashboardResourceTest.getEntity(dashboard4.getId(), "charts", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        dashboard4.getCharts().stream()
+            .map(EntityReference::getId)
+            .anyMatch(chart.getId()::equals));
+
+    // Delete the chart
+    deleteEntity(chart.getId(), ADMIN_AUTH_HEADERS);
+    // Check that dashboard4  does not contain the deleted chart in their charts field
+    dashboard4 = dashboardResourceTest.getEntity(dashboard4.getId(), "charts", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        dashboard4.getCharts().stream()
+            .map(EntityReference::getId)
+            .anyMatch(chart.getId()::equals));
+  }
+
   @Override
   public void compareEntities(Chart expected, Chart patched, Map<String, String> authHeaders) {
     assertReference(expected.getService(), patched.getService());
@@ -295,6 +394,8 @@ public class ChartResourceTest extends EntityResourceTest<Chart, CreateChart> {
       ChartType expectedChartType = ChartType.fromValue(expected.toString());
       ChartType actualChartType = ChartType.fromValue(actual.toString());
       assertEquals(expectedChartType, actualChartType);
+    } else if (fieldName.contains("dashboards")) {
+      assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);
     }

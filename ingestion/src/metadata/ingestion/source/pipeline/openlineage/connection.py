@@ -52,6 +52,15 @@ def get_connection(connection: OpenLineageConnection) -> KafkaConsumer:
                     "ssl.key.location": connection.sslConfig.root.sslKey,
                 }
             )
+        elif connection.securityProtocol.value == KafkaSecProtocol.SASL_SSL.value:
+            config.update(
+                {
+                    "security.protocol": connection.securityProtocol.value,
+                    "sasl.mechanism": connection.saslConfig.saslMechanism.value,
+                    "sasl.username": connection.saslConfig.saslUsername,
+                    "sasl.password": connection.saslConfig.saslPassword,
+                }
+            )
 
         kafka_consumer = KafkaConsumer(config)
         kafka_consumer.subscribe([connection.topicName])

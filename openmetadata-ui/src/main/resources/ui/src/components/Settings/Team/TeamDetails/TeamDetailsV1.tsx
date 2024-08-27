@@ -748,7 +748,7 @@ const TeamDetailsV1 = ({
           heading: t('label.role'),
           doc: ROLE_DOCS,
           children: t('message.assigning-team-entity-description', {
-            entity: t('label.role'),
+            entity: t('label.role-lowercase'),
             name: currentTeam.name,
           }),
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
@@ -819,7 +819,7 @@ const TeamDetailsV1 = ({
         fetchErrorPlaceHolder({
           permission: entityPermissions.EditAll,
           children: t('message.assigning-team-entity-description', {
-            entity: t('label.policy-plural'),
+            entity: t('label.policy-lowercase-plural'),
             name: currentTeam.name,
           }),
           type: ERROR_PLACEHOLDER_TYPE.ASSIGN,
@@ -925,7 +925,7 @@ const TeamDetailsV1 = ({
               <IconTeams className="text-primary" width={20} />
             </Avatar>
 
-            <Space direction="vertical" size={3}>
+            <div className="d-flex flex-column gap-1">
               {!isOrganization && (
                 <TitleBreadcrumb titleLinks={slashedTeamName} />
               )}
@@ -935,7 +935,7 @@ const TeamDetailsV1 = ({
                 entityPermissions={entityPermissions}
                 updateTeamHandler={updateTeamHandler}
               />
-            </Space>
+            </div>
           </Space>
 
           <Space align="center">

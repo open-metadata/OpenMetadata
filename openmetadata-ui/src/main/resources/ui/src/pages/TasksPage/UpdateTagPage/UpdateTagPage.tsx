@@ -51,6 +51,7 @@ import {
   getColumnObject,
   getEntityColumnsDetails,
   getTaskAssignee,
+  getTaskEntityFQN,
   getTaskMessage,
 } from '../../../utils/TasksUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -68,7 +69,7 @@ const UpdateTag = () => {
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
-  const { fqn: entityFQN } = useFqn();
+  const { fqn } = useFqn();
   const queryParams = new URLSearchParams(location.search);
 
   const field = queryParams.get('field');
@@ -82,6 +83,11 @@ const UpdateTag = () => {
   const [currentTags, setCurrentTags] = useState<TagLabel[]>([]);
   const [suggestion, setSuggestion] = useState<TagLabel[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const entityFQN = useMemo(
+    () => getTaskEntityFQN(entityType, fqn),
+    [fqn, entityType]
+  );
 
   const sanitizeValue = useMemo(
     () => value?.replaceAll(TASK_SANITIZE_VALUE_REGEX, '') ?? '',
@@ -208,7 +214,9 @@ const UpdateTag = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 700,
         flex: 0.6,
         children: (
@@ -316,6 +324,7 @@ const UpdateTag = () => {
       }}
       pageTitle={t('label.task')}
       secondPanel={{
+        className: 'content-resizable-panel-container',
         minWidth: 60,
         flex: 0.4,
         children: (

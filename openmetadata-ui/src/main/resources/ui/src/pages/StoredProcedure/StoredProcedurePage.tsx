@@ -40,6 +40,7 @@ import { SourceType } from '../../components/SearchedData/SearchedData.interface
 import {
   getEntityDetailsPath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -48,6 +49,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { CSMode } from '../../enums/codemirror.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -62,6 +64,7 @@ import {
 } from '../../generated/entity/data/storedProcedure';
 import { Include } from '../../generated/type/include';
 import { TagLabel } from '../../generated/type/tagLabel';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -116,7 +119,7 @@ const StoredProcedurePage = () => {
   const {
     id: storedProcedureId = '',
     followers,
-    owner,
+    owners,
     tags,
     tier,
     version,
@@ -197,7 +200,9 @@ const StoredProcedurePage = () => {
         id: response.id ?? '',
       });
     } catch (error) {
-      // Error here
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -320,17 +325,17 @@ const StoredProcedurePage = () => {
   }, [isFollowing]);
 
   const handleUpdateOwner = useCallback(
-    async (newOwner?: StoredProcedure['owner']) => {
+    async (newOwner?: StoredProcedure['owners']) => {
       if (!storedProcedure) {
         return;
       }
       const updatedEntityDetails = {
         ...storedProcedure,
-        owner: newOwner,
+        owners: newOwner,
       };
-      await handleStoreProcedureUpdate(updatedEntityDetails, 'owner');
+      await handleStoreProcedureUpdate(updatedEntityDetails, 'owners');
     },
-    [owner, storedProcedure]
+    [owners, storedProcedure]
   );
 
   const handleToggleDelete = (version?: number) => {
@@ -537,10 +542,10 @@ const StoredProcedurePage = () => {
         key: EntityTabs.CODE,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
                       <DescriptionV1
@@ -551,7 +556,7 @@ const StoredProcedurePage = () => {
                         hasEditAccess={editDescriptionPermission}
                         isDescriptionExpanded={isEmpty(code)}
                         isEdit={isEdit}
-                        owner={owner}
+                        owner={owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
@@ -599,7 +604,8 @@ const StoredProcedurePage = () => {
                   ),
                   minWidth: 320,
                   flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
@@ -760,6 +766,10 @@ const StoredProcedurePage = () => {
             }
           />
         </Col>
+
+        <LimitWrapper resource="storedProcedure">
+          <></>
+        </LimitWrapper>
 
         {threadLink ? (
           <ActivityThreadPanel

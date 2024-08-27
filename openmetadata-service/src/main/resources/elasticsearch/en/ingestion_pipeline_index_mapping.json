@@ -140,7 +140,7 @@
           }
         }
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -303,13 +303,31 @@
         "type": "completion"
       },
       "totalVotes": {
-        "type": "long"
+        "type": "long",
+        "null_value": 0
       },
       "votes" : {
         "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"
+      },
+      "applicationType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "airflowConfig" : {
+        "properties" : {
+          "scheduleInterval" : {
+            "type" : "text",
+            "fields" : {
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          }
+        }
       }
     }
   }

@@ -1,7 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.exception.AppException.APP_RUN_RECORD_NOT_FOUND;
-import static org.openmetadata.service.resources.teams.UserResource.getUser;
+import static org.openmetadata.service.util.UserUtil.getUser;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -99,7 +99,7 @@ public class AppRepository extends EntityRepository<App> {
       User user = getUser("admin", createUser);
 
       // Set User Ownership to the application creator
-      user.setOwner(application.getOwner());
+      user.setOwners(application.getOwners());
 
       // Set Auth Mechanism in Bot
       JWTAuthMechanism jwtAuthMechanism = (JWTAuthMechanism) authMechanism.getConfig();
@@ -118,12 +118,12 @@ public class AppRepository extends EntityRepository<App> {
       Bot appBot =
           new Bot()
               .withId(UUID.randomUUID())
-              .withName(botUser.getName())
+              .withName(botName)
               .withUpdatedBy("admin")
               .withUpdatedAt(System.currentTimeMillis())
               .withBotUser(botUser.getEntityReference())
               .withProvider(ProviderType.USER)
-              .withFullyQualifiedName(botUser.getName());
+              .withFullyQualifiedName(botName);
 
       // Create Bot with above user
       bot = botRepository.createInternal(appBot);
@@ -138,14 +138,14 @@ public class AppRepository extends EntityRepository<App> {
 
   @Override
   public void storeEntity(App entity, boolean update) {
-    EntityReference ownerRef = entity.getOwner();
-    entity.withOwner(null);
+    List<EntityReference> ownerRefs = entity.getOwners();
+    entity.withOwners(null);
 
     // Store
     store(entity, update);
 
     // Restore entity fields
-    entity.withOwner(ownerRef);
+    entity.withOwners(ownerRefs);
   }
 
   public EntityReference getBotUser(App application) {

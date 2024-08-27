@@ -15,7 +15,7 @@ import { Button, Form, FormProps, Input, Select, Space } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { t } from 'i18next';
-import { isEmpty, snakeCase } from 'lodash';
+import { isEmpty, isEqual, snakeCase } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useHistory, useParams } from 'react-router-dom';
@@ -27,10 +27,7 @@ import {
 } from '../../../../constants/TestSuite.constant';
 import { ProfilerDashboardType } from '../../../../enums/table.enum';
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
-import {
-  TestCase,
-  TestCaseParameterValue,
-} from '../../../../generated/tests/testCase';
+import { TestCase } from '../../../../generated/tests/testCase';
 import {
   EntityType,
   TestDataType,
@@ -43,21 +40,25 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../../interface/FormUtils.interface';
+import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import {
   getListTestCase,
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
 import {
+  filterSelectOptions,
   getNameFromFQN,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/CommonUtils';
-import { createTestCaseParameters } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { generateFormFields } from '../../../../utils/formUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
-import { TestCaseFormProps } from '../AddDataQualityTest.interface';
+import {
+  TestCaseFormProps,
+  TestCaseFormType,
+} from '../AddDataQualityTest.interface';
 import ParameterForm from './ParameterForm';
 
 const TestCaseForm: React.FC<TestCaseFormProps> = ({
@@ -87,6 +88,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     initialValue?.testDefinition
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
+  const [currentColumnType, setCurrentColumnType] = useState<string>();
+  const [loading, setLoading] = useState(false);
 
   const columnName = Form.useWatch('column', form);
 
@@ -105,17 +108,13 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     },
   ];
 
-  const fetchAllTestDefinitions = async () => {
+  const fetchAllTestDefinitions = async (columnType?: string) => {
     try {
       const { data } = await getListTestDefinitions({
         limit: PAGE_SIZE_LARGE,
         entityType: isColumnFqn ? EntityType.Column : EntityType.Table,
         testPlatform: TestPlatform.OpenMetadata,
-        supportedDataType: isColumnFqn
-          ? table.columns.find(
-              (column) => column.fullyQualifiedName === columnName
-            )?.dataType
-          : undefined,
+        supportedDataType: columnType,
       });
       const updatedData = data.filter((definition) => {
         if (definition.fullyQualifiedName === TABLE_DIFF) {
@@ -148,7 +147,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     }
   };
 
-  const getSelectedTestDefinition = () => {
+  const getSelectedTestDefinition = useCallback(() => {
     const testType = isEmpty(initialValue?.testSuite)
       ? selectedTestType
       : initialValue?.testSuite;
@@ -156,35 +155,25 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     return testDefinitions.find(
       (definition) => definition.fullyQualifiedName === testType
     );
-  };
+  }, [initialValue?.testSuite, selectedTestType, testDefinitions]);
   const isComputeRowCountFieldVisible = useMemo(() => {
     const selectedDefinition = getSelectedTestDefinition();
 
     return selectedDefinition?.supportsRowLevelPassedFailed ?? false;
-  }, [selectedTestType, initialValue, testDefinitions]);
+  }, [getSelectedTestDefinition]);
 
-  const GenerateParamsField = useCallback(() => {
+  const generateParamsField = useMemo(() => {
     const selectedDefinition = getSelectedTestDefinition();
     if (selectedDefinition?.parameterDefinition) {
       return <ParameterForm definition={selectedDefinition} table={table} />;
     }
 
     return null;
-  }, [selectedTestType, initialValue, testDefinitions]);
+  }, [table, getSelectedTestDefinition]);
 
-  const createTestCaseObj = (value: {
-    testName: string;
-    params: Record<string, string | { [key: string]: string }[]>;
-    testTypeId: string;
-    computePassedFailedRowCount?: boolean;
-    description?: string;
-  }): CreateTestCase => {
+  const createTestCaseObj = (value: TestCaseFormType): CreateTestCase => {
     const selectedDefinition = getSelectedTestDefinition();
 
-    const parameterValues = createTestCaseParameters(
-      value.params,
-      selectedDefinition
-    );
     const name =
       value.testName?.trim() ||
       `${replaceAllSpacialCharWith_(columnName ?? table.name)}_${snakeCase(
@@ -202,15 +191,17 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         isColumnFqn ? `${decodedEntityFQN}.${columnName}` : decodedEntityFQN,
         isColumnFqn
       ),
-      parameterValues: parameterValues as TestCaseParameterValue[],
       testDefinition: value.testTypeId,
       description: isEmpty(value.description) ? undefined : value.description,
       testSuite: '',
+      ...testCaseClassBase.getCreateTestCaseObject(value, selectedDefinition),
     };
   };
 
-  const handleFormSubmit: FormProps['onFinish'] = (value) => {
-    onSubmit(createTestCaseObj(value));
+  const handleFormSubmit: FormProps['onFinish'] = async (value) => {
+    setLoading(true);
+    await onSubmit(createTestCaseObj(value));
+    setLoading(false);
   };
 
   const onBack = () => {
@@ -237,6 +228,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   const handleValueChange: FormProps['onValuesChange'] = (value) => {
     if (value.testTypeId) {
       setSelectedTestType(value.testTypeId);
+    } else if (value.column) {
+      form.setFieldsValue({ testTypeId: undefined });
+      setSelectedTestType(undefined);
     }
   };
 
@@ -247,10 +241,14 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   };
 
   useEffect(() => {
-    fetchAllTestDefinitions();
     const selectedColumn = table.columns.find(
       (column) => column.name === columnName
     );
+
+    if (selectedColumn?.dataType !== currentColumnType) {
+      fetchAllTestDefinitions(selectedColumn?.dataType);
+      setCurrentColumnType(selectedColumn?.dataType);
+    }
     if (selectedColumn) {
       history.push({
         search: Qs.stringify({
@@ -263,6 +261,9 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   useEffect(() => {
     if (isEmpty(testCases)) {
       fetchAllTestCases();
+    }
+    if (!isColumnFqn) {
+      fetchAllTestDefinitions();
     }
     form.setFieldsValue({
       testName: replaceAllSpacialCharWith_(initialValue?.name ?? ''),
@@ -280,10 +281,21 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     });
   }, [activeColumnFqn]);
 
+  const testTypeOptions = useMemo(
+    () =>
+      testDefinitions.map((suite) => ({
+        label: getEntityName(suite),
+        value: suite.fullyQualifiedName ?? '',
+      })),
+
+    [testDefinitions]
+  );
+
   return (
     <Form
       data-testid="test-case-form"
       form={form}
+      initialValues={{ ...testCaseClassBase.initialFormValues() }}
       layout="vertical"
       name="tableTestForm"
       preserve={false}
@@ -361,17 +373,29 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         <Select
           showSearch
           data-testid="test-type"
-          options={testDefinitions.map((suite) => ({
-            label: getEntityName(suite),
-            value: suite.fullyQualifiedName,
-          }))}
+          filterOption={filterSelectOptions}
+          options={testTypeOptions}
           placeholder={t('label.select-field', { field: t('label.test-type') })}
           onChange={handleTestDefinitionChange}
         />
       </Form.Item>
-
-      {GenerateParamsField()}
-
+      {generateFormFields(
+        testCaseClassBase.createFormAdditionalFields(
+          testDefinition?.supportsDynamicAssertion ?? false
+        )
+      )}
+      <Form.Item
+        noStyle
+        shouldUpdate={(prevValues, currentValues) => {
+          return !isEqual(
+            prevValues['useDynamicAssertion'],
+            currentValues['useDynamicAssertion']
+          );
+        }}>
+        {({ getFieldValue }) =>
+          getFieldValue('useDynamicAssertion') ? null : generateParamsField
+        }
+      </Form.Item>
       <Form.Item
         label={t('label.description')}
         name="description"
@@ -389,10 +413,14 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       <Form.Item noStyle>
         <Space className="w-full justify-end" size={16}>
-          <Button data-testid="cancel-btn" onClick={onBack}>
+          <Button data-testid="cancel-btn" disabled={loading} onClick={onBack}>
             {t('label.back')}
           </Button>
-          <Button data-testid="submit-test" htmlType="submit" type="primary">
+          <Button
+            data-testid="submit-test"
+            htmlType="submit"
+            loading={loading}
+            type="primary">
             {t('label.submit')}
           </Button>
         </Space>

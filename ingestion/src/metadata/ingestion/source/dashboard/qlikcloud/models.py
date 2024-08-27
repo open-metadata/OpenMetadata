@@ -27,7 +27,16 @@ class QlikApp(BaseModel):
     published: Optional[bool] = None
 
 
-class QlikAppList(BaseModel):
+class QlikLink(BaseModel):
+    href: Optional[str] = None
+
+
+class QlikLinks(BaseModel):
+    next: Optional[QlikLink] = None
+
+
+class QlikAppResponse(BaseModel):
     """QlikCloud Apps List"""
 
-    apps: Optional[List[QlikApp]] = None
+    apps: Optional[List[QlikApp]] = Field(None, alias="data")
+    links: Optional[QlikLinks] = None

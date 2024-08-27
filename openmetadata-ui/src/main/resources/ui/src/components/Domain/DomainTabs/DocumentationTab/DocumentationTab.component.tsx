@@ -19,13 +19,12 @@ import { ReactComponent as PlusIcon } from '../../../../assets/svg/plus-primary.
 import DescriptionV1 from '../../../../components/common/EntityDescription/DescriptionV1';
 import { UserSelectableList } from '../../../../components/common/UserSelectableList/UserSelectableList.component';
 import { UserTeamSelectableList } from '../../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
-import DomainExperts from '../../../../components/Domain/DomainExperts/DomainExperts.component';
 import DomainTypeSelectForm from '../../../../components/Domain/DomainTypeSelectForm/DomainTypeSelectForm.component';
 import { DE_ACTIVE_COLOR } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import {
   Domain,
@@ -36,12 +35,12 @@ import {
   ChangeDescription,
   EntityReference,
 } from '../../../../generated/entity/type';
-import {
-  domainTypeTooltipDataRender,
-  getUserNames,
-} from '../../../../utils/DomainUtils';
+import { domainTypeTooltipDataRender } from '../../../../utils/DomainUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
-import { getEntityVersionByField } from '../../../../utils/EntityVersionUtils';
+import {
+  getEntityVersionByField,
+  getOwnerVersionLabel,
+} from '../../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
@@ -85,7 +84,7 @@ const DocumentationTab = ({
       );
 
       const editOwner = checkPermission(
-        Operation.EditOwner,
+        Operation.EditOwners,
         resourceType,
         permissions
       );
@@ -129,10 +128,10 @@ const DocumentationTab = ({
     }
   };
 
-  const handleUpdatedOwner = async (newOwner: Domain['owner']) => {
+  const handleUpdatedOwner = async (newOwners: Domain['owners']) => {
     const updatedData = {
       ...domain,
-      owner: newOwner,
+      owners: newOwners,
     };
     await onUpdate(updatedData as Domain | DataProduct);
   };
@@ -168,210 +167,200 @@ const DocumentationTab = ({
   };
 
   return (
-    <Row>
-      <Col span={24}>
-        <ResizablePanels
-          applyDefaultStyle={false}
-          firstPanel={{
-            children: (
-              <div className="border-right p-md domain-content-container">
-                <DescriptionV1
-                  description={description}
-                  entityName={getEntityName(domain)}
-                  entityType={EntityType.DOMAIN}
-                  hasEditAccess={editDescriptionPermission}
-                  isEdit={isDescriptionEditable}
-                  showCommentsIcon={false}
-                  onCancel={() => setIsDescriptionEditable(false)}
-                  onDescriptionEdit={() => setIsDescriptionEditable(true)}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                />
+    <ResizablePanels
+      className="domain-height-with-resizable-panel"
+      firstPanel={{
+        className: 'domain-resizable-panel-container',
+        children: (
+          <div className="p-md domain-content-container">
+            <DescriptionV1
+              description={description}
+              entityName={getEntityName(domain)}
+              entityType={EntityType.DOMAIN}
+              hasEditAccess={editDescriptionPermission}
+              isEdit={isDescriptionEditable}
+              showCommentsIcon={false}
+              onCancel={() => setIsDescriptionEditable(false)}
+              onDescriptionEdit={() => setIsDescriptionEditable(true)}
+              onDescriptionUpdate={onDescriptionUpdate}
+            />
+          </div>
+        ),
+        minWidth: 800,
+        flex: 0.75,
+      }}
+      secondPanel={{
+        children: (
+          <Row gutter={[0, 40]}>
+            <Col data-testid="domain-owner-name" span="24">
+              <div className="d-flex items-center m-b-xss">
+                <Typography.Text className="right-panel-label">
+                  {t('label.owner')}
+                </Typography.Text>
+                {editOwnerPermission && domain.owners && (
+                  <UserTeamSelectableList
+                    hasPermission
+                    multiple={{ team: false, user: true }}
+                    owner={domain.owners}
+                    onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.owner'),
+                      })}>
+                      <Button
+                        className="cursor-pointer flex-center m-l-xss"
+                        data-testid="edit-owner"
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                        size="small"
+                        type="text"
+                      />
+                    </Tooltip>
+                  </UserTeamSelectableList>
+                )}
               </div>
-            ),
-            minWidth: 800,
-            flex: 0.75,
-          }}
-          secondPanel={{
-            children: (
-              <Row gutter={[0, 40]}>
-                <Col data-testid="domain-owner-name" span="24">
-                  <div className="d-flex items-center m-b-xss">
-                    <Typography.Text className="right-panel-label">
-                      {t('label.owner')}
-                    </Typography.Text>
-                    {editOwnerPermission && domain.owner && (
-                      <UserTeamSelectableList
-                        hasPermission
-                        owner={domain.owner}
-                        onUpdate={(updatedUser) =>
-                          handleUpdatedOwner(updatedUser as EntityReference)
-                        }>
-                        <Tooltip
-                          title={t('label.edit-entity', {
-                            entity: t('label.owner'),
-                          })}>
-                          <Button
-                            className="cursor-pointer flex-center m-l-xss"
-                            data-testid="edit-owner"
-                            icon={
-                              <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                            }
-                            size="small"
-                            type="text"
-                          />
-                        </Tooltip>
-                      </UserTeamSelectableList>
-                    )}
-                  </div>
 
-                  <Space className="m-r-xss" size={4}>
-                    {getUserNames(
-                      domain,
-                      editOwnerPermission || editAllPermission,
-                      isVersionsView
-                    )}
-                  </Space>
+              <Space className="m-r-xss" size={4}>
+                {getOwnerVersionLabel(
+                  domain,
+                  isVersionsView,
+                  TabSpecificField.OWNERS,
+                  editOwnerPermission || editAllPermission
+                )}
+              </Space>
 
-                  {!domain.owner && editOwnerPermission && (
-                    <UserTeamSelectableList
+              {domain.owners?.length === 0 && editOwnerPermission && (
+                <UserTeamSelectableList
+                  hasPermission
+                  multiple={{ team: false, user: true }}
+                  owner={domain.owners}
+                  onUpdate={(updatedUser) => handleUpdatedOwner(updatedUser)}>
+                  <TagButton
+                    className="tw-text-primary cursor-pointer"
+                    icon={<PlusIcon height={16} name="plus" width={16} />}
+                    label={t('label.add')}
+                    tooltip=""
+                  />
+                </UserTeamSelectableList>
+              )}
+            </Col>
+            <Col data-testid="domain-expert-name" span="24">
+              <div
+                className={`d-flex items-center ${
+                  domain.experts && domain.experts.length > 0 ? 'm-b-xss' : ''
+                }`}>
+                <Typography.Text
+                  className="right-panel-label"
+                  data-testid="domain-expert-heading-name">
+                  {t('label.expert-plural')}
+                </Typography.Text>
+                {editOwnerPermission &&
+                  domain.experts &&
+                  domain.experts.length > 0 && (
+                    <UserSelectableList
                       hasPermission
-                      owner={domain.owner}
-                      onUpdate={(updatedUser) =>
-                        handleUpdatedOwner(updatedUser as EntityReference)
-                      }>
+                      popoverProps={{ placement: 'topLeft' }}
+                      selectedUsers={domain.experts ?? []}
+                      onUpdate={handleExpertsUpdate}>
+                      <Tooltip
+                        title={t('label.edit-entity', {
+                          entity: t('label.expert-plural'),
+                        })}>
+                        <Button
+                          className="cursor-pointer flex-center m-l-xss"
+                          data-testid="edit-expert-button"
+                          icon={
+                            <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
+                          }
+                          size="small"
+                          type="text"
+                        />
+                      </Tooltip>
+                    </UserSelectableList>
+                  )}
+              </div>
+              <div>
+                {getOwnerVersionLabel(
+                  domain,
+                  isVersionsView ?? false,
+                  TabSpecificField.EXPERTS,
+                  editAllPermission
+                )}
+              </div>
+
+              <div>
+                {editOwnerPermission &&
+                  domain.experts &&
+                  domain.experts.length === 0 && (
+                    <UserSelectableList
+                      hasPermission={editOwnerPermission}
+                      popoverProps={{ placement: 'topLeft' }}
+                      selectedUsers={domain.experts ?? []}
+                      onUpdate={handleExpertsUpdate}>
                       <TagButton
                         className="tw-text-primary cursor-pointer"
                         icon={<PlusIcon height={16} name="plus" width={16} />}
                         label={t('label.add')}
                         tooltip=""
                       />
-                    </UserTeamSelectableList>
+                    </UserSelectableList>
                   )}
-                </Col>
-                <Col data-testid="domain-expert-name" span="24">
-                  <div
-                    className={`d-flex items-center ${
-                      domain.experts && domain.experts.length > 0
-                        ? 'm-b-xss'
-                        : ''
-                    }`}>
-                    <Typography.Text
-                      className="right-panel-label"
-                      data-testid="domain-expert-heading-name">
-                      {t('label.expert-plural')}
-                    </Typography.Text>
-                    {editOwnerPermission &&
-                      domain.experts &&
-                      domain.experts.length > 0 && (
-                        <UserSelectableList
-                          hasPermission
-                          popoverProps={{ placement: 'topLeft' }}
-                          selectedUsers={domain.experts ?? []}
-                          onUpdate={handleExpertsUpdate}>
-                          <Tooltip
-                            title={t('label.edit-entity', {
-                              entity: t('label.expert-plural'),
-                            })}>
-                            <Button
-                              className="cursor-pointer flex-center m-l-xss"
-                              data-testid="edit-expert-button"
-                              icon={
-                                <EditIcon
-                                  color={DE_ACTIVE_COLOR}
-                                  width="14px"
-                                />
-                              }
-                              size="small"
-                              type="text"
-                            />
-                          </Tooltip>
-                        </UserSelectableList>
-                      )}
-                  </div>
-                  <DomainExperts
-                    editPermission={editAllPermission}
-                    entity={domain}
-                    isVersionsView={isVersionsView}
-                  />
-                  <div>
-                    {editOwnerPermission &&
-                      domain.experts &&
-                      domain.experts.length === 0 && (
-                        <UserSelectableList
-                          hasPermission={editOwnerPermission}
-                          popoverProps={{ placement: 'topLeft' }}
-                          selectedUsers={domain.experts ?? []}
-                          onUpdate={handleExpertsUpdate}>
-                          <TagButton
-                            className="tw-text-primary cursor-pointer"
-                            icon={
-                              <PlusIcon height={16} name="plus" width={16} />
-                            }
-                            label={t('label.add')}
-                            tooltip=""
-                          />
-                        </UserSelectableList>
-                      )}
-                  </div>
-                </Col>
+              </div>
+            </Col>
 
-                {type === DocumentationEntity.DOMAIN && (
-                  <Col data-testid="domainType" span="24">
-                    <div className="d-flex items-center m-b-xss">
-                      <Typography.Text
-                        className="right-panel-label"
-                        data-testid="domainType-heading-name">
-                        <FormItemLabel
-                          align={{ targetOffset: [18, 0] }}
-                          helperText={domainTypeTooltipDataRender()}
-                          label={t('label.domain-type')}
-                          overlayClassName="domain-type-tooltip-container"
-                          placement="topLeft"
-                        />
-                      </Typography.Text>
+            {type === DocumentationEntity.DOMAIN && (
+              <Col data-testid="domainType" span="24">
+                <div className="d-flex items-center m-b-xss">
+                  <Typography.Text
+                    className="right-panel-label"
+                    data-testid="domainType-heading-name">
+                    <FormItemLabel
+                      align={{ targetOffset: [18, 0] }}
+                      helperText={domainTypeTooltipDataRender()}
+                      label={t('label.domain-type')}
+                      overlayClassName="domain-type-tooltip-container"
+                      placement="topLeft"
+                    />
+                  </Typography.Text>
 
-                      {editAllPermission && (domain as Domain).domainType && (
-                        <Tooltip
-                          title={t('label.edit-entity', {
-                            entity: t('label.domain-type'),
-                          })}>
-                          <Button
-                            className="cursor-pointer flex-center m-l-xss"
-                            data-testid="edit-domainType-button"
-                            icon={
-                              <EditIcon color={DE_ACTIVE_COLOR} width="14px" />
-                            }
-                            size="small"
-                            type="text"
-                            onClick={() => setEditDomainType(true)}
-                          />
-                        </Tooltip>
-                      )}
-                    </div>
-                    {!editDomainType && (
-                      <Space wrap data-testid="domain-type-label" size={6}>
-                        {(domain as Domain).domainType}
-                      </Space>
-                    )}
-
-                    {editDomainType && (
-                      <DomainTypeSelectForm
-                        defaultValue={(domain as Domain).domainType}
-                        onCancel={() => setEditDomainType(false)}
-                        onSubmit={handleDomainTypeUpdate}
+                  {editAllPermission && (domain as Domain).domainType && (
+                    <Tooltip
+                      title={t('label.edit-entity', {
+                        entity: t('label.domain-type'),
+                      })}>
+                      <Button
+                        className="cursor-pointer flex-center m-l-xss"
+                        data-testid="edit-domainType-button"
+                        icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
+                        size="small"
+                        type="text"
+                        onClick={() => setEditDomainType(true)}
                       />
-                    )}
-                  </Col>
+                    </Tooltip>
+                  )}
+                </div>
+                {!editDomainType && (
+                  <Space wrap data-testid="domain-type-label" size={6}>
+                    {(domain as Domain).domainType}
+                  </Space>
                 )}
-              </Row>
-            ),
-            minWidth: 320,
-            flex: 0.25,
-            className: 'entity-resizable-right-panel-container',
-          }}
-        />
-      </Col>
-    </Row>
+
+                {editDomainType && (
+                  <DomainTypeSelectForm
+                    defaultValue={(domain as Domain).domainType}
+                    onCancel={() => setEditDomainType(false)}
+                    onSubmit={handleDomainTypeUpdate}
+                  />
+                )}
+              </Col>
+            )}
+          </Row>
+        ),
+        minWidth: 320,
+        flex: 0.25,
+        className:
+          'entity-resizable-right-panel-container domain-resizable-panel-container',
+      }}
+    />
   );
 };
 

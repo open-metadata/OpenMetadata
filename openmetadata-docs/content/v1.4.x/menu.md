@@ -44,8 +44,6 @@ site_menu:
     url: /deployment/kubernetes/security
   - category: Deployment / Kubernetes Deployment / Helm Values
     url: /deployment/kubernetes/helm-values
-  - category: Deployment / Kubernetes Deployment / FAQs
-    url: /deployment/kubernetes/faqs
 
   - category: Deployment / Ingestion
     url: /deployment/ingestion
@@ -98,6 +96,8 @@ site_menu:
     url: /deployment/security/custom-oidc/bare-metal
   - category: Deployment / Enable Security / Custom OIDC SSO / Kubernetes
     url: /deployment/security/custom-oidc/kubernetes
+  - category: Deployment / Enable Security / OIDC SSO
+    url: /deployment/security/oidc
   - category: Deployment / Enable Security / Google SSO
     url: /deployment/security/google
   - category: Deployment / Enable Security / Google SSO / Docker
@@ -140,6 +140,12 @@ site_menu:
     url: /deployment/security/keycloak/kubernetes
   - category: Deployment / Enable Security / Saml
     url: /deployment/security/saml
+  - category: Deployment / Enable Security / Saml / Docker 
+    url: /deployment/security/saml/docker
+  - category: Deployment / Enable Security / Saml / Bare Metal 
+    url: /deployment/security/saml/bare-metal
+  - category: Deployment / Enable Security / Saml / Kubernetes
+    url: /deployment/security/saml/kubernetes
   - category: Deployment / Enable Security / Saml / AWS
     url: /deployment/security/saml/aws
   - category: Deployment / Enable Security / Enable SSL
@@ -197,293 +203,8 @@ site_menu:
   - category: Deployment / Backup & Restore Metadata
     url: /deployment/backup-restore-metadata
 
-  - category: How-to Guides
-    url: /how-to-guides
-    color: violet-70
-    icon: openmetadata
-
-  - category: How-to Guides / Admin Guide
-    url: /how-to-guides/admin-guide
-  - category: How-to Guides / Admin Guide / How to Ingest Metadata
-    url: /how-to-guides/admin-guide/how-to-ingest-metadata
-  - category: How-to Guides / Admin Guide / How to Delete a Service Connection
-    url: /how-to-guides/admin-guide/delete-service-connection
-  - category: How-to Guides / Admin Guide / Manage Teams and Users
-    url: /how-to-guides/admin-guide/teams-and-users
-  - category: How-to Guides / Admin Guide / Manage Teams and Users / Team Structure in OpenMetadata
-    url: /how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata
-  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Add a Team
-    url: /how-to-guides/admin-guide/teams-and-users/add-team
-  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Invite Users to OpenMetadata
-    url: /how-to-guides/admin-guide/teams-and-users/invite-users
-  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Add Users to Teams
-    url: /how-to-guides/admin-guide/teams-and-users/add-users
-  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Change the Team Type
-    url: /how-to-guides/admin-guide/teams-and-users/change-team-type
-  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies
-    url: /how-to-guides/admin-guide/roles-policies
-  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
-    url: /how-to-guides/admin-guide/roles-policies/authorization
-  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
-    url: /how-to-guides/admin-guide/roles-policies/use-cases
-  - category: How-to Guides / Admin Guide / Set up Data Observability Alerts and Notifications
-    url: /how-to-guides/admin-guide/alerts
-  - category: How-to Guides / Admin Guide / CLI Ingestion with Basic Auth
-    url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
-  - category: How-to Guides / Admin Guide / How to Add Custom Logo
-    url: /how-to-guides/admin-guide/how-to-add-custom-logo
-  - category: How-to Guides / Admin Guide / Reindexing Search
-    url: /how-to-guides/admin-guide/Reindexing-Search  
-
-  - category: How-to Guides / Guide for Data Users
-    url: /how-to-guides/guide-for-data-users
-  - category: How-to Guides / Guide for Data Users / Understanding the Basics of OpenMetadata
-    url: /how-to-guides/guide-for-data-users/basics-openmetadata
-  - category: How-to Guides / Guide for Data Users / Overview of Data Assets
-    url: /how-to-guides/guide-for-data-users/data-asset-tabs
-  - category: How-to Guides / Guide for Data Users / How to Add Description using Markdown
-    url: /how-to-guides/guide-for-data-users/description
-  - category: How-to Guides / Guide for Data Users / How to Request for Description
-    url: /how-to-guides/guide-for-data-users/request-description
-  - category: How-to Guides / Guide for Data Users / How to Assign or Change Data Ownership
-    url: /how-to-guides/guide-for-data-users/data-ownership
-  - category: How-to Guides / Guide for Data Users / How to Follow a Data Asset
-    url: /how-to-guides/guide-for-data-users/follow-data-asset
-  - category: How-to Guides / Guide for Data Users / How to Add Tags
-    url: /how-to-guides/guide-for-data-users/tags
-  - category: How-to Guides / Guide for Data Users / How to Request for Tags
-    url: /how-to-guides/guide-for-data-users/request-tags
-  - category: How-to Guides / Guide for Data Users / How to Add Glossary Terms
-    url: /how-to-guides/guide-for-data-users/glossary
-  - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
-    url: /how-to-guides/guide-for-data-users/custom
-  - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
-    url: /how-to-guides/guide-for-data-users/theme  
-  - category: How-to Guides / Guide for Data Users / Overview of Announcements
-    url: /how-to-guides/guide-for-data-users/announcements
-  - category: How-to Guides / Guide for Data Users / How to Create an Announcement
-    url: /how-to-guides/guide-for-data-users/add-announcement
-  - category: How-to Guides / Guide for Data Users / Data Asset Versioning
-    url: /how-to-guides/guide-for-data-users/versions
-  - category: How-to Guides / Guide for Data Users / How to Delete a Data Asset
-    url: /how-to-guides/guide-for-data-users/delete
-  - category: How-to Guides / Guide for Data Users / OpenMetadata Browser Extension
-    url: /how-to-guides/guide-for-data-users/browser-ext
-
-  - category: How-to Guides / Data Discovery
-    url: /how-to-guides/data-discovery
-  - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
-    url: /how-to-guides/data-discovery/discover
-  - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
-    url: /how-to-guides/data-discovery/preview
-  - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
-    url: /how-to-guides/data-discovery/details
-  - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
-    url: /how-to-guides/data-discovery/advanced
-
-  - category: How-to Guides / Data Collaboration
-    url: /how-to-guides/data-collaboration
-  - category: How-to Guides / Data Collaboration / Understanding Activity Feeds
-    url: /how-to-guides/data-collaboration/activity-feeds
-  - category: How-to Guides / Data Collaboration / Conversation Threads
-    url: /how-to-guides/data-collaboration/conversation
-  - category: How-to Guides / Data Collaboration / Tasks
-    url: /how-to-guides/data-collaboration/tasks
-  - category: How-to Guides / Data Collaboration / How to Request for Description
-    url: /how-to-guides/data-collaboration/request-description
-  - category: How-to Guides / Data Collaboration / How to Request for Tags
-    url: /how-to-guides/data-collaboration/request-tags
-  - category: How-to Guides / Data Collaboration / Overview of Announcements
-    url: /how-to-guides/data-collaboration/announcements
-  - category: How-to Guides / Data Collaboration / How to Create an Announcement
-    url: /how-to-guides/data-collaboration/add-announcement
-  - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
-    url: /how-to-guides/data-collaboration/knowledge-center
-
-  - category: How-to Guides / Data Quality and Observability
-    url: /how-to-guides/data-quality-observability
-  - category: How-to Guides / Data Quality and Observability / Data Quality
-    url: /how-to-guides/data-quality-observability/quality
-  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Tab
-    url: /how-to-guides/data-quality-observability/quality/tab
-  - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
-    url: /how-to-guides/data-quality-observability/quality/test
-  - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
-    url: /how-to-guides/data-quality-observability/quality/configure
-  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
-    url: /how-to-guides/data-quality-observability/quality/tests-yaml
-  - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
-    url: /how-to-guides/data-quality-observability/quality/custom-tests
-  - category: How-to Guides / Data Quality and Observability / Data Profiler
-    url: /how-to-guides/data-quality-observability/profiler
-  - category: How-to Guides / Data Quality and Profiler / Data Profiler/ Profiler Tab
-    url: /how-to-guides/data-quality-observability/profiler/tab
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Profiler Workflow
-    url: /how-to-guides/data-quality-observability/profiler/workflow
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
-    url: /how-to-guides/data-quality-observability/profiler/metrics
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
-    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
-    url: /how-to-guides/data-quality-observability/profiler/external-workflow
-  - category: How-to Guides / Data Quality and Observability / Data Profiler / Auto PII Tagging
-    url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
-  - category: How-to Guides / Data Quality and Observability / Data Observability
-    url: /how-to-guides/data-quality-observability/observability
-  - category: How-to Guides / Data Quality and Observability / Data Observability / Observability Alerts
-    url: /how-to-guides/data-quality-observability/observability/alerts
-  - category: How-to Guides / Data Quality and Observability / Incident Manager
-    url: /how-to-guides/data-quality-observability/incident-manager
-  - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
-    url: /how-to-guides/data-quality-observability/incident-manager/workflow
-  - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
-    url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
-    isCollateOnly: true
-
-  - category: How-to Guides / Data Lineage
-    url: /how-to-guides/data-lineage
-  - category: How-to Guides / Data Lineage / How to Deploy a Lineage Workflow
-    url: /how-to-guides/data-lineage/workflow
-  - category: How-to Guides / Data Lineage / Explore the Lineage View
-    url: /how-to-guides/data-lineage/explore
-  - category: How-to Guides / Data Lineage / How Column-Level Lineage Works
-    url: /how-to-guides/data-lineage/column
-  - category: How-to Guides / Data Lineage / How to Manually Add or Edit Lineage
-    url: /how-to-guides/data-lineage/manual
-
-  - category: How-to Guides / Data Insights
-    url: /how-to-guides/data-insights
-  - category: How-to Guides / Data Insights / What is Tiering
-    url: /how-to-guides/data-insights/tiering
-  - category: How-to Guides / Data Insights / Set Up Data Insights Ingestion
-    url: /how-to-guides/data-insights/ingestion
-  - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
-    url: /how-to-guides/data-insights/kpi
-  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
-    url: /how-to-guides/data-insights/airflow-sdk
-  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
-    url: /how-to-guides/data-insights/metadata-cli   
-  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
-    url: /how-to-guides/data-insights/elasticsearch-reindex 
-  - category: How-to Guides / Data Insights / Data Insights Report
-    url: /how-to-guides/data-insights/report
-  - category: How-to Guides / Data Insights / Cost Analysis
-    url: /how-to-guides/data-insights/cost-analysis
-  - category: How-to Guides / Data Insights / Configure the Data Insights Report
-    url: /how-to-guides/data-insights/email-report
-  - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
-    url: /how-to-guides/data-insights/data-culture
-
-  - category: How-to Guides / Data Governance
-    url: /how-to-guides/data-governance
-  - category: How-to Guides / Data Governance / Glossary
-    url: /how-to-guides/data-governance/glossary
-  - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
-    url: /how-to-guides/data-governance/glossary/glossary-term
-  - category: How-to Guides / Data Governance / Glossary / How to Setup a Glossary
-    url: /how-to-guides/data-governance/glossary/setup
-  - category: How-to Guides / Data Governance / Glossary / How to Create Glossary Terms
-    url: /how-to-guides/data-governance/glossary/create-terms
-  - category: How-to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
-    url: /how-to-guides/data-governance/glossary/import
-  - category: How-to Guides / Data Governance / Glossary / Glossary Export
-    url: /how-to-guides/data-governance/glossary/export
-  - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
-    url: /how-to-guides/data-governance/glossary/approval
-  - category: How-to Guides / Data Governance / Glossary / Glossary Styling
-    url: /how-to-guides/data-governance/glossary/styling
-  - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
-    url: /how-to-guides/data-governance/glossary/assets
-  - category: How-to Guides / Data Governance / Glossary / Best Practices for Glossary
-    url: /how-to-guides/data-governance/glossary/best-practices
-  - category: How-to Guides / Data Governance / Classification
-    url: /how-to-guides/data-governance/classification
-  - category: How-to Guides / Data Governance / Classification / Overview of Classification
-    url: /how-to-guides/data-governance/classification/overview
-  - category: How-to Guides / Data Governance / Classification / How to Classify Data Assets
-    url: /how-to-guides/data-governance/classification/assets
-  - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
-    url: /how-to-guides/data-governance/classification/request-tags
-  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
-    url: /how-to-guides/data-governance/classification/auto
-  - category: How-to Guides / Data Governance / Classification / What are Tiers
-    url: /how-to-guides/data-governance/classification/tiers
-  - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
-    url: /how-to-guides/data-governance/classification/best-practices
-
-  - category: Releases
-    url: /releases
-    color: violet-70
-    icon: overview
-  - category: Releases / Latest Release
-    url: /releases/latest-release
-  - category: Releases / Supported Releases
-    url: /releases/supported
-  - category: Releases / All Releases
-    url: /releases/all-releases
-  - category: Releases / All Releases / 1.4.2 Release
-    url: /releases/all-releases/#1.4.2-release
-  - category: Releases / All Releases / 1.4.1 Release
-    url: /releases/all-releases/#1.4.1-release
-  - category: Releases / All Releases / 1.4.0 Release
-    url: /releases/all-releases/#1.4.0-release
-  - category: Releases / All Releases / 1.3.4 Release
-    url: /releases/all-releases/#1.3.4-release
-  - category: Releases / All Releases / 1.3.3 Release
-    url: /releases/all-releases/#1.3.3-release
-  - category: Releases / All Releases / 1.3.2 Release
-    url: /releases/all-releases/#1.3.2-release
-  - category: Releases / All Releases / 1.3.1 Release
-    url: /releases/all-releases/#1.3.1-release
-  - category: Releases / All Releases / 1.3.0 Release
-    url: /releases/all-releases/#1.3.0-release
-  - category: Releases / All Releases / 1.2.0 Release
-    url: /releases/all-releases/#1.2.0-release
-  - category: Releases / All Releases / 1.1.2 Release
-    url: /releases/all-releases/#1.1.2-release
-  - category: Releases / All Releases / 1.1.1 Release
-    url: /releases/all-releases/#1.1.1-release
-  - category: Releases / All Releases / 1.1.0 Release
-    url: /releases/all-releases/#1.1.0-release
-  - category: Releases / All Releases / 1.0.0 Release
-    url: /releases/all-releases/#1.0.0-release
-  - category: Releases / All Releases / 0.13.3 Release
-    url: /releases/all-releases/#0.13.3-release
-  - category: Releases / All Releases / 0.13.2 Release
-    url: /releases/all-releases/#0.13.2-release
-  - category: Releases / All Releases / 0.13.1 Release
-    url: /releases/all-releases/#0.13.1-release
-  - category: Releases / All Releases / 0.13.0 Release
-    url: /releases/all-releases/#0.13.0-release
-  - category: Releases / All Releases / 0.12.3 Release
-    url: /releases/all-releases/#0.12.3-release
-  - category: Releases / All Releases / 0.12.2 Release
-    url: /releases/all-releases/#0.12.2-release
-  - category: Releases / All Releases / 0.12.1 Release
-    url: /releases/all-releases/#0.12.1-release
-  - category: Releases / All Releases / 0.12.0 Release
-    url: /releases/all-releases/#0.12.0-release
-  - category: Releases / All Releases / 0.11.0 Release
-    url: /releases/all-releases/#0.11.0-release
-  - category: Releases / All Releases / 0.10.1 Release
-    url: /releases/all-releases/#0.10.1-release
-  - category: Releases / All Releases / 0.10.0 Release
-    url: /releases/all-releases/#0.10.0-release
-  - category: Releases / All Releases / 0.9.0 Release
-    url: /releases/all-releases/#0.9.0-release
-  - category: Releases / All Releases / 0.8.0 Release
-    url: /releases/all-releases/#0.8.0-release
-  - category: Releases / All Releases / 0.7.0 Release
-    url: /releases/all-releases/#0.7.0-release
-  - category: Releases / All Releases / 0.6.0 Release
-    url: /releases/all-releases/#0.6.0-release
-  - category: Releases / All Releases / 0.5.0 Release
-    url: /releases/all-releases/#0.5.0-release
-  - category: Releases / All Releases / 0.4.0 Release
-    url: /releases/all-releases/#0.4.0-release
-
-  - category: Roadmap
-    url: /roadmap
+  - category: Deployment / Metrics
+    url: /deployment/metrics
 
   - category: Connectors
     url: /connectors
@@ -548,6 +269,10 @@ site_menu:
     url: /connectors/database/domo-database/yaml
   - category: Connectors / Database / Domo Database / Troubleshoot
     url: /connectors/database/domo-database/troubleshoot
+  - category: Connectors / Database / Doris
+    url: /connectors/database/doris
+  - category: Connectors / Database / Doris / Run Externally
+    url: /connectors/database/doris/yaml
   - category: Connectors / Database / Druid
     url: /connectors/database/druid
   - category: Connectors / Database / Druid / Run Externally
@@ -698,9 +423,9 @@ site_menu:
   - category: Connectors / Dashboard / Qlik Cloud
     url: /connectors/dashboard/qlikcloud
   - category: Connectors / Dashboard / Qlik Cloud / Run Externally
-    url: /connectors/dashboard/qliksense/yaml
+    url: /connectors/dashboard/qlikcloud/yaml
   - category: Connectors / Dashboard / Qlik Cloud / API Keys
-    url: /connectors/dashboard/qliksense/api_keys
+    url: /connectors/dashboard/qlikcloud/api_keys
   - category: Connectors / Dashboard / QuickSight
     url: /connectors/dashboard/quicksight
   - category: Connectors / Dashboard / QuickSight / Run Externally
@@ -926,12 +651,320 @@ site_menu:
   - category: Connectors / Ingestion / Best Practices
     url: /connectors/ingestion/best-practices
 
+  - category: How-to Guides
+    url: /how-to-guides
+    color: violet-70
+    icon: openmetadata
+
+  - category: How-to Guides / Admin Guide
+    url: /how-to-guides/admin-guide
+  - category: How-to Guides / Admin Guide / How to Ingest Metadata
+    url: /how-to-guides/admin-guide/how-to-ingest-metadata
+  - category: How-to Guides / Admin Guide / How to Delete a Service Connection
+    url: /how-to-guides/admin-guide/delete-service-connection
+  - category: How-to Guides / Admin Guide / Manage Teams and Users
+    url: /how-to-guides/admin-guide/teams-and-users
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / Team Structure in OpenMetadata
+    url: /how-to-guides/admin-guide/teams-and-users/team-structure-openmetadata
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Add a Team
+    url: /how-to-guides/admin-guide/teams-and-users/add-team
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Invite Users to OpenMetadata
+    url: /how-to-guides/admin-guide/teams-and-users/invite-users
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Add Users to Teams
+    url: /how-to-guides/admin-guide/teams-and-users/add-users
+  - category: How-to Guides / Admin Guide / Manage Teams and Users / How to Change the Team Type
+    url: /how-to-guides/admin-guide/teams-and-users/change-team-type
+  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies
+    url: /how-to-guides/admin-guide/roles-policies
+  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Building Blocks of Authorization - Rules, Policies, and Roles
+    url: /how-to-guides/admin-guide/roles-policies/authorization
+  - category: How-to Guides / Admin Guide / Advanced Guide for Roles and Policies / Use Cases - Creating Roles & Policies in OpenMetadata
+    url: /how-to-guides/admin-guide/roles-policies/use-cases
+  - category: How-to Guides / Admin Guide / Set up Data Observability Alerts and Notifications
+    url: /how-to-guides/admin-guide/alerts
+  - category: How-to Guides / Admin Guide / CLI Ingestion with Basic Auth
+    url: /how-to-guides/admin-guide/cli-ingestion-with-basic-auth
+  - category: How-to Guides / Admin Guide / How to Add Custom Logo
+    url: /how-to-guides/admin-guide/how-to-add-custom-logo
+  - category: How-to Guides / Admin Guide / Reindexing Search
+    url: /how-to-guides/admin-guide/Reindexing-Search  
+
+  - category: How-to Guides / Guide for Data Users
+    url: /how-to-guides/guide-for-data-users
+  - category: How-to Guides / Guide for Data Users / Understanding the Basics of OpenMetadata
+    url: /how-to-guides/guide-for-data-users/basics-openmetadata
+  - category: How-to Guides / Guide for Data Users / Overview of Data Assets
+    url: /how-to-guides/guide-for-data-users/data-asset-tabs
+  - category: How-to Guides / Guide for Data Users / How to Add Description using Markdown
+    url: /how-to-guides/guide-for-data-users/description
+  - category: How-to Guides / Guide for Data Users / How to Request for Description
+    url: /how-to-guides/guide-for-data-users/request-description
+  - category: How-to Guides / Guide for Data Users / How to Assign or Change Data Ownership
+    url: /how-to-guides/guide-for-data-users/data-ownership
+  - category: How-to Guides / Guide for Data Users / How to Follow a Data Asset
+    url: /how-to-guides/guide-for-data-users/follow-data-asset
+  - category: How-to Guides / Guide for Data Users / How to Add Tags
+    url: /how-to-guides/guide-for-data-users/tags
+  - category: How-to Guides / Guide for Data Users / How to Request for Tags
+    url: /how-to-guides/guide-for-data-users/request-tags
+  - category: How-to Guides / Guide for Data Users / How to Add Glossary Terms
+    url: /how-to-guides/guide-for-data-users/glossary
+  - category: How-to Guides / Guide for Data Users / How to Create a Custom Property for a Data Asset
+    url: /how-to-guides/guide-for-data-users/custom
+  - category: How-to Guides / Guide for Data Users / How to Customize OpenMetadata
+    url: /how-to-guides/guide-for-data-users/theme  
+  - category: How-to Guides / Guide for Data Users / Overview of Announcements
+    url: /how-to-guides/guide-for-data-users/announcements
+  - category: How-to Guides / Guide for Data Users / How to Create an Announcement
+    url: /how-to-guides/guide-for-data-users/add-announcement
+  - category: How-to Guides / Guide for Data Users / Data Asset Versioning
+    url: /how-to-guides/guide-for-data-users/versions
+  - category: How-to Guides / Guide for Data Users / How to Delete a Data Asset
+    url: /how-to-guides/guide-for-data-users/delete
+  - category: How-to Guides / Guide for Data Users / OpenMetadata Browser Extension
+    url: /how-to-guides/guide-for-data-users/browser-ext
+
+  - category: How-to Guides / Data Discovery
+    url: /how-to-guides/data-discovery
+  - category: How-to Guides / Data Discovery / How to Discover Assets of Interest
+    url: /how-to-guides/data-discovery/discover
+  - category: How-to Guides / Data Discovery / Get a Quick Glance of the Data Assets
+    url: /how-to-guides/data-discovery/preview
+  - category: How-to Guides / Data Discovery / Detailed View of the Data Assets
+    url: /how-to-guides/data-discovery/details
+  - category: How-to Guides / Data Discovery / Add Complex Queries using Advanced Search
+    url: /how-to-guides/data-discovery/advanced
+
+  - category: How-to Guides / Data Collaboration
+    url: /how-to-guides/data-collaboration
+  - category: How-to Guides / Data Collaboration / Understanding Activity Feeds
+    url: /how-to-guides/data-collaboration/activity-feeds
+  - category: How-to Guides / Data Collaboration / Conversation Threads
+    url: /how-to-guides/data-collaboration/conversation
+  - category: How-to Guides / Data Collaboration / Tasks
+    url: /how-to-guides/data-collaboration/tasks
+  - category: How-to Guides / Data Collaboration / How to Request for Description
+    url: /how-to-guides/data-collaboration/request-description
+  - category: How-to Guides / Data Collaboration / How to Request for Tags
+    url: /how-to-guides/data-collaboration/request-tags
+  - category: How-to Guides / Data Collaboration / Overview of Announcements
+    url: /how-to-guides/data-collaboration/announcements
+  - category: How-to Guides / Data Collaboration / How to Create an Announcement
+    url: /how-to-guides/data-collaboration/add-announcement
+  - category: How-to Guides / Data Collaboration / Overview of Knowledge Center
+    url: /how-to-guides/data-collaboration/knowledge-center
+
+  - category: How-to Guides / Data Quality and Observability
+    url: /how-to-guides/data-quality-observability
+  - category: How-to Guides / Data Quality and Observability / Data Quality
+    url: /how-to-guides/data-quality-observability/quality
+  - category: How-to Guides / Data Quality and Profiler / Data Quality / Data Quality Tab
+    url: /how-to-guides/data-quality-observability/quality/tab
+  - category: How-to Guides / Data Quality and Profiler / Data Quality / How to Write and Deploy No-Code Test Cases
+    url: /how-to-guides/data-quality-observability/quality/test
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Configure Data Quality
+    url: /how-to-guides/data-quality-observability/quality/configure
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Tests - YAML Config
+    url: /how-to-guides/data-quality-observability/quality/tests-yaml
+  - category: How-to Guides / Data Quality and Observability / Data Quality / Custom Tests
+    url: /how-to-guides/data-quality-observability/quality/custom-tests
+  - category: How-to Guides / Data Quality and Observability / Data Profiler
+    url: /how-to-guides/data-quality-observability/profiler
+  - category: How-to Guides / Data Quality and Profiler / Data Profiler/ Profiler Tab
+    url: /how-to-guides/data-quality-observability/profiler/tab
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Profiler Workflow
+    url: /how-to-guides/data-quality-observability/profiler/workflow
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Metrics
+    url: /how-to-guides/data-quality-observability/profiler/metrics
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Sample Data
+    url: /how-to-guides/data-quality-observability/profiler/external-sample-data
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / External Workflow
+    url: /how-to-guides/data-quality-observability/profiler/external-workflow
+  - category: How-to Guides / Data Quality and Observability / Data Profiler / Auto PII Tagging
+    url: /how-to-guides/data-quality-observability/profiler/auto-pii-tagging
+  - category: How-to Guides / Data Quality and Observability / Data Observability
+    url: /how-to-guides/data-quality-observability/observability
+  - category: How-to Guides / Data Quality and Observability / Data Observability / Observability Alerts
+    url: /how-to-guides/data-quality-observability/observability/alerts
+  - category: How-to Guides / Data Quality and Observability / Data Observability / Webhooks
+    url: /how-to-guides/data-quality-observability/observability/webhooks
+  - category: How-to Guides / Data Quality and Observability / Incident Manager
+    url: /how-to-guides/data-quality-observability/incident-manager
+  - category: How-to Guides / Data Quality and Observability / Incident Manager / How to work with the Incident Manager
+    url: /how-to-guides/data-quality-observability/incident-manager/workflow
+  - category: How-to Guides / Data Quality and Observability / Incident Manager / Root Cause Analysis
+    url: /how-to-guides/data-quality-observability/incident-manager/root-cause-analysis
+    isCollateOnly: true
+
+  - category: How-to Guides / Data Lineage
+    url: /how-to-guides/data-lineage
+  - category: How-to Guides / Data Lineage / How to Deploy a Lineage Workflow
+    url: /how-to-guides/data-lineage/workflow
+  - category: How-to Guides / Data Lineage / Explore the Lineage View
+    url: /how-to-guides/data-lineage/explore
+  - category: How-to Guides / Data Lineage / How Column-Level Lineage Works
+    url: /how-to-guides/data-lineage/column
+  - category: How-to Guides / Data Lineage / How to Manually Add or Edit Lineage
+    url: /how-to-guides/data-lineage/manual
+
+  - category: How-to Guides / Data Insights
+    url: /how-to-guides/data-insights
+  - category: How-to Guides / Data Insights / What is Tiering
+    url: /how-to-guides/data-insights/tiering
+  - category: How-to Guides / Data Insights / Set Up Data Insights Ingestion
+    url: /how-to-guides/data-insights/ingestion
+  - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
+    url: /how-to-guides/data-insights/kpi
+  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
+    url: /how-to-guides/data-insights/airflow-sdk
+  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
+    url: /how-to-guides/data-insights/metadata-cli   
+  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
+    url: /how-to-guides/data-insights/elasticsearch-reindex 
+  - category: How-to Guides / Data Insights / Data Insights Report
+    url: /how-to-guides/data-insights/report
+  - category: How-to Guides / Data Insights / Cost Analysis
+    url: /how-to-guides/data-insights/cost-analysis
+  - category: How-to Guides / Data Insights / Configure the Data Insights Report
+    url: /how-to-guides/data-insights/email-report
+  - category: How-to Guides / Data Insights / How to Transform the Data Culture of Your Company
+    url: /how-to-guides/data-insights/data-culture
+
+  - category: How-to Guides / Data Governance
+    url: /how-to-guides/data-governance
+  - category: How-to Guides / Data Governance / Glossary
+    url: /how-to-guides/data-governance/glossary
+  - category: How-to Guides / Data Governance / Glossary / What is a Glossary Term
+    url: /how-to-guides/data-governance/glossary/glossary-term
+  - category: How-to Guides / Data Governance / Glossary / How to Setup a Glossary
+    url: /how-to-guides/data-governance/glossary/setup
+  - category: How-to Guides / Data Governance / Glossary / How to Create Glossary Terms
+    url: /how-to-guides/data-governance/glossary/create-terms
+  - category: How-to Guides / Data Governance / Glossary / How to Bulk Import a Glossary
+    url: /how-to-guides/data-governance/glossary/import
+  - category: How-to Guides / Data Governance / Glossary / Glossary Export
+    url: /how-to-guides/data-governance/glossary/export
+  - category: How-to Guides / Data Governance / Glossary / Glossary Approval Workflow
+    url: /how-to-guides/data-governance/glossary/approval
+  - category: How-to Guides / Data Governance / Glossary / Glossary Styling
+    url: /how-to-guides/data-governance/glossary/styling
+  - category: How-to Guides / Data Governance / Glossary / How to Add Assets to Glossary Terms
+    url: /how-to-guides/data-governance/glossary/assets
+  - category: How-to Guides / Data Governance / Glossary / Best Practices for Glossary
+    url: /how-to-guides/data-governance/glossary/best-practices
+  - category: How-to Guides / Data Governance / Classification
+    url: /how-to-guides/data-governance/classification
+  - category: How-to Guides / Data Governance / Classification / Overview of Classification
+    url: /how-to-guides/data-governance/classification/overview
+  - category: How-to Guides / Data Governance / Classification / How to Classify Data Assets
+    url: /how-to-guides/data-governance/classification/assets
+  - category: How-to Guides / Data Governance / Classification / How to Request for Classification Tags
+    url: /how-to-guides/data-governance/classification/request-tags
+  - category: How-to Guides / Data Governance / Classification / Auto-Classification in OpenMetadata
+    url: /how-to-guides/data-governance/classification/auto
+  - category: How-to Guides / Data Governance / Classification / What are Tiers
+    url: /how-to-guides/data-governance/classification/tiers
+  - category: How-to Guides / Data Governance / Classification / Best Practices for Classification
+    url: /how-to-guides/data-governance/classification/best-practices
+  - category: How-to Guides / Data Governance / Domains & Data Product
+    url: /how-to-guides/data-governance/domains-&-data-products
+  - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Domains
+    url: /how-to-guides/data-governance/domains-&-data-products/domains
+  - category: How-to Guides / Data Governance / Domains & Data Product /  How to Use Data Products
+    url: /how-to-guides/data-governance/domains-&-data-products/data-products
+
+  - category: Releases
+    url: /releases
+    color: violet-70
+    icon: overview
+  - category: Releases / Latest Release
+    url: /releases/latest-release
+  - category: Releases / Supported Releases
+    url: /releases/supported
+  - category: Releases / All Releases
+    url: /releases/all-releases
+  - category: Releases / All Releases / 1.4.7 Release
+    url: /releases/all-releases/#1.4.7-release
+  - category: Releases / All Releases / 1.4.6 Release
+    url: /releases/all-releases/#1.4.6-release
+  - category: Releases / All Releases / 1.4.5 Release
+    url: /releases/all-releases/#1.4.5-release
+  - category: Releases / All Releases / 1.4.4 Release
+    url: /releases/all-releases/#1.4.4-release
+  - category: Releases / All Releases / 1.4.3 Release
+    url: /releases/all-releases/#1.4.3-release
+  - category: Releases / All Releases / 1.4.2 Release
+    url: /releases/all-releases/#1.4.2-release
+  - category: Releases / All Releases / 1.4.1 Release
+    url: /releases/all-releases/#1.4.1-release
+  - category: Releases / All Releases / 1.4.0 Release
+    url: /releases/all-releases/#1.4.0-release
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
+  - category: Releases / All Releases / 1.3.1 Release
+    url: /releases/all-releases/#1.3.1-release
+  - category: Releases / All Releases / 1.3.0 Release
+    url: /releases/all-releases/#1.3.0-release
+  - category: Releases / All Releases / 1.2.0 Release
+    url: /releases/all-releases/#1.2.0-release
+  - category: Releases / All Releases / 1.1.2 Release
+    url: /releases/all-releases/#1.1.2-release
+  - category: Releases / All Releases / 1.1.1 Release
+    url: /releases/all-releases/#1.1.1-release
+  - category: Releases / All Releases / 1.1.0 Release
+    url: /releases/all-releases/#1.1.0-release
+  - category: Releases / All Releases / 1.0.0 Release
+    url: /releases/all-releases/#1.0.0-release
+  - category: Releases / All Releases / 0.13.3 Release
+    url: /releases/all-releases/#0.13.3-release
+  - category: Releases / All Releases / 0.13.2 Release
+    url: /releases/all-releases/#0.13.2-release
+  - category: Releases / All Releases / 0.13.1 Release
+    url: /releases/all-releases/#0.13.1-release
+  - category: Releases / All Releases / 0.13.0 Release
+    url: /releases/all-releases/#0.13.0-release
+  - category: Releases / All Releases / 0.12.3 Release
+    url: /releases/all-releases/#0.12.3-release
+  - category: Releases / All Releases / 0.12.2 Release
+    url: /releases/all-releases/#0.12.2-release
+  - category: Releases / All Releases / 0.12.1 Release
+    url: /releases/all-releases/#0.12.1-release
+  - category: Releases / All Releases / 0.12.0 Release
+    url: /releases/all-releases/#0.12.0-release
+  - category: Releases / All Releases / 0.11.0 Release
+    url: /releases/all-releases/#0.11.0-release
+  - category: Releases / All Releases / 0.10.1 Release
+    url: /releases/all-releases/#0.10.1-release
+  - category: Releases / All Releases / 0.10.0 Release
+    url: /releases/all-releases/#0.10.0-release
+  - category: Releases / All Releases / 0.9.0 Release
+    url: /releases/all-releases/#0.9.0-release
+  - category: Releases / All Releases / 0.8.0 Release
+    url: /releases/all-releases/#0.8.0-release
+  - category: Releases / All Releases / 0.7.0 Release
+    url: /releases/all-releases/#0.7.0-release
+  - category: Releases / All Releases / 0.6.0 Release
+    url: /releases/all-releases/#0.6.0-release
+  - category: Releases / All Releases / 0.5.0 Release
+    url: /releases/all-releases/#0.5.0-release
+  - category: Releases / All Releases / 0.4.0 Release
+    url: /releases/all-releases/#0.4.0-release
+
+  - category: Roadmap
+    url: /roadmap
+
   - category: Main Concepts
     url: /main-concepts
     color: violet-70
     icon: main-concepts
   - category: Main Concepts / High Level Design
     url: /main-concepts/high-level-design
+  - category: Main Concepts / Backend DB
+    url: /main-concepts/backend-db
   - category: Main Concepts / Metadata Standard
     url: /main-concepts/metadata-standard
   - category: Main Concepts / Metadata Standard / Schemas
@@ -1895,8 +1928,6 @@ site_menu:
     url: /developers/contribute/developing-a-new-connector/update-documentation
   - category: Developers / Contribute / UX Style Guide
     url: /developers/contribute/ux-style-guide
-  - category: Developers / Webhooks
-    url: /developers/webhooks
   - category: Developers / Bots
     url: /developers/bots
   - category: Developers / Add Language Support

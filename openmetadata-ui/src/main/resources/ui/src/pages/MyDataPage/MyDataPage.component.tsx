@@ -27,10 +27,15 @@ import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import { AssetsType, EntityType } from '../../enums/entity.enum';
+import {
+  AssetsType,
+  EntityType,
+  TabSpecificField,
+} from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
+import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
@@ -115,7 +120,7 @@ const MyDataPage = () => {
     setIsLoadingOwnedData(true);
     try {
       const userData = await getUserById(currentUser?.id, {
-        fields: 'follows,owns',
+        fields: [TabSpecificField.FOLLOWS, TabSpecificField.OWNS],
       });
 
       if (userData) {
@@ -210,18 +215,23 @@ const MyDataPage = () => {
             <Loader />
           </div>
         ) : (
-          <ReactGridLayout
-            className="bg-white"
-            cols={4}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={100}>
-            {widgets}
-          </ReactGridLayout>
+          <>
+            <ReactGridLayout
+              className="bg-white"
+              cols={4}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={100}>
+              {widgets}
+            </ReactGridLayout>
+            <LimitWrapper resource="dataAssets">
+              <br />
+            </LimitWrapper>
+          </>
         )}
       </PageLayoutV1>
     </ActivityFeedProvider>

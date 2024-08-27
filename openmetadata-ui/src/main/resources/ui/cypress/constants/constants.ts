@@ -337,195 +337,6 @@ export const ENTITY_SERVICE_TYPE = {
   Search: 'Search',
 };
 
-export const ENTITIES = {
-  entity_container: {
-    name: 'container',
-    description: 'This is Container custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: {},
-    entityApiType: 'containers',
-  },
-
-  entity_dashboard: {
-    name: 'dashboard',
-    description: 'This is Dashboard custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: SEARCH_ENTITY_DASHBOARD.dashboard_1,
-    entityApiType: 'dashboards',
-  },
-
-  entity_database: {
-    name: 'database',
-    description: 'This is Database custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: {},
-    entityApiType: 'databases',
-  },
-
-  entity_databaseSchema: {
-    name: 'databaseSchema',
-    description: 'This is Database Schema custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: {},
-    entityApiType: 'databaseSchemas',
-  },
-
-  entity_glossaryTerm: {
-    name: 'glossaryTerm',
-    description: 'This is Glossary Term custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: {},
-    entityApiType: 'glossaryTerm',
-  },
-
-  entity_mlmodel: {
-    name: 'mlmodel',
-    description: 'This is ML Model custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: {},
-    entityApiType: 'mlmodels',
-  },
-
-  entity_pipeline: {
-    name: 'pipeline',
-    description: 'This is Pipeline custom property',
-    integerValue: '78',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: true,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: SEARCH_ENTITY_PIPELINE.pipeline_1,
-    entityApiType: 'pipelines',
-  },
-
-  entity_searchIndex: {
-    name: 'searchIndex',
-    description: 'This is Search Index custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: {},
-    entityApiType: 'searchIndexes',
-  },
-
-  entity_storedProcedure: {
-    name: 'storedProcedure',
-    description: 'This is Stored Procedure custom property',
-    integerValue: '14',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: {},
-    entityApiType: 'storedProcedures',
-  },
-
-  entity_table: {
-    name: 'table',
-    description: 'This is Table custom property',
-    integerValue: '45',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: SEARCH_ENTITY_TABLE.table_1,
-    entityApiType: 'tables',
-  },
-
-  entity_topic: {
-    name: 'topic',
-    description: 'This is Topic custom property',
-    integerValue: '23',
-    stringValue: 'This is string propery',
-    markdownValue: 'This is markdown value',
-    enumConfig: {
-      values: ['enum1', 'enum2', 'enum3'],
-      multiSelect: false,
-    },
-    dateFormatConfig: 'yyyy-mm-dd',
-    dateTimeFormatConfig: 'yyyy-mm-dd hh:mm:ss',
-    entityReferenceConfig: ['User', 'Team'],
-    entityObj: SEARCH_ENTITY_TOPIC.topic_1,
-    entityApiType: 'topics',
-  },
-};
-
 export const LOGIN = {
   username: 'admin@openmetadata.org',
   password: 'admin',
@@ -540,20 +351,20 @@ export const ANNOUNCEMENT_ENTITIES = [
 
 export const HTTP_CONFIG_SOURCE = {
   DBT_CATALOG_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/catalog.json',
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/catalog.json',
   DBT_MANIFEST_HTTP_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/manifest.json',
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/manifest.json',
   DBT_RUN_RESULTS_FILE_PATH:
-    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/master/run_results.json',
+    'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/run_results.json',
 };
 
 export const DBT = {
   classification: 'dbtTags',
   tagName: 'model_tag_two',
-  dbtQuery: 'select * from "dev"."dbt_jaffle"."stg_orders"',
+  dbtQuery: 'select * from "dev"."dbt_automate_upgrade_tests"."stg_orders"',
   dbtLineageNodeLabel: 'customers',
-  dbtLineageNode: 'dev.dbt_jaffle.stg_customers',
-  dataQualityTest1: 'dbt_utils_equal_rowcount_customers_ref_orders_',
+  dbtLineageNode: 'dev.dbt_automate_upgrade_tests.stg_customers',
+  dataQualityTest1: 'unique_customers_customer_id',
   dataQualityTest2: 'not_null_customers_customer_id',
 };
 
@@ -593,16 +404,6 @@ export const DESTINATION = {
     url: 'http://localhost:8585',
   },
 };
-
-export const CUSTOM_PROPERTY_INVALID_NAMES = {
-  CAPITAL_CASE: 'CapitalCase',
-  WITH_UNDERSCORE: 'with_underscore',
-  WITH_DOTS: 'with.',
-  WITH_SPACE: 'with ',
-};
-
-export const CUSTOM_PROPERTY_NAME_VALIDATION_ERROR =
-  'Name must start with lower case with no space, underscore, or dots.';
 
 export const TAG_INVALID_NAMES = {
   MIN_LENGTH: 'c',

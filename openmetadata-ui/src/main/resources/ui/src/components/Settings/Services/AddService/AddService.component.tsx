@@ -18,7 +18,6 @@ import { capitalize, isEmpty, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, { useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { HTTP_STATUS_CODE } from '../../../../constants/Auth.constants';
 import { getServiceDetailsPath } from '../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import {
@@ -32,6 +31,7 @@ import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { ConfigData } from '../../../../interface/service.interface';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
+import { handleEntityCreationError } from '../../../../utils/formUtils';
 import {
   getAddServicePath,
   getSettingPath,
@@ -41,7 +41,6 @@ import {
   getServiceRouteFromServiceType,
   getServiceType,
 } from '../../../../utils/ServiceUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import SuccessScreen from '../../../common/SuccessScreen/SuccessScreen';
@@ -69,7 +68,7 @@ const AddService = ({
   handleAddIngestion,
 }: AddServiceProps) => {
   const history = useHistory();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, setInlineAlertDetails } = useApplicationStore();
   const { fetchAirflowStatus } = useAirflowStatus();
 
   const [showErrorMessage, setShowErrorMessage] = useState(
@@ -134,10 +133,12 @@ const AddService = ({
       name: serviceConfig.serviceName,
       serviceType: selectServiceType,
       description: serviceConfig.description,
-      owner: {
-        id: currentUser?.id ?? '',
-        type: 'user',
-      },
+      owners: [
+        {
+          id: currentUser?.id ?? '',
+          type: 'user',
+        },
+      ],
     };
     const configData = {
       ...data,
@@ -153,21 +154,15 @@ const AddService = ({
 
       await fetchAirflowStatus();
     } catch (error) {
-      if (
-        (error as AxiosError).response?.status === HTTP_STATUS_CODE.CONFLICT
-      ) {
-        showErrorToast(
-          t('server.entity-already-exist', {
-            entity: t('label.service'),
-            entityPlural: t('label.service-lowercase-plural'),
-            name: serviceConfig.serviceName,
-          })
-        );
-
-        return;
-      }
-
-      return error;
+      handleEntityCreationError({
+        error: error as AxiosError,
+        entity: t('label.service'),
+        entityLowercase: t('label.service-lowercase'),
+        entityLowercasePlural: t('label.service-lowercase-plural'),
+        setInlineAlertDetails,
+        name: serviceConfig.serviceName,
+        defaultErrorType: 'create',
+      });
     } finally {
       setSaveServiceState('initial');
     }
@@ -248,10 +243,13 @@ const AddService = ({
 
         {activeServiceStep > 3 && (
           <SuccessScreen
-            showIngestionButton
             handleIngestionClick={() => handleAddIngestion(true)}
             handleViewServiceClick={handleViewServiceClick}
             name={serviceConfig.serviceName}
+            // API Service does not support ingestion workflows
+            showIngestionButton={
+              serviceCategory !== ServiceCategory.API_SERVICES
+            }
             state={FormSubmitType.ADD}
             suffix={getServiceCreatedLabel(serviceCategory)}
           />
@@ -299,7 +297,13 @@ const AddService = ({
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
       hideSecondPanel={
         !(selectServiceType && activeServiceStep === 3) && !addIngestion
       }
@@ -314,7 +318,7 @@ const AddService = ({
             workflowType={PipelineType.Metadata}
           />
         ),
-        className: 'service-doc-panel',
+        className: 'service-doc-panel content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

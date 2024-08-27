@@ -18,6 +18,7 @@ import DataAssetsTab from '../../components/DataInsight/DataAssetsTab/DataAssets
 import { DataInsightTabs } from '../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../utils/DataInsightUtils';
 import i18n from '../../utils/i18next/LocalUtil';
+import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import KPIList from './KPIList';
 
 type LeftSideBarType = {
@@ -28,6 +29,10 @@ type LeftSideBarType = {
 };
 
 class DataInsightClassBase {
+  public getLeftPanel() {
+    return DataInsightLeftPanel;
+  }
+
   public getLeftSideBar(): LeftSideBarType[] {
     return [
       {

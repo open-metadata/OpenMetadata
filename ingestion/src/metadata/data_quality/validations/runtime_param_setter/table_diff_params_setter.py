@@ -15,7 +15,11 @@ from urllib.parse import urlparse
 
 from sqlalchemy.engine import Engine
 
-from metadata.data_quality.validations.models import TableDiffRuntimeParameters
+from metadata.data_quality.validations.models import (
+    Column,
+    TableDiffRuntimeParameters,
+    TableParameter,
+)
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
     RuntimeParameterSetter,
 )
@@ -39,6 +43,12 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
     - whereClause: Exrtact where clause based on partitioning and user input
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._table_columns = {
+            column.name.root: column for column in self.table_entity.columns
+        }
+
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
         service1: Engine = get_connection(self.service_connection_config)
         table2_fqn = self.get_parameter(test_case, "table2")
@@ -47,17 +57,28 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         )
         service2 = self.get_service2_url(service1, table2, test_case)
         key_columns = self.get_key_columns(test_case)
+        extra_columns = self.get_extra_columns(key_columns, test_case)
         return TableDiffRuntimeParameters(
-            service1Url=self.get_data_diff_url(
-                str(service1.url), self.table_entity.fullyQualifiedName.root
+            table1=TableParameter(
+                path=self.get_data_diff_table_path(
+                    self.table_entity.fullyQualifiedName.root
+                ),
+                serviceUrl=self.get_data_diff_url(
+                    str(service1.url), self.table_entity.fullyQualifiedName.root
+                ),
+                columns=self.filter_relevant_columns(
+                    self.table_entity.columns, key_columns, extra_columns
+                ),
             ),
-            service2Url=self.get_data_diff_url(service2, table2_fqn),
-            table1=self.get_data_diff_table_path(
-                self.table_entity.fullyQualifiedName.root
+            table2=TableParameter(
+                path=self.get_data_diff_table_path(table2_fqn),
+                serviceUrl=self.get_data_diff_url(service2, table2_fqn),
+                columns=self.filter_relevant_columns(
+                    table2.columns, key_columns, extra_columns
+                ),
             ),
-            table2=self.get_data_diff_table_path(table2_fqn),
             keyColumns=key_columns,
-            extraColumns=self.get_extra_columns(key_columns, test_case),
+            extraColumns=extra_columns,
             whereClause=self.build_where_clause(test_case),
         )
 
@@ -93,19 +114,23 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
     def get_extra_columns(
         self, key_columns: List[str], test_case
     ) -> Optional[List[str]]:
-        extra_columns = self.get_parameter(test_case, "useColumns", None)
-        if extra_columns is not None:
-            return literal_eval(extra_columns)
-        if extra_columns is None:
-            extra_columns = []
+        extra_columns_param = self.get_parameter(test_case, "useColumns", None)
+        if extra_columns_param is not None:
+            extra_columns: List[str] = literal_eval(extra_columns_param)
+            self.validate_columns(extra_columns)
+            return extra_columns
+        if extra_columns_param is None:
+            extra_columns_param = []
             for column in self.table_entity.columns:
                 if column.name.root not in key_columns:
-                    extra_columns.insert(0, column.name.root)
-        return extra_columns
+                    extra_columns_param.insert(0, column.name.root)
+        return extra_columns_param
 
     def get_key_columns(self, test_case) -> List[str]:
-        key_columns = self.get_parameter(test_case, "keyColumns", "[]")
-        key_columns = literal_eval(key_columns)
+        key_columns_param = self.get_parameter(test_case, "keyColumns", "[]")
+        key_columns: List[str] = literal_eval(key_columns_param)
+        if key_columns:
+            self.validate_columns(key_columns)
         if not key_columns:
             for column in self.table_entity.columns:
                 if column.constraint == Constraint.PRIMARY_KEY:
@@ -123,6 +148,12 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         return key_columns
 
     @staticmethod
+    def filter_relevant_columns(
+        columns: List[Column], key_columns: List[str], extra_columns: List[str]
+    ) -> List[Column]:
+        return [c for c in columns if c.name.root in [*key_columns, *extra_columns]]
+
+    @staticmethod
     def get_parameter(test_case: TestCase, key: str, default=None):
         return next(
             (p.value for p in test_case.parameterValues if p.name == key), default
@@ -131,7 +162,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
     @staticmethod
     def get_data_diff_url(service_url: str, table_fqn) -> str:
         url = urlparse(service_url)
-        # remove the drivername from the url becuase table-diff doesn't support it
+        # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
         service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
             table_fqn
@@ -142,10 +173,18 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         return url._replace(**kwargs).geturl()
 
     @staticmethod
-    def get_data_diff_table_path(table_fqn: str):
+    def get_data_diff_table_path(table_fqn: str) -> str:
         service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
             table_fqn
         )
         return fqn._build(  # pylint: disable=protected-access
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
+
+    def validate_columns(self, column_names: List[str]):
+        for column in column_names:
+            if not self._table_columns.get(column):
+                raise ValueError(
+                    f"Failed to resolve key columns for table diff.\n"
+                    f"Column '{column}' not found in table '{self.table_entity.name.root}'.\n"
+                )

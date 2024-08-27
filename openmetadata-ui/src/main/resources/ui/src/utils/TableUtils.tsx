@@ -28,8 +28,10 @@ import {
 } from 'lodash';
 import { EntityTags } from 'Models';
 import React, { CSSProperties } from 'react';
+import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
 import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application.svg';
+import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
 import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart.svg';
@@ -40,11 +42,14 @@ import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
 import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
 import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
-import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
+import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint-default.svg';
+import { ReactComponent as APIServiceIcon } from '../assets/svg/ic-api-service-default.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
 import { ReactComponent as IconTestSuite } from '../assets/svg/ic-checklist.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg';
+import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
@@ -63,10 +68,16 @@ import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
 import { ReactComponent as RoleIcon } from '../assets/svg/icon-role-grey.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
+import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
+import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
+import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
+import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
 import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
+import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
 import { ReactComponent as TagIcon } from '../assets/svg/tag.svg';
 import { ReactComponent as TaskIcon } from '../assets/svg/task-ic.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/teams.svg';
+import { ReactComponent as UserIcon } from '../assets/svg/user.svg';
 
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
@@ -89,6 +100,7 @@ import {
   sortTagsCaseInsensitive,
 } from './CommonUtils';
 import EntityLink from './EntityLink';
+import searchClassBase from './SearchClassBase';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { ordinalize } from './StringsUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
@@ -194,97 +206,86 @@ export const getEntityIcon = (
   let Icon;
   let className = iconClass;
   const style: CSSProperties = iconStyle;
+  const entityIconMapping: Record<string, SvgComponent> = {
+    [SearchIndex.DATABASE]: DatabaseIcon,
+    [EntityType.DATABASE]: DatabaseIcon,
+    [SearchIndex.DATABASE_SERVICE]: DatabaseIcon,
+    [EntityType.DATABASE_SERVICE]: DatabaseIcon,
+    [SearchIndex.DATABASE_SCHEMA]: SchemaIcon,
+    [EntityType.DATABASE_SCHEMA]: SchemaIcon,
+    [SearchIndex.TOPIC]: TopicIcon,
+    [EntityType.TOPIC]: TopicIcon,
+    [EntityType.MESSAGING_SERVICE]: TopicIcon,
+    [SearchIndex.MESSAGING_SERVICE]: TopicIcon,
+    [SearchIndex.DASHBOARD]: DashboardIcon,
+    [EntityType.DASHBOARD]: DashboardIcon,
+    [EntityType.DASHBOARD_SERVICE]: DashboardIcon,
+    [SearchIndex.DASHBOARD_SERVICE]: DashboardIcon,
+    [SearchIndex.MLMODEL]: MlModelIcon,
+    [EntityType.MLMODEL]: MlModelIcon,
+    [EntityType.MLMODEL_SERVICE]: MlModelIcon,
+    [SearchIndex.ML_MODEL_SERVICE]: MlModelIcon,
+    [SearchIndex.PIPELINE]: PipelineIcon,
+    [EntityType.PIPELINE]: PipelineIcon,
+    [EntityType.PIPELINE_SERVICE]: PipelineIcon,
+    [SearchIndex.PIPELINE_SERVICE]: PipelineIcon,
+    [SearchIndex.CONTAINER]: ContainerIcon,
+    [EntityType.CONTAINER]: ContainerIcon,
+    [EntityType.STORAGE_SERVICE]: ContainerIcon,
+    [SearchIndex.STORAGE_SERVICE]: ContainerIcon,
+    [SearchIndex.DASHBOARD_DATA_MODEL]: IconDataModel,
+    [EntityType.DASHBOARD_DATA_MODEL]: IconDataModel,
+    [SearchIndex.STORED_PROCEDURE]: IconStoredProcedure,
+    [EntityType.STORED_PROCEDURE]: IconStoredProcedure,
+    [EntityType.CLASSIFICATION]: ClassificationIcon,
+    [SearchIndex.TAG]: TagIcon,
+    [EntityType.TAG]: TagIcon,
+    [SearchIndex.GLOSSARY]: GlossaryIcon,
+    [EntityType.GLOSSARY]: GlossaryIcon,
+    [SearchIndex.GLOSSARY_TERM]: GlossaryTermIcon,
+    [EntityType.GLOSSARY_TERM]: GlossaryTermIcon,
+    [SearchIndex.DOMAIN]: DomainIcon,
+    [EntityType.DOMAIN]: DomainIcon,
+    [SearchIndex.CHART]: ChartIcon,
+    [EntityType.CHART]: ChartIcon,
+    [SearchIndex.TABLE]: TableIcon,
+    [EntityType.TABLE]: TableIcon,
+    [EntityType.METADATA_SERVICE]: MetadataServiceIcon,
+    [SearchIndex.DATA_PRODUCT]: DataProductIcon,
+    [EntityType.DATA_PRODUCT]: DataProductIcon,
+    [EntityType.TEST_CASE]: IconTestSuite,
+    [EntityType.TEST_SUITE]: IconTestSuite,
+    [EntityType.BOT]: BotIcon,
+    [EntityType.TEAM]: TeamIcon,
+    [EntityType.APPLICATION]: ApplicationIcon,
+    [EntityType.PERSONA]: PersonaIcon,
+    [EntityType.ROLE]: RoleIcon,
+    [EntityType.POLICY]: PolicyIcon,
+    [EntityType.EVENT_SUBSCRIPTION]: AlertIcon,
+    [EntityType.USER]: UserIcon,
+    [SearchIndex.USER]: UserIcon,
+    [EntityType.INGESTION_PIPELINE]: PipelineIcon,
+    [SearchIndex.INGESTION_PIPELINE]: PipelineIcon,
+    [EntityType.ALERT]: AlertIcon,
+    [EntityType.KPI]: KPIIcon,
+    ['tagCategory']: ClassificationIcon,
+    ['announcement']: AnnouncementIcon,
+    ['conversation']: ConversationIcon,
+    ['task']: TaskIcon,
+    ['dataQuality']: DataQualityIcon,
+    ['services']: ServicesIcon,
+    ['automator']: AutomatorBotIcon,
+    ['notification']: NotificationIcon,
+    [EntityType.API_ENDPOINT]: APIEndpointIcon,
+    [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
+    [EntityType.API_SERVICE]: APIServiceIcon,
+    [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
+    [EntityType.API_COLLECTION]: APICollectionIcon,
+    [SearchIndex.API_COLLECTION_INDEX]: APICollectionIcon,
+    ['location']: LocationIcon,
+  };
 
   switch (indexType) {
-    case SearchIndex.DATABASE:
-    case EntityType.DATABASE:
-      Icon = DatabaseIcon;
-
-      break;
-
-    case SearchIndex.DATABASE_SCHEMA:
-    case EntityType.DATABASE_SCHEMA:
-      Icon = SchemaIcon;
-
-      break;
-
-    case SearchIndex.TOPIC:
-    case EntityType.TOPIC:
-    case EntityType.MESSAGING_SERVICE:
-    case SearchIndex.MESSAGING_SERVICE:
-      Icon = TopicIcon;
-
-      break;
-
-    case SearchIndex.DASHBOARD:
-    case EntityType.DASHBOARD:
-    case EntityType.DASHBOARD_SERVICE:
-    case SearchIndex.DASHBOARD_SERVICE:
-      Icon = DashboardIcon;
-
-      break;
-
-    case SearchIndex.MLMODEL:
-    case EntityType.MLMODEL:
-    case EntityType.MLMODEL_SERVICE:
-    case SearchIndex.ML_MODEL_SERVICE:
-      Icon = MlModelIcon;
-
-      break;
-
-    case SearchIndex.PIPELINE:
-    case EntityType.PIPELINE:
-    case EntityType.PIPELINE_SERVICE:
-    case SearchIndex.PIPELINE_SERVICE:
-    case 'ingestionPipeline':
-      Icon = PipelineIcon;
-
-      break;
-
-    case SearchIndex.CONTAINER:
-    case EntityType.CONTAINER:
-    case EntityType.STORAGE_SERVICE:
-    case SearchIndex.STORAGE_SERVICE:
-      Icon = ContainerIcon;
-
-      break;
-
-    case SearchIndex.DASHBOARD_DATA_MODEL:
-    case EntityType.DASHBOARD_DATA_MODEL:
-      Icon = IconDataModel;
-
-      break;
-
-    case SearchIndex.STORED_PROCEDURE:
-    case EntityType.STORED_PROCEDURE:
-      Icon = IconStoredProcedure;
-
-      break;
-
-    case EntityType.CLASSIFICATION:
-    case 'tagCategory':
-      Icon = ClassificationIcon;
-
-      break;
-
-    case SearchIndex.TAG:
-    case EntityType.TAG:
-      Icon = TagIcon;
-
-      break;
-
-    case SearchIndex.GLOSSARY:
-    case EntityType.GLOSSARY:
-      Icon = GlossaryIcon;
-
-      break;
-
-    case EntityType.GLOSSARY_TERM:
-    case SearchIndex.GLOSSARY_TERM:
-      Icon = GlossaryTermIcon;
-
-      break;
-
     case EntityType.SEARCH_INDEX:
     case SearchIndex.SEARCH_INDEX:
     case EntityType.SEARCH_SERVICE:
@@ -294,89 +295,14 @@ export const getEntityIcon = (
 
       break;
 
-    case EntityType.DOMAIN:
-    case SearchIndex.DOMAIN:
-      Icon = DomainIcon;
-
-      break;
-
-    case EntityType.CHART:
-    case SearchIndex.CHART:
-      Icon = ChartIcon;
-
-      break;
-
-    case EntityType.DATA_PRODUCT:
-    case SearchIndex.DATA_PRODUCT:
-      Icon = DataProductIcon;
-
-      break;
-
-    case 'announcement':
-      Icon = AnnouncementIcon;
-
-      break;
-
-    case 'conversation':
-      Icon = ConversationIcon;
-
-      break;
-
-    case 'task':
-      Icon = TaskIcon;
-
-      break;
-
-    case EntityType.EVENT_SUBSCRIPTION:
-      Icon = AlertIcon;
-
-      break;
-
-    case EntityType.TEST_CASE:
-    case EntityType.TEST_SUITE:
-      Icon = IconTestSuite;
-
-      break;
-
-    case EntityType.BOT:
-      Icon = BotIcon;
-
-      break;
-
-    case EntityType.TEAM:
-      Icon = TeamIcon;
-
-      break;
-
-    case EntityType.APPLICATION:
-      Icon = ApplicationIcon;
-
-      break;
-
-    case EntityType.PERSONA:
-      Icon = PersonaIcon;
-
-      break;
-
-    case EntityType.ROLE:
-      Icon = RoleIcon;
-
-      break;
-
-    case EntityType.POLICY:
-      Icon = PolicyIcon;
-
-      break;
-
-    case SearchIndex.TABLE:
-    case EntityType.TABLE:
     default:
-      Icon = TableIcon;
+      Icon = entityIconMapping[indexType];
 
       break;
   }
 
-  return <Icon className={className} style={style} />;
+  // If icon is not found, return null
+  return Icon ? <Icon className={className} style={style} /> : null;
 };
 
 export const getServiceIcon = (source: SourceType) => {
@@ -385,9 +311,13 @@ export const getServiceIcon = (source: SourceType) => {
   );
 
   if (isDataAsset) {
-    return getEntityIcon(source.entityType ?? '', 'service-icon w-7 h-7', {
-      color: DE_ACTIVE_COLOR,
-    });
+    return searchClassBase.getEntityIcon(
+      source.entityType ?? '',
+      'service-icon w-7 h-7',
+      {
+        color: DE_ACTIVE_COLOR,
+      }
+    );
   } else {
     return (
       <img

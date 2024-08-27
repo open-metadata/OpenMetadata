@@ -60,7 +60,7 @@ public class GCPSecretsManager extends ExternalSecretsManager {
     } catch (IOException e) {
       throw new SecretsManagerUpdateException(e.getMessage(), e);
     }
-    updateSecret(secretId, secretValue);
+    updateSecret(secretId, cleanNullOrEmpty(secretValue));
   }
 
   @Override

@@ -16,6 +16,7 @@ import {
   IAuthContext,
   OidcUser,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import {
   EntityUnion,
   ExploreSearchIndex,
@@ -53,6 +54,8 @@ export interface ApplicationStore
   applicationConfig?: UIThemePreference;
   searchCriteria: ExploreSearchIndex | '';
   theme: UIThemePreference['customTheme'];
+  inlineAlertDetails?: InlineAlertProps;
+  setInlineAlertDetails: (alertDetails?: InlineAlertProps) => void;
   setSelectedPersona: (persona: EntityReference) => void;
   setApplicationConfig: (config: UIThemePreference) => void;
   setCurrentUser: (user: User) => void;
@@ -83,11 +86,14 @@ export interface ApplicationStore
 
 export interface DomainStore {
   domains: Domain[];
+  userDomains: EntityReference[];
   domainLoading: boolean;
   activeDomain: string;
+  activeDomainEntityRef?: EntityReference;
   domainOptions: ItemType[];
-  fetchDomainList: () => Promise<void>;
-  updateDomains: (domainsArr: Domain[]) => void;
-  refreshDomains: () => Promise<void>;
+  updateDomains: (domainsArr: Domain[], selectDefault?: boolean) => void;
   updateActiveDomain: (activeDomainKey: string) => void;
+  setDomains: (domains: Domain[]) => void;
+  setUserDomains: (userDomainsArr: EntityReference[]) => void;
+  updateDomainLoading: (loading: boolean) => void;
 }

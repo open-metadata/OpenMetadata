@@ -9,7 +9,7 @@
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
   "supportEmail": "support@getcollate.io",
-  "scheduleType": "Scheduled",
+  "scheduleType": "ScheduledOrManual",
   "permission": "All",
   "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
   "runtime": {
@@ -43,16 +43,21 @@
       "dashboardService",
       "pipelineService",
       "mlmodelService",
+      "storageService",
+      "metadataService",
       "searchService",
       "entityReportData",
       "webAnalyticEntityViewReportData",
       "webAnalyticUserActivityReportData",
       "domain",
       "storedProcedure",
-      "storageService",
-      "dataProduct"
+      "dataProduct",
+      "testCaseResolutionStatus",
+      "apiService",
+      "apiEndpoint",
+      "apiCollection"
     ],
-    "recreateIndex": true,
+    "recreateIndex": false,
     "batchSize": "100",
     "searchIndexMappingLanguage": "EN"
   }

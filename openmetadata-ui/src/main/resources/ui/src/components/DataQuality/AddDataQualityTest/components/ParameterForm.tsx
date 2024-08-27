@@ -53,6 +53,7 @@ import {
   TableSearchSource,
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getEntityName } from '../../../../utils/EntityUtils';
 import {
   validateEquals,
   validateGreaterThanOrEquals,
@@ -71,11 +72,12 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     DynamicField?: ReactElement
   ) => {
     const ruleValidation: RuleRender = ({ getFieldValue }) => ({
-      validator(_, value) {
+      validator(_, formValue) {
         if (data?.validationRule) {
           const fieldValue = data.validationRule.parameterField
-            ? getFieldValue(['params', data.validationRule.parameterField])
+            ? +getFieldValue(['params', data.validationRule.parameterField])
             : undefined;
+          const value = +formValue;
           if (fieldValue && value) {
             switch (data.validationRule.rule) {
               case Rule.GreaterThanOrEquals:
@@ -153,6 +155,16 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 className="custom-query-editor query-editor-h-200"
                 mode={{ name: CSMode.SQL }}
                 showCopyButton={false}
+              />
+            );
+          } else if (data.name === 'column') {
+            Field = (
+              <Select
+                options={table?.columns.map((column) => ({
+                  label: getEntityName(column),
+                  value: column.name,
+                }))}
+                placeholder={t('message.select-column-name')}
               />
             );
           } else {

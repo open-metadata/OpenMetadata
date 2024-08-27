@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
@@ -18,7 +19,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -69,12 +69,12 @@ public interface SearchIndex {
     Map<String, Object> map = new HashMap<>();
     List<SearchSuggest> suggest = getSuggest();
     map.put("entityType", entityType);
-    map.put("owner", getEntityWithDisplayName(entity.getOwner()));
+    map.put("owners", getEntitiesWithDisplayName(entity.getOwners()));
     map.put("domain", getEntityWithDisplayName(entity.getDomain()));
     map.put("followers", SearchIndexUtils.parseFollowers(entity.getFollowers()));
     map.put(
         "totalVotes",
-        CommonUtil.nullOrEmpty(entity.getVotes())
+        nullOrEmpty(entity.getVotes())
             ? 0
             : entity.getVotes().getUpVotes() - entity.getVotes().getDownVotes());
     map.put("descriptionStatus", getDescriptionStatus(entity));
@@ -99,20 +99,37 @@ public interface SearchIndex {
     return fqnParts;
   }
 
+  default List<EntityReference> getEntitiesWithDisplayName(List<EntityReference> entities) {
+    if (nullOrEmpty(entities)) {
+      return Collections.emptyList();
+    }
+    List<EntityReference> clone = new ArrayList<>();
+    for (EntityReference entity : entities) {
+      EntityReference cloneEntity = JsonUtils.deepCopy(entity, EntityReference.class);
+      cloneEntity.setDisplayName(
+          nullOrEmpty(cloneEntity.getDisplayName())
+              ? cloneEntity.getName()
+              : cloneEntity.getDisplayName());
+      cloneEntity.setFullyQualifiedName(cloneEntity.getFullyQualifiedName().replace("\"", "\\'"));
+      clone.add(cloneEntity);
+    }
+    return clone;
+  }
+
   default EntityReference getEntityWithDisplayName(EntityReference entity) {
     if (entity == null) {
       return null;
     }
     EntityReference cloneEntity = JsonUtils.deepCopy(entity, EntityReference.class);
     cloneEntity.setDisplayName(
-        CommonUtil.nullOrEmpty(cloneEntity.getDisplayName())
+        nullOrEmpty(cloneEntity.getDisplayName())
             ? cloneEntity.getName()
             : cloneEntity.getDisplayName());
     return cloneEntity;
   }
 
   default String getDescriptionStatus(EntityInterface entity) {
-    return CommonUtil.nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
+    return nullOrEmpty(entity.getDescription()) ? "INCOMPLETE" : "COMPLETE";
   }
 
   static List<Map<String, Object>> getLineageData(EntityReference entity) {
@@ -171,6 +188,7 @@ public interface SearchIndex {
     fields.putAll(GlossaryTermIndex.getFields());
     fields.putAll(TagIndex.getFields());
     fields.putAll(DataProductIndex.getFields());
+    fields.putAll(APIEndpointIndex.getFields());
     return fields;
   }
 }

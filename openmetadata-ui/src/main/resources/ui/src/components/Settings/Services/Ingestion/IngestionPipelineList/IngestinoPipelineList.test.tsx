@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { useAirflowStatus } from '../../../../../hooks/useAirflowStatus';
+import { mockIngestionData } from '../../../../../mocks/Ingestion.mock';
+import { mockESIngestionData } from '../../../../../mocks/IngestionListTable.mock';
+import { deployIngestionPipelineById } from '../../../../../rest/ingestionPipelineAPI';
 import { IngestionPipelineList } from './IngestionPipelineList.component';
-
-const mockGetIngestinoPipelines = jest.fn();
-const mockBulkDeployPipelines = jest.fn();
 
 jest.mock(
   '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
@@ -28,8 +29,8 @@ jest.mock(
 
 jest.mock('../../../../../hooks/useAirflowStatus', () => ({
   useAirflowStatus: jest.fn().mockImplementation(() => ({
-    isAirflowAvailable: false,
-    isFetchingStatus: true,
+    isAirflowAvailable: true,
+    isFetchingStatus: false,
   })),
 }));
 
@@ -37,13 +38,40 @@ jest.mock('../../../../common/Loader/Loader', () => {
   return jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>);
 });
 
+jest.mock('../IngestionListTable/IngestionListTable', () => {
+  return jest.fn().mockImplementation(({ extraTableProps }) => (
+    <div>
+      IngestionListTable
+      <button
+        onClick={() =>
+          extraTableProps.rowSelection.onChange(
+            [
+              mockIngestionData.fullyQualifiedName,
+              mockESIngestionData.fullyQualifiedName,
+            ],
+            [mockIngestionData, mockESIngestionData]
+          )
+        }>
+        rowSelection
+      </button>
+    </div>
+  ));
+});
+
 jest.mock('../../../../../rest/ingestionPipelineAPI', () => ({
-  deployIngestionPipelineById: mockBulkDeployPipelines,
-  getIngestionPipelines: mockGetIngestinoPipelines,
+  deployIngestionPipelineById: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve()),
+  getIngestionPipelines: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [mockIngestionData, mockESIngestionData],
+      paging: { total: 2 },
+    })
+  ),
 }));
 
-describe('IngestionPipelineList component', () => {
-  it('component should show loader until get status of airflow', () => {
+describe('IngestionPipelineList', () => {
+  it('should show loader until get status of airflow', () => {
     (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
       isAirflowAvailable: false,
       isFetchingStatus: true,
@@ -56,7 +84,7 @@ describe('IngestionPipelineList component', () => {
     expect(screen.getByText('Loader')).toBeInTheDocument();
   });
 
-  it('component should show error placeholder for airflow not available', () => {
+  it('should show error placeholder for airflow not available', () => {
     (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
       isAirflowAvailable: false,
       isFetchingStatus: false,
@@ -67,5 +95,47 @@ describe('IngestionPipelineList component', () => {
     );
 
     expect(screen.getByText('Airflow not available')).toBeInTheDocument();
+  });
+
+  it('should not call deployIngestionPipelineById after bulk deploy button click without pipeline selection', async () => {
+    await act(async () => {
+      render(
+        <IngestionPipelineList
+          serviceName={ServiceCategory.DASHBOARD_SERVICES}
+        />
+      );
+    });
+
+    const bulkDeployButton = screen.getByTestId('bulk-re-deploy-button');
+
+    await act(async () => {
+      userEvent.click(bulkDeployButton);
+    });
+
+    expect(deployIngestionPipelineById).not.toHaveBeenCalled();
+  });
+
+  it('should call deployIngestionPipelineById after bulk deploy button click after pipeline selection', async () => {
+    await act(async () => {
+      render(
+        <IngestionPipelineList
+          serviceName={ServiceCategory.DASHBOARD_SERVICES}
+        />
+      );
+    });
+
+    const rowSelection = screen.getByText('rowSelection');
+
+    await act(async () => {
+      userEvent.click(rowSelection);
+    });
+
+    const bulkDeployButton = screen.getByTestId('bulk-re-deploy-button');
+
+    await act(async () => {
+      userEvent.click(bulkDeployButton);
+    });
+
+    expect(deployIngestionPipelineById).toHaveBeenCalledTimes(2);
   });
 });

@@ -93,6 +93,10 @@ jest.mock('../CustomMetricGraphs/CustomMetricGraphs.component', () => {
   return jest.fn().mockImplementation(() => <div>CustomMetricGraphs</div>);
 });
 
+jest.mock('../../../../../hoc/LimitWrapper', () => {
+  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
+});
+
 describe('TableProfilerChart component test', () => {
   it('Component should render', async () => {
     const mockGetSystemProfileList = getSystemProfileList as jest.Mock;

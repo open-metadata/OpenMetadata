@@ -21,9 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
@@ -49,6 +51,7 @@ import org.openmetadata.schema.api.data.CreateSearchIndex;
 import org.openmetadata.schema.api.services.CreateSearchService;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SearchIndexDataType;
@@ -59,6 +62,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.SearchServiceResourceTest;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -135,7 +140,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
                 .withDataType(SearchIndexDataType.NESTED)
                 .withChildren(fields));
     CreateSearchIndex createSearchIndex =
-        createRequest(test).withOwner(USER1_REF).withFields(searchIndexFields);
+        createRequest(test).withOwners(List.of(USER1_REF)).withFields(searchIndexFields);
 
     SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
@@ -150,13 +155,14 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
                 .withChildren(fields)
                 .withDataType(SearchIndexDataType.NESTED));
     createSearchIndex
-        .withOwner(TEAM11_REF)
+        .withOwners(List.of(TEAM11_REF))
         .withDescription("searchIndex")
         .withFields(updatedSearchIndexFields);
     SearchIndexField addedField = fields.get(2);
     addedField.setFullyQualifiedName(
         searchIndex.getFields().get(0).getFullyQualifiedName() + "." + addedField.getName());
-    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     fieldUpdated(change, "description", "", "searchIndex");
     fieldAdded(change, "fields.tableSearchIndex", JsonUtils.pojoToJson(List.of(addedField)));
     updateAndCheckEntity(createSearchIndex, Status.OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
@@ -176,7 +182,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
 
     CreateSearchIndex createSearchIndex =
-        createRequest(test).withOwner(USER1_REF).withFields(fields);
+        createRequest(test).withOwners(List.of(USER1_REF)).withFields(fields);
 
     //  update the searchIndex
     SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
@@ -197,7 +203,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             getField("post_code", SearchIndexDataType.TEXT, null),
             getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
     CreateSearchIndex createSearchIndex =
-        createRequest(test).withOwner(USER1_REF).withFields(fields);
+        createRequest(test).withOwners(List.of(USER1_REF)).withFields(fields);
 
     SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
     String origJson = JsonUtils.pojoToJson(searchIndex);
@@ -214,14 +220,15 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL),
             getField("phone", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
 
-    searchIndex.withOwner(TEAM11_REF).withFields(updatedFields);
+    searchIndex.withOwners(List.of(TEAM11_REF)).withFields(updatedFields);
 
     SearchIndexField addedField = updatedFields.get(updatedFields.size() - 1);
     addedField.setFullyQualifiedName(
         searchIndex.getFullyQualifiedName() + "." + addedField.getName());
 
     ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
     fieldAdded(change, "fields", JsonUtils.pojoToJson(List.of(addedField)));
     patchEntityAndCheck(searchIndex, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -239,7 +246,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     CreateSearchIndex create =
         createRequest(testInfo)
             .withTags(List.of(TIER1_TAG_LABEL, TIER2_TAG_LABEL))
-            .withOwner(USER1_REF)
+            .withOwners(List.of(USER1_REF))
             .withFields(fields);
 
     // Apply mutually exclusive tags to a searchIndex
@@ -249,7 +256,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
 
     // Apply mutually exclusive tags to a searchIndex field
-    CreateSearchIndex create1 = createRequest(testInfo, 1).withOwner(USER1_REF);
+    CreateSearchIndex create1 = createRequest(testInfo, 1).withOwners(List.of(USER1_REF));
     SearchIndexField field =
         getField("first_name", SearchIndexDataType.TEXT, null)
             .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
@@ -260,7 +267,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         CatalogExceptionMessage.mutuallyExclusiveLabels(TIER2_TAG_LABEL, TIER1_TAG_LABEL));
 
     // Apply mutually exclusive tags to a searchIndexes's nested field
-    CreateSearchIndex create2 = createRequest(testInfo, 1).withOwner(USER1_REF);
+    CreateSearchIndex create2 = createRequest(testInfo, 1).withOwners(List.of(USER1_REF));
     SearchIndexField nestedField =
         getField("testNested", SearchIndexDataType.TEXT, null)
             .withTags(listOf(TIER1_TAG_LABEL, TIER2_TAG_LABEL));
@@ -320,7 +327,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             getField("post_code", SearchIndexDataType.TEXT, null),
             getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
     CreateSearchIndex createSearchIndex =
-        createRequest(test).withOwner(USER1_REF).withFields(fields);
+        createRequest(test).withOwners(List.of(USER1_REF)).withFields(fields);
 
     SearchIndex searchIndex = createEntity(createSearchIndex, ADMIN_AUTH_HEADERS);
     String origJson = JsonUtils.pojoToJson(searchIndex);
@@ -337,14 +344,15 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
             getField("county", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL),
             getField("phone", SearchIndexDataType.TEXT, PERSONAL_DATA_TAG_LABEL));
 
-    searchIndex.withOwner(TEAM11_REF).withFields(updatedFields);
+    searchIndex.withOwners(List.of(TEAM11_REF)).withFields(updatedFields);
 
     SearchIndexField addedField = updatedFields.get(updatedFields.size() - 1);
     addedField.setFullyQualifiedName(
         searchIndex.getFullyQualifiedName() + "." + addedField.getName());
 
     ChangeDescription change = getChangeDescription(searchIndex, MINOR_UPDATE);
-    fieldUpdated(change, FIELD_OWNER, USER1_REF, TEAM11_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(TEAM11_REF));
+    fieldDeleted(change, FIELD_OWNERS, List.of(USER1_REF));
     fieldAdded(change, "fields", JsonUtils.pojoToJson(List.of(addedField)));
     patchEntityUsingFqnAndCheck(searchIndex, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
@@ -408,6 +416,107 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     listEntities(null, ADMIN_AUTH_HEADERS);
   }
 
+  @Test
+  void testBuildAggregationString(TestInfo testInfo) {
+    String aggregationString = "bucketName=my-agg-name:aggType=terms:field=my-field";
+    String expectedAggregationString = "\"my-agg-name\":{\"terms\":{\"field\":\"my-field\"}}";
+    Map<String, Object> actualAggregationstring =
+        SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Nested Aggregation (1 level)
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=status_counts:aggType=terms:field=testCaseResults.testCaseStatus";
+    expectedAggregationString =
+        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"status_counts\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"}}}}";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Nested Aggregation (2 levels)
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=statusCount:aggType=terms:field=testCaseResults.testCaseStatus,bucketName=owner:aggType=terms:field=testSuite.owner";
+    expectedAggregationString =
+        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"statusCount\":{\"terms\":{\"field\":\"testCaseResults.testCaseStatus\"},\"aggs\":{\"owner\":{\"terms\":{\"field\":\"testSuite.owner\"}}}}}}";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Metric Aggregation
+    aggregationString =
+        "bucketName=entityLinks:aggType=terms:field=entityLinks.nonNormalized,bucketName=minPrice:aggType=min:field=price.adjusted";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    expectedAggregationString =
+        "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+  }
+
+  @Test
+  void testNewAggregation(TestInfo testInfo) throws IOException {
+    DataQualityReport dataQualityReport = new DataQualityReport();
+    SearchRepository searchRepository = getSearchRepository();
+    String query =
+        "{\"query\":{\"bool\":{\"should\":[{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuite\"}}},{\"wildcard\":{\"fullyQualifiedName\":{\"value\":\"*tableForExecutableTestSuiteTwo\"}}}]}}}";
+
+    String aggregationQuery =
+        "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=avgTime:aggType=avg:field=updatedAt";
+    Map<String, Object> aggregationString =
+        SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("fullyQualifiedName", "updatedAt")));
+            });
+
+    aggregationQuery =
+        "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=owner:aggType=terms:field=owner.name";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("fullyQualifiedName", "owner.name")));
+            });
+
+    aggregationQuery =
+        "bucketName=fqn:aggType=terms:field=fullyQualifiedName,bucketName=owner:aggType=terms:field=owner.name,bucketName=avgTime:aggType=avg:field=updatedAt";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(
+                  m.keySet().containsAll(List.of("fullyQualifiedName", "owner.name", "updatedAt")));
+            });
+
+    aggregationQuery = "bucketName=avgTime:aggType=avg:field=updatedAt";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("updatedAt")));
+            });
+
+    aggregationQuery = "bucketName=fqn:aggType=terms:field=fullyQualifiedName";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(query, "table", aggregationString);
+    dataQualityReport
+        .getData()
+        .forEach(
+            (datum) -> {
+              Map<String, String> m = datum.getAdditionalProperties();
+              assertTrue(m.keySet().containsAll(List.of("fullyQualifiedName")));
+            });
+  }
+
   @Override
   public SearchIndex validateGetWithDifferentFields(SearchIndex searchIndex, boolean byName)
       throws HttpResponseException {
@@ -417,9 +526,9 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
         byName
             ? getSearchIndexByName(searchIndex.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getSearchIndex(searchIndex.getId(), fields, ADMIN_AUTH_HEADERS);
-    assertListNull(searchIndex.getOwner(), searchIndex.getFollowers(), searchIndex.getFollowers());
+    assertListNull(searchIndex.getOwners(), searchIndex.getFollowers(), searchIndex.getFollowers());
 
-    fields = "owner, followers, tags";
+    fields = "owners, followers, tags";
     searchIndex =
         byName
             ? getSearchIndexByName(searchIndex.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

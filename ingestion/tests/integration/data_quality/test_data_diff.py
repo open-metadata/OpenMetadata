@@ -12,41 +12,21 @@ from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
 
 from _openmetadata_testutils.postgres.conftest import postgres_container
+from _openmetadata_testutils.pydantic.test_utils import assert_equal_pydantic_objects
 from metadata.data_quality.api.models import TestCaseDefinition
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-    DatabaseServiceType,
-)
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
-    TestSuitePipeline,
 )
-from metadata.generated.schema.metadataIngestion.workflow import (
-    LogLevels,
-    OpenMetadataWorkflowConfig,
-    Processor,
-    Sink,
-    Source,
-    SourceConfig,
-    WorkflowConfig,
+from metadata.generated.schema.tests.basic import (
+    TestCaseResult,
+    TestCaseStatus,
+    TestResultValue,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
-from metadata.workflow.metadata import MetadataWorkflow
 
 if not sys.version_info >= (3, 9):
     pytest.skip(
@@ -128,7 +108,6 @@ class TestParameters(BaseModel):
                 TestCaseDefinition(
                     name="with_passing_threshold",
                     testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
                     parameterValues=[
                         TestCaseParameterValue(name="threshold", value="322"),
                     ],
@@ -136,7 +115,6 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Success,
-                    passedRows=278,
                     failedRows=321,
                 ),
             ),
@@ -144,7 +122,6 @@ class TestParameters(BaseModel):
                 TestCaseDefinition(
                     name="with_failing_threshold",
                     testDefinitionName="tableDiff",
-                    computePassedFailedRowCount=True,
                     parameterValues=[
                         TestCaseParameterValue(name="threshold", value="321"),
                     ],
@@ -152,7 +129,6 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.changed_customer",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Failed,
-                    passedRows=278,
                     failedRows=321,
                 ),
             ),
@@ -183,6 +159,11 @@ class TestParameters(BaseModel):
                 "POSTGRES_SERVICE.dvdrental.public.customer_without_first_name",
                 TestCaseResult(
                     testCaseStatus=TestCaseStatus.Failed,
+                    testResultValue=[
+                        TestResultValue(name="removedColumns", value="1"),
+                        TestResultValue(name="addedColumns", value="0"),
+                        TestResultValue(name="changedColumns", value="0"),
+                    ],
                 ),
             ),
             (
@@ -252,12 +233,21 @@ def test_happy_paths(
     ingest_mysql_service,
     patched_metadata,
     parameters: TestParameters,
+    sink_config,
+    profiler_config,
+    run_workflow,
+    workflow_config,
+    cleanup_fqns,
 ):
     metadata = patched_metadata
     table1 = metadata.get_by_name(
         Table,
         f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
         nullable=False,
+    )
+    cleanup_fqns(
+        TestCase,
+        f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}",
     )
     table2_service = {
         "POSTGRES_SERVICE": postgres_service,
@@ -275,56 +265,32 @@ def test_happy_paths(
             ),
         ]
     )
-
-    workflow_config = OpenMetadataWorkflowConfig(
-        source=Source(
-            type=TestSuiteConfigType.TestSuite.value,
-            serviceName="MyTestSuite",
-            sourceConfig=SourceConfig(
-                config=TestSuitePipeline(
-                    type=TestSuiteConfigType.TestSuite,
-                    entityFullyQualifiedName=f"{table1.fullyQualifiedName.root}",
-                )
-            ),
-        ),
-        processor=Processor(
-            type="orm-test-runner",
-            config={"testCases": [parameters.test_case_defintion]},
-        ),
-        sink=Sink(
-            type="metadata-rest",
-            config={},
-        ),
-        workflowConfig=WorkflowConfig(
-            loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
-        ),
+    workflow_config = {
+        "source": {
+            "type": TestSuiteConfigType.TestSuite.value,
+            "serviceName": "MyTestSuite",
+            "sourceConfig": {
+                "config": {
+                    "type": TestSuiteConfigType.TestSuite.value,
+                    "entityFullyQualifiedName": table1.fullyQualifiedName.root,
+                }
+            },
+        },
+        "processor": {
+            "type": "orm-test-runner",
+            "config": {"testCases": [parameters.test_case_defintion.dict()]},
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+    run_workflow(TestSuiteWorkflow, workflow_config)
+    test_case_entity = metadata.get_by_name(
+        TestCase,
+        f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}",
+        fields=["*"],
     )
-
-    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
-    test_suite_procesor.execute()
-    test_suite_procesor.stop()
-    test_case_entity: TestCase = metadata.get_or_create_test_case(
-        f"{table1.fullyQualifiedName.root}.{parameters.test_case_defintion.name}"
-    )
-    try:
-        test_suite_procesor.raise_from_status()
-    finally:
-        metadata.delete(TestCase, test_case_entity.id, recursive=True, hard_delete=True)
     assert "ERROR: Unexpected error" not in test_case_entity.testCaseResult.result
     assert_equal_pydantic_objects(parameters.expected, test_case_entity.testCaseResult)
-
-
-def assert_equal_pydantic_objects(
-    expected: BaseModel, actual: BaseModel, ignore_none=True
-):
-    for key, value in expected.dict().items():
-        if value is not None and ignore_none:
-            if not value == actual.dict()[key]:
-                # an explicit AssertionError because PyCharm does not handle helper functions well:
-                # https://youtrack.jetbrains.com/issue/PY-51929/pytest-assertion-information-not-printed-in-certain-situations#focus=Comments-27-8459641.0-0
-                raise AssertionError(
-                    f"objects mismatched on field: [{key}], expected: [{value}], actual: [{actual.dict()[key]}]"
-                )
 
 
 @pytest.mark.parametrize(
@@ -348,14 +314,33 @@ def assert_equal_pydantic_objects(
             ),
             TestCaseResult(
                 testCaseStatus=TestCaseStatus.Aborted,
-                result="Unsupported dialect in param service2Url: mongodb",
+                result="Unsupported dialect in param table2.serviceUrl: mongodb",
             ),
             id="unsupported_dialect",
         ),
         pytest.param(
-            None,
-            None,
-            marks=pytest.mark.skip(reason="TODO: implement test - different columns"),
+            TestCaseDefinition(
+                name="unsupported_data_types",
+                testDefinitionName="tableDiff",
+                computePassedFailedRowCount=True,
+                parameterValues=[
+                    TestCaseParameterValue(
+                        name="table2",
+                        value="POSTGRES_SERVICE.dvdrental.public.customer_int_first_name",
+                    ),
+                ],
+            ),
+            TestCaseResult(
+                testCaseStatus=TestCaseStatus.Failed,
+                result="Tables have 1 different columns:"
+                "\n  Changed columns:"
+                "\n    first_name: VARCHAR -> INT",
+                testResultValue=[
+                    TestResultValue(name="removedColumns", value="0"),
+                    TestResultValue(name="addedColumns", value="0"),
+                    TestResultValue(name="changedColumns", value="1"),
+                ],
+            ),
         ),
         pytest.param(
             None,
@@ -381,6 +366,10 @@ def test_error_paths(
     ingest_mysql_service: DatabaseService,
     postgres_service: DatabaseService,
     patched_metadata: OpenMetadata,
+    sink_config,
+    workflow_config,
+    run_workflow,
+    cleanup_fqns,
 ):
     metadata = patched_metadata
     table1 = metadata.get_by_name(
@@ -388,92 +377,35 @@ def test_error_paths(
         f"{postgres_service.fullyQualifiedName.root}.dvdrental.public.customer",
         nullable=False,
     )
+    cleanup_fqns(TestCase, f"{table1.fullyQualifiedName.root}.{parameters.name}")
     for parameter in parameters.parameterValues:
         if parameter.name == "table2":
             parameter.value = parameter.value.replace(
                 "POSTGRES_SERVICE", postgres_service.fullyQualifiedName.root
             )
-    workflow_config = OpenMetadataWorkflowConfig(
-        source=Source(
-            type=TestSuiteConfigType.TestSuite.value,
-            serviceName="MyTestSuite",
-            sourceConfig=SourceConfig(
-                config=TestSuitePipeline(
-                    type=TestSuiteConfigType.TestSuite,
-                    entityFullyQualifiedName=f"{table1.fullyQualifiedName.root}",
-                )
-            ),
-            serviceConnection=postgres_service.connection,
-        ),
-        processor=Processor(
-            type="orm-test-runner",
-            config={"testCases": [parameters]},
-        ),
-        sink=Sink(
-            type="metadata-rest",
-            config={},
-        ),
-        workflowConfig=WorkflowConfig(
-            loggerLevel=LogLevels.DEBUG, openMetadataServerConfig=metadata.config
-        ),
-    )
-    test_suite_procesor = TestSuiteWorkflow.create(workflow_config)
-    test_suite_procesor.execute()
-    test_suite_procesor.stop()
+    workflow_config = {
+        "source": {
+            "type": TestSuiteConfigType.TestSuite.value,
+            "serviceName": "MyTestSuite",
+            "sourceConfig": {
+                "config": {
+                    "type": TestSuiteConfigType.TestSuite.value,
+                    "entityFullyQualifiedName": table1.fullyQualifiedName.root,
+                }
+            },
+        },
+        "processor": {
+            "type": "orm-test-runner",
+            "config": {"testCases": [parameters.dict()]},
+        },
+        "sink": sink_config,
+        "workflowConfig": workflow_config,
+    }
+    run_workflow(TestSuiteWorkflow, workflow_config)
     test_case_entity: TestCase = metadata.get_or_create_test_case(
         f"{table1.fullyQualifiedName.root}.{parameters.name}"
     )
-    try:
-        test_suite_procesor.raise_from_status()
-    finally:
-        metadata.delete(TestCase, test_case_entity.id, recursive=True, hard_delete=True)
     assert_equal_pydantic_objects(expected, test_case_entity.testCaseResult)
-
-
-@pytest.fixture(scope="module")
-def postgres_service(metadata, postgres_container):
-    service = CreateDatabaseServiceRequest(
-        name="docker_test_postgres_db",
-        serviceType=DatabaseServiceType.Postgres,
-        connection=DatabaseConnection(
-            config=PostgresConnection(
-                username=postgres_container.username,
-                authType=BasicAuth(password=postgres_container.password),
-                hostPort="localhost:"
-                + postgres_container.get_exposed_port(postgres_container.port),
-                database="dvdrental",
-            )
-        ),
-    )
-    service_entity = metadata.create_or_update(data=service)
-    service_entity.connection.config.authType.password = CustomSecretStr(
-        postgres_container.password
-    )
-    yield service_entity
-    metadata.delete(
-        DatabaseService, service_entity.id, recursive=True, hard_delete=True
-    )
-
-
-@pytest.fixture(scope="module")
-def ingest_postgres_metadata(postgres_service, metadata: OpenMetadata):
-    workflow_config = OpenMetadataWorkflowConfig(
-        source=Source(
-            type=postgres_service.connection.config.type.value.lower(),
-            serviceName=postgres_service.fullyQualifiedName.root,
-            serviceConnection=postgres_service.connection,
-            sourceConfig=SourceConfig(config={}),
-        ),
-        sink=Sink(
-            type="metadata-rest",
-            config={},
-        ),
-        workflowConfig=WorkflowConfig(openMetadataServerConfig=metadata.config),
-    )
-    metadata_ingestion = MetadataWorkflow.create(workflow_config)
-    metadata_ingestion.execute()
-    metadata_ingestion.raise_from_status()
-    return
 
 
 def add_changed_tables(connection: Connection):
@@ -489,6 +421,12 @@ def add_changed_tables(connection: Connection):
     connection.execute(
         "ALTER TABLE customer_without_first_name DROP COLUMN first_name;"
     )
+    connection.execute(
+        "CREATE TABLE customer_int_first_name AS SELECT * FROM customer;"
+    )
+    connection.execute("ALTER TABLE customer_int_first_name DROP COLUMN first_name;")
+    connection.execute("ALTER TABLE customer_int_first_name ADD COLUMN first_name INT;")
+    connection.execute("UPDATE customer_int_first_name SET first_name = 1;")
 
 
 @pytest.fixture(scope="module")
@@ -539,6 +477,8 @@ def copy_table(source_engine, destination_engine, table_name):
             and destination_engine.dialect.name == "mssql"
         ):
             column_copy = SQAColumn(column.name, sqltypes.DateTime)
+        elif isinstance(column.type, postgresql.json.JSONB):
+            column_copy = SQAColumn(column.name, sqltypes.JSON)
         else:
             column_copy = SQAColumn(column.name, column.type)
         destination_table.append_column(column_copy)
@@ -555,46 +495,28 @@ def copy_table(source_engine, destination_engine, table_name):
 
 @pytest.fixture
 def patched_metadata(metadata, postgres_service, ingest_mysql_service, monkeypatch):
-    openmetadata_get_by_name = OpenMetadata.get_by_name
+    dbs_by_name = {
+        service.fullyQualifiedName.root: service
+        for service in [postgres_service, ingest_mysql_service]
+    }
 
-    def get_by_name_override_service_password(self, entity, fqn, *args, **kwargs):
-        result = openmetadata_get_by_name(self, entity, fqn, *args, **kwargs)
-        if entity == DatabaseService:
-            return next(
-                (
-                    service
-                    for service in [postgres_service, ingest_mysql_service]
-                    if service.fullyQualifiedName.root == fqn
-                ),
-                result,
-            )
+    def override_result_by_fqn(func):
+        def inner(*args, **kwargs):
+            result = func(*args, **kwargs)
+            if result.fullyQualifiedName.root in dbs_by_name:
+                return dbs_by_name[result.fullyQualifiedName.root]
+            return result
 
-        return result
+        return inner
 
     monkeypatch.setattr(
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name",
-        get_by_name_override_service_password,
+        override_result_by_fqn(OpenMetadata.get_by_name),
     )
-
-    openmetadata_get_by_id = OpenMetadata.get_by_id
-
-    def get_by_id_override_service_password(self, entity, entity_id, *args, **kwargs):
-        result = openmetadata_get_by_id(self, entity, entity_id, *args, **kwargs)
-        if entity == DatabaseService:
-            return next(
-                (
-                    service
-                    for service in [postgres_service, ingest_mysql_service]
-                    if service.id == entity_id
-                ),
-                result,
-            )
-
-        return result
 
     monkeypatch.setattr(
         "metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id",
-        get_by_id_override_service_password,
+        override_result_by_fqn(OpenMetadata.get_by_id),
     )
 
     return metadata

@@ -34,7 +34,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -100,14 +100,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         """
         return dashboard
 
-    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReference]:
+    def _get_user_by_email(self, email: Optional[str]) -> Optional[EntityReferenceList]:
         if email:
             return self.metadata.get_reference_by_email(email)
         return None
 
     def get_owner_ref(
         self, dashboard_details: Union[DashboardResult, FetchDashboard]
-    ) -> EntityReference:
+    ) -> Optional[EntityReferenceList]:
         try:
             if hasattr(dashboard_details, "owners"):
                 for owner in dashboard_details.owners or []:
@@ -182,13 +182,7 @@ class SupersetSourceMixin(DashboardServiceSource):
                             fqn=datamodel_fqn,
                         )
 
-                        datasource_json = self.client.fetch_datasource(
-                            chart_json.datasource_id
-                        )
-                        datasource_columns = self.get_column_info(
-                            datasource_json.result.columns
-                        )
-                        columns_list = [col.displayName for col in datasource_columns]
+                        columns_list = self._get_columns_list_for_lineage(chart_json)
                         column_lineage = self._get_column_lineage(
                             from_entity, to_entity, columns_list
                         )
@@ -229,6 +223,10 @@ class SupersetSourceMixin(DashboardServiceSource):
             )
         return None
 
+    def _clearn_column_datatype(self, datatype: str) -> str:
+        """clean datatype of column fetched from superset"""
+        return datatype.replace("()", "")
+
     def get_column_info(
         self, data_source: List[Union[DataSourceResult, FetchColumn]]
     ) -> Optional[List[Column]]:
@@ -242,13 +240,14 @@ class SupersetSourceMixin(DashboardServiceSource):
         for field in data_source or []:
             try:
                 if field.type:
+                    field.type = self._clearn_column_datatype(field.type)
                     col_parse = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
                         field.type
                     )
                     parsed_fields = Column(
                         dataTypeDisplay=field.type,
                         dataType=col_parse["dataType"],
-                        name=field.id,
+                        name=str(field.id),
                         displayName=field.column_name,
                         description=field.description,
                         dataLength=int(col_parse.get("dataLength", 0)),

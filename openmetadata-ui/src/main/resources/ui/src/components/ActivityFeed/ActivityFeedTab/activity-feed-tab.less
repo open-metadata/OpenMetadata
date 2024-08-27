@@ -26,8 +26,20 @@
   }
 
   .center-container {
+    flex: 0 0 calc(50% - @left-side-panel-width / 2);
     height: @entity-details-tab-height;
     overflow-y: scroll;
+  }
+  .right-container {
+    flex: 0 0 calc(50% - @left-side-panel-width / 2);
+    border-left: @global-border;
+    height: @entity-details-tab-height;
+    overflow-y: scroll;
+
+    .activity-feed-card-container.ant-btn:hover {
+      color: inherit;
+      background-color: @white;
+    }
   }
 
   .left-container {

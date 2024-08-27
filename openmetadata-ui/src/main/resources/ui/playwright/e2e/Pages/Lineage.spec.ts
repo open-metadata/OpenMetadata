@@ -12,6 +12,7 @@
  */
 import test from '@playwright/test';
 import { get } from 'lodash';
+import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
@@ -28,15 +29,16 @@ import {
   activateColumnLayer,
   addColumnLineage,
   addPipelineBetweenNodes,
+  applyPipelineFromModal,
   connectEdgeBetweenNodes,
   deleteEdge,
   deleteNode,
-  editPipelineEdgeDescription,
   performZoomOut,
   removeColumnLineage,
   setupEntitiesForLineage,
   verifyColumnLayerInactive,
   verifyNodePresent,
+  visitLineageTab,
 } from '../../utils/lineage';
 
 // use the admin user to login
@@ -51,12 +53,28 @@ const entities = [
   SearchIndexClass,
 ] as const;
 
+const pipeline = new PipelineClass();
+
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await pipeline.create(apiContext);
+  await afterAction();
+});
+
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await pipeline.delete(apiContext);
+  await afterAction();
+});
+
 for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
       page,
@@ -66,7 +84,7 @@ for (const EntityClass of entities) {
     await test.step('Should create lineage for the entity', async () => {
       await redirectToHomePage(page);
       await currentEntity.visitEntityPage(page);
-      await page.click('[data-testid="lineage"]');
+      await visitLineageTab(page);
       await verifyColumnLayerInactive(page);
       await page.click('[data-testid="edit-lineage"]');
       await performZoomOut(page);
@@ -76,15 +94,29 @@ for (const EntityClass of entities) {
 
       await redirectToHomePage(page);
       await currentEntity.visitEntityPage(page);
-      await page.click('[data-testid="lineage"]');
-      await page.click('.react-flow__controls-fitview', { force: true });
+      await visitLineageTab(page);
+      await page
+        .locator('.react-flow__controls-fitview')
+        .dispatchEvent('click');
 
       for (const entity of entities) {
         await verifyNodePresent(page, entity);
       }
     });
 
+    await test.step('Should create pipeline between entities', async () => {
+      await page.click('[data-testid="edit-lineage"]');
+      await performZoomOut(page);
+
+      for (const entity of entities) {
+        await applyPipelineFromModal(page, currentEntity, entity, pipeline);
+      }
+    });
+
     await test.step('Remove lineage between nodes for the entity', async () => {
+      await redirectToHomePage(page);
+      await currentEntity.visitEntityPage(page);
+      await visitLineageTab(page);
       await page.click('[data-testid="edit-lineage"]');
       await performZoomOut(page);
 
@@ -96,56 +128,6 @@ for (const EntityClass of entities) {
     await cleanup();
   });
 }
-
-test('Lineage Add Pipeline Between Tables', async ({ browser }) => {
-  const { page } = await createNewPage(browser);
-  const { apiContext, afterAction } = await getApiContext(page);
-  const table1 = new TableClass();
-  const table2 = new TableClass();
-  const pipeline = new PipelineClass();
-  await table1.create(apiContext);
-  await table2.create(apiContext);
-  await pipeline.create(apiContext);
-  await redirectToHomePage(page);
-
-  await addPipelineBetweenNodes(page, table1, table2, pipeline, true);
-  await page.click('[data-testid="edit-lineage"]');
-  await deleteNode(page, table2);
-
-  await table1.delete(apiContext);
-  await table2.delete(apiContext);
-  await pipeline.delete(apiContext);
-
-  await afterAction();
-});
-
-test('Lineage Pipeline Between Table and Topic', async ({ browser }) => {
-  const { page } = await createNewPage(browser);
-  const { apiContext, afterAction } = await getApiContext(page);
-  const table = new TableClass();
-  const topic = new TopicClass();
-  const pipeline = new PipelineClass();
-  await table.create(apiContext);
-  await topic.create(apiContext);
-  await pipeline.create(apiContext);
-  await redirectToHomePage(page);
-
-  await addPipelineBetweenNodes(page, table, topic, pipeline, true);
-  await editPipelineEdgeDescription(
-    page,
-    table,
-    topic,
-    pipeline,
-    'Test Description'
-  );
-  await page.click('[data-testid="edit-lineage"]');
-  await deleteNode(page, topic);
-
-  await table.delete(apiContext);
-  await topic.delete(apiContext);
-  await pipeline.delete(apiContext);
-  await afterAction();
-});
 
 test('Verify column lineage between tables', async ({ browser }) => {
   const { page } = await createNewPage(browser);
@@ -216,6 +198,81 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await deleteNode(page, topic);
   await table.delete(apiContext);
   await topic.delete(apiContext);
+
+  await afterAction();
+});
+
+test('Verify column lineage between topic and api endpoint', async ({
+  browser,
+}) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const topic = new TopicClass();
+  const apiEndpoint = new ApiEndpointClass();
+
+  await topic.create(apiContext);
+  await apiEndpoint.create(apiContext);
+
+  const sourceCol = get(
+    topic,
+    'entityResponseData.messageSchema.schemaFields[0].children[0].fullyQualifiedName'
+  );
+
+  const targetCol = get(
+    apiEndpoint,
+    'entityResponseData.responseSchema.schemaFields[0].children[1].fullyQualifiedName'
+  );
+
+  await addPipelineBetweenNodes(page, topic, apiEndpoint);
+  await activateColumnLayer(page);
+
+  // Add column lineage
+  await addColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await removeColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await deleteNode(page, apiEndpoint);
+  await topic.delete(apiContext);
+  await apiEndpoint.delete(apiContext);
+
+  await afterAction();
+});
+
+test('Verify column lineage between table and api endpoint', async ({
+  browser,
+}) => {
+  const { page } = await createNewPage(browser);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  const apiEndpoint = new ApiEndpointClass();
+  await table.create(apiContext);
+  await apiEndpoint.create(apiContext);
+
+  const sourceTableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+  const sourceCol = `${sourceTableFqn}.${get(
+    table,
+    'entityResponseData.columns[0].name'
+  )}`;
+  const targetCol = get(
+    apiEndpoint,
+    'entityResponseData.responseSchema.schemaFields[0].children[0].fullyQualifiedName'
+  );
+
+  await addPipelineBetweenNodes(page, table, apiEndpoint);
+  await activateColumnLayer(page);
+
+  // Add column lineage
+  await addColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await removeColumnLineage(page, sourceCol, targetCol);
+  await page.click('[data-testid="edit-lineage"]');
+
+  await deleteNode(page, apiEndpoint);
+  await table.delete(apiContext);
+  await apiEndpoint.delete(apiContext);
 
   await afterAction();
 });

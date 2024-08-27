@@ -23,6 +23,7 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { addRole, getPolicies } from '../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
@@ -61,7 +62,12 @@ const AddRolePage = () => {
   const fetchPolicies = async () => {
     try {
       const data = await getPolicies(
-        'owner,location,roles,teams',
+        `${
+          (TabSpecificField.OWNERS,
+          TabSpecificField.LOCATION,
+          TabSpecificField.TEAMS,
+          TabSpecificField.ROLES)
+        }`,
         undefined,
         undefined,
         100
@@ -112,7 +118,9 @@ const AddRolePage = () => {
 
   return (
     <ResizablePanels
+      className="content-height-with-resizable-panel"
       firstPanel={{
+        className: 'content-resizable-panel-container',
         children: (
           <div
             className="max-width-md w-9/10 service-form-container"
@@ -212,7 +220,7 @@ const AddRolePage = () => {
             <Typography.Text>{t('message.add-role-message')}</Typography.Text>
           </>
         ),
-        className: 'p-md p-t-xl',
+        className: 'p-md p-t-xl content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

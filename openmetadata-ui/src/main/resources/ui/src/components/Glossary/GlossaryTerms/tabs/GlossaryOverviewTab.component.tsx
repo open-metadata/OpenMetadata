@@ -116,7 +116,6 @@ const GlossaryOverviewTab = ({
     <Row className="glossary-overview-tab h-full" gutter={[32, 0]}>
       <Col span={24}>
         <ResizablePanels
-          applyDefaultStyle={false}
           firstPanel={{
             children: (
               <div data-testid="updated-by-container">
@@ -131,7 +130,7 @@ const GlossaryOverviewTab = ({
                         permissions.EditDescription || permissions.EditAll
                       }
                       isEdit={isDescriptionEditable}
-                      owner={selectedData?.owner}
+                      owner={selectedData?.owners}
                       showActions={!selectedData.deleted}
                       onCancel={() => setIsDescriptionEditable(false)}
                       onDescriptionEdit={() => setIsDescriptionEditable(true)}

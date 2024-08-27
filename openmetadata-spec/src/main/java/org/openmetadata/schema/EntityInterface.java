@@ -54,7 +54,7 @@ public interface EntityInterface {
 
   ChangeDescription getChangeDescription();
 
-  default EntityReference getOwner() {
+  default List<EntityReference> getOwners() {
     return null;
   }
 
@@ -134,7 +134,7 @@ public interface EntityInterface {
     /* no-op implementation to be overridden */
   }
 
-  default void setOwner(EntityReference owner) {
+  default void setOwners(List<EntityReference> owners) {
     /* no-op implementation to be overridden */
   }
 

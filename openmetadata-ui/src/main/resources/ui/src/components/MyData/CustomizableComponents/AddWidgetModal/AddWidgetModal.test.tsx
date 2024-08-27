@@ -14,6 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { mockWidgetsData } from '../../../../mocks/AddWidgetModal.mock';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import AddWidgetModal from './AddWidgetModal';
@@ -75,6 +76,11 @@ describe('AddWidgetModal component', () => {
       render(<AddWidgetModal {...mockProps} />);
     });
 
+    expect(getAllKnowledgePanels).toHaveBeenCalledWith({
+      fqnPrefix: 'KnowledgePanel',
+      limit: PAGE_SIZE_MEDIUM,
+    });
+
     expect(
       screen.getByTestId('ActivityFeed-widget-tab-label')
     ).toBeInTheDocument();
@@ -111,6 +117,24 @@ describe('AddWidgetModal component', () => {
     expect(screen.queryByTestId('MyData-check-icon')).toBeNull();
     expect(screen.queryByTestId('RecentlyViewed-check-icon')).toBeNull();
     expect(screen.queryByTestId('TotalAssets-check-icon')).toBeNull();
+  });
+
+  it('AddWidgetModal should not display check icons in the tab labels only if widget includes EmptyWidgetPlaceholder with it', async () => {
+    await act(async () => {
+      render(
+        <AddWidgetModal
+          {...mockProps}
+          addedWidgetsList={[
+            'KnowledgePanel.ActivityFeed',
+            'KnowledgePanel.Following-EmptyWidgetPlaceholder',
+          ]}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('ActivityFeed-check-icon')).toBeInTheDocument();
+    expect(screen.queryByTestId('Following-check-icon')).toBeNull();
+    expect(screen.queryByTestId('KPI-check-icon')).toBeNull();
   });
 
   it('AddWidgetModal should call handleAddWidget when clicked on add widget button', async () => {

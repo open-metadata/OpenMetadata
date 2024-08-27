@@ -24,4 +24,11 @@ Apart from well-defined access control roles and policies, a common vocabulary w
   href="/how-to-guides/data-governance/classification"%}
   Learn about the classification tags.
  {%/inlineCallout%}
+ {%inlineCallout
+  color="violet-70"
+  bold="Domains & Data Products"
+  icon="MdDiscount"
+  href="/how-to-guides/data-governance/domains-&-data-products"%}
+  Discover the essentials of domains and data products management.
+ {%/inlineCallout%}
 {%/inlineCalloutContainer%}

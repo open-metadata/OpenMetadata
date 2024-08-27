@@ -196,21 +196,23 @@ def run_test_suite_workflow(run_ingestion):
     ingestion_workflow.stop()
 
 
-@pytest.fixture()
-def run_profiler(run_ingestion):
-    """Test profiler ingestion"""
-    workflow_config = deepcopy(INGESTION_CONFIG)
-    workflow_config["source"]["sourceConfig"]["config"].update(
+@pytest.fixture(scope="session")
+def profiler_workflow_config(workflow_config):
+    config = deepcopy(INGESTION_CONFIG)
+    config["source"]["sourceConfig"]["config"].update(
         {
             "type": "Profiler",
         }
     )
-    workflow_config["processor"] = {
+    config["processor"] = {
         "type": "orm-profiler",
         "config": {},
     }
+    config["workflowConfig"] = workflow_config
+    return config
 
-    profiler_workflow = ProfilerWorkflow.create(workflow_config)
-    profiler_workflow.execute()
-    profiler_workflow.raise_from_status()
-    profiler_workflow.stop()
+
+@pytest.fixture()
+def run_profiler(run_ingestion, run_workflow, profiler_workflow_config):
+    """Test profiler ingestion"""
+    run_workflow(ProfilerWorkflow, profiler_workflow_config)

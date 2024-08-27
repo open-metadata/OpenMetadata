@@ -23,7 +23,7 @@ Configure and schedule Alation metadata and profiler workflows from the OpenMeta
 
 ## Requirements
 
-Follow the official documentation to generate a API Access Token from [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis)
+Follow the official documentation to generate a API Access Token from [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-an-api-access-token)
 
 ## Data Mapping and Assumptions
 
@@ -99,7 +99,7 @@ We'll use the user credentials to generate the access token required to authenti
 - password: Password of the user.
 
 2. Access Token Authentication:
-The access token created using the steps mentioned [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-via-ui) can directly be entered. We'll use that directly to authenticate the Alation APIs
+The access token created using the steps mentioned [here](https://developer.alation.com/dev/docs/authentication-into-alation-apis#create-an-api-access-token) can directly be entered. We'll use that directly to authenticate the Alation APIs
 - accessToken: Generated access token
 
 {% /codeInfo %}

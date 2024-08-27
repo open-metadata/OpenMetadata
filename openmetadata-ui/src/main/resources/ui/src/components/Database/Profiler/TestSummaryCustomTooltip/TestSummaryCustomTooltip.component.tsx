@@ -27,7 +27,7 @@ const TestSummaryCustomTooltip = (
   const { t } = useTranslation();
   const { active, payload = [] } = props;
   const data = payload.length
-    ? entries(omit(payload[0].payload, ['name', 'incidentId']))
+    ? entries(omit(payload[0].payload, ['name', 'incidentId', 'boundArea']))
     : [];
 
   if (!active || payload.length === 0) {
@@ -63,7 +63,7 @@ const TestSummaryCustomTooltip = (
               {t('label.assignee')}
             </span>
             <span className="font-medium cursor-pointer" data-testid={key}>
-              <OwnerLabel owner={value.task.assignees[0]} />
+              <OwnerLabel owners={value.task.assignees} />
             </span>
           </li>
         </Fragment>

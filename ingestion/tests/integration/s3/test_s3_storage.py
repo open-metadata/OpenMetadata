@@ -34,7 +34,7 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
         entity=Container, fqn=f"{service_name}.test-bucket", fields=["*"]
     )
     # The bucket has children and no dataModel
-    assert 5 == len(bucket.children.root)
+    assert 7 == len(bucket.children.root)
     assert not bucket.dataModel
 
     # We can validate the children
@@ -78,3 +78,65 @@ def test_s3_ingestion(metadata, ingest_s3_storage, service_name):
     assert not transactions_separator.dataModel.isPartitioned
     assert 2 == len(transactions_separator.dataModel.columns)
     assert FileFormat.csv in transactions_separator.fileFormats
+
+    png_file: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f'{service_name}.test-bucket."solved.png"',
+        fields=["*"],
+    )
+    assert not png_file.dataModel
+    assert png_file.size > 1000
+
+    # validate unstructured parent containers
+    container1: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f"{service_name}.test-bucket.docs_images",
+        fields=["*"],
+    )
+    assert not container1.dataModel
+
+    container2: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f"{service_name}.test-bucket.docs_images.storage",
+        fields=["*"],
+    )
+    assert not container2.dataModel
+
+    container3: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f"{service_name}.test-bucket.docs_images.storage.s3",
+        fields=["*"],
+    )
+    assert not container3.dataModel
+
+    # validate images container
+    image1: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f'{service_name}.test-bucket.docs_images.storage.s3."add-new-service.png"',
+        fields=["*"],
+    )
+    assert not image1.dataModel
+    assert image1.size > 100
+
+    image1: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f'{service_name}.test-bucket.docs_images.storage."s3-demo.png"',
+        fields=["*"],
+    )
+    assert not image1.dataModel
+    assert image1.size > 100
+
+    image2: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f'{service_name}.test-bucket.docs_images.synapse."add-new-service.webp"',
+        fields=["*"],
+    )
+    assert not image2.dataModel
+    assert image2.size > 100
+
+    image3: Container = metadata.get_by_name(
+        entity=Container,
+        fqn=f'{service_name}.test-bucket.docs_images.domodatabase."scopes.jpeg"',
+        fields=["*"],
+    )
+    assert image3 is None

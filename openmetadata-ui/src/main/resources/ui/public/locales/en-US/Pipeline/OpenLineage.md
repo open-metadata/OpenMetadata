@@ -59,7 +59,28 @@ $$section
 ### Kafka securityProtocol $(id="securityProtocol")
 Kafka Security protocol config.
 
-This should be specified as `PLAINTEXT` or `SSL` .
+This should be specified as `PLAINTEXT`, `SSL`, or `SASL_SSL` .
+$$
+
+$$section
+### Kafka SASL mechanism $(id="saslMechanism")
+When Kafka security protocol is set to `SASL_SSL` then the SASL mechanism is needed.
+
+This should be specified as `PLAIN` .
+$$
+
+$$section
+### Kafka SASL username $(id="saslUsername")
+When Kafka security protocol is set to `SASL_SSL` then the SASL username is needed.
+
+This should be specified as a username or API key string .
+$$
+
+$$section
+### Kafka SASL password $(id="saslPassword")
+When Kafka security protocol is set to `SASL_SSL` then the SASL password is needed.
+
+This should be specified as a password or API secret string .
 $$
 
 $$section

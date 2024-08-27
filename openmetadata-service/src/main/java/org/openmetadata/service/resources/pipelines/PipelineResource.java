@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PipelineRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
@@ -77,7 +78,7 @@ import org.openmetadata.service.util.ResultList;
 public class PipelineResource extends EntityResource<Pipeline, PipelineRepository> {
   public static final String COLLECTION_PATH = "v1/pipelines/";
   static final String FIELDS =
-      "owner,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
+      "owners,tasks,pipelineStatus,followers,tags,extension,scheduleInterval,domain,sourceHash";
 
   @Override
   public Pipeline addHref(UriInfo uriInfo, Pipeline pipeline) {
@@ -86,8 +87,8 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return pipeline;
   }
 
-  public PipelineResource(Authorizer authorizer) {
-    super(Entity.PIPELINE, authorizer);
+  public PipelineResource(Authorizer authorizer, Limits limits) {
+    super(Entity.PIPELINE, authorizer, limits);
   }
 
   @Override

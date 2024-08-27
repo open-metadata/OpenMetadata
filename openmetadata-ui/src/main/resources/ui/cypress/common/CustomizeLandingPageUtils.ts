@@ -55,7 +55,7 @@ export const navigateToCustomizeLandingPage = ({
     `/api/v1/docStore/name/persona.${personaName}.Page.LandingPage`,
     'getCustomPageData'
   );
-  interceptURL('GET', `/api/v1/users/*?fields=follows%2C%20owns`, 'getMyData');
+  interceptURL('GET', `/api/v1/users/*?fields=follows%2Cowns`, 'getMyData');
 
   cy.get(
     `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
@@ -80,7 +80,7 @@ export const navigateToLandingPage = () => {
   interceptURL('GET', `/api/v1/feed*`, 'getFeedsData');
   interceptURL(
     'GET',
-    `/api/v1/analytics/dataInsights/charts/aggregate*`,
+    `/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data?*`,
     'getDataInsightReport'
   );
 
@@ -93,7 +93,7 @@ export const navigateToLandingPage = () => {
 export const openAddWidgetModal = () => {
   interceptURL(
     'GET',
-    `/api/v1/docStore?fqnPrefix=KnowledgePanel`,
+    `/api/v1/docStore?fqnPrefix=KnowledgePanel&limit=25`,
     'getWidgetsList'
   );
 

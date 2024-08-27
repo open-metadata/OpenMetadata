@@ -22,7 +22,7 @@ import { TestCase } from '../../../../generated/tests/testCase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import TestCaseResultTab from './TestCaseResultTab.component';
 
-const mockTestCaseData = {
+const mockTestCaseData: TestCase = {
   id: '1b748634-d24b-4879-9791-289f2f90fc3c',
   name: 'table_column_count_equals',
   fullyQualifiedName:
@@ -65,17 +65,23 @@ const mockTestCaseData = {
   updatedBy: 'admin',
 } as TestCase;
 
-const mockFunc = jest.fn();
+const mockUseTestCaseStore = {
+  testCase: mockTestCaseData,
+  setTestCase: jest.fn(),
+  showAILearningBanner: false,
+};
 
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
   () => ({
-    useTestCaseStore: jest.fn().mockImplementation(() => ({
-      testCase: mockTestCaseData,
-      setTestCase: mockFunc,
-    })),
+    useTestCaseStore: jest.fn().mockImplementation(() => mockUseTestCaseStore),
   })
 );
+const mockBannerComponent = () => <div>BannerComponent</div>;
+jest.mock('./TestCaseResultTabClassBase', () => ({
+  getAdditionalComponents: jest.fn().mockReturnValue([]),
+  getAlertBanner: jest.fn().mockImplementation(() => mockBannerComponent),
+}));
 jest.mock('../../../common/EntityDescription/DescriptionV1', () => {
   return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
 });
@@ -153,7 +159,9 @@ describe('TestCaseResultTab', () => {
     const updateButton = await screen.findByTestId('update-test');
     fireEvent.click(updateButton);
 
-    expect(mockFunc).toHaveBeenCalledWith(mockTestCaseData);
+    expect(mockUseTestCaseStore.setTestCase).toHaveBeenCalledWith(
+      mockTestCaseData
+    );
   });
 
   it("Should not show edit icon if user doesn't have edit permission", () => {
@@ -163,5 +171,56 @@ describe('TestCaseResultTab', () => {
     const editButton = queryByTestId(container, 'edit-parameter-icon');
 
     expect(editButton).not.toBeInTheDocument();
+  });
+
+  it('Should show useDynamicAssertion if enabled', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+
+    render(<TestCaseResultTab />);
+
+    const useDynamicAssertion = await screen.findByTestId('dynamic-assertion');
+
+    expect(useDynamicAssertion).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+  });
+
+  it('Should show edit button, for useDynamicAssertion', async () => {
+    mockUseTestCaseStore.testCase.useDynamicAssertion = true;
+    render(<TestCaseResultTab />);
+    const editButton = await screen.findByTestId('edit-parameter-icon');
+    fireEvent.click(editButton);
+
+    expect(await screen.findByText('EditTestCaseModal')).toBeInTheDocument();
+
+    mockUseTestCaseStore.testCase.useDynamicAssertion = false;
+  });
+
+  it('Should show banner if banner component is available, useDynamicAssertion and showAILearningBanner is true', async () => {
+    mockTestCaseData.useDynamicAssertion = true;
+    mockUseTestCaseStore.showAILearningBanner = true;
+
+    render(<TestCaseResultTab />);
+
+    const bannerComponent = await screen.findByText('BannerComponent');
+
+    expect(bannerComponent).toBeInTheDocument();
+
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = false;
+  });
+
+  it('Should not show banner if banner component is available, useDynamicAssertion is false and showAILearningBanner is true', async () => {
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = true;
+
+    render(<TestCaseResultTab />);
+
+    const bannerComponent = screen.queryByText('BannerComponent');
+
+    expect(bannerComponent).not.toBeInTheDocument();
+
+    mockTestCaseData.useDynamicAssertion = false;
+    mockUseTestCaseStore.showAILearningBanner = false;
   });
 });

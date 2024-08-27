@@ -188,7 +188,7 @@ describe('AppInstall component', () => {
     );
 
     // will call for Submit TestSuiteScheduler and Cancel AppInstallVerifyCard
-    expect(mockPush).toHaveBeenCalledTimes(2);
+    expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
   it('actions check with allowConfiguration', async () => {

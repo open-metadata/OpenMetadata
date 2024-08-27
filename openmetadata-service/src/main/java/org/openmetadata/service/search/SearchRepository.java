@@ -4,16 +4,19 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
+import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
@@ -22,21 +25,27 @@ import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_S
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
 import static org.openmetadata.service.search.SearchClient.UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.models.IndexMapping.indexNameSeparator;
+import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.SortedMap;
+import java.util.TreeSet;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.json.JsonObject;
 import javax.ws.rs.core.Response;
 import lombok.Getter;
@@ -45,11 +54,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -64,6 +75,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.util.JsonUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 public class SearchRepository {
@@ -77,7 +89,7 @@ public class SearchRepository {
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
   private final List<String> inheritableFields =
-      List.of(Entity.FIELD_OWNER, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
+      List.of(Entity.FIELD_OWNERS, Entity.FIELD_DOMAIN, Entity.FIELD_DISABLED);
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
   @Getter private final ElasticSearchConfiguration elasticSearchConfiguration;
@@ -97,30 +109,14 @@ public class SearchRepository {
 
   public SearchRepository(ElasticSearchConfiguration config) {
     elasticSearchConfiguration = config;
-    if (config != null
-        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
-      searchClient = new OpenSearchClient(config);
-    } else {
-      searchClient = new ElasticSearchClient(config);
-    }
-    try {
-      if (config != null && (!nullOrEmpty(config.getSearchIndexFactoryClassName()))) {
-        this.searchIndexFactory =
-            Class.forName(config.getSearchIndexFactoryClassName())
-                .asSubclass(SearchIndexFactory.class)
-                .getDeclaredConstructor()
-                .newInstance();
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to initialize search index factory using default one", e);
-    }
+    searchClient = buildSearchClient(config);
+    searchIndexFactory = buildIndexFactory();
     language =
         config != null && config.getSearchIndexMappingLanguage() != null
             ? config.getSearchIndexMappingLanguage().value()
             : "en";
     clusterAlias = config != null ? config.getClusterAlias() : "";
     loadIndexMappings();
-    Entity.setSearchRepository(this);
   }
 
   private void loadIndexMappings() {
@@ -152,6 +148,21 @@ public class SearchRepository {
     }
   }
 
+  public SearchClient buildSearchClient(ElasticSearchConfiguration config) {
+    SearchClient sc;
+    if (config != null
+        && config.getSearchType() == ElasticSearchConfiguration.SearchType.OPENSEARCH) {
+      sc = new OpenSearchClient(config);
+    } else {
+      sc = new ElasticSearchClient(config);
+    }
+    return sc;
+  }
+
+  public SearchIndexFactory buildIndexFactory() {
+    return new SearchIndexFactory();
+  }
+
   public ElasticSearchConfiguration.SearchType getSearchType() {
     return searchClient.getSearchType();
   }
@@ -179,9 +190,12 @@ public class SearchRepository {
   }
 
   public String getIndexOrAliasName(String name) {
-    return clusterAlias != null && !clusterAlias.isEmpty()
-        ? clusterAlias + indexNameSeparator + name
-        : name;
+    if (clusterAlias == null || clusterAlias.isEmpty()) {
+      return name;
+    }
+    return Arrays.stream(name.split(","))
+        .map(index -> clusterAlias + indexNameSeparator + index.trim())
+        .collect(Collectors.joining(","));
   }
 
   public String getIndexNameWithoutAlias(String fullIndexName) {
@@ -325,7 +339,7 @@ public class SearchRepository {
         searchClient.updateEntity(
             indexMapping.getIndexName(clusterAlias), entityId, doc, scriptTxt);
         propagateInheritedFieldsToChildren(
-            entityType, entityId, entity.getChangeDescription(), indexMapping);
+            entityType, entityId, entity.getChangeDescription(), indexMapping, entity);
         propagateGlossaryTags(
             entityType, entity.getFullyQualifiedName(), entity.getChangeDescription());
       } catch (Exception ie) {
@@ -353,19 +367,21 @@ public class SearchRepository {
       String entityType,
       String entityId,
       ChangeDescription changeDescription,
-      IndexMapping indexMapping) {
+      IndexMapping indexMapping,
+      EntityInterface entity) {
     if (changeDescription != null) {
-      Pair<String, Map<String, Object>> updates = getInheritedFieldChanges(changeDescription);
+      Pair<String, Map<String, Object>> updates =
+          getInheritedFieldChanges(changeDescription, entity);
       Pair<String, String> parentMatch;
-      if (!updates.getValue().isEmpty()
-          && updates.getValue().get("type").toString().equalsIgnoreCase("domain")) {
+      if (!updates.getValue().isEmpty() && updates.getValue().containsKey("domain")) {
         if (entityType.equalsIgnoreCase(Entity.DATABASE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.DASHBOARD_SERVICE)
             || entityType.equalsIgnoreCase(Entity.MESSAGING_SERVICE)
             || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
           parentMatch = new ImmutablePair<>("service.id", entityId);
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
@@ -373,9 +389,9 @@ public class SearchRepository {
       } else {
         parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
       }
-      if (updates.getKey() != null && !updates.getKey().isEmpty()) {
-        searchClient.updateChildren(
-            indexMapping.getChildAliases(clusterAlias), parentMatch, updates);
+      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
+      if (updates.getKey() != null && !updates.getKey().isEmpty() && !nullOrEmpty(childAliases)) {
+        searchClient.updateChildren(childAliases, parentMatch, updates);
       }
     }
   }
@@ -411,19 +427,40 @@ public class SearchRepository {
   }
 
   private Pair<String, Map<String, Object>> getInheritedFieldChanges(
-      ChangeDescription changeDescription) {
+      ChangeDescription changeDescription, EntityInterface entity) {
     StringBuilder scriptTxt = new StringBuilder();
     Map<String, Object> fieldData = new HashMap<>();
+
     if (changeDescription != null) {
+      EntityRepository<?> entityRepository =
+          Entity.getEntityRepository(entity.getEntityReference().getType());
+      EntityInterface entityBeforeUpdate =
+          entityRepository.get(null, entity.getId(), entityRepository.getFields("*"));
+
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference entityReference =
-                JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
-            scriptTxt.append(
-                String.format(
-                    PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT, field.getName(), field.getName()));
-            fieldData = JsonUtils.getMap(entityReference);
+            if (field.getName().equals(FIELD_OWNERS)) {
+              List<EntityReference> inheritedOwners =
+                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
+              for (EntityReference inheritedOwner : inheritedOwners) {
+                inheritedOwner.setInherited(true);
+              }
+              fieldData.put("updatedOwners", inheritedOwners);
+              scriptTxt.append(ADD_OWNERS_SCRIPT);
+            } else {
+              EntityReference entityReference =
+                  JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+              scriptTxt.append(
+                  String.format(
+                      PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
+                      field.getName(),
+                      field.getName(),
+                      field.getName()));
+              fieldData.put(field.getName(), entityReference);
+            }
           } catch (UnhandledServerException e) {
             scriptTxt.append(
                 String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
@@ -433,18 +470,20 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsUpdated()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference oldEntityReference =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
             EntityReference newEntityReference =
                 JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
+            fieldData.put(
+                "entityBeforeUpdate",
+                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class));
             scriptTxt.append(
                 String.format(
                     UPDATE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
                     field.getName(),
                     field.getName(),
-                    oldEntityReference.getId().toString(),
+                    field.getName(),
+                    field.getName(),
                     field.getName()));
-            fieldData = JsonUtils.getMap(newEntityReference);
+            fieldData.put(field.getName(), newEntityReference);
           } catch (UnhandledServerException e) {
             scriptTxt.append(
                 String.format(PROPAGATE_FIELD_SCRIPT, field.getName(), field.getNewValue()));
@@ -454,16 +493,25 @@ public class SearchRepository {
       for (FieldChange field : changeDescription.getFieldsDeleted()) {
         if (inheritableFields.contains(field.getName())) {
           try {
-            EntityReference entityReference =
-                JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
-            scriptTxt.append(
-                String.format(
-                    REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
-                    field.getName(),
-                    field.getName(),
-                    entityReference.getId().toString(),
-                    field.getName()));
-            fieldData = JsonUtils.getMap(entityReference);
+            if (field.getName().equals(FIELD_OWNERS)) {
+              List<EntityReference> inheritedOwners =
+                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
+              for (EntityReference inheritedOwner : inheritedOwners) {
+                inheritedOwner.setInherited(true);
+              }
+              fieldData.put("deletedOwners", inheritedOwners);
+              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
+            } else {
+              EntityReference entityReference =
+                  JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
+              scriptTxt.append(
+                  String.format(
+                      REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT,
+                      field.getName(),
+                      field.getName(),
+                      field.getName()));
+              fieldData.put(field.getName(), JsonUtils.getMap(entityReference));
+            }
           } catch (UnhandledServerException e) {
             scriptTxt.append(String.format(REMOVE_PROPAGATED_FIELD_SCRIPT, field.getName()));
           }
@@ -758,18 +806,13 @@ public class SearchRepository {
     return searchClient.aggregate(query, index, aggregationJson);
   }
 
-  public Response suggest(SearchRequest request) throws IOException {
-    return searchClient.suggest(request);
+  public DataQualityReport genericAggregation(
+      String query, String index, Map<String, Object> aggregationMetadata) throws IOException {
+    return searchClient.genericAggregation(query, index, aggregationMetadata);
   }
 
-  public SortedMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
-    return searchClient.getSortedDate(team, scheduleTime, currentTime, chartType, indexName);
+  public Response suggest(SearchRequest request) throws IOException {
+    return searchClient.suggest(request);
   }
 
   public Response listDataInsightChartResult(
@@ -785,5 +828,59 @@ public class SearchRepository {
       throws IOException, ParseException {
     return searchClient.listDataInsightChartResult(
         startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
+  }
+
+  public List<EntityReference> getEntitiesContainingFQNFromES(
+      String entityFQN, int size, String indexName) {
+    try {
+      String queryFilter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}]}}}",
+              ReindexingUtil.escapeDoubleQuotes(entityFQN));
+
+      SearchRequest searchRequest =
+          new SearchRequest.ElasticSearchRequestBuilder(
+                  "*", size, Entity.getSearchRepository().getIndexOrAliasName(indexName))
+              .from(0)
+              .queryFilter(queryFilter)
+              .fetchSource(true)
+              .trackTotalHits(false)
+              .sortFieldParam("_score")
+              .deleted(false)
+              .sortOrder("desc")
+              .includeSourceFields(new ArrayList<>())
+              .build();
+
+      // Execute the search and parse the response
+      Response response = search(searchRequest);
+      String json = (String) response.getEntity();
+      Set<EntityReference> fqns = new TreeSet<>(compareEntityReferenceById);
+
+      // Extract hits from the response JSON and create entity references
+      for (Iterator<JsonNode> it =
+              ((ArrayNode) JsonUtils.extractValue(json, "hits", "hits")).elements();
+          it.hasNext(); ) {
+        JsonNode jsonNode = it.next();
+        String id = JsonUtils.extractValue(jsonNode, "_source", "id");
+        String fqn = JsonUtils.extractValue(jsonNode, "_source", "fullyQualifiedName");
+        String type = JsonUtils.extractValue(jsonNode, "_source", "entityType");
+        if (!CommonUtil.nullOrEmpty(fqn) && !CommonUtil.nullOrEmpty(type)) {
+          fqns.add(
+              new EntityReference()
+                  .withId(UUID.fromString(id))
+                  .withFullyQualifiedName(fqn)
+                  .withType(type));
+        }
+      }
+
+      return new ArrayList<>(fqns);
+    } catch (Exception ex) {
+      LOG.error("Error while getting entities from ES for validation", ex);
+    }
+    return new ArrayList<>();
+  }
+
+  public <T> T getRestHighLevelClient() {
+    return (T) searchClient;
   }
 }

@@ -30,6 +30,7 @@ import { Tag } from '../../../generated/entity/classification/tag';
 import { Mlmodel, MlStore } from '../../../generated/entity/data/mlmodel';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { TagLabel } from '../../../generated/type/schema';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -183,14 +184,14 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
   };
 
   const onOwnerUpdate = useCallback(
-    async (newOwner?: Mlmodel['owner']) => {
+    async (newOwners?: Mlmodel['owners']) => {
       const updatedMlModelDetails = {
         ...mlModelDetail,
-        owner: newOwner,
+        owners: newOwners,
       };
       await settingsUpdateHandler(updatedMlModelDetails);
     },
-    [mlModelDetail, mlModelDetail.owner]
+    [mlModelDetail, mlModelDetail.owners]
   );
 
   const onTierUpdate = async (newTier?: Tag) => {
@@ -392,10 +393,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
         key: EntityTabs.FEATURES,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="d-flex flex-col gap-4 p-t-sm m-l-lg p-r-lg">
                       <DescriptionV1
@@ -408,7 +409,7 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                           mlModelDetail.mlFeatures
                         )}
                         isEdit={isEdit}
-                        owner={mlModelDetail.owner}
+                        owner={mlModelDetail.owners}
                         showActions={!deleted}
                         onCancel={onCancel}
                         onDescriptionEdit={onDescriptionEdit}
@@ -452,7 +453,8 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
                   ),
                   minWidth: 320,
                   flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
@@ -588,6 +590,10 @@ const MlModelDetail: FC<MlModelDetailProp> = ({
           />
         </Col>
       </Row>
+
+      <LimitWrapper resource="mlmodel">
+        <></>
+      </LimitWrapper>
 
       {threadLink ? (
         <ActivityThreadPanel

@@ -24,6 +24,7 @@ VERSIONS = {
     "avro": "avro>=1.11.3,<1.12",
     "boto3": "boto3>=1.20,<2.0",  # No need to add botocore separately. It's a dep from boto3
     "geoalchemy2": "GeoAlchemy2~=0.12",
+    "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
     "google-cloud-storage": "google-cloud-storage==1.43.0",
     "gcsfs": "gcsfs>=2023.1.0",
     "great-expectations": "great-expectations>=0.18.0,<0.18.14",
@@ -64,6 +65,7 @@ COMMONS = {
         VERSIONS["boto3"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["numpy"],
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
         "cramjam~=2.7",
@@ -160,13 +162,14 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",
     },
-    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
+    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"], VERSIONS["numpy"]},
     "clickhouse": {
         "clickhouse-driver~=0.2",
         "clickhouse-sqlalchemy~=0.2",
         DATA_DIFF["clickhouse"],
     },
     "dagster": {
+        "croniter<3",
         VERSIONS["pymysql"],
         "psycopg2-binary",
         VERSIONS["geoalchemy2"],
@@ -188,6 +191,8 @@ plugins: Dict[str, Set[str]] = {
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL~=24.1.0",
         "pyasn1~=0.6.0",
+        # databricks has a dependency on pyhive for metadata as well as profiler
+        VERSIONS["pyhive"],
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -196,6 +201,7 @@ plugins: Dict[str, Set[str]] = {
         *COMMONS["datalake"],
     },
     "datalake-gcs": {
+        VERSIONS["google-cloud-monitoring"],
         VERSIONS["google-cloud-storage"],
         VERSIONS["gcsfs"],
         *COMMONS["datalake"],
@@ -254,7 +260,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
-    "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
+    "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
         "sqlalchemy-pytds~=0.3",
@@ -309,6 +315,7 @@ plugins: Dict[str, Set[str]] = {
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
+        VERSIONS["numpy"],
         "presidio-analyzer==2.2.32",
     },
 }
@@ -337,11 +344,13 @@ test = {
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
     "moto~=5.0",
+    "basedpyright~=1.14",
     "pytest==7.0.0",
     "pytest-cov",
     "pytest-order",
     # install dbt dependency
     "dbt-artifacts-parser",
+    "freezegun",
     VERSIONS["sqlalchemy-databricks"],
     VERSIONS["databricks-sdk"],
     VERSIONS["scikit-learn"],
@@ -360,8 +369,9 @@ test = {
     VERSIONS["giturlparse"],
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],
+    VERSIONS["neo4j"],
     "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers==4.4.0;python_version>='3.9'",
+    "testcontainers==4.8.0;python_version>='3.9'",
     "minio==7.2.5",
     *plugins["mlflow"],
     *plugins["datalake-s3"],
@@ -371,6 +381,13 @@ test = {
     "requests==2.31.0",
     f"{DATA_DIFF['mysql']}==0.11.2",
     *plugins["deltalake"],
+    *plugins["datalake-gcs"],
+    *plugins["pgspider"],
+    *plugins["clickhouse"],
+    *plugins["mssql"],
+    *plugins["dagster"],
+    *plugins["oracle"],
+    *plugins["mssql"],
 }
 
 e2e_test = {

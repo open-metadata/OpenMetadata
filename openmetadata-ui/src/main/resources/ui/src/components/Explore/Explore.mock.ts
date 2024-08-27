@@ -264,6 +264,50 @@ export const MOCK_EXPLORE_SEARCH_RESULTS: SearchResponse<ExploreSearchIndex> = {
     'sterms#Tags': {
       buckets: [],
     },
+    'sterms#serviceType': {
+      buckets: [
+        {
+          key: 'mysql',
+          doc_count: 161,
+        },
+        {
+          key: 's3',
+          doc_count: 37,
+        },
+        {
+          key: 'bigquery',
+          doc_count: 20,
+        },
+        {
+          key: 'superset',
+          doc_count: 12,
+        },
+        {
+          key: 'kafka',
+          doc_count: 10,
+        },
+        {
+          key: 'airflow',
+          doc_count: 8,
+        },
+        {
+          key: 'glue',
+          doc_count: 2,
+        },
+        {
+          key: 'looker',
+          doc_count: 2,
+        },
+        {
+          key: 'mlflow',
+          doc_count: 2,
+        },
+        {
+          key: 'elasticsearch',
+          doc_count: 1,
+        },
+      ],
+    },
   },
 };
 

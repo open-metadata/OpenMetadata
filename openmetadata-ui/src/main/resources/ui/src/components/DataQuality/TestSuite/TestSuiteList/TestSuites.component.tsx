@@ -35,7 +35,11 @@ import {
   ERROR_PLACEHOLDER_TYPE,
   SORT_ORDER,
 } from '../../../../enums/common.enum';
-import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -58,7 +62,7 @@ import Table from '../../../common/Table/Table';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { TableProfilerTab } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import ProfilerProgressWidget from '../../../Database/Profiler/TableProfiler/ProfilerProgressWidget/ProfilerProgressWidget';
-import { DataQualitySearchParams } from '../../DataQuality.interface';
+import { TestSuiteSearchParams } from '../../DataQuality.interface';
 
 export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { t } = useTranslation();
@@ -74,7 +78,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       search.startsWith('?') ? search.substring(1) : search
     );
 
-    return params as DataQualitySearchParams;
+    return params as TestSuiteSearchParams;
   }, [location]);
   const { searchValue, owner } = params;
   const selectedOwner = useMemo(
@@ -178,9 +182,9 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
       },
       {
         title: t('label.owner'),
-        dataIndex: 'owner',
-        key: 'owner',
-        render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+        dataIndex: 'owners',
+        key: 'owners',
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
     ];
 
@@ -195,7 +199,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     try {
       const result = await getListTestSuitesBySearch({
         ...params,
-        fields: 'owner,summary',
+        fields: [TabSpecificField.OWNERS, TabSpecificField.SUMMARY],
         q: searchValue ? `*${searchValue}*` : undefined,
         owner: ownerFilterValue?.key,
         offset: (currentPage - 1) * pageSize,
@@ -228,7 +232,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
 
   const handleSearchParam = (
     value: string,
-    key: keyof DataQualitySearchParams
+    key: keyof TestSuiteSearchParams
   ) => {
     history.push({
       search: QueryString.stringify({
@@ -238,8 +242,11 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
     });
   };
 
-  const handleOwnerSelect = (owner?: EntityReference) => {
-    handleSearchParam(owner ? JSON.stringify(owner) : '', 'owner');
+  const handleOwnerSelect = (owners: EntityReference[] = []) => {
+    handleSearchParam(
+      owners?.length > 0 ? JSON.stringify(owners?.[0]) : '',
+      'owner'
+    );
   };
 
   useEffect(() => {
@@ -285,9 +292,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
                   <UserTeamSelectableList
                     hasPermission
                     owner={selectedOwner}
-                    onUpdate={(updatedUser) =>
-                      handleOwnerSelect(updatedUser as EntityReference)
-                    }>
+                    onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
                     <Select
                       data-testid="owner-select-filter"
                       open={false}

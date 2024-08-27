@@ -35,6 +35,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,7 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository.DatabaseSchemaCsv
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.DatabaseResource.DatabaseList;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
@@ -166,7 +168,7 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
     // Update terms with change in description
     String record =
         String.format(
-            "s1,dsp1,new-dsc1,user;%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
+            "s1,dsp1,new-dsc1,user:%s,,,Tier.Tier1,P23DT23H,http://test.com,%s",
             user1, escapeCsv(DOMAIN.getFullyQualifiedName()));
 
     // Update created entity with changes
@@ -194,12 +196,12 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
             : getEntity(database.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(database.getService(), database.getServiceType());
     assertListNull(
-        database.getOwner(),
+        database.getOwners(),
         database.getDatabaseSchemas(),
         database.getUsageSummary(),
         database.getLocation());
 
-    fields = "owner,databaseSchemas,usageSummary,location,tags";
+    fields = "owners,databaseSchemas,usageSummary,location,tags";
     database =
         byName
             ? getEntityByName(database.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
@@ -250,6 +252,17 @@ public class DatabaseResourceTest extends EntityResourceTest<Database, CreateDat
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (fieldName.endsWith("owners") && (expected != null && actual != null)) {
+      @SuppressWarnings("unchecked")
+      List<EntityReference> expectedOwners =
+          expected instanceof List
+              ? (List<EntityReference>) expected
+              : JsonUtils.readObjects(expected.toString(), EntityReference.class);
+      List<EntityReference> actualOwners =
+          JsonUtils.readObjects(actual.toString(), EntityReference.class);
+      assertOwners(expectedOwners, actualOwners);
+    } else {
+      assertCommonFieldChange(fieldName, expected, actual);
+    }
   }
 }

@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
+import json
 import pkgutil
 import traceback
 from pathlib import Path
@@ -46,6 +46,32 @@ class DeployDagException(Exception):
     """
 
 
+def dump_with_safe_jwt(ingestion_pipeline: IngestionPipeline) -> str:
+    """
+    Get the dump of the IngestionPipeline but keeping the JWT token masked.
+
+    Since Pydantic V2, we had to handle the serialization of secrets when dumping
+    the data at model level, since we don't have anymore fine-grained control of
+    it at runtime as we did with V1.
+
+    This means that even if the JWT token is a secret, a model_dump or model_json_dump
+    will automatically show the secret value - picking it from the Secrets Manager if enabled.
+
+    With this workaround, we're dumping the model to JSON and then replacing the JWT token
+    with the secret, so that if we are using a Secret Manager, the resulting file
+    will have the secret ID `secret:/super/secret` instead of the actual value.
+
+    Then, the client will pick up the right secret when the workflow is triggered.
+    """
+    pipeline_json = ingestion_pipeline.model_dump(mode="json", exclude_defaults=False)
+    pipeline_json["openMetadataServerConnection"]["securityConfig"][
+        "jwtToken"
+    ] = ingestion_pipeline.openMetadataServerConnection.securityConfig.jwtToken.get_secret_value(
+        skip_secret_manager=True
+    )
+    return json.dumps(pipeline_json, ensure_ascii=True)
+
+
 class DagDeployer:
     """
     Helper class to store DAG config
@@ -74,9 +100,7 @@ class DagDeployer:
 
         logger.info(f"Saving file to {dag_config_file_path}")
         with open(dag_config_file_path, "w") as outfile:
-            outfile.write(
-                self.ingestion_pipeline.model_dump_json(exclude_defaults=False)
-            )
+            outfile.write(dump_with_safe_jwt(self.ingestion_pipeline))
 
         return {"workflow_config_file": str(dag_config_file_path)}
 

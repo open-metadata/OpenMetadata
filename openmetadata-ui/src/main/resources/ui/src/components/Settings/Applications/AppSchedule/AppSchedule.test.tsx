@@ -17,9 +17,13 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { AppType } from '../../../../generated/entity/applications/app';
+import {
+  AppType,
+  ScheduleType,
+} from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
@@ -86,6 +90,7 @@ const mockProps2 = {
     appType: AppType.External,
     pipelines: [{}] as EntityReference[],
     appSchedule: null,
+    scheduleType: ScheduleType.Scheduled,
     name: 'DataInsightsReportApplication',
   },
 };
@@ -97,6 +102,24 @@ const mockProps3 = {
     deleted: true,
   },
 };
+
+jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
+  useLimitStore: jest.fn().mockReturnValue({
+    config: {
+      limits: {
+        config: {
+          featureLimits: [
+            { name: 'app', pipelineSchedules: ['daily', 'weekly'] },
+          ],
+        },
+      },
+    },
+  }),
+}));
+
+jest.mock('../../../../utils/ScheduleUtils', () => ({
+  getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
+}));
 
 describe('AppSchedule component', () => {
   it('should render necessary elements for mockProps1', () => {
@@ -120,6 +143,8 @@ describe('AppSchedule component', () => {
     render(<AppSchedule {...mockProps2} />);
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(screen.queryByText('label.run-now')).not.toBeInTheDocument();
 
     expect(screen.queryByText('label.schedule-type')).not.toBeInTheDocument();
     expect(
@@ -171,5 +196,24 @@ describe('AppSchedule component', () => {
     render(<AppSchedule {...mockProps2} />);
 
     expect(screen.queryByText('AppRunsHistory')).not.toBeInTheDocument();
+  });
+
+  it('should call getScheduleOptionsFromSchedules with application pipelineStatus values', () => {
+    mockGetIngestionPipelineByFqn.mockRejectedValueOnce({});
+    render(
+      <AppSchedule
+        {...mockProps1}
+        appData={{
+          ...mockApplicationData,
+          name: 'something',
+          appType: AppType.Internal,
+        }}
+      />
+    );
+
+    expect(getScheduleOptionsFromSchedules).toHaveBeenCalledWith([
+      'daily',
+      'weekly',
+    ]);
   });
 });

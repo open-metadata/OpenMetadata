@@ -29,6 +29,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   name: string;
   filterPattern: string;
   dbtEntityFqn: string;
+  schemaFilterPattern = 'dbt_automate_upgrade_tests';
 
   constructor() {
     super(
@@ -41,7 +42,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     this.filterPattern = 'sales';
     this.dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
       'redshiftDatabase'
-    )}.dbt_jaffle.${REDSHIFT.DBTTable}`;
+    )}.${this.schemaFilterPattern}.${REDSHIFT.DBTTable}`;
   }
 
   createService() {
@@ -73,9 +74,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     // no schema or database filters
     cy.get('#root\\/schemaFilterPattern\\/includes')
       .scrollIntoView()
-      .type('dbt_jaffle{enter}');
-
-    cy.get('#root\\/includeViews').click();
+      .type(`${this.schemaFilterPattern}{enter}`);
   }
 
   runAdditionalTests() {
@@ -104,11 +103,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       );
       interceptURL(
         'GET',
-        '/api/v1/system/config/pipeline-service-client',
-        'airflow'
-      );
-      interceptURL(
-        'GET',
         '/api/v1/permissions/ingestionPipeline/name/*',
         'ingestionPermissions'
       );
@@ -128,7 +122,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         responseTimeout: 50000,
       });
       verifyResponseStatusCode('@serviceDetails', 200);
-      verifyResponseStatusCode('@airflow', 200);
       verifyResponseStatusCode('@databases', 200);
       cy.get('[data-testid="tabs"]').should('exist');
       cy.get('[data-testid="ingestions"]')

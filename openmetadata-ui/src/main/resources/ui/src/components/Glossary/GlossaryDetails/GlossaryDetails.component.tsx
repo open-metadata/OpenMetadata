@@ -142,10 +142,10 @@ const GlossaryDetails = ({
   const detailsContent = useMemo(() => {
     return (
       <Row className="h-full" gutter={[32, 0]}>
-        <Col span={24}>
+        <Col className="glossary-height-with-resizable-panel" span={24}>
           <ResizablePanels
-            applyDefaultStyle={false}
             firstPanel={{
+              className: 'glossary-resizable-panel-container',
               children: (
                 <div className="p-y-md p-x-md glossary-content-container">
                   <Space className="w-full" direction="vertical" size={24}>
@@ -159,7 +159,7 @@ const GlossaryDetails = ({
                       }
                       isDescriptionExpanded={isEmpty(glossary.children)}
                       isEdit={isDescriptionEditable}
-                      owner={glossary?.owner}
+                      owner={glossary?.owners}
                       showActions={!glossary.deleted}
                       onCancel={() => setIsDescriptionEditable(false)}
                       onDescriptionEdit={() => setIsDescriptionEditable(true)}
@@ -196,7 +196,8 @@ const GlossaryDetails = ({
               ),
               minWidth: 320,
               flex: 0.25,
-              className: 'entity-resizable-right-panel-container',
+              className:
+                'entity-resizable-right-panel-container glossary-resizable-panel-container',
             }}
           />
         </Col>
@@ -243,7 +244,7 @@ const GlossaryDetails = ({
                   entityType={EntityType.GLOSSARY}
                   fqn={glossary.fullyQualifiedName ?? ''}
                   hasGlossaryReviewer={!isEmpty(glossary.reviewers)}
-                  owner={glossary.owner}
+                  owners={glossary.owners}
                   onFeedUpdate={getEntityFeedCount}
                   onUpdateEntityDetails={noop}
                 />

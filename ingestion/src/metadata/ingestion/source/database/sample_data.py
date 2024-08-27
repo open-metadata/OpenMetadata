@@ -24,6 +24,12 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 from pydantic import ValidationError
 
 from metadata.generated.schema.analytics.reportData import ReportData, ReportDataType
+from metadata.generated.schema.api.data.createAPICollection import (
+    CreateAPICollectionRequest,
+)
+from metadata.generated.schema.api.data.createAPIEndpoint import (
+    CreateAPIEndpointRequest,
+)
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -84,6 +90,7 @@ from metadata.generated.schema.entity.data.table import (
 )
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.policies.policy import Policy
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
     CustomDatabaseConnection,
 )
@@ -536,6 +543,56 @@ class SampleDataSource(
                 encoding=UTF_8,
             )
         )
+        self.api_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/api_service/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.api_service = self.metadata.get_service_or_create(
+            entity=ApiService,
+            config=WorkflowSource(**self.api_service_json),
+        )
+        self.api_collection = json.load(
+            open(
+                sample_data_folder + "/api_service/api_collection.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.api_endpoint = json.load(
+            open(
+                sample_data_folder + "/api_service/api_endpoint.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.ometa_api_service_json = json.load(
+            open(  # pylint: disable=consider-using-with
+                sample_data_folder + "/ometa_api_service/service.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.ometa_api_service = self.metadata.get_service_or_create(
+            entity=ApiService,
+            config=WorkflowSource(**self.ometa_api_service_json),
+        )
+        self.ometa_api_collection = json.load(
+            open(
+                sample_data_folder + "/ometa_api_service/ometa_api_collection.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
+        self.ometa_api_endpoint = json.load(
+            open(
+                sample_data_folder + "/ometa_api_service/ometa_api_endpoint.json",
+                "r",
+                encoding=UTF_8,
+            )
+        )
 
     @classmethod
     def create(
@@ -578,6 +635,8 @@ class SampleDataSource(
         yield from self.ingest_logical_test_suite()
         yield from self.ingest_data_insights()
         yield from self.ingest_life_cycle()
+        yield from self.ingest_api_service()
+        yield from self.ingest_ometa_api_service()
 
     def ingest_teams(self) -> Iterable[Either[CreateTeamRequest]]:
         """
@@ -1086,10 +1145,10 @@ class SampleDataSource(
 
     def ingest_pipelines(self) -> Iterable[Either[Pipeline]]:
         for pipeline in self.pipelines["pipelines"]:
-            owner = None
+            owners = None
             if pipeline.get("owner"):
-                owner = self.metadata.get_reference_by_email(
-                    email=pipeline.get("owner")
+                owners = self.metadata.get_reference_by_email(
+                    email=pipeline.get("owners")
                 )
             pipeline_ev = CreatePipelineRequest(
                 name=pipeline["name"],
@@ -1098,7 +1157,7 @@ class SampleDataSource(
                 sourceUrl=pipeline["sourceUrl"],
                 tasks=pipeline["tasks"],
                 service=self.pipeline_service.fullyQualifiedName,
-                owner=owner,
+                owners=owners,
                 scheduleInterval=pipeline.get("scheduleInterval"),
             )
             yield Either(right=pipeline_ev)
@@ -1441,6 +1500,7 @@ class SampleDataSource(
                             TestCaseParameterValue(**param_values)
                             for param_values in test_case["parameterValues"]
                         ],
+                        useDynamicAssertion=test_case.get("useDynamicAssertion", False),
                     )  # type: ignore
                 )
                 yield Either(right=test_case_req)
@@ -1538,6 +1598,9 @@ class SampleDataSource(
                         rows=test_case_results["failedRowsSample"]["rows"],
                         columns=test_case_results["failedRowsSample"]["columns"],
                     ),
+                    validate=test_case_results["failedRowsSample"].get(
+                        "validate", True
+                    ),
                 )
             if test_case_results.get("inspectionQuery"):
                 self.metadata.ingest_inspection_query(
@@ -1604,8 +1667,8 @@ class SampleDataSource(
                             ).timestamp()
                         )
                     ),
-                    accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
-                )
+                ),
+                accessedByAProcess=life_cycle["updated"].get("accessedByAProcess"),
             )
 
             life_cycle_data.accessed = AccessDetails(
@@ -1618,8 +1681,8 @@ class SampleDataSource(
                             ).timestamp()
                         )
                     ),
-                    accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
-                )
+                ),
+                accessedByAProcess=life_cycle["accessed"].get("accessedByAProcess"),
             )
 
             if life_cycle["created"].get("accessedBy"):
@@ -1652,3 +1715,24 @@ class SampleDataSource(
 
     def test_connection(self) -> None:
         """Custom sources don't support testing connections"""
+
+    def ingest_api_service(self) -> Iterable[Either[Entity]]:
+        """Ingest API services"""
+
+        collection_request = CreateAPICollectionRequest(**self.api_collection)
+        yield Either(right=collection_request)
+
+        for endpoint in self.api_endpoint.get("endpoints"):
+            endpoint_request = CreateAPIEndpointRequest(**endpoint)
+            yield Either(right=endpoint_request)
+
+    def ingest_ometa_api_service(self) -> Iterable[Either[Entity]]:
+        """Ingest users & tables ometa API services"""
+
+        for collection in self.ometa_api_collection.get("collections"):
+            collection_request = CreateAPICollectionRequest(**collection)
+            yield Either(right=collection_request)
+
+        for endpoint in self.ometa_api_endpoint.get("endpoints"):
+            endpoint_request = CreateAPIEndpointRequest(**endpoint)
+            yield Either(right=endpoint_request)

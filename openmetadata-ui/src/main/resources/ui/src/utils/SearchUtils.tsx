@@ -17,13 +17,16 @@ import i18next from 'i18next';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ReactComponent as GlossaryTermIcon } from '../assets/svg/book.svg';
+import { ReactComponent as IconChart } from '../assets/svg/chart.svg';
 import { ReactComponent as IconDashboard } from '../assets/svg/dashboard-grey.svg';
+import { ReactComponent as IconApiCollection } from '../assets/svg/ic-api-collection-default.svg';
+import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint-default.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
-import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
 import { ReactComponent as IconTopic } from '../assets/svg/topic-grey.svg';
 import {
@@ -121,7 +124,7 @@ export const getGroupLabel = (index: string) => {
       break;
     case SearchIndex.GLOSSARY_TERM:
       label = i18next.t('label.glossary-term-plural');
-      GroupIcon = IconTable;
+      GroupIcon = GlossaryTermIcon;
 
       break;
     case SearchIndex.TAG:
@@ -156,6 +159,23 @@ export const getGroupLabel = (index: string) => {
     case SearchIndex.DATA_PRODUCT:
       label = i18next.t('label.data-product-plural');
       GroupIcon = DataProductIcon;
+
+      break;
+
+    case SearchIndex.CHART:
+      label = i18next.t('label.chart-plural');
+      GroupIcon = IconChart;
+
+      break;
+    case SearchIndex.API_COLLECTION_INDEX:
+      label = i18next.t('label.api-collection-plural');
+      GroupIcon = IconApiCollection;
+
+      break;
+
+    case SearchIndex.API_ENDPOINT_INDEX:
+      label = i18next.t('label.api-endpoint-plural');
+      GroupIcon = IconApiEndpoint;
 
       break;
 
@@ -202,9 +222,10 @@ export const getSuggestionElement = (
   const displayText =
     database && schema
       ? `${database}${FQN_SEPARATOR_CHAR}${schema}${FQN_SEPARATOR_CHAR}${name}`
-      : searchClassBase.getEntityName(entitySource);
+      : entitySource.fullyQualifiedName ??
+        searchClassBase.getEntityName(entitySource);
 
-  const retn = (
+  return (
     <Button
       block
       className="text-left truncate p-0"
@@ -231,8 +252,6 @@ export const getSuggestionElement = (
       </Link>
     </Button>
   );
-
-  return retn;
 };
 
 export const filterOptionsByIndex = (
@@ -241,7 +260,7 @@ export const filterOptionsByIndex = (
   maxItemsPerType = 5
 ) =>
   options
-    .filter((option) => option._index === searchIndex)
+    .filter((option) => option._index.includes(searchIndex))
     .map((option) => option._source)
     .slice(0, maxItemsPerType);
 
@@ -269,6 +288,9 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.DATABASE]: EntityType.DATABASE,
     [SearchIndex.DOMAIN]: EntityType.DOMAIN,
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
+    [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
+    [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+    [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
   };
 
   return commonAssets[searchIndex] || null; // Return null if not found

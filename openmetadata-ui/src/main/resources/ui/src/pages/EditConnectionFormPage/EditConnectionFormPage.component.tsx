@@ -28,6 +28,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import ServiceConfig from '../../components/Settings/Services/ServiceConfig/ServiceConfig';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
@@ -89,7 +90,7 @@ function EditConnectionFormPage() {
       );
       setServiceDetails({
         ...response,
-        owner: response?.owner ?? serviceDetails?.owner,
+        owners: response?.owners ?? serviceDetails?.owners,
       });
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -100,7 +101,7 @@ function EditConnectionFormPage() {
     setIsLoading(true);
     try {
       const response = await getServiceByFQN(serviceCategory, serviceFQN, {
-        fields: 'owner',
+        fields: TabSpecificField.OWNERS,
       });
       setServiceDetails(response);
       setSlashedBreadcrumb([
@@ -187,7 +188,13 @@ function EditConnectionFormPage() {
 
   return (
     <ResizablePanels
-      firstPanel={{ children: firstPanelChildren, minWidth: 700, flex: 0.7 }}
+      className="content-height-with-resizable-panel"
+      firstPanel={{
+        children: firstPanelChildren,
+        minWidth: 700,
+        flex: 0.7,
+        className: 'content-resizable-panel-container',
+      }}
       hideSecondPanel={!serviceDetails?.serviceType ?? ''}
       pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
       secondPanel={{
@@ -198,7 +205,7 @@ function EditConnectionFormPage() {
             serviceType={getServiceType(serviceCategory)}
           />
         ),
-        className: 'service-doc-panel',
+        className: 'service-doc-panel content-resizable-panel-container',
         minWidth: 400,
         flex: 0.3,
       }}

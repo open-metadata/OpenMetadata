@@ -22,12 +22,12 @@ We can create a workflow that will obtain the dbt information from the dbt files
 ## 1. Define the YAML Config
 
 Select the yaml config from one of the below sources:
-- [AWS S3 Buckets](#1.aws-s3-buckets)
-- [Google Cloud Storage Buckets](#2.google-cloud-storage-buckets)
-- [Azure Storage Buckets](#3.azure-storage-buckets)
-- [Local Storage](#4.local-storage)
-- [File Server](#5.file-server)
-- [dbt Cloud](#6.dbt-cloud)
+- [AWS S3 Buckets](#1.-aws-s3-buckets)
+- [Google Cloud Storage Buckets](#2.-google-cloud-storage-buckets)
+- [Azure Storage Buckets](#3.-azure-storage-buckets)
+- [Local Storage](#4.-local-storage)
+- [File Server](#5.-file-server)
+- [dbt Cloud](#6.-dbt-cloud)
 
 
 The dbt files should be present on the source mentioned and should have the necessary permissions to be able to access the files.
@@ -493,6 +493,8 @@ source:
 ### 6. dbt Cloud
 In this configuration we will be fetching the dbt `manifest.json`, `catalog.json` and `run_results.json` files from dbt cloud APIs.
 
+The `Account Viewer` permission is the minimum requirement for the dbt cloud token.
+
 {% codePreview %}
 
 {% codeInfoContainer %}
@@ -514,7 +516,7 @@ For example, if the URL is `https://cloud.getdbt.com/#/accounts/1234/projects/67
 {% /codeInfo %}
 
 {% codeInfo srNumber=63 %}
-- **dbtCloudJobId**: InIn case of multiple jobs in a dbt cloud account, specify the job's ID from which you want to extract the dbt run artifacts.
+- **dbtCloudJobId**: In case of multiple jobs in a dbt cloud account, specify the job's ID from which you want to extract the dbt run artifacts.
 If left empty, the dbt artifacts will be fetched from the most recent run on dbt cloud.
 The value entered should be a `numeric` value.
 {% /codeInfo %}

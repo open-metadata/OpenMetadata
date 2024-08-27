@@ -22,6 +22,7 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.util.JsonUtils;
@@ -71,8 +72,10 @@ public class ChangeEventHandler implements EventHandler {
           changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
         }
 
-        // Thread are created in FeedRepository Directly
-        Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+        // Insert ChangeEvents if ENTITY Changed
+        if (!changeEvent.getEventType().equals(EventType.ENTITY_NO_CHANGE)) {
+          Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+        }
       }
     } catch (Exception e) {
       LOG.error(

@@ -1,0 +1,17 @@
+{
+  "name": "UsageBotRole",
+  "displayName": "Usage bot role",
+  "description": "Role corresponding to a Usage bot.",
+  "allowDelete": false,
+  "provider": "system",
+  "policies" : [
+    {
+      "type" : "policy",
+      "name" : "DefaultBotPolicy"
+    },
+    {
+      "type" : "policy",
+      "name" : "UsageBotPolicy"
+    }
+  ]
+}

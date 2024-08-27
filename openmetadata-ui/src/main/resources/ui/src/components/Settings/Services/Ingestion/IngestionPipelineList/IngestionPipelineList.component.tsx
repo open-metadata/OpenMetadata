@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 import { FilterOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Tooltip } from 'antd';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType, TableProps } from 'antd/lib/table';
+import { TableRowSelection } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
-import cronstrue from 'cronstrue';
 import { isNil, map, startCase } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import {
   IngestionPipeline,
@@ -32,20 +32,16 @@ import {
   deployIngestionPipelineById,
   getIngestionPipelines,
 } from '../../../../../rest/ingestionPipelineAPI';
-import { getEntityName } from '../../../../../utils/EntityUtils';
 import { getEntityTypeFromServiceCategory } from '../../../../../utils/ServiceUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import Loader from '../../../../common/Loader/Loader';
-import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../../common/Table/Table';
 import { ColumnFilter } from '../../../../Database/ColumnFilter/ColumnFilter.component';
-import { IngestionRecentRuns } from '../IngestionRecentRun/IngestionRecentRuns.component';
+import IngestionListTable from '../IngestionListTable/IngestionListTable';
 
 export const IngestionPipelineList = ({
   serviceName,
@@ -55,7 +51,7 @@ export const IngestionPipelineList = ({
   className?: string;
 }) => {
   const { theme } = useApplicationStore();
-  const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>();
+  const [pipelines, setPipelines] = useState<Array<IngestionPipeline>>([]);
   const { isAirflowAvailable, isFetchingStatus } = useAirflowStatus();
 
   const [selectedPipelines, setSelectedPipelines] = useState<
@@ -67,58 +63,31 @@ export const IngestionPipelineList = ({
   const [pipelineTypeFilter, setPipelineTypeFilter] =
     useState<PipelineType[]>();
 
-  const {
-    currentPage,
-    handlePageChange,
-    paging,
-    handlePagingChange,
-    pageSize,
-    handlePageSizeChange,
-    showPagination,
-  } = usePaging();
+  const pagingInfo = usePaging();
+
+  const { handlePageChange, paging, handlePagingChange, pageSize } = pagingInfo;
 
   const { t } = useTranslation();
 
-  const renderNameField = (_: string, record: IngestionPipeline) => {
-    return getEntityName(record);
-  };
+  const renderFilterIcon = useCallback(
+    (filtered: boolean) => (
+      <FilterOutlined
+        style={{
+          color: filtered ? theme.primaryColor : undefined,
+        }}
+      />
+    ),
+    [theme]
+  );
 
-  const renderScheduleField = (_: string, record: IngestionPipeline) => {
-    return record.airflowConfig?.scheduleInterval ? (
-      <Tooltip
-        placement="bottom"
-        title={cronstrue.toString(record.airflowConfig.scheduleInterval, {
-          use24HourTimeFormat: true,
-          verbose: true,
-        })}>
-        {record.airflowConfig.scheduleInterval}
-      </Tooltip>
-    ) : (
-      <span>--</span>
-    );
-  };
-
-  const tableColumn: ColumnsType<IngestionPipeline> = useMemo(
+  const typeColumnObj: ColumnsType<IngestionPipeline> = useMemo(
     () => [
-      {
-        title: t('label.name'),
-        dataIndex: 'name',
-        key: 'name',
-        width: 500,
-        render: renderNameField,
-      },
       {
         title: t('label.type'),
         dataIndex: 'pipelineType',
         key: 'pipelineType',
         filterDropdown: ColumnFilter,
-        filterIcon: (filtered) => (
-          <FilterOutlined
-            style={{
-              color: filtered ? theme.primaryColor : undefined,
-            }}
-          />
-        ),
+        filterIcon: renderFilterIcon,
         filters: map(PipelineType, (value) => ({
           text: startCase(value),
           value,
@@ -126,26 +95,11 @@ export const IngestionPipelineList = ({
         filtered: !isNil(pipelineTypeFilter),
         filteredValue: pipelineTypeFilter,
       },
-      {
-        title: t('label.schedule'),
-        dataIndex: 'schedule',
-        key: 'schedule',
-        render: renderScheduleField,
-      },
-      {
-        title: t('label.recent-run-plural'),
-        dataIndex: 'recentRuns',
-        key: 'recentRuns',
-        width: 180,
-        render: (_, record) => (
-          <IngestionRecentRuns classNames="align-middle" ingestion={record} />
-        ),
-      },
     ],
-    [renderScheduleField, renderNameField]
+    [renderFilterIcon, pipelineTypeFilter]
   );
 
-  const handleBulkRedeploy = async () => {
+  const handleBulkRedeploy = useCallback(async () => {
     const selectedPipelines =
       pipelines?.filter(
         (p) =>
@@ -180,72 +134,91 @@ export const IngestionPipelineList = ({
       setSelectedRowKeys([]);
       setDeploying(false);
     }
-  };
+  }, [pipelines, selectedRowKeys]);
 
-  const fetchPipelines = async ({
-    paging,
-    pipelineType,
-    limit,
-  }: {
-    paging?: Omit<Paging, 'total'>;
-    pipelineType?: PipelineType[];
-    limit?: number;
-  }) => {
-    setLoading(true);
-    try {
-      const { data, paging: pagingRes } = await getIngestionPipelines({
-        arrQueryFields: ['owner'],
-        serviceType:
-          serviceName === 'testSuites'
-            ? EntityType.TEST_SUITE
-            : getEntityTypeFromServiceCategory(serviceName),
-        paging,
-        pipelineType,
-        limit,
-      });
+  const fetchPipelines = useCallback(
+    async ({
+      paging,
+      pipelineType,
+      limit,
+    }: {
+      paging?: Omit<Paging, 'total'>;
+      pipelineType?: PipelineType[];
+      limit?: number;
+    }) => {
+      setLoading(true);
+      try {
+        const { data, paging: pagingRes } = await getIngestionPipelines({
+          arrQueryFields: [TabSpecificField.OWNERS],
+          serviceType:
+            serviceName === 'testSuites'
+              ? EntityType.TEST_SUITE
+              : getEntityTypeFromServiceCategory(serviceName),
+          paging,
+          pipelineType,
+          limit,
+        });
 
-      setPipelines(data);
-      handlePagingChange(pagingRes);
-    } catch {
-      // Error
-    } finally {
-      setLoading(false);
-    }
-  };
+        setPipelines(data);
+        handlePagingChange(pagingRes);
+      } catch {
+        // Error
+      } finally {
+        setLoading(false);
+      }
+    },
+    [serviceName]
+  );
 
-  const handlePipelinePageChange = ({
-    cursorType,
-    currentPage,
-  }: PagingHandlerParams) => {
-    if (cursorType) {
-      fetchPipelines({
-        paging: { [cursorType]: paging[cursorType] },
-        limit: pageSize,
-      });
-      handlePageChange(currentPage);
-    }
-  };
+  const handlePipelinePageChange = useCallback(
+    ({ cursorType, currentPage }: PagingHandlerParams) => {
+      if (cursorType) {
+        fetchPipelines({
+          paging: { [cursorType]: paging[cursorType] },
+          limit: pageSize,
+        });
+        handlePageChange(currentPage);
+      }
+    },
+    [fetchPipelines, paging, handlePageChange]
+  );
 
   useEffect(() => {
     isAirflowAvailable && fetchPipelines({ limit: pageSize });
   }, [serviceName, isAirflowAvailable]);
 
-  const handleTableChange: TableProps<IngestionPipeline>['onChange'] = (
-    _pagination,
-    filters
-  ) => {
-    const pipelineType = filters.pipelineType as PipelineType[];
-    setPipelineTypeFilter(pipelineType);
-    fetchPipelines({
-      pipelineType,
-      limit: pageSize,
-    });
-  };
+  const handleTableChange: TableProps<IngestionPipeline>['onChange'] =
+    useCallback(
+      (_pagination, filters) => {
+        const pipelineType = filters.pipelineType as PipelineType[];
+        setPipelineTypeFilter(pipelineType);
+        fetchPipelines({
+          pipelineType,
+          limit: pageSize,
+        });
+      },
+      [fetchPipelines]
+    );
 
-  const handlePipelinePageSizeChange = (size: number) => {
-    handlePageSizeChange(size);
-    fetchPipelines({ pipelineType: pipelineTypeFilter, limit: size });
-  };
+  const handleRowChange = useCallback(
+    (selectedRowKeys: React.Key[], selectedRows: IngestionPipeline[]) => {
+      setSelectedPipelines(selectedRows);
+      setSelectedRowKeys(selectedRowKeys);
+    },
+    []
+  );
+
+  const rowSelection: TableRowSelection<IngestionPipeline> = useMemo(
+    () => ({
+      type: 'checkbox',
+      onChange: handleRowChange,
+      getCheckboxProps: (record: IngestionPipeline) => ({
+        name: record.fullyQualifiedName,
+      }),
+      selectedRowKeys,
+    }),
+    [handleRowChange, selectedRowKeys]
+  );
 
   if (isFetchingStatus) {
     return <Loader />;
@@ -259,6 +232,7 @@ export const IngestionPipelineList = ({
     <Row className={className} gutter={[16, 16]}>
       <Col className="text-right" span={24}>
         <Button
+          data-testid="bulk-re-deploy-button"
           disabled={selectedPipelines?.length === 0}
           loading={deploying}
           type="primary"
@@ -267,44 +241,19 @@ export const IngestionPipelineList = ({
         </Button>
       </Col>
       <Col span={24}>
-        <Table
-          bordered
-          columns={tableColumn}
-          dataSource={pipelines}
-          loading={loading}
-          locale={{
-            emptyText: <ErrorPlaceHolder className="m-y-md" />,
+        <IngestionListTable
+          enableActions={false}
+          extraTableProps={{
+            rowSelection,
+            onChange: handleTableChange,
           }}
-          pagination={false}
-          rowKey="fullyQualifiedName"
-          rowSelection={{
-            type: 'checkbox',
-            onChange: (
-              selectedRowKeys: React.Key[],
-              selectedRows: IngestionPipeline[]
-            ) => {
-              setSelectedPipelines(selectedRows);
-              setSelectedRowKeys(selectedRowKeys);
-            },
-            getCheckboxProps: (record: IngestionPipeline) => ({
-              name: record.fullyQualifiedName,
-            }),
-            selectedRowKeys,
-          }}
-          size="small"
-          onChange={handleTableChange}
+          ingestionData={pipelines}
+          ingestionPagingInfo={pagingInfo}
+          isLoading={loading}
+          pipelineTypeColumnObj={typeColumnObj}
+          serviceName={serviceName}
+          onPageChange={handlePipelinePageChange}
         />
-      </Col>
-      <Col span={24}>
-        {showPagination && (
-          <NextPrevious
-            currentPage={currentPage}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={handlePipelinePageChange}
-            onShowSizeChange={handlePipelinePageSizeChange}
-          />
-        )}
       </Col>
     </Row>
   );

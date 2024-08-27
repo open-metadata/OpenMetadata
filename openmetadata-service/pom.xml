@@ -426,7 +426,11 @@
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr353</artifactId>
     </dependency>
-
+    <dependency>
+      <groupId>com.flipkart.zjsonpatch</groupId>
+      <artifactId>zjsonpatch</artifactId>
+      <version>0.4.16</version>
+    </dependency>
     <!-- https://mvnrepository.com/artifact/org.json/json -->
     <dependency>
       <groupId>org.json</groupId>
@@ -617,9 +621,15 @@
       <artifactId>google-cloud-secretmanager</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
-      <artifactId>owasp-java-html-sanitizer</artifactId>
-      <version>20211018.2</version> 
+      <groupId>com.slack.api</groupId>
+      <artifactId>bolt-servlet</artifactId>
+      <version>1.39.3</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.slack.api</groupId>
+      <artifactId>slack-api-client</artifactId>
+      <version>1.40.1</version>
     </dependency>
   </dependencies>
 

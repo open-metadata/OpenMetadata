@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -60,10 +61,10 @@ public final class CommonUtil {
   public static List<String> getResources(Pattern pattern) throws IOException {
     ArrayList<String> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
-    List<String> classPathElements =
+    Set<String> classPathElements =
         Arrays.stream(classPath.split(File.pathSeparator))
             .filter(jarName -> JAR_NAME_FILTER.stream().anyMatch(jarName.toLowerCase()::contains))
-            .toList();
+            .collect(Collectors.toSet());
 
     for (String element : classPathElements) {
       File file = new File(element);
@@ -84,6 +85,7 @@ public final class CommonUtil {
   }
 
   private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
+    LOG.debug("Adding from file {}", file);
     ArrayList<String> retval = new ArrayList<>();
     try (ZipFile zf = new ZipFile(file)) {
       Enumeration<? extends ZipEntry> e = zf.entries();
@@ -174,6 +176,10 @@ public final class CommonUtil {
 
   public static <T> List<T> listOrEmpty(List<T> list) {
     return Optional.ofNullable(list).orElse(Collections.emptyList());
+  }
+
+  public static <T> List<T> listOrEmptyMutable(List<T> list) {
+    return nullOrEmpty(list) ? new ArrayList<>() : new ArrayList<>(list);
   }
 
   public static boolean nullOrEmpty(String string) {

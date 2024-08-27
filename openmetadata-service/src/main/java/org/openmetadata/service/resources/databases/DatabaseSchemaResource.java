@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -73,7 +74,7 @@ import org.openmetadata.service.util.ResultList;
 public class DatabaseSchemaResource
     extends EntityResource<DatabaseSchema, DatabaseSchemaRepository> {
   public static final String COLLECTION_PATH = "v1/databaseSchemas/";
-  static final String FIELDS = "owner,tables,usageSummary,tags,extension,domain,sourceHash";
+  static final String FIELDS = "owners,tables,usageSummary,tags,extension,domain,sourceHash";
 
   @Override
   public DatabaseSchema addHref(UriInfo uriInfo, DatabaseSchema schema) {
@@ -84,8 +85,8 @@ public class DatabaseSchemaResource
     return schema;
   }
 
-  public DatabaseSchemaResource(Authorizer authorizer) {
-    super(Entity.DATABASE_SCHEMA, authorizer);
+  public DatabaseSchemaResource(Authorizer authorizer, Limits limits) {
+    super(Entity.DATABASE_SCHEMA, authorizer, limits);
   }
 
   @Override

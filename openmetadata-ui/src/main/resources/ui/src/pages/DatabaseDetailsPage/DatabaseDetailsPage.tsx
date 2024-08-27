@@ -48,6 +48,7 @@ import {
   getEntityDetailsPath,
   getExplorePath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -55,6 +56,7 @@ import {
   OperationPermission,
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -201,7 +203,7 @@ const DatabaseDetails: FunctionComponent = () => {
   const getDetailsByFQN = () => {
     setIsDatabaseDetailsLoading(true);
     getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-      fields: `${TabSpecificField.OWNER},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
+      fields: `${TabSpecificField.OWNERS},${TabSpecificField.TAGS},${TabSpecificField.DOMAIN},${TabSpecificField.VOTES},${TabSpecificField.EXTENSION},${TabSpecificField.DATA_PRODUCTS}`,
       include: Include.All,
     })
       .then((res) => {
@@ -214,8 +216,13 @@ const DatabaseDetails: FunctionComponent = () => {
           setServiceType(serviceType);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         // Error
+        if (
+          (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+        ) {
+          history.replace(ROUTES.FORBIDDEN);
+        }
       })
       .finally(() => {
         setIsLoading(false);
@@ -301,15 +308,15 @@ const DatabaseDetails: FunctionComponent = () => {
   };
 
   const handleUpdateOwner = useCallback(
-    async (owner: Database['owner']) => {
+    async (owners: Database['owners']) => {
       const updatedData = {
         ...database,
-        owner: owner,
+        owners,
       };
 
       await settingsUpdateHandler(updatedData as Database);
     },
-    [database, database?.owner, settingsUpdateHandler]
+    [database, database?.owners, settingsUpdateHandler]
   );
 
   const createThread = async (data: CreateThread) => {
@@ -512,10 +519,10 @@ const DatabaseDetails: FunctionComponent = () => {
         key: EntityTabs.SCHEMA,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
-            <Col className="tab-content-height" span={24}>
+            <Col className="tab-content-height-with-resizable-panel" span={24}>
               <ResizablePanels
-                applyDefaultStyle={false}
                 firstPanel={{
+                  className: 'entity-resizable-panel-container',
                   children: (
                     <div className="p-t-sm m-x-lg">
                       <Row gutter={[16, 16]}>
@@ -568,7 +575,8 @@ const DatabaseDetails: FunctionComponent = () => {
                   ),
                   minWidth: 320,
                   flex: 0.13,
-                  className: 'entity-resizable-right-panel-container',
+                  className:
+                    'entity-resizable-right-panel-container entity-resizable-panel-container',
                 }}
               />
             </Col>
@@ -644,7 +652,11 @@ const DatabaseDetails: FunctionComponent = () => {
     try {
       await updateDatabaseVotes(id, data);
       const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-        fields: 'owner,tags,votes',
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.VOTES,
+        ],
         include: Include.All,
       });
       setDatabase(details);

@@ -61,7 +61,6 @@ import {
 } from '../../../utils/EntityUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import { TaskTab } from '../../Entity/Task/TaskTab/TaskTab.component';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
@@ -73,12 +72,11 @@ import './activity-feed-tab.less';
 import {
   ActivityFeedTabProps,
   ActivityFeedTabs,
-  TaskFilter,
 } from './ActivityFeedTab.interface';
 
 export const ActivityFeedTab = ({
   fqn,
-  owner,
+  owners = [],
   columns,
   entityType,
   refetchFeed,
@@ -102,7 +100,9 @@ export const ActivityFeedTab = ({
     tab = EntityTabs.ACTIVITY_FEED,
     subTab: activeTab = ActivityFeedTabs.ALL,
   } = useParams<{ tab: EntityTabs; subTab: ActivityFeedTabs }>();
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
+  const [taskFilter, setTaskFilter] = useState<ThreadTaskStatus>(
+    ThreadTaskStatus.Open
+  );
   const [count, setCount] = useState<FeedCounts>(FEED_COUNT_INITIAL_DATA);
 
   const {
@@ -229,9 +229,9 @@ export const ActivityFeedTab = ({
 
   const handleFeedFetchFromFeedList = useCallback(
     (after?: string) => {
-      getFeedData(feedFilter, after, threadType, entityType, fqn);
+      getFeedData(feedFilter, after, threadType, entityType, fqn, taskFilter);
     },
-    [threadType, feedFilter, entityType, fqn, getFeedData]
+    [threadType, feedFilter, entityType, fqn, taskFilter, getFeedData]
   );
 
   const refetchFeedData = useCallback(() => {
@@ -240,10 +240,18 @@ export const ActivityFeedTab = ({
       isActivityFeedTab &&
       refetchFeed
     ) {
-      getFeedData(feedFilter, undefined, threadType, entityType, fqn);
+      getFeedData(
+        feedFilter,
+        undefined,
+        threadType,
+        entityType,
+        fqn,
+        taskFilter
+      );
     }
   }, [
     fqn,
+    taskFilter,
     feedFilter,
     threadType,
     entityType,
@@ -264,7 +272,14 @@ export const ActivityFeedTab = ({
 
   useEffect(() => {
     if (fqn) {
-      getFeedData(feedFilter, undefined, threadType, entityType, fqn);
+      getFeedData(
+        feedFilter,
+        undefined,
+        threadType,
+        entityType,
+        fqn,
+        taskFilter
+      );
     }
   }, [feedFilter, threadType, fqn]);
 
@@ -290,46 +305,14 @@ export const ActivityFeedTab = ({
     });
   };
 
-  const threads = useMemo(() => {
-    if (isTaskActiveTab) {
-      return entityThread.filter(
-        (thread) =>
-          taskFilter === 'open'
-            ? thread.task?.status === ThreadTaskStatus.Open
-            : thread.task?.status === ThreadTaskStatus.Closed,
-        []
-      );
-    }
-
-    return entityThread;
-  }, [activeTab, entityThread, taskFilter]);
-
-  const [openTasks, closedTasks] = useMemo(() => {
-    if (isTaskActiveTab) {
-      return entityThread.reduce(
-        (acc, curr) => {
-          if (curr.task?.status === ThreadTaskStatus.Open) {
-            acc[0] = acc[0] + 1;
-          } else {
-            acc[1] = acc[1] + 1;
-          }
-
-          return acc;
-        },
-        [0, 0]
-      );
-    }
-
-    return [0, 0];
-  }, [entityThread, activeTab]);
-
-  const handleUpdateTaskFilter = (filter: TaskFilter) => {
+  const handleUpdateTaskFilter = (filter: ThreadTaskStatus) => {
     setTaskFilter(filter);
+    getFeedData(feedFilter, undefined, threadType, entityType, fqn, filter);
   };
 
   const handleAfterTaskClose = () => {
     handleFeedFetchFromFeedList();
-    handleUpdateTaskFilter('close');
+    handleUpdateTaskFilter(ThreadTaskStatus.Closed);
   };
 
   return (
@@ -411,141 +394,124 @@ export const ActivityFeedTab = ({
         onClick={(info) => handleTabChange(info.key)}
       />
 
-      <ResizablePanels
-        applyDefaultStyle={false}
-        firstPanel={{
-          children: (
-            <div className="center-container" id="center-container">
-              {isTaskActiveTab && (
-                <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
-                  <Typography.Text
-                    className={classNames(
-                      'cursor-pointer p-l-xss d-flex items-center',
-                      {
-                        'font-medium': taskFilter === 'open',
-                      }
-                    )}
-                    onClick={() => {
-                      handleUpdateTaskFilter('open');
-                      setActiveThread();
-                    }}>
-                    {' '}
-                    <TaskIcon className="m-r-xss" width={14} /> {openTasks}{' '}
-                    {t('label.open')}
-                  </Typography.Text>
-                  <Typography.Text
-                    className={classNames(
-                      'cursor-pointer d-flex items-center',
-                      {
-                        'font-medium': taskFilter === 'close',
-                      }
-                    )}
-                    data-testid="closed-task"
-                    onClick={() => {
-                      handleUpdateTaskFilter('close');
-                      setActiveThread();
-                    }}>
-                    {' '}
-                    <CheckIcon className="m-r-xss" width={14} /> {closedTasks}{' '}
-                    {t('label.closed')}
-                  </Typography.Text>
-                </div>
+      <div className="center-container" id="center-container">
+        {isTaskActiveTab && (
+          <div className="d-flex gap-4 p-sm p-x-lg activity-feed-task">
+            <Typography.Text
+              className={classNames(
+                'cursor-pointer p-l-xss d-flex items-center',
+                {
+                  'font-medium': taskFilter === ThreadTaskStatus.Open,
+                }
               )}
-              <ActivityFeedListV1
-                hidePopover
-                activeFeedId={selectedThread?.id}
-                componentsVisibility={{
-                  showThreadIcon: false,
-                  showRepliesContainer: true,
-                }}
-                emptyPlaceholderText={placeholderText}
-                feedList={threads}
-                isForFeedTab={isForFeedTab}
-                isLoading={false}
-                showThread={false}
-                onFeedClick={handleFeedClick}
-              />
-              {loader}
-              <div
-                className="w-full"
-                data-testid="observer-element"
-                id="observer-element"
-                ref={elementRef as RefObject<HTMLDivElement>}
-                style={{ height: '2px' }}
-              />
-            </div>
-          ),
-          minWidth: 700,
-          flex: 0.5,
-        }}
-        hideSecondPanel={!selectedThread}
-        secondPanel={{
-          children: (
-            <div>
-              {loader}
-              {selectedThread &&
-                !loading &&
-                (activeTab !== ActivityFeedTabs.TASKS ? (
-                  <div id="feed-panel">
-                    <div className="feed-explore-heading">
-                      <FeedPanelHeader
-                        hideCloseIcon
-                        className="p-x-md"
-                        entityLink={selectedThread.about}
-                        threadType={
-                          selectedThread?.type ?? ThreadType.Conversation
-                        }
-                        onCancel={noop}
-                      />
-                    </div>
+              data-testid="open-task"
+              onClick={() => {
+                handleUpdateTaskFilter(ThreadTaskStatus.Open);
+                setActiveThread();
+              }}>
+              <TaskIcon className="m-r-xss" width={14} /> {count.openTaskCount}{' '}
+              {t('label.open')}
+            </Typography.Text>
+            <Typography.Text
+              className={classNames('cursor-pointer d-flex items-center', {
+                'font-medium': taskFilter === ThreadTaskStatus.Closed,
+              })}
+              data-testid="closed-task"
+              onClick={() => {
+                handleUpdateTaskFilter(ThreadTaskStatus.Closed);
+                setActiveThread();
+              }}>
+              <CheckIcon className="m-r-xss" width={14} />{' '}
+              {count.closedTaskCount} {t('label.closed')}
+            </Typography.Text>
+          </div>
+        )}
+        <ActivityFeedListV1
+          hidePopover
+          activeFeedId={selectedThread?.id}
+          componentsVisibility={{
+            showThreadIcon: false,
+            showRepliesContainer: true,
+          }}
+          emptyPlaceholderText={placeholderText}
+          feedList={entityThread}
+          isForFeedTab={isForFeedTab}
+          isLoading={false}
+          selectedThread={selectedThread}
+          showThread={false}
+          onFeedClick={handleFeedClick}
+        />
+        {loader}
+        <div
+          className="w-full"
+          data-testid="observer-element"
+          id="observer-element"
+          ref={elementRef as RefObject<HTMLDivElement>}
+          style={{ height: '2px' }}
+        />
+      </div>
 
-                    <div className="m-md">
-                      <FeedPanelBodyV1
-                        isOpenInDrawer
-                        showThread
-                        componentsVisibility={{
-                          showThreadIcon: false,
-                          showRepliesContainer: false,
-                        }}
-                        feed={selectedThread}
-                        hidePopover={false}
-                        isForFeedTab={isForFeedTab}
-                      />
-                      <ActivityFeedEditor className="m-t-md" onSave={onSave} />
-                    </div>
-                  </div>
-                ) : (
-                  <div id="task-panel">
-                    {entityType === EntityType.TABLE ? (
-                      <TaskTab
-                        columns={columns}
-                        entityType={EntityType.TABLE}
-                        isForFeedTab={isForFeedTab}
-                        owner={owner}
-                        taskThread={selectedThread}
-                        onAfterClose={handleAfterTaskClose}
-                        onUpdateEntityDetails={onUpdateEntityDetails}
-                      />
-                    ) : (
-                      <TaskTab
-                        entityType={isUserEntity ? entityTypeTask : entityType}
-                        hasGlossaryReviewer={hasGlossaryReviewer}
-                        isForFeedTab={isForFeedTab}
-                        owner={owner}
-                        taskThread={selectedThread}
-                        onAfterClose={handleAfterTaskClose}
-                        onUpdateEntityDetails={onUpdateEntityDetails}
-                      />
-                    )}
-                  </div>
-                ))}
+      <div className="right-container">
+        {loader}
+        {selectedThread &&
+          !loading &&
+          (activeTab !== ActivityFeedTabs.TASKS ? (
+            <div id="feed-panel">
+              <div className="feed-explore-heading">
+                <FeedPanelHeader
+                  hideCloseIcon
+                  className="p-x-md"
+                  entityLink={selectedThread.about}
+                  feed={selectedThread}
+                  threadType={selectedThread?.type ?? ThreadType.Conversation}
+                  onCancel={noop}
+                />
+              </div>
+
+              <div className="m-md">
+                <FeedPanelBodyV1
+                  isOpenInDrawer
+                  showThread
+                  componentsVisibility={{
+                    showThreadIcon: false,
+                    showRepliesContainer: false,
+                  }}
+                  feed={selectedThread}
+                  hidePopover={false}
+                  isForFeedTab={isForFeedTab}
+                />
+                <ActivityFeedEditor
+                  className="m-t-md feed-editor"
+                  onSave={onSave}
+                />
+              </div>
             </div>
-          ),
-          minWidth: 420,
-          flex: 0.5,
-          className: 'entity-resizable-right-panel-container p-l-0',
-        }}
-      />
+          ) : (
+            <div id="task-panel">
+              {entityType === EntityType.TABLE ? (
+                <TaskTab
+                  columns={columns}
+                  entityType={EntityType.TABLE}
+                  isForFeedTab={isForFeedTab}
+                  owners={owners}
+                  taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
+                  onUpdateEntityDetails={onUpdateEntityDetails}
+                />
+              ) : (
+                <TaskTab
+                  entityType={isUserEntity ? entityTypeTask : entityType}
+                  hasGlossaryReviewer={hasGlossaryReviewer}
+                  isForFeedTab={isForFeedTab}
+                  owners={owners}
+                  taskThread={selectedThread}
+                  onAfterClose={handleAfterTaskClose}
+                  onUpdateEntityDetails={onUpdateEntityDetails}
+                />
+              )}
+            </div>
+          ))}
+      </div>
     </div>
   );
 };

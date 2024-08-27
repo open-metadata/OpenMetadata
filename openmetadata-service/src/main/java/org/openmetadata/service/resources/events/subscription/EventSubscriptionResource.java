@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.NOTIFICATION;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
+import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -74,6 +75,7 @@ import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -94,10 +96,10 @@ import org.quartz.SchedulerException;
 public class EventSubscriptionResource
     extends EntityResource<EventSubscription, EventSubscriptionRepository> {
   public static final String COLLECTION_PATH = "/v1/events/subscriptions";
-  public static final String FIELDS = "owner,filteringRules";
+  public static final String FIELDS = "owners,filteringRules";
 
-  public EventSubscriptionResource(Authorizer authorizer) {
-    super(Entity.EVENT_SUBSCRIPTION, authorizer);
+  public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
+    super(Entity.EVENT_SUBSCRIPTION, authorizer, limits);
   }
 
   @Override
@@ -629,7 +631,7 @@ public class EventSubscriptionResource
         .withFilteringRules(
             validateAndBuildFilteringConditions(
                 create.getResources(), create.getAlertType(), create.getInput()))
-        .withDestinations(getSubscriptions(create.getDestinations()))
+        .withDestinations(encryptWebhookSecretKey(getSubscriptions(create.getDestinations())))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())

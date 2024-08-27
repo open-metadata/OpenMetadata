@@ -15,7 +15,7 @@ Tableau Source Model module
 
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 from metadata.generated.schema.entity.data.chart import ChartType
 
@@ -25,8 +25,7 @@ class TableauBaseModel(BaseModel):
     Tableau basic configurations
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     id: str
     name: Optional[str] = None
@@ -54,8 +53,7 @@ class TableauTag(BaseModel):
     Aux class for Tag object of the tableau_api_lib response
     """
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     label: str
 
@@ -125,6 +123,7 @@ class DataSource(BaseModel):
     name: Optional[str] = None
     fields: Optional[List[DatasourceField]] = None
     upstreamTables: Optional[List[UpstreamTable]] = None
+    upstreamDatasources: Optional[List["DataSource"]] = None
 
 
 class TableauDatasources(BaseModel):
@@ -153,8 +152,7 @@ class TableauDashboard(TableauBaseModel):
     Aux class for Dashboard object of the tableau_api_lib response
     """
 
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     project: Optional[TableauBaseModel] = None
     description: Optional[str] = None

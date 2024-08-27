@@ -23,6 +23,7 @@ import {
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
 import { getActiveAnnouncement } from '../../rest/feedsAPI';
 import MyDataPage from './MyDataPage.component';
+
 const mockLocalStorage = (() => {
   let store: Record<string, string> = {};
 
@@ -38,6 +39,7 @@ const mockLocalStorage = (() => {
     },
   };
 })();
+
 Object.defineProperty(window, 'localStorage', {
   value: mockLocalStorage,
 });
@@ -124,6 +126,29 @@ jest.mock('react-grid-layout', () => ({
   default: '',
 }));
 
+jest.mock('../../hoc/LimitWrapper', () => {
+  return jest
+    .fn()
+    .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
+jest.mock('../DataInsightPage/DataInsightProvider', async () => {
+  return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+});
+
+jest.mock('../DataInsightPage/DataInsightProvider', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+    useDataInsightProvider: jest.fn().mockReturnValue({
+      kpi: {
+        isLoading: false,
+        data: [],
+      },
+    }),
+  };
+});
+
 describe('MyDataPage component', () => {
   beforeEach(() => {
     localStorage.setItem('loggedInUsers', mockUserData.name);
@@ -162,11 +187,15 @@ describe('MyDataPage component', () => {
     await act(async () => {
       render(<MyDataPage />);
 
-      expect(screen.queryByText('WelcomeScreen')).toBeNull();
-      expect(screen.queryByTestId('react-grid-layout')).toBeNull();
-      expect(screen.getByTestId('activity-feed-provider')).toBeInTheDocument();
       expect(screen.getByText('Loader')).toBeInTheDocument();
+      expect(screen.queryByTestId('react-grid-layout')).toBeNull();
     });
+
+    expect(screen.queryByText('WelcomeScreen')).toBeNull();
+
+    expect(
+      await screen.findByTestId('activity-feed-provider')
+    ).toBeInTheDocument();
   });
 
   it('MyDataPage should display all the widgets in the config and the announcements widget if there are announcements', async () => {

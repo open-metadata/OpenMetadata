@@ -42,14 +42,16 @@ const ServicesPage = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
+  const queryParams = qs.parse(
+    location.search.startsWith('?')
+      ? location.search.substring(1)
+      : location.search
+  );
   const search =
-    qs.parse(
-      location.search.startsWith('?')
-        ? location.search.substring(1)
-        : location.search
-    ).tab ?? tab === GlobalSettingOptions.DATA_OBSERVABILITY
+    queryParams.tab ??
+    (tab === GlobalSettingOptions.DATA_OBSERVABILITY
       ? 'pipelines'
-      : 'services';
+      : 'services');
 
   const serviceName = useMemo(
     () =>
@@ -102,7 +104,8 @@ const ServicesPage = () => {
                       label: 'Services',
                     },
                   ]),
-              ...(isAdminUser
+              // pipelines are not supported for apiServices so don't show pipelines tab for apiServices
+              ...(isAdminUser && serviceName !== 'apiServices'
                 ? [
                     {
                       key: 'pipelines',

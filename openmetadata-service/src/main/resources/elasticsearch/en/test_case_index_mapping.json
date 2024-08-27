@@ -86,6 +86,13 @@
         "type": "text",
         "analyzer": "om_analyzer"
       },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
       "entityLink": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer",
@@ -152,21 +159,18 @@
           "description": {
             "type": "text"
           },
-          "entityType": {
+          "type": {
             "type": "keyword"
-          },
-          "testPlatforms": {
-            "type": "text",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
           }
         }
       },
+      "testCaseType": {
+        "type": "keyword"
+      },
       "entityType": {
+        "type": "keyword"
+      },
+      "dataQualityDimension": {
         "type": "keyword"
       },
       "suggest": {
@@ -179,7 +183,7 @@
           }
         ]
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",

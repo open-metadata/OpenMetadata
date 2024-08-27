@@ -14,11 +14,13 @@
 package org.openmetadata.service.resources.services.ingestionpipelines;
 
 import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -26,6 +28,7 @@ import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNotNull;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import java.io.IOException;
@@ -51,6 +54,8 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.entity.app.external.AutomatorAppConfig;
+import org.openmetadata.schema.entity.app.external.Resource;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
@@ -58,6 +63,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.DashboardServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
@@ -73,6 +79,7 @@ import org.openmetadata.schema.services.connections.database.ConnectionArguments
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
@@ -286,7 +293,7 @@ public class IngestionPipelineResourceTest
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     assertEquals(LogLevels.INFO, ingestion.getLoggerLevel());
-    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
   }
 
@@ -327,7 +334,7 @@ public class IngestionPipelineResourceTest
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
   }
 
@@ -361,7 +368,7 @@ public class IngestionPipelineResourceTest
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     DatabaseServiceMetadataPipeline metadataPipeline =
         new DatabaseServiceMetadataPipeline()
@@ -422,7 +429,7 @@ public class IngestionPipelineResourceTest
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     DashboardServiceMetadataPipeline dashboardServiceMetadataPipeline =
         new DashboardServiceMetadataPipeline()
@@ -477,7 +484,7 @@ public class IngestionPipelineResourceTest
     assertEquals(pipelineConcurrency, ingestion.getAirflowConfig().getConcurrency());
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
-    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
     MessagingServiceMetadataPipeline messagingServiceMetadataPipeline =
         new MessagingServiceMetadataPipeline()
@@ -512,7 +519,7 @@ public class IngestionPipelineResourceTest
             .withDescription("description")
             .withAirflowConfig(
                 new AirflowConfig().withScheduleInterval("5 * * * *").withStartDate(START_DATE))
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     IngestionPipeline ingestionPipeline = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Update pipeline attributes
@@ -539,7 +546,7 @@ public class IngestionPipelineResourceTest
     assertEquals(expectedFQN, ingestion.getFullyQualifiedName());
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
 
-    ingestion = getEntity(ingestion.getId(), FIELD_OWNER, ADMIN_AUTH_HEADERS);
+    ingestion = getEntity(ingestion.getId(), FIELD_OWNERS, ADMIN_AUTH_HEADERS);
     assertEquals(expectedScheduleInterval, ingestion.getAirflowConfig().getScheduleInterval());
 
     // Update and connector orgs and options to database connection
@@ -659,15 +666,15 @@ public class IngestionPipelineResourceTest
   @Test
   void put_IngestionPipelineUpdate_200(TestInfo test) throws IOException {
     CreateIngestionPipeline request =
-        createRequest(test).withService(BIGQUERY_REFERENCE).withDescription(null).withOwner(null);
+        createRequest(test).withService(BIGQUERY_REFERENCE).withDescription(null).withOwners(null);
     IngestionPipeline ingestion = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     // Add description and tasks
     ChangeDescription change = getChangeDescription(ingestion, MINOR_UPDATE);
     fieldAdded(change, "description", "newDescription");
-    fieldAdded(change, FIELD_OWNER, USER1_REF);
+    fieldAdded(change, FIELD_OWNERS, List.of(USER1_REF));
     updateAndCheckEntity(
-        request.withDescription("newDescription").withOwner(USER1_REF),
+        request.withDescription("newDescription").withOwners(List.of(USER1_REF)),
         OK,
         ADMIN_AUTH_HEADERS,
         MINOR_UPDATE,
@@ -691,7 +698,7 @@ public class IngestionPipelineResourceTest
             .withSourceConfig(new SourceConfig().withConfig(dbtPipeline))
             .withService(BIGQUERY_REFERENCE)
             .withDescription(null)
-            .withOwner(null);
+            .withOwners(null);
     IngestionPipeline ingestion = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
 
     DbtPipeline actualDbtPipeline =
@@ -783,13 +790,61 @@ public class IngestionPipelineResourceTest
   }
 
   @Test
+  void put_pipelineStatus_403(TestInfo test) throws IOException {
+    CreateIngestionPipeline requestPipeline = createRequest(getEntityName(test));
+    IngestionPipeline ingestionPipeline = createAndCheckEntity(requestPipeline, ADMIN_AUTH_HEADERS);
+
+    String runId = UUID.randomUUID().toString();
+
+    // Create a status without having the EDIT_INGESTION_PIPELINE_STATUS permission
+    assertResponse(
+        () ->
+            TestUtils.put(
+                getPipelineStatusTarget(ingestionPipeline.getFullyQualifiedName()),
+                new PipelineStatus()
+                    .withPipelineState(PipelineStatusType.RUNNING)
+                    .withRunId(runId)
+                    .withTimestamp(3L),
+                Response.Status.CREATED,
+                authHeaders(USER2.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(
+            USER2.getName(), List.of(MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS)));
+  }
+
+  @Test
+  void post_ingestionPipeline_403(TestInfo test) throws HttpResponseException {
+    CreateIngestionPipeline create = createRequest(getEntityName(test));
+    create
+        .withPipelineType(PipelineType.APPLICATION)
+        .withSourceConfig(
+            new SourceConfig()
+                .withConfig(
+                    new ApplicationPipeline()
+                        .withAppConfig(
+                            new AutomatorAppConfig()
+                                .withResources(new Resource().withQueryFilter(""))
+                                .withActions(List.of()))));
+
+    // Create ingestion pipeline without having the CREATE_INGESTION_PIPELINE_AUTOMATOR permission
+    assertResponse(
+        () -> createEntity(create, authHeaders(USER1.getName())),
+        FORBIDDEN,
+        permissionNotAllowed(
+            USER1.getName(), List.of(MetadataOperation.CREATE_INGESTION_PIPELINE_AUTOMATOR)));
+
+    // Admin has permissions and can create it
+    createEntity(create, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
   void testInheritedPermissionFromParent(TestInfo test) throws IOException {
     // Create a dashboard service with owner data consumer
     DashboardServiceResourceTest serviceTest = new DashboardServiceResourceTest();
     CreateDashboardService createDashboardService =
         serviceTest
             .createRequest(getEntityName(test))
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     DashboardService service = serviceTest.createEntity(createDashboardService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can an ingestion pipeline for the service
@@ -825,9 +880,9 @@ public class IngestionPipelineResourceTest
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(ingestion.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(ingestion.getService());
-    assertListNull(ingestion.getOwner());
+    assertListNull(ingestion.getOwners());
 
-    fields = FIELD_OWNER;
+    fields = FIELD_OWNERS;
     ingestion =
         byName
             ? getEntityByName(ingestion.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

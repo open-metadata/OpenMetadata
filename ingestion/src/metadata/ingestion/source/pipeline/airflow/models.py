@@ -16,7 +16,7 @@ Tableau Source Model module
 from datetime import datetime
 from typing import Any, List, Optional
 
-from pydantic import BaseModel, Extra, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AirflowBaseModel(BaseModel):
@@ -24,9 +24,7 @@ class AirflowBaseModel(BaseModel):
     Tableau basic configurations
     """
 
-    class Config:
-        extra = Extra.allow
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(extra="allow", arbitrary_types_allowed=True)
 
     dag_id: str
 
@@ -44,8 +42,7 @@ class AirflowTask(BaseModel):
     owner: Optional[str] = None
 
     # Allow picking up data from key `inlets` and `_inlets`
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class TaskList(BaseModel):

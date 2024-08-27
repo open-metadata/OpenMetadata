@@ -222,11 +222,10 @@ SELECT datname FROM pg_database
 """
 
 REDSHIFT_TEST_GET_QUERIES = """
-(select 1 from pg_catalog.svv_table_info limit 1)
-UNION
-(select 1 from pg_catalog.stl_querytext limit 1)
-UNION
-(select 1 from pg_catalog.stl_query limit 1)
+SELECT 
+    has_table_privilege('svv_table_info', 'SELECT') as can_access_svv_table_info,
+    has_table_privilege('stl_querytext', 'SELECT') as can_access_stl_querytext,
+    has_table_privilege('stl_query', 'SELECT') as can_access_stl_query;
 """
 
 
@@ -237,6 +236,30 @@ REDSHIFT_TEST_PARTITION_DETAILS = "select * from SVV_TABLE_INFO limit 1"
 # hence we are appending "create view <schema>.<table> as " to select query
 # to generate the column level lineage
 REDSHIFT_GET_ALL_RELATIONS = """
+  WITH view_defs AS (
+      SELECT
+          c.oid,
+          pg_catalog.pg_get_viewdef(c.oid, true) AS view_definition,
+          n.nspname,
+          c.relname
+      FROM
+          pg_catalog.pg_class c
+          LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+      WHERE
+          c.relkind = 'v'
+    ),
+    adjusted_view_defs AS (
+        SELECT
+            oid,
+            CASE
+                WHEN view_definition LIKE '%WITH NO SCHEMA BINDING%' THEN
+                  REGEXP_REPLACE(view_definition, 'create view [^ ]+ as (.*WITH NO SCHEMA BINDING;?)', '\\1')
+                ELSE
+                  'CREATE VIEW ' || nspname || '.' || relname || ' AS ' || view_definition
+            END AS view_definition
+        FROM
+            view_defs
+    )
     SELECT
         c.relkind,
         n.oid as "schema_oid",
@@ -248,13 +271,13 @@ REDSHIFT_GET_ALL_RELATIONS = """
         AS "diststyle",
         c.relowner AS "owner_id",
         u.usename AS "owner_name",
-        TRIM(TRAILING ';' FROM
-        'create view ' || n.nspname || '.' || c.relname || ' as ' ||pg_catalog.pg_get_viewdef(c.oid, true))
+        avd.view_definition 
         AS "view_definition",
         pg_catalog.array_to_string(c.relacl, '\n') AS "privileges"
     FROM pg_catalog.pg_class c
             LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
             JOIN pg_catalog.pg_user u ON u.usesysid = c.relowner
+            LEFT JOIN adjusted_view_defs avd ON avd.oid = c.oid
     WHERE c.relkind IN ('r', 'v', 'm', 'S', 'f')
         AND n.nspname !~ '^pg_' {schema_clause} {table_clause}
     UNION

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -33,6 +34,11 @@ export class DashboardClass extends EntityClass {
       },
     },
   };
+  charts = {
+    name: `pw-chart-${uuid()}`,
+    displayName: `PW Chart ${uuid()}`,
+    service: this.service.name,
+  };
   entity = {
     name: `pw-dashboard-${uuid()}`,
     displayName: `pw-dashboard-${uuid()}`,
@@ -41,11 +47,13 @@ export class DashboardClass extends EntityClass {
 
   serviceResponseData: unknown;
   entityResponseData: unknown;
+  chartsResponseData: unknown;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Dashboard);
     this.service.name = name ?? this.service.name;
     this.type = 'Dashboard';
+    this.serviceCategory = SERVICE_TYPE.Dashboard;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -55,16 +63,25 @@ export class DashboardClass extends EntityClass {
         data: this.service,
       }
     );
+    const chartsResponse = await apiContext.post('/api/v1/charts', {
+      data: this.charts,
+    });
+
     const entityResponse = await apiContext.post('/api/v1/dashboards', {
-      data: this.entity,
+      data: {
+        ...this.entity,
+        charts: [`${this.service.name}.${this.charts.name}`],
+      },
     });
 
     this.serviceResponseData = await serviceResponse.json();
+    this.chartsResponseData = await chartsResponse.json();
     this.entityResponseData = await entityResponse.json();
 
     return {
       service: serviceResponse.body,
       entity: entityResponse.body,
+      charts: chartsResponse.body,
     };
   }
 
@@ -90,9 +107,16 @@ export class DashboardClass extends EntityClass {
       )}?recursive=true&hardDelete=true`
     );
 
+    const chartResponse = await apiContext.delete(
+      `/api/v1/charts/name/${encodeURIComponent(
+        this.chartsResponseData?.['fullyQualifiedName']
+      )}?recursive=true&hardDelete=true`
+    );
+
     return {
       service: serviceResponse.body,
       entity: this.entityResponseData,
+      chart: chartResponse.body,
     };
   }
 }

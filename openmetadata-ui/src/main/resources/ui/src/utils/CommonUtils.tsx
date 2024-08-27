@@ -13,7 +13,6 @@
 
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { CheckOutlined } from '@ant-design/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { t } from 'i18next';
@@ -35,7 +34,7 @@ import {
   RecentlyViewed,
   RecentlyViewedData,
 } from 'Models';
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Trans } from 'react-i18next';
 import { reactLocalStorage } from 'reactjs-localstorage';
 import {
@@ -140,6 +139,11 @@ export const getPartialNameFromTableFQN = (
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
   }
 
+  if (fqnParts.includes(FqnPart.ApiEndpoint)) {
+    // Remove the first 3 parts ( service, database, schema)
+    return splitFqn.slice(3).join(FQN_SEPARATOR_CHAR);
+  }
+
   if (fqnParts.includes(FqnPart.SearchIndexField)) {
     // Remove the first 2 parts ( service, searchIndex)
     return splitFqn.slice(2).join(FQN_SEPARATOR_CHAR);
@@ -195,15 +199,17 @@ export const pluralize = (count: number, noun: string, suffix = 's') => {
   }
 };
 
-export const hasEditAccess = (type: string, id: string, currentUser: User) => {
-  if (type === 'user') {
-    return id === currentUser.id;
-  } else {
-    return Boolean(
-      currentUser.teams?.length &&
-        currentUser.teams.some((team) => team.id === id)
-    );
-  }
+export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
+  return owners.some((owner) => {
+    if (owner.type === 'user') {
+      return owner.id === currentUser.id;
+    } else {
+      return Boolean(
+        currentUser.teams?.length &&
+          currentUser.teams.some((team) => team.id === owner.id)
+      );
+    }
+  });
 };
 
 export const getCountBadge = (
@@ -594,7 +600,7 @@ export const digitFormatter = (value: number) => {
   // convert 1000 to 1k
   return Intl.NumberFormat('en', {
     notation: 'compact',
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   }).format(value);
 };
 
@@ -666,17 +672,18 @@ export const getEmptyPlaceholder = () => {
 export const getLoadingStatus = (
   current: CurrentState,
   id: string | undefined,
-  displayText: string
+  children: ReactNode
 ) => {
-  return current.id === id ? (
-    current.state === 'success' ? (
-      <CheckOutlined />
-    ) : (
-      <Loader size="small" type="default" />
-    )
-  ) : (
-    displayText
-  );
+  if (current.id === id) {
+    return (
+      <div>
+        {/* Wrapping with div to apply spacing  */}
+        <Loader size="x-small" type="default" />
+      </div>
+    );
+  }
+
+  return children;
 };
 
 export const refreshPage = () => {
@@ -836,3 +843,40 @@ export const handleSearchFilterOption = (
   }
 ) => toLower(option?.label).includes(toLower(searchValue));
 // Check label while searching anything and filter that options out if found matching
+
+/**
+ * @param serviceType key for quick filter
+ * @returns json filter query string
+ */
+
+export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};
+
+export const filterSelectOptions = (
+  input: string,
+  option?: { label: string; value: string }
+) => {
+  return (
+    toLower(option?.label).includes(toLower(input)) ||
+    toLower(option?.value).includes(toLower(input))
+  );
+};

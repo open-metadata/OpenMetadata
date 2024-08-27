@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.Votes;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.QueryRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -64,10 +65,10 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "queries")
 public class QueryResource extends EntityResource<Query, QueryRepository> {
   public static final String COLLECTION_PATH = "v1/queries/";
-  static final String FIELDS = "owner,followers,users,votes,tags,queryUsedIn";
+  static final String FIELDS = "owners,followers,users,votes,tags,queryUsedIn";
 
-  public QueryResource(Authorizer authorizer) {
-    super(Entity.QUERY, authorizer);
+  public QueryResource(Authorizer authorizer, Limits limits) {
+    super(Entity.QUERY, authorizer, limits);
   }
 
   @Override

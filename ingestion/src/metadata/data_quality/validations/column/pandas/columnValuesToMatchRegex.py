@@ -13,7 +13,7 @@
 Validator for column values to match regex test case
 """
 
-from typing import Optional
+from typing import Optional, Tuple
 
 from metadata.data_quality.validations.column.base.columnValuesToMatchRegex import (
     BaseColumnValuesToMatchRegexValidator,
@@ -42,15 +42,21 @@ class ColumnValuesToMatchRegexValidator(
         )
 
     def _run_results(
-        self, metric: Metrics, column: SQALikeColumn, **kwargs
-    ) -> Optional[int]:
+        self, metric: Tuple[Metrics], column: SQALikeColumn, **kwargs
+    ) -> Tuple[Optional[int], Optional[int]]:
         """compute result of the test case
 
         Args:
             metric: metric
             column: column
         """
-        return self.run_dataframe_results(self.runner, metric, column, **kwargs)
+        res = {}
+        for mtr in metric:
+            res[mtr.name] = self.run_dataframe_results(
+                self.runner, mtr, column, **kwargs
+            )
+
+        return res.get(Metrics.COUNT.name), res.get(Metrics.REGEX_COUNT.name)
 
     def compute_row_count(self, column: SQALikeColumn):
         """Compute row count for the given column

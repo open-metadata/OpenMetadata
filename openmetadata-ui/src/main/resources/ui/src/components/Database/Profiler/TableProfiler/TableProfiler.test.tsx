@@ -12,9 +12,12 @@
  */
 
 // Library imports
-import { cleanup, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import React from 'react';
 // internal imports
+import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
+import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
+import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/table-profile.svg';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { TEST_CASE } from '../../../../mocks/TableData.mock';
 import TableProfilerV1 from './TableProfiler';
@@ -38,6 +41,46 @@ jest.mock('react-router-dom', () => ({
     fqn: 'sample_data.ecommerce_db.shopify.dim_address',
   }),
 }));
+const mockDQTabComponent = () => <div>mock Data Quality TabComponent</div>;
+const mockColumnProfilerTabComponent = () => (
+  <div>mock Column Profile TabComponent</div>
+);
+const mockTableProfilerTabComponent = () => (
+  <div>mock Table Profile TabComponent</div>
+);
+
+const mockGetProfilerTabOptions = [
+  {
+    label: 'Table Profile',
+    key: 'Table Profile',
+    disabled: false,
+    icon: TableProfileIcon,
+  },
+  {
+    label: 'Column Profile',
+    key: 'Column Profile',
+    disabled: false,
+    icon: ColumnProfileIcon,
+  },
+  {
+    label: 'Data Quality',
+    key: 'Data Quality',
+    disabled: false,
+    icon: DataQualityIcon,
+  },
+];
+
+jest.mock('./ProfilerClassBase', () => ({
+  getProfilerTabs: jest.fn().mockImplementation(() => ({
+    'Data Quality': mockDQTabComponent,
+    'Column Profile': mockColumnProfilerTabComponent,
+    'Table Profile': mockTableProfilerTabComponent,
+  })),
+  getProfilerTabOptions: jest
+    .fn()
+    .mockImplementation(() => mockGetProfilerTabOptions),
+  getDefaultTabKey: jest.fn().mockReturnValue('Table Profile'),
+}));
 
 jest.mock('./ColumnProfileTable/ColumnProfileTable', () => {
   return jest.fn().mockImplementation(() => {
@@ -59,6 +102,30 @@ jest.mock('./QualityTab/QualityTab.component', () => ({
     .mockImplementation(() => <div>QualityTab.component</div>),
 }));
 
+jest.mock('./TableProfilerProvider', () => ({
+  TableProfilerProvider: jest.fn().mockImplementation(({ children }) => {
+    return <div>{children}</div>;
+  }),
+}));
+
+jest.mock('./TableProfilerChart/TableProfilerChart', () => {
+  return jest.fn().mockImplementation(() => {
+    return <div>TableProfilerChart.component</div>;
+  });
+});
+
+jest.mock('./QualityTab/QualityTab.component', () => ({
+  QualityTab: jest
+    .fn()
+    .mockImplementation(() => <div>QualityTab.component</div>),
+}));
+
+jest.mock('./ColumnProfileTable/ColumnProfileTable', () => {
+  return jest.fn().mockImplementation(() => {
+    return <div>ColumnProfileTable.component</div>;
+  });
+});
+
 const mockProps: TableProfilerProps = {
   permissions: {
     Create: true,
@@ -69,7 +136,7 @@ const mockProps: TableProfilerProps = {
     EditDescription: true,
     EditDisplayName: true,
     EditLineage: true,
-    EditOwner: true,
+    EditOwners: true,
     EditQueries: true,
     EditSampleData: true,
     EditTags: true,
@@ -85,33 +152,53 @@ const mockProps: TableProfilerProps = {
 };
 
 describe('Test TableProfiler component', () => {
-  beforeEach(() => {
-    cleanup();
-  });
-
   it('should render without crashing', async () => {
     render(<TableProfilerV1 {...mockProps} />);
 
     const profileContainer = await screen.findByTestId(
       'table-profiler-container'
     );
-    const settingBtn = await screen.findByTestId('profiler-setting-btn');
-    const addTableTest = await screen.findByTestId(
-      'profiler-add-table-test-btn'
+    const profilerTabLeftPanel = await screen.findByTestId(
+      'profiler-tab-left-panel'
+    );
+    const component = await screen.findByText(
+      'mock Table Profile TabComponent'
     );
 
     expect(profileContainer).toBeInTheDocument();
-    expect(settingBtn).toBeInTheDocument();
-    expect(addTableTest).toBeInTheDocument();
+    expect(profilerTabLeftPanel).toBeInTheDocument();
+    expect(component).toBeInTheDocument();
   });
 
-  it('CTA: Add table test should work properly', async () => {
+  it('should render Column Profile TabComponent', async () => {
+    mockLocation.search = '?activeTab=Column Profile';
     render(<TableProfilerV1 {...mockProps} />);
 
-    const addTableTest = await screen.findByTestId(
-      'profiler-add-table-test-btn'
+    const component = await screen.findByText(
+      'mock Column Profile TabComponent'
     );
 
-    expect(addTableTest).toBeInTheDocument();
+    expect(component).toBeInTheDocument();
+  });
+
+  it('should render Data Quality TabComponent', async () => {
+    mockLocation.search = '?activeTab=Data Quality';
+    render(<TableProfilerV1 {...mockProps} />);
+
+    const component = await screen.findByText('mock Data Quality TabComponent');
+
+    expect(component).toBeInTheDocument();
+  });
+
+  it('should render all left menu options', async () => {
+    render(<TableProfilerV1 {...mockProps} />);
+
+    const tableProfileOption = await screen.findByText('Table Profile');
+    const columnProfileOption = await screen.findByText('Column Profile');
+    const dataQualityOption = await screen.findByText('Data Quality');
+
+    expect(tableProfileOption).toBeInTheDocument();
+    expect(columnProfileOption).toBeInTheDocument();
+    expect(dataQualityOption).toBeInTheDocument();
   });
 });

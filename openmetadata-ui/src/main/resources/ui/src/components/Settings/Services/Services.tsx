@@ -39,6 +39,7 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { Include } from '../../../generated/type/include';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useAirflowStatus } from '../../../hooks/useAirflowStatus';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -117,6 +118,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return SearchIndex.STORAGE_SERVICE;
       case ServiceCategory.SEARCH_SERVICES:
         return SearchIndex.SEARCH_SERVICE;
+      case ServiceCategory.API_SERVICES:
+        return SearchIndex.API_SERVICE_INDEX;
     }
 
     return SearchIndex.DATABASE_SERVICE;
@@ -235,6 +238,8 @@ const Services = ({ serviceName }: ServicesProps) => {
         return PAGE_HEADERS.STORAGE_SERVICES;
       case ServiceCategory.SEARCH_SERVICES:
         return PAGE_HEADERS.SEARCH_SERVICES;
+      case ServiceCategory.API_SERVICES:
+        return PAGE_HEADERS.API_SERVICES;
       default:
         return PAGE_HEADERS.DATABASES_SERVICES;
     }
@@ -340,10 +345,10 @@ const Services = ({ serviceName }: ServicesProps) => {
     },
     {
       title: t('label.owner'),
-      dataIndex: 'owner',
-      key: 'owner',
+      dataIndex: 'owners',
+      key: 'owners',
       width: 200,
-      render: (owner: EntityReference) => <OwnerLabel owner={owner} />,
+      render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
     },
   ];
 
@@ -461,16 +466,18 @@ const Services = ({ serviceName }: ServicesProps) => {
                   : NO_PERMISSION_FOR_ACTION
               }>
               {addServicePermission && !isPlatFormDisabled && (
-                <Button
-                  className="m-b-xs"
-                  data-testid="add-service-button"
-                  size="middle"
-                  type="primary"
-                  onClick={handleAddServiceClick}>
-                  {t('label.add-new-entity', {
-                    entity: t('label.service'),
-                  })}
-                </Button>
+                <LimitWrapper resource="dataAssets">
+                  <Button
+                    className="m-b-xs"
+                    data-testid="add-service-button"
+                    size="middle"
+                    type="primary"
+                    onClick={handleAddServiceClick}>
+                    {t('label.add-new-entity', {
+                      entity: t('label.service'),
+                    })}
+                  </Button>
+                </LimitWrapper>
               )}
             </Tooltip>
           )}

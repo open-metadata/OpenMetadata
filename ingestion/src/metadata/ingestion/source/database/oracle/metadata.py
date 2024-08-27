@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.oracle.queries import (
 )
 from metadata.ingestion.source.database.oracle.utils import (
     _get_col_type,
+    _get_constraint_data,
     get_columns,
     get_mview_definition,
     get_mview_names,
@@ -61,6 +62,8 @@ from metadata.ingestion.source.database.oracle.utils import (
     get_table_comment,
     get_table_names,
     get_view_definition,
+    get_view_names,
+    get_view_names_dialect,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     QueryByProcedure,
@@ -97,9 +100,13 @@ OracleDialect.get_table_names = get_table_names
 Inspector.get_mview_names = get_mview_names
 Inspector.get_mview_definition = get_mview_definition
 OracleDialect.get_mview_names = get_mview_names_dialect
+Inspector.get_view_names = get_view_names
+OracleDialect.get_view_names = get_view_names_dialect
 
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
+
+OracleDialect._get_constraint_data = _get_constraint_data
 
 
 class OracleSource(StoredProcedureMixin, CommonDbSourceService):
@@ -222,8 +229,8 @@ class OracleSource(StoredProcedureMixin, CommonDbSourceService):
                     language=Language.SQL,
                     code=stored_procedure.definition,
                 ),
-                owner=self.metadata.get_reference_by_name(
-                    name=stored_procedure.owner.lower()
+                owners=self.metadata.get_reference_by_name(
+                    name=stored_procedure.owner.lower(), is_owner=True
                 ),
                 databaseSchema=fqn.build(
                     metadata=self.metadata,

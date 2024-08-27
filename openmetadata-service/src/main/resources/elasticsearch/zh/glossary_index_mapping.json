@@ -89,7 +89,7 @@
         "analyzer": "ik_max_word",
         "search_analyzer": "ik_smart"
       },
-      "owner": {
+      "owners": {
         "properties": {
           "id": {
             "type": "keyword",
@@ -195,6 +195,13 @@
             "path": "deleted"
           }
         ]
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
       },
       "descriptionStatus": {
         "type": "keyword"

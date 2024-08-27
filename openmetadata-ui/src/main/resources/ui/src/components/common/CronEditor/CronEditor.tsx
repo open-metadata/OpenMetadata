@@ -58,7 +58,7 @@ const CronEditor: FC<CronEditorProp> = (props) => {
     const { includePeriodOptions } = props;
     if (includePeriodOptions) {
       return periodOptions.filter((option) =>
-        includePeriodOptions.includes(option.label)
+        includePeriodOptions.includes(option.value)
       );
     } else {
       return periodOptions;

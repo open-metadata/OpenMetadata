@@ -18,7 +18,7 @@
     {
       "name": "keyColumns",
       "displayName": "Key Columns",
-      "description": "The columns to use as the key for the comparison. If not provided, it will be resolved from the primary key or unique columns.",
+      "description": "The columns to use as the key for the comparison. If not provided, it will be resolved from the primary key or unique columns. The tuples created from the key columns must be unique.",
       "dataType": "ARRAY",
       "required": false
     },
@@ -32,7 +32,7 @@
     {
       "name": "useColumns",
       "displayName": "Use Columns",
-      "description": "The columns to use for the comparison. If not provided, all columns will be used.",
+      "description": "Limits the scope of the test to this list of columns. If not provided, all columns will be used except the key columns.",
       "dataType": "ARRAY",
       "required": false
     },
@@ -45,6 +45,6 @@
     }
   ],
   "provider": "system",
-  "datatQualityDimension": "Consistency"
+  "dataQualityDimension": "Consistency"
 }
   

@@ -119,8 +119,9 @@ const DataProductsTab = forwardRef(
 
     return (
       <ResizablePanels
-        applyDefaultStyle={false}
+        className="domain-height-with-resizable-panel"
         firstPanel={{
+          className: 'domain-resizable-panel-container',
           children: (
             <div className="p-x-md p-y-md">
               {dataProducts.data.map((dataProduct) => (
@@ -159,7 +160,8 @@ const DataProductsTab = forwardRef(
           ),
           minWidth: 320,
           flex: 0.13,
-          className: 'entity-summary-resizable-right-panel-container',
+          className:
+            'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
         }}
       />
     );

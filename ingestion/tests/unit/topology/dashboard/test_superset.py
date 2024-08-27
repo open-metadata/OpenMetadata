@@ -54,6 +54,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.superset.api_source import SupersetAPISource
@@ -61,6 +62,7 @@ from metadata.ingestion.source.dashboard.superset.db_source import SupersetDBSou
 from metadata.ingestion.source.dashboard.superset.metadata import SupersetSource
 from metadata.ingestion.source.dashboard.superset.models import (
     FetchChart,
+    FetchColumn,
     FetchDashboard,
     SupersetChart,
     SupersetDashboardCount,
@@ -90,7 +92,9 @@ EXPECTED_DASH_SERVICE = DashboardService(
     connection=DashboardConnection(),
     serviceType=DashboardServiceType.Superset,
 )
-EXPECTED_USER = EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")
+EXPECTED_USER = EntityReferenceList(
+    root=[EntityReference(id="81af89aa-1bab-41aa-a567-5e68f78acdc0", type="user")]
+)
 
 MOCK_DB_MYSQL_SERVICE_1 = DatabaseService(
     id="c3eb265f-5445-4ad3-ba5e-797d3a307122",
@@ -163,7 +167,7 @@ EXPECTED_DASH = CreateDashboardRequest(
     sourceUrl="https://my-superset.com/superset/dashboard/14/",
     charts=[chart.fullyQualifiedName for chart in EXPECTED_CHART_ENTITY],
     service=EXPECTED_DASH_SERVICE.fullyQualifiedName,
-    owner=EXPECTED_USER,
+    owners=EXPECTED_USER,
 )
 
 
@@ -177,7 +181,7 @@ EXPECTED_API_DASHBOARD = CreateDashboardRequest(
     charts=[],
     dataModels=None,
     tags=None,
-    owner=None,
+    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
     extension=None,
     domain=None,
@@ -201,13 +205,18 @@ EXPECTED_CHART_2 = CreateChartRequest(
     chartType=ChartType.Other.value,
     sourceUrl=SourceUrl("http://localhost:54510/explore/?slice_id=69"),
     tags=None,
-    owner=None,
+    owners=None,
     service=FullyQualifiedEntityName("test_supserset"),
     domain=None,
     dataProducts=None,
     lifeCycle=None,
     sourceHash=None,
 )
+MOCK_DATASOURCE = [
+    FetchColumn(
+        id=11, type="INT()", column_name="Population", table_name="sample_table"
+    )
+]
 
 # EXPECTED_ALL_CHARTS = {37: MOCK_CHART}
 # EXPECTED_ALL_CHARTS_DB = {37: MOCK_CHART_DB}
@@ -482,6 +491,14 @@ class SupersetUnitTest(TestCase):
         result = self.superset_api.yield_datamodel(MOCK_DASHBOARD)
         self.assertEqual(len(list(result)), 1)
 
+    def test_datamodels_of_db_dashboard(self):
+        """
+        Mock the db client and check that we get a list
+        """
+        self.superset_db.prepare()
+        result = self.superset_db.yield_datamodel(MOCK_DASHBOARD_DB)
+        self.assertEqual(len(list(result)), 1)
+
     def test_fetch_chart_db(self):
         """
         test fetch chart method of db source
@@ -509,7 +526,7 @@ class SupersetUnitTest(TestCase):
         EXPECTED_DASH.sourceUrl = SourceUrl(
             f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
         )
-        EXPECTED_DASH.owner = dashboard.owner
+        EXPECTED_DASH.owners = dashboard.owners
         self.assertEqual(dashboard, EXPECTED_DASH)
 
     def test_yield_dashboard_chart(self):
@@ -591,3 +608,11 @@ class SupersetUnitTest(TestCase):
             ),
             "/app/superset_home/superset.db",
         )
+
+    def test_broken_column_type_in_datamodel(self):
+        """
+        Test column parsing with column containing () in datatype
+        """
+        self.superset_db.prepare()
+        parsed_datasource = self.superset_db.get_column_info(MOCK_DATASOURCE)
+        assert parsed_datasource[0].dataType.value == "INT"

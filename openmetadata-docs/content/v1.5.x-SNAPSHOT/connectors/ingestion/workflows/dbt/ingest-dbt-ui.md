@@ -127,8 +127,19 @@ File server path of the `manifest.json`, `catalog.json` and `run_results.json` f
 #### 6. dbt Cloud
 
 Click on the the link [here](https://docs.getdbt.com/guides/getting-started) for getting started with dbt cloud account setup if not done already.
-OpenMetadata uses dbt cloud APIs to fetch the `run artifacts` (manifest.json, catalog.json and run_results.json) from the most recent dbt run.
-The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/dbt-cloud/api-v2#section/Authentication) to generate an authentication token for your dbt cloud account.
+The APIs need to be authenticated using an Authentication Token. Follow the link [here](https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens) to generate an authentication token for your dbt cloud account.
+
+The `Account Viewer` permission is the minimum requirement for the dbt cloud token.
+
+{% note %}
+
+The dbt Cloud workflow leverages the [dbt Cloud v2](https://docs.getdbt.com/dbt-cloud/api-v2#/) APIs to retrieve dbt run artifacts (manifest.json, catalog.json, and run_results.json) and ingest the dbt metadata.
+
+It uses the [/runs](https://docs.getdbt.com/dbt-cloud/api-v2#/operations/List%20Runs) API to obtain the most recent successful dbt run, filtering by account_id, project_id and job_id if specified. The artifacts from this run are then collected using the [/artifacts](https://docs.getdbt.com/dbt-cloud/api-v2#/operations/List%20Run%20Artifacts) API.
+
+Refer to the code [here](https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/src/metadata/ingestion/source/database/dbt/dbt_config.py#L142)
+
+{% /note %}
 
 {% image
   src="/images/v1.5/features/ingestion/workflows/dbt/dbt-cloud.webp"
@@ -139,6 +150,8 @@ The APIs need to be authenticated using an Authentication Token. Follow the link
 {% note %}
 
 The fields for `Dbt Cloud Account Id`, `Dbt Cloud Project Id` and `Dbt Cloud Job Id` should be numeric values.
+
+To know how to get the values for `Dbt Cloud Account Id`, `Dbt Cloud Project Id` and `Dbt Cloud Job Id` fields check [here](/connectors/ingestion/workflows/dbt/ingest-dbt-yaml).
 
 {% /note %}
 

@@ -40,9 +40,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.data.CreateChart;
+import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.entity.data.Chart;
+import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
@@ -52,6 +54,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.charts.ChartResourceTest;
+import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.services.dashboard.DashboardServiceResource.DashboardServiceList;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.JsonUtils;
@@ -66,7 +69,7 @@ public class DashboardServiceResourceTest
         DashboardService.class,
         DashboardServiceList.class,
         "services/dashboardServices",
-        "owner");
+        "owners");
     this.supportsPatch = false;
   }
 
@@ -236,14 +239,14 @@ public class DashboardServiceResourceTest
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    TestUtils.assertListNull(service.getOwner());
+    TestUtils.assertListNull(service.getOwners());
 
-    fields = "owner,tags";
+    fields = "owners,tags";
     service =
         byName
             ? getEntityByName(service.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)
             : getEntity(service.getId(), fields, ADMIN_AUTH_HEADERS);
-    // Checks for other owner, tags, and followers is done in the base class
+    // Checks for other owners, tags, and followers is done in the base class
     return service;
   }
 
@@ -292,9 +295,10 @@ public class DashboardServiceResourceTest
 
   public void setupDashboardServices(TestInfo test)
       throws HttpResponseException, URISyntaxException {
-    DashboardServiceResourceTest dashboardResourceTest = new DashboardServiceResourceTest();
+    DashboardServiceResourceTest dashboardServiceResourceTest = new DashboardServiceResourceTest();
+    DashboardResourceTest dashboardResourceTest = new DashboardResourceTest();
     CreateDashboardService createDashboardService =
-        dashboardResourceTest
+        dashboardServiceResourceTest
             .createRequest("superset", "", "", null)
             .withServiceType(DashboardServiceType.Metabase);
     DashboardConnection dashboardConnection =
@@ -312,7 +316,7 @@ public class DashboardServiceResourceTest
     METABASE_REFERENCE = dashboardService.getEntityReference();
 
     CreateDashboardService lookerDashboardService =
-        dashboardResourceTest
+        dashboardServiceResourceTest
             .createRequest("looker", "", "", null)
             .withServiceType(DashboardServiceType.Looker);
     DashboardConnection lookerConnection =
@@ -333,6 +337,17 @@ public class DashboardServiceResourceTest
           chartResourceTest.createRequest(test, i).withService(METABASE_REFERENCE.getName());
       Chart chart = chartResourceTest.createEntity(createChart, ADMIN_AUTH_HEADERS);
       CHART_REFERENCES.add(chart.getFullyQualifiedName());
+    }
+    DASHBOARD_REFERENCES = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      CreateDashboard createDashboard1 =
+          dashboardResourceTest
+              .createRequest("dashboard" + i, "", "", null)
+              .withService(METABASE_REFERENCE.getName());
+      createDashboard1.withDomain(DOMAIN.getFullyQualifiedName());
+      Dashboard dashboard1 =
+          new DashboardResourceTest().createEntity(createDashboard1, ADMIN_AUTH_HEADERS);
+      DASHBOARD_REFERENCES.add(dashboard1.getFullyQualifiedName());
     }
   }
 }

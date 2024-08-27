@@ -12,14 +12,16 @@
  */
 
 import { Typography } from 'antd';
-import { first, isEmpty, isUndefined, omitBy, round } from 'lodash';
+import { first, isEmpty, isUndefined } from 'lodash';
 import React, { ReactElement, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Legend,
+  LegendProps,
   Line,
-  LineChart,
   LineProps,
   ReferenceArea,
   ReferenceLine,
@@ -38,22 +40,27 @@ import {
   RED_3_OPACITY,
   YELLOW_2,
 } from '../../../../constants/Color.constants';
-import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
-import { COLORS } from '../../../../constants/profiler.constant';
+import {
+  DEFAULT_CHART_OPACITY,
+  GRAPH_BACKGROUND_COLOR,
+  HOVER_CHART_OPACITY,
+} from '../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import {
   Thread,
   ThreadTaskStatus,
 } from '../../../../generated/entity/feed/thread';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
-import { axisTickFormatter } from '../../../../utils/ChartUtils';
+import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import {
+  axisTickFormatter,
+  updateActiveChartFilter,
+} from '../../../../utils/ChartUtils';
+import { prepareChartData } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import {
-  LineChartRef,
-  TestCaseChartDataType,
-} from '../ProfilerDashboard/profilerDashboard.interface';
+import { LineChartRef } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
 import { TestSummaryGraphProps } from './TestSummaryGraph.interface';
 
@@ -66,9 +73,12 @@ function TestSummaryGraph({
 }: Readonly<TestSummaryGraphProps>) {
   const { t } = useTranslation();
   const { entityThread = [] } = useActivityFeedProvider();
+  const { setShowAILearningBanner } = useTestCaseStore();
   const chartRef = useRef(null);
   const [chartMouseEvent, setChartMouseEvent] =
     useState<CategoricalChartState>();
+  const [activeKeys, setActiveKeys] = useState<string[]>([]);
+  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const tooltipOffset = useMemo(() => {
     const lineChartContainer = chartRef?.current as unknown as LineChartRef;
@@ -83,50 +93,15 @@ function TestSummaryGraph({
   }, [chartRef, chartMouseEvent]);
 
   const chartData = useMemo(() => {
-    const chartData: TestCaseChartDataType['data'] = [];
-
-    testCaseResults.forEach((result) => {
-      const values = result.testResultValue?.reduce((acc, curr) => {
-        const value = round(parseFloat(curr.value ?? ''), 2) || 0;
-
-        return {
-          ...acc,
-          [curr.name ?? 'value']: value,
-        };
-      }, {});
-      const metric = {
-        passedRows: result.passedRows,
-        failedRows: result.failedRows,
-        passedRowsPercentage: isUndefined(result.passedRowsPercentage)
-          ? undefined
-          : `${round(result.passedRowsPercentage, 2)}%`,
-        failedRowsPercentage: isUndefined(result.failedRowsPercentage)
-          ? undefined
-          : `${round(result.failedRowsPercentage, 2)}%`,
-      };
-
-      chartData.push({
-        name: result.timestamp,
-        status: result.testCaseStatus,
-        ...values,
-        ...omitBy(metric, isUndefined),
-        incidentId: result.incidentId,
-        task: entityThread.find(
-          (task) => task.task?.testCaseResolutionStatusId === result.incidentId
-        ),
-      });
+    const data = prepareChartData({
+      testCaseParameterValue: testCaseParameterValue ?? [],
+      testCaseResults,
+      entityThread,
     });
-    chartData.reverse();
+    setShowAILearningBanner(data.showAILearningBanner);
 
-    return {
-      information:
-        testCaseResults[0]?.testResultValue?.map((info, i) => ({
-          label: info.name ?? '',
-          color: COLORS[i],
-        })) ?? [],
-      data: chartData,
-    };
-  }, [testCaseResults, entityThread]);
+    return data;
+  }, [testCaseResults, entityThread, testCaseParameterValue]);
 
   const incidentData = useMemo(() => {
     const data = chartData.data ?? [];
@@ -157,18 +132,37 @@ function TestSummaryGraph({
   const customLegendPayLoad = useMemo(() => {
     const legendPayload: Payload[] = chartData?.information.map((info) => ({
       value: info.label,
+      dataKey: info.label,
       type: 'line',
       color: info.color,
     }));
 
     legendPayload.push({
       value: 'Incident',
+      dataKey: 'Incident',
       type: 'rect',
       color: RED_3,
-    });
+    } as Payload);
 
     return legendPayload;
   }, [chartData]);
+
+  const handleLegendClick: LegendProps['onClick'] = (event) => {
+    if (event.dataKey === 'Incident') {
+      return;
+    }
+
+    setActiveKeys((prevActiveKeys) =>
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
+    );
+  };
+
+  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
+    setActiveMouseHoverKey(event.dataKey);
+  };
+  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
+    setActiveMouseHoverKey('');
+  };
 
   const updatedDot: LineProps['dot'] = (props): ReactElement<SVGElement> => {
     const { cx = 0, cy = 0, payload } = props;
@@ -191,10 +185,10 @@ function TestSummaryGraph({
     );
   };
 
-  const referenceArea = () => {
+  const referenceArea = useMemo(() => {
     const params = testCaseParameterValue ?? [];
 
-    if (params.length && params.length < 2) {
+    if (params.length === 1) {
       return (
         <ReferenceLine
           label={params[0].name}
@@ -203,20 +197,9 @@ function TestSummaryGraph({
         />
       );
     }
-    const yValues = params.reduce((acc, curr, i) => {
-      return { ...acc, [`y${i + 1}`]: parseInt(curr.value ?? '') };
-    }, {});
 
-    return (
-      <ReferenceArea
-        fill={GREEN_3_OPACITY}
-        ifOverflow="extendDomain"
-        stroke={GREEN_3}
-        strokeDasharray="4"
-        {...yValues}
-      />
-    );
-  };
+    return <></>;
+  }, [testCaseParameterValue]);
 
   if (isEmpty(testCaseResults)) {
     return (
@@ -246,7 +229,7 @@ function TestSummaryGraph({
       className="bg-white"
       id={`${testCaseName}_graph`}
       minHeight={minHeight ?? 400}>
-      <LineChart
+      <ComposedChart
         data={chartData.data}
         margin={{
           top: 16,
@@ -278,14 +261,39 @@ function TestSummaryGraph({
           position={{ y: 100 }}
           wrapperStyle={{ pointerEvents: 'auto' }}
         />
-        {referenceArea()}
-        <Legend payload={customLegendPayLoad} />
+        {referenceArea}
+        <Legend
+          payload={customLegendPayLoad}
+          onClick={handleLegendClick}
+          onMouseEnter={handleLegendMouseEnter}
+          onMouseLeave={handleLegendMouseLeave}
+        />
+        <Area
+          connectNulls
+          activeDot={false}
+          dataKey="boundArea"
+          dot={false}
+          fill={GREEN_3_OPACITY}
+          stroke={GREEN_3}
+          strokeDasharray="4"
+          type="monotone"
+        />
         {chartData?.information?.map((info) => (
           <Line
             dataKey={info.label}
             dot={updatedDot}
+            hide={
+              activeKeys.length && info.label !== activeMouseHoverKey
+                ? !activeKeys.includes(info.label)
+                : false
+            }
             key={info.label}
             stroke={info.color}
+            strokeOpacity={
+              isEmpty(activeMouseHoverKey) || info.label === activeMouseHoverKey
+                ? DEFAULT_CHART_OPACITY
+                : HOVER_CHART_OPACITY
+            }
             type="monotone"
           />
         ))}
@@ -300,7 +308,7 @@ function TestSummaryGraph({
               x2={data.x2}
             />
           ))}
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }

@@ -36,15 +36,17 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         result = super(  # pylint: disable=bad-super-call
             HiveCompiler, self
         ).visit_column(*args, **kwargs)
-        dot_count = result.count(".")
         # Here the databricks uses HiveCompiler.
         # the `result` here would be `db.schema.table` or `db.schema.table.column`
         # for struct it will be `db.schema.table.column.nestedchild.nestedchild` etc
         # the logic is to add the backticks to nested children.
-        if dot_count > 2:
-            splitted_result = result.split(".", 2)[-1].split(".")
-            result = ".".join(result.split(".", 2)[:-1])
-            result += "." + "`.`".join(splitted_result)
+        dot_count = result.count(".")
+        if dot_count > 1 and "." in result.split("`.`")[-1]:
+            splitted_result = result.split("`.")[-1].split(".")
+            result = "`.".join(result.split("`.")[:-1])
+            if result:
+                result += "`."
+            result += "`.`".join(splitted_result)
         return result
 
     def __init__(self, service_connection_config, **kwargs):
@@ -56,31 +58,40 @@ class DatabricksProfilerInterface(SQAProfilerInterface):
         """Get struct columns"""
 
         columns_list = []
-        for idx, col in enumerate(columns):
+        for col in columns:
             if col.dataType != DataType.STRUCT:
-                col.name = ColumnName(f"{parent}.{col.name.root}")
-                col = build_orm_col(idx, col, DatabaseServiceType.Databricks)
-                col._set_parent(  # pylint: disable=protected-access
+                # For DBX struct we need to quote the column name as `a`.`b`.`c`
+                # otherwise the driver will quote it as `a.b.c`
+                col_name = ".".join([f"`{part}`" for part in parent.split(".")])
+                col.name = ColumnName(f"{col_name}.`{col.name.root}`")
+                # Set `_quote` to False to avoid quoting the column name again when compiled
+                sqa_col = build_orm_col(
+                    idx=1,
+                    col=col,
+                    table_service_type=DatabaseServiceType.Databricks,
+                    _quote=False,
+                )
+                sqa_col._set_parent(  # pylint: disable=protected-access
                     self.table.__table__
                 )
-                columns_list.append(col)
+                columns_list.append(sqa_col)
             else:
-                col = self._get_struct_columns(
+                cols = self._get_struct_columns(
                     col.children, f"{parent}.{col.name.root}"
                 )
-                columns_list.extend(col)
+                columns_list.extend(cols)
         return columns_list
 
     def get_columns(self) -> Column:
         """Get columns from table"""
         columns = []
-        for idx, column in enumerate(self.table_entity.columns):
-            if column.dataType == DataType.STRUCT:
+        for idx, column_obj in enumerate(self.table_entity.columns):
+            if column_obj.dataType == DataType.STRUCT:
                 columns.extend(
-                    self._get_struct_columns(column.children, column.name.root)
+                    self._get_struct_columns(column_obj.children, column_obj.name.root)
                 )
             else:
-                col = build_orm_col(idx, column, DatabaseServiceType.Databricks)
+                col = build_orm_col(idx, column_obj, DatabaseServiceType.Databricks)
                 col._set_parent(  # pylint: disable=protected-access
                     self.table.__table__
                 )

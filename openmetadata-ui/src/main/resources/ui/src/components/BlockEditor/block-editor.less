@@ -268,14 +268,18 @@
 }
 
 .link-popup {
+  align-items: center;
   padding: 4px;
   background: @white;
   border: @global-border;
-  border-radius: 20px;
+  border-radius: @border-radius-base;
 
   button,
   a {
     color: @text-color !important;
+    &:hover {
+      background-color: @hover-bg;
+    }
   }
 }
 
@@ -386,7 +390,7 @@
 }
 .om-image-node-embed-link-btn-col {
   display: flex;
-  justify-content: end;
+  justify-content: flex-end;
 }
 
 .om-callout-node {

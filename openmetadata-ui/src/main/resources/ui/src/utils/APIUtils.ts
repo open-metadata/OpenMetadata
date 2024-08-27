@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 
-import { get, isArray, isObject, transform } from 'lodash';
-import { FormattedTableData } from 'Models';
+import { isArray, isObject, transform } from 'lodash';
 import { SearchIndex } from '../enums/search.enum';
-import { Tag } from '../generated/entity/classification/tag';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
@@ -38,61 +36,6 @@ export type SearchEntityHits = SearchResponse<
   | SearchIndex.TAG
   | SearchIndex.SEARCH_INDEX
 >['hits']['hits'];
-
-// if more value is added, also update its interface file at -> interface/types.d.ts
-export const formatDataResponse = (
-  hits: SearchEntityHits
-): FormattedTableData[] => {
-  const formattedData = hits.map((hit) => {
-    const newData = {} as FormattedTableData;
-    const source = hit._source;
-    newData.index = hit._index;
-    newData.id = hit._source.id ?? '';
-    newData.name = hit._source.name;
-    newData.displayName = hit._source.displayName ?? '';
-    newData.description = hit._source.description ?? '';
-    newData.fullyQualifiedName = hit._source.fullyQualifiedName ?? '';
-    newData.tags = get(hit, '_source.tags', []);
-    newData.service = get(hit, '_source.service.name');
-    newData.serviceType = get(hit, '_source.serviceType');
-    newData.tier = hit._source.tier;
-    newData.owner = get(hit, '_source.owner');
-    newData.highlight = hit.highlight;
-    newData.entityType = hit._source.entityType;
-    newData.deleted = get(hit, '_source.deleted');
-
-    if ('tableType' in source) {
-      newData.tableType = source.tableType ?? '';
-    }
-
-    if ('usageSummary' in source) {
-      newData.dailyStats = source.usageSummary?.dailyStats?.count;
-      newData.dailyPercentileRank =
-        source.usageSummary?.dailyStats?.percentileRank;
-      newData.weeklyStats = source.usageSummary?.weeklyStats?.count;
-      newData.weeklyPercentileRank =
-        source.usageSummary?.weeklyStats?.percentileRank;
-    }
-
-    if ('database' in source) {
-      newData.database = source.database?.name;
-    }
-
-    if ('databaseSchema' in source) {
-      newData.databaseSchema = source.databaseSchema?.name;
-    }
-
-    if ('columns' in source) {
-      newData.columns = source.columns;
-    }
-
-    newData.changeDescription = source.changeDescription;
-
-    return newData;
-  });
-
-  return formattedData;
-};
 
 export const formatUsersResponse = (
   hits: SearchResponse<SearchIndex.USER>['hits']['hits']
@@ -143,7 +86,7 @@ export const formatDomainsResponse = (
       domainType: d._source.domainType,
       experts: d._source.experts,
       parent: d._source.parent,
-      owner: d._source.owner,
+      owners: d._source.owners,
     };
   });
 };
@@ -162,7 +105,7 @@ export const formatDataProductResponse = (
       href: d._source.href,
       domain: d._source.domain,
       experts: d._source.experts,
-      owner: d._source.owner,
+      owners: d._source.owners,
     };
   });
 };
@@ -179,21 +122,6 @@ export const formatSearchGlossaryTermResponse = (
     fqdn: d._source.fullyQualifiedName,
     fullyQualifiedName: d._source.fullyQualifiedName,
     type: d._source.entityType || 'glossaryTerm',
-  }));
-};
-
-export const formatSearchTagsResponse = (
-  hits: SearchResponse<SearchIndex.TAG>['hits']['hits']
-): Tag[] => {
-  return hits.map((d) => ({
-    name: d._source.name,
-    description: d._source.description,
-    id: d._source.id,
-    classification: d._source.classification,
-    displayName: d._source.displayName,
-    fqdn: d._source.fullyQualifiedName,
-    fullyQualifiedName: d._source.fullyQualifiedName,
-    type: d._source.entityType,
   }));
 };
 

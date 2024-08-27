@@ -4,7 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.BOT;
-import static org.openmetadata.service.Entity.FIELD_OWNER;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -60,7 +60,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.sdk.PipelineServiceClient;
+import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
@@ -72,6 +72,7 @@ import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchRepository;
@@ -97,9 +98,12 @@ import org.quartz.SchedulerException;
 public class AppResource extends EntityResource<App, AppRepository> {
   public static final String COLLECTION_PATH = "v1/apps/";
   private OpenMetadataApplicationConfig openMetadataApplicationConfig;
-  private PipelineServiceClient pipelineServiceClient;
-  static final String FIELDS = "owner";
+  private PipelineServiceClientInterface pipelineServiceClient;
+  static final String FIELDS = "owners";
   private SearchRepository searchRepository;
+  public static List<ScheduleType> SCHEDULED_TYPES =
+      List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
+  public static final String SLACK_APPLICATION = "SlackApplication";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
@@ -111,7 +115,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
       // Create an On Demand DAO
       CollectionDAO dao = Entity.getCollectionDAO();
-      searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
+      searchRepository = Entity.getSearchRepository();
       AppScheduler.initialize(config, dao, searchRepository);
 
       // Initialize Default Apps
@@ -144,7 +148,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         }
 
         // Schedule
-        if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+        if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
           ApplicationHandler.getInstance()
               .installApplication(app, Entity.getCollectionDAO(), searchRepository);
         }
@@ -162,8 +166,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
     }
   }
 
-  public AppResource(Authorizer authorizer) {
-    super(Entity.APPLICATION, authorizer);
+  public AppResource(Authorizer authorizer, Limits limits) {
+    super(Entity.APPLICATION, authorizer, limits);
   }
 
   public static class AppList extends ResultList<App> {
@@ -294,7 +298,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
       IngestionPipeline ingestionPipeline =
           ingestionPipelineRepository.get(
-              uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+              uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
       return Response.ok(
               ingestionPipelineRepository.listPipelineStatus(
                   ingestionPipeline.getFullyQualifiedName(), startTs, endTs),
@@ -341,7 +345,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         return Response.ok(
                 pipelineServiceClient.getLastIngestionLogs(ingestionPipeline, after),
                 MediaType.APPLICATION_JSON_TYPE)
@@ -390,7 +394,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
             (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         PipelineStatus latestPipelineStatus =
             ingestionPipelineRepository.getLatestPipelineStatus(ingestionPipeline);
         Map<String, String> lastIngestionLogs =
@@ -545,6 +549,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
+
     AppMarketPlaceDefinition definition =
         repository
             .getMarketPlace()
@@ -553,7 +558,11 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 create.getName(),
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    limits.enforceLimits(
+        securityContext,
+        getResourceContext(),
+        new OperationContext(Entity.APPLICATION, MetadataOperation.CREATE));
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       ApplicationHandler.getInstance()
@@ -598,7 +607,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
@@ -642,7 +651,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     AppScheduler.getInstance().deleteScheduledApplication(app);
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(updatedApp, Entity.getCollectionDAO(), searchRepository);
     }
@@ -677,7 +686,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 new EntityUtil.Fields(repository.getMarketPlace().getAllowedFields()));
     App app = getApplication(definition, create, securityContext.getUserPrincipal().getName());
     AppScheduler.getInstance().deleteScheduledApplication(app);
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(app, Entity.getCollectionDAO(), searchRepository);
     }
@@ -709,11 +718,17 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    App app = repository.getByName(null, name, repository.getFields("bot,pipelines"));
+    App app =
+        repository.getByName(uriInfo, name, repository.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+
+    ApplicationHandler.getInstance()
+        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+
+    limits.invalidateCache(entityType);
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     return deleteByName(uriInfo, securityContext, name, true, hardDelete);
@@ -741,11 +756,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
           boolean hardDelete,
       @Parameter(description = "Id of the App", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
-    App app = repository.get(null, id, repository.getFields("bot,pipelines"));
+    App app = repository.get(uriInfo, id, repository.getFields("bot,pipelines"), ALL, false);
     if (app.getSystem()) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityDeleteNotAllowed(app.getName(), "SystemApp"));
     }
+
+    ApplicationHandler.getInstance()
+        .performCleanup(app, Entity.getCollectionDAO(), searchRepository);
+
     // Remove from Pipeline Service
     deleteApp(securityContext, app, hardDelete);
     // Remove from repository
@@ -774,7 +793,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     if (response.getStatus() == Response.Status.OK.getStatusCode()) {
       App app = (App) response.getEntity();
-      if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+      if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
         ApplicationHandler.getInstance()
             .installApplication(app, Entity.getCollectionDAO(), searchRepository);
       }
@@ -810,7 +829,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Context SecurityContext securityContext) {
     App app =
         repository.getByName(uriInfo, name, new EntityUtil.Fields(repository.getAllowedFields()));
-    if (app.getScheduleType().equals(ScheduleType.Scheduled)) {
+    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
       ApplicationHandler.getInstance()
           .installApplication(app, repository.getDaoCollection(), searchRepository);
       return Response.status(Response.Status.OK).entity("App is Scheduled.").build();
@@ -878,7 +897,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
@@ -892,7 +911,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         ingestionPipeline.setOpenMetadataServerConnection(app.getOpenMetadataServerConnection());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
         ServiceEntityInterface service =
@@ -926,7 +945,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       @Parameter(description = "Name of the App", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNER));
+    EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     if (app.getAppType().equals(AppType.Internal)) {
       ApplicationHandler.getInstance()
@@ -940,7 +959,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                uriInfo, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
 
         ingestionPipeline.setOpenMetadataServerConnection(app.getOpenMetadataServerConnection());
         decryptOrNullify(securityContext, ingestionPipeline, app.getBot().getName(), true);
@@ -956,7 +975,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         return Response.status(status.getCode()).entity(status).build();
       }
     }
-    throw new BadRequestException("Failed to trigger application.");
+    throw new InternalServerErrorException("Failed to deploy application.");
   }
 
   private void decryptOrNullify(
@@ -987,14 +1006,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
       AppMarketPlaceDefinition marketPlaceDefinition,
       CreateApp createAppRequest,
       String updatedBy) {
-    EntityReference owner = repository.validateOwner(createAppRequest.getOwner());
+    List<EntityReference> owners = repository.validateOwners(createAppRequest.getOwners());
     App app =
         new App()
             .withId(UUID.randomUUID())
             .withName(marketPlaceDefinition.getName())
             .withDisplayName(createAppRequest.getDisplayName())
             .withDescription(createAppRequest.getDescription())
-            .withOwner(owner)
+            .withOwners(owners)
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis())
             .withDeveloper(marketPlaceDefinition.getDeveloper())
@@ -1045,21 +1064,9 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
         IngestionPipeline ingestionPipeline =
             ingestionPipelineRepository.get(
-                null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNER));
+                null, pipelineRef.getId(), ingestionPipelineRepository.getFields(FIELD_OWNERS));
         try {
-          if (hardDelete) {
-            // Remove the Pipeline in case of Delete
-            if (!nullOrEmpty(installedApp.getPipelines())) {
-              pipelineServiceClient.deletePipeline(ingestionPipeline);
-            }
-          } else {
-            // Just Kill Running ingestion
-            if (Boolean.TRUE.equals(ingestionPipeline.getDeployed())) {
-              decryptOrNullify(
-                  securityContext, ingestionPipeline, installedApp.getBot().getName(), true);
-              pipelineServiceClient.killIngestion(ingestionPipeline);
-            }
-          }
+          pipelineServiceClient.deletePipeline(ingestionPipeline);
         } catch (Exception ex) {
           LOG.error("Failed in Pipeline Service Client : ", ex);
         }

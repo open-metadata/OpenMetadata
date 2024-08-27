@@ -26,7 +26,7 @@ def update_repository_name(
     Given an original set of credentials and a new repository name,
     return the updated credentials
     """
-    updated = original.copy(deep=True)
+    updated = original.model_copy(deep=True)
     updated.repositoryName = RepositoryName(name)
 
     return updated

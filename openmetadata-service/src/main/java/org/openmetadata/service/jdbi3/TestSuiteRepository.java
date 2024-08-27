@@ -9,8 +9,10 @@ import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.util.FullyQualifiedName.quoteName;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonArray;
@@ -20,6 +22,7 @@ import javax.ws.rs.core.SecurityContext;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
@@ -31,6 +34,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
@@ -136,8 +140,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getExecutable())) {
       Table table =
-          Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owner", ALL);
-      inheritOwner(testSuite, fields, table);
+          Entity.getEntity(TABLE, testSuite.getExecutableEntityReference().getId(), "owners", ALL);
+      inheritOwners(testSuite, fields, table);
+      inheritDomain(testSuite, fields, table);
     }
   }
 
@@ -223,6 +228,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
               return testSummary;
             })
         .orElse(testSummary);
+  }
+
+  public DataQualityReport getDataQualityReport(String q, String aggQuery, String index)
+      throws IOException {
+    Map<String, Object> aggregationString = SearchIndexUtils.buildAggregationString(aggQuery);
+    return searchRepository.genericAggregation(q, index, aggregationString);
   }
 
   public TestSummary getTestSummary(UUID testSuiteId) {
@@ -372,7 +383,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         .withExecutable(testSuite.getExecutable())
         .withExecutableEntityReference(testSuite.getExecutableEntityReference())
         .withServiceType(testSuite.getServiceType())
-        .withOwner(testSuite.getOwner())
+        .withOwners(testSuite.getOwners())
         .withUpdatedBy(testSuite.getUpdatedBy())
         .withUpdatedAt(testSuite.getUpdatedAt())
         .withVersion(testSuite.getVersion());

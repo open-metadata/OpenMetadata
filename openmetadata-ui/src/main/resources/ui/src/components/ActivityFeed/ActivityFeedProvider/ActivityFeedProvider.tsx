@@ -166,7 +166,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       type?: ThreadType,
       entityType?: EntityType,
       fqn?: string,
-      taskStatus?: ThreadTaskStatus
+      taskStatus?: ThreadTaskStatus,
+      limit?: number
     ) => {
       try {
         setLoading(true);
@@ -186,8 +187,9 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           after,
           type,
           feedFilterType,
-          taskStatus,
-          userId
+          type === ThreadType.Task ? taskStatus : undefined,
+          userId,
+          limit
         );
         setEntityThread((prev) => (after ? [...prev, ...data] : [...data]));
         setEntityPaging(paging);
@@ -218,6 +220,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
     try {
       const res = await postFeedById(id, data);
+      setActiveThread(res);
       const { id: responseId, posts } = res;
       setEntityThread((pre) => {
         return pre.map((thread) => {
@@ -228,7 +231,6 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           }
         });
       });
-      setActiveThread(res);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -242,6 +244,21 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
   const refreshActivityFeed = useCallback((threads) => {
     setEntityThread([...threads]);
   }, []);
+
+  const updateEntityThread = useCallback(
+    (thread: Thread) => {
+      setEntityThread((prev) => {
+        return prev.map((threadItem) => {
+          if (threadItem.id === thread.id) {
+            return thread;
+          } else {
+            return threadItem;
+          }
+        });
+      });
+    },
+    [setEntityThread]
+  );
 
   const deleteFeed = useCallback(
     async (threadId: string, postId: string, isThread: boolean) => {
@@ -455,6 +472,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
       hideDrawer,
       updateEditorFocus,
       setActiveThread,
+      updateEntityThread,
       entityPaging,
       userId: user ?? currentUser?.id ?? '',
       testCaseResolutionStatus,
@@ -479,6 +497,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     hideDrawer,
     updateEditorFocus,
     setActiveThread,
+    updateEntityThread,
     entityPaging,
     user,
     currentUser,

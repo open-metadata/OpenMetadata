@@ -57,7 +57,7 @@ const expirationTime = {
   twomonths: '60',
   threemonths: '90',
 };
-const name = `Usercttest${uuid()}`;
+const name = `usercttest${uuid()}`;
 const owner = generateRandomUser();
 let userId = '';
 const ownerName = `${owner.firstName}${owner.lastName}`;

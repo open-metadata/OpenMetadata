@@ -235,17 +235,17 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             .withName("task")
             .withDescription("description")
             .withSourceUrl("http://localhost:0")
-            .withOwner(USER1_REF);
+            .withOwners(List.of(USER1_REF));
     create.setTasks(List.of(task));
     Pipeline entity = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     Task actualTask = entity.getTasks().get(0);
-    assertEquals(USER1_REF.getName(), actualTask.getOwner().getName());
+    assertOwners(List.of(USER1_REF), actualTask.getOwners());
 
     // We can GET the task retrieving the owner info
     Pipeline storedPipeline =
-        getPipelineByName(entity.getFullyQualifiedName(), "owner,tasks", ADMIN_AUTH_HEADERS);
+        getPipelineByName(entity.getFullyQualifiedName(), "owners,tasks", ADMIN_AUTH_HEADERS);
     Task storedTask = storedPipeline.getTasks().get(0);
-    assertEquals(USER1_REF.getName(), storedTask.getOwner().getName());
+    assertOwners(List.of(USER1_REF), storedTask.getOwners());
   }
 
   @Test
@@ -706,7 +706,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     CreatePipelineService createPipelineService =
         serviceTest
             .createRequest("testInheritedPermissions")
-            .withOwner(DATA_CONSUMER.getEntityReference());
+            .withOwners(List.of(DATA_CONSUMER.getEntityReference()));
     PipelineService service = serviceTest.createEntity(createPipelineService, ADMIN_AUTH_HEADERS);
 
     // Data consumer as an owner of the service can create pipeline under it
@@ -766,14 +766,14 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             : getPipeline(pipeline.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNotNull(pipeline.getService(), pipeline.getServiceType());
     assertListNull(
-        pipeline.getOwner(),
+        pipeline.getOwners(),
         pipeline.getTasks(),
         pipeline.getPipelineStatus(),
         pipeline.getTags(),
         pipeline.getFollowers(),
         pipeline.getTags());
 
-    fields = "owner,tasks,pipelineStatus,followers,tags,scheduleInterval";
+    fields = "owners,tasks,pipelineStatus,followers,tags,scheduleInterval";
     pipeline =
         byName
             ? getPipelineByName(pipeline.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

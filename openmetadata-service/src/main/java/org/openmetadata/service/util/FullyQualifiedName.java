@@ -117,7 +117,9 @@ public class FullyQualifiedName {
 
   public static boolean isParent(String childFqn, String parentFqn) {
     // Returns true if the childFqn is indeed the child of parentFqn
-    return childFqn.startsWith(parentFqn) && childFqn.length() > parentFqn.length();
+    // Adding "." ensures that we are checking for a true parent-child relationship
+    // For example, "a.b.c" should be a child of "a.b" but  "a.b c" should not be a child of "a.b"
+    return childFqn.startsWith(parentFqn + ".") && childFqn.length() > parentFqn.length();
   }
 
   private static class SplitListener extends FqnBaseListener {
@@ -179,7 +181,11 @@ public class FullyQualifiedName {
   public static String getTableFQN(String columnFQN) {
     // Split columnFQN of format databaseServiceName.databaseName.tableName.columnName
     String[] split = split(columnFQN);
-    if (split.length != 5) {
+    // column FQN for struct columns are of format
+    // service.database.schema.table.column.child1.child2
+    // and not service.database.schema.table."column.child1.child2" so split length should be 5 or
+    // more
+    if (split.length < 5) {
       throw new IllegalArgumentException("Invalid fully qualified column name " + columnFQN);
     }
     // Return table FQN of format databaseService.tableName

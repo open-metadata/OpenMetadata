@@ -64,6 +64,7 @@ import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TagRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -94,8 +95,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
     /* Required for serde */
   }
 
-  public TagResource(Authorizer authorizer) {
-    super(Entity.TAG, authorizer);
+  public TagResource(Authorizer authorizer, Limits limits) {
+    super(Entity.TAG, authorizer, limits);
   }
 
   @Override

@@ -52,6 +52,7 @@ from metadata.profiler.metrics.core import (
     TMetric,
 )
 from metadata.profiler.metrics.static.row_count import RowCount
+from metadata.profiler.orm.functions.table_metric_computer import CREATE_DATETIME
 from metadata.profiler.orm.registry import NOT_COMPUTE
 from metadata.profiler.processor.metric_filter import MetricFilter
 from metadata.profiler.processor.sample_data_handler import upload_sample_data
@@ -579,7 +580,7 @@ class Profiler(Generic[TMetric]):
             ]
 
             raw_create_date: Optional[datetime] = self._table_results.get(
-                "createDateTime"
+                CREATE_DATETIME
             )
             if raw_create_date:
                 raw_create_date = raw_create_date.replace(tzinfo=timezone.utc)

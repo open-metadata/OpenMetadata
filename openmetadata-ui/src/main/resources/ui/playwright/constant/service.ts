@@ -23,6 +23,7 @@ export const SERVICE_TYPE = {
   Search: GlobalSettingOptions.SEARCH,
   Metadata: GlobalSettingOptions.METADATA,
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
+  ApiService: GlobalSettingOptions.APIS,
 };
 
 export const REDSHIFT = {

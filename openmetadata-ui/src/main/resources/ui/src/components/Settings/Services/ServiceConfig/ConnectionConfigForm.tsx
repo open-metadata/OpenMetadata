@@ -13,8 +13,9 @@
 
 import Form, { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
+import { Alert } from 'antd';
 import { t } from 'i18next';
-import { cloneDeep, isEmpty, isNil } from 'lodash';
+import { cloneDeep, isEmpty, isNil, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
 import React, {
   Fragment,
@@ -27,21 +28,25 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { MetadataServiceType } from '../../../../generated/api/services/createMetadataService';
 import { MlModelServiceType } from '../../../../generated/api/services/createMlModelService';
 import { StorageServiceType } from '../../../../generated/entity/data/container';
+import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
 import { PipelineServiceType } from '../../../../generated/entity/services/pipelineService';
 import { SearchServiceType } from '../../../../generated/entity/services/searchService';
 import { useAirflowStatus } from '../../../../hooks/useAirflowStatus';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
   ConfigData,
   ServicesType,
 } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import InlineAlert from '../../../common/InlineAlert/InlineAlert';
 import TestConnection from '../../../common/TestConnection/TestConnection';
 
 interface Props {
@@ -72,6 +77,7 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
   const config = !isNil(data)
     ? ((data as ServicesType).connection?.config as ConfigData)
     : ({} as ConfigData);
+  const { inlineAlertDetails } = useApplicationStore();
 
   const formRef = useRef<Form<ConfigData>>(null);
 
@@ -178,6 +184,14 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
 
         break;
       }
+
+      case ServiceCategory.API_SERVICES: {
+        connSch = serviceUtilClassBase.getAPIServiceConfig(
+          serviceType as APIServiceType
+        );
+
+        break;
+      }
     }
 
     return (
@@ -202,13 +216,19 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           </div>
         )}
         {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
-          <div
-            className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
-            data-testid="ip-address">
-            <div className="self-center">
-              {t('message.airflow-host-ip-address', { hostIp })}
-            </div>
-          </div>
+          <Alert
+            data-testid="ip-address"
+            description={
+              <Transi18next
+                i18nKey="message.airflow-host-ip-address"
+                renderElement={<strong />}
+                values={{
+                  hostIp,
+                }}
+              />
+            }
+            type="info"
+          />
         )}
         {!isEmpty(connSch.schema) &&
           isAirflowAvailable &&
@@ -222,6 +242,9 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
               onValidateFormRequiredFields={handleRequiredFieldsValidation}
             />
           )}
+        {!isUndefined(inlineAlertDetails) && (
+          <InlineAlert alertClassName="m-t-xs" {...inlineAlertDetails} />
+        )}
       </FormBuilder>
     );
   };

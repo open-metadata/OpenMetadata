@@ -16,8 +16,10 @@ import { act, render, screen } from '@testing-library/react';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TeamType } from '../../generated/entity/teams/team';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
 import { MOCK_CURRENT_TEAM } from '../../mocks/Teams.mock';
+import { searchData } from '../../rest/miscAPI';
 import { getTeamByName } from '../../rest/teamsAPI';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TeamsPage from './TeamsPage';
@@ -66,10 +68,6 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
-  getDecodedFqn: jest.fn(),
-}));
-
 jest.mock('../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
@@ -92,11 +90,7 @@ jest.mock('../../rest/teamsAPI', () => ({
 }));
 
 jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockResolvedValue(() =>
-      Promise.resolve({ data: [], paging: { total: 5 } })
-    ),
+  searchData: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -160,12 +154,18 @@ describe('Test Teams Page', () => {
 
     expect(mockGetTeamByName.mock.calls[0]).toEqual([
       'test',
-      { fields: 'users,parents,profile,owner', include: 'all' },
+      { fields: ['users', 'parents', 'profile', 'owners'], include: 'all' },
     ]);
     expect(mockGetTeamByName.mock.calls[1]).toEqual([
       'test',
       {
-        fields: 'users,defaultRoles,policies,childrenCount,domain',
+        fields: [
+          'users',
+          'defaultRoles',
+          'policies',
+          'childrenCount',
+          'domains',
+        ],
         include: 'all',
       },
     ]);
@@ -199,5 +199,53 @@ describe('Test Teams Page', () => {
     });
 
     expect(screen.getByText('No_Data_Error_Placeholder')).toBeInTheDocument();
+
+    (getTeamByName as jest.Mock).mockReset();
+  });
+
+  it('should fetchAssetCount on page load', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTeamByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve({ ...MOCK_CURRENT_TEAM, teamType: TeamType.Group })
+    );
+
+    await act(async () => {
+      render(<TeamsPage />);
+    });
+
+    expect(searchData).toHaveBeenCalledWith(
+      '',
+      0,
+      0,
+      'owners.id:f9578f16-363a-4788-80fb-d05816c9e169',
+      '',
+      '',
+      'all'
+    );
+  });
+
+  it('should not fetchAssetCount on page load if TeamType is not Group', async () => {
+    (usePermissionProvider as jest.Mock).mockImplementationOnce(() => ({
+      getEntityPermissionByFqn: jest.fn().mockImplementationOnce(() => ({
+        ViewBasic: true,
+      })),
+    }));
+
+    (getTeamByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve({ ...MOCK_CURRENT_TEAM, teamType: TeamType.BusinessUnit })
+    );
+
+    await act(async () => {
+      render(<TeamsPage />);
+    });
+
+    expect(searchData).not.toHaveBeenCalled();
+
+    (getTeamByName as jest.Mock).mockReset();
   });
 });

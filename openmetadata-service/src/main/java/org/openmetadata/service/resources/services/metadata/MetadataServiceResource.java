@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MetadataServiceRepository;
+import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -78,7 +79,7 @@ public class MetadataServiceResource
     extends ServiceEntityResource<MetadataService, MetadataServiceRepository, MetadataConnection> {
   public static final String OPENMETADATA_SERVICE = "OpenMetadata";
   public static final String COLLECTION_PATH = "v1/services/metadataServices/";
-  public static final String FIELDS = "pipelines,owner,tags";
+  public static final String FIELDS = "pipelines,owners,tags";
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
@@ -115,12 +116,12 @@ public class MetadataServiceResource
   @Override
   public MetadataService addHref(UriInfo uriInfo, MetadataService service) {
     super.addHref(uriInfo, service);
-    Entity.withHref(uriInfo, service.getOwner());
+    Entity.withHref(uriInfo, service.getOwners());
     return service;
   }
 
-  public MetadataServiceResource(Authorizer authorizer) {
-    super(Entity.METADATA_SERVICE, authorizer, ServiceType.METADATA);
+  public MetadataServiceResource(Authorizer authorizer, Limits limits) {
+    super(Entity.METADATA_SERVICE, authorizer, limits, ServiceType.METADATA);
   }
 
   @Override
