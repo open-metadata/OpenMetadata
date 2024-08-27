@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { env } from 'process';
 import { uuid } from '../../../utils/common';
 import {
   checkServiceFieldSectionHighlighting,
@@ -35,9 +36,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async fillConnectionDetails(page: Page) {
-    const username = process.env.PLAYWRIGHT_MYSQL_USERNAME ?? '';
-    const password = process.env.PLAYWRIGHT_MYSQL_PASSWORD ?? '';
-    const hostPort = process.env.PLAYWRIGHT_MYSQL_HOST_PORT ?? '';
+    const username = env.PLAYWRIGHT_MYSQL_USERNAME ?? '';
+    const password = env.PLAYWRIGHT_MYSQL_PASSWORD ?? '';
+    const hostPort = env.PLAYWRIGHT_MYSQL_HOST_PORT ?? '';
 
     await page.fill('#root\\/username', username);
     await checkServiceFieldSectionHighlighting(page, 'username');

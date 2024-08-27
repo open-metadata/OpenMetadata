@@ -52,7 +52,9 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'off',
+    /* Record videos of each test. */
+    video: 'on-first-retry',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
   },
@@ -69,7 +71,7 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup'],
-      grepInvert: /data-insight/,
+      grep: /ingestion/,
     },
     {
       name: 'data-insight-application',

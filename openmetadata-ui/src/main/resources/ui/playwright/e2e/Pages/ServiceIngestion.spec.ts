@@ -46,7 +46,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 services.forEach((ServiceClass) => {
   const service = new ServiceClass();
 
-  test.describe.serial(service.serviceType, () => {
+  test.describe.serial(service.serviceType, { tag: '@ingestion' }, () => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { afterAction } = await createNewPage(browser);
 
