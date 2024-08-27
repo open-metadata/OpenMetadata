@@ -17,14 +17,15 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-kafka-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.5/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the Kafka ingestion, you will need to install:
 
@@ -117,11 +118,11 @@ following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/
 
 {% /codeInfo %}
 
-{% partial file="/v1.5/connectors/yaml/messaging/source-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/messaging/source-config-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -160,14 +161,25 @@ source:
       schemaRegistryConfig: {}
 ```
 
-{% partial file="/v1.5/connectors/yaml/messaging/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/messaging/source-config.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
+## Securing Kafka Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and Kafka, in the `YAML` you can provide the CA certificate used for SSL validation by specifying the `caCertificate`. Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl key`, `ssl cert`, and `caCertificate`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `caCertificate` for the CA certificate to validate the server’s certificate.
+
+```yaml
+      sslConfig:
+            caCertificate: "/path/to/ca_certificate"
+            sslCertificate: "/path/to/your/ssl_cert"
+            sslKey: "/path/to/your/ssl_key"
+```
+
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}
