@@ -442,3 +442,36 @@ export const DESCRIPTION_CHART = {
   href: 'http://localhost:8585/api/v1/analytics/dataInsights/charts/7dc794d3-1881-408c-92fc-6182aa453bc8',
   deleted: false,
 };
+
+export const MOCK_KPI_LIST_RESPONSE = {
+  data: [
+    {
+      id: '17651e36-2350-414a-a68d-bea58cc96d02',
+      name: 'description-percentage',
+      displayName: 'description',
+      fullyQualifiedName: 'description-percentage',
+      description: 'this is description',
+      metricType: 'PERCENTAGE',
+      dataInsightChart: {
+        id: 'e10d1bef-0d6b-42cd-a215-5771f40803eb',
+        type: 'dataInsightCustomChart',
+        name: 'percentage_of_data_asset_with_description_kpi',
+        fullyQualifiedName: 'percentage_of_data_asset_with_description_kpi',
+        displayName: 'percentage_of_data_asset_with_description_kpi',
+        deleted: false,
+        href: 'http://localhost:8585/api/v1/analytics/dataInsights/system/charts/e10d1bef-0d6b-42cd-a215-5771f40803eb',
+      },
+      targetValue: 58,
+      startDate: 1724697000000,
+      endDate: 1725128999999,
+      version: 0.1,
+      updatedAt: 1724760086039,
+      updatedBy: 'admin',
+      href: 'http://localhost:8585/api/v1/kpi/17651e36-2350-414a-a68d-bea58cc96d02',
+      deleted: false,
+    },
+  ],
+  paging: {
+    total: 1,
+  },
+};
