@@ -23,9 +23,14 @@ import {
   mockAggregations,
 } from './mocks/ExploreQuickFilters.mock';
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: '',
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',
   }),

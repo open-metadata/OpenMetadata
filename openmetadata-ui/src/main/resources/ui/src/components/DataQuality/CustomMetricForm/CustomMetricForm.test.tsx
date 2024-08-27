@@ -15,14 +15,11 @@ import { Form } from 'antd';
 import React from 'react';
 import CustomMetricForm from './CustomMetricForm.component';
 
-jest.mock('react-router-dom', () => {
-  return {
-    ...jest.requireActual('react-router-dom'),
-    useLocation: () => ({
-      search:
-        '?activeColumnFqn=sample_data.ecommerce_db.shopify.dim_address.address_id',
-    }),
-  };
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search:
+      '?activeColumnFqn=sample_data.ecommerce_db.shopify.dim_address.address_id',
+  }));
 });
 
 describe('CustomMetricForm', () => {

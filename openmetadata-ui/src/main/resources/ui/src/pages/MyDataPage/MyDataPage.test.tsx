@@ -108,9 +108,9 @@ jest.mock('../../rest/userAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockUserData)),
 }));
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
-}));
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '' }));
+});
 jest.mock('react-grid-layout', () => ({
   ...jest.requireActual('react-grid-layout'),
   WidthProvider: jest
