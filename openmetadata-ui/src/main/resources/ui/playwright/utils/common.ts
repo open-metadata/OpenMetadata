@@ -234,12 +234,6 @@ export const verifyDomainPropagation = async (
   ).toContainText(domain.displayName);
 };
 
-export const toastNotification = async (page: Page, msg: string) => {
-  await expect(page.locator('.Toastify__toast-body')).toHaveText(msg);
-
-  await page.click('.Toastify__close-button');
-};
-
 export const replaceAllSpacialCharWith_ = (text: string) => {
   return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
