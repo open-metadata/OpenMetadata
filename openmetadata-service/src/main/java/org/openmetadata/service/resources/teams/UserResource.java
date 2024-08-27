@@ -18,7 +18,6 @@ import static javax.ws.rs.core.Response.Status.CONFLICT;
 import static javax.ws.rs.core.Response.Status.FORBIDDEN;
 import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
 import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType.BASIC;
@@ -194,11 +193,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isEmailServiceEnabled() {
-    SmtpSettings smtpSettings = getSmtpSettings();
-    if (!nullOrEmpty(smtpSettings)) {
-      return smtpSettings.getEnableSmtpServer();
-    }
-    return false;
+    return getSmtpSettings().getEnableSmtpServer();
   }
 
   public UserResource(

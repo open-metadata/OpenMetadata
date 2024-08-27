@@ -112,11 +112,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   private boolean isEmailServiceEnabled() {
-    SmtpSettings smtpSettings = getSmtpSettings();
-    if (!nullOrEmpty(smtpSettings)) {
-      return smtpSettings.getEnableSmtpServer();
-    }
-    return false;
+    return getSmtpSettings().getEnableSmtpServer();
   }
 
   @Override
