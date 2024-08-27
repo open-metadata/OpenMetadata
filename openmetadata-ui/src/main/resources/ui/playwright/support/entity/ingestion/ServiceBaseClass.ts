@@ -233,10 +233,10 @@ class ServiceBaseClass {
 
     await page.waitForSelector('[data-testid="data-assets-header"]');
     const pipelinePromise = page.waitForRequest(
-      `http://localhost:8585/api/v1/services/ingestionPipelines?fields=owner%2CpipelineStatuses&service=${this.serviceName}&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2Cdbt&serviceType=*`
+      `http://localhost:8585/api/v1/services/ingestionPipelines?**`
     );
     const statusPromise = page.waitForRequest(
-      `/api/v1/services/ingestionPipelines/${this.serviceName}*/pipelineStatus?**`
+      `/api/v1/services/ingestionPipelines/**/pipelineStatus?**`
     );
     await pipelinePromise;
 
