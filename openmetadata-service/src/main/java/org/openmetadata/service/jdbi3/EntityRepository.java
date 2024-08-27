@@ -84,6 +84,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -1981,6 +1982,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
+    if (nullOrEmpty(refs)) {
+      return;
+    }
+    refs.sort(Comparator.comparing(EntityReference::getName));
+    owners.sort(Comparator.comparing(EntityReference::getName));
+
     for (int i = 0; i < owners.size(); i++) {
       EntityUtil.copy(refs.get(i), owners.get(i));
     }
