@@ -1130,19 +1130,19 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> AND "
-                + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) "
+                + "to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> AND "
-                + "JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) "
+                + "MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     List<String> listTasksAssigned(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("limit") int limit,
         @Define("condition") String condition);
@@ -1150,34 +1150,34 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> AND "
-                + "taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[])",
+                + "to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) ",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> AND "
-                + "JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) ",
+                + "MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) ",
         connectionType = MYSQL)
     int listCountTasksAssignedTo(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Define("condition") String condition);
 
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> "
-                + "AND (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username) "
+                + "AND (to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM thread_entity <condition> "
-                + "AND (JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) OR createdBy = :username) "
+                + "AND (MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) OR createdBy = :username) "
                 + "ORDER BY createdAt DESC "
                 + "LIMIT :limit",
         connectionType = MYSQL)
     List<String> listTasksOfUser(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("username") String username,
         @Bind("limit") int limit,
@@ -1186,15 +1186,15 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> "
-                + "AND (taskAssignees @> ANY (ARRAY[<userTeamJsonPostgres>]::jsonb[]) OR createdBy = :username) ",
+                + "AND (to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres)  OR createdBy = :username) ",
         connectionType = POSTGRES)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT count(id) FROM thread_entity <condition> "
-                + "AND (JSON_OVERLAPS(taskAssigneesIds, :userTeamJsonMysql) OR createdBy = :username) ",
+                + "AND (MATCH(taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) OR createdBy = :username) ",
         connectionType = MYSQL)
     int listCountTasksOfUser(
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres,
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
         @Bind("username") String username,
         @Define("condition") String condition);
@@ -1355,7 +1355,7 @@ public interface CollectionDAO {
         @BindFQN("fqnPrefixHash") String fqnPrefixHash,
         @Bind("toType") String toType);
 
-    @SqlQuery(
+    @ConnectionAwareSqlQuery(
         value =
             "SELECT combined.type, combined.taskStatus, COUNT(combined.id) AS count "
                 + "FROM ( "
@@ -1363,8 +1363,8 @@ public interface CollectionDAO {
                 + "    FROM thread_entity te "
                 + "    JOIN entity_relationship er ON te.entityId = er.toId "
                 + "    WHERE "
-                + "        (er.fromEntity = 'user' AND er.fromId = :userId AND er.relation = 8) "
-                + "        OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>) AND er.relation = 8) "
+                + "        (er.fromEntity = 'user' AND er.fromId = :userId AND er.relation = 8 AND te.type <> 'Task') "
+                + "        OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>) AND er.relation = 8  AND te.type <> 'Task') "
                 + "    UNION "
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
@@ -1382,15 +1382,54 @@ public interface CollectionDAO {
                 + "    SELECT te.type, te.taskStatus, te.id "
                 + "    FROM thread_entity te "
                 + "    WHERE te.createdBy = :username "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    WHERE MATCH(te.taskAssigneesIds) AGAINST (:userTeamJsonMysql IN BOOLEAN MODE) "
                 + ") AS combined "
-                + "GROUP BY combined.type, combined.taskStatus;")
+                + "GROUP BY combined.type, combined.taskStatus;",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT combined.type, combined.taskStatus, COUNT(combined.id) AS count "
+                + "FROM ( "
+                + "    SELECT te.type, te.taskStatus, te.id  "
+                + "    FROM thread_entity te "
+                + "    JOIN entity_relationship er ON te.entityId = er.toId "
+                + "    WHERE "
+                + "        (er.fromEntity = 'user' AND er.fromId = :userId AND er.relation = 8 AND te.type <> 'Task') "
+                + "        OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>) AND er.relation = 8 AND te.type <> 'Task') "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    JOIN entity_relationship er ON te.id = er.toId "
+                + "    WHERE "
+                + "        er.fromEntity = 'user' AND er.fromId = :userId AND er.toEntity = 'THREAD' AND er.relation IN (1, 2) "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    JOIN entity_relationship er ON te.id = er.toId "
+                + "    WHERE "
+                + "        (er.fromEntity = 'user' AND er.fromId = :userId AND er.relation = 11) "
+                + "        OR (er.fromEntity = 'team' AND er.fromId IN (<teamIds>) AND er.relation = 11) "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    WHERE te.createdBy = :username "
+                + "    UNION "
+                + "    SELECT te.type, te.taskStatus, te.id "
+                + "    FROM thread_entity te "
+                + "    WHERE to_tsvector('simple', taskAssigneesIds) @@ to_tsquery('simple', :userTeamJsonPostgres) "
+                + ") AS combined "
+                + "GROUP BY combined.type, combined.taskStatus;",
+        connectionType = POSTGRES)
     @RegisterRowMapper(OwnerCountFieldMapper.class)
     List<List<String>> listCountByOwner(
         @BindUUID("userId") UUID userId,
         @BindList("teamIds") List<String> teamIds,
         @Bind("username") String username,
         @Bind("userTeamJsonMysql") String userTeamJsonMysql,
-        @BindList("userTeamJsonPostgres") List<String> userTeamJsonPostgres);
+        @Bind("userTeamJsonPostgres") String userTeamJsonPostgres);
 
     @SqlQuery(
         "SELECT json FROM thread_entity <condition> AND "
@@ -1555,36 +1594,35 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT entityLink, type, taskStatus, COUNT(id) count "
+        "SELECT entityLink, type, taskStatus, COUNT(id) as count "
             + "FROM ( "
             + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
-            + "    FROM thread_entity te  "
-            + "    WHERE te.entityId = :entityId  "
-            + "    OR EXISTS ( "
-            + "        SELECT 1  "
-            + "        FROM field_relationship fr  "
-            + "        WHERE fr.fromFQNHash = MD5(te.id) "
-            + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
+            + "    FROM thread_entity te "
+            + "    WHERE te.entityId = :entityId "
+            + "    UNION "
+            + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
+            + "    FROM thread_entity te "
+            + "    WHERE te.hash_id IN ( "
+            + "        SELECT fr.fromFQNHash "
+            + "        FROM field_relationship fr "
+            + "        WHERE (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
             + "        AND fr.fromType = 'THREAD' "
             + "        AND (:toType1 IS NULL OR fr.toType LIKE CONCAT(:toType1, '.%') OR fr.toType = :toType1) "
             + "        AND fr.relation = 3 "
             + "    ) "
-            + "    UNION ALL "
+            + "    UNION "
             + "    SELECT te.entityLink, te.type, te.taskStatus, te.id "
-            + "    FROM thread_entity te  "
-            + "    WHERE te.type = 'Task'  "
-            + "    AND (  "
-            + "     EXISTS ( "
-            + "        SELECT 1  "
-            + "        FROM field_relationship fr  "
-            + "        JOIN thread_entity te2 ON MD5(te2.id) = fr.fromFQNHash  "
-            + "        WHERE fr.fromFQNHash = MD5(te.id) "
-            + "        AND te2.type = 'Task'   "
+            + "    FROM thread_entity te "
+            + "    WHERE te.type = 'Task' "
+            + "    AND te.hash_id IN ( "
+            + "        SELECT fr.fromFQNHash "
+            + "        FROM field_relationship fr "
+            + "        JOIN thread_entity te2 ON te2.hash_id = fr.fromFQNHash WHERE fr.fromFQNHash = te.hash_id AND te2.type = 'Task' "
             + "        AND (:fqnPrefixHash IS NULL OR fr.toFQNHash LIKE CONCAT(:fqnPrefixHash, '.%') OR fr.toFQNHash = :fqnPrefixHash) "
             + "        AND fr.fromType = 'THREAD' "
             + "        AND (:toType2 IS NULL OR fr.toType LIKE CONCAT(:toType2, '.%') OR fr.toType = :toType2) "
             + "        AND fr.relation = 3 "
-            + "    )) "
+            + "    ) "
             + ") AS combined_results "
             + "GROUP BY entityLink, type, taskStatus ")
     @RegisterRowMapper(ThreadCountFieldMapper.class)

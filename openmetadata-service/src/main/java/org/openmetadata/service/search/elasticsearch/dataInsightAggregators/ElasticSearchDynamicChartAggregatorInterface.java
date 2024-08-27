@@ -21,10 +21,7 @@ import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -218,11 +215,11 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       for (Histogram.Bucket bucket : parsedDateHistogram.getBuckets()) {
         List<DataInsightCustomChartResult> subResults = new ArrayList<>();
         for (Aggregation subAggr : bucket.getAggregations().asList()) {
-          DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm'Z'");
-          LocalDateTime localDateTime = LocalDateTime.parse(bucket.getKey().toString(), formatter);
-          ZonedDateTime zonedDateTime = localDateTime.atZone(ZoneId.systemDefault());
-          long timestamp = zonedDateTime.toInstant().toEpochMilli();
-          addByAggregationType(subAggr, subResults, Double.valueOf(timestamp), group);
+          addByAggregationType(
+              subAggr,
+              subResults,
+              (double) ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli(),
+              group);
         }
         results.add(subResults);
       }

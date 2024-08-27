@@ -304,8 +304,33 @@ ALTER TABLE automations_workflow
 
 ALTER TABLE entity_extension ADD INDEX extension_index(extension);
 
+ALTER TABLE test_definition MODIFY COLUMN `name` VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.name') NOT NULL;
+
 -- Remove SearchIndexing for api Service, collection and endpoint
 DELETE er FROM entity_relationship er JOIN installed_apps ia ON er.fromId = ia.id OR er.toId = ia.id WHERE ia.name = 'SearchIndexingApplication';
 DELETE er FROM entity_relationship er JOIN apps_marketplace ia ON er.fromId = ia.id OR er.toId = ia.id WHERE ia.name = 'SearchIndexingApplication';
 DELETE from installed_apps where name = 'SearchIndexingApplication';
 DELETE from apps_marketplace where name = 'SearchIndexingApplication';
+
+-- Drop the existing taskAssigneesIds
+DROP INDEX taskAssigneesIds_index ON thread_entity;
+
+ALTER TABLE thread_entity DROP COLUMN taskAssigneesIds;
+
+ALTER TABLE thread_entity
+ADD COLUMN taskAssigneesIds TEXT GENERATED ALWAYS AS (
+    REPLACE(
+        REPLACE(
+            JSON_UNQUOTE(
+                JSON_EXTRACT(taskAssignees, '$[*].id')
+            ), '[', ''
+        ), ']', ''
+    )
+) STORED;
+
+CREATE FULLTEXT INDEX taskAssigneesIds_index ON thread_entity(taskAssigneesIds);
+
+-- Add indexes on thread_entity and entity_relationship to improve count/feed api performance
+CREATE INDEX idx_thread_entity_entityId_createdAt ON thread_entity (entityId, createdAt);
+CREATE INDEX idx_thread_entity_id_type_status ON thread_entity (id, type, taskStatus);
+CREATE INDEX idx_er_fromEntity_fromId_toEntity_relation ON entity_relationship (fromEntity, fromId, toEntity, relation);

@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
@@ -63,7 +62,6 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -109,15 +107,9 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorFactory;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesDescriptionAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesOwnerAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchServicesDescriptionAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchServicesOwnerAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -1828,35 +1820,6 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public TreeMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
-    os.org.opensearch.action.search.SearchRequest searchRequestTotalAssets =
-        buildSearchRequest(
-            scheduleTime, currentTime, null, team, chartType, null, null, null, indexName);
-    SearchResponse searchResponseTotalAssets =
-        client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
-    DataInsightChartResult processedDataTotalAssets =
-        processDataInsightChartResult(searchResponseTotalAssets, chartType);
-    TreeMap<Long, List<Object>> dateWithDataMap = new TreeMap<>();
-    for (Object data : processedDataTotalAssets.getData()) {
-      DataInsightInterface convertedData = (DataInsightInterface) data;
-      Long timestamp = convertedData.getTimestamp();
-      List<Object> totalEntitiesByTypeList = new ArrayList<>();
-      if (dateWithDataMap.containsKey(timestamp)) {
-        totalEntitiesByTypeList = dateWithDataMap.get(timestamp);
-      }
-      totalEntitiesByTypeList.add(convertedData);
-      dateWithDataMap.put(timestamp, totalEntitiesByTypeList);
-    }
-    return dateWithDataMap;
-  }
-
-  @Override
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -1898,18 +1861,6 @@ public class OpenSearchClient implements SearchClient {
       SearchResponse aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
     return switch (dataInsightChartType) {
-      case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE -> new OpenSearchEntitiesDescriptionAggregator(
-          aggregations.getAggregations());
-      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION -> new OpenSearchServicesDescriptionAggregator(
-          aggregations.getAggregations());
-      case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE -> new OpenSearchEntitiesOwnerAggregator(
-          aggregations.getAggregations());
-      case PERCENTAGE_OF_SERVICES_WITH_OWNER -> new OpenSearchServicesOwnerAggregator(
-          aggregations.getAggregations());
-      case TOTAL_ENTITIES_BY_TYPE -> new OpenSearchTotalEntitiesAggregator(
-          aggregations.getAggregations());
-      case TOTAL_ENTITIES_BY_TIER -> new OpenSearchTotalEntitiesByTierAggregator(
-          aggregations.getAggregations());
       case DAILY_ACTIVE_USERS -> new OpenSearchDailyActiveUsersAggregator(
           aggregations.getAggregations());
       case PAGE_VIEWS_BY_ENTITIES -> new OpenSearchPageViewsByEntitiesAggregator(
@@ -2101,18 +2052,6 @@ public class OpenSearchClient implements SearchClient {
             .field(DataInsightChartRepository.DATA_ENTITY_COUNT);
 
     switch (dataInsightChartName) {
-      case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
-                .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
       case AGGREGATED_UNUSED_ASSETS_COUNT, AGGREGATED_UNUSED_ASSETS_SIZE:
         boolean isSize =
             dataInsightChartName.equals(
@@ -2162,57 +2101,6 @@ public class OpenSearchClient implements SearchClient {
         return dateHistogramAggregationBuilder
             .subAggregation(totalUnusedAssets)
             .subAggregation(totalUsedAssets);
-      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
-                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
-                .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
-      case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
-                .field(DataInsightChartRepository.DATA_HAS_OWNER);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
-      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
-                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
-                .field(DataInsightChartRepository.DATA_HAS_OWNER);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
-      case TOTAL_ENTITIES_BY_TIER:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TIER)
-                .field(DataInsightChartRepository.DATA_ENTITY_TIER)
-                .missing("NoTier")
-                .size(1000);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder.subAggregation(sumEntityCountAggregationBuilder));
-      case TOTAL_ENTITIES_BY_TYPE:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder.subAggregation(sumEntityCountAggregationBuilder));
       case DAILY_ACTIVE_USERS:
         return dateHistogramAggregationBuilder;
       case PAGE_VIEWS_BY_ENTITIES:

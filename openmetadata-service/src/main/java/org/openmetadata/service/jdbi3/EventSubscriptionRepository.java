@@ -16,6 +16,8 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.events.subscription.AlertUtil.validateAndBuildFilteringConditions;
+import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
+import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -139,7 +141,13 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
         recordChange(
             "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
         recordChange("enabled", original.getEnabled(), updated.getEnabled());
-        recordChange("destinations", original.getDestinations(), updated.getDestinations(), true);
+        recordChange(
+            "destinations",
+            original.getDestinations(),
+            encryptWebhookSecretKey(updated.getDestinations()),
+            true,
+            objectMatch,
+            false);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
       }
     }
