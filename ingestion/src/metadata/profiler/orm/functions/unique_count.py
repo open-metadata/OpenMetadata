@@ -20,6 +20,7 @@ from sqlalchemy import NVARCHAR, TEXT, func, literal_column
 from metadata.profiler.orm.converter.mssql.converter import cast_dict
 from metadata.profiler.orm.functions.count import CountFn
 from metadata.profiler.orm.registry import Dialects
+from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.orm.types.custom_image import CustomImage
 
 
@@ -53,5 +54,18 @@ def _unique_count_query_mssql(col, session, sample):
     )
 
 
+def _unique_count_query_oracle(col, session, sample):
+    count_fn = col
+    if isinstance(col.type, HexByteString):
+        count_fn = CountFn(col)
+    return (
+        session.query(func.count(count_fn))
+        .select_from(sample)
+        .group_by(count_fn)
+        .having(func.count(count_fn) == 1)
+    )
+
+
 _unique_count_query_mapper = defaultdict(lambda: _unique_count_query)
 _unique_count_query_mapper[Dialects.MSSQL] = _unique_count_query_mssql
+_unique_count_query_mapper[Dialects.Oracle] = _unique_count_query_oracle
