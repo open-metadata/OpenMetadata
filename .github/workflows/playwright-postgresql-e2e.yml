@@ -39,6 +39,11 @@ jobs:
   playwright-ci-postgresql:
     runs-on: ubuntu-latest
     environment: test
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2, 3, 4]
+        shardTotal: [4]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -96,7 +101,7 @@ jobs:
         run: npx playwright@1.44.1 install --with-deps
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: npx playwright test
+        run: npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
         env:
           PLAYWRIGHT_IS_OSS: true
           CYPRESS_BASE_URL: "http://localhost:8585"
@@ -155,7 +160,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shardIndex }}
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
 
