@@ -110,8 +110,8 @@ test.describe.serial(
           {
             message:
               'Wait for the Data Insight Report Application run to be successful',
-            timeout: 300_000,
-            intervals: [2_000, 1_000],
+            timeout: 120_000,
+            intervals: [5_000, 10_000],
           }
         )
         .toBe('success');
