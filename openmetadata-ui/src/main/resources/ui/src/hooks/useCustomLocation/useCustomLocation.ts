@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,16 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { default as qs, default as QueryString } from 'qs';
-import { useMemo } from 'react';
-import useCustomLocation from '../useCustomLocation/useCustomLocation';
+import { useLocation } from 'react-router-dom';
 
-export const useLocationSearch = <T extends QueryString.ParsedQs>() => {
-  const location = useCustomLocation();
+const useCustomLocation = (): ReturnType<typeof useLocation> => {
+  const location = useLocation();
+  const modifiedPathname = location.pathname.replace(
+    process.env.APP_SUB_PATH ?? '',
+    ''
+  );
 
-  return useMemo(() => {
-    const searchQuery = qs.parse(location.search, { ignoreQueryPrefix: true });
-
-    return searchQuery as T;
-  }, [location.search]);
+  return {
+    ...location,
+    pathname: modifiedPathname,
+  };
 };
+
+export default useCustomLocation;

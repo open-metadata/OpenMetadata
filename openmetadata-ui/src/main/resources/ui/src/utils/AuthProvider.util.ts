@@ -296,8 +296,6 @@ export const getNameFromUserData = (
 };
 
 export const isProtectedRoute = (pathname: string) => {
-  const cleanedPathname = pathname.replace(process.env.APP_SUB_PATH ?? '', '');
-
   return (
     [
       ROUTES.SIGNUP,
@@ -312,14 +310,12 @@ export const isProtectedRoute = (pathname: string) => {
       ROUTES.HOME,
       ROUTES.AUTH_CALLBACK,
       ROUTES.NOT_FOUND,
-    ].indexOf(cleanedPathname) === -1
+    ].indexOf(pathname) === -1
   );
 };
 
 export const isTourRoute = (pathname: string) => {
-  const cleanedPathname = pathname.replace(process.env.APP_SUB_PATH ?? '', '');
-
-  return cleanedPathname === ROUTES.TOUR;
+  return pathname === ROUTES.TOUR;
 };
 
 export const getUrlPathnameExpiry = () => {

@@ -38,7 +38,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   DEFAULT_DOMAIN_VALUE,
   REDIRECT_PATHNAME,
@@ -54,6 +54,7 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
 import {
@@ -68,6 +69,7 @@ import {
   getUserManagerConfig,
   isProtectedRoute,
 } from '../../../utils/AuthProvider.util';
+import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import {
@@ -133,7 +135,7 @@ export const AuthProvider = ({
   } = useApplicationStore();
   const { activeDomain } = useDomainStore();
 
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { t } = useTranslation();
 
@@ -287,7 +289,7 @@ export const AuthProvider = ({
    * if it's not succeed then it will proceed for logout
    */
   const trySilentSignIn = async (forceLogout?: boolean) => {
-    const pathName = window.location.pathname;
+    const pathName = getPathNameFromWindowLocation();
     // Do not try silent sign in for SignIn or SignUp route
     if (
       [ROUTES.SIGNIN, ROUTES.SIGNUP, ROUTES.SILENT_CALLBACK].includes(pathName)
@@ -455,7 +457,7 @@ export const AuthProvider = ({
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const isGetRequest = config.method === 'get';
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
-    const currentPath = window.location.pathname;
+    const currentPath = getPathNameFromWindowLocation();
     const shouldNotIntercept = [
       '/domain',
       '/auth/logout',
