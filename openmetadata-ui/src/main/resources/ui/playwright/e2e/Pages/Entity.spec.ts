@@ -164,6 +164,7 @@ entities.forEach((EntityClass) => {
         page,
         ownerNames: [OWNER1.getUserName()],
         endpoint: entity.endpoint,
+        dataTestId: 'data-assets-header',
       });
 
       await removeOwner({
