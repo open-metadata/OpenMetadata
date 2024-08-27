@@ -63,6 +63,7 @@ import {
 } from '../../utils/BrowserNotificationUtils';
 import { refreshPage } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -472,6 +473,8 @@ const NavBar = ({
             menu={{
               items: domainOptions,
               onClick: handleDomainChange,
+              className: 'domain-dropdown-menu',
+              defaultSelectedKeys: [activeDomain],
             }}
             placement="bottomRight"
             trigger={['click']}>
@@ -486,7 +489,9 @@ const NavBar = ({
               </Col>
               <Col className="flex-center">
                 <Typography.Text>
-                  {activeDomainEntityRef?.displayName ?? activeDomain}
+                  {activeDomainEntityRef
+                    ? getEntityName(activeDomainEntityRef)
+                    : activeDomain}
                 </Typography.Text>
               </Col>
               <Col className="flex-center">
@@ -558,6 +563,7 @@ const NavBar = ({
               <Icon
                 className="align-middle"
                 component={Help}
+                data-testid="help-icon"
                 style={{ fontSize: '24px' }}
               />
             </Tooltip>

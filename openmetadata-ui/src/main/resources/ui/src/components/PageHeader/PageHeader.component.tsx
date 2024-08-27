@@ -16,13 +16,24 @@ import React from 'react';
 import './page-header.less';
 import { HeaderProps } from './PageHeader.interface';
 
-const PageHeader = ({ data: { header, subHeader } }: HeaderProps) => {
+const PageHeader = ({
+  data: { header, subHeader },
+  titleProps,
+  subHeaderProps,
+}: HeaderProps) => {
   return (
     <div className="page-header-container" data-testid="page-header-container">
-      <Typography.Title className="heading" data-testid="heading" level={5}>
+      <Typography.Title
+        className="heading"
+        data-testid="heading"
+        level={5}
+        {...titleProps}>
         {header}
       </Typography.Title>
-      <Typography.Paragraph className="sub-heading" data-testid="sub-heading">
+      <Typography.Paragraph
+        className="sub-heading"
+        data-testid="sub-heading"
+        {...subHeaderProps}>
         {subHeader}
       </Typography.Paragraph>
     </div>

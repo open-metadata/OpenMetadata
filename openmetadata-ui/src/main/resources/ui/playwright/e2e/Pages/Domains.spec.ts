@@ -12,9 +12,12 @@
  */
 import test, { expect } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
+import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
+import { SubDomain } from '../../support/domain/SubDomain';
+import { ENTITY_PATH } from '../../support/entity/Entity.interface';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
@@ -24,14 +27,16 @@ import {
   checkAssetsCount,
   createDataProduct,
   createDomain,
+  createSubDomain,
   removeAssetsFromDataProduct,
   selectDataProduct,
   selectDomain,
+  selectSubDomain,
   setupAssetsForDomain,
   verifyDomain,
 } from '../../utils/domain';
 import { sidebarClick } from '../../utils/sidebar';
-import { performUserLogin } from '../../utils/user';
+import { performUserLogin, visitUserProfilePage } from '../../utils/user';
 
 test.describe('Domains', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -181,6 +186,32 @@ test.describe('Domains', () => {
 
     await checkAssetsCount(page, assets.length);
     await domain.delete(apiContext);
+    await assetCleanup();
+    await afterAction();
+  });
+
+  test('Create nested sub domain', async ({ page }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const subDomain = new SubDomain(domain);
+    const nestedSubDomain = new SubDomain(subDomain);
+
+    await domain.create(apiContext);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.reload();
+    await selectDomain(page, domain.data);
+    // Create sub domain
+    await createSubDomain(page, subDomain.data);
+    await selectSubDomain(page, domain.data, subDomain.data);
+    await verifyDomain(page, subDomain.data, domain.data, false);
+
+    // Create new sub domain under the existing sub domain
+    await createSubDomain(page, nestedSubDomain.data);
+    await page.getByTestId('subdomains').getByText('Sub Domains').click();
+    await page.getByTestId(nestedSubDomain.data.name).click();
+    await verifyDomain(page, nestedSubDomain.data, domain.data, false);
+
+    await domain.delete(apiContext);
     await afterAction();
   });
 });
@@ -194,7 +225,7 @@ test.describe('Domains Rbac', () => {
   const user1 = new UserClass();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await domain1.create(apiContext);
     await domain2.create(apiContext);
     await domain3.create(apiContext);
@@ -220,6 +251,24 @@ test.describe('Domains Rbac', () => {
     ];
 
     await user1.patch({ apiContext, patchData: domainPayload });
+
+    // Add domain role to the user
+    await visitUserProfilePage(page, user1.responseData.name);
+    await page
+      .getByTestId('user-profile')
+      .locator('.ant-collapse-expand-icon')
+      .click();
+    await page.getByTestId('edit-roles-button').click();
+
+    await page
+      .getByTestId('select-user-roles')
+      .getByLabel('Select roles')
+      .click();
+    await page.getByText('Domain Only Access Role').click();
+    await page.click('body');
+    const patchRes = page.waitForResponse('/api/v1/users/*');
+    await page.getByTestId('inline-save-btn').click();
+    await patchRes;
     await afterAction();
   });
 
@@ -264,6 +313,24 @@ test.describe('Domains Rbac', () => {
           .getByRole('menuitem', { name: domain3.data.displayName })
           .locator('span')
       ).toBeVisible();
+
+      for (const asset of domainAssset2) {
+        const fqn = encodeURIComponent(
+          get(asset, 'entityResponseData.fullyQualifiedName', '')
+        );
+
+        const assetData = userPage.waitForResponse(
+          `/api/v1/${asset.endpoint}/name/${fqn}*`
+        );
+        await userPage.goto(`/${ENTITY_PATH[asset.endpoint]}/${fqn}`);
+        await assetData;
+
+        await expect(
+          userPage.getByTestId('permission-error-placeholder')
+        ).toHaveText(
+          'You don’t have access, please check with the admin to get permissions'
+        );
+      }
 
       await afterActionUser1();
     });

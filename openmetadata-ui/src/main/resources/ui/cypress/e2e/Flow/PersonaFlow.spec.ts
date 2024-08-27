@@ -91,6 +91,18 @@ describe('Persona operations', { tags: 'Settings' }, () => {
   });
 
   it('Persona creation should work properly', () => {
+    interceptURL(
+      'GET',
+      '/api/v1/users?limit=25&isBot=false',
+      'getInitialUsers'
+    );
+
+    interceptURL(
+      'GET',
+      '/api/v1/search/query?q=***%20AND%20isBot:false&from=0&size=25&index=user_search_index',
+      'getUserSearch'
+    );
+
     cy.get('[data-testid="add-persona-button"]').scrollIntoView().click();
     cy.get('[data-testid="name"]').clear().type(PERSONA_DETAILS.name);
     validateFormNameFieldInput({
@@ -105,7 +117,11 @@ describe('Persona operations', { tags: 'Settings' }, () => {
     cy.get(descriptionBox).type(PERSONA_DETAILS.description);
     cy.get('[data-testid="add-users"]').scrollIntoView().click();
 
+    verifyResponseStatusCode('@getInitialUsers', 200);
+
     cy.get('[data-testid="searchbar"]').type(userSearchText);
+
+    verifyResponseStatusCode('@getUserSearch', 200);
 
     cy.get(`.ant-popover [title="${userSearchText}"]`).click();
     cy.get('[data-testid="selectable-list-update-btn"]')
@@ -144,12 +160,14 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
     verifyResponseStatusCode('@getPersonaDetails', 200);
 
-    cy.get(
-      '[data-testid="page-header-container"] [data-testid="heading"]'
-    ).should('contain', PERSONA_DETAILS.displayName);
-    cy.get(
-      '[data-testid="page-header-container"] [data-testid="sub-heading"]'
-    ).should('contain', PERSONA_DETAILS.name);
+    cy.get('[data-testid="entity-header-name"]').should(
+      'contain',
+      PERSONA_DETAILS.name
+    );
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      PERSONA_DETAILS.displayName
+    );
     cy.get(
       '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
     ).should('contain', PERSONA_DETAILS.description);
@@ -206,11 +224,14 @@ describe('Persona operations', { tags: 'Settings' }, () => {
 
     updatePersonaDisplayName('Test Persona');
 
-    cy.get('[data-testid="heading"]').should('contain', 'Test Persona');
+    cy.get('[data-testid="entity-header-display-name"]').should(
+      'contain',
+      'Test Persona'
+    );
 
     updatePersonaDisplayName(PERSONA_DETAILS.displayName);
 
-    cy.get('[data-testid="heading"]').should(
+    cy.get('[data-testid="entity-header-display-name"]').should(
       'contain',
       PERSONA_DETAILS.displayName
     );

@@ -138,19 +138,33 @@ export const CustomEdge = ({
       tracedNodes.includes(edge.fromEntity.id) &&
       tracedNodes.includes(edge.toEntity.id);
 
-    let isStrokeNeeded = isNodeTraced;
-
+    const isStrokeNeeded = isColumnLineage ? isColumnHighlighted : isNodeTraced;
+    let opacity = 1;
     if (isColumnLineage) {
-      isStrokeNeeded = isColumnHighlighted;
+      opacity =
+        tracedNodes.length === 0 &&
+        (tracedColumns.length === 0 || isColumnHighlighted)
+          ? 1
+          : 0.25;
+    } else {
+      opacity = tracedNodes.length === 0 || isStrokeNeeded ? 1 : 0.25;
     }
 
     return {
       ...style,
       ...{
         stroke: isStrokeNeeded ? theme.primaryColor : undefined,
+        opacity,
       },
     };
-  }, [style, tracedNodes, edge, isColumnHighlighted, isColumnLineage]);
+  }, [
+    style,
+    tracedNodes,
+    edge,
+    isColumnHighlighted,
+    isColumnLineage,
+    tracedColumns,
+  ]);
 
   const isPipelineEdgeAllowed = (
     sourceType: EntityType,

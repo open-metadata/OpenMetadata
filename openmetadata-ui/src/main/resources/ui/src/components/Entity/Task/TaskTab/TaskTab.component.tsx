@@ -103,7 +103,6 @@ import ActivityFeedEditor, {
   EditorContentRef,
 } from '../../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditor';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
-import AssigneeList from '../../../common/AssigneeList/AssigneeList';
 import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
@@ -142,7 +141,7 @@ export const TaskTab = ({
   const { isAdminUser } = useAuth();
   const {
     postFeed,
-    setActiveThread,
+    updateEntityThread,
     fetchUpdatedThread,
     updateTestCaseIncidentStatus,
     testCaseResolutionStatus,
@@ -231,7 +230,7 @@ export const TaskTab = ({
   const [comment, setComment] = useState('');
   const [isEditAssignee, setIsEditAssignee] = useState<boolean>(false);
   const [options, setOptions] = useState<Option[]>([]);
-
+  const [isAssigneeLoading, setIsAssigneeLoading] = useState<boolean>(false);
   const { initialAssignees, assigneeOptions } = useMemo(() => {
     const initialAssignees = generateOptions(taskDetails?.assignees ?? []);
     const assigneeOptions = unionBy(
@@ -599,7 +598,7 @@ export const TaskTab = ({
 
     return (
       <Space
-        className="m-t-sm items-end w-full justify-end"
+        className="m-t-sm items-end w-full justify-end task-cta-buttons"
         data-testid="task-cta-buttons"
         size="small">
         <Tooltip
@@ -647,7 +646,7 @@ export const TaskTab = ({
     const hasApprovalAccess = isAssignee || isCreator || editPermission;
 
     return (
-      <div className="m-t-sm d-flex justify-end items-center gap-4">
+      <div className="m-t-sm d-flex justify-end items-center gap-4 task-cta-buttons">
         <Dropdown.Button
           className="w-auto task-action-button"
           data-testid="task-cta-buttons"
@@ -685,7 +684,7 @@ export const TaskTab = ({
 
     return (
       <Space
-        className="m-t-sm items-end w-full justify-end"
+        className="m-t-sm items-end w-full justify-end task-cta-buttons"
         data-testid="task-cta-buttons"
         size="small">
         {isCreator && !hasEditAccess && (
@@ -771,6 +770,7 @@ export const TaskTab = ({
   }, [taskDetails, isTaskDescription]);
 
   const handleAssigneeUpdate = async () => {
+    setIsAssigneeLoading(true);
     const updatedTaskThread = {
       ...taskThread,
       task: {
@@ -785,9 +785,11 @@ export const TaskTab = ({
       const patch = compare(taskThread, updatedTaskThread);
       const data = await updateThread(taskThread.id, patch);
       setIsEditAssignee(false);
-      setActiveThread(data);
+      updateEntityThread(data);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsAssigneeLoading(false);
     }
   };
 
@@ -804,12 +806,13 @@ export const TaskTab = ({
     <TaskTabIncidentManagerHeader thread={taskThread} />
   ) : (
     <div
-      className={classNames('d-flex justify-between', {
+      className={classNames('d-flex justify-between flex-wrap gap-2', {
         'flex-column': isEditAssignee,
       })}>
-      <div className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+      <div className="d-flex gap-2" data-testid="task-assignees">
         {isEditAssignee ? (
           <Form
+            className="w-full"
             form={assigneesForm}
             layout="vertical"
             onFinish={handleAssigneeUpdate}>
@@ -828,6 +831,7 @@ export const TaskTab = ({
               <InlineEdit
                 className="assignees-edit-input"
                 direction="horizontal"
+                isLoading={isAssigneeLoading}
                 onCancel={() => {
                   setIsEditAssignee(false);
                   assigneesForm.setFieldValue('assignees', initialAssignees);
@@ -857,15 +861,12 @@ export const TaskTab = ({
             <Typography.Text className="text-grey-muted">
               {t('label.assignee-plural')}:{' '}
             </Typography.Text>
-            <AssigneeList
-              assignees={taskDetails?.assignees ?? []}
-              showUserName={false}
-            />
+            <OwnerLabel owners={taskDetails?.assignees} />
             {(isCreator || hasEditAccess) &&
             !isTaskClosed &&
             owners.length === 0 ? (
               <Button
-                className="flex-center p-0"
+                className="flex-center p-0 h-auto"
                 data-testid="edit-assignees"
                 icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
                 size="small"
@@ -876,7 +877,7 @@ export const TaskTab = ({
           </>
         )}
       </div>
-      <div className={classNames('gap-2', { 'flex-center': !isEditAssignee })}>
+      <div className="d-flex gap-2">
         <Typography.Text className="text-grey-muted">
           {t('label.created-by')}:{' '}
         </Typography.Text>

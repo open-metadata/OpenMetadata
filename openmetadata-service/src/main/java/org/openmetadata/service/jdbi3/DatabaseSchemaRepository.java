@@ -115,7 +115,6 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   public void setFields(DatabaseSchema schema, Fields fields) {
     setDefaultFields(schema);
-    schema.setSourceHash(fields.contains("sourceHash") ? schema.getSourceHash() : null);
     schema.setTables(fields.contains("tables") ? getTables(schema) : null);
     schema.setDatabaseSchemaProfilerConfig(
         fields.contains(DATABASE_SCHEMA_PROFILER_CONFIG)
@@ -163,7 +162,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
 
   @Override
   public EntityInterface getParentEntity(DatabaseSchema entity, String fields) {
-    return Entity.getEntity(entity.getDatabase(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getDatabase(), fields, ALL);
   }
 
   @Override
@@ -209,6 +208,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     public void entitySpecificUpdate() {
       recordChange("retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod());
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
+      recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
   }
 

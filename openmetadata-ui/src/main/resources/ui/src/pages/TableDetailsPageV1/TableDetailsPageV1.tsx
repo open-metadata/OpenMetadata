@@ -48,6 +48,7 @@ import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import {
   getEntityDetailsPath,
   getVersionPath,
+  ROUTES,
 } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
@@ -58,6 +59,7 @@ import {
   ResourceEntity,
 } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
@@ -138,14 +140,24 @@ const TableDetailsPageV1: React.FC = () => {
   );
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
 
+  const tableFqn = useMemo(
+    () =>
+      getPartialNameFromTableFQN(
+        datasetFQN,
+        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
+        FQN_SEPARATOR_CHAR
+      ),
+    [datasetFQN]
+  );
+
   const extraDropdownContent = useMemo(
     () =>
       entityUtilClassBase.getManageExtraOptions(
         EntityType.TABLE,
-        datasetFQN,
+        tableFqn,
         tablePermissions
       ),
-    [tablePermissions, datasetFQN]
+    [tablePermissions, tableFqn]
   );
 
   const { viewUsagePermission, viewTestCasePermission } = useMemo(
@@ -156,16 +168,6 @@ const TableDetailsPageV1: React.FC = () => {
         tablePermissions.ViewAll || tablePermissions.ViewTests,
     }),
     [tablePermissions]
-  );
-
-  const tableFqn = useMemo(
-    () =>
-      getPartialNameFromTableFQN(
-        datasetFQN,
-        [FqnPart.Service, FqnPart.Database, FqnPart.Schema, FqnPart.Table],
-        FQN_SEPARATOR_CHAR
-      ),
-    [datasetFQN]
   );
 
   const isViewTableType = useMemo(
@@ -196,7 +198,9 @@ const TableDetailsPageV1: React.FC = () => {
         id: details.id,
       });
     } catch (error) {
-      // Error here
+      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
+        history.replace(ROUTES.FORBIDDEN);
+      }
     } finally {
       setLoading(false);
     }
@@ -556,7 +560,7 @@ const TableDetailsPageV1: React.FC = () => {
                   <DescriptionV1
                     showSuggestions
                     description={tableDetails?.description}
-                    entityFqn={datasetFQN}
+                    entityFqn={tableFqn}
                     entityName={entityName}
                     entityType={EntityType.TABLE}
                     hasEditAccess={editDescriptionPermission}
@@ -609,7 +613,7 @@ const TableDetailsPageV1: React.FC = () => {
                       editCustomAttributePermission
                     }
                     editTagPermission={editTagsPermission}
-                    entityFQN={datasetFQN}
+                    entityFQN={tableFqn}
                     entityId={tableDetails?.id ?? ''}
                     entityType={EntityType.TABLE}
                     selectedTags={tableTags}
@@ -631,14 +635,22 @@ const TableDetailsPageV1: React.FC = () => {
       </Row>
     ),
     [
+      isTourPage,
+      tableTags,
+      joinedTables,
+      tableFqn,
       isEdit,
+      deleted,
       tableDetails,
       entityName,
       onDescriptionEdit,
       onDescriptionUpdate,
+      testCaseSummary,
       editTagsPermission,
       editDescriptionPermission,
       editAllPermission,
+      viewAllPermission,
+      editCustomAttributePermission,
     ]
   );
 

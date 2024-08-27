@@ -19,3 +19,5 @@ export const TRANSPORTATION_STRATEGY_OPTIONS = Object.values(
   label: strategy,
   value: strategy,
 }));
+
+export const NOT_INCLUDE_EMAIL_CONFIG_VALUE = ['templates'];

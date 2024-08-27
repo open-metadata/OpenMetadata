@@ -1079,7 +1079,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
-    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    // Direct request to es needs to have es clusterAlias appended with indexName
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
@@ -1124,7 +1129,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
     Response response;
-    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    // Direct request to es needs to have es clusterAlias appended with indexName
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         "{\"size\": 100,\"query\":{\"bool\":{\"must\":[{\"term\":{\"descriptionStatus\":\"INCOMPLETE\"}}]}}}";
     request.setJsonEntity(query);
@@ -2190,9 +2200,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    SearchResponse response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+    // search api method internally appends clusterAlias name
+    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
     SearchHit[] hits = response.getHits().getHits();
     for (SearchHit hit : hits) {
@@ -2212,9 +2221,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     EntityReference entityReference = getEntityReference(entity);
     IndexMapping indexMapping =
         Entity.getSearchRepository().getIndexMapping(entityReference.getType());
-    SearchResponse response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+    // search api method internally appends clusterAlias name
+    SearchResponse response = getResponseFormSearch(indexMapping.getIndexName(null));
     List<String> entityIds = new ArrayList<>();
     SearchHit[] hits = response.getHits().getHits();
     for (SearchHit hit : hits) {
@@ -2229,9 +2237,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     TestUtils.delete(target, entityClass, ADMIN_AUTH_HEADERS);
     // search again in search after deleting
 
-    response =
-        getResponseFormSearch(
-            indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()));
+    // search api method internally appends clusterAlias name
+    response = getResponseFormSearch(indexMapping.getIndexName(null));
     hits = response.getHits().getHits();
     for (SearchHit hit : hits) {
       Map<String, Object> sourceAsMap = hit.getSourceAsMap();
@@ -2321,12 +2328,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public static Map<String, Object> getEntityDocumentFromSearch(UUID entityId, String entityType)
       throws HttpResponseException {
     IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityType);
+    // SearchResource.java-searchEntityInEsIndexWithId method internally appends clusterAlias name
     WebTarget target =
         getResource(
             String.format(
-                "search/get/%s/doc/%s",
-                indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias()),
-                entityId.toString()));
+                "search/get/%s/doc/%s", indexMapping.getIndexName(null), entityId.toString()));
     String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
     GetResponse response = null;
     try {
@@ -3217,8 +3223,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return TestUtils.get(target, entityClass, authHeaders);
   }
 
-  protected final void assertFieldLists(
-      List<FieldChange> expectedList, List<FieldChange> actualList) throws IOException {
+  protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
+      throws IOException {
     expectedList.sort(EntityUtil.compareFieldChange);
     actualList.sort(EntityUtil.compareFieldChange);
     assertEquals(expectedList.size(), actualList.size());
@@ -3357,7 +3363,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       throws IOException {
     RestClient searchClient = getSearchClient();
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
-    Request request = new Request("GET", String.format("%s/_search", index.getIndexName(null)));
+    // Direct request to es needs to have es clusterAlias appended with indexName
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
         String.format(
             "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"_id\":\"%s\"}}]}}}", entity.getId());
@@ -3845,6 +3856,76 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     entity = getEntityByName(entity.getFullyQualifiedName(), "domain", ADMIN_AUTH_HEADERS);
     assertReference(newDomain, entity.getDomain()); // Domain remains the same
     assertNull(entity.getDomain().getInherited());
+  }
+
+  public void verifyOwnersInSearch(EntityReference entity, List<EntityReference> expectedOwners)
+      throws IOException {
+    RestClient searchClient = getSearchClient();
+    String entityType = entity.getType();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        String.format(
+            "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            entity.getId().toString());
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertEquals(expectedOwners.size(), hitsList.size());
+    LinkedHashMap<String, Object> source =
+        (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
+    List<EntityReference> owners = extractEntities(source, "owners");
+    assertOwners(expectedOwners, owners);
+  }
+
+  public void verifyDomainInSearch(EntityReference entity, EntityReference expectedDomain)
+      throws IOException {
+    RestClient searchClient = getSearchClient();
+    String entityType = entity.getType();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(entityType);
+    Request request =
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+        String.format(
+            "{\"size\": 100, \"query\": {\"bool\": {\"must\": [{\"term\": {\"_id\": \"%s\"}}]}}}",
+            entity.getId().toString());
+    request.setJsonEntity(query);
+    Response response = searchClient.performRequest(request);
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertEquals(1, hitsList.size());
+    LinkedHashMap<String, Object> source =
+        (LinkedHashMap<String, Object>) hitsList.get(0).get("_source");
+    EntityReference domain = JsonUtils.convertValue(source.get("domain"), EntityReference.class);
+    assertEquals(expectedDomain.getId(), domain.getId());
+  }
+
+  private List<EntityReference> extractEntities(
+      LinkedHashMap<String, Object> source, String field) {
+    List<LinkedHashMap<String, Object>> ownersList =
+        (List<LinkedHashMap<String, Object>>) source.get(field);
+    List<EntityReference> owners = new ArrayList<>();
+    for (LinkedHashMap<String, Object> ownerMap : ownersList) {
+      EntityReference owner = JsonUtils.convertValue(ownerMap, EntityReference.class);
+      owners.add(owner);
+    }
+    return owners;
   }
 
   public static void assertLifeCycle(LifeCycle expected, LifeCycle actual) {

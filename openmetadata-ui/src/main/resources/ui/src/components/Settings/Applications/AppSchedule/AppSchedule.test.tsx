@@ -17,7 +17,10 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
-import { AppType } from '../../../../generated/entity/applications/app';
+import {
+  AppType,
+  ScheduleType,
+} from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
@@ -87,6 +90,7 @@ const mockProps2 = {
     appType: AppType.External,
     pipelines: [{}] as EntityReference[],
     appSchedule: null,
+    scheduleType: ScheduleType.Scheduled,
     name: 'DataInsightsReportApplication',
   },
 };
@@ -139,6 +143,8 @@ describe('AppSchedule component', () => {
     render(<AppSchedule {...mockProps2} />);
 
     await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(screen.queryByText('label.run-now')).not.toBeInTheDocument();
 
     expect(screen.queryByText('label.schedule-type')).not.toBeInTheDocument();
     expect(

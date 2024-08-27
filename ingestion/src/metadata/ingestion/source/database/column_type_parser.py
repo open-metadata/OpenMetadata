@@ -148,7 +148,7 @@ class ColumnTypeParser:
         "MEDIUMBLOB": "MEDIUMBLOB",
         "MEDIUMINT": "INT",
         "MEDIUMTEXT": "MEDIUMTEXT",
-        "MONEY": "NUMBER",
+        "MONEY": "MONEY",
         "NCHAR": "CHAR",
         "NTEXT": "NTEXT",
         "NULL": "NULL",
@@ -292,6 +292,8 @@ class ColumnTypeParser:
         "CURR": "DECIMAL",
         "STRG": "STRING",
         "RSTR": "STRING",
+        # azuresql
+        "HIERARCHYID": "UNKNOWN",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")
@@ -347,7 +349,6 @@ class ColumnTypeParser:
             arr_data_type = ColumnTypeParser._parse_primitive_datatype_string(
                 data_type[6:-1]
             )["dataType"]
-
             data_type_string = {
                 "dataType": "ARRAY",
                 "arrayDataType": arr_data_type,

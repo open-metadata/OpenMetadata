@@ -80,10 +80,6 @@ const Users = ({
     [decodedUsername]
   );
 
-  const hasEditPermission = useMemo(
-    () => (isAdminUser || isLoggedInUser) && !userData.deleted,
-    [isAdminUser, isLoggedInUser, userData.deleted]
-  );
   const fetchAssetsCount = async (query: string) => {
     try {
       const res = await searchData('', 1, 0, query, '', '', SearchIndex.ALL);
@@ -267,12 +263,12 @@ const Users = ({
 
   const descriptionRenderComponent = useMemo(
     () =>
-      hasEditPermission ? (
+      isLoggedInUser ? (
         <DescriptionV1
           description={userData.description ?? ''}
           entityName={getEntityName(userData as unknown as EntityReference)}
           entityType={EntityType.USER}
-          hasEditAccess={hasEditPermission}
+          hasEditAccess={isLoggedInUser}
           isEdit={isDescriptionEdit}
           showCommentsIcon={false}
           onCancel={() => setIsDescriptionEdit(false)}
@@ -297,7 +293,7 @@ const Users = ({
       userData,
       isAdminUser,
       isDescriptionEdit,
-      hasEditPermission,
+      isLoggedInUser,
       getEntityName,
       handleDescriptionChange,
     ]

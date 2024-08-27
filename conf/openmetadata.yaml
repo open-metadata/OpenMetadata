@@ -148,6 +148,13 @@ database:
   password: ${DB_USER_PASSWORD:-openmetadata_password}
   # the JDBC URL; the database is called openmetadata_db
   url: jdbc:${DB_SCHEME:-mysql}://${DB_HOST:-localhost}:${DB_PORT:-3306}/${OM_DATABASE:-openmetadata_db}?${DB_PARAMS:-allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC}
+  maxSize: ${DB_CONNECTION_POOL_MAX_SIZE:-50}
+  minSize: ${DB_CONNECTION_POOL_MIN_SIZE:-10}
+  initialSize: ${DB_CONNECTION_POOL_INITIAL_SIZE:-10}
+  checkConnectionWhileIdle: ${DB_CONNECTION_CHECK_CONNECTION_WHILE_IDLE:-true}
+  checkConnectionOnBorrow: ${DB_CONNECTION_CHECK_CONNECTION_ON_BORROW:-true}
+  evictionInterval: ${DB_CONNECTION_EVICTION_INTERVAL:-5 minutes}
+  minIdleTime: ${DB_CONNECTION_MIN_IDLE_TIME:-1 minute}
 
 migrationConfiguration:
   flywayPath: "./bootstrap/sql/migrations/flyway"
@@ -208,9 +215,11 @@ authenticationConfiguration:
       entityId: ${SAML_SP_ENTITY_ID:-"http://localhost:8585/api/v1/saml/metadata"}
       acs: ${SAML_SP_ACS:-"http://localhost:8585/api/v1/saml/acs"}
       spX509Certificate: ${SAML_SP_CERTIFICATE:-""}
+      spPrivateKey: ${SAML_SP_PRIVATE_KEY:-""}
       callback: ${SAML_SP_CALLBACK:-"http://localhost:8585/saml/callback"}
     security:
       strictMode: ${SAML_STRICT_MODE:-false}
+      validateXml: ${SAML_VALIDATE_XML:-false}
       tokenValidity: ${SAML_SP_TOKEN_VALIDITY:-"3600"}
       sendEncryptedNameId: ${SAML_SEND_ENCRYPTED_NAME_ID:-false}
       sendSignedAuthRequest: ${SAML_SEND_SIGNED_AUTH_REQUEST:-false}
@@ -218,7 +227,6 @@ authenticationConfiguration:
       wantMessagesSigned: ${SAML_WANT_MESSAGE_SIGNED:-false}
       wantAssertionsSigned: ${SAML_WANT_ASSERTION_SIGNED:-false}
       wantAssertionEncrypted: ${SAML_WANT_ASSERTION_ENCRYPTED:-false}
-      wantNameIdEncrypted: ${SAML_WANT_NAME_ID_ENCRYPTED:-false}
       keyStoreFilePath: ${SAML_KEYSTORE_FILE_PATH:-""}
       keyStoreAlias: ${SAML_KEYSTORE_ALIAS:-""}
       keyStorePassword: ${SAML_KEYSTORE_PASSWORD:-""}
@@ -277,7 +285,7 @@ elasticsearch:
   connectionTimeoutSecs: ${ELASTICSEARCH_CONNECTION_TIMEOUT_SECS:-5}
   socketTimeoutSecs: ${ELASTICSEARCH_SOCKET_TIMEOUT_SECS:-60}
   keepAliveTimeoutSecs: ${ELASTICSEARCH_KEEP_ALIVE_TIMEOUT_SECS:-600}
-  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-10}
+  batchSize: ${ELASTICSEARCH_BATCH_SIZE:-100}
   payLoadSize: ${ELASTICSEARCH_PAYLOAD_BYTES_SIZE:-10485760}   #max payLoadSize in Bytes
   searchIndexMappingLanguage : ${ELASTICSEARCH_INDEX_MAPPING_LANG:-EN}
   searchIndexFactoryClassName : org.openmetadata.service.search.SearchIndexFactory

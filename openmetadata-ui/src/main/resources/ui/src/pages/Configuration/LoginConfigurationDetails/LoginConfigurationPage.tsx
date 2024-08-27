@@ -176,7 +176,7 @@ const LoginConfigurationPage = () => {
             <Col span={24}>
               <Typography.Text data-testid="jwt-token-expiry-time">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
-                {t('label.seconds')}
+                {t('label.second-plural')}
               </Typography.Text>
             </Col>
           </Row>

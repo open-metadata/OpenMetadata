@@ -249,7 +249,7 @@
     "indexMappingFile": "/elasticsearch/%s/mlmodel_service_index_mapping.json",
     "alias": "mlModelService",
     "parentAliases": ["all"],
-    "childAliases": []
+    "childAliases": ["mlmodel"]
   },
   "apiService": {
     "indexName": "api_service_search_index",
@@ -267,7 +267,7 @@
   },
   "apiEndpoint": {
     "indexName": "api_endpoint_search_index",
-    "alias": "apiCollection",
+    "alias": "apiEndpoint",
     "indexMappingFile": "/elasticsearch/%s/api_endpoint_index_mapping.json",
     "parentAliases": ["apiService", "apiCollection", "all", "dataAsset"],
     "childAliases": []

@@ -313,17 +313,18 @@ class TableauSource(DashboardServiceSource):
     @staticmethod
     def _get_data_model_column_fqn(
         data_model_entity: DashboardDataModel, column: str
-    ) -> Optional[str]:
+    ) -> Optional[List[str]]:
         """
         Get fqn of column if exist in table entity
         """
         if not data_model_entity:
             return None
+        columns = []
         for tbl_column in data_model_entity.columns:
             for child_column in tbl_column.children or []:
                 if column.lower() == child_column.name.root.lower():
-                    return child_column.fullyQualifiedName.root
-        return None
+                    columns.append(child_column.fullyQualifiedName.root)
+        return columns
 
     def _get_column_lineage(  # pylint: disable=arguments-differ
         self,
@@ -342,13 +343,15 @@ class TableauSource(DashboardServiceSource):
                     from_column = get_column_fqn(
                         table_entity=table_entity, column=column.name
                     )
-                    to_column = self._get_data_model_column_fqn(
+                    to_columns = self._get_data_model_column_fqn(
                         data_model_entity=data_model_entity,
                         column=column.id,
                     )
-                    column_lineage.append(
-                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                    )
+                    for to_column in to_columns:
+                        column_lineage.append(
+                            ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                        )
+            return column_lineage
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())

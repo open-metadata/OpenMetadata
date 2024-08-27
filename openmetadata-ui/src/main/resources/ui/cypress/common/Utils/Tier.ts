@@ -16,7 +16,11 @@ export const addTier = (tier: string) => {
   interceptURL('PATCH', `/api/v1/**`, 'patchTier');
 
   interceptURL('GET', '/api/v1/tags?parent=Tier&limit=10', 'fetchTier');
-  cy.get('[data-testid="edit-tier"]').click();
+  cy.get('[data-testid="edit-tier"]').click({ waitForAnimations: true });
+  // Since the dropdown for tier popup takes time to adjust on the screen
+  // Adding manual wait to avoid flakiness
+  // We will remove it while migrating to playwright
+  cy.wait(500);
   verifyResponseStatusCode('@fetchTier', 200);
   cy.get(`[data-testid="radio-btn-${tier}"]`).scrollIntoView();
   cy.get(`[data-testid="radio-btn-${tier}"]`).click({
