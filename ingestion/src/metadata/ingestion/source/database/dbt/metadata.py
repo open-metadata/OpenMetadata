@@ -162,7 +162,7 @@ class DbtSource(DbtServiceSource):
                     return owner
 
                 # If owner is not found, try to find the owner in OMD using email
-                owner = self.metadata.get_reference_by_email(name=dbt_owner)
+                owner = self.metadata.get_reference_by_email(email=dbt_owner)
 
                 if not owner:
                     logger.warning(
