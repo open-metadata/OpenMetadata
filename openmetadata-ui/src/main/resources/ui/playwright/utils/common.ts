@@ -207,9 +207,9 @@ export const getRandomLastName = () => {
   return `${nouns[Math.floor(Math.random() * nouns.length)]}${uuid()}`;
 };
 
-export const generateRandomUsername = () => {
-  const firstName = getRandomFirstName();
-  const lastName = getRandomLastName();
+export const generateRandomUsername = (prefix = '') => {
+  const firstName = `${prefix}${getRandomFirstName()}`;
+  const lastName = `${prefix}${getRandomLastName()}`;
 
   return {
     firstName,
