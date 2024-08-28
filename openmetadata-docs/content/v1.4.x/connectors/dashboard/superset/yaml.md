@@ -17,6 +17,7 @@ Configure and schedule Superset metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-superset-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
@@ -98,6 +99,12 @@ You can use Mysql Connection when you have SSO enabled and your Superset is back
 
 - **databaseSchema**: Enter the database schema which is associated with the Superset instance..
 
+- **caCertificate**: Provide the path to ssl ca file.
+
+- **sslCertificate**: Provide the path to ssl client certificate file (ssl_cert).
+
+- **sslKey**: Provide the path to ssl client certificate file (ssl_key).
+
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to MySQL during the connection. These details must be added as Key-Value pairs.
 
 **Connection Arguments (Optional)**: Enter the details for any additional connection arguments such as security or protocol configs that can be sent to MySQL during the connection. These details must be added as Key-Value pairs. 
@@ -119,6 +126,8 @@ You can use Postgres Connection when you have SSO enabled and your Superset is b
 **hostPort**: Enter the fully qualified hostname and port number for your Postgres deployment in the Host and Port field.
 
 - **database**: Initial Postgres database to connect to. Specify the name of database associated with Superset instance.
+
+- **caCertificate**: Provide the path to ssl ca file.
 
 **Connection Options (Optional)**: Enter the details for any additional connection options that can be sent to Postgres during the connection. These details must be added as Key-Value pairs.
 
@@ -185,6 +194,33 @@ source:
 
 {% /codePreview %}
 
+## Securing Superset Connection with SSL in OpenMetadata
+
+1. To establish secure connections between OpenMetadata and Superset, in the `YAML` under `sslConfig`, we need to add `caCertificate` and update the certificate path. Ensure that the certificates are accessible from the Airflow Server.
+
+```yaml
+    sslConfig:
+      caCertificate: /path/to/cacert.crt
+```
+
+2. To establish secure connections between OpenMetadata and Superset's MySQL database, you need to configure SSL certificates appropriately. If you only require SSL validation, specify the `caCertificate` to use the CA certificate for validating the server's certificate. For mutual authentication, where both client and server need to authenticate each other, you must provide all three parameters: `ssl_key` for the client’s private key, `ssl_cert` for the client’s SSL certificate, and `ssl_ca` for the CA certificate to validate the server’s certificate.
+
+```yaml
+        type: Mysql
+          sslConfig:
+            caCertificate: "/path/to/ca_certificate"
+            sslCertificate: "/path/to/your/ssl_cert"
+            sslKey: "/path/to/your/ssl_key"
+```
+
+3. To establish secure connxxwections between OpenMetadata and Superset's PostgreSQL database, you can configure SSL using different SSL modes provided by PostgreSQL, each offering varying levels of security.Under `PostgresConnection Advanced Config`, specify the SSL mode appropriate for your connection, such as `prefer`, `verify-ca`, `allow`, and others. After selecting the SSL mode, provide the CA certificate used for SSL validation (`caCertificate`). Note that PostgreSQL requires only the CA certificate for SSL validation.
+
+```yaml
+
+        type: Postgres
+          sslMode: disable #allow prefer require verify-ca verify-full
+          sslConfig:
+            caCertificate: "/path/to/ca/certificate" 
+```
 
 {% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}
-
