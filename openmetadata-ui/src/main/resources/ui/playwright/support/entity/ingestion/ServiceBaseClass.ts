@@ -247,11 +247,6 @@ class ServiceBaseClass {
     await page.waitForSelector('[data-testid="ingestions"]');
     await page.click('[data-testid="ingestions"]');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
-    const parentRow = await page.$(
-      `td:has-text("${ingestionType}") >> xpath=ancestor::tr`
-    );
-    const runButton = await parentRow?.$('[data-testid="run"]');
-    await runButton?.click();
 
     // Check cron schedule for Hour here
     // Being set from this.scheduleIngestion method
@@ -282,7 +277,8 @@ class ServiceBaseClass {
 
     // click and edit pipeline schedule for Hours
 
-    await page.click('[data-testid="edit"]');
+    await page.getByTestId('more-actions').first().click();
+    await page.click('[data-testid="edit-button"]');
     await page.click('[data-testid="submit-btn"]');
 
     // select schedule
@@ -290,8 +286,8 @@ class ServiceBaseClass {
     await page
       .locator('.ant-select-item-option-content', { hasText: 'Hour' })
       .click();
-    await page.click('[data-testid="minute-segment-options"]');
-    await page.click('.ant-select-item-option-content:has-text("10")');
+    await page.click('[data-testid="minute-options"]');
+    await page.click('#minute-select_list + .rc-virtual-list [title="10"]');
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
@@ -305,7 +301,8 @@ class ServiceBaseClass {
     );
 
     // click and edit pipeline schedule for Day
-    await page.click('[data-testid="edit"]');
+    await page.getByTestId('more-actions').first().click();
+    await page.click('[data-testid="edit-button"]');
     await page.click('[data-testid="submit-btn"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Day")');
@@ -328,7 +325,8 @@ class ServiceBaseClass {
     );
 
     // click and edit pipeline schedule for Week
-    await page.click('[data-testid="edit"]');
+    await page.getByTestId('more-actions').first().click();
+    await page.click('[data-testid="edit-button"]');
     await page.click('[data-testid="submit-btn"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Week")');
@@ -350,7 +348,8 @@ class ServiceBaseClass {
     );
 
     // click and edit pipeline schedule for Custom
-    await page.click('[data-testid="edit"]');
+    await page.getByTestId('more-actions').first().click();
+    await page.click('[data-testid="edit-button"]');
     await page.click('[data-testid="submit-btn"]');
     await page.click('[data-testid="cron-type"]');
     await page.click('.ant-select-item-option-content:has-text("Custom")');
@@ -396,8 +395,12 @@ class ServiceBaseClass {
       false
     );
 
+    const ingestionResponse = page.waitForResponse(
+      `/api/v1/services/ingestionPipelines/*/pipelineStatus?**`
+    );
     await page.click('[data-testid="ingestions"]');
 
+    await ingestionResponse;
     await page
       .getByRole('cell', { name: 'Pause Logs' })
       .waitFor({ state: 'visible' });
