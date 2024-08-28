@@ -17,8 +17,9 @@ Configure and schedule Metabase metadata and profiler workflows from the OpenMet
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-qlik-sense-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/qliksense/yaml"} /%}
+{% partial file="/v1.6/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/dashboard/qliksense/yaml"} /%}
 
 ## Requirements
 
@@ -29,12 +30,12 @@ To deploy OpenMetadata, check the Deployment guides.
 ## Metadata Ingestion
 
 {% partial 
-  file="/v1.5/connectors/metadata-ingestion-ui.md" 
+  file="/v1.6/connectors/metadata-ingestion-ui.md" 
   variables={
     connector: "QlikSense", 
-    selectServicePath: "/images/v1.5/connectors/qliksense/select-service.png",
-    addNewServicePath: "/images/v1.5/connectors/qliksense/add-new-service.png",
-    serviceConnectionPath: "/images/v1.5/connectors/qliksense/service-connection.png",
+    selectServicePath: "/images/v1.6/connectors/qliksense/select-service.png",
+    addNewServicePath: "/images/v1.6/connectors/qliksense/add-new-service.png",
+    serviceConnectionPath: "/images/v1.6/connectors/qliksense/service-connection.png",
 } 
 /%}
 
@@ -86,12 +87,35 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% /extraContent %}
 
-{% partial file="/v1.5/connectors/test-connection.md" /%}
+{% partial file="/v1.6/connectors/test-connection.md" /%}
 
-{% partial file="/v1.5/connectors/dashboard/configure-ingestion.md" /%}
+{% partial file="/v1.6/connectors/dashboard/configure-ingestion.md" /%}
 
-{% partial file="/v1.5/connectors/ingestion-schedule-and-deploy.md" /%}
+{% partial file="/v1.6/connectors/ingestion-schedule-and-deploy.md" /%}
 
 {% /stepsContainer %}
 
-{% partial file="/v1.5/connectors/troubleshooting.md" /%}
+## Securing Qlik Sense Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and Qlik Sense, there are two ways to communicate: defining the certificate file path or using the certificates value. Navigate to the `Advanced Config` section. 
+
+When using the local certificate file path, ensure that the certificates are accessible from the Airflow Server. You can specify the path for the `client certificate`, `client key certificate`, and `root certificate`. 
+
+Alternatively, when using the certificates value, you can provide the CA certificate used for SSL validation by specifying the `CA Certificate`. If both client and server require mutual authentication, you can upload all three: `CA Certificate`, `SSL Certificate`, and `SSL Key`. 
+
+Refer to the guide on how to generate authentication certificates so that OpenMetadata can communicate with Qlik Sense [here](/connectors/dashboard/qliksense/certificates).
+
+
+{% image
+  src="/images/v1.6/connectors/ssl_qlik_1.png"
+  alt="SSL Configuration by local file path"
+  height="450px"
+  caption="SSL Configuration by local file path" /%}
+
+  {% image
+  src="/images/v1.6/connectors/ssl_qlik_2.png"
+  alt="SSL Configuration"
+  height="450px"
+  caption="SSL Configuration" /%}
+
+{% partial file="/v1.6/connectors/troubleshooting.md" /%}
