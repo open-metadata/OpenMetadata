@@ -12,27 +12,32 @@
 Parse CDATA XMLs from SAP Hana
 """
 import re
-from enum import Enum
-from functools import lru_cache
-from typing import List, Set, Optional
 import xml.etree.ElementTree as ET
+from functools import lru_cache
+from typing import Iterable, List, Optional, Set
 
 from pydantic import Field, computed_field
 from typing_extensions import Annotated
 
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.entityLineage import (
+    ColumnLineage,
+    EntitiesEdge,
+    LineageDetails,
+    Source,
+)
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.saphana.models import ViewType
+from metadata.utils import fqn
 from metadata.utils.dispatch import enum_register
 
 
 class CDATAParsingError(Exception):
     """Error parsing CDATA XML"""
-
-
-class ViewType(Enum):
-    """Supported SAP Hana Views"""
-    CALCULATION_VIEW = "calculationview"
-    ANALYTIC_VIEW = "analyticview"
-    ATTRIBUTE_VIEW = "attributeview"
 
 
 XSI_NS = {"xsi": "http://www.w3.org/2001/XMLSchema-instance"}
@@ -49,29 +54,69 @@ NAMESPACE_DICT = {
     ViewType.ATTRIBUTE_VIEW.value: {
         "Dimension": "http://www.sap.com/ndb/BiModelDimension.ecore",
         **XSI_NS,
-    }
+    },
 }
 
 FORMULA_PATTERN = re.compile(r"\"(.*?)\"")
 
 
+class DataSource(BaseModel):
+    """Data source from CDATA XML"""
+
+    name: Annotated[str, Field(..., description="Data Source name")]
+    location: Annotated[
+        str, Field(..., description="Schema or project for the Data Source")
+    ]
+    source_type: Annotated[
+        Optional[ViewType],
+        Field(None, description="Data Source type. If not informed, source is a table"),
+    ]
+
+    def get_entity_ref(
+        self,
+        metadata: OpenMetadata,
+        service_name: str,
+    ) -> EntityReference:
+        """Build the Entity Reference for this DataSource"""
+
+        if not self.source_type:  # The source is a table, so the location is the schema
+            fqn_ = fqn.build(
+                metadata=metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=None,  # TODO: Can we assume HXE?
+                schema_name=self.location,
+                table_name=self.name,
+            )
+            return metadata.get_entity_reference(entity=Table, fqn=fqn_)
+
+    def __hash__(self):
+        return hash(self.name) + hash(self.source_type)
+
+
 class ColumnMapping(BaseModel):
     """Column Mapping from CDATA XML"""
-    source_table: Annotated[str, Field(..., description="Source table name")]
+
+    data_source: Annotated[DataSource, Field(..., description="Source table name")]
     source: Annotated[str, Field(..., description="Source column name")]
     target: Annotated[str, Field(..., description="Destination column name")]
-    formula: Annotated[Optional[str], Field(None, description="Formula used to derive the column")]
+    formula: Annotated[
+        Optional[str], Field(None, description="Formula used to derive the column")
+    ]
 
 
 class ParsedLineage(BaseModel):
     """Parsed Lineage from CDATA XML. For each view, we'll parse the sources"""
-    mappings: Annotated[Optional[List[ColumnMapping]], Field([], description="Column mappings")]
+
+    mappings: Annotated[
+        Optional[List[ColumnMapping]], Field([], description="Column mappings")
+    ]
 
     @computed_field
     @property
-    def sources(self) -> Set[str]:
+    def sources(self) -> Set[DataSource]:
         """Get all the different source tables we'll need to iterate over"""
-        return {mapping.source_table for mapping in self.mappings}
+        return {mapping.data_source for mapping in self.mappings}
 
     @lru_cache(maxsize=256)
     def find_target(self, column: str) -> Optional[ColumnMapping]:
@@ -84,6 +129,51 @@ class ParsedLineage(BaseModel):
         """Merge two parsed lineages"""
         return ParsedLineage(mappings=self.mappings + other.mappings)
 
+    def __hash__(self):
+        """
+        Note that the LRU Cache require us to implement the __hash__ method, otherwise
+        the BaseModel is not hashable. Since we just want a per-instance cache, we'll use the id
+        """
+        return id(self)
+
+    def to_request(
+        self, metadata: OpenMetadata, service_name: str, to_entity: EntityReference
+    ) -> Iterable[AddLineageRequest]:
+        """Given the target entity, build the AddLineageRequest based on the sources in `self`"""
+        for source in self.sources:
+            source_ref = source.get_entity_ref(
+                metadata=metadata, service_name=service_name
+            )
+            yield AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=source_ref,
+                    toEntity=to_entity,
+                    lineageDetails=LineageDetails(
+                        source=Source.ViewLineage,
+                        columnsLineage=[
+                            ColumnLineage(
+                                fromColumns=[
+                                    FullyQualifiedEntityName(
+                                        fqn._build(
+                                            source_ref.fullyQualifiedName,
+                                            mapping.source,
+                                        )
+                                    )
+                                ],
+                                toColumn=FullyQualifiedEntityName(
+                                    fqn._build(
+                                        to_entity.fullyQualifiedName, mapping.target
+                                    )
+                                ),
+                                # function=..., TODO: pass the formula here
+                            )
+                            for mapping in self.mappings
+                            if mapping.data_source == source
+                        ],
+                    ),
+                )
+            )
+
 
 def _read_attributes(tree: ET.Element, ns: dict) -> ParsedLineage:
     """Compute the lineage based from the attributes"""
@@ -95,15 +185,21 @@ def _read_attributes(tree: ET.Element, ns: dict) -> ParsedLineage:
     return ParsedLineage(
         mappings=[
             ColumnMapping(
-                source_table=attribute.find("keyMapping", ns).get("columnObjectName"),
+                data_source=DataSource(
+                    name=attribute.find("keyMapping", ns).get("columnObjectName"),
+                    location=attribute.find("keyMapping", ns).get("schemaName"),
+                ),
                 source=attribute.find("keyMapping", ns).get("columnName"),
-                target=attribute.get("id")
-            ) for attribute in attributes
+                target=attribute.get("id"),
+            )
+            for attribute in attributes
         ]
     )
 
 
-def _read_calculated_attributes(tree: ET.Element, ns: dict, base_lineage: ParsedLineage) -> ParsedLineage:
+def _read_calculated_attributes(
+    tree: ET.Element, ns: dict, base_lineage: ParsedLineage
+) -> ParsedLineage:
     """Compute the lineage based on the calculated attributes"""
     lineage = ParsedLineage()
 
@@ -127,15 +223,17 @@ def _explode_formula(formula: str, base_lineage: ParsedLineage) -> ParsedLineage
     Returns:
         Parsed Lineage from the formula
     """
+    # TODO: Have a list of sources in the mappings for a single formula to help convert to ColumnLineage
     return ParsedLineage(
         mappings=[
             ColumnMapping(
                 # We get the source once we find the mapping of the target
-                source_table=base_lineage.find_target(match.group(1)).source_table,
+                data_source=base_lineage.find_target(match.group(1)).data_source,
                 source=base_lineage.find_target(match.group(1)).source,
                 target=match.group(1),
                 formula=formula,
-            ) for match in FORMULA_PATTERN.finditer(formula)
+            )
+            for match in FORMULA_PATTERN.finditer(formula)
         ]
     )
 
@@ -159,6 +257,14 @@ def _(cdata: str) -> ParsedLineage:
     ns = NAMESPACE_DICT[ViewType.ATTRIBUTE_VIEW.value]
     tree = ET.fromstring(cdata)
     attribute_lineage = _read_attributes(tree=tree, ns=ns)
-    calculated_attrs_lineage = _read_calculated_attributes(tree=tree, ns=ns, base_lineage=attribute_lineage)
+    calculated_attrs_lineage = _read_calculated_attributes(
+        tree=tree, ns=ns, base_lineage=attribute_lineage
+    )
 
     return attribute_lineage + calculated_attrs_lineage
+
+
+@parse_registry.add(ViewType.CALCULATION_VIEW.value)
+def _(cdata: str) -> ParsedLineage:
+    """Parse the CDATA XML for Calculation View"""
+    return ParsedLineage()

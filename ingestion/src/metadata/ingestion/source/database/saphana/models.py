@@ -11,23 +11,35 @@
 """
 SAP Hana lineage module
 """
-from metadata.generated.schema.entity.data.table import Table
+from enum import Enum
 
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils import fqn
 from pydantic import Field, computed_field
 from typing_extensions import Annotated
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.models.custom_pydantic import BaseModel
-
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils import fqn
 
 SYS_BIC_SCHEMA_NAME = "_SYS_BIC"
 
 
+class ViewType(Enum):
+    """Supported SAP Hana Views"""
+
+    CALCULATION_VIEW = "calculationview"
+    ANALYTIC_VIEW = "analyticview"
+    ATTRIBUTE_VIEW = "attributeview"
+
+
 class SapHanaLineageModel(BaseModel):
     """SAP Hana Lineage model from _SYS_REPO.ACTIVE_OBJECT"""
-    package_id: Annotated[str, Field(..., description="Package ID that hosts the model code")]
+
+    package_id: Annotated[
+        str, Field(..., description="Package ID that hosts the model code")
+    ]
     object_name: Annotated[str, Field(..., description="View Name")]
+    object_suffix: Annotated[ViewType, Field(..., description="View Type")]
     cdata: Annotated[str, Field(..., description="XML representation of the model")]
 
     @computed_field

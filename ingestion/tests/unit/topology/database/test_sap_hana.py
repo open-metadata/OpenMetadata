@@ -13,8 +13,13 @@ Test SAP Hana source
 """
 from pathlib import Path
 
-from metadata.ingestion.source.database.saphana.cdata_parser import parse_registry, ViewType, ParsedLineage, \
-    ColumnMapping
+from metadata.ingestion.source.database.saphana.cdata_parser import (
+    ColumnMapping,
+    DataSource,
+    ParsedLineage,
+    ViewType,
+    parse_registry,
+)
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 
@@ -24,14 +29,14 @@ def test_parse_analytic_view() -> None:
 
     with open(RESOURCES_DIR / "cdata_analytic_view.xml") as file:
         cdata = file.read()
-        parser = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
-        parsed_lineage: ParsedLineage = parser(cdata)
+        parse_fn = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
 
     assert parsed_lineage
     assert len(parsed_lineage.mappings) == 6
-    assert parsed_lineage.sources == {"SBOOK"}
+    assert parsed_lineage.sources == {DataSource(name="SBOOK", location="SFLIGHT")}
     assert parsed_lineage.mappings[0] == ColumnMapping(
-        source_table="SBOOK",
+        data_source=DataSource(name="SBOOK", location="SFLIGHT"),
         source="MANDT",
         target="MANDT",
     )
@@ -42,14 +47,17 @@ def test_parse_attribute_view() -> None:
 
     with open(RESOURCES_DIR / "cdata_attribute_view.xml") as file:
         cdata = file.read()
-        parser = parse_registry.registry.get(ViewType.ATTRIBUTE_VIEW.value)
-        parsed_lineage: ParsedLineage = parser(cdata)
+        parse_fn = parse_registry.registry.get(ViewType.ATTRIBUTE_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
 
     assert parsed_lineage
-    assert len(parsed_lineage.mappings) == 15
-    assert parsed_lineage.sources == {"SCARR", "SFLIGHT"}
+    assert len(parsed_lineage.mappings) == 23  # 15 columns + 8 derived from formulas
+    assert parsed_lineage.sources == {
+        DataSource(name="SCARR", location="SFLIGHT"),
+        DataSource(name="SFLIGHT", location="SFLIGHT"),
+    }
     assert parsed_lineage.mappings[0] == ColumnMapping(
-        source_table="SFLIGHT",
+        data_source=DataSource(name="SFLIGHT", location="SFLIGHT"),
         source="MANDT",
         target="MANDT",
     )

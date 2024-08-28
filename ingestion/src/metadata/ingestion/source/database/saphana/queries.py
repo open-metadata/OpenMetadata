@@ -16,6 +16,7 @@ SAPHANA_LINEAGE = """
 SELECT
   PACKAGE_ID,
   OBJECT_NAME,
+  OBJECT_SUFFIX,
   CDATA
 FROM _SYS_REPO.ACTIVE_OBJECT
 WHERE OBJECT_SUFFIX IN ('analyticview', 'attributeview', 'calculationview');
