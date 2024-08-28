@@ -234,7 +234,13 @@ export class EntityClass {
     });
     await removeTagsFromChildren({
       page,
-      tags: [tag1, tag2],
+      tags: [tag2],
+      rowId,
+      rowSelector,
+    });
+    await removeTagsFromChildren({
+      page,
+      tags: [tag1],
       rowId,
       rowSelector,
     });
