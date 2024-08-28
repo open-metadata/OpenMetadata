@@ -598,7 +598,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = find(tableId, NON_DELETED);
+    Table table = get(null, tableId, getFields(FIELD_OWNERS), NON_DELETED, false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
