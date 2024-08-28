@@ -31,7 +31,7 @@ class KafkaIngestionClass extends ServiceBaseClass {
   }
 
   async createService(page: Page) {
-    super.createService(page);
+    await super.createService(page);
   }
 
   async updateService(page: Page) {

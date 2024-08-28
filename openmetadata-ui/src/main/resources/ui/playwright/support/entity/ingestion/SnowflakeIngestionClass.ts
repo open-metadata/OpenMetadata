@@ -58,7 +58,7 @@ class SnowflakeIngestionClass extends ServiceBaseClass {
   }
 
   async deleteService(page: Page) {
-    super.deleteService(page);
+    await super.deleteService(page);
   }
 }
 

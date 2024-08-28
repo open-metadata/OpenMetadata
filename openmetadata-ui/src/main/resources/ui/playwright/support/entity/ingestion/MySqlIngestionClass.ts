@@ -60,7 +60,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
   async validateIngestionDetails(page: Page) {
     await page.waitForSelector('.ant-select-selection-item-content');
 
-    expect(page.locator('.ant-select-selection-item-content')).toHaveText(
+    await expect(page.locator('.ant-select-selection-item-content')).toHaveText(
       this.tableFilter
     );
   }

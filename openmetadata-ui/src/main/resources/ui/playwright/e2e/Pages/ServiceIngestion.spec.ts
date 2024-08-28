@@ -22,7 +22,7 @@ import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/Redshi
 import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
 const services = [
@@ -46,13 +46,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 services.forEach((ServiceClass) => {
   const service = new ServiceClass();
 
-  test.describe.serial(service.serviceType, { tag: '@ingestion' }, () => {
-    test.beforeAll('Setup pre-requests', async ({ browser }) => {
-      const { afterAction } = await createNewPage(browser);
-
-      await afterAction();
-    });
-
+  test.describe.serial(service.serviceType, { tag: '@ingestion' }, async () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
       await settingClick(page, service.category);
@@ -67,6 +61,8 @@ services.forEach((ServiceClass) => {
     test(`Update description and verify description after re-run`, async ({
       page,
     }) => {
+      test.slow(true);
+
       await service.updateService(page);
     });
 
@@ -79,6 +75,8 @@ services.forEach((ServiceClass) => {
     // await service.runAdditionalTests(page);
 
     test(`Delete ${service.serviceType} service`, async ({ page }) => {
+      test.slow(true);
+
       await service.deleteService(page);
     });
   });

@@ -38,11 +38,11 @@ class PostgresIngestionClass extends ServiceBaseClass {
   }
 
   async createService(page: Page) {
-    super.createService(page);
+    await super.createService(page);
   }
 
   async updateService(page: Page) {
-    super.updateService(page);
+    await super.updateService(page);
   }
 
   async fillConnectionDetails(page: Page) {
