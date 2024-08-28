@@ -54,9 +54,7 @@
       "type": "string"
     },
     "templates": {
-      "type": "string",
-      "enum": ["openmetadata", "collate"],
-      "default": "openmetadata"
+      "type": "string"
     }
   },
   "additionalProperties": false,

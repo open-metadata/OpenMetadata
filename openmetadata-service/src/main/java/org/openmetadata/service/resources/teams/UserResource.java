@@ -108,7 +108,6 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.auth.TokenType;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -173,7 +172,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
-  private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
@@ -190,10 +188,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
-  }
-
-  private boolean isEmailServiceEnabled() {
-    return getSmtpSettings().getEnableSmtpServer();
   }
 
   public UserResource(
@@ -217,8 +211,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
@@ -648,7 +640,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
-    if (isBasicAuth() && isEmailServiceEnabled()) {
+    if (isBasicAuth() && getSmtpSettings().getEnableSmtpServer()) {
       try {
         authHandler.sendInviteMailToUser(
             uriInfo,

@@ -146,7 +146,7 @@ public class SystemRepository {
       SmtpSettings configValue =
           JsonUtils.convertValue(oldValue.getConfigValue(), SmtpSettings.class);
       if (configValue != null) {
-        SmtpSettings.Templates templates = configValue.getTemplates();
+        String templates = configValue.getTemplates();
         SmtpSettings newConfigValue =
             JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
         if (newConfigValue != null) {
