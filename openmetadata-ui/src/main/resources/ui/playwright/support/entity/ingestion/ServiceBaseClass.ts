@@ -263,7 +263,7 @@ class ServiceBaseClass {
     );
 
     await expect(page.getByTestId('pipeline-status').last()).toContainText(
-      'Success'
+      'SUCCESS'
     );
   };
 
@@ -399,13 +399,11 @@ class ServiceBaseClass {
     await page.click('[data-testid="ingestions"]');
 
     await page
-      .getByRole('cell', { name: 'Run Re Deploy Pause Edit' })
+      .getByRole('cell', { name: 'Pause Logs' })
       .waitFor({ state: 'visible' });
 
-    await page
-      .getByRole('cell', { name: 'Run Re Deploy Pause Edit' })
-      .getByTestId('run')
-      .click();
+    await page.getByTestId('more-actions').first().click();
+    await page.getByTestId('run-button').click();
 
     await toastNotification(page, `Pipeline triggered successfully!`);
 
