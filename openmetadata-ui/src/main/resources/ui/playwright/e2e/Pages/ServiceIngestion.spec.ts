@@ -12,9 +12,10 @@
  */
 
 import test from '@playwright/test';
-import MetabaseIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
+import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import BigQueryIngestionClass from '../../support/entity/ingestion/BigQueryIngestionClass';
 import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
+import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import PostgresIngestionClass from '../../support/entity/ingestion/PostgresIngestionClass';
@@ -29,8 +30,6 @@ const services = [
   S3IngestionClass,
   MetabaseIngestionClass,
   MysqlIngestionClass,
-  // Todo: need to skip for time being as AUT runs on argo, and airflow is not available
-  //   new AirflowIngestionClass(),
   BigQueryIngestionClass,
   KafkaIngestionClass,
   MlFlowIngestionClass,
@@ -39,6 +38,10 @@ const services = [
   PostgresIngestionClass,
   RedshiftWithDBTIngestionClass,
 ];
+
+if (process.env.PLAYWRIGHT_IS_OSS) {
+  services.push(AirflowIngestionClass);
+}
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
