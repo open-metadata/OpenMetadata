@@ -23,6 +23,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   name: string;
   filterPattern: string;
   dbtEntityFqn: string;
+  schemaFilterPattern = 'dbt_automate_upgrade_tests';
 
   constructor() {
     super(
@@ -35,7 +36,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     const redshiftDatabase = process.env.PLAYWRIGHT_REDSHIFT_DATABASE ?? '';
 
     this.filterPattern = 'sales';
-    this.dbtEntityFqn = `${REDSHIFT.serviceName}.${redshiftDatabase}.dbt_jaffle.${REDSHIFT.DBTTable}`;
+    this.dbtEntityFqn = `${REDSHIFT.serviceName}.${redshiftDatabase}.${this.schemaFilterPattern}.${REDSHIFT.DBTTable}`;
   }
 
   async createService(page: Page) {

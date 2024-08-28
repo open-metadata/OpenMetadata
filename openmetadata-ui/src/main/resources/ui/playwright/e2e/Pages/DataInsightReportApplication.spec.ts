@@ -21,122 +21,117 @@ import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe.serial(
-  'Data Insight Report Application',
-  { tag: '@ingestion' },
-  () => {
-    test.beforeEach(async ({ page }) => {
-      await redirectToHomePage(page);
+test.describe.serial('Data Insight Report Application', () => {
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
 
-      const appsResponse = page.waitForResponse(
-        `/api/v1/apps?limit=15&include=non-deleted`
-      );
+    const appsResponse = page.waitForResponse(
+      `/api/v1/apps?limit=15&include=non-deleted`
+    );
 
-      await settingClick(page, GlobalSettingOptions.APPLICATIONS);
-      await appsResponse;
-    });
+    await settingClick(page, GlobalSettingOptions.APPLICATIONS);
+    await appsResponse;
+  });
 
-    test('Install application', async ({ page }) => {
-      await page.click('[data-testid="add-application"]');
-      // Verify response status code (this is done implicitly by the route fulfillment)
-      await page.click(
-        '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
-      );
-      await page.click('[data-testid="install-application"]');
-      await page.click('[data-testid="save-button"]');
-      await page.click('[data-testid="submit-btn"]');
-      await page.click('[data-testid="cron-type"]');
-      await page.click('[data-value="5"]');
-      await page.click('[data-testid="deploy-button"]');
+  test('Install application', async ({ page }) => {
+    await page.click('[data-testid="add-application"]');
 
-      // Verify response status code (this is done implicitly by the route fulfillment)
-      await expect(
-        page.locator('[data-testid="data-insights-report-application-card"]')
-      ).toBeVisible();
-    });
+    await page.click(
+      '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
+    );
+    await page.click('[data-testid="install-application"]');
+    await page.click('[data-testid="save-button"]');
+    await page.click('[data-testid="submit-btn"]');
+    await page.click('[data-testid="cron-type"]');
+    await page.click('[data-value="5"]');
+    await page.click('[data-testid="deploy-button"]');
 
-    test('Edit application', async ({ page }) => {
-      await page.click(
-        '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
-      );
+    await expect(
+      page.locator('[data-testid="data-insights-report-application-card"]')
+    ).toBeVisible();
+  });
 
-      await page.click('[data-testid="edit-button"]');
-      await page.click('[data-testid="cron-type"]');
-      await page.click('[data-value="3"]');
-      await page.click('[data-testid="hour-options"]');
-      await page.click('[title="01"]');
-      await page.click('.ant-modal-body [data-testid="deploy-button"]');
-      await toastNotification(page, 'Schedule saved successfully');
+  test('Edit application', async ({ page }) => {
+    await page.click(
+      '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
+    );
 
-      // Validate update config in the application
-      await expect(page.locator('[data-testid="cron-string"]')).toContainText(
-        'At 01:00 AM, only on Wednesday'
-      );
+    await page.click('[data-testid="edit-button"]');
+    await page.click('[data-testid="cron-type"]');
+    await page.click('[data-value="3"]');
+    await page.click('[data-testid="hour-options"]');
+    await page.click('[title="01"]');
+    await page.click('.ant-modal-body [data-testid="deploy-button"]');
+    await toastNotification(page, 'Schedule saved successfully');
 
-      await page.click('[data-testid="configuration"]');
-      await page.click('#root\\/sendToAdmins');
-      await page.click('#root\\/sendToTeams');
-      await page.click('[data-testid="submit-btn"]');
+    // Validate update config in the application
+    await expect(page.locator('[data-testid="cron-string"]')).toContainText(
+      'At 01:00 AM, only on Wednesday'
+    );
 
-      await toastNotification(page, 'Configuration saved successfully');
+    await page.click('[data-testid="configuration"]');
+    await page.click('#root\\/sendToAdmins');
+    await page.click('#root\\/sendToTeams');
+    await page.click('[data-testid="submit-btn"]');
 
-      // Validate update config in the application
+    await toastNotification(page, 'Configuration saved successfully');
 
-      await expect(page.locator('#root\\/sendToAdmins')).not.toBeChecked();
-      await expect(page.locator('#root\\/sendToTeams')).not.toBeChecked();
-    });
+    // Validate update config in the application
 
-    test('Run application', async ({ page }) => {
-      await page.click(
-        '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
-      );
+    await expect(page.locator('#root\\/sendToAdmins')).not.toBeChecked();
+    await expect(page.locator('#root\\/sendToTeams')).not.toBeChecked();
+  });
 
-      await page.click('[data-testid="run-now-button"]');
-      await toastNotification(page, 'Application triggered successfully');
+  test('Run application', async ({ page }) => {
+    await page.click(
+      '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
+    );
 
-      const { apiContext } = await getApiContext(page);
+    await page.click('[data-testid="run-now-button"]');
+    await toastNotification(page, 'Application triggered successfully');
 
-      expect
-        .poll(
-          async () => {
-            const response = await apiContext
-              .get(
-                '/api/v1/apps/name/DataInsightsReportApplication/status?offset=0&limit=1'
-              )
-              .then((res) => res.json());
+    const { apiContext } = await getApiContext(page);
 
-            return response.data[0].status;
-          },
-          {
-            message:
-              'Wait for the Data Insight Report Application run to be successful',
-            timeout: 120_000,
-            intervals: [5_000, 10_000],
-          }
-        )
-        .toBe('success');
+    expect
+      .poll(
+        async () => {
+          const response = await apiContext
+            .get(
+              '/api/v1/apps/name/DataInsightsReportApplication/status?offset=0&limit=1'
+            )
+            .then((res) => res.json());
 
-      await page.reload();
+          return response.data[0].status;
+        },
+        {
+          message:
+            'Wait for the Data Insight Report Application run to be successful',
+          timeout: 120_000,
+          intervals: [5_000, 10_000],
+        }
+      )
+      .toBe('success');
 
-      await expect(page.getByTestId('logs')).toBeVisible();
+    await page.reload();
 
-      await page.click('[data-testid="logs"]');
-    });
+    await expect(page.getByTestId('logs')).toBeVisible();
 
-    test('Uninstall application', async ({ page }) => {
-      await page.click(
-        '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
-      );
+    await page.click('[data-testid="logs"]');
+  });
 
-      await page.click('[data-testid="manage-button"]');
-      await page.click('[data-testid="uninstall-button-title"]');
-      await page.click('[data-testid="save-button"]');
+  test('Uninstall application', async ({ page }) => {
+    await page.click(
+      '[data-testid="data-insights-report-application-card"] [data-testid="config-btn"]'
+    );
 
-      await toastNotification(page, 'Application uninstalled successfully');
+    await page.click('[data-testid="manage-button"]');
+    await page.click('[data-testid="uninstall-button-title"]');
+    await page.click('[data-testid="save-button"]');
 
-      await expect(
-        page.locator('[data-testid="data-insights-report-application-card"]')
-      ).not.toBeVisible();
-    });
-  }
-);
+    await toastNotification(page, 'Application uninstalled successfully');
+
+    await expect(
+      page.locator('[data-testid="data-insights-report-application-card"]')
+    ).not.toBeVisible();
+  });
+});

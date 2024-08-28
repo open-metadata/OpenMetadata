@@ -46,6 +46,10 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 services.forEach((ServiceClass) => {
   const service = new ServiceClass();
 
+  test.describe.configure({
+    timeout: 300000,
+  });
+
   test.describe.serial(service.serviceType, { tag: '@ingestion' }, async () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
@@ -53,30 +57,22 @@ services.forEach((ServiceClass) => {
     });
 
     test(`Create & Ingest ${service.serviceType} service`, async ({ page }) => {
-      test.slow(true);
-
       await service.createService(page);
     });
 
     test(`Update description and verify description after re-run`, async ({
       page,
     }) => {
-      test.slow(true);
-
       await service.updateService(page);
     });
 
     test(`Update schedule options and verify`, async ({ page }) => {
-      test.slow(true);
-
       await service.updateScheduleOptions(page);
     });
 
     // await service.runAdditionalTests(page);
 
     test(`Delete ${service.serviceType} service`, async ({ page }) => {
-      test.slow(true);
-
       await service.deleteService(page);
     });
   });
