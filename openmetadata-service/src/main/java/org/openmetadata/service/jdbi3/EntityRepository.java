@@ -204,6 +204,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
+  public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
@@ -776,6 +777,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     throw EntityNotFoundException.byMessage(
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
+  }
+
+  public final EntityHistoryWithOffset listVersionsWithOffset(UUID id, int limit, int offset) {
+    T latest = setFieldsInternal(find(id, ALL), putFields);
+    setInheritedFields(latest, putFields);
+    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
+    List<ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsWithOffset(id, extensionPrefix, limit, offset);
+    List<EntityVersionPair> oldVersions = new ArrayList<>();
+    records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
+    oldVersions.sort(EntityUtil.compareVersion.reversed());
+
+    final List<Object> versions = new ArrayList<>();
+
+    if (offset == 0) {
+      versions.add(JsonUtils.pojoToJson(latest));
+    }
+
+    oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+    return new EntityHistoryWithOffset(
+        new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
   }
 
   public final EntityHistory listVersions(UUID id) {
