@@ -80,6 +80,18 @@ class CalculatedAttrKey(Enum):
     CALCULATED_VIEW_ATTRIBUTE = "calculatedViewAttribute"
 
 
+class DataSourceMapping(BaseModel):
+    """Column Mapping of DataSources and Logical Calculated Views"""
+
+    source: Annotated[
+        str, Field(..., description="Column name in the parent Data Source")
+    ]
+    target: Annotated[
+        str, Field(..., description="Column name in the provided Data Source")
+    ]
+    parent: Annotated[str, Field(..., description="Parent Data Source ID")]
+
+
 class DataSource(BaseModel):
     """Data source from CDATA XML"""
 
@@ -90,6 +102,13 @@ class DataSource(BaseModel):
     source_type: Annotated[
         Optional[ViewType],
         Field(None, description="Data Source type. If not informed, source is a table"),
+    ]
+    mapping: Annotated[
+        Optional[Dict[str, DataSourceMapping]],
+        Field(
+            None,
+            description="Logical source column mapping. Key: source column; value: mapping",
+        ),
     ]
 
     def get_entity(
@@ -235,6 +254,8 @@ def _read_ds(
     entry: ET.Element, cdata_sources: Optional[Dict[str, DataSource]] = None
 ) -> DataSource:
     """Read a DataSource from the CDATA XML"""
+    # TODO: This needs to check if a given DataSource columnObjectName is the key in another DataSource and traverse everything until we find the actual table
+    #  iterate taking into account the mapping columnName
     if cdata_sources and entry.get("columnObjectName") in cdata_sources:
         return cdata_sources[entry.get("columnObjectName")]
 
@@ -389,31 +410,34 @@ def _(cdata: str) -> ParsedLineage:
 
 @parse_registry.add(ViewType.CALCULATION_VIEW.value)
 def _(cdata: str) -> ParsedLineage:
-    """Parse the CDATA XML for Calculation View"""
+    """
+    Parse the CDATA XML for Calculation View
+
+    We can think of the DataSources in a CV as:
+    - "real" sources: they are tables or other views that are used in the calculation
+    - "logical" sources: as internal projections, aggregations, etc.
+
+    The behavior is:
+    - The LogicalModel attributes can be linked - transitively - to either a "real" or a "logical" source.
+    - The "logical" sources are defined inside each `calculationView`
+    - Each `calculationView` can have an `input` node that can either be "real" or "logical"
+    - We can identify "real" inputs as their `<input node="#<ID>">` will match the <DataSource id="ID" type="...">
+
+    When building the dataSources here we need to ensure we iterate over the calculationViews, and during
+    the _read_ds we'll iteratively traverse the dataSources to find the actual table.
+
+    Internally, we'll identify "logical" dataSources by giving them a list of column mappings, which we'll
+    use to identify the actual source.
+
+    TODO: We'll need to figure out how to manage the formula lineage within calculatedViewAttributes
+      most likely improving the ParsedLineage.find_target method to take into account the DataSource hierarchy
+    """
     # TODO: Handle lineage from calculatedMeasure, restrictedMeasure and sharedDimesions
     ns = NAMESPACE_DICT[ViewType.CALCULATION_VIEW.value]
     tree = ET.fromstring(cdata)
 
     # Prepare a dictionary of defined data sources
-    cdata_sources = {}
-    for ds in tree.find("dataSources", ns).findall("DataSource", ns):
-        column_object = ds.find("columnObject", ns)
-        # this is a table
-        if (
-            column_object is not None
-        ):  # we can't rely on the falsy value of the object even if present in the XML
-            ds_value = DataSource(
-                name=column_object.get("columnObjectName"),
-                location=column_object.get("schemaName"),
-            )
-        # or a package object
-        else:
-            ds_value = DataSource(
-                name=ds.get("id"),
-                location=ds.find("resourceUri").text,
-                source_type=ViewType.__members__[ds.get("type")],
-            )
-        cdata_sources[ds.get("id")] = ds_value
+    cdata_sources = _parse_cv_data_sources(tree=tree, ns=ns)
 
     # Iterate over the Logical Model attributes
     logical_model = tree.find("logicalModel", ns)
@@ -431,3 +455,81 @@ def _(cdata: str) -> ParsedLineage:
     )
 
     return attribute_lineage + calculated_attrs_lineage + base_measure_lineage
+
+
+def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> Dict[str, DataSource]:
+    """
+    Parse the real and logical data sources of a CV
+
+    The logical (`calculationViews`) have the following shape:
+    ```
+    <calculationViews>
+    <calculationView xsi:type="Calculation:AggregationView" id="Aggregation_1">
+      <descriptions/>
+      <viewAttributes>
+        <viewAttribute id="MANDT"/>
+        ...
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute datatype="INTEGER" id="USAGE_PCT" expressionLanguage="COLUMN_ENGINE">
+          <formula>&quot;SEATSOCC_ALL&quot;/&quot;SEATSMAX_ALL&quot;</formula>
+        </calculatedViewAttribute>
+        ...
+      </calculatedViewAttributes>
+      <input node="#AT_SFLIGHT">
+        <mapping xsi:type="Calculation:AttributeMapping" target="MANDT" source="MANDT"/>
+        ...
+      </input>
+      <input emptyUnionBehavior="NO_ROW" node="#Projection_1">
+        <mapping xsi:type="Calculation:ConstantAttributeMapping" target="CARRNAME" null="true" value=""/>
+        ...
+      </input>
+      ...
+    </calculationView>
+    ...
+    </calculationViews>
+    ```
+    """
+    cdata_sources = {}
+    for ds in tree.find("dataSources", ns).findall("DataSource", ns):
+        column_object = ds.find("columnObject", ns)
+        # we can't rely on the falsy value of the object even if present in the XML
+        # If columnObject is informed, we're talking about a table
+        if column_object is not None:
+            ds_value = DataSource(
+                name=column_object.get("columnObjectName"),
+                location=column_object.get("schemaName"),
+            )
+        # or a package object
+        else:
+            ds_value = DataSource(
+                name=ds.get("id"),
+                location=ds.find("resourceUri").text,
+                source_type=ViewType.__members__[ds.get("type")],
+            )
+        cdata_sources[ds.get("id")] = ds_value
+
+    calculation_views = tree.find("calculationViews", ns)
+    if calculation_views is None:
+        return cdata_sources
+
+    for cv in calculation_views.findall("calculationView", ns):
+        mappings = []
+        for input_node in cv.findall("input", ns):
+            for mapping in input_node.findall("mapping", ns):
+                if mapping.get("source"):
+                    mappings.append(
+                        DataSourceMapping(
+                            source=mapping.get("source"),
+                            target=mapping.get("target"),
+                            parent=input_node.get("node").replace("#", ""),
+                        )
+                    )
+        cdata_sources[cv.get("id")] = DataSource(
+            name=cv.get("id"),
+            location=None,
+            mapping={mapping.source: mapping for mapping in mappings},
+            source_type=ViewType.LOGICAL,
+        )
+
+    return cdata_sources
