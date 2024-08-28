@@ -168,6 +168,11 @@ class ServiceBaseClass {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    await page.getByTestId('more-actions').first().click();
+    await page.getByTestId('run-button').click();
+
+    await toastNotification(page, `Pipeline triggered successfully!`);
+
     await this.handleIngestionRetry('metadata', page);
   }
 
@@ -223,8 +228,8 @@ class ServiceBaseClass {
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for pipeline to be successful',
-          timeout: 300000,
-          intervals: [30000],
+          timeout: 300_000,
+          intervals: [30_000, 15_000, 5_000],
         }
       )
       .toBe('success');
@@ -424,7 +429,9 @@ class ServiceBaseClass {
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('markdown-parser')).toHaveText(description);
+    await expect(page.getByTestId('markdown-parser').first()).toHaveText(
+      description
+    );
   }
 
   runAdditionalTests() {
