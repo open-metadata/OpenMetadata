@@ -598,7 +598,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = find(tableId, NON_DELETED);
+    Table table = get(null, tableId, getFields(FIELD_OWNERS), NON_DELETED, false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -618,7 +618,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.withDataModel(dataModel);
 
     // Carry forward the table owners from the model to table entity, if empty
-    if (table.getOwners() == null) {
+    if (nullOrEmpty(table.getOwners())) {
       storeOwners(table, dataModel.getOwners());
     }
 
