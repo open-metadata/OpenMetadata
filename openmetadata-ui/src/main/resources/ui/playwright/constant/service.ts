@@ -26,16 +26,18 @@ export const SERVICE_TYPE = {
   ApiService: GlobalSettingOptions.APIS,
 };
 
+const uniqueID = uuid();
+
 export const REDSHIFT = {
   serviceType: 'Redshift',
-  serviceName: `redshift-ct-test-${uuid()}`,
-  tableName: 'boolean_test',
+  serviceName: `redshift-ct-test-${uniqueID}`,
+  tableName: 'raw_payments',
   DBTTable: 'customers',
-  description: `This is Redshift-ct-test description`,
+  description: `This is Redshift-ct-test-${uniqueID} description`,
 };
 
 export const POSTGRES = {
   serviceType: 'Postgres',
-  serviceName: `cy-postgres-test-${uuid()}`,
+  serviceName: `pw-postgres-test-${uuid()}`,
   tableName: 'order_items',
 };
