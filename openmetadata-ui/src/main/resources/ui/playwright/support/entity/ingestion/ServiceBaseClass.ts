@@ -286,15 +286,17 @@ class ServiceBaseClass {
     await page
       .locator('.ant-select-item-option-content', { hasText: 'Hour' })
       .click();
-    await page.click('[data-testid="minute-options"]');
-    await page.click('#minute-select_list + .rc-virtual-list [title="10"]');
+    await page.getByTestId('minute-options').click();
+    await page
+      .locator('#minute-select_list + .rc-virtual-list [title="05"]')
+      .click();
 
     // Deploy with schedule
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
     await expect(page.getByTestId('schedule-primary-details')).toHaveText(
-      'At 10 minutes past the hour'
+      'At 5 minutes past the hour'
     );
     await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
       'Every hour, every day'
