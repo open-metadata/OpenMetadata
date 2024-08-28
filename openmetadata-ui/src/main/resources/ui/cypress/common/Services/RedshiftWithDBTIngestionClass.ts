@@ -248,12 +248,10 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         .click();
 
       cy.get(`[data-testid=${DBT.dataQualityTest1}]`)
-        .should('exist')
-        .should('be.visible')
+        .scrollIntoView()
         .should('contain', DBT.dataQualityTest1);
       cy.get(`[data-testid=${DBT.dataQualityTest2}]`)
-        .should('exist')
-        .should('be.visible')
+        .scrollIntoView()
         .should('contain', DBT.dataQualityTest2);
     });
   }

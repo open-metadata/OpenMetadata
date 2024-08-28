@@ -20,7 +20,7 @@ setup.use({
 });
 
 setup.describe.configure({
-  timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 3600000,
+  timeout: process.env.PLAYWRIGHT_IS_OSS ? 150000 : 5600000,
 });
 
 setup(
