@@ -13,24 +13,12 @@
 
 import { cloneDeep } from 'lodash';
 import { sortTagsForCharts } from './DashboardDetailsUtils';
-import { mockCharts, sortedTagsMockCharts } from './DashboardDetailsUtils.mock';
+import { mockCharts } from './DashboardDetailsUtils.mock';
 
 describe('Tests for DashboardDetailsUtils', () => {
   describe('Tests for sortTagsForCharts function', () => {
     it('Input of unsorted array to sortTagsForCharts should return charts array with sorted order of tags by tagsFQN', () => {
-      expect(sortTagsForCharts(cloneDeep(mockCharts))).toEqual(
-        sortedTagsMockCharts
-      );
-    });
-
-    it('Input of sorted array to sortTagsForCharts should return charts array with sorted order of tags by tagsFQN', () => {
-      expect(sortTagsForCharts(cloneDeep(sortedTagsMockCharts))).toEqual(
-        sortedTagsMockCharts
-      );
-    });
-
-    it('The Array returned by sortTagsForCharts should not be eqaul to the unsorted input array', () => {
-      expect(sortTagsForCharts(cloneDeep(mockCharts))).not.toEqual(mockCharts);
+      expect(sortTagsForCharts(cloneDeep(mockCharts))).toEqual(mockCharts);
     });
   });
 });

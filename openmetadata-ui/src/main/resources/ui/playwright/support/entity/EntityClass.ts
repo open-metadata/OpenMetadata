@@ -201,7 +201,8 @@ export class EntityClass {
   async tag(page: Page, tag1: string, tag2: string) {
     await assignTag(page, tag1);
     await assignTag(page, tag2, 'Edit');
-    await removeTag(page, [tag1, tag2]);
+    await removeTag(page, [tag2]);
+    await removeTag(page, [tag1]);
 
     await page
       .getByTestId('entity-right-panel')
@@ -233,7 +234,13 @@ export class EntityClass {
     });
     await removeTagsFromChildren({
       page,
-      tags: [tag1, tag2],
+      tags: [tag2],
+      rowId,
+      rowSelector,
+    });
+    await removeTagsFromChildren({
+      page,
+      tags: [tag1],
       rowId,
       rowSelector,
     });
