@@ -11,6 +11,7 @@
 """
 SAP Hana lineage module
 """
+import traceback
 from typing import Iterable, Optional
 
 from sqlalchemy import text
@@ -19,6 +20,9 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
     SapHanaConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
@@ -101,10 +105,20 @@ class SaphanaLineageSource(Source):
                 stream_results=True, max_row_buffer=100
             ).execute(text(SAPHANA_LINEAGE))
             for row in result:
-                lineage_model = SapHanaLineageModel.validate(dict(row))
-                yield from self.parse_cdata(
-                    metadata=self.metadata, lineage_model=lineage_model
-                )
+                try:
+                    lineage_model = SapHanaLineageModel.validate(dict(row))
+
+                    yield from self.parse_cdata(
+                        metadata=self.metadata, lineage_model=lineage_model
+                    )
+                except Exception as exc:
+                    self.status.failed(
+                        error=StackTraceError(
+                            name=row["OBJECT_NAME"],
+                            error=f"Error validating lineage model due to [{exc}]",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
     def parse_cdata(
         self, metadata: OpenMetadata, lineage_model: SapHanaLineageModel
@@ -113,7 +127,7 @@ class SaphanaLineageSource(Source):
         parse_fn = parse_registry.registry.get(lineage_model.object_suffix.value)
         try:
             parsed_lineage: ParsedLineage = parse_fn(lineage_model.cdata)
-            to_entity = metadata.get_entity_reference(
+            to_entity: Table = metadata.get_by_name(
                 entity=Table,
                 fqn=lineage_model.get_fqn(
                     metadata=metadata,
@@ -128,10 +142,16 @@ class SaphanaLineageSource(Source):
                     to_entity=to_entity,
                 )
         except Exception as exc:
-            logger.warning(
+            error = (
                 f"Error parsing CDATA XML for {lineage_model.object_suffix} at "
-                f"{lineage_model.package_id}/{lineage_model.object_name}",
-                exc,
+                + f"{lineage_model.package_id}/{lineage_model.object_name} due to [{exc}]"
+            )
+            self.status.failed(
+                error=StackTraceError(
+                    name=lineage_model.object_name,
+                    error=error,
+                    stackTrace=traceback.format_exc(),
+                )
             )
 
     def test_connection(self) -> None:

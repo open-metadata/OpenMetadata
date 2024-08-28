@@ -37,7 +37,7 @@ def test_parse_analytic_view() -> None:
     assert parsed_lineage.sources == {DataSource(name="SBOOK", location="SFLIGHT")}
     assert parsed_lineage.mappings[0] == ColumnMapping(
         data_source=DataSource(name="SBOOK", location="SFLIGHT"),
-        source="MANDT",
+        sources=["MANDT"],
         target="MANDT",
     )
 
@@ -58,6 +58,6 @@ def test_parse_attribute_view() -> None:
     }
     assert parsed_lineage.mappings[0] == ColumnMapping(
         data_source=DataSource(name="SFLIGHT", location="SFLIGHT"),
-        source="MANDT",
+        sources=["MANDT"],
         target="MANDT",
     )

@@ -12,7 +12,9 @@
 Parse CDATA XMLs from SAP Hana
 """
 import re
+import traceback
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from functools import lru_cache
 from typing import Iterable, List, Optional, Set
 
@@ -21,6 +23,9 @@ from typing_extensions import Annotated
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.ingestionPipelines.status import (
+    StackTraceError,
+)
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -29,10 +34,13 @@ from metadata.generated.schema.type.entityLineage import (
     Source,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.saphana.models import ViewType
 from metadata.utils import fqn
+from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.dispatch import enum_register
 
 
@@ -72,11 +80,11 @@ class DataSource(BaseModel):
         Field(None, description="Data Source type. If not informed, source is a table"),
     ]
 
-    def get_entity_ref(
+    def get_entity(
         self,
         metadata: OpenMetadata,
         service_name: str,
-    ) -> EntityReference:
+    ) -> Table:
         """Build the Entity Reference for this DataSource"""
 
         if not self.source_type:  # The source is a table, so the location is the schema
@@ -88,17 +96,17 @@ class DataSource(BaseModel):
                 schema_name=self.location,
                 table_name=self.name,
             )
-            return metadata.get_entity_reference(entity=Table, fqn=fqn_)
+            return metadata.get_by_name(entity=Table, fqn=fqn_)
 
     def __hash__(self):
-        return hash(self.name) + hash(self.source_type)
+        return hash(self.location) + hash(self.name) + hash(self.source_type)
 
 
 class ColumnMapping(BaseModel):
     """Column Mapping from CDATA XML"""
 
     data_source: Annotated[DataSource, Field(..., description="Source table name")]
-    source: Annotated[str, Field(..., description="Source column name")]
+    sources: Annotated[List[str], Field(..., description="Source column names")]
     target: Annotated[str, Field(..., description="Destination column name")]
     formula: Annotated[
         Optional[str], Field(None, description="Formula used to derive the column")
@@ -137,42 +145,63 @@ class ParsedLineage(BaseModel):
         return id(self)
 
     def to_request(
-        self, metadata: OpenMetadata, service_name: str, to_entity: EntityReference
-    ) -> Iterable[AddLineageRequest]:
+        self, metadata: OpenMetadata, service_name: str, to_entity: Table
+    ) -> Iterable[Either[AddLineageRequest]]:
         """Given the target entity, build the AddLineageRequest based on the sources in `self`"""
         for source in self.sources:
-            source_ref = source.get_entity_ref(
-                metadata=metadata, service_name=service_name
-            )
-            yield AddLineageRequest(
-                edge=EntitiesEdge(
-                    fromEntity=source_ref,
-                    toEntity=to_entity,
-                    lineageDetails=LineageDetails(
-                        source=Source.ViewLineage,
-                        columnsLineage=[
-                            ColumnLineage(
-                                fromColumns=[
-                                    FullyQualifiedEntityName(
-                                        fqn._build(
-                                            source_ref.fullyQualifiedName,
-                                            mapping.source,
-                                        )
-                                    )
-                                ],
-                                toColumn=FullyQualifiedEntityName(
-                                    fqn._build(
-                                        to_entity.fullyQualifiedName, mapping.target
-                                    )
-                                ),
-                                # function=..., TODO: pass the formula here
-                            )
-                            for mapping in self.mappings
-                            if mapping.data_source == source
-                        ],
-                    ),
+            try:
+                source_table = source.get_entity(
+                    metadata=metadata, service_name=service_name
                 )
-            )
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=source_table.id,
+                                type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__],
+                            ),
+                            toEntity=EntityReference(
+                                id=to_entity.id,
+                                type=ENTITY_REFERENCE_TYPE_MAP[Table.__name__],
+                            ),
+                            lineageDetails=LineageDetails(
+                                source=Source.ViewLineage,
+                                columnsLineage=[
+                                    ColumnLineage(
+                                        fromColumns=[
+                                            FullyQualifiedEntityName(
+                                                get_column_fqn(
+                                                    table_entity=source_table,
+                                                    column=source_col,
+                                                )
+                                            )
+                                            for source_col in mapping.sources
+                                        ],
+                                        toColumn=FullyQualifiedEntityName(
+                                            get_column_fqn(
+                                                table_entity=to_entity,
+                                                column=mapping.target,
+                                            )
+                                        ),
+                                        function=mapping.formula
+                                        if mapping.formula
+                                        else None,
+                                    )
+                                    for mapping in self.mappings
+                                    if mapping.data_source == source
+                                ],
+                            ),
+                        )
+                    )
+                )
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=to_entity.fullyQualifiedName.root,
+                        error=f"Error trying to get lineage for [{source}] due to [{exc}]",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
 
 
 def _read_attributes(tree: ET.Element, ns: dict) -> ParsedLineage:
@@ -189,7 +218,7 @@ def _read_attributes(tree: ET.Element, ns: dict) -> ParsedLineage:
                     name=attribute.find("keyMapping", ns).get("columnObjectName"),
                     location=attribute.find("keyMapping", ns).get("schemaName"),
                 ),
-                source=attribute.find("keyMapping", ns).get("columnName"),
+                sources=[attribute.find("keyMapping", ns).get("columnName")],
                 target=attribute.get("id"),
             )
             for attribute in attributes
@@ -209,12 +238,16 @@ def _read_calculated_attributes(
 
     for calculated_attr in calculated_attrs.findall("calculatedAttribute", ns):
         formula = calculated_attr.find("keyCalculation", ns).find("formula", ns).text
-        lineage += _explode_formula(formula, base_lineage)
+        lineage += _explode_formula(
+            target=calculated_attr.get("id"), formula=formula, base_lineage=base_lineage
+        )
 
     return lineage
 
 
-def _explode_formula(formula: str, base_lineage: ParsedLineage) -> ParsedLineage:
+def _explode_formula(
+    target: str, formula: str, base_lineage: ParsedLineage
+) -> ParsedLineage:
     """
     Explode the formula and extract the columns
     Args:
@@ -223,17 +256,26 @@ def _explode_formula(formula: str, base_lineage: ParsedLineage) -> ParsedLineage
     Returns:
         Parsed Lineage from the formula
     """
-    # TODO: Have a list of sources in the mappings for a single formula to help convert to ColumnLineage
+    column_ds = {
+        match.group(1): base_lineage.find_target(match.group(1)).data_source
+        for match in FORMULA_PATTERN.finditer(formula)
+    }
+
+    # Group every datasource (key) with a list of the involved columns (values)
+    ds_columns = defaultdict(list)
+    for column, ds in column_ds.items():
+        ds_columns[ds].append(column)
+
     return ParsedLineage(
         mappings=[
             ColumnMapping(
                 # We get the source once we find the mapping of the target
-                data_source=base_lineage.find_target(match.group(1)).data_source,
-                source=base_lineage.find_target(match.group(1)).source,
-                target=match.group(1),
+                data_source=data_source,
+                sources=columns,
+                target=target,
                 formula=formula,
             )
-            for match in FORMULA_PATTERN.finditer(formula)
+            for data_source, columns in ds_columns.items()
         ]
     )
 

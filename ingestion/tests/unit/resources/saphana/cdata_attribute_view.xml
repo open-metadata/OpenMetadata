@@ -2,7 +2,7 @@
 <Dimension:dimension xmlns:Dimension="http://www.sap.com/ndb/BiModelDimension.ecore" schemaVersion="1.2" id="AT_SFLIGHT" applyPrivilegeType="ANALYTIC_PRIVILEGE" checkAnalyticPrivileges="true" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="internal" dimensionType="Standard">
   <origin/>
   <descriptions defaultDescription="AT_SFLIGHT"/>
-  <metadata changedAt="2024-08-22 08:55:06.423"/>
+  <metadata changedAt="2024-08-28 17:28:04.084"/>
   <informationModelLayout relativeWidthScenario="27"/>
   <attributes>
     <attribute id="MANDT" key="true" order="1" attributeHierarchyActive="false" displayAttribute="false">
@@ -85,6 +85,12 @@
         <formula>&quot;PRICE&quot;*&quot;SEATSMAX&quot;</formula>
       </keyCalculation>
     </calculatedAttribute>
+    <calculatedAttribute id="FULL_CARRNAME" hidden="false" order="19" semanticType="empty" attributeHierarchyActive="false" displayAttribute="false">
+      <descriptions defaultDescription="FULL_CARRNAME"/>
+      <keyCalculation datatype="VARCHAR" expressionLanguage="COLUMN_ENGINE" length="256">
+        <formula>&quot;MANDT&quot;+&quot;CARRNAME&quot;</formula>
+      </keyCalculation>
+    </calculatedAttribute>
   </calculatedAttributes>
   <privateDataFoundation>
     <tableProxies>
@@ -120,7 +126,7 @@
         </shape>
         <shape modelObjectName="DataFoundation" modelObjectNameSpace="DataFoundation" modelObjectType="repository">
           <upperLeftCorner x="40" y="85"/>
-          <rectangleSize/>
+          <rectangleSize height="0" width="0"/>
         </shape>
       </shapes>
     </layout>
