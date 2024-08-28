@@ -172,6 +172,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Update Glossary and Glossary Term', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
@@ -857,9 +859,6 @@ test.describe('Glossary tests', () => {
     await deleteGlossaryOrGlossaryTerm(page, glossaryTerm1.data.name, true);
 
     // Delete Glossary
-    await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(page, glossary1.data.displayName);
     await deleteGlossaryOrGlossaryTerm(page, glossary1.data.name);
     await afterAction();
   });

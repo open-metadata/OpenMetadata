@@ -712,13 +712,13 @@ export const deleteGlossaryOrGlossaryTerm = async (
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
-  let deleteRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-
-  if (!isGlossaryTerm) {
-    deleteRes = page.waitForResponse('/api/v1/glossaries/*');
-  }
+  const endpoint = isGlossaryTerm
+    ? '/api/v1/glossaryTerms/*'
+    : '/api/v1/glossaries/*';
+  const deleteRes = page.waitForResponse(endpoint);
   await page.click('[data-testid="confirm-button"]');
   await deleteRes;
+
   if (isGlossaryTerm) {
     await toastNotification(page, /"Glossary Term" deleted successfully!/);
   } else {
