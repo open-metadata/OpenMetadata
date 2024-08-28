@@ -15,8 +15,9 @@ import re
 import traceback
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+from enum import Enum
 from functools import lru_cache
-from typing import Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set
 
 from pydantic import Field, computed_field
 from typing_extensions import Annotated
@@ -38,10 +39,16 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.database.saphana.models import ViewType
+from metadata.ingestion.source.database.saphana.models import (
+    SYS_BIC_SCHEMA_NAME,
+    ViewType,
+)
 from metadata.utils import fqn
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.dispatch import enum_register
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class CDATAParsingError(Exception):
@@ -68,12 +75,17 @@ NAMESPACE_DICT = {
 FORMULA_PATTERN = re.compile(r"\"(.*?)\"")
 
 
+class CalculatedAttrKey(Enum):
+    CALCULATED_ATTRIBUTE = "calculatedAttribute"
+    CALCULATED_VIEW_ATTRIBUTE = "calculatedViewAttribute"
+
+
 class DataSource(BaseModel):
     """Data source from CDATA XML"""
 
     name: Annotated[str, Field(..., description="Data Source name")]
     location: Annotated[
-        str, Field(..., description="Schema or project for the Data Source")
+        Optional[str], Field(None, description="Schema or project for the Data Source")
     ]
     source_type: Annotated[
         Optional[ViewType],
@@ -96,7 +108,19 @@ class DataSource(BaseModel):
                 schema_name=self.location,
                 table_name=self.name,
             )
-            return metadata.get_by_name(entity=Table, fqn=fqn_)
+        else:
+            # package from <resourceUri>/SFLIGHT.MODELING/calculationviews/CV_SFLIGHT_SBOOK</resourceUri>
+            package = self.location.split("/")[1]
+            fqn_ = fqn.build(
+                metadata=metadata,
+                entity_type=Table,
+                service_name=service_name,
+                database_name=None,
+                schema_name=SYS_BIC_SCHEMA_NAME,
+                table_name=f"{package}/{self.name}",
+            )
+
+        return metadata.get_by_name(entity=Table, fqn=fqn_)
 
     def __hash__(self):
         return hash(self.location) + hash(self.name) + hash(self.source_type)
@@ -153,6 +177,9 @@ class ParsedLineage(BaseModel):
                 source_table = source.get_entity(
                     metadata=metadata, service_name=service_name
                 )
+                if not source_table:
+                    logger.warning(f"Can't find table for source [{source}]")
+                    continue
                 yield Either(
                     right=AddLineageRequest(
                         edge=EntitiesEdge(
@@ -204,30 +231,50 @@ class ParsedLineage(BaseModel):
                 )
 
 
-def _read_attributes(tree: ET.Element, ns: dict) -> ParsedLineage:
-    """Compute the lineage based from the attributes"""
-    attribute_list = tree.find("attributes", ns) if tree else None
-    if not attribute_list:
-        raise CDATAParsingError(f"Error extracting attributes from tree {tree}")
+def _read_ds(
+    entry: ET.Element, cdata_sources: Optional[Dict[str, DataSource]] = None
+) -> DataSource:
+    """Read a DataSource from the CDATA XML"""
+    if cdata_sources and entry.get("columnObjectName") in cdata_sources:
+        return cdata_sources[entry.get("columnObjectName")]
 
-    attributes = attribute_list.findall("attribute", ns)
-    return ParsedLineage(
-        mappings=[
-            ColumnMapping(
-                data_source=DataSource(
-                    name=attribute.find("keyMapping", ns).get("columnObjectName"),
-                    location=attribute.find("keyMapping", ns).get("schemaName"),
-                ),
-                sources=[attribute.find("keyMapping", ns).get("columnName")],
-                target=attribute.get("id"),
-            )
-            for attribute in attributes
-        ]
+    return DataSource(
+        name=entry.get("columnObjectName"),
+        location=entry.get("schemaName"),
     )
 
 
+def _read_attributes(
+    tree: ET.Element, ns: dict, cdata_sources: Optional[Dict[str, DataSource]] = None
+) -> ParsedLineage:
+    """Compute the lineage based from the attributes"""
+    lineage = ParsedLineage()
+    attribute_list = tree.find("attributes", ns) if tree else None
+    if not attribute_list:
+        return lineage
+
+    for attribute in attribute_list.findall("attribute", ns):
+        key_mapping = attribute.find("keyMapping", ns)
+        data_source = _read_ds(entry=key_mapping, cdata_sources=cdata_sources)
+        attr_lineage = ParsedLineage(
+            mappings=[
+                ColumnMapping(
+                    data_source=data_source,
+                    sources=[key_mapping.get("columnName")],
+                    target=attribute.get("id"),
+                )
+            ]
+        )
+        lineage += attr_lineage
+
+    return lineage
+
+
 def _read_calculated_attributes(
-    tree: ET.Element, ns: dict, base_lineage: ParsedLineage
+    tree: ET.Element,
+    ns: dict,
+    base_lineage: ParsedLineage,
+    key: CalculatedAttrKey = CalculatedAttrKey.CALCULATED_ATTRIBUTE,
 ) -> ParsedLineage:
     """Compute the lineage based on the calculated attributes"""
     lineage = ParsedLineage()
@@ -236,11 +283,44 @@ def _read_calculated_attributes(
     if not calculated_attrs:
         return lineage
 
-    for calculated_attr in calculated_attrs.findall("calculatedAttribute", ns):
+    for calculated_attr in calculated_attrs.findall(key.value, ns):
         formula = calculated_attr.find("keyCalculation", ns).find("formula", ns).text
         lineage += _explode_formula(
             target=calculated_attr.get("id"), formula=formula, base_lineage=base_lineage
         )
+
+    return lineage
+
+
+def _read_base_measures(
+    tree: ET.Element, ns: dict, cdata_sources: Optional[Dict[str, DataSource]] = None
+) -> ParsedLineage:
+    """
+    Compute the lineage based on the base measures.
+    For CalculationViews, we have a dictionary of pre-defined DataSources. For the rest,
+    we'll default to Table DataSources with the given information in the measure.
+
+    See examples cdata_calculation_view.xml and cdata_attribute_view.xml in test resources.
+    """
+    lineage = ParsedLineage()
+
+    base_measures = tree.find("baseMeasures", ns)
+    if not base_measures:
+        return lineage
+
+    for measure in base_measures.findall("measure", ns):
+        measure_mapping = measure.find("measureMapping", ns)
+        data_source = _read_ds(entry=measure_mapping, cdata_sources=cdata_sources)
+        measure_lineage = ParsedLineage(
+            mappings=[
+                ColumnMapping(
+                    data_source=data_source,
+                    sources=[measure_mapping.get("columnName")],
+                    target=measure.get("id"),
+                )
+            ]
+        )
+        lineage += measure_lineage
 
     return lineage
 
@@ -289,7 +369,7 @@ def _(cdata: str) -> ParsedLineage:
     ns = NAMESPACE_DICT[ViewType.ANALYTIC_VIEW.value]
     tree = ET.fromstring(cdata)
     measure_group = tree.find("privateMeasureGroup", ns)
-    # TODO: Handle lineage from baseMeasures, calculatedMeasures, restrictedMeasures and sharedDimensions
+    # TODO: Handle lineage from calculatedMeasures, restrictedMeasures and sharedDimensions
     return _read_attributes(measure_group, ns)
 
 
@@ -302,11 +382,52 @@ def _(cdata: str) -> ParsedLineage:
     calculated_attrs_lineage = _read_calculated_attributes(
         tree=tree, ns=ns, base_lineage=attribute_lineage
     )
+    base_measure_lineage = _read_base_measures(tree=tree, ns=ns, cdata_sources=None)
 
-    return attribute_lineage + calculated_attrs_lineage
+    return attribute_lineage + calculated_attrs_lineage + base_measure_lineage
 
 
 @parse_registry.add(ViewType.CALCULATION_VIEW.value)
 def _(cdata: str) -> ParsedLineage:
     """Parse the CDATA XML for Calculation View"""
-    return ParsedLineage()
+    # TODO: Handle lineage from calculatedMeasure, restrictedMeasure and sharedDimesions
+    ns = NAMESPACE_DICT[ViewType.CALCULATION_VIEW.value]
+    tree = ET.fromstring(cdata)
+
+    # Prepare a dictionary of defined data sources
+    cdata_sources = {}
+    for ds in tree.find("dataSources", ns).findall("DataSource", ns):
+        column_object = ds.find("columnObject", ns)
+        # this is a table
+        if (
+            column_object is not None
+        ):  # we can't rely on the falsy value of the object even if present in the XML
+            ds_value = DataSource(
+                name=column_object.get("columnObjectName"),
+                location=column_object.get("schemaName"),
+            )
+        # or a package object
+        else:
+            ds_value = DataSource(
+                name=ds.get("id"),
+                location=ds.find("resourceUri").text,
+                source_type=ViewType.__members__[ds.get("type")],
+            )
+        cdata_sources[ds.get("id")] = ds_value
+
+    # Iterate over the Logical Model attributes
+    logical_model = tree.find("logicalModel", ns)
+    attribute_lineage = _read_attributes(
+        tree=logical_model, ns=ns, cdata_sources=cdata_sources
+    )
+    calculated_attrs_lineage = _read_calculated_attributes(
+        tree=tree,
+        ns=ns,
+        base_lineage=attribute_lineage,
+        key=CalculatedAttrKey.CALCULATED_VIEW_ATTRIBUTE,
+    )
+    base_measure_lineage = _read_base_measures(
+        tree=logical_model, ns=ns, cdata_sources=cdata_sources
+    )
+
+    return attribute_lineage + calculated_attrs_lineage + base_measure_lineage

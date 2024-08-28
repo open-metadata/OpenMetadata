@@ -51,7 +51,7 @@ def test_parse_attribute_view() -> None:
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
     assert parsed_lineage
-    assert len(parsed_lineage.mappings) == 23  # 15 columns + 8 derived from formulas
+    assert len(parsed_lineage.mappings) == 20  # 15 columns + 5 derived from formulas
     assert parsed_lineage.sources == {
         DataSource(name="SCARR", location="SFLIGHT"),
         DataSource(name="SFLIGHT", location="SFLIGHT"),
@@ -60,4 +60,30 @@ def test_parse_attribute_view() -> None:
         data_source=DataSource(name="SFLIGHT", location="SFLIGHT"),
         sources=["MANDT"],
         target="MANDT",
+    )
+
+
+def test_parse_cv_tab() -> None:
+    """Read the resource and parse the file"""
+
+    with open(RESOURCES_DIR / "cdata_calculation_view_tab.xml") as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    assert parsed_lineage
+    assert len(parsed_lineage.mappings) == 10  # 5 columns + 5 derived from formulas
+    assert parsed_lineage.sources == {
+        DataSource(name="SCARR", location="SFLIGHT"),
+        DataSource(name="SFLIGHT", location="SFLIGHT"),
+    }
+    assert parsed_lineage.mappings[0] == ColumnMapping(
+        data_source=DataSource(name="SFLIGHT", location="SFLIGHT"),
+        sources=["MANDT"],
+        target="MANDT",
+    )
+    assert parsed_lineage.mappings[5] == ColumnMapping(
+        data_source=DataSource(name="SCARR", location="SFLIGHT"),
+        sources=["CARRID"],
+        target="CARRID",
     )
