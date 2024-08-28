@@ -229,15 +229,17 @@ class ServiceBaseClass {
       )
       .toBe('success');
 
-    await page.reload();
-
-    await page.waitForSelector('[data-testid="data-assets-header"]');
     const pipelinePromise = page.waitForRequest(
-      `http://localhost:8585/api/v1/services/ingestionPipelines?**`
+      `/api/v1/services/ingestionPipelines?**`
     );
     const statusPromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/**/pipelineStatus?**`
     );
+
+    await page.reload();
+
+    await page.waitForSelector('[data-testid="data-assets-header"]');
+
     await pipelinePromise;
 
     await statusPromise;
@@ -253,9 +255,12 @@ class ServiceBaseClass {
 
     // Check cron schedule for Hour here
     // Being set from this.scheduleIngestion method
-    await page
-      .getByRole('cell', { name: '0 * * * *' })
-      .waitFor({ state: 'visible' });
+    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+      'Every hour'
+    );
+    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+      'Every day'
+    );
 
     await expect(page.getByTestId('pipeline-status').last()).toContainText(
       'Success'
@@ -275,7 +280,7 @@ class ServiceBaseClass {
 
     await page.click('[data-testid="ingestions"]');
 
-    // click and edit pipeline schedule for Minutes
+    // click and edit pipeline schedule for Hours
 
     await page.click('[data-testid="edit"]');
     await page.click('[data-testid="submit-btn"]');
@@ -283,7 +288,7 @@ class ServiceBaseClass {
     // select schedule
     await page.click('[data-testid="cron-type"]');
     await page
-      .locator('.ant-select-item-option-content', { hasText: 'Minute' })
+      .locator('.ant-select-item-option-content', { hasText: 'Hour' })
       .click();
     await page.click('[data-testid="minute-segment-options"]');
     await page.click('.ant-select-item-option-content:has-text("10")');
@@ -292,9 +297,12 @@ class ServiceBaseClass {
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await page
-      .getByRole('cell', { name: '*/10 * * * *' })
-      .waitFor({ state: 'visible' });
+    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+      'At 10 minutes past the hour'
+    );
+    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+      'Every hour, every day'
+    );
 
     // click and edit pipeline schedule for Day
     await page.click('[data-testid="edit"]');
@@ -312,9 +320,12 @@ class ServiceBaseClass {
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await page
-      .getByRole('cell', { name: '4 4 * * *' })
-      .waitFor({ state: 'visible' });
+    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+      'At 04:04 AM'
+    );
+    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+      'Every day'
+    );
 
     // click and edit pipeline schedule for Week
     await page.click('[data-testid="edit"]');
@@ -331,9 +342,12 @@ class ServiceBaseClass {
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await page
-      .getByRole('cell', { name: '5 5 * * 6' })
-      .waitFor({ state: 'visible' });
+    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+      'At 05:05 AM'
+    );
+    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+      'Only on saturday'
+    );
 
     // click and edit pipeline schedule for Custom
     await page.click('[data-testid="edit"]');
@@ -345,9 +359,12 @@ class ServiceBaseClass {
     await page.click('[data-testid="deploy-button"]');
     await page.click('[data-testid="view-service-button"]');
 
-    await page
-      .getByRole('cell', { name: '* * * 2 6' })
-      .waitFor({ state: 'visible' });
+    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
+      'Every minute'
+    );
+    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
+      'Every hour, only on saturday, only in february'
+    );
   }
 
   async updateDescriptionForIngestedTables(page: Page) {
