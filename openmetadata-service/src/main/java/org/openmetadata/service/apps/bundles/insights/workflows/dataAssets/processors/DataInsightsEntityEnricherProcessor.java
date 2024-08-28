@@ -21,7 +21,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -84,39 +83,52 @@ public class DataInsightsEntityEnricherProcessor
     Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
     Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    EntityHistory entityHistory = entityRepository.listVersions(entity.getId());
 
     Long pointerTimestamp = endTimestamp;
     List<Map<String, Object>> entityVersions = new java.util.ArrayList<>();
+    boolean historyDone = false;
+    int nextOffset = 0;
 
-    for (Object version : entityHistory.getVersions()) {
-      EntityInterface versionEntity =
-          JsonUtils.readOrConvertValue(
-              version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-      Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
-      if (versionTimestamp > pointerTimestamp) {
-        continue;
-      } else if (versionTimestamp < startTimestamp) {
-        Map<String, Object> versionMap = new HashMap<>();
-
-        versionMap.put("endTimestamp", pointerTimestamp);
-        versionMap.put("startTimestamp", startTimestamp);
-        versionMap.put("versionEntity", versionEntity);
-
-        entityVersions.add(versionMap);
+    while (!historyDone) {
+      EntityRepository.EntityHistoryWithOffset entityHistoryWithOffset =
+          entityRepository.listVersionsWithOffset(entity.getId(), 100, nextOffset);
+      List<Object> versions = entityHistoryWithOffset.entityHistory().getVersions();
+      if (versions.isEmpty()) {
         break;
-      } else {
-        Map<String, Object> versionMap = new HashMap<>();
+      }
+      nextOffset = entityHistoryWithOffset.nextOffset();
 
-        versionMap.put("endTimestamp", pointerTimestamp);
-        versionMap.put("startTimestamp", TimestampUtils.getEndOfDayTimestamp(versionTimestamp));
-        versionMap.put("versionEntity", versionEntity);
+      for (Object version : versions) {
+        EntityInterface versionEntity =
+            JsonUtils.readOrConvertValue(
+                version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
+        Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
+        if (versionTimestamp > pointerTimestamp) {
+          continue;
+        } else if (versionTimestamp < startTimestamp) {
+          Map<String, Object> versionMap = new HashMap<>();
 
-        entityVersions.add(versionMap);
-        pointerTimestamp =
-            TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
+          versionMap.put("endTimestamp", pointerTimestamp);
+          versionMap.put("startTimestamp", startTimestamp);
+          versionMap.put("versionEntity", versionEntity);
+
+          entityVersions.add(versionMap);
+          historyDone = true;
+          break;
+        } else {
+          Map<String, Object> versionMap = new HashMap<>();
+
+          versionMap.put("endTimestamp", pointerTimestamp);
+          versionMap.put("startTimestamp", TimestampUtils.getEndOfDayTimestamp(versionTimestamp));
+          versionMap.put("versionEntity", versionEntity);
+
+          entityVersions.add(versionMap);
+          pointerTimestamp =
+              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
+        }
       }
     }
+
     return entityVersions;
   }
 

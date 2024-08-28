@@ -703,6 +703,18 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%') "
+            + "ORDER BY extension DESC "
+            + "LIMIT :limit OFFSET :offset")
+    List<ExtensionRecord> getExtensionsWithOffset(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
