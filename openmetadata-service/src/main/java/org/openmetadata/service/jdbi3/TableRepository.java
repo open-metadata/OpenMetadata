@@ -618,7 +618,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.withDataModel(dataModel);
 
     // Carry forward the table owners from the model to table entity, if empty
-    if (table.getOwners() == null) {
+    if (nullOrEmpty(table.getOwners())) {
       storeOwners(table, dataModel.getOwners());
     }
 
