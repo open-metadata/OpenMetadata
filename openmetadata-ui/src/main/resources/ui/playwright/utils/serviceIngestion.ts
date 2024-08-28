@@ -60,17 +60,17 @@ export const getEntityTypeFromService = (service: Services) => {
 export const getServiceCategoryFromService = (service: Services) => {
   switch (service) {
     case Services.Dashboard:
-      return 'dashboardSerivce';
+      return 'dashboardService';
     case Services.Database:
       return 'databaseService';
     case Services.Storage:
       return 'storageService';
     case Services.Messaging:
-      return 'messageService';
+      return 'messagingService';
     case Services.Search:
       return 'searchService';
     case Services.MLModels:
-      return 'mlModelService';
+      return 'mlmodelService';
     case Services.Pipeline:
       return 'pipelineService';
     default:
