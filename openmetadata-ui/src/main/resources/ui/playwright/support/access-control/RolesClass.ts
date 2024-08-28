@@ -12,45 +12,35 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { uuid } from '../../utils/common';
+
 type ResponseDataType = {
   name: string;
   displayName: string;
   description: string;
-  teamType: string;
   id?: string;
   fullyQualifiedName?: string;
-  users?: string[];
 };
 
-export class TeamClass {
+export class RolesClass {
   id = uuid();
   data: ResponseDataType;
   responseData: ResponseDataType;
 
   constructor(data?: ResponseDataType) {
     this.data = data ?? {
-      name: `PW%team-${this.id}`,
-      displayName: `PW Team ${this.id}`,
-      description: 'playwright team description',
-      teamType: 'Group',
-      users: [],
+      name: `PW%Roles-${this.id}`,
+      displayName: `PW Roles ${this.id}`,
+      description: 'playwright for roles description',
     };
-  }
-
-  setTeamType(teamType: string) {
-    this.data.teamType = teamType;
   }
 
   get() {
     return this.responseData;
   }
 
-  async create(
-    apiContext: APIRequestContext,
-    extraData?: Record<string, unknown>
-  ) {
-    const response = await apiContext.post('/api/v1/teams', {
-      data: { ...this.data, ...extraData },
+  async create(apiContext: APIRequestContext, policies: string[]) {
+    const response = await apiContext.post('/api/v1/roles', {
+      data: { ...this.data, policies },
     });
     const data = await response.json();
     this.responseData = data;
@@ -60,24 +50,8 @@ export class TeamClass {
 
   async delete(apiContext: APIRequestContext) {
     const response = await apiContext.delete(
-      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
+      `/api/v1/roles/${this.responseData.id}?hardDelete=true&recursive=true`
     );
-
-    return await response.json();
-  }
-
-  async patch(apiContext: APIRequestContext, data: Record<string, unknown>[]) {
-    const response = await apiContext.patch(
-      `/api/v1/teams/${this.responseData.id}`,
-      {
-        data,
-        headers: {
-          'Content-Type': 'application/json-patch+json',
-        },
-      }
-    );
-
-    this.responseData = await response.json();
 
     return await response.json();
   }
