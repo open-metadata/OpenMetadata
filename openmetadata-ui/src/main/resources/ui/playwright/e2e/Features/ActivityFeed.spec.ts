@@ -29,6 +29,7 @@ import {
   descriptionBox,
   redirectToHomePage,
   toastNotification,
+  uuid,
   visitUserProfilePage,
 } from '../../utils/common';
 import { addOwner, updateDescription } from '../../utils/entity';
@@ -481,6 +482,7 @@ test.describe('Activity feed', () => {
 base.describe('Activity feed with Data Steward User', () => {
   base.slow(true);
 
+  const id = uuid();
   const rules: PolicyRulesType[] = [
     {
       name: 'viewRuleAllowed',
@@ -498,7 +500,7 @@ base.describe('Activity feed with Data Steward User', () => {
   const viewAllUser = new UserClass();
   const viewAllPolicy = new PolicyClass();
   const viewAllRoles = new RolesClass();
-  const viewAllTeam = new TeamClass();
+  let viewAllTeam: TeamClass;
 
   base.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
@@ -511,10 +513,17 @@ base.describe('Activity feed with Data Steward User', () => {
     await viewAllUser.create(apiContext);
     await viewAllPolicy.create(apiContext, rules);
     await viewAllRoles.create(apiContext, [viewAllPolicy.responseData.name]);
-    await viewAllTeam.create(apiContext, {
+    viewAllTeam = new TeamClass({
+      name: `PW%team-${id}`,
+      displayName: `PW Team ${id}`,
+      description: 'playwright team description',
+      teamType: 'Group',
       users: [viewAllUser.responseData.id],
-      defaultRoles: [viewAllRoles.responseData.id],
+      defaultRoles: viewAllRoles.responseData.id
+        ? [viewAllRoles.responseData.id]
+        : [],
     });
+    await viewAllTeam.create(apiContext);
 
     await afterAction();
   });

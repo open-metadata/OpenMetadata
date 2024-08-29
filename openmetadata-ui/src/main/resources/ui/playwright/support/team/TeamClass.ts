@@ -20,6 +20,7 @@ type ResponseDataType = {
   id?: string;
   fullyQualifiedName?: string;
   users?: string[];
+  defaultRoles?: string[];
 };
 
 export class TeamClass {
@@ -45,12 +46,9 @@ export class TeamClass {
     return this.responseData;
   }
 
-  async create(
-    apiContext: APIRequestContext,
-    extraData?: Record<string, unknown>
-  ) {
+  async create(apiContext: APIRequestContext) {
     const response = await apiContext.post('/api/v1/teams', {
-      data: { ...this.data, ...extraData },
+      data: this.data,
     });
     const data = await response.json();
     this.responseData = data;
