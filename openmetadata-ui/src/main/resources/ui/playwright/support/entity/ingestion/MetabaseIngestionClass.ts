@@ -28,7 +28,8 @@ class MetabaseIngestionClass extends ServiceBaseClass {
       Services.Dashboard,
       `pw-Metabase-${uuid()}`,
       'Metabase',
-      'jaffle_shop dashboard'
+      // for Metadabase name will be actual id  cc: @OnkarVO7
+      '1'
     );
     this.tableName = 'jaffle_shop dashboard';
   }
@@ -57,7 +58,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   async fillIngestionDetails(page: Page) {
     await page
       .locator('#root\\/dashboardFilterPattern\\/includes')
-      .fill(this.entityName);
+      .fill(this.tableName);
 
     await page
       .locator('#root\\/dashboardFilterPattern\\/includes')

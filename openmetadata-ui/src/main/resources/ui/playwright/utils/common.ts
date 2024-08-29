@@ -110,7 +110,10 @@ export const toastNotification = async (
 ) => {
   await expect(page.getByRole('alert').first()).toHaveText(message);
 
-  await page.locator('.Toastify__toast').getByLabel('close', { exact: true ).click();
+  await page
+    .locator('.Toastify__toast')
+    .getByLabel('close', { exact: true })
+    .click();
 };
 
 export const clickOutside = async (page: Page) => {
