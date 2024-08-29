@@ -39,6 +39,7 @@ import {
 } from '../../../utils/ToastUtils';
 import { resetWebAnalyticSession } from '../../../utils/WebAnalyticsUtils';
 
+import { toLower } from 'lodash';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -115,7 +116,7 @@ const BasicAuthProvider = ({
           onLoginSuccess({
             id_token: response.accessToken,
             profile: {
-              email: email,
+              email: toLower(email),
               name: '',
               picture: '',
               sub: '',
