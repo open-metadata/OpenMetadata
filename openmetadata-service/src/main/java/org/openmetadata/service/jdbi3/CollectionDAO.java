@@ -703,6 +703,18 @@ public interface CollectionDAO {
     List<ExtensionRecord> getExtensions(
         @BindUUID("id") UUID id, @Bind("extensionPrefix") String extensionPrefix);
 
+    @RegisterRowMapper(ExtensionMapper.class)
+    @SqlQuery(
+        "SELECT extension, json FROM entity_extension WHERE id = :id AND extension "
+            + "LIKE CONCAT (:extensionPrefix, '.%') "
+            + "ORDER BY extension DESC "
+            + "LIMIT :limit OFFSET :offset")
+    List<ExtensionRecord> getExtensionsWithOffset(
+        @BindUUID("id") UUID id,
+        @Bind("extensionPrefix") String extensionPrefix,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
+
     @SqlUpdate("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
     void delete(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
@@ -1008,13 +1020,13 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND toId = :toId AND toEntity = :toEntity "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = POSTGRES)
     void deleteLineageBySource(
         @BindUUID("toId") UUID toId,
