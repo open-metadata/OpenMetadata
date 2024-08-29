@@ -25,15 +25,17 @@ import {
 } from '../support/glossary/Glossary.interface';
 import { GlossaryTerm } from '../support/glossary/GlossaryTerm';
 import {
+  clickOutside,
   getApiContext,
   INVALID_NAMES,
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
+  toastNotification,
 } from './common';
 import { addMultiOwner } from './entity';
 import { sidebarClick } from './sidebar';
-import { TASK_OPEN_FETCH_LINK } from './task';
+import { TaskDetails, TASK_OPEN_FETCH_LINK } from './task';
 
 export const descriptionBox =
   '.toastui-editor-md-container > .toastui-editor > .ProseMirror';
@@ -642,4 +644,354 @@ export const renameGlossaryTerm = async (
     EntityTypeEndpoint.GlossaryTerm
   );
   await glossaryTerm.rename(data.name, data.fullyQualifiedName);
+};
+
+export const dragAndDropTerm = async (
+  page: Page,
+  dragElement: string,
+  dropTarget: string
+) => {
+  await page.getByRole('cell', { name: dragElement }).hover();
+  await page.mouse.down();
+  await page.getByRole('cell', { name: dropTarget }).hover();
+  await page.mouse.up();
+};
+
+export const confirmationDragAndDropGlossary = async (
+  page: Page,
+  dragElement: string,
+  dropElement: string,
+  isHeader = false
+) => {
+  await expect(
+    page.locator('[data-testid="confirmation-modal"] .ant-modal-body')
+  ).toContainText(
+    `Click on Confirm if you’d like to move ${
+      isHeader
+        ? `${dragElement} under ${dropElement} .`
+        : `${dragElement} term under ${dropElement} term.`
+    }`
+  );
+
+  const patchGlossaryTermResponse = page.waitForResponse(
+    '/api/v1/glossaryTerms/*'
+  );
+  await page.getByRole('button', { name: 'Confirm' }).click();
+  await patchGlossaryTermResponse;
+};
+
+export const changeTermHierarchyFromModal = async (
+  page: Page,
+  dragElement: string,
+  dropElement: string
+) => {
+  await selectActiveGlossaryTerm(page, dragElement);
+  await page.getByTestId('manage-button').click();
+  await page.getByTestId('change-parent-button').click();
+  await page
+    .locator('[data-testid="change-parent-select"] > .ant-select-selector')
+    .click();
+  await page.getByTitle(dropElement).click();
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await saveRes;
+};
+
+export const deleteGlossaryOrGlossaryTerm = async (
+  page: Page,
+  entityName: string,
+  isGlossaryTerm = false
+) => {
+  await page.click('[data-testid="manage-button"]');
+  await page.click('[data-testid="delete-button"]');
+
+  await expect(page.locator('[role="dialog"]')).toBeVisible();
+  await expect(page.locator('[data-testid="modal-header"]')).toContainText(
+    entityName
+  );
+
+  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+
+  const endpoint = isGlossaryTerm
+    ? '/api/v1/glossaryTerms/*'
+    : '/api/v1/glossaries/*';
+  const deleteRes = page.waitForResponse(endpoint);
+  await page.click('[data-testid="confirm-button"]');
+  await deleteRes;
+
+  if (isGlossaryTerm) {
+    await toastNotification(page, /"Glossary Term" deleted successfully!/);
+  } else {
+    await toastNotification(page, /"Glossary" deleted successfully!/);
+  }
+};
+
+export const addSynonyms = async (page: Page, synonyms: string[]) => {
+  await page.getByTestId('synonym-add-button').click();
+  await page.locator('.ant-select-selection-overflow').click();
+
+  for (const synonym of synonyms) {
+    await page.locator('#synonyms-select').fill(synonym);
+    await page.locator('#synonyms-select').press('Enter');
+  }
+
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-synonym-btn').click();
+  await saveRes;
+
+  for (const synonym of synonyms) {
+    await expect(page.getByTestId(synonym)).toBeVisible();
+  }
+};
+
+export const addReferences = async (
+  page: Page,
+  references: { name: string; url: string }[]
+) => {
+  await page.getByTestId('term-references-add-button').click();
+
+  await expect(
+    page.getByTestId('glossary-term-references-modal').getByText('References')
+  ).toBeVisible();
+
+  for (const [index, value] of references.entries()) {
+    await page.locator(`#references_${index}_name`).fill(value.name);
+    await page.locator(`#references_${index}_endpoint`).fill(value.url);
+    if (index < references.length - 1) {
+      await page.getByTestId('add-references-button').click();
+    }
+  }
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('save-btn').click();
+  await saveRes;
+
+  for (const reference of references) {
+    await expect(
+      page.getByTestId(`reference-link-${reference.name}`)
+    ).toBeVisible();
+  }
+};
+
+export const addRelatedTerms = async (
+  page: Page,
+  relatedTerms: GlossaryTerm[]
+) => {
+  await page.getByTestId('related-term-add-button').click();
+  for (const term of relatedTerms) {
+    const entityName = get(term, 'responseData.name');
+    const entityFqn = get(term, 'responseData.fullyQualifiedName');
+    await page.locator('#tagsForm_tags').fill(entityName);
+    await page.getByTestId(`tag-${entityFqn}`).click();
+  }
+
+  const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByTestId('saveAssociatedTag').click();
+  await saveRes;
+
+  for (const term of relatedTerms) {
+    const entityName = get(term, 'responseData.displayName');
+
+    await expect(page.getByTestId(entityName)).toBeVisible();
+  }
+};
+
+export const assignTagToGlossaryTerm = async (
+  page: Page,
+  tag: string,
+  action: 'Add' | 'Edit' = 'Add',
+  parentTestId = 'entity-right-panel'
+) => {
+  await page
+    .getByTestId(parentTestId)
+    .getByTestId('tags-container')
+    .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
+    .click();
+
+  const searchTags = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
+  );
+  await page.locator('#tagsForm_tags').fill(tag);
+  await searchTags;
+  await page.getByTestId(`tag-${tag}`).click();
+
+  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+
+  await page.getByTestId('saveAssociatedTag').click();
+
+  await expect(page.getByRole('heading')).toContainText(
+    'Would you like to proceed with updating the tags?'
+  );
+
+  const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
+  await page.getByRole('button', { name: 'Yes, confirm' }).click();
+  await validateRes;
+
+  await expect(
+    page
+      .getByTestId(parentTestId)
+      .getByTestId('tags-container')
+      .getByTestId(`tag-${tag}`)
+  ).toBeVisible();
+};
+
+export const createDescriptionTaskForGlossary = async (
+  page: Page,
+  value: TaskDetails,
+  entity: Glossary | GlossaryTerm,
+  isGlossary = true,
+  addDescription = true
+) => {
+  const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
+  const entityName = get(entity, 'responseData.displayName');
+
+  expect(await page.locator('#title').inputValue()).toBe(
+    `${
+      addDescription ? 'Update' : 'Request'
+    } description for ${entityType} ${entityName}`
+  );
+
+  if (isUndefined(value.assignee)) {
+    expect(
+      await page
+        .locator('[data-testid="select-assignee"] > .ant-select-selector')
+        .innerText()
+    ).toBe(value.assignee);
+
+    expect(
+      await page
+        .locator('[data-testid="select-assignee"] > .ant-select-selector input')
+        .isDisabled()
+    );
+  } else {
+    const assigneeField = page.locator(
+      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
+    );
+    await assigneeField.click();
+
+    const userSearchResponse = page.waitForResponse(
+      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+    );
+    await assigneeField.fill(value.assignee);
+    await userSearchResponse;
+
+    // select value from dropdown
+    const dropdownValue = page.getByTestId(value.assignee);
+    await dropdownValue.hover();
+    await dropdownValue.click();
+    await clickOutside(page);
+  }
+
+  if (addDescription) {
+    await page
+      .locator(descriptionBox)
+      .fill(value.description ?? 'Updated description');
+  }
+  await page.click('button[type="submit"]');
+
+  await toastNotification(page, /Task created successfully./);
+};
+
+export const createTagTaskForGlossary = async (
+  page: Page,
+  value: TaskDetails,
+  entity: Glossary | GlossaryTerm,
+  isGlossary = true,
+  addTag = true
+) => {
+  const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
+  const entityName = get(entity, 'responseData.displayName');
+
+  expect(await page.locator('#title').inputValue()).toBe(
+    `Request tags for ${entityType} ${entityName}`
+  );
+
+  if (isUndefined(value.assignee)) {
+    expect(
+      await page
+        .locator('[data-testid="select-assignee"] > .ant-select-selector')
+        .innerText()
+    ).toBe(value.assignee);
+
+    expect(
+      await page
+        .locator('[data-testid="select-assignee"] > .ant-select-selector input')
+        .isDisabled()
+    );
+  } else {
+    // select assignee
+    const assigneeField = page.locator(
+      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
+    );
+    await assigneeField.click();
+    const userSearchResponse = page.waitForResponse(
+      `/api/v1/search/suggest?q=${value.assignee}&index=user_search_index%2Cteam_search_index`
+    );
+    await assigneeField.fill(value.assignee);
+    await userSearchResponse;
+
+    // select value from dropdown
+    const dropdownValue = page.getByTestId(value.assignee);
+    await dropdownValue.hover();
+    await dropdownValue.click();
+    await clickOutside(page);
+  }
+
+  if (addTag) {
+    // select tags
+    const suggestTags = page.locator(
+      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
+    );
+    await suggestTags.click();
+
+    const querySearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*${value.tag}*&index=tag_search_index&*`
+    );
+    await suggestTags.fill(value.tag ?? '');
+
+    await querySearchResponse;
+
+    // select value from dropdown
+    const dropdownValue = page.getByTestId(`tag-${value.tag ?? ''}`);
+    await dropdownValue.hover();
+    await dropdownValue.click();
+    await clickOutside(page);
+  }
+
+  await page.click('button[type="submit"]');
+
+  await toastNotification(page, /Task created successfully./);
+};
+
+export const approveTagsTask = async (
+  page: Page,
+  value: TaskDetails,
+  entity: Glossary | GlossaryTerm
+) => {
+  await redirectToHomePage(page);
+  await sidebarClick(page, SidebarItem.GLOSSARY);
+  await selectActiveGlossary(page, entity.data.displayName);
+
+  await page.click('[data-testid="activity_feed"]');
+
+  const taskFeeds = page.waitForResponse(TASK_OPEN_FETCH_LINK);
+  await page
+    .getByTestId('global-setting-left-panel')
+    .getByText('Tasks')
+    .click();
+
+  await taskFeeds;
+
+  const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+  await page.click('.ant-btn-compact-first-item:has-text("Accept Suggestion")');
+  await taskResolve;
+
+  await redirectToHomePage(page);
+  await sidebarClick(page, SidebarItem.GLOSSARY);
+  await selectActiveGlossary(page, entity.data.displayName);
+
+  const tagVisibility = await page.isVisible(
+    `[data-testid="tag-${value.tag}"]`
+  );
+
+  await expect(tagVisibility).toBe(true);
 };
