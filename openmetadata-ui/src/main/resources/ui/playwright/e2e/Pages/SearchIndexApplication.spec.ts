@@ -172,7 +172,7 @@ test('Search Index Application', async ({ page }) => {
     expect(await card.isVisible()).toBe(true);
   });
 
-  if (process.env.isOss) {
+  if (process.env.PLAYWRIGHT_IS_OSS) {
     await test.step('Run application', async () => {
       test.slow(true); // Test time shouldn't exceed while re-fetching the history API.
 

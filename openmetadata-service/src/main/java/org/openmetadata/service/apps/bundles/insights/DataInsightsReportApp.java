@@ -72,8 +72,9 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
     // Calculate time config
     long currentTime = System.currentTimeMillis();
-    long startTime = TimestampUtils.subtractDays(currentTime, 7);
-    long endTime = TimestampUtils.subtractDays(currentTime, 1);
+    long startTime =
+        TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(currentTime, 6));
+    long endTime = TimestampUtils.getStartOfDayTimestamp(currentTime);
     TimeConfig timeConfig =
         new TimeConfig(
             startTime,
@@ -219,10 +220,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     if (previousCount == 0D) {
       // it should be undefined
       return new DataInsightTotalAssetTemplate(
-          currentCount, 0D, timeConfig.numberOfDaysChange(), dateMap);
+          String.valueOf(currentCount.intValue()), 0D, timeConfig.numberOfDaysChange(), dateMap);
     } else {
       return new DataInsightTotalAssetTemplate(
-          currentCount,
+          String.valueOf(currentCount.intValue()),
           ((currentCount - previousCount) / previousCount) * 100,
           timeConfig.numberOfDaysChange(),
           dateMap);
@@ -344,7 +345,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
     Map<String, Double> dateWithCount =
-        getDateMapWithCountFromChart(
+        getDateMapWithCountFromTierChart(
             "total_data_assets_by_tier", timeConfig.startTime(), timeConfig.endTime(), team);
 
     Double previousHasTier = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
@@ -385,6 +386,38 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         timeConfig.numberOfDaysChange(),
         tierData,
         dateMap);
+  }
+
+  // Hack: Because on Data Insights when a Tier is not present is set as 'NoTier', this calculation
+  // will return 100% of the entities
+  // with Tier.
+  // This should be fixed by using the .missing() attribute for ElasticSearch aggregations and
+  // should be planned for 1.6.
+  // Meanwhile this is a workaround.
+  private Map<String, Double> getDateMapWithCountFromTierChart(
+      String chartName, Long startTime, Long endTime, String team) throws IOException {
+    String filter = prepareTeamFilter(team);
+    Map<String, DataInsightCustomChartResultList> systemChartMap =
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+    return systemChartMap.get(chartName).getResults().stream()
+        .filter(
+            result ->
+                !result
+                    .getGroup()
+                    .equals(
+                        "NoTier")) // Workaround to remove Assets without Tiers from the equation
+        .map(
+            result -> {
+              Map<String, Double> dayCount = new HashMap<>();
+              dayCount.put(
+                  TimestampUtils.timestampToString(result.getDay().longValue(), "dd"),
+                  result.getCount());
+              return dayCount;
+            })
+        .flatMap(map -> map.entrySet().stream())
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.summingDouble(Map.Entry::getValue)));
   }
 
   private Map<String, Double> getDateMapWithCountFromChart(

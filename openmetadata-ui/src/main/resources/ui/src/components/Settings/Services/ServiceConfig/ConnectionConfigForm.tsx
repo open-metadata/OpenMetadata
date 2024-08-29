@@ -13,6 +13,7 @@
 
 import Form, { IChangeEvent } from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
+import { Alert } from 'antd';
 import { t } from 'i18next';
 import { cloneDeep, isEmpty, isNil, isUndefined } from 'lodash';
 import { LoadingState } from 'Models';
@@ -40,6 +41,7 @@ import {
   ServicesType,
 } from '../../../../interface/service.interface';
 import { getPipelineServiceHostIp } from '../../../../rest/ingestionPipelineAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import AirflowMessageBanner from '../../../common/AirflowMessageBanner/AirflowMessageBanner';
@@ -214,13 +216,19 @@ const ConnectionConfigForm: FunctionComponent<Props> = ({
           </div>
         )}
         {!isEmpty(connSch.schema) && isAirflowAvailable && hostIp && (
-          <div
-            className="d-flex justify-between bg-white global-border rounded-4 p-sm m-t-md"
-            data-testid="ip-address">
-            <div className="self-center">
-              {t('message.airflow-host-ip-address', { hostIp })}
-            </div>
-          </div>
+          <Alert
+            data-testid="ip-address"
+            description={
+              <Transi18next
+                i18nKey="message.airflow-host-ip-address"
+                renderElement={<strong />}
+                values={{
+                  hostIp,
+                }}
+              />
+            }
+            type="info"
+          />
         )}
         {!isEmpty(connSch.schema) &&
           isAirflowAvailable &&

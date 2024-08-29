@@ -46,6 +46,7 @@ import {
   getListTestDefinitions,
 } from '../../../../rest/testAPI';
 import {
+  filterSelectOptions,
   getNameFromFQN,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/CommonUtils';
@@ -88,6 +89,7 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
   );
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [currentColumnType, setCurrentColumnType] = useState<string>();
+  const [loading, setLoading] = useState(false);
 
   const columnName = Form.useWatch('column', form);
 
@@ -196,8 +198,10 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
     };
   };
 
-  const handleFormSubmit: FormProps['onFinish'] = (value) => {
-    onSubmit(createTestCaseObj(value));
+  const handleFormSubmit: FormProps['onFinish'] = async (value) => {
+    setLoading(true);
+    await onSubmit(createTestCaseObj(value));
+    setLoading(false);
   };
 
   const onBack = () => {
@@ -276,6 +280,16 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
       column: activeColumnFqn ? getNameFromFQN(activeColumnFqn) : undefined,
     });
   }, [activeColumnFqn]);
+
+  const testTypeOptions = useMemo(
+    () =>
+      testDefinitions.map((suite) => ({
+        label: getEntityName(suite),
+        value: suite.fullyQualifiedName ?? '',
+      })),
+
+    [testDefinitions]
+  );
 
   return (
     <Form
@@ -359,10 +373,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
         <Select
           showSearch
           data-testid="test-type"
-          options={testDefinitions.map((suite) => ({
-            label: getEntityName(suite),
-            value: suite.fullyQualifiedName,
-          }))}
+          filterOption={filterSelectOptions}
+          options={testTypeOptions}
           placeholder={t('label.select-field', { field: t('label.test-type') })}
           onChange={handleTestDefinitionChange}
         />
@@ -401,10 +413,14 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
 
       <Form.Item noStyle>
         <Space className="w-full justify-end" size={16}>
-          <Button data-testid="cancel-btn" onClick={onBack}>
+          <Button data-testid="cancel-btn" disabled={loading} onClick={onBack}>
             {t('label.back')}
           </Button>
-          <Button data-testid="submit-test" htmlType="submit" type="primary">
+          <Button
+            data-testid="submit-test"
+            htmlType="submit"
+            loading={loading}
+            type="primary">
             {t('label.submit')}
           </Button>
         </Space>

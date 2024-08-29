@@ -141,6 +141,21 @@ public class SystemRepository {
   @Transaction
   public Response createOrUpdate(Settings setting) {
     Settings oldValue = getConfigWithKey(setting.getConfigType().toString());
+
+    if (oldValue != null && oldValue.getConfigType().equals(SettingsType.EMAIL_CONFIGURATION)) {
+      SmtpSettings configValue =
+          JsonUtils.convertValue(oldValue.getConfigValue(), SmtpSettings.class);
+      if (configValue != null) {
+        SmtpSettings.Templates templates = configValue.getTemplates();
+        SmtpSettings newConfigValue =
+            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+        if (newConfigValue != null) {
+          newConfigValue.setTemplates(templates);
+          setting.setConfigValue(newConfigValue);
+        }
+      }
+    }
+
     try {
       updateSetting(setting);
     } catch (Exception ex) {

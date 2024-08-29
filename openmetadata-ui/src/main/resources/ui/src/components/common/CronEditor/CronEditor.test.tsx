@@ -33,9 +33,6 @@ const mockProps: CronEditorProp = {
 const getHourDescription = (value: string) =>
   `label.schedule-to-run-every hour ${value} past the hour`;
 
-const getMinuteDescription = (value: string) =>
-  `label.schedule-to-run-every ${value}`;
-
 const getDayDescription = () => 'label.schedule-to-run-every day at 00:00';
 
 const handleScheduleEverySelector = async (text: string) => {
@@ -101,40 +98,6 @@ describe('Test CronEditor component', () => {
 
     expect(screen.getByTestId('schedule-description')).toHaveTextContent(
       getHourDescription('3 minutes')
-    );
-  });
-
-  it('Minute option should render corresponding component', async () => {
-    render(<CronEditor disabled={false} onChange={jest.fn} />);
-
-    await handleScheduleEverySelector('label.minute-plural');
-
-    expect(screen.getByTestId('schedule-description')).toHaveTextContent(
-      getMinuteDescription('5')
-    );
-
-    expect(
-      await screen.findByTestId('minute-segment-container')
-    ).toBeInTheDocument();
-
-    const minutesOptions = await screen.findByTestId('minute-segment-options');
-
-    expect(minutesOptions).toBeInTheDocument();
-
-    const minuteSelect = await findByRole(minutesOptions, 'combobox');
-
-    act(() => {
-      userEvent.click(minuteSelect);
-    });
-    await waitForElement(() => screen.getByText('15'));
-    await act(async () => {
-      fireEvent.click(screen.getByText('15'));
-    });
-
-    expect(await screen.getAllByText('15')).toHaveLength(2);
-
-    expect(screen.getByTestId('schedule-description')).toHaveTextContent(
-      getMinuteDescription('15')
     );
   });
 

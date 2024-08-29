@@ -285,6 +285,7 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
       '/api/v1/search/query?q=*&from=0&size=15&index=table_search_index',
       'explorePageSearch'
     );
+
     visitEntityDetailsPage({
       term: DATA.term,
       serviceName: DATA.serviceName,
@@ -298,6 +299,8 @@ describe('Query Entity', { tags: 'DataAssets' }, () => {
     cy.get('.CodeMirror-line')
       .click()
       .type(`{selectAll}{selectAll}${DATA.queryUsedIn.table1}`);
+    cy.get('[data-testid="edit-query-used-in"]').click();
+    cy.wait('@explorePageSearch');
     cy.get('[data-testid="edit-query-used-in"]').type(DATA.queryUsedIn.table2);
     verifyResponseStatusCode('@explorePageSearch', 200);
     cy.get(`[title="${DATA.queryUsedIn.table2}"]`).click();
