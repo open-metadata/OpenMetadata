@@ -147,7 +147,21 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public User getByEmail(UriInfo uriInfo, String email, Fields fields) {
-    String userString = ((CollectionDAO.UserDAO) dao).findUserByEmail(email);
+    String userString = daoCollection.userDAO().findUserByEmail(email);
+    if (userString == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
+    }
+    User user = JsonUtils.readValue(userString, User.class);
+    setFieldsInternal(user, fields);
+    setInheritedFields(user, fields);
+    // Clone the entity
+    User entityClone = JsonUtils.deepCopy(user, User.class);
+    clearFieldsInternal(entityClone, fields);
+    return withHref(uriInfo, entityClone);
+  }
+
+  public User getUserByNameAndEmail(UriInfo uriInfo, String name, String email, Fields fields) {
+    String userString = daoCollection.userDAO().findUserByNameAndEmail(name, email);
     if (userString == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
@@ -315,6 +329,10 @@ public class UserRepository extends EntityRepository<User> {
     return daoCollection.userDAO().checkEmailExists(emailId) > 0;
   }
 
+  public boolean checkUserNameExists(String username) {
+    return daoCollection.userDAO().checkUserNameExists(username) > 0;
+  }
+
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
     // Create Admins
@@ -361,38 +379,46 @@ public class UserRepository extends EntityRepository<User> {
   public List<EntityReference> getGroupTeams(
       UriInfo uriInfo, SecurityContext context, String email) {
     // Cleanup
-    User user = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
-    validateLoggedInUserNameAndEmailMatches(context.getUserPrincipal().getName(), email, user);
+    User user =
+        getLoggedInUserByNameAndEmail(
+            uriInfo, context.getUserPrincipal().getName(), email, Fields.EMPTY_FIELDS);
     List<EntityReference> teams = getTeams(user);
     return getGroupTeams(teams);
   }
 
-  public void validateLoggedInUserNameAndEmailMatches(
-      String username, String email, User storedUser) {
-    String lowerCasedName = username.toLowerCase();
-    String lowerCasedEmail = email.toLowerCase();
-    boolean nameMatches = lowerCasedName.equals(storedUser.getName().toLowerCase());
-    boolean emailMatches = lowerCasedEmail.equals(storedUser.getEmail().toLowerCase());
-
-    // Both Match - Success
-    if (nameMatches && emailMatches) {
-      return;
+  public User getLoggedInUserByNameAndEmail(
+      UriInfo uriInfo, String username, String email, Fields fields) {
+    try {
+      return getUserByNameAndEmail(uriInfo, username, email, fields);
+    } catch (EntityNotFoundException e) {
+      boolean existByName = checkUserNameExists(username);
+      boolean existByEmail = checkEmailAlreadyExists(email);
+      if (existByName && !existByEmail) {
+        User userByName = getByName(uriInfo, username, Fields.EMPTY_FIELDS);
+        throw BadRequestException.of(
+            String.format(
+                "User with given name exists but is not associated with the provided email. "
+                    + "Matching User Found By Name: <username:email> <%s:%s> Provided User: <%s:%s>",
+                userByName.getName().toLowerCase(),
+                userByName.getEmail().toLowerCase(),
+                username,
+                email));
+      } else if (!existByName && existByEmail) {
+        User userByEmail = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
+        throw BadRequestException.of(
+            String.format(
+                "User with given email exists but is not associated with provider username. "
+                    + "Matching User Found By Name: <username:email> <%s:%s> Provided User: <%s:%s>",
+                userByEmail.getName().toLowerCase(),
+                userByEmail.getEmail().toLowerCase(),
+                username,
+                email));
+      } else {
+        throw EntityNotFoundException.byMessage(
+            String.format(
+                "User with provider name : %s and email : %s not found", username, email));
+      }
     }
-
-    // Both Don't Match - Entity not found
-    if (!nameMatches && !emailMatches) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
-    }
-
-    // Only one Matches - Throw BadRequest
-    throw BadRequestException.of(
-        String.format(
-            "Username and email mismatch. Please check the username and email and try again. "
-                + "Matching User Found: <username:email> <%s:%s>, Provided User: <%s:%s>",
-            storedUser.getName().toLowerCase(),
-            storedUser.getEmail().toLowerCase(),
-            username,
-            email));
   }
 
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
