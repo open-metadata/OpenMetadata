@@ -398,7 +398,7 @@ public class UserRepository extends EntityRepository<User> {
         throw BadRequestException.of(
             String.format(
                 "User with given name exists but is not associated with the provided email. "
-                    + "Matching User Found By Name: <username:email> <%s:%s> Provided User: <%s:%s>",
+                    + "Matching User Found By Name [username:email] : [%s:%s], Provided User: [%s:%s]",
                 userByName.getName().toLowerCase(),
                 userByName.getEmail().toLowerCase(),
                 username,
@@ -408,7 +408,7 @@ public class UserRepository extends EntityRepository<User> {
         throw BadRequestException.of(
             String.format(
                 "User with given email exists but is not associated with provider username. "
-                    + "Matching User Found By Name: <username:email> <%s:%s> Provided User: <%s:%s>",
+                    + "Matching User Found By Email [username:email] : [%s:%s], Provided User: [%s:%s]",
                 userByEmail.getName().toLowerCase(),
                 userByEmail.getEmail().toLowerCase(),
                 username,
