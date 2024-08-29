@@ -19,7 +19,7 @@ import {
   descriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
-import { createQueryByTableName } from '../../utils/query';
+import { createQueryByTableName, queryFilters } from '../../utils/query';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -34,7 +34,8 @@ const queryData = {
   query: `select * from table ${table1.entity.name}`,
   description: 'select all the field from table',
   owner: user1.getUserName(),
-  tag: 'PersonalData.Personal',
+  tagFqn: 'PersonalData.Personal',
+  tagName: 'Personal',
   queryUsedIn: {
     table1: table2.entity.name,
     table2: table3.entity.name,
@@ -70,9 +71,7 @@ test('Query Entity', async ({ page }) => {
       .getByTestId('code-mirror-container')
       .getByRole('textbox')
       .fill(queryData.query);
-    await page.click(
-      `.toastui-editor-md-container > .toastui-editor > .ProseMirror`
-    );
+    await page.click(descriptionBox);
     await page.keyboard.type(queryData.description);
 
     await page
@@ -114,7 +113,11 @@ test('Query Entity', async ({ page }) => {
     await searchOwnerResponse;
     await page.click(`.ant-popover [title="${queryData.owner}"]`);
     await page.click('[data-testid="selectable-list-update-btn"]');
-    await page.waitForResponse('/api/v1/queries/*');
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/queries/') &&
+        response.request().method() === 'PATCH'
+    );
 
     await expect(page.getByRole('link', { name: 'admin' })).toBeVisible();
     await expect(
@@ -125,7 +128,11 @@ test('Query Entity', async ({ page }) => {
     await page.click(`[data-testid="edit-description"]`);
     await page.fill(descriptionBox, 'updated description');
     await page.click(`[data-testid="save"]`);
-    await page.waitForResponse('/api/v1/queries/*');
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/queries/') &&
+        response.request().method() === 'PATCH'
+    );
     await page.waitForSelector('.ant-modal-body', {
       state: 'detached',
     });
@@ -133,9 +140,97 @@ test('Query Entity', async ({ page }) => {
     // Update Tags
     await page.getByTestId('add-tag').click();
     await page.locator('#tagsForm_tags').click();
-    await page.locator('#tagsForm_tags').fill(queryData.tag);
-    await page.getByTestId(`tag-${queryData.tag}`).click();
+    await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
+    await page.getByTestId(`tag-${queryData.tagFqn}`).click();
     await page.getByTestId('saveAssociatedTag').click();
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/queries/') &&
+        response.request().method() === 'PATCH'
+    );
+  });
+
+  await test.step('Update query and QueryUsedIn', async () => {
+    await page.click('[data-testid="query-btn"]');
+    await page.click(`[data-menu-id*="edit-query"]`);
+    await page.click('.CodeMirror-line', { clickCount: 3 });
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type(`${queryData.queryUsedIn.table1}`);
+    await page.click('[data-testid="edit-query-used-in"]');
+    const tableSearchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=table_search_index'
+    );
+    await page.keyboard.type(queryData.queryUsedIn.table2);
+    await tableSearchResponse;
+    await page.click(`[title="${queryData.queryUsedIn.table2}"]`);
+    await clickOutside(page);
+    await page.click('[data-testid="save-query-btn"]');
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/queries/') &&
+        response.request().method() === 'PATCH'
+    );
+  });
+
+  await test.step('Verify query filter', async () => {
+    const userName = user2.getUserName();
+    await queryFilters({
+      filter: userName,
+      apiKey: `/api/v1/search/query?*${encodeURI(
+        userName
+      )}*index=user_search_index,team_search_index*`,
+      key: 'Owner',
+      page,
+    });
+
+    await expect(
+      page.locator('[data-testid="no-data-placeholder"]')
+    ).toBeVisible();
+
+    await queryFilters({
+      filter: queryData.owner,
+      apiKey: `/api/v1/search/query?*${encodeURI(
+        queryData.owner
+      )}*index=user_search_index,team_search_index*`,
+      key: 'Owner',
+      page,
+    });
+    const queryCards = await page.$$('[data-testid="query-card"]');
+
+    expect(queryCards.length).toBeGreaterThan(0);
+
+    await queryFilters({
+      filter: 'None',
+      apiKey: '/api/v1/search/query?*None*index=tag_search_index*',
+      key: 'Tag',
+      page,
+    });
+
+    await expect(
+      page.locator('[data-testid="no-data-placeholder"]')
+    ).toBeVisible();
+
+    await queryFilters({
+      filter: queryData.tagName,
+      apiKey: `/api/v1/search/query?*${queryData.tagName}*index=tag_search_index*`,
+      key: 'Tag',
+      page,
+    });
+
+    const updatedQueryCards = await page.$$('[data-testid="query-card"]');
+
+    expect(updatedQueryCards.length).toBeGreaterThan(0);
+  });
+
+  await test.step('Visit full screen view of query and Delete', async () => {
+    const queryResponse = page.waitForResponse('/api/v1/queries/*');
+    await page.click(`[data-testid="query-entity-expand-button"]`);
+    await queryResponse;
+
+    await page.click(`[data-testid="query-btn"]`);
+    await page.waitForSelector('.ant-dropdown', { state: 'visible' });
+    await page.click(`[data-menu-id*="delete-query"]`);
+    await page.click(`[data-testid="save-button"]`);
     await page.waitForResponse('/api/v1/queries/*');
   });
 });

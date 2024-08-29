@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 
 export const createQueryByTableName = async (data: {
   apiContext: APIRequestContext;
@@ -20,7 +20,7 @@ export const createQueryByTableName = async (data: {
   const queryResponse = await apiContext
     .post('/api/v1/queries', {
       data: {
-        query: 'SELECT * FROM SALES',
+        query: `SELECT * FROM SALES-${tableResponseData?.['name']}`,
         description: 'this is query description',
         queryUsedIn: [
           {
@@ -36,4 +36,26 @@ export const createQueryByTableName = async (data: {
     .then((response) => response.json());
 
   return await queryResponse;
+};
+
+export const queryFilters = async ({
+  key,
+  filter,
+  apiKey,
+  page,
+}: {
+  key: string;
+  filter: string;
+  apiKey: string;
+  page: Page;
+}) => {
+  await page.click(`[data-testid="search-dropdown-${key}"]`);
+  await page.fill('[data-testid="search-input"]', filter);
+  await page.waitForResponse(apiKey);
+  await page.hover(`[data-testid="search-dropdown-${key}"]`);
+  await page.click(`[data-testid="drop-down-menu"] [title="${filter}"]`);
+  await page.click('[data-testid="update-btn"]');
+  await page.waitForResponse(
+    '/api/v1/search/query?q=*&index=query_search_index*'
+  );
 };
