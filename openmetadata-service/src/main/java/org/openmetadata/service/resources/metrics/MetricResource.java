@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.apis;
+package org.openmetadata.service.resources.metrics;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,68 +44,56 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 import javax.ws.rs.core.UriInfo;
 import org.openmetadata.schema.api.VoteRequest;
-import org.openmetadata.schema.api.data.CreateAPIEndpoint;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.RestoreEntity;
-import org.openmetadata.schema.entity.data.APIEndpoint;
-import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.APIEndpointRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.ResultList;
 
-@Path("/v1/apiEndpoints")
+@Path("/v1/metrics")
 @Tag(
-    name = "API Endpoint",
+    name = "Metrics (beta)",
     description =
-        "A `API Endpoint` is a specific endpoint of an API that is part of an API Collection..")
+        "`Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that "
+            + "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "apiEndpoints")
-public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpointRepository> {
-  public static final String COLLECTION_PATH = "v1/apiEndpoints/";
-  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts,sourceHash";
+@Collection(name = "metrics")
+public class MetricResource extends EntityResource<Metric, MetricRepository> {
+  public static final String COLLECTION_PATH = "/v1/metrics/";
+  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts";
 
-  @Override
-  public APIEndpoint addHref(UriInfo uriInfo, APIEndpoint apiEndpoint) {
-    super.addHref(uriInfo, apiEndpoint);
-    Entity.withHref(uriInfo, apiEndpoint.getApiCollection());
-    Entity.withHref(uriInfo, apiEndpoint.getService());
-    return apiEndpoint;
+  public MetricResource(Authorizer authorizer, Limits limits) {
+    super(Entity.METRICS, authorizer, limits);
   }
 
-  public APIEndpointResource(Authorizer authorizer, Limits limits) {
-    super(Entity.API_ENDPOINT, authorizer, limits);
-  }
-
-  public static class APIEndpointList extends ResultList<APIEndpoint> {
+  public static class MetricsList extends ResultList<Metric> {
     /* Required for serde */
   }
 
   @GET
   @Operation(
-      operationId = "listAPIEndpoints",
-      summary = "List API Endpoints",
-      description =
-          "Get a list of API Endpoints, optionally filtered by `service` it belongs to. Use `fields` "
-              + "parameter to get only necessary fields. Use cursor-based pagination to limit the number "
-              + "entries in the list using `limit` and `before` or `after` query params.",
+      operationId = "listMetrics",
+      summary = "List metrics",
+      description = "Get a list of metrics. Use `fields` parameter to get only necessary fields.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "List of API Endpoints",
+            description = "List of metrics",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIEndpointList.class)))
+                    schema = @Schema(implementation = MetricsList.class)))
       })
-  public ResultList<APIEndpoint> list(
+  public ResultList<Metric> list(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -113,95 +101,43 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam,
+      @DefaultValue("10") @Min(0) @Max(1000000) @QueryParam("limit") int limitParam,
       @Parameter(
-              description = "Filter APIEndpoints by service name",
-              schema = @Schema(type = "string", example = "OpenMetadata API Service"))
-          @QueryParam("service")
-          String serviceParam,
-      @Parameter(
-              description = "Filter APIEndpoints by apiCollection name",
-              schema = @Schema(type = "string", example = "UsersAPI"))
-          @QueryParam("apiCollection")
-          String apiCollectionParam,
-      @Parameter(
-              description = "Limit the number APIEndpoints returned. (1 to 1000000, default = 10)")
-          @DefaultValue("10")
-          @QueryParam("limit")
-          @Min(0)
-          @Max(1000000)
-          int limitParam,
-      @Parameter(
-              description = "Returns list of APIEndpoints before this cursor",
+              description = "Returns list of metrics before this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("before")
           String before,
       @Parameter(
-              description = "Returns list of APIEndpoints after this cursor",
+              description = "Returns list of metrics after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after,
-      @Parameter(
-              description = "Include all, deleted, or non-deleted entities.",
-              schema = @Schema(implementation = Include.class))
-          @QueryParam("include")
-          @DefaultValue("non-deleted")
-          Include include) {
-    ListFilter filter =
-        new ListFilter(include)
-            .addQueryParam("service", serviceParam)
-            .addQueryParam("apiCollection", apiCollectionParam);
+          String after) {
+    ListFilter filter = new ListFilter();
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
-  @Path("/{id}/versions")
-  @Operation(
-      operationId = "listAllAPIEndpointVersion",
-      summary = "List API Endpoint versions",
-      description = "Get a list of all the versions of a APIEndpoint identified by `id`",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "List of APIEndpoint versions",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = EntityHistory.class)))
-      })
-  public EntityHistory listVersions(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id) {
-    return super.listVersionsInternal(securityContext, id);
-  }
-
-  @GET
   @Path("/{id}")
   @Operation(
-      operationId = "getEndpointById",
-      summary = "Get a APIEndpoint by id",
-      description = "Get a APIEndpoint by `id`.",
+      operationId = "getMetricByID",
+      summary = "Get a metric by Id",
+      description = "Get a metric by `Id`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The APIEndpoint",
+            description = "The metrics",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIEndpoint.class))),
-        @ApiResponse(
-            responseCode = "404",
-            description = "APIEndpoint for instance {id} is not found")
+                    schema = @Schema(implementation = Metric.class))),
+        @ApiResponse(responseCode = "404", description = "Metrics for instance {id} is not found")
       })
-  public APIEndpoint get(
+  public Metric get(
       @Context UriInfo uriInfo,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
-          @PathParam("id")
-          UUID id,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
@@ -219,23 +155,23 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @GET
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "getEndpointByFQN",
-      summary = "Get a Endpoint by fully qualified name.",
-      description = "Get a Endpoint by fully qualified name.",
+      operationId = "getMetricByFQN",
+      summary = "Get a Metric by fully qualified name.",
+      description = "Get a Metric by fully qualified name.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The APIEndpoint",
+            description = "The Metric",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIEndpoint.class))),
-        @ApiResponse(responseCode = "404", description = "Endpoint for instance {fqn} is not found")
+                    schema = @Schema(implementation = Metric.class))),
+        @ApiResponse(responseCode = "404", description = "Metric for instance {fqn} is not found")
       })
-  public APIEndpoint getByName(
+  public Metric getByName(
       @Context UriInfo uriInfo,
       @Parameter(
-              description = "Fully qualified name of the Endpoint",
+              description = "Fully qualified name of the Metric",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
@@ -258,28 +194,27 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificEndpointVersion",
-      summary = "Get a version of the APIEndpoint",
-      description = "Get a version of the APIEndpoint by given `id`",
+      summary = "Get a version of the Metric",
+      description = "Get a version of the Metric by given `id`",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "APIEndpoint Version",
+            description = "Metric Version",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIEndpoint.class))),
+                    schema = @Schema(implementation = Metric.class))),
         @ApiResponse(
             responseCode = "404",
-            description = "APIEndpoint for instance {id} and version {version} is not found")
+            description = "Metric for instance {id} and version {version} is not found")
       })
-  public APIEndpoint getVersion(
+  public Metric getVersion(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(
-              description = "APIEndpoint version number in the form `major`.`minor`",
+              description = "Metric version number in the form `major`.`minor`",
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
@@ -288,33 +223,33 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
 
   @POST
   @Operation(
-      operationId = "createAPIEndpoint",
-      summary = "Create a API Endpoint",
-      description = "Create a API Endpoint under an existing `service`.",
+      operationId = "createMetric",
+      summary = "Create a Metric",
+      description = "Create a Metric.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The API Endpoint",
+            description = "The Metric",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIEndpoint.class))),
+                    schema = @Schema(implementation = Metric.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateAPIEndpoint create) {
-    APIEndpoint apiEndpoint = getAPIEndpoint(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, apiEndpoint);
+      @Valid CreateMetric create) {
+    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    return create(uriInfo, securityContext, metric);
   }
 
   @PATCH
   @Path("/{id}")
   @Operation(
-      operationId = "patchAPIEndpoint",
-      summary = "Update a APIEndpoint",
-      description = "Update an existing APIEndpoint using JsonPatch.",
+      operationId = "patchMetric",
+      summary = "Update a Metric",
+      description = "Update an existing Metric using JsonPatch.",
       externalDocs =
           @ExternalDocumentation(
               description = "JsonPatch RFC",
@@ -323,8 +258,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   public Response updateMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @RequestBody(
               description = "JsonPatch with array of operations",
@@ -341,18 +275,18 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @PATCH
   @Path("/name/{fqn}")
   @Operation(
-      operationId = "patchAPIEndpoint",
-      summary = "Update a APIEndpoint using name.",
-      description = "Update an existing APIEndpoint using JsonPatch.",
+      operationId = "patchMetric",
+      summary = "Update a Metric using name.",
+      description = "Update an existing Metric using JsonPatch.",
       externalDocs =
           @ExternalDocumentation(
               description = "JsonPatch RFC",
               url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
-  public Response updateAPIEndpoint(
+  public Response updateMetric(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the APIEndpoint", schema = @Schema(type = "string"))
+      @Parameter(description = "Name of the Metric", schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn,
       @RequestBody(
@@ -369,25 +303,25 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
 
   @PUT
   @Operation(
-      operationId = "createOrUpdateAPIEndpoint",
-      summary = "Update topic",
-      description =
-          "Create a API Endpoint, it it does not exist or update an existing API Endpoint.",
+      operationId = "createOrUpdateMetric",
+      summary = "Create or update a metric",
+      description = "Create a new metric, if it does not exist or update an existing metric.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The updated topic ",
+            description = "The metric",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Topic.class)))
+                    schema = @Schema(implementation = Metric.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid CreateAPIEndpoint create) {
-    APIEndpoint apiEndpoint = getAPIEndpoint(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, apiEndpoint);
+      @Valid CreateMetric create) {
+    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, metric);
   }
 
   @PUT
@@ -395,7 +329,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @Operation(
       operationId = "addFollower",
       summary = "Add a follower",
-      description = "Add a user identified by `userId` as followed of this APiEndpoint.",
+      description = "Add a user identified by `userId` as followed of this Metric.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -411,8 +345,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   public Response addFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(
               description = "Id of the user to be added as follower",
@@ -427,7 +360,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @Path("/{id}/followers/{userId}")
   @Operation(
       summary = "Remove a follower",
-      description = "Remove the user identified `userId` as a follower of the APIEndpoint.",
+      description = "Remove the user identified `userId` as a follower of the Metric.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -440,8 +373,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   public Response deleteFollower(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(
               description = "Id of the user being removed as follower",
@@ -456,9 +388,9 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @PUT
   @Path("/{id}/vote")
   @Operation(
-      operationId = "updateVoteForAPIEndpoint",
-      summary = "Update Vote for a APIEndpoint",
-      description = "Update vote for a APIEndpoint",
+      operationId = "updateVoteForMetric",
+      summary = "Update Vote for a Metric",
+      description = "Update vote for a Metric",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -483,14 +415,12 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @DELETE
   @Path("/{id}")
   @Operation(
-      operationId = "deleteAPIEndpoint",
-      summary = "Delete a APIEndpoint by id",
-      description = "Delete a APIEndpoint by `id`.",
+      operationId = "deleteMetric",
+      summary = "Delete a Metric by id",
+      description = "Delete a Metric by `id`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "APIEndpoint for instance {id} is not found")
+        @ApiResponse(responseCode = "404", description = "Metric for instance {id} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -499,8 +429,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the APIEndpoint", schema = @Schema(type = "UUID"))
-          @PathParam("id")
+      @Parameter(description = "Id of the Metric", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, false, hardDelete);
   }
@@ -509,13 +438,11 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deleteAPIEndpointByFQN",
-      summary = "Delete a APIEndpoint by fully qualified name",
-      description = "Delete a APIEndpoint by `fullyQualifiedName`.",
+      summary = "Delete a Metric by fully qualified name",
+      description = "Delete a Metric by `fullyQualifiedName`.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(
-            responseCode = "404",
-            description = "APIEndpoint for instance {fqn} is not found")
+        @ApiResponse(responseCode = "404", description = "Metric for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -525,7 +452,7 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
           @DefaultValue("false")
           boolean hardDelete,
       @Parameter(
-              description = "Fully qualified name of the APIEndpoint",
+              description = "Fully qualified name of the Metric",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
@@ -536,16 +463,16 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
   @Path("/restore")
   @Operation(
       operationId = "restore",
-      summary = "Restore a soft deleted APIEndpoint",
-      description = "Restore a soft deleted APIEndpoint.",
+      summary = "Restore a soft deleted Metric.",
+      description = "Restore a soft deleted Metric.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the APIEndpoint. ",
+            description = "Successfully restored the Metric. ",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = APIEndpoint.class)))
+                    schema = @Schema(implementation = Metric.class)))
       })
   public Response restore(
       @Context UriInfo uriInfo,
@@ -554,14 +481,13 @@ public class APIEndpointResource extends EntityResource<APIEndpoint, APIEndpoint
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
-  private APIEndpoint getAPIEndpoint(CreateAPIEndpoint create, String user) {
+  private Metric getMetric(CreateMetric create, String user) {
     return repository
-        .copy(new APIEndpoint(), create, user)
-        .withApiCollection(getEntityReference(Entity.API_COLLCECTION, create.getApiCollection()))
-        .withRequestMethod(create.getRequestMethod())
-        .withEndpointURL(create.getEndpointURL())
-        .withRequestSchema(create.getRequestSchema())
-        .withResponseSchema(create.getResponseSchema())
-        .withSourceHash(create.getSourceHash());
+        .copy(new Metric(), create, user)
+        .withExpression(create.getExpression())
+        .withGranularity(create.getGranularity())
+        .withRelatedMetrics(create.getRelatedMetrics())
+        .withMetricType(create.getMetricType())
+        .withUnitOfMeasurement(create.getUnitOfMeasurement());
   }
 }

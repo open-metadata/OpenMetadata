@@ -84,7 +84,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.Metrics;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
@@ -206,7 +206,7 @@ public interface CollectionDAO {
   UsageDAO usageDAO();
 
   @CreateSqlObject
-  MetricsDAO metricsDAO();
+  MetricDAO metricDAO();
 
   @CreateSqlObject
   ChartDAO chartDAO();
@@ -2063,15 +2063,15 @@ public interface CollectionDAO {
     }
   }
 
-  interface MetricsDAO extends EntityDAO<Metrics> {
+  interface MetricDAO extends EntityDAO<Metric> {
     @Override
     default String getTableName() {
       return "metric_entity";
     }
 
     @Override
-    default Class<Metrics> getEntityClass() {
-      return Metrics.class;
+    default Class<Metric> getEntityClass() {
+      return Metric.class;
     }
 
     @Override
