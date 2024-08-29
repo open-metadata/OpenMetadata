@@ -75,6 +75,38 @@ NAMESPACE_DICT = {
 FORMULA_PATTERN = re.compile(r"\"(.*?)\"")
 
 
+class CDATAKeys(Enum):
+    """Keys to access data in CDATA XML files"""
+
+    COLUMN_OBJECT_NAME = "columnObjectName"
+    COLUMN_OBJECT = "columnObject"
+    COLUMN_NAME = "columnName"
+    SCHEMA_NAME = "schemaName"
+    ATTRIBUTES = "attributes"
+    ATTRIBUTE = "attribute"
+    KEY_MAPPING = "keyMapping"
+    MAPPING = "mapping"
+    SOURCE = "source"
+    TARGET = "target"
+    NODE = "node"
+    TYPE = "type"
+    INPUT = "input"
+    CALCULATION_VIEWS = "calculationViews"
+    CALCULATION_VIEW = "calculationView"
+    RESOURCE_URI = "resourceUri"
+    CALCULATED_ATTRS = "calculatedAttributes"
+    KEY_CALCULATION = "keyCalculation"
+    FORMULA = "formula"
+    BASE_MEASURES = "baseMeasures"
+    MEASURE = "measure"
+    MEASURE_MAPPING = "measureMapping"
+    PRIVATE_MEASURE_GROUP = "privateMeasureGroup"
+    LOGICAL_MODEL = "logicalModel"
+    DATA_SOURCES = "dataSources"
+    DATA_SOURCE = "DataSource"  # yes, with capital D
+    ID = "id"
+
+
 class CalculatedAttrKey(Enum):
     CALCULATED_ATTRIBUTE = "calculatedAttribute"
     CALCULATED_VIEW_ATTRIBUTE = "calculatedViewAttribute"
@@ -261,27 +293,34 @@ class ParsedLineage(BaseModel):
                 )
 
 
-def _read_ds(
+def _get_column_datasources(
     entry: ET.Element, datasource_map: Optional[DataSourceMap] = None
-) -> DataSource:
+) -> List[DataSource]:
     """Read a DataSource from the CDATA XML"""
-    if datasource_map and entry.get("columnObjectName") in datasource_map:
+    if (
+        datasource_map
+        and entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value) in datasource_map
+    ):
         return _traverse_ds(
-            current_column=entry.get("columnName"),
-            current_ds=datasource_map[entry.get("columnObjectName")],
+            current_column=entry.get(CDATAKeys.COLUMN_NAME.value),
+            current_ds=datasource_map[entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)],
             datasource_map=datasource_map,
         )
 
-    return DataSource(
-        name=entry.get("columnObjectName"),
-        location=entry.get("schemaName"),
-        source_type=ViewType.DATA_BASE_TABLE,
-    )
+    # If we don't have any logical sources (projections, aggregations, etc.) We'll stick to
+    # a single table origin
+    return [
+        DataSource(
+            name=entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value),
+            location=entry.get(CDATAKeys.SCHEMA_NAME.value),
+            source_type=ViewType.DATA_BASE_TABLE,
+        )
+    ]
 
 
 def _traverse_ds(
     current_column: str, current_ds: DataSource, datasource_map: Optional[DataSourceMap]
-) -> DataSource:
+) -> List[DataSource]:
     """Traverse the ds dict jumping from target -> source columns and getting the right parent"""
     # If we reach a non-logical source, return it
     if current_ds.source_type != ViewType.LOGICAL:
@@ -313,20 +352,23 @@ def _read_attributes(
 ) -> ParsedLineage:
     """Compute the lineage based from the attributes"""
     lineage = ParsedLineage()
-    attribute_list = tree.find("attributes", ns) if tree else None
+    attribute_list = tree.find(CDATAKeys.ATTRIBUTES.value, ns) if tree else None
     if not attribute_list:
         return lineage
 
-    for attribute in attribute_list.findall("attribute", ns):
-        key_mapping = attribute.find("keyMapping", ns)
-        data_source = _read_ds(entry=key_mapping, datasource_map=datasource_map)
+    for attribute in attribute_list.findall(CDATAKeys.ATTRIBUTE.value, ns):
+        key_mapping = attribute.find(CDATAKeys.KEY_MAPPING.value, ns)
+        data_sources = _get_column_datasources(
+            entry=key_mapping, datasource_map=datasource_map
+        )
         attr_lineage = ParsedLineage(
             mappings=[
                 ColumnMapping(
-                    data_source=data_source,
-                    sources=[key_mapping.get("columnName")],
-                    target=attribute.get("id"),
+                    data_source=ds,
+                    sources=[key_mapping.get(CDATAKeys.COLUMN_NAME.value)],
+                    target=attribute.get(CDATAKeys.ID.value),
                 )
+                for ds in data_sources
             ]
         )
         lineage += attr_lineage
@@ -343,14 +385,20 @@ def _read_calculated_attributes(
     """Compute the lineage based on the calculated attributes"""
     lineage = ParsedLineage()
 
-    calculated_attrs = tree.find("calculatedAttributes", ns)
+    calculated_attrs = tree.find(CDATAKeys.CALCULATED_ATTRS.value, ns)
     if not calculated_attrs:
         return lineage
 
     for calculated_attr in calculated_attrs.findall(key.value, ns):
-        formula = calculated_attr.find("keyCalculation", ns).find("formula", ns).text
+        formula = (
+            calculated_attr.find(CDATAKeys.KEY_CALCULATION.value, ns)
+            .find(CDATAKeys.FORMULA.value, ns)
+            .text
+        )
         lineage += _explode_formula(
-            target=calculated_attr.get("id"), formula=formula, base_lineage=base_lineage
+            target=calculated_attr.get(CDATAKeys.ID.value),
+            formula=formula,
+            base_lineage=base_lineage,
         )
 
     return lineage
@@ -368,20 +416,23 @@ def _read_base_measures(
     """
     lineage = ParsedLineage()
 
-    base_measures = tree.find("baseMeasures", ns)
+    base_measures = tree.find(CDATAKeys.BASE_MEASURES.value, ns)
     if not base_measures:
         return lineage
 
-    for measure in base_measures.findall("measure", ns):
-        measure_mapping = measure.find("measureMapping", ns)
-        data_source = _read_ds(entry=measure_mapping, datasource_map=datasource_map)
+    for measure in base_measures.findall(CDATAKeys.MEASURE.value, ns):
+        measure_mapping = measure.find(CDATAKeys.MEASURE_MAPPING.value, ns)
+        data_sources = _get_column_datasources(
+            entry=measure_mapping, datasource_map=datasource_map
+        )
         measure_lineage = ParsedLineage(
             mappings=[
                 ColumnMapping(
-                    data_source=data_source,
-                    sources=[measure_mapping.get("columnName")],
-                    target=measure.get("id"),
+                    data_source=ds,
+                    sources=[measure_mapping.get(CDATAKeys.COLUMN_NAME.value)],
+                    target=measure.get(CDATAKeys.ID.value),
                 )
+                for ds in data_sources
             ]
         )
         lineage += measure_lineage
@@ -432,7 +483,7 @@ def _(cdata: str) -> ParsedLineage:
     """Parse the CDATA XML for Analytics View"""
     ns = NAMESPACE_DICT[ViewType.ANALYTIC_VIEW.value]
     tree = ET.fromstring(cdata)
-    measure_group = tree.find("privateMeasureGroup", ns)
+    measure_group = tree.find(CDATAKeys.PRIVATE_MEASURE_GROUP.value, ns)
     # TODO: Handle lineage from calculatedMeasures, restrictedMeasures and sharedDimensions
     return _read_attributes(measure_group, ns)
 
@@ -471,9 +522,6 @@ def _(cdata: str) -> ParsedLineage:
 
     Internally, we'll identify "logical" dataSources by giving them a list of column mappings, which we'll
     use to identify the actual source.
-
-    TODO: We'll need to figure out how to manage the formula lineage within calculatedViewAttributes
-      most likely improving the ParsedLineage.find_target method to take into account the DataSource hierarchy
     """
     # TODO: Handle lineage from calculatedMeasure, restrictedMeasure and sharedDimesions
     ns = NAMESPACE_DICT[ViewType.CALCULATION_VIEW.value]
@@ -483,7 +531,7 @@ def _(cdata: str) -> ParsedLineage:
     datasource_map = _parse_cv_data_sources(tree=tree, ns=ns)
 
     # Iterate over the Logical Model attributes
-    logical_model = tree.find("logicalModel", ns)
+    logical_model = tree.find(CDATAKeys.LOGICAL_MODEL.value, ns)
     attribute_lineage = _read_attributes(
         tree=logical_model, ns=ns, datasource_map=datasource_map
     )
@@ -534,43 +582,47 @@ def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> DataSourceMap:
     ```
     """
     datasource_map = DataSourceMap({})
-    for ds in tree.find("dataSources", ns).findall("DataSource", ns):
-        column_object = ds.find("columnObject", ns)
+    for ds in tree.find(CDATAKeys.DATA_SOURCES.value, ns).findall(
+        CDATAKeys.DATA_SOURCE.value, ns
+    ):
+        column_object = ds.find(CDATAKeys.COLUMN_OBJECT.value, ns)
         # we can't rely on the falsy value of the object even if present in the XML
         # If columnObject is informed, we're talking about a table
         if column_object is not None:
             ds_value = DataSource(
-                name=column_object.get("columnObjectName"),
-                location=column_object.get("schemaName"),
+                name=column_object.get(CDATAKeys.COLUMN_OBJECT_NAME.value),
+                location=column_object.get(CDATAKeys.SCHEMA_NAME.value),
                 source_type=ViewType.DATA_BASE_TABLE,
             )
         # or a package object
         else:
             ds_value = DataSource(
-                name=ds.get("id"),
-                location=ds.find("resourceUri").text,
-                source_type=ViewType.__members__[ds.get("type")],
+                name=ds.get(CDATAKeys.ID.value),
+                location=ds.find(CDATAKeys.RESOURCE_URI.value).text,
+                source_type=ViewType.__members__[ds.get(CDATAKeys.TYPE.value)],
             )
-        datasource_map[ds.get("id")] = ds_value
+        datasource_map[ds.get(CDATAKeys.ID.value)] = ds_value
 
-    calculation_views = tree.find("calculationViews", ns)
+    calculation_views = tree.find(CDATAKeys.CALCULATION_VIEWS.value, ns)
     if calculation_views is None:
         return datasource_map
 
-    for cv in calculation_views.findall("calculationView", ns):
+    for cv in calculation_views.findall(CDATAKeys.CALCULATION_VIEW.value, ns):
         mappings = []
-        for input_node in cv.findall("input", ns):
-            for mapping in input_node.findall("mapping", ns):
-                if mapping.get("source"):
+        for input_node in cv.findall(CDATAKeys.INPUT.value, ns):
+            for mapping in input_node.findall(CDATAKeys.MAPPING.value, ns):
+                if mapping.get(CDATAKeys.SOURCE.value):
                     mappings.append(
                         DataSourceMapping(
-                            source=mapping.get("source"),
-                            target=mapping.get("target"),
-                            parent=input_node.get("node").replace("#", ""),
+                            source=mapping.get(CDATAKeys.SOURCE.value),
+                            target=mapping.get(CDATAKeys.TARGET.value),
+                            parent=input_node.get(CDATAKeys.NODE.value).replace(
+                                "#", ""
+                            ),
                         )
                     )
-        datasource_map[cv.get("id")] = DataSource(
-            name=cv.get("id"),
+        datasource_map[cv.get(CDATAKeys.ID.value)] = DataSource(
+            name=cv.get(CDATAKeys.ID.value),
             location=None,
             mapping={mapping.source: mapping for mapping in mappings},
             source_type=ViewType.LOGICAL,
