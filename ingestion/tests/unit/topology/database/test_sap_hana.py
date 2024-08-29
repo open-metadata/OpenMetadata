@@ -138,3 +138,26 @@ def test_parse_cv() -> None:
         cdata = file.read()
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    ds_sbook = DataSource(
+        name="AN_SBOOK",
+        location="/SFLIGHT.MODELING/analyticviews/AN_SBOOK",
+        source_type=ViewType.ANALYTIC_VIEW,
+    )
+    ds_sflight = DataSource(
+        name="AT_SFLIGHT",
+        location="/SFLIGHT.MODELING/attributeviews/AT_SFLIGHT",
+        source_type=ViewType.ATTRIBUTE_VIEW,
+    )
+
+    assert parsed_lineage
+    # Even though we have 9 unique columns, some come from 2 tables, so we have two mappings
+    assert len(parsed_lineage.mappings) == 13
+    assert parsed_lineage.sources == {ds_sbook, ds_sflight}
+
+    # We can validate that MANDT comes from 2 sources
+    mandt_mappings = [
+        mapping for mapping in parsed_lineage.mappings if mapping.target == "MANDT"
+    ]
+    assert len(mandt_mappings) == 2
+    assert {mapping.data_source for mapping in mandt_mappings} == {ds_sbook, ds_sflight}

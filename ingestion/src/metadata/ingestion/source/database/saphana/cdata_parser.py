@@ -11,6 +11,7 @@
 """
 Parse CDATA XMLs from SAP Hana
 """
+import itertools
 import re
 import traceback
 import xml.etree.ElementTree as ET
@@ -93,6 +94,8 @@ class CDATAKeys(Enum):
     INPUT = "input"
     CALCULATION_VIEWS = "calculationViews"
     CALCULATION_VIEW = "calculationView"
+    CALCULATION_VIEW_ATTRIBUTES = "calculatedViewAttributes"
+    CALCULATION_VIEW_ATTRIBUTE = "calculatedViewAttribute"
     RESOURCE_URI = "resourceUri"
     CALCULATED_ATTRS = "calculatedAttributes"
     KEY_CALCULATION = "keyCalculation"
@@ -112,16 +115,25 @@ class CalculatedAttrKey(Enum):
     CALCULATED_VIEW_ATTRIBUTE = "calculatedViewAttribute"
 
 
-class DataSourceMapping(BaseModel):
-    """Column Mapping of DataSources and Logical Calculated Views"""
+class ParentSource(BaseModel):
+    """Parent Source of a given column"""
 
+    # TODO: Multiple sources from the same parent should be possible
     source: Annotated[
         str, Field(..., description="Column name in the parent Data Source")
     ]
+    parent: Annotated[str, Field(..., description="Parent ID")]
+
+
+class DataSourceMapping(BaseModel):
+    """Column Mapping of DataSources and Logical Calculated Views"""
+
     target: Annotated[
         str, Field(..., description="Column name in the provided Data Source")
     ]
-    parent: Annotated[str, Field(..., description="Parent Data Source ID")]
+    parents: Annotated[
+        List[ParentSource], Field(..., description="Parent Sources for a target col")
+    ]
 
 
 class DataSource(BaseModel):
@@ -295,56 +307,78 @@ class ParsedLineage(BaseModel):
 
 def _get_column_datasources(
     entry: ET.Element, datasource_map: Optional[DataSourceMap] = None
-) -> List[DataSource]:
+) -> Set[DataSource]:
     """Read a DataSource from the CDATA XML"""
     if (
         datasource_map
         and entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value) in datasource_map
     ):
-        return _traverse_ds(
-            current_column=entry.get(CDATAKeys.COLUMN_NAME.value),
-            current_ds=datasource_map[entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)],
-            datasource_map=datasource_map,
+        # If the datasource is in the map, we'll traverse all intermediate logical
+        # datasources until we arrive to a table or view.
+        # Note that we can have multiple sources for a single column, e.g., columns
+        # coming from a JOIN
+        return set(
+            _traverse_ds(
+                current_column=entry.get(CDATAKeys.COLUMN_NAME.value),
+                ds_origin_list=[],
+                current_ds=datasource_map[
+                    entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)
+                ],
+                datasource_map=datasource_map,
+            )
         )
 
     # If we don't have any logical sources (projections, aggregations, etc.) We'll stick to
     # a single table origin
-    return [
+    return {
         DataSource(
             name=entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value),
             location=entry.get(CDATAKeys.SCHEMA_NAME.value),
             source_type=ViewType.DATA_BASE_TABLE,
         )
-    ]
+    }
 
 
 def _traverse_ds(
-    current_column: str, current_ds: DataSource, datasource_map: Optional[DataSourceMap]
+    current_column: str,
+    ds_origin_list: List[DataSource],
+    current_ds: DataSource,
+    datasource_map: Optional[DataSourceMap],
 ) -> List[DataSource]:
-    """Traverse the ds dict jumping from target -> source columns and getting the right parent"""
-    # If we reach a non-logical source, return it
+    """
+    Traverse the ds dict jumping from target -> source columns and getting the right parent.
+    We keep inspecting current datasources and will append to the origin list the ones
+    that are not LOGICAL
+    """
     if current_ds.source_type != ViewType.LOGICAL:
-        return current_ds
+        ds_origin_list.append(current_ds)
 
-    # Based on our current column, find the parent from the mappings in the current_ds
-    current_ds_mapping = current_ds.mapping.get(current_column)
-    if not current_ds_mapping:
-        raise CDATAParsingError(
-            f"Can't find column [{current_column}] in DataSource [{current_ds}]"
-        )
+    else:
+        # Based on our current column, find the parents from the mappings in the current_ds
+        current_ds_mapping: DataSourceMapping = current_ds.mapping.get(current_column)
 
-    parent_ds = datasource_map.get(current_ds_mapping.parent)
-    if not parent_ds:
-        raise CDATAParsingError(
-            f"Can't find parent DataSource for parent [{current_ds_mapping.parent}]"
-        )
+        if current_ds_mapping:
+            for parent in current_ds_mapping.parents:
+                parent_ds = datasource_map.get(parent.parent)
+                if not parent_ds:
+                    raise CDATAParsingError(
+                        f"Can't find parent [{parent.parent}] for column [{current_column}]"
+                    )
 
-    # Traverse from the source column in the parent mapping
-    return _traverse_ds(
-        current_column=current_ds_mapping.source,
-        current_ds=parent_ds,
-        datasource_map=datasource_map,
-    )
+                # Traverse from the source column in the parent mapping
+                _traverse_ds(
+                    current_column=parent.source,
+                    ds_origin_list=ds_origin_list,
+                    current_ds=parent_ds,
+                    datasource_map=datasource_map,
+                )
+        else:
+            logger.info(
+                f"Can't find mapping for column [{current_column}] in [{current_ds}]. "
+                f"We still have to implement `calculatedViewAttributes`."
+            )
+
+    return ds_origin_list
 
 
 def _read_attributes(
@@ -608,24 +642,131 @@ def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> DataSourceMap:
         return datasource_map
 
     for cv in calculation_views.findall(CDATAKeys.CALCULATION_VIEW.value, ns):
-        mappings = []
-        for input_node in cv.findall(CDATAKeys.INPUT.value, ns):
-            for mapping in input_node.findall(CDATAKeys.MAPPING.value, ns):
-                if mapping.get(CDATAKeys.SOURCE.value):
-                    mappings.append(
-                        DataSourceMapping(
-                            source=mapping.get(CDATAKeys.SOURCE.value),
-                            target=mapping.get(CDATAKeys.TARGET.value),
-                            parent=input_node.get(CDATAKeys.NODE.value).replace(
-                                "#", ""
-                            ),
-                        )
-                    )
+        mappings = _build_mappings(calculation_view=cv, ns=ns)
         datasource_map[cv.get(CDATAKeys.ID.value)] = DataSource(
             name=cv.get(CDATAKeys.ID.value),
             location=None,
-            mapping={mapping.source: mapping for mapping in mappings},
+            mapping={mapping.target: mapping for mapping in mappings},
             source_type=ViewType.LOGICAL,
         )
 
     return datasource_map
+
+
+def _build_mappings(calculation_view: ET.Element, ns: dict) -> List[DataSourceMapping]:
+    """
+    Build the DataSourceMappings from each `input` inside a Calculation View tree.
+
+    Note how we can have:
+    ```
+    <input emptyUnionBehavior="NO_ROW" node="#Aggregation_1">
+        <mapping xsi:type="Calculation:AttributeMapping" target="MANDT" source="MANDT"/>
+        ...
+    </input>
+    <input emptyUnionBehavior="NO_ROW" node="#Projection_1">
+        <mapping xsi:type="Calculation:AttributeMapping" target="MANDT" source="MANDT"/>
+        ...
+    </input>
+    ```
+    Where a single target column `MANDT` comes from multiple sources. We need to consider
+    this when building the `parent` field in DataSourceMapping.
+
+    1. First, create a single list of all the mappings from all the inputs independently
+    2. Then, group by `target` and listagg the `parent`s
+
+    TODO: We still need to take care of mappings without source, since those come from
+      `calculatedViewAttributes` where we should handle the formula. Check `cdata_calculation_view.xml`
+      and take the `USAGE_PCT` as an example.
+    """
+
+    input_mappings = _build_input_mappings(calculation_view=calculation_view, ns=ns)
+    # calculated_view_attrs = _build_cv_attributes(
+    #     calculation_view=calculation_view, ns=ns, input_mappings=input_mappings
+    # )
+
+    return input_mappings
+
+
+def _build_input_mappings(
+    calculation_view: ET.Element, ns: dict
+) -> List[DataSourceMapping]:
+    """Map input nodes"""
+    mappings = []
+    for input_node in calculation_view.findall(CDATAKeys.INPUT.value, ns):
+        for mapping in input_node.findall(CDATAKeys.MAPPING.value, ns):
+            if mapping.get(CDATAKeys.SOURCE.value) and mapping.get(
+                CDATAKeys.TARGET.value
+            ):
+                mappings.append(
+                    DataSourceMapping(
+                        target=mapping.get(CDATAKeys.TARGET.value),
+                        parents=[
+                            ParentSource(
+                                source=mapping.get(CDATAKeys.SOURCE.value),
+                                parent=input_node.get(CDATAKeys.NODE.value).replace(
+                                    "#", ""
+                                ),
+                            )
+                        ],
+                    )
+                )
+
+    return _group_mappings(mappings)
+
+
+def _build_cv_attributes(
+    calculation_view: ET.Element, ns: dict, input_mappings: List[DataSourceMapping]
+) -> List[DataSourceMapping]:
+    """Extract mapping from `calculatedViewAttribute` formulas"""
+    mappings = []
+    view_attrs = calculation_view.find(CDATAKeys.CALCULATION_VIEW_ATTRIBUTES.value, ns)
+    if view_attrs is None:
+        return mappings
+
+    for view_attr in view_attrs.findall(CDATAKeys.CALCULATION_VIEW_ATTRIBUTE.value, ns):
+        formula = (
+            view_attr.find(CDATAKeys.FORMULA.value, ns).text
+            if view_attr.find(CDATAKeys.FORMULA.value, ns) is not None
+            else None
+        )
+        if not formula:
+            logger.debug(f"Skipping formula without expression at {view_attr}")
+            continue
+
+        involved_columns = FORMULA_PATTERN.findall(formula)
+        for col in involved_columns:
+            # Find the mapping for the involved column
+            mapping = next(
+                (mapping for mapping in input_mappings if mapping.target == col), None
+            )
+            if not mapping:
+                logger.debug(
+                    f"Can't find mapping for column [{col}] in [{input_mappings}]"
+                )
+                continue
+
+            mappings.append(
+                DataSourceMapping(
+                    target=view_attr.get(CDATAKeys.ID.value),
+                    parents=mapping.parents,
+                )
+            )
+
+    return _group_mappings(mappings)
+
+
+def _group_mappings(mappings: List[DataSourceMapping]) -> List[DataSourceMapping]:
+    """Group the mappings by target column and listagg the parents"""
+    # Sort the data by the target field
+    mappings.sort(key=lambda x: x.target)
+
+    # Use groupby to group by the target field
+    grouped_data = [
+        DataSourceMapping(
+            target=target,
+            parents=list(itertools.chain.from_iterable(item.parents for item in group)),
+        )
+        for target, group in itertools.groupby(mappings, key=lambda x: x.target)
+    ]
+
+    return grouped_data
