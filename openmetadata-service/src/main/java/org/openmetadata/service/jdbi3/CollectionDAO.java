@@ -1020,13 +1020,13 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND toId = :toId AND toEntity = :toEntity "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = POSTGRES)
     void deleteLineageBySource(
         @BindUUID("toId") UUID toId,
