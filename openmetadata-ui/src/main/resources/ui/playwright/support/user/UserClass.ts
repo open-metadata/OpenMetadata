@@ -94,7 +94,7 @@ export class UserClass {
   }
 
   getUserName() {
-    return `${this.data.firstName}${this.data.lastName}`;
+    return `${this.data.firstName}.${this.data.lastName}`;
   }
 
   async login(

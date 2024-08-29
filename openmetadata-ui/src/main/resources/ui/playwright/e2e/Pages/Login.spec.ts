@@ -73,7 +73,7 @@ test.describe('Login flow should work properly', () => {
     await page.locator('[data-testid="dropdown-profile"]').click();
 
     await expect(page.getByTestId('user-name')).toContainText(
-      `${CREDENTIALS.firstName}${CREDENTIALS.lastName}`
+      `${CREDENTIALS.firstName}.${CREDENTIALS.lastName}`
     );
   });
 
