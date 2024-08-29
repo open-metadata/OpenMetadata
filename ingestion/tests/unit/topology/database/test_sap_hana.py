@@ -32,11 +32,15 @@ def test_parse_analytic_view() -> None:
         parse_fn = parse_registry.registry.get(ViewType.ANALYTIC_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
+    ds = DataSource(
+        name="SBOOK", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
+    )
+
     assert parsed_lineage
     assert len(parsed_lineage.mappings) == 6
-    assert parsed_lineage.sources == {DataSource(name="SBOOK", location="SFLIGHT")}
+    assert parsed_lineage.sources == {ds}
     assert parsed_lineage.mappings[0] == ColumnMapping(
-        data_source=DataSource(name="SBOOK", location="SFLIGHT"),
+        data_source=ds,
         sources=["MANDT"],
         target="MANDT",
     )
@@ -50,14 +54,20 @@ def test_parse_attribute_view() -> None:
         parse_fn = parse_registry.registry.get(ViewType.ATTRIBUTE_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
+    ds = DataSource(
+        name="SFLIGHT", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
+    )
+
     assert parsed_lineage
     assert len(parsed_lineage.mappings) == 20  # 15 columns + 5 derived from formulas
     assert parsed_lineage.sources == {
-        DataSource(name="SCARR", location="SFLIGHT"),
-        DataSource(name="SFLIGHT", location="SFLIGHT"),
+        DataSource(
+            name="SCARR", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
+        ),
+        ds,
     }
     assert parsed_lineage.mappings[0] == ColumnMapping(
-        data_source=DataSource(name="SFLIGHT", location="SFLIGHT"),
+        data_source=ds,
         sources=["MANDT"],
         target="MANDT",
     )
@@ -71,19 +81,60 @@ def test_parse_cv_tab() -> None:
         parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
         parsed_lineage: ParsedLineage = parse_fn(cdata)
 
+    ds = DataSource(
+        name="SFLIGHT", location="SFLIGHT", source_type=ViewType.DATA_BASE_TABLE
+    )
+
     assert parsed_lineage
-    assert len(parsed_lineage.mappings) == 10  # 5 columns + 5 derived from formulas
-    assert parsed_lineage.sources == {
-        DataSource(name="SCARR", location="SFLIGHT"),
-        DataSource(name="SFLIGHT", location="SFLIGHT"),
-    }
+    assert len(parsed_lineage.mappings) == 7  # 4 attributes, 3 measures
+    assert parsed_lineage.sources == {ds}
+    # Attribute
     assert parsed_lineage.mappings[0] == ColumnMapping(
-        data_source=DataSource(name="SFLIGHT", location="SFLIGHT"),
+        data_source=ds,
         sources=["MANDT"],
         target="MANDT",
     )
-    assert parsed_lineage.mappings[5] == ColumnMapping(
-        data_source=DataSource(name="SCARR", location="SFLIGHT"),
-        sources=["CARRID"],
-        target="CARRID",
+    # Measure
+    assert parsed_lineage.mappings[-1] == ColumnMapping(
+        data_source=ds,
+        sources=["PAYMENTSUM"],
+        target="PAYMENTSUM",
     )
+
+
+def test_parse_cv_view() -> None:
+    """Read the resource and parse the file"""
+    with open(RESOURCES_DIR / "cdata_calculation_view_cv.xml") as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)
+
+    ds = DataSource(
+        name="CV_SFLIGHT_SBOOK",
+        location="/SFLIGHT.MODELING/calculationviews/CV_SFLIGHT_SBOOK",
+        source_type=ViewType.CALCULATION_VIEW,
+    )
+
+    assert parsed_lineage
+    assert len(parsed_lineage.mappings) == 5  # 4 attributes, 1 measure
+    assert parsed_lineage.sources == {ds}
+    # Attribute
+    assert parsed_lineage.mappings[0] == ColumnMapping(
+        data_source=ds,
+        sources=["MANDT"],
+        target="MANDT",
+    )
+    # Measure
+    assert parsed_lineage.mappings[-1] == ColumnMapping(
+        data_source=ds,
+        sources=["USAGE_PCT"],
+        target="USAGE_PCT",
+    )
+
+
+def test_parse_cv() -> None:
+    """Read the resource and parse the file"""
+    with open(RESOURCES_DIR / "cdata_calculation_view.xml") as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed_lineage: ParsedLineage = parse_fn(cdata)

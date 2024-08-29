@@ -17,7 +17,7 @@ import xml.etree.ElementTree as ET
 from collections import defaultdict
 from enum import Enum
 from functools import lru_cache
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, NewType, Optional, Set
 
 from pydantic import Field, computed_field
 from typing_extensions import Annotated
@@ -101,7 +101,7 @@ class DataSource(BaseModel):
     ]
     source_type: Annotated[
         Optional[ViewType],
-        Field(None, description="Data Source type. If not informed, source is a table"),
+        Field(..., description="Data Source type"),
     ]
     mapping: Annotated[
         Optional[Dict[str, DataSourceMapping]],
@@ -118,7 +118,13 @@ class DataSource(BaseModel):
     ) -> Table:
         """Build the Entity Reference for this DataSource"""
 
-        if not self.source_type:  # The source is a table, so the location is the schema
+        if self.source_type == ViewType.LOGICAL:
+            raise CDATAParsingError(
+                f"We could not find the logical DataSource origin for {self.name}"
+            )
+
+        if self.source_type == ViewType.DATA_BASE_TABLE:
+            # The source is a table, so the location is the schema
             fqn_ = fqn.build(
                 metadata=metadata,
                 entity_type=Table,
@@ -128,6 +134,7 @@ class DataSource(BaseModel):
                 table_name=self.name,
             )
         else:
+            # The source is a CalculationView, AttributeView or AnalyticView
             # package from <resourceUri>/SFLIGHT.MODELING/calculationviews/CV_SFLIGHT_SBOOK</resourceUri>
             package = self.location.split("/")[1]
             fqn_ = fqn.build(
@@ -143,6 +150,10 @@ class DataSource(BaseModel):
 
     def __hash__(self):
         return hash(self.location) + hash(self.name) + hash(self.source_type)
+
+
+# Given the DataSource ID, get the DataSource from the CDATA XML
+DataSourceMap = NewType("DataSourceMap", Dict[str, DataSource])
 
 
 class ColumnMapping(BaseModel):
@@ -251,22 +262,54 @@ class ParsedLineage(BaseModel):
 
 
 def _read_ds(
-    entry: ET.Element, cdata_sources: Optional[Dict[str, DataSource]] = None
+    entry: ET.Element, datasource_map: Optional[DataSourceMap] = None
 ) -> DataSource:
     """Read a DataSource from the CDATA XML"""
-    # TODO: This needs to check if a given DataSource columnObjectName is the key in another DataSource and traverse everything until we find the actual table
-    #  iterate taking into account the mapping columnName
-    if cdata_sources and entry.get("columnObjectName") in cdata_sources:
-        return cdata_sources[entry.get("columnObjectName")]
+    if datasource_map and entry.get("columnObjectName") in datasource_map:
+        return _traverse_ds(
+            current_column=entry.get("columnName"),
+            current_ds=datasource_map[entry.get("columnObjectName")],
+            datasource_map=datasource_map,
+        )
 
     return DataSource(
         name=entry.get("columnObjectName"),
         location=entry.get("schemaName"),
+        source_type=ViewType.DATA_BASE_TABLE,
+    )
+
+
+def _traverse_ds(
+    current_column: str, current_ds: DataSource, datasource_map: Optional[DataSourceMap]
+) -> DataSource:
+    """Traverse the ds dict jumping from target -> source columns and getting the right parent"""
+    # If we reach a non-logical source, return it
+    if current_ds.source_type != ViewType.LOGICAL:
+        return current_ds
+
+    # Based on our current column, find the parent from the mappings in the current_ds
+    current_ds_mapping = current_ds.mapping.get(current_column)
+    if not current_ds_mapping:
+        raise CDATAParsingError(
+            f"Can't find column [{current_column}] in DataSource [{current_ds}]"
+        )
+
+    parent_ds = datasource_map.get(current_ds_mapping.parent)
+    if not parent_ds:
+        raise CDATAParsingError(
+            f"Can't find parent DataSource for parent [{current_ds_mapping.parent}]"
+        )
+
+    # Traverse from the source column in the parent mapping
+    return _traverse_ds(
+        current_column=current_ds_mapping.source,
+        current_ds=parent_ds,
+        datasource_map=datasource_map,
     )
 
 
 def _read_attributes(
-    tree: ET.Element, ns: dict, cdata_sources: Optional[Dict[str, DataSource]] = None
+    tree: ET.Element, ns: dict, datasource_map: Optional[DataSourceMap] = None
 ) -> ParsedLineage:
     """Compute the lineage based from the attributes"""
     lineage = ParsedLineage()
@@ -276,7 +319,7 @@ def _read_attributes(
 
     for attribute in attribute_list.findall("attribute", ns):
         key_mapping = attribute.find("keyMapping", ns)
-        data_source = _read_ds(entry=key_mapping, cdata_sources=cdata_sources)
+        data_source = _read_ds(entry=key_mapping, datasource_map=datasource_map)
         attr_lineage = ParsedLineage(
             mappings=[
                 ColumnMapping(
@@ -314,7 +357,7 @@ def _read_calculated_attributes(
 
 
 def _read_base_measures(
-    tree: ET.Element, ns: dict, cdata_sources: Optional[Dict[str, DataSource]] = None
+    tree: ET.Element, ns: dict, datasource_map: Optional[DataSourceMap] = None
 ) -> ParsedLineage:
     """
     Compute the lineage based on the base measures.
@@ -331,7 +374,7 @@ def _read_base_measures(
 
     for measure in base_measures.findall("measure", ns):
         measure_mapping = measure.find("measureMapping", ns)
-        data_source = _read_ds(entry=measure_mapping, cdata_sources=cdata_sources)
+        data_source = _read_ds(entry=measure_mapping, datasource_map=datasource_map)
         measure_lineage = ParsedLineage(
             mappings=[
                 ColumnMapping(
@@ -403,7 +446,7 @@ def _(cdata: str) -> ParsedLineage:
     calculated_attrs_lineage = _read_calculated_attributes(
         tree=tree, ns=ns, base_lineage=attribute_lineage
     )
-    base_measure_lineage = _read_base_measures(tree=tree, ns=ns, cdata_sources=None)
+    base_measure_lineage = _read_base_measures(tree=tree, ns=ns, datasource_map=None)
 
     return attribute_lineage + calculated_attrs_lineage + base_measure_lineage
 
@@ -437,12 +480,12 @@ def _(cdata: str) -> ParsedLineage:
     tree = ET.fromstring(cdata)
 
     # Prepare a dictionary of defined data sources
-    cdata_sources = _parse_cv_data_sources(tree=tree, ns=ns)
+    datasource_map = _parse_cv_data_sources(tree=tree, ns=ns)
 
     # Iterate over the Logical Model attributes
     logical_model = tree.find("logicalModel", ns)
     attribute_lineage = _read_attributes(
-        tree=logical_model, ns=ns, cdata_sources=cdata_sources
+        tree=logical_model, ns=ns, datasource_map=datasource_map
     )
     calculated_attrs_lineage = _read_calculated_attributes(
         tree=tree,
@@ -451,13 +494,13 @@ def _(cdata: str) -> ParsedLineage:
         key=CalculatedAttrKey.CALCULATED_VIEW_ATTRIBUTE,
     )
     base_measure_lineage = _read_base_measures(
-        tree=logical_model, ns=ns, cdata_sources=cdata_sources
+        tree=logical_model, ns=ns, datasource_map=datasource_map
     )
 
     return attribute_lineage + calculated_attrs_lineage + base_measure_lineage
 
 
-def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> Dict[str, DataSource]:
+def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> DataSourceMap:
     """
     Parse the real and logical data sources of a CV
 
@@ -490,7 +533,7 @@ def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> Dict[str, DataSource]:
     </calculationViews>
     ```
     """
-    cdata_sources = {}
+    datasource_map = DataSourceMap({})
     for ds in tree.find("dataSources", ns).findall("DataSource", ns):
         column_object = ds.find("columnObject", ns)
         # we can't rely on the falsy value of the object even if present in the XML
@@ -499,6 +542,7 @@ def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> Dict[str, DataSource]:
             ds_value = DataSource(
                 name=column_object.get("columnObjectName"),
                 location=column_object.get("schemaName"),
+                source_type=ViewType.DATA_BASE_TABLE,
             )
         # or a package object
         else:
@@ -507,11 +551,11 @@ def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> Dict[str, DataSource]:
                 location=ds.find("resourceUri").text,
                 source_type=ViewType.__members__[ds.get("type")],
             )
-        cdata_sources[ds.get("id")] = ds_value
+        datasource_map[ds.get("id")] = ds_value
 
     calculation_views = tree.find("calculationViews", ns)
     if calculation_views is None:
-        return cdata_sources
+        return datasource_map
 
     for cv in calculation_views.findall("calculationView", ns):
         mappings = []
@@ -525,11 +569,11 @@ def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> Dict[str, DataSource]:
                             parent=input_node.get("node").replace("#", ""),
                         )
                     )
-        cdata_sources[cv.get("id")] = DataSource(
+        datasource_map[cv.get("id")] = DataSource(
             name=cv.get("id"),
             location=None,
             mapping={mapping.source: mapping for mapping in mappings},
             source_type=ViewType.LOGICAL,
         )
 
-    return cdata_sources
+    return datasource_map

@@ -32,6 +32,7 @@ class ViewType(Enum):
     ATTRIBUTE_VIEW = "attributeview"
     # Artificially set to define calculationView internal models. This won't come from the ACTIVE_OBJECT table
     LOGICAL = "logical"
+    DATA_BASE_TABLE = "table"
 
 
 class SapHanaLineageModel(BaseModel):
