@@ -115,7 +115,7 @@ const BasicAuthProvider = ({
           onLoginSuccess({
             id_token: response.accessToken,
             profile: {
-              email: response.email,
+              email: email,
               name: '',
               picture: '',
               sub: '',

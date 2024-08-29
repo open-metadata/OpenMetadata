@@ -391,7 +391,7 @@ export const AuthProvider = ({
         const res = await getLoggedInUser({ fields });
         if (res) {
           const updatedUserData = getUserDataFromOidc(res, newUser);
-          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
+          if (!matchUserDetails(res, updatedUserData, ['email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
             setCurrentUser(res);
