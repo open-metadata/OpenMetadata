@@ -60,6 +60,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -370,10 +371,28 @@ public class UserRepository extends EntityRepository<User> {
       String username, String email, User storedUser) {
     String lowerCasedName = username.toLowerCase();
     String lowerCasedEmail = email.toLowerCase();
-    if (!(lowerCasedName.equals(storedUser.getName().toLowerCase())
-        && lowerCasedEmail.equals(storedUser.getEmail().toLowerCase()))) {
+    boolean nameMatches = lowerCasedName.equals(storedUser.getName().toLowerCase());
+    boolean emailMatches = lowerCasedEmail.equals(storedUser.getEmail().toLowerCase());
+
+    // Both Match - Success
+    if (nameMatches && emailMatches) {
+      return;
+    }
+
+    // Both Don't Match - Entity not found
+    if (!nameMatches && !emailMatches) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
+
+    // Only one Matches - Throw BadRequest
+    throw BadRequestException.of(
+        String.format(
+            "Username and email mismatch. Please check the username and email and try again. "
+                + "Matching User Found: <username:email> <%s:%s>, Provided User: <%s:%s>",
+            storedUser.getName().toLowerCase(),
+            storedUser.getEmail().toLowerCase(),
+            username,
+            email));
   }
 
   private List<EntityReference> getGroupTeams(List<EntityReference> teams) {
