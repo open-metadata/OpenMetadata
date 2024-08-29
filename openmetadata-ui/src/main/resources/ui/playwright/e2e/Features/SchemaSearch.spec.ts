@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { expect, test } from '@playwright/test';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { Services } from '../../utils/serviceIngestion';
 import { settingClick } from '../../utils/sidebar';
 
 const table = new TableClass();
@@ -41,22 +41,10 @@ test.describe('Schema search', { tag: '@ingestion' }, () => {
   });
 
   test('Search schema in database page', async ({ page }) => {
-    await page.route('**/api/v1/services/*', (route) => route.continue());
-    await page.route('**/api/v1/permissions/database/name/*', (route) =>
-      route.continue()
-    );
-    await page.route('**/api/v1/databaseSchemas?fields=*&database=*', (route) =>
-      route.continue()
-    );
-    await page.route(
-      '**/api/v1/search/query?q=*sales*&index=database_schema_search_index*',
-      (route) => route.continue()
-    );
-
     const servicesResponse = page.waitForResponse(
       '/api/v1/services/databaseServices?**'
     );
-    await settingClick(page, Services.Database);
+    await settingClick(page, GlobalSettingOptions.DATABASES);
 
     await servicesResponse;
 

@@ -578,7 +578,7 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public void entitySpecificUpdate() {
       // LowerCase Email
-      updated.setEmail(updated.getEmail().toLowerCase());
+      updated.setEmail(original.getEmail().toLowerCase());
 
       // Updates
       updateRoles(original, updated);
@@ -590,7 +590,6 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-      recordChange("email", original.getEmail(), updated.getEmail().toLowerCase());
       recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
       updateAuthenticationMechanism(original, updated);
     }
