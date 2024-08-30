@@ -36,11 +36,16 @@ const testCases = [
 ];
 const user1 = generateRandomUser();
 const user2 = generateRandomUser();
+const user3 = generateRandomUser();
 const userData1 = {
   displayName: `${user1.firstName}${user1.lastName}`,
   name: user1.email.split('@')[0],
 };
 const userData2 = {
+  displayName: `${user2.firstName}${user2.lastName}`,
+  name: user2.email.split('@')[0],
+};
+const userData3 = {
   displayName: `${user2.firstName}${user2.lastName}`,
   name: user2.email.split('@')[0],
 };
@@ -132,22 +137,16 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
       const token = getToken(data);
 
       // Create a new user
-      cy.request({
-        method: 'POST',
-        url: `/api/v1/users/signup`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: user1,
-      }).then((response) => {
-        userIds.push(response.body.id);
-      });
-      cy.request({
-        method: 'POST',
-        url: `/api/v1/users/signup`,
-        headers: { Authorization: `Bearer ${token}` },
-        body: user2,
-      }).then((response) => {
-        userIds.push(response.body.id);
-      });
+      for (const user of [user1, user2, user3]) {
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: user,
+        }).then((response) => {
+          userIds.push(response.body.id);
+        });
+      }
 
       createEntityTableViaREST({
         token,
@@ -295,6 +294,39 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
         .contains(testCaseName)
         .scrollIntoView()
         .should('be.visible');
+    });
+
+    it("Re-assign incident from test case page's header", () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/name/*?fields=*',
+        'getTestCase'
+      );
+      interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
+      cy.get(`[data-testid="test-case-${testCaseName}"]`).click();
+      verifyResponseStatusCode('@getTestCase', 200);
+      interceptURL('GET', '/api/v1/users?*', 'getUsers');
+      cy.get('[data-testid="assignee"] [data-testid="edit-owner"]').click();
+      verifyResponseStatusCode('@getUsers', 200);
+      cy.get('[data-testid="loader"]').should('not.exist');
+      interceptURL('GET', `api/v1/search/query?q=*`, 'searchOwner');
+      cy.get('[data-testid="owner-select-users-search-bar"]').type(
+        userData3.displayName
+      );
+      verifyResponseStatusCode('@searchOwner', 200);
+      cy.get(`.ant-popover [title="${userData3.displayName}"]`).click();
+      interceptURL(
+        'POST',
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+        'updateTestCaseIncidentStatus'
+      );
+      cy.get('[data-testid="selectable-list-update-btn"]').click();
+      verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+      cy.get('[data-testid="assignee"] [data-testid="owner-link"]').should(
+        'contain',
+        userData3.displayName
+      );
     });
 
     it('Resolve incident', () => {
