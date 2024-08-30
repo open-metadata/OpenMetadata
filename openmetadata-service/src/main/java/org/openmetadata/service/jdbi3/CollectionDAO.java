@@ -3747,6 +3747,13 @@ public interface CollectionDAO {
     @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     int checkEmailExists(@Bind("email") String email);
 
+    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)")
+    int checkUserNameExists(@Bind("name") String name);
+
+    @SqlQuery(
+        "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)")
+    String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
+
     @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     String findUserByEmail(@Bind("email") String email);
 

@@ -66,7 +66,9 @@ test.describe('Glossary tests', () => {
     const glossary1 = new Glossary();
     glossary1.data.owners = [{ name: 'admin', type: 'user' }];
     glossary1.data.mutuallyExclusive = true;
-    glossary1.data.reviewers = [{ name: user1.getUserName(), type: 'user' }];
+    glossary1.data.reviewers = [
+      { name: `${user1.data.firstName}${user1.data.lastName}`, type: 'user' },
+    ];
     glossary1.data.terms = [new GlossaryTerm(glossary1)];
 
     await test.step('Create Glossary', async () => {
