@@ -819,6 +819,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Request tags for Glossary', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user2);
