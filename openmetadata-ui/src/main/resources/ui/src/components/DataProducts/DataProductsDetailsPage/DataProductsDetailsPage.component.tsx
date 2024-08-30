@@ -354,9 +354,20 @@ const DataProductsDetailsPage = ({
       fetchDataProductAssets();
     }
     if (activeKey !== activeTab) {
-      history.push(
-        getEntityDetailsPath(EntityType.DATA_PRODUCT, dataProductFqn, activeKey)
-      );
+      const path = isVersionsView
+        ? getVersionPath(
+            EntityType.DATA_PRODUCT,
+            dataProductFqn,
+            toString(dataProduct.version),
+            activeKey
+          )
+        : getEntityDetailsPath(
+            EntityType.DATA_PRODUCT,
+            dataProductFqn,
+            activeKey
+          );
+
+      history.push(path);
     }
   };
 
