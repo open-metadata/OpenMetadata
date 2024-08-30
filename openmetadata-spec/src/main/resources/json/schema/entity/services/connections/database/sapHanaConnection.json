@@ -64,6 +64,9 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
+    "supportsLineageExtraction": {
+      "$ref": "../connectionBasicType.json#/definitions/supportsLineageExtraction"
+    },
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
