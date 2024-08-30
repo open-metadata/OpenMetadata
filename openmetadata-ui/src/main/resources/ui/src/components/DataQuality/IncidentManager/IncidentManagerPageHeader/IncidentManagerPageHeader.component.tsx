@@ -126,6 +126,7 @@ const IncidentManagerPageHeader = ({
         ...testCaseStatusData?.testCaseResolutionStatusDetails,
         assignee: assigneeData,
       },
+      testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
     };
 
     const createTestCaseResolutionStatus: CreateTestCaseResolutionStatus = {
