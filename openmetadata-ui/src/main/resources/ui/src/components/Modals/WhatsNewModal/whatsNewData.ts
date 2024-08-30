@@ -930,7 +930,8 @@ To continue pursuing this objective, the application was completely refactored t
 -   [Improve]: Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
 -   [Improve]: Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
 -   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
--   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.`,
+-   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
+-   [Improve]: Added custom properties support in Data Product`,
     },
   },
 ];
