@@ -46,8 +46,8 @@ const userData2 = {
   name: user2.email.split('@')[0],
 };
 const userData3 = {
-  displayName: `${user2.firstName}${user2.lastName}`,
-  name: user2.email.split('@')[0],
+  displayName: `${user3.firstName}${user3.lastName}`,
+  name: user3.email.split('@')[0],
 };
 const userIds: string[] = [];
 
@@ -315,13 +315,12 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
         userData3.displayName
       );
       verifyResponseStatusCode('@searchOwner', 200);
-      cy.get(`.ant-popover [title="${userData3.displayName}"]`).click();
       interceptURL(
         'POST',
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
         'updateTestCaseIncidentStatus'
       );
-      cy.get('[data-testid="selectable-list-update-btn"]').click();
+      cy.get(`.ant-popover [title="${userData3.displayName}"]`).click();
       verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
       cy.get('[data-testid="assignee"] [data-testid="owner-link"]').should(
         'contain',
