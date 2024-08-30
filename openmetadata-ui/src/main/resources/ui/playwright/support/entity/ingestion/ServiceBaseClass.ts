@@ -443,7 +443,12 @@ class ServiceBaseClass {
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
 
-    await expect(page.getByTestId('add-tag')).toBeVisible();
+    await expect(
+      page
+        .getByTestId('entity-right-panel')
+        .getByTestId('tags-container')
+        .getByTestId('add-tag')
+    ).toBeVisible();
 
     await expect(page.getByTestId('markdown-parser').first()).toHaveText(
       description
