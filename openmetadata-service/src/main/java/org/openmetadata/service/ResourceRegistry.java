@@ -39,6 +39,7 @@ public class ResourceRegistry {
   static {
     mapFieldOperation(MetadataOperation.EDIT_TAGS, Entity.FIELD_TAGS);
     mapFieldOperation(MetadataOperation.EDIT_OWNERS, Entity.FIELD_OWNERS);
+    mapFieldOperation(MetadataOperation.EDIT_REVIEWERS, Entity.FIELD_REVIEWERS);
     mapFieldOperation(MetadataOperation.EDIT_CUSTOM_FIELDS, "extension");
     mapFieldOperation(MetadataOperation.EDIT_USERS, "users");
     mapFieldOperation(MetadataOperation.EDIT_ROLE, "defaultRoles");
