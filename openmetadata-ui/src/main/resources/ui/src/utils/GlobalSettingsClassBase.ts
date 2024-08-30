@@ -26,6 +26,7 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.s
 import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
@@ -377,6 +378,15 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
             icon: APIEndpointIcon,
+          },
+          {
+            label: t('label.data-product'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.data-product'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATA_PRODUCT}`,
+            icon: DataProductIcon,
           },
           {
             label: t('label.database'),

@@ -37,6 +37,7 @@ export enum EntityTypeEndpoint {
   User = 'users',
   API_COLLECTION = 'apiCollections',
   API_ENDPOINT = 'apiEndpoints',
+  DATA_PRODUCT = 'dataProducts',
 }
 
 export type EntityDataType = {

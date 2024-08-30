@@ -28,6 +28,7 @@ export const CustomPropertySupportedEntityList = [
   EntityTypeEndpoint.DataModel,
   EntityTypeEndpoint.API_COLLECTION,
   EntityTypeEndpoint.API_ENDPOINT,
+  EntityTypeEndpoint.DATA_PRODUCT,
 ];
 
 export const ENTITY_REFERENCE_PROPERTIES = [
