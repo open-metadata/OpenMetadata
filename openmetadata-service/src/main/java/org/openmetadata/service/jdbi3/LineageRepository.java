@@ -70,6 +70,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -156,6 +157,7 @@ public class LineageRepository {
     details.put("id", entityRef.getId().toString());
     details.put("type", entityRef.getType());
     details.put("fqn", entityRef.getFullyQualifiedName());
+    details.put("fqnHash", FullyQualifiedName.buildHash(entityRef.getFullyQualifiedName()));
     return details;
   }
 
