@@ -13,6 +13,9 @@
 
 import { Page } from '@playwright/test';
 import { POSTGRES } from '../../../constant/service';
+import { redirectToHomePage } from '../../../utils/common';
+import { visitEntityPage } from '../../../utils/entity';
+import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
   Services,
@@ -69,9 +72,77 @@ class PostgresIngestionClass extends ServiceBaseClass {
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
   }
 
+  async runAdditionalTests(test) {
+    if (process.env.PLAYWRIGHT_IS_OSS) {
+      test('Add Usage ingestion', async ({ page }) => {
+        await redirectToHomePage(page);
+        await visitServiceDetailsPage(
+          page,
+          {
+            type: this.category,
+            name: this.serviceName,
+            displayName: this.serviceName,
+          },
+          true
+        );
+
+        await page.click('[data-testid="ingestions"]');
+        await page.waitForSelector(
+          '[data-testid="ingestion-details-container"]'
+        );
+        await page.click('[data-testid="add-new-ingestion-button"]');
+        await page.waitForTimeout(1000);
+        await page.click('[data-menu-id*="usage"]');
+        await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
+
+        const deployResponse = page.waitForResponse(
+          '/api/v1/services/ingestionPipelines/deploy/*'
+        );
+
+        await page.click('[data-testid="submit-btn"]');
+        await page.click('[data-testid="deploy-button"]');
+
+        await deployResponse;
+
+        await page.click('[data-testid="view-service-button"]');
+
+        await page.waitForResponse(
+          '**/api/v1/services/ingestionPipelines/status'
+        );
+
+        await this.handleIngestionRetry('usage', page);
+      });
+
+      test('Verify if usage is ingested properly', async ({ page }) => {
+        const entityResponse = page.waitForResponse(
+          `/api/v1/tables/name/*.order_items?**`
+        );
+
+        await visitEntityPage({
+          page,
+          searchTerm: this.entityName,
+          dataTestId: `${this.serviceName}-${this.entityName}`,
+        });
+
+        await entityResponse;
+
+        await page.getByRole('tab', { name: 'Queries' }).click();
+
+        await page.waitForSelector(
+          '[data-testid="queries-container"] >> text=selectQuery'
+        );
+
+        await page.click('[data-testid="schema"]');
+        await page.waitForSelector('[data-testid="related-tables-data"]');
+        await page.waitForSelector('[data-testid="frequently-joined-columns"]');
+      });
+    }
+  }
+
   async deleteService(page: Page) {
     await super.deleteService(page);
   }
 }
 
+// eslint-disable-next-line jest/no-export
 export default PostgresIngestionClass;

@@ -44,7 +44,7 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 }
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+test.use({ storageState: 'playwright/.auth/admin.json', trace: 'off' });
 
 services.forEach((ServiceClass) => {
   const service = new ServiceClass();

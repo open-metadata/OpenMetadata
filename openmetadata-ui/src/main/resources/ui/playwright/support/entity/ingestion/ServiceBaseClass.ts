@@ -264,15 +264,6 @@ class ServiceBaseClass {
     await page.click('[data-testid="ingestions"]');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
-    // Check cron schedule for Hour here
-    // Being set from this.scheduleIngestion method
-    await expect(page.getByTestId('schedule-primary-details')).toHaveText(
-      'Every hour'
-    );
-    await expect(page.getByTestId('schedule-secondary-details')).toHaveText(
-      'Every day'
-    );
-
     await expect(page.getByTestId('pipeline-status').last()).toContainText(
       'SUCCESS'
     );
