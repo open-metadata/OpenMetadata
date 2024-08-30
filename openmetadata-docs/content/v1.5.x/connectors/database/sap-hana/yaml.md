@@ -29,8 +29,6 @@ Configure and schedule SAP Hana metadata and profiler workflows from the OpenMet
 To deploy OpenMetadata, check the Deployment guides.
 {%/inlineCallout%}
 
-
-
 {% note %}
 The connector is compatible with HANA or HANA express versions since HANA SPS 2.
 {% /note %}
@@ -44,6 +42,35 @@ To run the SAP Hana ingestion, you will need to install:
 ```bash
 pip3 install "openmetadata-ingestion[sap-hana]"
 ```
+
+### Metadata
+
+To extract metadata the user used in the connection needs to have access to the `SYS` schema.
+
+You can create a new user to run the ingestion with:
+
+```SQL
+CREATE USER openmetadata PASSWORD Password123;
+```
+
+And, if you have password policies forcing users to reset the password, you can disable that policy for this technical user with:
+
+```SQL
+ALTER USER openmetadata DISABLE PASSWORD LIFETIME;
+```
+
+Note that in order to get the metadata for **Calculation Views**, **Analytics Views** and **Attribute Views**, you need to have enough
+permissions on the `_SYS_BIC` schema. You can grant the required permissions to the user by running the following SQL commands:
+
+```SQL
+GRANT SELECT ON SCHEMA _SYS_BIC TO <user_or_role>;
+```
+
+The same applies to the `_SYS_REPO` schema, required for lineage extraction.
+
+### Profiler & Data Quality
+
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found [here](/connectors/ingestion/workflows/profiler) and data quality tests [here](/connectors/ingestion/workflows/data-quality).
 
 ## Metadata Ingestion
 
