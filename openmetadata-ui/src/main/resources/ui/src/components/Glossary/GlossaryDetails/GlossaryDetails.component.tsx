@@ -271,7 +271,7 @@ const GlossaryDetails = ({
       className="glossary-details"
       data-testid="glossary-details"
       gutter={[0, 16]}>
-      <Col className="p-x-md" span={24}>
+      <Col className="p-x-md p-l-xl" span={24}>
         <GlossaryHeader
           isGlossary
           isVersionView={isVersionView}
