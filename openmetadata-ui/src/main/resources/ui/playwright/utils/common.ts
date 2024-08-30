@@ -123,7 +123,7 @@ export const clickOutside = async (page: Page) => {
   await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
 };
 
-export const visitUserProfilePage = async (page: Page) => {
+export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.waitForSelector('[role="menu"].profile-dropdown', {
     state: 'visible',

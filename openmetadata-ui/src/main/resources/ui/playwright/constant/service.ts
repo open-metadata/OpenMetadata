@@ -24,3 +24,49 @@ export const SERVICE_TYPE = {
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
   ApiService: GlobalSettingOptions.APIS,
 };
+
+export const SERVICE_CATEGORIES = {
+  DATABASE_SERVICES: 'databaseServices',
+  MESSAGING_SERVICES: 'messagingServices',
+  PIPELINE_SERVICES: 'pipelineServices',
+  DASHBOARD_SERVICES: 'dashboardServices',
+  ML_MODEL_SERVICES: 'mlmodelServices',
+  STORAGE_SERVICES: 'storageServices',
+  METADATA_SERVICES: 'metadataServices',
+  SEARCH_SERVICES: 'searchServices',
+};
+
+export const VISIT_SERVICE_PAGE_DETAILS = {
+  [SERVICE_TYPE.Database]: {
+    settingsMenuId: GlobalSettingOptions.DATABASES,
+    serviceCategory: SERVICE_CATEGORIES.DATABASE_SERVICES,
+  },
+  [SERVICE_TYPE.Messaging]: {
+    settingsMenuId: GlobalSettingOptions.MESSAGING,
+    serviceCategory: SERVICE_CATEGORIES.MESSAGING_SERVICES,
+  },
+  [SERVICE_TYPE.Dashboard]: {
+    settingsMenuId: GlobalSettingOptions.DASHBOARDS,
+    serviceCategory: SERVICE_CATEGORIES.DASHBOARD_SERVICES,
+  },
+  [SERVICE_TYPE.Pipeline]: {
+    settingsMenuId: GlobalSettingOptions.PIPELINES,
+    serviceCategory: SERVICE_CATEGORIES.PIPELINE_SERVICES,
+  },
+  [SERVICE_TYPE.MLModels]: {
+    settingsMenuId: GlobalSettingOptions.MLMODELS,
+    serviceCategory: SERVICE_CATEGORIES.ML_MODEL_SERVICES,
+  },
+  [SERVICE_TYPE.Storage]: {
+    settingsMenuId: GlobalSettingOptions.STORAGES,
+    serviceCategory: SERVICE_CATEGORIES.STORAGE_SERVICES,
+  },
+  [SERVICE_TYPE.Search]: {
+    settingsMenuId: GlobalSettingOptions.SEARCH,
+    serviceCategory: SERVICE_CATEGORIES.SEARCH_SERVICES,
+  },
+  [SERVICE_TYPE.Metadata]: {
+    settingsMenuId: GlobalSettingOptions.METADATA,
+    serviceCategory: SERVICE_CATEGORIES.METADATA_SERVICES,
+  },
+};
