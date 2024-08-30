@@ -63,4 +63,5 @@ export enum ENTITY_PATH {
   'dashboard/datamodels' = 'dashboardDataModel',
   'apiCollections' = 'apiCollection',
   'apiEndpoints' = 'apiEndpoint',
+  'dataProducts' = 'dataProduct',
 }
