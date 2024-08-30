@@ -33,12 +33,11 @@ import {
 } from '../../../../constants/constants';
 import { DATA_INSIGHT_GRAPH_COLORS } from '../../../../constants/DataInsight.constants';
 import { DATA_INSIGHT_DOCS } from '../../../../constants/docs.constants';
-import { SIZE } from '../../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Kpi, KpiResult } from '../../../../generated/dataInsight/kpi/kpi';
 import { UIKpiResult } from '../../../../interface/data-insight.interface';
-import { useDataInsightProvider } from '../../../../pages/DataInsightPage/DataInsightProvider';
 import { DataInsightCustomChartResult } from '../../../../rest/DataInsightAPI';
 import {
   getLatestKpiResult,
@@ -46,41 +45,16 @@ import {
   getListKPIs,
 } from '../../../../rest/KpiAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import { customFormatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  customFormatDateTime,
+  getCurrentMillis,
+  getEpochMillisForPastDays,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import KPILatestResultsV1 from '../../../DataInsight/KPILatestResultsV1';
 import './kpi-widget.less';
 import { KPIWidgetProps } from './KPIWidget.interface';
-
-const EmptyPlaceholder = () => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="flex-center flex-col h-full p-t-sm">
-      <KPIEmptyIcon width={SIZE.X_SMALL} />
-      <div className="m-t-xs text-center">
-        <Typography.Paragraph style={{ marginBottom: '0' }}>
-          {t('message.no-kpi')}
-        </Typography.Paragraph>
-        <Typography.Paragraph>
-          <Transi18next
-            i18nKey="message.refer-to-our-doc"
-            renderElement={
-              <Link
-                rel="noreferrer"
-                target="_blank"
-                to={{ pathname: DATA_INSIGHT_DOCS }}
-              />
-            }
-            values={{
-              doc: t('label.doc-plural-lowercase'),
-            }}
-          />
-        </Typography.Paragraph>
-      </div>
-    </div>
-  );
-};
 
 const KPIWidget = ({
   isEditView = false,
@@ -98,12 +72,11 @@ const KPIWidget = ({
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const { chartFilter } = useDataInsightProvider();
 
   const getKPIResult = async (kpi: Kpi) => {
     const response = await getListKpiResult(kpi.fullyQualifiedName ?? '', {
-      startTs: chartFilter.startTs,
-      endTs: chartFilter.endTs,
+      startTs: getEpochMillisForPastDays(selectedDays),
+      endTs: getCurrentMillis(),
     });
 
     return { name: kpi.name, data: response.results };
@@ -253,7 +226,28 @@ const KPIWidget = ({
         </Col>
       </Row>
       {isEmpty(kpiList) || isEmpty(kpiResults) ? (
-        <EmptyPlaceholder />
+        <ErrorPlaceHolder
+          icon={<KPIEmptyIcon height={SIZE.X_SMALL} width={SIZE.X_SMALL} />}
+          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+          <Typography.Paragraph style={{ marginBottom: '0' }}>
+            {t('message.no-kpi')}
+          </Typography.Paragraph>
+          <Typography.Paragraph>
+            <Transi18next
+              i18nKey="message.refer-to-our-doc"
+              renderElement={
+                <Link
+                  rel="noreferrer"
+                  target="_blank"
+                  to={{ pathname: DATA_INSIGHT_DOCS }}
+                />
+              }
+              values={{
+                doc: t('label.doc-plural-lowercase'),
+              }}
+            />
+          </Typography.Paragraph>
+        </ErrorPlaceHolder>
       ) : (
         <Row className="p-t-md">
           <Col span={isWidgetSizeMedium ? 14 : 24}>
