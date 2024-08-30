@@ -26,16 +26,6 @@ export enum Services {
   Search = GlobalSettingOptions.SEARCH,
 }
 
-export const ServicesEntityMap = {
-  [Services.Database]: EntityTypeEndpoint.Table,
-  [Services.Messaging]: EntityTypeEndpoint.Topic,
-  [Services.Dashboard]: EntityTypeEndpoint.Dashboard,
-  [Services.Pipeline]: EntityTypeEndpoint.Pipeline,
-  [Services.MLModels]: EntityTypeEndpoint.MlModel,
-  [Services.Storage]: EntityTypeEndpoint.Container,
-  [Services.Search]: EntityTypeEndpoint.SearchIndex,
-};
-
 export const getEntityTypeFromService = (service: Services) => {
   switch (service) {
     case Services.Dashboard:

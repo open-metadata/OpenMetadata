@@ -50,10 +50,7 @@ class SnowflakeIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
-    await page.fill(
-      '#root\\/schemaFilterPattern\\/includes',
-      `${this.entityName}`
-    );
+    await page.fill('#root\\/schemaFilterPattern\\/includes', `${this.schema}`);
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
   }
 

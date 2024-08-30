@@ -12,7 +12,9 @@
  */
 
 import { Page } from '@playwright/test';
-import { REDSHIFT } from '../../../constant/service';
+import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
+import { visitEntityPage } from '../../../utils/entity';
+import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
   Services,
@@ -67,11 +69,717 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     // no schema or database filters
     await page
       .locator('#root\\/schemaFilterPattern\\/includes')
-      .fill('dbt_jaffle');
+      .fill(this.schemaFilterPattern);
 
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
 
     await page.click('#root\\/includeViews');
+  }
+
+  async runAdditionalTests(test) {
+    test('Add DBT ingestion', async ({ page }) => {
+      await visitServiceDetailsPage(page, {
+        name: REDSHIFT.serviceName,
+        type: REDSHIFT.serviceType,
+      });
+
+      await page.waitForSelector('[data-testid="tabs"]');
+      await page.click('[data-testid="ingestions"]');
+      await page.waitForSelector('[data-testid="ingestion-details-container"]');
+      await page.click('[data-testid="add-new-ingestion-button"]');
+      await page.click(
+        '[data-testid="list-item"]:has-text("Add dbt Ingestion")'
+      );
+      await page.waitForSelector(
+        '[data-testid="dbtConfigSource__oneof_select"]'
+      );
+      await page.selectOption(
+        '[data-testid="dbtConfigSource__oneof_select"]',
+        'DBT HTTP Config'
+      );
+      await page.fill(
+        '#root\\/dbtConfigSource\\/dbtCatalogHttpPath',
+        HTTP_CONFIG_SOURCE.DBT_CATALOG_HTTP_PATH
+      );
+      await page.fill(
+        '#root\\/dbtConfigSource\\/dbtManifestHttpPath',
+        HTTP_CONFIG_SOURCE.DBT_MANIFEST_HTTP_PATH
+      );
+      await page.fill(
+        '#root\\/dbtConfigSource\\/dbtRunResultsHttpPath',
+        HTTP_CONFIG_SOURCE.DBT_RUN_RESULTS_FILE_PATH
+      );
+      await page.click('[data-testid="submit-btn"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/services/ingestionPipelines/deploy/') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+      await page.waitForSelector('[data-testid="serviceDetails"]');
+      await page.click('[data-testid="ingestionPipelines"]');
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.click('[data-testid="view-service-button"]');
+      await page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes(
+              '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs='
+            ) && response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/ingestionPipelines?*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/permissions/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/services/*/name/*') &&
+          response.status() === 200
+      );
+      await page.waitForSelector('[data-testid="ingestionPipelines"]');
+      await page.waitForSelector('[data-testid="serviceDetailsPermission"]');
+    });
+
+    test('Validate DBT is ingested properly', async ({ page }) => {
+      await page.click('[data-testid="sidebar-item-tags"]');
+
+      await page.waitForSelector('[data-testid="data-summary-container"]');
+      await page.click(
+        `[data-testid="data-summary-container"] >> text=${DBT.classification}`
+      );
+
+      // Verify DBT tag category is added
+      await page.waitForSelector('[data-testid="tag-name"]');
+      const tagName = await page.textContent('[data-testid="tag-name"]');
+
+      expect(tagName).toContain(DBT.classification);
+
+      await page.waitForSelector('.ant-table-row');
+      const tableRowText = await page.textContent('.ant-table-row');
+
+      expect(tableRowText).toContain(DBT.tagName);
+
+      // Verify DBT in table entity
+      await visitEntityPage({
+        page,
+        searchTerm: REDSHIFT.DBTTable,
+        dataTestId: `${REDSHIFT.serviceName}.${REDSHIFT.DBTTable}`,
+      });
+
+      // Verify tags
+      await page.waitForSelector('[data-testid="entity-tags"]');
+      const entityTagsText = await page.textContent(
+        '[data-testid="entity-tags"]'
+      );
+
+      expect(entityTagsText).toContain(DBT.tagName);
+
+      // Verify DBT tab is present
+      await page.click('[data-testid="dbt"]');
+
+      // Verify query is present in the DBT tab
+      await page.waitForSelector('.CodeMirror');
+      const codeMirrorText = await page.textContent('.CodeMirror');
+
+      expect(codeMirrorText).toContain(DBT.dbtQuery);
+
+      await page.click('[data-testid="lineage"]');
+
+      await page.waitForSelector('[data-testid="entity-header-display-name"]');
+      const entityHeaderDisplayName = await page.textContent(
+        '[data-testid="entity-header-display-name"]'
+      );
+
+      expect(entityHeaderDisplayName).toContain(DBT.dbtLineageNodeLabel);
+
+      // Verify Data Quality
+      await page.click('[data-testid="profiler"]');
+
+      await page.waitForSelector('[data-testid="profiler-tab-left-panel"]');
+      const profilerTabLeftPanelText = await page.textContent(
+        '[data-testid="profiler-tab-left-panel"]'
+      );
+
+      expect(profilerTabLeftPanelText).toContain('Data Quality');
+
+      await page.waitForSelector(`[data-testid=${DBT.dataQualityTest1}]`);
+      const dataQualityTest1Text = await page.textContent(
+        `[data-testid=${DBT.dataQualityTest1}]`
+      );
+
+      expect(dataQualityTest1Text).toContain(DBT.dataQualityTest1);
+
+      await page.waitForSelector(`[data-testid=${DBT.dataQualityTest2}]`);
+      const dataQualityTest2Text = await page.textContent(
+        `[data-testid=${DBT.dataQualityTest2}]`
+      );
+
+      expect(dataQualityTest2Text).toContain(DBT.dataQualityTest2);
+    });
   }
 
   async deleteService(page: Page) {
@@ -79,4 +787,5 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   }
 }
 
+// eslint-disable-next-line jest/no-export
 export default RedshiftWithDBTIngestionClass;

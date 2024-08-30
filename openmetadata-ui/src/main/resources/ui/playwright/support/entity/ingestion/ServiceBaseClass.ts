@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,7 +11,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import {
+  expect,
+  Page,
+  PlaywrightTestArgs,
+  PlaywrightWorkerArgs,
+  TestType,
+} from '@playwright/test';
 import {
   descriptionBox,
   getApiContext,
@@ -228,7 +235,7 @@ class ServiceBaseClass {
         {
           // Custom expect message for reporting, optional.
           message: 'Wait for pipeline to be successful',
-          timeout: 300_000,
+          timeout: 600_000,
           intervals: [30_000, 15_000, 5_000],
         }
       )
@@ -373,14 +380,17 @@ class ServiceBaseClass {
     );
   }
 
-  async updateDescriptionForIngestedTables(page: Page) {
+  async updateDescriptionForIngestedTables(
+    page: Page,
+    entityDataTestId?: string
+  ) {
     const description = `${this.entityName} description`;
 
     // Navigate to ingested table
     await visitEntityPage({
       page,
       searchTerm: this.entityName,
-      dataTestId: `${this.serviceName}-${this.entityName}`,
+      dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
     // update description
@@ -424,7 +434,7 @@ class ServiceBaseClass {
     await visitEntityPage({
       page,
       searchTerm: this.entityName,
-      dataTestId: `${this.serviceName}-${this.entityName}`,
+      dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
@@ -434,7 +444,9 @@ class ServiceBaseClass {
     );
   }
 
-  runAdditionalTests() {
+  async runAdditionalTests(
+    _test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
+  ) {
     // Write service specific tests
   }
 

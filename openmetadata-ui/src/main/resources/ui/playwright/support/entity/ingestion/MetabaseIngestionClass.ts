@@ -28,8 +28,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
       Services.Dashboard,
       `pw-Metabase-${uuid()}`,
       'Metabase',
-      // for Metadabase name will be actual id  cc: @OnkarVO7
-      '1'
+      'jaffle_shop dashboard'
     );
     this.tableName = 'jaffle_shop dashboard';
   }
@@ -39,7 +38,9 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   }
 
   async updateService(page: Page) {
-    await super.updateService(page);
+    // For dashboards name will be ID and displayName will be name so updating testID for it
+    const testId = `${this.serviceName}-1`;
+    await this.updateDescriptionForIngestedTables(page, testId);
   }
 
   async fillConnectionDetails(page: Page) {

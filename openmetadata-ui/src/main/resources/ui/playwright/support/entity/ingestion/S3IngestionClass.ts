@@ -26,7 +26,7 @@ class S3IngestionClass extends ServiceBaseClass {
       Services.Storage,
       `pw-s3-storage-${uuid()}`,
       'S3',
-      'om-cypress-bucket'
+      'awsathena-database'
     );
   }
 
@@ -53,6 +53,10 @@ class S3IngestionClass extends ServiceBaseClass {
     await checkServiceFieldSectionHighlighting(page, 'awsSecretAccessKey');
     await page.fill('#root\\/awsConfig\\/awsRegion', 'us-east-2');
     await checkServiceFieldSectionHighlighting(page, 'awsRegion');
+
+    // to reduce ingestion time
+    await page.click('[data-testid="add-item-Bucket Names"]');
+    await page.fill('#root\\/bucketNames\\/0', this.entityName);
   }
 
   async fillIngestionDetails(page: Page) {
