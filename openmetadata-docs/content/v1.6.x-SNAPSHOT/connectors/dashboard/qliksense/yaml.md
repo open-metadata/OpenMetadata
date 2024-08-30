@@ -17,14 +17,15 @@ Configure and schedule PowerBI metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-qlik-sense-connection-with-ssl-in-openmetadata)
 
-{% partial file="/v1.5/connectors/external-ingestion-deployment.md" /%}
+{% partial file="/v1.6/connectors/external-ingestion-deployment.md" /%}
 
 ## Requirements
 
 ### Python Requirements
 
-{% partial file="/v1.5/connectors/python-requirements.md" /%}
+{% partial file="/v1.6/connectors/python-requirements.md" /%}
 
 To run the PowerBI ingestion, you will need to install:
 
@@ -138,11 +139,11 @@ You will have to replace new lines with `\n` and the final private key that you 
 
 {% /codeInfo %}
 
-{% partial file="/v1.5/connectors/yaml/dashboard/source-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/dashboard/source-config-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink-def.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config-def.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config-def.md" /%}
 
 {% /codeInfoContainer %}
 
@@ -185,14 +186,39 @@ source:
 ```yaml {% srNumber=6 %}
       validateHostName: false
 ```
-{% partial file="/v1.5/connectors/yaml/dashboard/source-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/dashboard/source-config.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-sink.md" /%}
+{% partial file="/v1.6/connectors/yaml/ingestion-sink.md" /%}
 
-{% partial file="/v1.5/connectors/yaml/workflow-config.md" /%}
+{% partial file="/v1.6/connectors/yaml/workflow-config.md" /%}
 
 {% /codeBlock %}
 
 {% /codePreview %}
 
-{% partial file="/v1.5/connectors/yaml/ingestion-cli.md" /%}
+## Securing Qlik Sense Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and Qlik Sense, there are two ways to communicate: defining the certificate file path or using the certificates value. 
+
+When using the local certificate file path, ensure that the certificates are accessible from the Airflow Server. You can specify the path for the `client certificate`, `client key certificate`, and `root certificate`. 
+
+Alternatively, when using the certificates value, you can provide the CA certificate used for SSL validation by specifying the `CA Certificate` (rootCertificateData). If both client and server require mutual authentication, you can upload all three: `CA Certificate`, `SSL Certificate`(clientCertificate), and `SSL Key`(clientKeyCertificate).
+
+Refer to the guide on how to generate authentication certificates so that OpenMetadata can communicate with Qlik Sense [here](/connectors/dashboard/qliksense/certificates).
+
+```yaml
+      certificates:
+        # pass certificate paths
+        clientCertificate: /path/to/client.pem
+        clientKeyCertificate: /path/to/client_key.pem
+        rootCertificate: /path/to/root.pem
+```
+
+```yaml
+        # pass certificate values
+        clientCertificateData: -----BEGIN CERTIFICATE-----\n....\n.....\n-----END CERTIFICATE-----\n
+        clientKeyCertificateData: -----BEGIN RSA PRIVATE KEY-----\n....\n....\n-----END RSA PRIVATE KEY-----\n
+        rootCertificateData: -----BEGIN CERTIFICATE-----\n....\n...-----END CERTIFICATE-----\n
+```
+
+{% partial file="/v1.6/connectors/yaml/ingestion-cli.md" /%}

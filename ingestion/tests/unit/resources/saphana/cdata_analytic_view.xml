@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Cube:cube xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:AccessControl="http://www.sap.com/ndb/SQLCoreModelAccessControl.ecore" xmlns:Cube="http://www.sap.com/ndb/BiModelCube.ecore" schemaVersion="1.5" id="AN_SBOOK" applyPrivilegeType="ANALYTIC_PRIVILEGE" checkAnalyticPrivileges="true" defaultClient="$$client$$" defaultLanguage="$$language$$" hierarchiesSQLEnabled="false" translationRelevant="true" visibility="reportingEnabled">
+  <origin/>
+  <descriptions defaultDescription="AN_SBOOK"/>
+  <metadata changedAt="2024-08-22 08:56:08.244"/>
+  <localVariables/>
+  <informationModelLayout relativeWidthScenario="27"/>
+  <privateMeasureGroup id="MeasureGroup">
+    <attributes>
+      <attribute id="MANDT" order="1" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="MANDT"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="MANDT"/>
+      </attribute>
+      <attribute id="CARRID" order="2" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="CARRID"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="CARRID"/>
+      </attribute>
+      <attribute id="CONNID" order="3" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="CONNID"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="CONNID"/>
+      </attribute>
+      <attribute id="FLDATE" order="4" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="FLDATE"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="FLDATE"/>
+      </attribute>
+      <attribute id="FORCURKEY" order="6" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="FORCURKEY"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="FORCURKEY"/>
+      </attribute>
+      <attribute id="LOCCURKEY" order="8" attributeHierarchyActive="false" displayAttribute="false">
+        <descriptions defaultDescription="LOCCURKEY"/>
+        <keyMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="LOCCURKEY"/>
+      </attribute>
+    </attributes>
+    <calculatedAttributes/>
+    <privateDataFoundation>
+      <tableProxies>
+        <tableProxy centralTable="true">
+          <table schemaName="SFLIGHT" columnObjectName="SBOOK"/>
+          <columnFilter columnName="CANCELLED">
+            <valueFilter xsi:type="AccessControl:SingleValueFilter" including="false" value="X"/>
+          </columnFilter>
+        </tableProxy>
+      </tableProxies>
+      <joins/>
+      <layout>
+        <shapes>
+          <shape modelObjectName="SBOOK" modelObjectNameSpace="SFLIGHT" modelObjectType="catalog">
+            <upperLeftCorner x="70" y="30"/>
+          </shape>
+        </shapes>
+      </layout>
+    </privateDataFoundation>
+    <baseMeasures>
+      <measure id="FORCURAM" order="5" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="FORCURAM"/>
+        <measureMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="FORCURAM"/>
+      </measure>
+      <measure id="LOCCURAM" order="7" aggregationType="sum" engineAggregation="sum" measureType="simple">
+        <descriptions defaultDescription="LOCCURAM"/>
+        <measureMapping schemaName="SFLIGHT" columnObjectName="SBOOK" columnName="LOCCURAM"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures/>
+    <restrictedMeasures/>
+    <sharedDimensions/>
+    <layout>
+      <shapes>
+        <shape modelObjectName="MEASURE_GROUP" modelObjectType="repository">
+          <upperLeftCorner x="300" y="200"/>
+        </shape>
+        <shape modelObjectName="LogicalView" modelObjectNameSpace="MeasureGroup" modelObjectType="repository">
+          <upperLeftCorner x="40" y="85"/>
+          <rectangleSize/>
+        </shape>
+      </shapes>
+    </layout>
+  </privateMeasureGroup>
+</Cube:cube>

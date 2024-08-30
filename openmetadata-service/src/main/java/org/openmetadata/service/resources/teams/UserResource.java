@@ -450,10 +450,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
-    User user = repository.getByEmail(uriInfo, currentEmail, fields);
-
-    repository.validateLoggedInUserNameAndEmailMatches(
-        securityContext.getUserPrincipal().getName(), currentEmail, user);
+    User user =
+        repository.getLoggedInUserByNameAndEmail(
+            uriInfo, catalogSecurityContext.getUserPrincipal().getName(), currentEmail, fields);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
