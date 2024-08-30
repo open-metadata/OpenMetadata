@@ -304,7 +304,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     if (isEmpty(parsedSearch.quickFilter)) {
       setSelectedKeys([]);
     }
-  }, [parsedSearch, searchQueryParam]);
+  }, [parsedSearch]);
 
   return (
     <Tree
