@@ -314,6 +314,8 @@ const TestCaseForm: React.FC<TestCaseFormProps> = ({
             },
           ]}>
           <Select
+            allowClear
+            showSearch
             data-testid="column"
             placeholder={t('label.please-select-entity', {
               entity: t('label.column-lowercase'),
