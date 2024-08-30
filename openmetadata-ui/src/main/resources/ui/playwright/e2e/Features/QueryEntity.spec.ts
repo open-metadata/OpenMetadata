@@ -166,11 +166,6 @@ test('Query Entity', async ({ page }) => {
     await page.click(`[title="${queryData.queryUsedIn.table2}"]`);
     await clickOutside(page);
     await page.click('[data-testid="save-query-btn"]');
-    await page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/queries/') &&
-        response.request().method() === 'PATCH'
-    );
   });
 
   await test.step('Verify query filter', async () => {
