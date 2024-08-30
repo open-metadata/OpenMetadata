@@ -110,7 +110,7 @@ $$
 
 $$section
 ### SSL CA $(id="caCertificate")
-The CA certificate used for SSL validation (`ssl_ca`)
+The CA certificate used for SSL validation.
 $$
 
 $$section
