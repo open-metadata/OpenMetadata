@@ -64,7 +64,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
   async fillIngestionDetails(page: Page) {
     await page
       .locator('#root\\/schemaFilterPattern\\/includes')
-      .fill(this.entityName);
+      .fill(this.filterPattern);
 
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
   }

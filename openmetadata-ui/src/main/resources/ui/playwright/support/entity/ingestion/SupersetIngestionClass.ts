@@ -32,7 +32,8 @@ class SupersetIngestionClass extends ServiceBaseClass {
   }
 
   async updateService(page: Page) {
-    await super.updateService(page);
+    const testId = `${this.serviceName}-1`;
+    await this.updateDescriptionForIngestedTables(page, testId);
   }
 
   async fillConnectionDetails(page: Page) {

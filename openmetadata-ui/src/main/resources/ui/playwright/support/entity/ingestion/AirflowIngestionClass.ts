@@ -22,7 +22,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
       Services.Pipeline,
       `pw-airflow-${uuid()}`,
       'Airflow',
-      'index_metadata'
+      'sample_lineage'
     );
   }
 

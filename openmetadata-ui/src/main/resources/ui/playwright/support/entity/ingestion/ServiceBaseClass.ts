@@ -217,6 +217,10 @@ class ServiceBaseClass {
   handleIngestionRetry = async (ingestionType = 'metadata', page: Page) => {
     const { apiContext } = await getApiContext(page);
 
+    // Need to wait before start polling as Ingestion is taking time to reflect state on their db
+    // Queued status are not stored in DB. cc: @ulixius9
+    await page.waitForTimeout(2000);
+
     await expect
       .poll(
         async () => {
@@ -438,6 +442,8 @@ class ServiceBaseClass {
     });
 
     await page.getByTestId('data-assets-header').waitFor({ state: 'visible' });
+
+    await expect(page.getByTestId('add-tag')).toBeVisible();
 
     await expect(page.getByTestId('markdown-parser').first()).toHaveText(
       description
