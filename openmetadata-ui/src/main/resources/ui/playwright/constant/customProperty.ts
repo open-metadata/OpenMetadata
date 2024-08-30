@@ -269,6 +269,23 @@ export const CUSTOM_PROPERTIES_ENTITIES = {
     entityObj: {},
     entityApiType: 'apiEndpoints',
   },
+  entity_dataProduct: {
+    name: 'dataProduct',
+    description: 'This is Data Product custom property',
+    integerValue: '23',
+    stringValue: 'This is string propery',
+    markdownValue: 'This is markdown value',
+    enumConfig: {
+      values: ['enum1', 'enum2', 'enum3'],
+      multiSelect: false,
+    },
+    dateFormatConfig: 'yyyy-MM-dd',
+    dateTimeFormatConfig: 'yyyy-MM-dd HH:mm:ss',
+    timeFormatConfig: 'HH:mm:ss',
+    entityReferenceConfig: ['User', 'Team'],
+    entityObj: {},
+    entityApiType: 'dataProducts',
+  },
 };
 
 export const CUSTOM_PROPERTY_INVALID_NAMES = {
