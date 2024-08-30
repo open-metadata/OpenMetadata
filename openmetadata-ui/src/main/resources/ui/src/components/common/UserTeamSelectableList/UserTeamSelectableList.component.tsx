@@ -61,6 +61,7 @@ export const UserTeamSelectableList = ({
   label,
   previewSelected = false,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
+  tooltipText,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -371,9 +372,10 @@ export const UserTeamSelectableList = ({
           <Tooltip
             title={
               !popupVisible &&
-              t('label.edit-entity', {
-                entity: t('label.owner'),
-              })
+              (tooltipText ??
+                t('label.edit-entity', {
+                  entity: t('label.owner'),
+                }))
             }>
             <Button
               className="flex-center p-0"

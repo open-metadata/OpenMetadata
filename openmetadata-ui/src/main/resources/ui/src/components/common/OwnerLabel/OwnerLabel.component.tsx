@@ -39,6 +39,11 @@ export const OwnerLabel = ({
   ownerDisplayName,
   placeHolder,
   maxVisibleOwners = 3, // Default to 3 if not provided
+  multiple = {
+    user: true,
+    team: false,
+  },
+  tooltipText,
 }: {
   owners?: EntityReference[];
   className?: string;
@@ -47,6 +52,11 @@ export const OwnerLabel = ({
   ownerDisplayName?: ReactNode[];
   placeHolder?: string;
   maxVisibleOwners?: number;
+  multiple?: {
+    user: boolean;
+    team: boolean;
+  };
+  tooltipText?: string;
 }) => {
   const { t } = useTranslation();
   const [showAllOwners, setShowAllOwners] = useState(false);
@@ -162,11 +172,9 @@ export const OwnerLabel = ({
         {onUpdate && (
           <UserTeamSelectableList
             hasPermission={Boolean(hasPermission)}
-            multiple={{
-              user: true,
-              team: false,
-            }}
+            multiple={multiple}
             owner={owners}
+            tooltipText={tooltipText}
             onUpdate={(updatedUsers) => {
               onUpdate(updatedUsers);
             }}
