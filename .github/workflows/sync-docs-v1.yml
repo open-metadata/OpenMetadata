@@ -10,7 +10,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Sync publish docs v1
+name: Sync publish docs
 on:
   push:
     branches:
@@ -56,8 +56,38 @@ jobs:
         commit-message: See ORIGIN_COMMIT from $GITHUB_REF
         target-branch: publish
 
+    - name: Push content Collate
+      id: push_content_collate
+      continue-on-error: true
+      uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_COLLATE_SSH_DEPLOY_KEY }}
+      with:
+        source-directory: openmetadata-docs/content/v1.5.x
+        target-directory: content/
+        destination-github-username: 'open-metadata'
+        destination-repository-name: 'docs-collate'
+        user-email: collate@getcollate.io
+        commit-message: See ORIGIN_COMMIT from $GITHUB_REF
+        target-branch: main
+
+    - name: Push images Collate
+      id: push_images_collate
+      continue-on-error: true
+      uses: cpina/github-action-push-to-another-repository@main
+      env:
+        SSH_DEPLOY_KEY: ${{ secrets.DOCS_COLLATE_SSH_DEPLOY_KEY }}
+      with:
+        source-directory: openmetadata-docs/images/
+        target-directory: public/images/
+        destination-github-username: 'open-metadata'
+        destination-repository-name: 'docs-collate'
+        user-email: collate@getcollate.io
+        commit-message: See ORIGIN_COMMIT from $GITHUB_REF
+        target-branch: main
+
     - name: Slack on Failure
-      if: steps.push_content.outcome != 'success'
+      if: ${{ steps.push_content.outcome != 'success' || steps.push_content_collate != 'success' }}
       uses: slackapi/slack-github-action@v1.23.0
       with:
         payload: |
