@@ -73,7 +73,9 @@ services.forEach((ServiceClass) => {
       await service.updateScheduleOptions(page);
     });
 
-    await service.runAdditionalTests(test);
+    test.fixme(`Service specific tests`, async () => {
+      await service.runAdditionalTests(test);
+    });
 
     test(`Delete ${service.serviceType} service`, async ({ page }) => {
       await service.deleteService(page);

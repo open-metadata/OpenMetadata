@@ -113,6 +113,7 @@ export const toastNotification = async (
   await page
     .locator('.Toastify__toast')
     .getByLabel('close', { exact: true })
+    .first()
     .click();
 };
 
