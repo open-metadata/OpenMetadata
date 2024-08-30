@@ -115,12 +115,12 @@ $$
 
 $$section
 ### SSL Certificate $(id="sslCertificate")
-The SSL certificate used for client authentication (`ssl_cert`)
+The SSL certificate used for client authentication.
 $$
 
 $$section
 ### SSL Key $(id="sslKey")
-The private key associated with the SSL certificate (`ssl_key`)
+The private key associated with the SSL certificate.
 $$
 
 $$section
