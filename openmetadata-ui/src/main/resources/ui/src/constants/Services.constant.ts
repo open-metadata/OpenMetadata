@@ -88,7 +88,6 @@ import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
 import trino from '../assets/img/service-icon-trino.png';
 import vertica from '../assets/img/service-icon-vertica.png';
-import vertexai from '../assets/img/service-logo-vertexai.png';
 import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import elasticSearch from '../assets/svg/elasticsearch.svg';
@@ -218,7 +217,6 @@ export const NOSERVICE = noService;
 export const ICEBERGE = iceberge;
 export const TERADATA = teradata;
 export const FLINK = flink;
-export const VERTEXAI = vertexai;
 export const REST_SERVICE = restService;
 export const excludedService = [
   MlModelServiceType.Sklearn,

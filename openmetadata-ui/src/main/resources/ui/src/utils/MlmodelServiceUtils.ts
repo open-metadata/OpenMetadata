@@ -18,7 +18,6 @@ import customMlModelConnection from '../jsons/connectionSchemas/connections/mlmo
 import mlflowConnection from '../jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
 import segamakerConnection from '../jsons/connectionSchemas/connections/mlmodel/sageMakerConnection.json';
 import sklearnConnection from '../jsons/connectionSchemas/connections/mlmodel/sklearnConnection.json';
-import VertexaiConnection from '../jsons/connectionSchemas/connections/mlmodel/vertexaiConnection.json';
 
 export const getMlmodelConfig = (type: MlModelServiceType) => {
   let schema = {};
@@ -41,11 +40,6 @@ export const getMlmodelConfig = (type: MlModelServiceType) => {
     }
     case MlModelServiceType.SageMaker: {
       schema = segamakerConnection;
-
-      break;
-    }
-    case MlModelServiceType.VertexAI: {
-      schema = VertexaiConnection;
 
       break;
     }
