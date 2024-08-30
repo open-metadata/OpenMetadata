@@ -1,0 +1,14 @@
+{
+    "name": "VertexAI",
+    "displayName": "VertexAI Test Connection",
+    "description": "Test Connection to validate the access against models and basic metadata extraction",
+    "steps": [
+      {
+        "name": "GetModels",
+        "description": "Validate that we can get the instances with the given credentials.",
+        "errorMessage": "Failed to get VertexAI models, please validate to the credentials of service account",
+        "shortCircuit": true,
+        "mandatory": true
+      }
+    ]
+}
