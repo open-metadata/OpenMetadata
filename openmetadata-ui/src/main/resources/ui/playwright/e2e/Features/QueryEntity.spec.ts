@@ -85,7 +85,11 @@ test('Query Entity', async ({ page }) => {
     await clickOutside(page);
 
     await page.click('[data-testid="save-btn"]');
-    await page.waitForResponse('/api/v1/queries');
+    await page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/queries/') &&
+        response.request().method() === 'POST'
+    );
     await page.waitForURL('**/table_queries**');
 
     await expect(page.locator(`text=${queryData.query}`)).toBeVisible();
