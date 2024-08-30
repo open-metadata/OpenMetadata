@@ -84,12 +84,9 @@ test('Query Entity', async ({ page }) => {
     await page.click(`[title="${queryData.queryUsedIn.table1}"]`);
     await clickOutside(page);
 
+    const createQueryResponse = page.waitForResponse('/api/v1/queries');
     await page.click('[data-testid="save-btn"]');
-    await page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/queries/') &&
-        response.request().method() === 'POST'
-    );
+    await createQueryResponse;
     await page.waitForURL('**/table_queries**');
 
     await expect(page.locator(`text=${queryData.query}`)).toBeVisible();
