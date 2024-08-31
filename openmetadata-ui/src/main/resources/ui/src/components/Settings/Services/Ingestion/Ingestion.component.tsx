@@ -135,7 +135,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   );
 
   const renderAddIngestionButton = useMemo(() => {
-    if (isFetchingStatus) {
+    if (isFetchingStatus || isLoading) {
       return <ButtonSkeleton size="default" />;
     }
 
@@ -153,6 +153,7 @@ const Ingestion: React.FC<IngestionProps> = ({
 
     return null;
   }, [
+    isLoading,
     isFetchingStatus,
     showAddIngestionButton,
     ingestionPipelineList,
