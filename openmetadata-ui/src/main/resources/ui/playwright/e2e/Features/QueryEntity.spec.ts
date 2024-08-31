@@ -113,12 +113,13 @@ test('Query Entity', async ({ page }) => {
     );
     await searchOwnerResponse;
     await page.click(`.ant-popover [title="${queryData.owner}"]`);
-    await page.click('[data-testid="selectable-list-update-btn"]');
-    await page.waitForResponse(
+    const updateOwnerResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
+    await page.click('[data-testid="selectable-list-update-btn"]');
+    await updateOwnerResponse;
 
     await expect(page.getByRole('link', { name: 'admin' })).toBeVisible();
     await expect(
@@ -128,12 +129,13 @@ test('Query Entity', async ({ page }) => {
     // Update Description
     await page.click(`[data-testid="edit-description"]`);
     await page.fill(descriptionBox, 'updated description');
-    await page.click(`[data-testid="save"]`);
-    await page.waitForResponse(
+    const updateDescriptionResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
+    await page.click(`[data-testid="save"]`);
+    await updateDescriptionResponse;
     await page.waitForSelector('.ant-modal-body', {
       state: 'detached',
     });
@@ -143,12 +145,13 @@ test('Query Entity', async ({ page }) => {
     await page.locator('#tagsForm_tags').click();
     await page.locator('#tagsForm_tags').fill(queryData.tagFqn);
     await page.getByTestId(`tag-${queryData.tagFqn}`).click();
-    await page.getByTestId('saveAssociatedTag').click();
-    await page.waitForResponse(
+    const updateTagResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/queries/') &&
         response.request().method() === 'PATCH'
     );
+    await page.getByTestId('saveAssociatedTag').click();
+    await updateTagResponse;
   });
 
   await test.step('Update query and QueryUsedIn', async () => {
@@ -165,7 +168,13 @@ test('Query Entity', async ({ page }) => {
     await tableSearchResponse;
     await page.click(`[title="${queryData.queryUsedIn.table2}"]`);
     await clickOutside(page);
+    const updateQueryResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/queries/') &&
+        response.request().method() === 'PATCH'
+    );
     await page.click('[data-testid="save-query-btn"]');
+    await updateQueryResponse;
   });
 
   await test.step('Verify query filter', async () => {
