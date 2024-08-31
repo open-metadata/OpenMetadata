@@ -50,12 +50,14 @@ export const queryFilters = async ({
   page: Page;
 }) => {
   await page.click(`[data-testid="search-dropdown-${key}"]`);
+  const searchInputResponse = page.waitForResponse(apiKey);
   await page.fill('[data-testid="search-input"]', filter);
-  await page.waitForResponse(apiKey);
+  await searchInputResponse;
   await page.hover(`[data-testid="search-dropdown-${key}"]`);
   await page.click(`[data-testid="drop-down-menu"] [title="${filter}"]`);
-  await page.click('[data-testid="update-btn"]');
-  await page.waitForResponse(
+  const queryResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query_search_index*'
   );
+  await page.click('[data-testid="update-btn"]');
+  await queryResponse;
 };
