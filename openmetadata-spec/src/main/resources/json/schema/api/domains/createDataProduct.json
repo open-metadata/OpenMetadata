@@ -50,6 +50,10 @@
       "description": "Data assets collection that is part of this data product.",
       "$ref": "../../type/entityReferenceList.json",
       "default": null
+    },
+    "extension": {
+      "description": "Entity extension data with custom attributes added to the entity.",
+      "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
   "required": [

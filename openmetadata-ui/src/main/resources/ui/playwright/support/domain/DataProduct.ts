@@ -12,6 +12,8 @@
  */
 import { APIRequestContext } from '@playwright/test';
 import { uuid } from '../../utils/common';
+import { EntityTypeEndpoint } from '../entity/Entity.interface';
+import { EntityClass } from '../entity/EntityClass';
 import { Domain } from './Domain';
 
 type UserTeamRef = {
@@ -30,7 +32,7 @@ type ResponseDataType = {
   experts?: UserTeamRef[];
 };
 
-export class DataProduct {
+export class DataProduct extends EntityClass {
   id = uuid();
   data: ResponseDataType = {
     name: `PW%dataProduct.${this.id}`,
@@ -44,6 +46,7 @@ export class DataProduct {
   responseData: ResponseDataType;
 
   constructor(domain: Domain, name?: string) {
+    super(EntityTypeEndpoint.DATA_PRODUCT);
     this.data.domain = domain.data.name;
     this.data.name = name ?? this.data.name;
     // eslint-disable-next-line no-useless-escape

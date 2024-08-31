@@ -18,6 +18,9 @@ export interface DocumentationTabProps {
   onUpdate: (value: Domain | DataProduct) => Promise<void>;
   isVersionsView?: boolean;
   type?: DocumentationEntity;
+  onExtensionUpdate?: (updatedDataProduct: DataProduct) => Promise<void>;
+  editCustomAttributePermission?: boolean;
+  viewAllPermission?: boolean;
 }
 
 export enum DocumentationEntity {

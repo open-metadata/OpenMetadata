@@ -21,6 +21,7 @@ import { ENTITY_PATH } from '../../support/entity/Entity.interface';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { CustomPropertyTypeByName } from '../../utils/customProperty';
 import {
   addAssetsToDataProduct,
   addAssetsToDomain,
@@ -129,6 +130,54 @@ test.describe('Domains', () => {
     await dataProduct2.delete(apiContext);
     await domain.delete(apiContext);
     await assetCleanup();
+    await afterAction();
+  });
+
+  test('Add, Update custom properties for data product', async ({ page }) => {
+    test.slow(true);
+
+    const properties = Object.values(CustomPropertyTypeByName);
+    const titleText = properties.join(', ');
+
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct1 = new DataProduct(domain);
+    await domain.create(apiContext);
+    await sidebarClick(page, SidebarItem.DOMAIN);
+    await page.reload();
+
+    await test.step(
+      'Create DataProduct and custom properties for it',
+      async () => {
+        await selectDomain(page, domain.data);
+        await createDataProduct(page, dataProduct1.data);
+        await dataProduct1.prepareCustomProperty(apiContext);
+      }
+    );
+
+    await test.step(`Set ${titleText} Custom Property`, async () => {
+      for (const type of properties) {
+        await dataProduct1.updateCustomProperty(
+          page,
+          dataProduct1.customPropertyValue[type].property,
+          dataProduct1.customPropertyValue[type].value
+        );
+      }
+    });
+
+    await test.step(`Update ${titleText} Custom Property`, async () => {
+      for (const type of properties) {
+        await dataProduct1.updateCustomProperty(
+          page,
+          dataProduct1.customPropertyValue[type].property,
+          dataProduct1.customPropertyValue[type].newValue
+        );
+      }
+    });
+
+    await dataProduct1.cleanupCustomProperty(apiContext);
+    await dataProduct1.delete(apiContext);
+    await domain.delete(apiContext);
     await afterAction();
   });
 

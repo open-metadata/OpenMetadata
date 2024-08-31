@@ -532,6 +532,7 @@ export const ENTITY_PATH = {
   dashboardDataModels: 'dashboardDataModel',
   apiCollections: 'apiCollection',
   apiEndpoints: 'apiEndpoint',
+  dataProducts: 'dataProduct',
 };
 
 export const VALIDATION_MESSAGES = {

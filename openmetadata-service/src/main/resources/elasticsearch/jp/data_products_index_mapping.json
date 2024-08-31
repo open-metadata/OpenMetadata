@@ -226,6 +226,9 @@
           }
         }
       },
+      "extension": {
+        "type": "object"
+      },
       "totalVotes": {
         "type": "long",
         "null_value": 0

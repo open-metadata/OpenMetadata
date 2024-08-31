@@ -26,6 +26,7 @@ import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { CustomProperty } from '../../../generated/type/customProperty';
 
@@ -44,6 +45,7 @@ export type ExtentionEntities = {
   [EntityType.DASHBOARD_DATA_MODEL]: DashboardDataModel;
   [EntityType.API_COLLECTION]: APICollection;
   [EntityType.API_ENDPOINT]: APIEndpoint;
+  [EntityType.DATA_PRODUCT]: DataProduct;
 };
 
 export type ExtentionEntitiesKeys = keyof ExtentionEntities;
