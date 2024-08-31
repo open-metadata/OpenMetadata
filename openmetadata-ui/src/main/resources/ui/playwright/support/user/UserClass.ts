@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { DATA_STEWARD_RULES } from '../../constant/common';
+import { DATA_STEWARD_RULES } from '../../constant/permission';
 import { generateRandomUsername, uuid } from '../../utils/common';
 import { PolicyClass } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';

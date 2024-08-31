@@ -11,19 +11,28 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { expect, Page, Response } from '@playwright/test';
 import {
   customFormatDateTime,
   getEpochMillisForFutureDays,
 } from '../../src/utils/date-time/DateTimeUtils';
+import {
+  GLOBAL_SETTING_PERMISSIONS,
+  SETTING_PAGE_ENTITY_PERMISSION,
+} from '../constant/permission';
 import { VISIT_SERVICE_PAGE_DETAILS } from '../constant/service';
-import { GlobalSettingOptions } from '../constant/settings';
+import {
+  GlobalSettingOptions,
+  SETTINGS_OPTIONS_PATH,
+  SETTING_CUSTOM_PROPERTIES_PATH,
+} from '../constant/settings';
 import { SidebarItem } from '../constant/sidebar';
 import { UserClass } from '../support/user/UserClass';
 import {
   descriptionBox,
   getAuthContext,
   getToken,
+  redirectToHomePage,
   toastNotification,
   visitOwnProfilePage,
 } from './common';
@@ -237,7 +246,7 @@ export const editDescription = async (
 
   // Verify the updated description
   const description = page.locator(
-    ':nth-child(2) > :nth-child(1) > [data-testid="viewer-container"] > [data-testid="markdown-parser"] > :nth-child(1) > .toastui-editor-contents > p'
+    '[data-testid="asset-description-container"] .toastui-editor-contents > p'
   );
 
   await expect(description).toContainText(updatedDescription);
@@ -510,17 +519,17 @@ export const checkDataConsumerPermissions = async (page: Page) => {
   // Check edit tier permission
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
 
-  // Check add tags button
+  // Check right panel add tags button
   await expect(
     page.locator(
-      ':nth-child(2) > [data-testid="tags-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
-  // Check add glossary term button
+  // Check right panel add glossary term button
   await expect(
     page.locator(
-      ':nth-child(3) > [data-testid="glossary-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
@@ -606,17 +615,17 @@ export const checkStewardPermissions = async (page: Page) => {
   // Check edit tier permission
   await expect(page.locator('[data-testid="edit-tier"]')).toBeVisible();
 
-  // Check add tags button
+  // Check right panel add tags button
   await expect(
     page.locator(
-      ':nth-child(2) > [data-testid="tags-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+      '[data-testid="entity-right-panel"] [data-testid="tags-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
-  // Check add glossary term button
+  // Check right panel add glossary term button
   await expect(
     page.locator(
-      ':nth-child(3) > [data-testid="glossary-container"] > [data-testid="entity-tags"] > .m-t-xss > .ant-tag'
+      '[data-testid="entity-right-panel"] [data-testid="glossary-container"] [data-testid="entity-tags"] .tag-chip-add-button'
     )
   ).toBeVisible();
 
@@ -702,4 +711,46 @@ export const resetPassword = async (
 
   // Try with the Correct old password should reset the password
   await resetPasswordModal(page, oldCorrectPassword, newPassword);
+};
+
+export const expectSettingEntityNotVisible = async (
+  page: Page,
+  path: string[]
+) => {
+  await expect(page.getByTestId(path[0])).not.toBeVisible();
+};
+
+// Check the permissions for the settings page for DataSteward and DataConsumer
+export const settingPageOperationPermissionCheck = async (page: Page) => {
+  await redirectToHomePage(page);
+
+  for (const id of Object.values(SETTING_PAGE_ENTITY_PERMISSION)) {
+    let apiResponse: Promise<Response> | undefined;
+    if (id?.api) {
+      apiResponse = page.waitForResponse(id.api);
+    }
+    // Navigate to settings and respective tab page
+    await settingClick(page, id.testid);
+    if (id?.api && apiResponse) {
+      await apiResponse;
+    }
+
+    await expect(page.locator('.ant-skeleton-button')).not.toBeVisible();
+    await expect(page.getByTestId(id.button)).not.toBeVisible();
+  }
+
+  for (const id of Object.values(GLOBAL_SETTING_PERMISSIONS)) {
+    if (id.testid === GlobalSettingOptions.METADATA) {
+      await settingClick(page, id.testid);
+    } else {
+      await sidebarClick(page, SidebarItem.SETTINGS);
+      let paths = SETTINGS_OPTIONS_PATH[id.testid];
+
+      if (id.isCustomProperty) {
+        paths = SETTING_CUSTOM_PROPERTIES_PATH[id.testid];
+      }
+
+      await expectSettingEntityNotVisible(page, paths);
+    }
+  }
 };

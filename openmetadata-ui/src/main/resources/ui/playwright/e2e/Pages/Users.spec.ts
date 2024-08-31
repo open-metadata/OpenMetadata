@@ -10,17 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, Response, test as base } from '@playwright/test';
-import {
-  DATA_STEWARD_RULES,
-  GLOBAL_SETTING_PERMISSIONS,
-  ID,
-} from '../../constant/common';
-import {
-  GlobalSettingOptions,
-  SETTINGS_OPTIONS_PATH,
-  SETTING_CUSTOM_PROPERTIES_PATH,
-} from '../../constant/settings';
+import { expect, Page, test as base } from '@playwright/test';
+import { DATA_STEWARD_RULES } from '../../constant/permission';
+import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -47,6 +39,7 @@ import {
   restoreUser,
   restoreUserProfilePage,
   revokeToken,
+  settingPageOperationPermissionCheck,
   softDeleteUser,
   softDeleteUserProfilePage,
   updateExpiration,
@@ -295,40 +288,7 @@ test.describe('User with Data Consumer Roles', () => {
   test('Operations for settings page for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await redirectToHomePage(dataConsumerPage);
-
-    for (const id of Object.values(ID)) {
-      let apiResponse: Promise<Response> | undefined;
-      if (id?.api) {
-        apiResponse = dataConsumerPage.waitForResponse(id.api);
-      }
-      // Navigate to settings and respective tab page
-      await settingClick(dataConsumerPage, id.testid);
-      if (id?.api && apiResponse) {
-        await apiResponse;
-      }
-
-      await expect(
-        dataConsumerPage.locator('.ant-skeleton-button')
-      ).not.toBeVisible();
-      await expect(dataConsumerPage.getByTestId(id.button)).not.toBeVisible();
-    }
-
-    for (const id of Object.values(GLOBAL_SETTING_PERMISSIONS)) {
-      if (id.testid === GlobalSettingOptions.METADATA) {
-        await settingClick(dataConsumerPage, id.testid);
-      } else {
-        await sidebarClick(dataConsumerPage, SidebarItem.SETTINGS);
-        let paths = SETTINGS_OPTIONS_PATH[id.testid];
-
-        if (id.isCustomProperty) {
-          paths = SETTING_CUSTOM_PROPERTIES_PATH[id.testid];
-        }
-
-        // eslint-disable-next-line jest/no-conditional-expect
-        await expect(dataConsumerPage.getByTestId(paths[0])).not.toBeVisible();
-      }
-    }
+    await settingPageOperationPermissionCheck(dataConsumerPage);
   });
 
   test('Permissions for table details page for Data Consumer', async ({
@@ -430,40 +390,7 @@ test.describe('User with Data Steward Roles', () => {
   test('Operations for settings page for Data Steward', async ({
     dataStewardPage,
   }) => {
-    await redirectToHomePage(dataStewardPage);
-
-    for (const id of Object.values(ID)) {
-      let apiResponse: Promise<Response> | undefined;
-      if (id?.api) {
-        apiResponse = dataStewardPage.waitForResponse(id.api);
-      }
-      // Navigate to settings and respective tab page
-      await settingClick(dataStewardPage, id.testid);
-      if (id?.api && apiResponse) {
-        await apiResponse;
-      }
-
-      await expect(
-        dataStewardPage.locator('.ant-skeleton-button')
-      ).not.toBeVisible();
-      await expect(dataStewardPage.getByTestId(id.button)).not.toBeVisible();
-    }
-
-    for (const id of Object.values(GLOBAL_SETTING_PERMISSIONS)) {
-      if (id.testid === GlobalSettingOptions.METADATA) {
-        await settingClick(dataStewardPage, id.testid);
-      } else {
-        await sidebarClick(dataStewardPage, SidebarItem.SETTINGS);
-        let paths = SETTINGS_OPTIONS_PATH[id.testid];
-
-        if (id.isCustomProperty) {
-          paths = SETTING_CUSTOM_PROPERTIES_PATH[id.testid];
-        }
-
-        // eslint-disable-next-line jest/no-conditional-expect
-        await expect(dataStewardPage.getByTestId(paths[0])).not.toBeVisible();
-      }
-    }
+    await settingPageOperationPermissionCheck(dataStewardPage);
   });
 
   test('Check permissions for Data Steward', async ({
