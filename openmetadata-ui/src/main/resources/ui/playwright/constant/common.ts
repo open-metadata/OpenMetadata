@@ -1,3 +1,4 @@
+import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { GlobalSettingOptions } from './settings';
 
 /*
@@ -32,6 +33,22 @@ export const NAME_MIN_MAX_LENGTH_VALIDATION_ERROR =
 
 export const NAME_MAX_LENGTH_VALIDATION_ERROR =
   'Name size must be between 1 and 128';
+
+export const DATA_STEWARD_RULES: PolicyRulesType[] = [
+  {
+    name: 'DataStewardRole',
+    resources: ['All'],
+    operations: [
+      'EditDescription',
+      'EditDisplayName',
+      'EditLineage',
+      'EditOwners',
+      'EditTags',
+      'ViewAll',
+    ],
+    effect: 'allow',
+  },
+];
 
 export const GLOBAL_SETTING_PERMISSIONS: Record<
   string,

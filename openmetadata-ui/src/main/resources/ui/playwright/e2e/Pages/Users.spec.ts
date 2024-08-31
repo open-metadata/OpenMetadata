@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 import { expect, Page, Response, test as base } from '@playwright/test';
-import { GLOBAL_SETTING_PERMISSIONS, ID } from '../../constant/common';
+import {
+  DATA_STEWARD_RULES,
+  GLOBAL_SETTING_PERMISSIONS,
+  ID,
+} from '../../constant/common';
 import {
   GlobalSettingOptions,
   SETTINGS_OPTIONS_PATH,
   SETTING_CUSTOM_PROPERTIES_PATH,
 } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import {
-  PolicyClass,
-  PolicyRulesType,
-} from '../../support/access-control/PoliciesClass';
+import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
-import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -56,6 +56,7 @@ import {
 } from '../../utils/user';
 
 const userName = `pw-user-${uuid()}`;
+const expirationTime = [1, 7, 30, 60, 90];
 
 const updatedUserDetails = {
   name: userName,
@@ -67,26 +68,6 @@ const updatedUserDetails = {
   newPassword: `NewUser@${uuid()}`,
 };
 
-const expirationTime = [1, 7, 30, 60, 90];
-
-const id = uuid();
-
-const rules: PolicyRulesType[] = [
-  {
-    name: 'DataStewardRole',
-    resources: ['All'],
-    operations: [
-      'EditDescription',
-      'EditDisplayName',
-      'EditLineage',
-      'EditOwners',
-      'EditTags',
-      'ViewAll',
-    ],
-    effect: 'allow',
-  },
-];
-
 const adminUser = new UserClass();
 const dataConsumerUser = new UserClass();
 const dataStewardUser = new UserClass();
@@ -94,10 +75,8 @@ const user = new UserClass();
 const user2 = new UserClass();
 const tableEntity = new TableClass();
 const tableEntity2 = new TableClass();
-
-const dataStewardPolicy = new PolicyClass();
-const dataStewardRoles = new RolesClass();
-let dataStewardTeam: TeamClass;
+const policy = new PolicyClass();
+const role = new RolesClass();
 
 const test = base.extend<{
   adminPage: Page;
@@ -131,41 +110,27 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.setAdminRole(apiContext);
   await dataConsumerUser.create(apiContext);
   await dataStewardUser.create(apiContext);
+  await dataStewardUser.setDataStewardRole(apiContext);
   await user.create(apiContext);
   await user2.create(apiContext);
   await tableEntity.create(apiContext);
   await tableEntity2.create(apiContext);
-
-  await dataStewardPolicy.create(apiContext, rules);
-  await dataStewardRoles.create(apiContext, [
-    dataStewardPolicy.responseData.name,
-  ]);
-  dataStewardTeam = new TeamClass({
-    name: `PW%data_steward_team-${id}`,
-    displayName: `PW Data Steward Team ${id}`,
-    description: 'playwright Data Steward team description',
-    teamType: 'Group',
-    users: [dataStewardUser.responseData.id],
-    defaultRoles: dataStewardRoles.responseData.id
-      ? [dataStewardRoles.responseData.id]
-      : [],
-  });
-  await dataStewardTeam.create(apiContext);
+  await policy.create(apiContext, DATA_STEWARD_RULES);
+  await role.create(apiContext, [policy.responseData.name]);
 
   await afterAction();
 });
 
 base.afterAll('Cleanup', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  //   await adminUser.delete(apiContext);
+  await adminUser.delete(apiContext);
   await dataConsumerUser.delete(apiContext);
   await dataStewardUser.delete(apiContext);
   await tableEntity.delete(apiContext);
   await tableEntity2.delete(apiContext);
+  await policy.delete(apiContext);
+  await role.delete(apiContext);
 
-  await dataStewardPolicy.delete(apiContext);
-  await dataStewardRoles.delete(apiContext);
-  await dataStewardTeam.delete(apiContext);
   await afterAction();
 });
 
@@ -188,7 +153,7 @@ test.describe('User with Admin Roles', () => {
 
     await addUser(adminPage, {
       ...updatedUserDetails,
-      role: dataStewardRoles.responseData.displayName,
+      role: role.responseData.displayName,
     });
 
     await visitUserProfilePage(adminPage, updatedUserDetails.name);
