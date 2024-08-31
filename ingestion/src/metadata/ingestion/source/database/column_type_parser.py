@@ -148,7 +148,7 @@ class ColumnTypeParser:
         "MEDIUMBLOB": "MEDIUMBLOB",
         "MEDIUMINT": "INT",
         "MEDIUMTEXT": "MEDIUMTEXT",
-        "MONEY": "NUMBER",
+        "MONEY": "MONEY",
         "NCHAR": "CHAR",
         "NTEXT": "NTEXT",
         "NULL": "NULL",

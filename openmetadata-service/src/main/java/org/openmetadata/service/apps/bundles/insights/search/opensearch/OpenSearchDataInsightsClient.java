@@ -29,12 +29,12 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
   @Override
   public void createLifecyclePolicy(String name, String policy) throws IOException {
     try {
-      performRequest("PUT", String.format("_plugins/_ism/policies/%s", name), policy);
+      performRequest("PUT", String.format("/_plugins/_ism/policies/%s", name), policy);
     } catch (ResponseException ex) {
       // Conflict since the Policy already exists
       if (ex.getResponse().getStatusLine().getStatusCode() == 409) {
-        performRequest("DELETE", String.format("_plugins/_ism/policies/%s", name));
-        performRequest("PUT", String.format("_plugins/_ism/policies/%s", name), policy);
+        performRequest("DELETE", String.format("/_plugins/_ism/policies/%s", name));
+        performRequest("PUT", String.format("/_plugins/_ism/policies/%s", name), policy);
       } else {
         throw ex;
       }
@@ -43,22 +43,22 @@ public class OpenSearchDataInsightsClient implements DataInsightsSearchInterface
 
   @Override
   public void createComponentTemplate(String name, String template) throws IOException {
-    performRequest("PUT", String.format("_component_template/%s", name), template);
+    performRequest("PUT", String.format("/_component_template/%s", name), template);
   }
 
   @Override
   public void createIndexTemplate(String name, String template) throws IOException {
-    performRequest("PUT", String.format("_index_template/%s", name), template);
+    performRequest("PUT", String.format("/_index_template/%s", name), template);
   }
 
   @Override
   public void createDataStream(String name) throws IOException {
-    performRequest("PUT", String.format("_data_stream/%s", name));
+    performRequest("PUT", String.format("/_data_stream/%s", name));
   }
 
   @Override
   public Boolean dataAssetDataStreamExists(String name) throws IOException {
-    Response response = performRequest("HEAD", name);
+    Response response = performRequest("HEAD", String.format("/%s", name));
     return response.getStatusLine().getStatusCode() == 200;
   }
 

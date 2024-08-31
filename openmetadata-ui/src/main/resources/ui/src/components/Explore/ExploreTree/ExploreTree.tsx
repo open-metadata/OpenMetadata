@@ -13,7 +13,7 @@
 import { Tree, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isString, isUndefined } from 'lodash';
+import { isEmpty, isString, isUndefined } from 'lodash';
 import Qs from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -36,10 +36,13 @@ import {
 } from '../../../utils/ExploreUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 
+import { EXPLORE_ROOT_INDEX_MAPPING } from '../../../constants/AdvancedSearch.constants';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { UrlParams } from '../ExplorePage.interface';
+import { useAdvanceSearch } from '../AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { ExploreSearchIndex, UrlParams } from '../ExplorePage.interface';
+import './explore-tree.less';
 import {
   ExploreTreeNode,
   ExploreTreeProps,
@@ -55,12 +58,15 @@ const ExploreTreeTitle = ({ node }: { node: ExploreTreeNode }) => (
       data-testid={`explore-tree-title-${node.data?.dataId ?? node.title}`}>
       {node.title}
     </Typography.Text>
-    {!isUndefined(node.count) && <span>{getCountBadge(node.count)}</span>}
+    {!isUndefined(node.count) && (
+      <span className="explore-node-count">{getCountBadge(node.count)}</span>
+    )}
   </div>
 );
 
 const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   const { tab } = useParams<UrlParams>();
+  const { onChangeSearchIndex } = useAdvanceSearch();
   const initTreeData = searchClassBase.getExploreTree();
   const staticKeysHavingCounts = searchClassBase.staticKeysHavingCounts();
   const [treeData, setTreeData] = useState(initTreeData);
@@ -70,7 +76,7 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
     return searchClassBase.getExploreTreeKey(tab as ExplorePageTabs);
   }, [tab]);
 
-  const [searchQueryParam, defaultServiceType] = useMemo(() => {
+  const [parsedSearch, searchQueryParam, defaultServiceType] = useMemo(() => {
     const parsedSearch = Qs.parse(
       location.search.startsWith('?')
         ? location.search.substring(1)
@@ -83,12 +89,38 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
       ? parsedSearch.search
       : '';
 
-    return [searchQueryParam, defaultServiceType];
+    return [parsedSearch, searchQueryParam, defaultServiceType];
   }, [location.search]);
+
+  const handleChangeSearchIndex = (
+    key: string,
+    rootIndex = SearchIndex.DATABASE,
+    isRoot = false
+  ) => {
+    if (isRoot) {
+      onChangeSearchIndex(
+        EXPLORE_ROOT_INDEX_MAPPING[
+          key as keyof typeof EXPLORE_ROOT_INDEX_MAPPING
+        ] ?? (key as ExploreSearchIndex)
+      );
+    } else {
+      onChangeSearchIndex(
+        EXPLORE_ROOT_INDEX_MAPPING[
+          rootIndex as keyof typeof EXPLORE_ROOT_INDEX_MAPPING
+        ] ?? rootIndex
+      );
+    }
+  };
 
   const onLoadData = useCallback(
     async (treeNode: ExploreTreeNode) => {
       try {
+        handleChangeSearchIndex(
+          treeNode.key,
+          treeNode.data?.rootIndex as SearchIndex,
+          treeNode.data?.isRoot
+        );
+
         if (treeNode.children) {
           return;
         }
@@ -222,6 +254,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
           ),
         ]);
       }
+
+      handleChangeSearchIndex(
+        node.key,
+        node.data?.rootIndex as SearchIndex,
+        node.data?.isRoot
+      );
+
       setSelectedKeys([node.key]);
     },
     [onFieldValueSelect]
@@ -259,6 +298,13 @@ const ExploreTree = ({ onFieldValueSelect }: ExploreTreeProps) => {
   useEffect(() => {
     fetchEntityCounts();
   }, []);
+
+  useEffect(() => {
+    // Tree works on the quickFilter, so we need to reset the selectedKeys when the quickFilter is empty
+    if (isEmpty(parsedSearch.quickFilter)) {
+      setSelectedKeys([]);
+    }
+  }, [parsedSearch]);
 
   return (
     <Tree

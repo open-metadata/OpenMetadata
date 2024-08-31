@@ -72,7 +72,6 @@ import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionType;
@@ -599,7 +598,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public Table addDataModel(UUID tableId, DataModel dataModel) {
-    Table table = find(tableId, NON_DELETED);
+    Table table = get(null, tableId, getFields(FIELD_OWNERS), NON_DELETED, false);
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -619,7 +618,7 @@ public class TableRepository extends EntityRepository<Table> {
     table.withDataModel(dataModel);
 
     // Carry forward the table owners from the model to table entity, if empty
-    if (table.getOwners() == null) {
+    if (nullOrEmpty(table.getOwners())) {
       storeOwners(table, dataModel.getOwners());
     }
 
@@ -697,7 +696,7 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public EntityInterface getParentEntity(Table entity, String fields) {
-    return Entity.getEntity(entity.getDatabaseSchema(), fields, Include.NON_DELETED);
+    return Entity.getEntity(entity.getDatabaseSchema(), fields, ALL);
   }
 
   @Override

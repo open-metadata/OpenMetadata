@@ -29,6 +29,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
   name: string;
   filterPattern: string;
   dbtEntityFqn: string;
+  schemaFilterPattern = 'dbt_automate_upgrade_tests';
 
   constructor() {
     super(
@@ -41,7 +42,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     this.filterPattern = 'sales';
     this.dbtEntityFqn = `${REDSHIFT.serviceName}.${Cypress.env(
       'redshiftDatabase'
-    )}.dbt_jaffle.${REDSHIFT.DBTTable}`;
+    )}.${this.schemaFilterPattern}.${REDSHIFT.DBTTable}`;
   }
 
   createService() {
@@ -73,7 +74,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     // no schema or database filters
     cy.get('#root\\/schemaFilterPattern\\/includes')
       .scrollIntoView()
-      .type('dbt_jaffle{enter}');
+      .type(`${this.schemaFilterPattern}{enter}`);
   }
 
   runAdditionalTests() {
@@ -247,12 +248,10 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         .click();
 
       cy.get(`[data-testid=${DBT.dataQualityTest1}]`)
-        .should('exist')
-        .should('be.visible')
+        .scrollIntoView()
         .should('contain', DBT.dataQualityTest1);
       cy.get(`[data-testid=${DBT.dataQualityTest2}]`)
-        .should('exist')
-        .should('be.visible')
+        .scrollIntoView()
         .should('contain', DBT.dataQualityTest2);
     });
   }

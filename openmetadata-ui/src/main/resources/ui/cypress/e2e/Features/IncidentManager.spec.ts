@@ -18,6 +18,7 @@ import {
   visitEntityDetailsPage,
 } from '../../common/Utils/Entity';
 import { getToken } from '../../common/Utils/LocalStorage';
+import { generateRandomUser } from '../../common/Utils/Owner';
 import { uuid } from '../../constants/constants';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
@@ -33,6 +34,22 @@ const testCases = [
   `cy_second_table_column_count_to_be_between_${uuid()}`,
   `cy_third_table_column_count_to_be_between_${uuid()}`,
 ];
+const user1 = generateRandomUser();
+const user2 = generateRandomUser();
+const user3 = generateRandomUser();
+const userData1 = {
+  displayName: `${user1.firstName}${user1.lastName}`,
+  name: user1.email.split('@')[0],
+};
+const userData2 = {
+  displayName: `${user2.firstName}${user2.lastName}`,
+  name: user2.email.split('@')[0],
+};
+const userData3 = {
+  displayName: `${user3.firstName}${user3.lastName}`,
+  name: user3.email.split('@')[0],
+};
+const userIds: string[] = [];
 
 const goToProfilerTab = () => {
   interceptURL(
@@ -89,12 +106,17 @@ const assignIncident = (testCaseName: string) => {
   cy.get('#testCaseResolutionStatusDetails_assignee').should('be.visible');
   interceptURL(
     'GET',
-    '/api/v1/search/suggest?q=Aaron%20Johnson&index=user_search_index',
+    `/api/v1/search/suggest?q=*${user1.firstName}*${user1.lastName}*&index=user_search_index*`,
     'searchAssignee'
   );
-  cy.get('#testCaseResolutionStatusDetails_assignee').type('Aaron Johnson');
+  interceptURL('GET', '/api/v1/users/name/*', 'userList');
+  cy.get('#testCaseResolutionStatusDetails_assignee').click();
+  cy.wait('@userList');
+  cy.get('#testCaseResolutionStatusDetails_assignee').type(
+    userData1.displayName
+  );
   verifyResponseStatusCode('@searchAssignee', 200);
-  cy.get('[data-testid="aaron_johnson0"]').click();
+  cy.get(`[data-testid="${userData1.name.toLocaleLowerCase()}"]`).click();
   interceptURL(
     'POST',
     '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
@@ -113,6 +135,18 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
 
     cy.getAllLocalStorage().then((data) => {
       const token = getToken(data);
+
+      // Create a new user
+      for (const user of [user1, user2, user3]) {
+        cy.request({
+          method: 'POST',
+          url: `/api/v1/users/signup`,
+          headers: { Authorization: `Bearer ${token}` },
+          body: user,
+        }).then((response) => {
+          userIds.push(response.body.id);
+        });
+      }
 
       createEntityTableViaREST({
         token,
@@ -190,6 +224,15 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
         endPoint: EntityType.DatabaseService,
         entityName: DATABASE_SERVICE.service.name,
       });
+
+      // Delete created user
+      userIds.forEach((userId) => {
+        cy.request({
+          method: 'DELETE',
+          url: `/api/v1/users/${userId}?hardDelete=true&recursive=false`,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      });
     });
   });
 
@@ -224,14 +267,19 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
         .scrollIntoView()
         .click();
       cy.get('[role="menu"').find('[data-menu-id*="re-assign"]').click();
+
       interceptURL(
         'GET',
-        '/api/v1/search/suggest?q=admin&index=*user_search_index*',
+        `/api/v1/search/suggest?q=*${user2.firstName}*${user2.lastName}*&index=user_search_index*`,
         'searchAssignee'
       );
-      cy.get('[data-testid="select-assignee"]').click().type('admin');
+      interceptURL('GET', '/api/v1/users/name/*', 'userList');
+      cy.get('[data-testid="select-assignee"]').click();
+      cy.wait('@userList');
+      cy.get('[data-testid="select-assignee"]').type(userData2.displayName);
       verifyResponseStatusCode('@searchAssignee', 200);
-      cy.get('[data-testid="admin"]').click();
+      cy.get(`[data-testid="${userData2.name.toLocaleLowerCase()}"]`).click();
+
       interceptURL(
         'POST',
         '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
@@ -246,6 +294,38 @@ describe('Incident Manager', { tags: 'Observability' }, () => {
         .contains(testCaseName)
         .scrollIntoView()
         .should('be.visible');
+    });
+
+    it("Re-assign incident from test case page's header", () => {
+      interceptURL(
+        'GET',
+        '/api/v1/dataQuality/testCases/name/*?fields=*',
+        'getTestCase'
+      );
+      interceptURL('GET', '/api/v1/feed?entityLink=*&type=Task', 'getTaskFeed');
+      cy.sidebarClick(SidebarItem.INCIDENT_MANAGER);
+      cy.get(`[data-testid="test-case-${testCaseName}"]`).click();
+      verifyResponseStatusCode('@getTestCase', 200);
+      interceptURL('GET', '/api/v1/users?*', 'getUsers');
+      cy.get('[data-testid="assignee"] [data-testid="edit-owner"]').click();
+      verifyResponseStatusCode('@getUsers', 200);
+      cy.get('[data-testid="loader"]').should('not.exist');
+      interceptURL('GET', `api/v1/search/query?q=*`, 'searchOwner');
+      cy.get('[data-testid="owner-select-users-search-bar"]').type(
+        userData3.displayName
+      );
+      verifyResponseStatusCode('@searchOwner', 200);
+      interceptURL(
+        'POST',
+        '/api/v1/dataQuality/testCases/testCaseIncidentStatus',
+        'updateTestCaseIncidentStatus'
+      );
+      cy.get(`.ant-popover [title="${userData3.displayName}"]`).click();
+      verifyResponseStatusCode('@updateTestCaseIncidentStatus', 200);
+      cy.get('[data-testid="assignee"] [data-testid="owner-link"]').should(
+        'contain',
+        userData3.displayName
+      );
     });
 
     it('Resolve incident', () => {

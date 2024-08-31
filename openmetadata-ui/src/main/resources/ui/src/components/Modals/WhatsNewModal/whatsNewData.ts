@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_4_8'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -718,7 +718,7 @@ API:
   {
     id: 43,
     version: 'v1.5.0',
-    description: `Released on 23rd August 2024.`,
+    description: `Released on 26th August 2024.`,
     features: [
       {
         title: `Data Observability with Anomaly Detection (Collate)`,
@@ -851,7 +851,13 @@ In the latest release, several updates and enhancements have been made to the JS
 **Include DDL:**
         
 - During the Database Metadata ingestion, we can optionally pick up the DDL for both tables and views. During the metadata ingestion, we use the view DDLs to generate the View Lineage.
-- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.`,
+- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.
+
+**Secrets Manager**
+Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. It won't appear anymore in your dag_generated_configs in Airflow.
+
+**Python SDK**
+The \`metadata insight\` command has been removed. Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.`,
       [`Data Observability with Anomaly Detection ${CollateIconWithLinkMD}`]: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
 
 1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
@@ -909,6 +915,23 @@ To continue pursuing this objective, the application was completely refactored t
 
 4.  **GCS Storage Connector** as a community contribution from [Matt Chamberlin](https://github.com/MChamberlin)
 5.  **Synapse Connector** ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 44,
+    version: 'v1.5.2',
+    description: `Released on 2nd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   [Fix]: Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
+-   [Improve]: Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
+-   [Improve]: Addressed email update issues to ensure that email addresses are properly updated throughout the system.
+-   [Improve]: Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
+-   [Improve]: Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
+-   [Improve]: Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
+-   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
+-   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
+-   [Improve]: Added custom properties support in Data Product`,
     },
   },
 ];
