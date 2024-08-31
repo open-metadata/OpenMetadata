@@ -13,6 +13,7 @@
 import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
 import {
+  createNewPage,
   getApiContext,
   redirectToHomePage,
   toastNotification,
@@ -22,6 +23,24 @@ import { settingClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.serial('Data Insight Report Application', () => {
+  test.beforeAll(
+    'remove Data insight report application if exists',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      try {
+        await apiContext.get('/api/v1/apps/name/DataInsightsReportApplication');
+
+        await apiContext.delete(
+          '/api/v1/apps/name/DataInsightsReportApplication?hardDelete=true'
+        );
+      } catch (error) {
+        // Do Nothing
+      }
+
+      await afterAction();
+    }
+  );
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
 
@@ -45,6 +64,8 @@ test.describe.serial('Data Insight Report Application', () => {
     await page.click('[data-testid="cron-type"]');
     await page.click('[data-value="5"]');
     await page.click('[data-testid="deploy-button"]');
+
+    await toastNotification(page, 'Application installed successfully');
 
     await expect(
       page.locator('[data-testid="data-insights-report-application-card"]')
