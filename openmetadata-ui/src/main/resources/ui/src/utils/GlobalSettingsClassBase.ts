@@ -19,6 +19,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/custom-logo-colored.svg';
 import { ReactComponent as CustomDashboardLogoIcon } from '../assets/svg/customize-landing-page-colored.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/dashboard-colored.svg';
+import { ReactComponent as DashboardDataModelIcon } from '../assets/svg/data-model.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
@@ -26,6 +27,7 @@ import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-colored.s
 import { ReactComponent as APICollectionIcon } from '../assets/svg/ic-api-collection.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/ic-api-endpoint.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/ic-api-service.svg';
+import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
@@ -377,6 +379,24 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.API_ENDPOINTS}`,
             icon: APIEndpointIcon,
+          },
+          {
+            label: t('label.data-product'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.data-product'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATA_PRODUCT}`,
+            icon: DataProductIcon,
+          },
+          {
+            label: t('label.dashboard-data-model-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.dashboard-data-model-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DASHBOARD_DATA_MODEL}`,
+            icon: DashboardDataModelIcon,
           },
           {
             label: t('label.database'),
