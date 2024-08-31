@@ -90,7 +90,7 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.9"
+          python-version: '3.9'
           args: "-d mysql"
           ingestion_dependency: "all"
 
