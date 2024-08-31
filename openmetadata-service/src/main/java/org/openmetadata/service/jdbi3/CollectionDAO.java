@@ -1020,13 +1020,13 @@ public interface CollectionDAO {
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source AND toId = :toId AND toEntity = :toEntity "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
                 + "WHERE  json->>'source' = :source AND (toId = :toId AND toEntity = :toEntity) "
-                + "AND relation = :relation ORDER BY fromId",
+                + "AND relation = :relation",
         connectionType = POSTGRES)
     void deleteLineageBySource(
         @BindUUID("toId") UUID toId,
@@ -3746,6 +3746,13 @@ public interface CollectionDAO {
 
     @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     int checkEmailExists(@Bind("email") String email);
+
+    @SqlQuery("SELECT COUNT(*) FROM user_entity WHERE LOWER(name) = LOWER(:name)")
+    int checkUserNameExists(@Bind("name") String name);
+
+    @SqlQuery(
+        "SELECT json FROM user_entity WHERE LOWER(name) = LOWER(:name) AND LOWER(email) = LOWER(:email)")
+    String findUserByNameAndEmail(@Bind("name") String name, @Bind("email") String email);
 
     @SqlQuery("SELECT json FROM user_entity WHERE LOWER(email) = LOWER(:email)")
     String findUserByEmail(@Bind("email") String email);

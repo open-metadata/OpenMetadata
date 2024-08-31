@@ -110,7 +110,11 @@ export const toastNotification = async (
 ) => {
   await expect(page.getByRole('alert').first()).toHaveText(message);
 
-  await page.getByLabel('close').first().click();
+  await page
+    .locator('.Toastify__toast')
+    .getByLabel('close', { exact: true })
+    .first()
+    .click();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -232,4 +236,8 @@ export const verifyDomainPropagation = async (
       .getByTestId(`table-data-card_${childFqnSearchTerm}`)
       .getByTestId('domain-link')
   ).toContainText(domain.displayName);
+};
+
+export const replaceAllSpacialCharWith_ = (text: string) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };
