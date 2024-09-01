@@ -13,20 +13,34 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.METRIC;
+
+import java.util.Comparator;
+import java.util.List;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.metrics.MetricResource;
-import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil;
 
 public class MetricRepository extends EntityRepository<Metric> {
+  private static final String UPDATE_FIELDS = "relatedMetrics";
+  private static final String PATCH_FIELDS = "relatedMetrics";
+
   public MetricRepository() {
     super(
         MetricResource.COLLECTION_PATH,
-        Entity.METRICS,
+        Entity.METRIC,
         Metric.class,
         Entity.getCollectionDAO().metricDAO(),
-        "",
-        "");
+        PATCH_FIELDS,
+        UPDATE_FIELDS);
+    supportsSearch = true;
+    renameAllowed = true;
   }
 
   @Override
@@ -35,20 +49,78 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
-  public void setFields(Metric metrics, Fields fields) {}
+  public void prepare(Metric metric, boolean update) {}
 
   @Override
-  public void clearFields(Metric metrics, Fields fields) {}
-
-  @Override
-  public void prepare(Metric metrics, boolean update) {}
-
-  @Override
-  public void storeEntity(Metric metric, boolean update) {
-    // Relationships and fields such as service are derived and not stored as part of json
-    store(metric, update);
+  public void setFields(Metric metric, EntityUtil.Fields fields) {
+    metric.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(metric) : null);
+    metric.setRelatedMetrics(fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : null);
   }
 
   @Override
-  public void storeRelationships(Metric metric) {}
+  protected void clearFields(Metric entity, EntityUtil.Fields fields) {
+    entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
+  }
+
+  @Override
+  public void storeEntity(Metric metric, boolean update) {
+    List<EntityReference> relatedMetrics = metric.getRelatedMetrics();
+    metric.setRelatedMetrics(null);
+    store(metric, update);
+    metric.setRelatedMetrics(relatedMetrics);
+  }
+
+  @Override
+  public void storeRelationships(Metric metric) {
+    // Nothing to do
+    for (EntityReference relatedMetric : listOrEmpty(metric.getRelatedMetrics())) {
+      addRelationship(
+          metric.getId(), relatedMetric.getId(), METRIC, METRIC, Relationship.RELATED_TO, true);
+    }
+  }
+
+  private List<EntityReference> getRelatedMetrics(Metric metric) {
+    return findBoth(metric.getId(), METRIC, Relationship.RELATED_TO, METRIC).stream()
+        .sorted(Comparator.comparing(EntityReference::getName))
+        .toList();
+  }
+
+  @Override
+  public EntityUpdater getUpdater(Metric original, Metric updated, Operation operation) {
+    return new MetricRepository.MetricUpdater(original, updated, operation);
+  }
+
+  public class MetricUpdater extends EntityUpdater {
+
+    public MetricUpdater(Metric original, Metric updated, Operation operation) {
+      super(original, updated, operation);
+    }
+
+    @Transaction
+    @Override
+    public void entitySpecificUpdate() {
+      recordChange("granularity", original.getGranularity(), updated.getGranularity());
+      recordChange("metricType", original.getMetricType(), updated.getMetricType());
+      recordChange(
+          "unitOfMeasurement", original.getUnitOfMeasurement(), updated.getUnitOfMeasurement());
+      if (updated.getExpression() != null) {
+        recordChange("expression", original.getExpression(), updated.getExpression());
+      }
+      updateRelatedMetrics(original, updated);
+    }
+
+    private void updateRelatedMetrics(Metric original, Metric updated) {
+      List<EntityReference> originalRelatedMetrics = listOrEmpty(original.getRelatedMetrics());
+      List<EntityReference> updatedRelatedMetrics = listOrEmpty(updated.getRelatedMetrics());
+      updateToRelationships(
+          "relatedMetrics",
+          METRIC,
+          original.getId(),
+          Relationship.RELATED_TO,
+          METRIC,
+          originalRelatedMetrics,
+          updatedRelatedMetrics,
+          true);
+    }
+  }
 }

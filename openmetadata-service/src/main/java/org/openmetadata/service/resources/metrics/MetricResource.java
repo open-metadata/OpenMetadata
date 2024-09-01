@@ -22,6 +22,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
@@ -48,7 +50,9 @@ import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
@@ -60,7 +64,7 @@ import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/metrics")
 @Tag(
-    name = "Metrics (beta)",
+    name = "Metrics",
     description =
         "`Metrics` are measurements computed from data such as `Monthly Active Users`. Some of the metrics that "
             + "measures used to determine performance against an objective are called KPIs or Key Performance Indicators, such as `User Retention`.")
@@ -69,10 +73,16 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "metrics")
 public class MetricResource extends EntityResource<Metric, MetricRepository> {
   public static final String COLLECTION_PATH = "/v1/metrics/";
-  static final String FIELDS = "owners,followers,tags,extension,domain,dataProducts";
+  static final String FIELDS = "owners,relatedMetrics,followers,tags,extension,domain,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
-    super(Entity.METRICS, authorizer, limits);
+    super(Entity.METRIC, authorizer, limits);
+  }
+
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    addViewOperation("relatedMetrics", MetadataOperation.VIEW_BASIC);
+    return Collections.emptyList();
   }
 
   public static class MetricsList extends ResultList<Metric> {
@@ -191,6 +201,29 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   }
 
   @GET
+  @Path("/{id}/versions")
+  @Operation(
+      operationId = "listAllMetricVersion",
+      summary = "List Metric versions",
+      description = "Get a list of all the versions of a metric identified by `id`",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of Metric versions",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityHistory.class)))
+      })
+  public EntityHistory listVersions(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the metric", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    return super.listVersionsInternal(securityContext, id);
+  }
+
+  @GET
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getSpecificEndpointVersion",
@@ -242,6 +275,29 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       @Valid CreateMetric create) {
     Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, metric);
+  }
+
+  @PUT
+  @Operation(
+      operationId = "createOrUpdateMetric",
+      summary = "Create or update a metric",
+      description = "Create a new metric, if it does not exist or update an existing metric.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The metric",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Metric.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response createOrUpdate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid CreateMetric create) {
+    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
+    return createOrUpdate(uriInfo, securityContext, metric);
   }
 
   @PATCH
@@ -299,29 +355,6 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, fqn, patch);
-  }
-
-  @PUT
-  @Operation(
-      operationId = "createOrUpdateMetric",
-      summary = "Create or update a metric",
-      description = "Create a new metric, if it does not exist or update an existing metric.",
-      responses = {
-        @ApiResponse(
-            responseCode = "200",
-            description = "The metric",
-            content =
-                @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = Metric.class))),
-        @ApiResponse(responseCode = "400", description = "Bad request")
-      })
-  public Response createOrUpdate(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Valid CreateMetric create) {
-    Metric metric = getMetric(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, metric);
   }
 
   @PUT
