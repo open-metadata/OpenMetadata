@@ -179,12 +179,6 @@ public class SearchRepository {
     }
   }
 
-  public void dropIndexes() {
-    for (IndexMapping indexMapping : entityIndexMap.values()) {
-      deleteIndex(indexMapping);
-    }
-  }
-
   public IndexMapping getIndexMapping(String entityType) {
     return entityIndexMap.get(entityType);
   }
@@ -432,11 +426,6 @@ public class SearchRepository {
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
-      EntityRepository<?> entityRepository =
-          Entity.getEntityRepository(entity.getEntityReference().getType());
-      EntityInterface entityBeforeUpdate =
-          entityRepository.get(null, entity.getId(), entityRepository.getFields("*"));
-
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
@@ -637,11 +626,9 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> {
-        searchClient.deleteEntityByFields(
-            indexMapping.getChildAliases(clusterAlias),
-            List.of(new ImmutablePair<>("service.id", docId)));
-      }
+          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
+          indexMapping.getChildAliases(clusterAlias),
+          List.of(new ImmutablePair<>("service.id", docId)));
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
@@ -878,9 +865,5 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
-  }
-
-  public <T> T getRestHighLevelClient() {
-    return (T) searchClient;
   }
 }
