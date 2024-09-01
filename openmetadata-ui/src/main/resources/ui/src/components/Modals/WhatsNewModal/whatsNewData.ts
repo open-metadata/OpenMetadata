@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_4_8'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -915,6 +915,23 @@ To continue pursuing this objective, the application was completely refactored t
 
 4.  **GCS Storage Connector** as a community contribution from [Matt Chamberlin](https://github.com/MChamberlin)
 5.  **Synapse Connector** ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 44,
+    version: 'v1.5.2',
+    description: `Released on 2nd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   [Fix]: Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
+-   [Improve]: Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
+-   [Improve]: Addressed email update issues to ensure that email addresses are properly updated throughout the system.
+-   [Improve]: Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
+-   [Improve]: Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
+-   [Improve]: Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
+-   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
+-   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
+-   [Improve]: Added custom properties support in Data Product`,
     },
   },
 ];

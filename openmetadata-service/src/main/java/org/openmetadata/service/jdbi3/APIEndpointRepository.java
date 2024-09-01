@@ -25,10 +25,8 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -387,17 +385,6 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       }
     }
     return childrenSchemaField;
-  }
-
-  public static Set<TagLabel> getAllFieldTags(Field field) {
-    Set<TagLabel> tags = new HashSet<>();
-    if (!listOrEmpty(field.getTags()).isEmpty()) {
-      tags.addAll(field.getTags());
-    }
-    for (Field c : listOrEmpty(field.getChildren())) {
-      tags.addAll(getAllFieldTags(c));
-    }
-    return tags;
   }
 
   public class APIEndpointUpdater extends EntityUpdater {
