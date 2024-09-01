@@ -1624,7 +1624,7 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   public void softDeleteOrRestoreChildren(
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
+    if (isClientAvailable && !nullOrEmpty(indexName)) {
       UpdateByQueryRequest updateByQueryRequest =
           new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
