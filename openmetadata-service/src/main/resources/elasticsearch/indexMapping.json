@@ -118,6 +118,13 @@
     "parentAliases": [],
     "childAliases": ["dataProduct"]
   },
+  "metric": {
+    "indexName": "metric_search_index",
+    "indexMappingFile": "/elasticsearch/%s/metric_index_mapping.json",
+    "alias": "metric",
+    "parentAliases": ["all", "dataAsset"],
+    "childAliases": []
+  },
   "glossary": {
     "indexName": "glossary_search_index",
     "indexMappingFile": "/elasticsearch/%s/glossary_index_mapping.json",

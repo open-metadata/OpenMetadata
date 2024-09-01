@@ -68,6 +68,6 @@
       "$ref": "../../type/basic.json#/definitions/entityExtension"
     }
   },
-  "required": ["name", "description"],
+  "required": ["name"],
   "additionalProperties": false
 }
