@@ -24,7 +24,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
-import { AssetsType, TabSpecificField } from '../../../../enums/entity.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -150,13 +150,9 @@ function CustomizeMyData({
       });
 
       if (userData) {
-        const includeData = Object.values(AssetsType);
         const follows: EntityReference[] = userData.follows ?? [];
-        const includedFollowsData = follows.filter((data) =>
-          includeData.includes(data.type as AssetsType)
-        );
-        setFollowedDataCount(includedFollowsData.length);
-        setFollowedData(includedFollowsData.slice(0, 8));
+        setFollowedDataCount(follows.length);
+        setFollowedData(follows.slice(0, 8));
       }
     } catch (err) {
       setFollowedData([]);
