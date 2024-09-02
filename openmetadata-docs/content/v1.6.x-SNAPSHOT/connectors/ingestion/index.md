@@ -30,14 +30,14 @@ Learn more about how to ingest metadata from dozens of connectors.
 {%inlineCallout
   bold="Metadata Profiler"
   icon="cable"
-  href="/connectors/ingestion/workflows/profiler"%}
+  href="/how-to-guides/data-quality-observability/profiler/workflow"%}
 To get metrics from your Tables=
 {%/inlineCallout%}
 
 {%inlineCallout
   bold="Metadata Data Quality Tests"
   icon="cable"
-  href="/connectors/ingestion/workflows/data-quality"%}
+  href="/how-to-guides/data-quality-observability/quality"%}
 To run automated Quality Tests on your Tables.
 {%/inlineCallout%}
 
