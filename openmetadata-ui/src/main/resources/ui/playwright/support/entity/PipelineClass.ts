@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
@@ -41,8 +41,9 @@ export class PipelineClass extends EntityClass {
     tasks: this.children,
   };
 
-  serviceResponseData: unknown;
-  entityResponseData: unknown;
+  serviceResponseData: ResponseDataType;
+  entityResponseData: ResponseDataType;
+  ingestionPipelineResponseData: ResponseDataType;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Pipeline);
@@ -77,6 +78,33 @@ export class PipelineClass extends EntityClass {
     return {
       service: this.serviceResponseData,
       entity: this.entityResponseData,
+    };
+  }
+
+  async createIngestionPipeline(apiContext: APIRequestContext, name?: string) {
+    const ingestionPipelineResponse = await apiContext.post(
+      '/api/v1/services/ingestionPipelines',
+      {
+        data: {
+          airflowConfig: {},
+          loggerLevel: 'INFO',
+          name: name ?? `pw-ingestion-pipeline-${uuid()}`,
+          pipelineType: 'metadata',
+          service: {
+            id: this.serviceResponseData.id,
+            type: 'pipelineService',
+          },
+          sourceConfig: {
+            config: {},
+          },
+        },
+      }
+    );
+
+    this.ingestionPipelineResponseData = await ingestionPipelineResponse.json();
+
+    return {
+      ingestionPipeline: await ingestionPipelineResponse.json(),
     };
   }
 

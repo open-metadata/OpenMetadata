@@ -101,15 +101,15 @@ export class DashboardClass extends EntityClass {
   }
 
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
-      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
-        this.serviceResponseData?.['fullyQualifiedName']
-      )}?recursive=true&hardDelete=true`
-    );
-
     const chartResponse = await apiContext.delete(
       `/api/v1/charts/name/${encodeURIComponent(
         this.chartsResponseData?.['fullyQualifiedName']
+      )}?recursive=true&hardDelete=true`
+    );
+
+    const serviceResponse = await apiContext.delete(
+      `/api/v1/services/dashboardServices/name/${encodeURIComponent(
+        this.serviceResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`
     );
 
