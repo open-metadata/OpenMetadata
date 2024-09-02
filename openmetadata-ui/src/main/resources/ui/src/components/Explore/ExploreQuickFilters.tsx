@@ -181,7 +181,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   }, [fields]);
 
   return (
-    <Space wrap className="explore-quick-filters-container" size={[4, 0]}>
+    <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
       {fields.map((field) => {
         const hasNullOption = fieldsWithNullValues.includes(
           field.key as EntityFields
