@@ -18,8 +18,8 @@ Configure and schedule Vertica metadata and profiler workflows from the OpenMeta
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
-- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/vertica/yaml"} /%}

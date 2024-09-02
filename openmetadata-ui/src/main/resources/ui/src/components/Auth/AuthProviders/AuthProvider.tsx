@@ -68,6 +68,7 @@ import {
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
+  prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
 import { getPathNameFromWindowLocation } from '../../../utils/RouterUtils';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
@@ -124,6 +125,9 @@ export const AuthProvider = ({
     setAuthConfig,
     setAuthorizerConfig,
     setIsSigningUp,
+    authorizerConfig,
+    jwtPrincipalClaims,
+    jwtPrincipalClaimsMapping,
     setJwtPrincipalClaims,
     setJwtPrincipalClaimsMapping,
     removeRefreshToken,
@@ -378,10 +382,18 @@ export const AuthProvider = ({
           ? userAPIQueryFields + ',' + isEmailVerifyField
           : userAPIQueryFields;
       try {
+        const newUser = prepareUserProfileFromClaims({
+          user,
+          jwtPrincipalClaims,
+          principalDomain: authorizerConfig?.principalDomain ?? '',
+          jwtPrincipalClaimsMapping,
+          clientType,
+        });
+
         const res = await getLoggedInUser({ fields });
         if (res) {
-          const updatedUserData = getUserDataFromOidc(res, user);
-          if (!matchUserDetails(res, updatedUserData, ['email'])) {
+          const updatedUserData = getUserDataFromOidc(res, newUser);
+          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
             setCurrentUser(res);
@@ -416,6 +428,10 @@ export const AuthProvider = ({
     },
     [
       authConfig?.enableSelfSignup,
+      clientType,
+      authorizerConfig?.principalDomain,
+      jwtPrincipalClaims,
+      jwtPrincipalClaimsMapping,
       setIsSigningUp,
       setIsAuthenticated,
       setApplicationLoading,

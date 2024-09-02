@@ -22,6 +22,7 @@ import { first, get, isEmpty, isNil } from 'lodash';
 import { WebStorageStateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
+  OidcUser,
   UserProfile,
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import { REDIRECT_PATHNAME, ROUTES } from '../constants/constants';
@@ -378,4 +379,47 @@ export const setUrlPathnameExpiryAfterRoute = (pathname: string) => {
     expires: new Date(Date.now() + 1000),
     path: '/',
   });
+};
+
+/**
+ * We support Principle claim as: email,preferred_username,sub in any order
+ * When Users are created from the initialAdmin we want to pick correct user details based on the principle claim
+ * This method will ensure that name & email are correctly picked from the principle claim
+ * @param user - User details extracted from Token
+ * @param jwtPrincipalClaims - List of principle claims coming from auth API response
+ * @param principalDomain - Principle Domain value coming from
+ * @param jwtPrincipalClaimsMapping - Mapping of principle claims to user profile
+ * @param clientType - Client Type Public or Confidential
+ * @returns OidcUser with Profile info plucked based on the principle claim
+ */
+export const prepareUserProfileFromClaims = ({
+  user,
+  jwtPrincipalClaims,
+  principalDomain,
+  jwtPrincipalClaimsMapping,
+  clientType,
+}: {
+  user: OidcUser;
+  jwtPrincipalClaims: string[];
+  principalDomain: string;
+  jwtPrincipalClaimsMapping: string[];
+  clientType: ClientType;
+}): OidcUser => {
+  const newUser = {
+    ...user,
+    profile:
+      clientType === ClientType.Public
+        ? getNameFromUserData(
+            user.profile,
+            jwtPrincipalClaims,
+            principalDomain,
+            jwtPrincipalClaimsMapping
+          )
+        : {
+            name: user.profile?.name ?? '',
+            email: user.profile?.email ?? '',
+          },
+  } as OidcUser;
+
+  return newUser;
 };

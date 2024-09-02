@@ -16,8 +16,8 @@ In this section, we provide guides and references to use the Datalake connector.
 Configure and schedule Datalake metadata and profiler workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
-- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality)
 
 {% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/database/datalake/yaml"} /%}
 
