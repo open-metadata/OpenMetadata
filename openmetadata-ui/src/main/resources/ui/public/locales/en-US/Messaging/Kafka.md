@@ -81,3 +81,24 @@ $$section
 
 The accepted additional values for the Schema Registry configuration can be found in the following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
 $$
+
+$$section
+### SSL Config $(id="sslConfig")
+
+Client SSL configuration in case we are connection to a host with SSL enabled.
+$$
+
+$$section
+### SSL CA $(id="caCertificate")
+The CA certificate used for SSL validation.
+$$
+
+$$section
+### SSL Certificate $(id="sslCertificate")
+The SSL certificate used for client authentication.
+$$
+
+$$section
+### SSL Key $(id="sslKey")
+The private key associated with the SSL certificate.
+$$
