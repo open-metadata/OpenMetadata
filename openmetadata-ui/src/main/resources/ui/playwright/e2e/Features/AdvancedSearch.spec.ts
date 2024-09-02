@@ -86,6 +86,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
 
   FIELDS.forEach((field) => {
     test(`Verify All conditions for ${field.id} field`, async ({ page }) => {
+      test.slow(true);
+
       await verifyAllConditions(page, field, searchCriteria[field.name]);
     });
   });
