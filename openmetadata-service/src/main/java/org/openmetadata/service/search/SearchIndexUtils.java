@@ -257,16 +257,15 @@ public final class SearchIndexUtils {
         Map<String, String> aggregationMap = new HashMap<>();
         String[] parts = nested[i].split(":");
 
-        for (int j = 0; j < parts.length; j++) {
-          String part = parts[j];
+        for (String part : parts) {
           String[] kvPairs = part.split("=");
           if (kvPairs[0].equals("field")) {
             aggregationString
-                .append("\"")
-                .append(kvPairs[0])
-                .append("\":\"")
-                .append(kvPairs[1])
-                .append("\"");
+                    .append("\"")
+                    .append(kvPairs[0])
+                    .append("\":\"")
+                    .append(kvPairs[1])
+                    .append("\"");
             aggregationString.append("}");
           } else {
             aggregationString.append("\"").append(kvPairs[1]).append("\":{");

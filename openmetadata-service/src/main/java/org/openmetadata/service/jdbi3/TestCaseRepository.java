@@ -304,7 +304,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestSuiteRepository testSuiteRepository =
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     TestSuite testSuite = Entity.getEntity(test.getTestSuite(), "*", ALL);
-    TestSuite original = testSuiteRepository.copyTestSuite(testSuite);
+    TestSuite original = TestSuiteRepository.copyTestSuite(testSuite);
     testSuiteRepository.postUpdate(original, testSuite);
   }
 

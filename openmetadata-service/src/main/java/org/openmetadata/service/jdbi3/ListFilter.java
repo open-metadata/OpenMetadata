@@ -324,7 +324,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   protected String addCondition(List<String> conditions) {
-    StringBuffer condition = new StringBuffer();
+    StringBuilder condition = new StringBuilder();
 
     for (String c : conditions) {
       if (!c.isEmpty()) {

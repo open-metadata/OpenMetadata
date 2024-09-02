@@ -470,24 +470,24 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       switch (SELECTED_TEST_CATEGORY) {
-        case RUN_WEBHOOK_TEST:
+        case RUN_WEBHOOK_TEST -> {
           webhookCallbackResource.clearEvents();
           EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
           webhookTest.startWebhookSubscription();
           webhookTest.startWebhookEntitySubscriptions(entityType);
-          break;
-        case RUN_SLACK_TEST:
+        }
+        case RUN_SLACK_TEST -> {
           slackCallbackResource.clearEvents();
           EventSubscriptionResourceTest slackTest = new EventSubscriptionResourceTest();
           slackTest.startSlackSubscription();
           slackTest.startSlackEntitySubscriptions(entityType);
-          break;
-        case RUN_MS_TEAMS_TEST:
+        }
+        case RUN_MS_TEAMS_TEST -> {
           teamsCallbackResource.clearEvents();
           EventSubscriptionResourceTest msTeamsTest = new EventSubscriptionResourceTest();
           msTeamsTest.startMSTeamsSubscription();
           msTeamsTest.startMSTeamsEntitySubscription(entityType);
-          break;
+        }
       }
     }
   }
@@ -496,21 +496,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   public void afterAllTests() throws Exception {
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
       switch (SELECTED_TEST_CATEGORY) {
-        case RUN_WEBHOOK_TEST:
+        case RUN_WEBHOOK_TEST -> {
           EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
           webhookTest.validateWebhookEvents();
           webhookTest.validateWebhookEntityEvents(entityType);
-          break;
-        case RUN_SLACK_TEST:
+        }
+        case RUN_SLACK_TEST -> {
           EventSubscriptionResourceTest slackTest = new EventSubscriptionResourceTest();
           slackTest.validateSlackEvents();
           slackTest.validateSlackEntityEvents(entityType);
-          break;
-        case RUN_MS_TEAMS_TEST:
+        }
+        case RUN_MS_TEAMS_TEST -> {
           EventSubscriptionResourceTest msTeamsTest = new EventSubscriptionResourceTest();
           msTeamsTest.validateMSTeamsEvents();
           msTeamsTest.validateMSTeamsEntityEvents(entityType);
-          break;
+        }
       }
     }
     delete_recursiveTest();

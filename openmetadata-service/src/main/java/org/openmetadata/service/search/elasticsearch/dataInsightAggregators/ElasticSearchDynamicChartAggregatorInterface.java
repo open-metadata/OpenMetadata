@@ -41,21 +41,14 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
 
   private static ValuesSourceAggregationBuilder getSubAggregationsByFunction(
       Function function, String field, int index) {
-    switch (function) {
-      case COUNT:
-        return AggregationBuilders.count(field + index).field(field);
-      case SUM:
-        return AggregationBuilders.sum(field + index).field(field);
-      case AVG:
-        return AggregationBuilders.avg(field + index).field(field);
-      case MIN:
-        return AggregationBuilders.min(field + index).field(field);
-      case MAX:
-        return AggregationBuilders.max(field + index).field(field);
-      case UNIQUE:
-        return AggregationBuilders.cardinality(field + index).field(field);
-    }
-    return null;
+    return switch (function) {
+      case COUNT -> AggregationBuilders.count(field + index).field(field);
+      case SUM -> AggregationBuilders.sum(field + index).field(field);
+      case AVG -> AggregationBuilders.avg(field + index).field(field);
+      case MIN -> AggregationBuilders.min(field + index).field(field);
+      case MAX -> AggregationBuilders.max(field + index).field(field);
+      case UNIQUE -> AggregationBuilders.cardinality(field + index).field(field);
+    };
   }
 
   static void getDateHistogramByFormula(

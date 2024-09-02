@@ -128,9 +128,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     TableRepository entityRepository = (TableRepository) Entity.getEntityRepository(TABLE);
 
     assertThatThrownBy(
-            () -> {
-              entityRepository.validateDomain(entityReference);
-            })
+            () -> entityRepository.validateDomain(entityReference))
         .isInstanceOf(EntityNotFoundException.class)
         .hasMessage(String.format("domain instance for %s not found", rdnUUID));
   }
