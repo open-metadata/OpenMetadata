@@ -1794,6 +1794,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0>已{{entityStatus}}并成功部署",
     "successfully-completed-the-tour": "您已成功完成导览",
     "synonym-placeholder": "输入并按回车键以新增一个同义词",
+    "system-alert-edit-message": "Editing a system generated alert is not allowed.",
     "system-tag-delete-disable-message": "无法删除系统默认的标签, 您可以尝试禁用标签",
     "tag-update-confirmation": "Would you like to proceed with updating the tags?",
     "take-quick-product-tour": "快速查看产品导览",

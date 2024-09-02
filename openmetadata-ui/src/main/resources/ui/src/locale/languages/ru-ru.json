@@ -1794,6 +1794,7 @@
     "success-status-for-entity-deploy": "<0>{{entity}}</0> был {{entityStatus}} и успешно развернут",
     "successfully-completed-the-tour": "Вы успешно завершили экскурсию.",
     "synonym-placeholder": "Чтобы добавить синоним, просто введите его и нажмите Enter.",
+    "system-alert-edit-message": "Editing a system generated alert is not allowed.",
     "system-tag-delete-disable-message": "Удаление сгенерированных системой тегов не допускается. Вместо этого вы можете попробовать отключить тег.",
     "tag-update-confirmation": "Would you like to proceed with updating the tags?",
     "take-quick-product-tour": "Ознакомьтесь с продуктом, чтобы начать работу!",
