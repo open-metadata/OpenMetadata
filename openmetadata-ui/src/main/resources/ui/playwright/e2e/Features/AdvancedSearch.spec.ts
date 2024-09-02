@@ -31,12 +31,14 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   let searchCriteria = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.setTimeout(60000);
+    test.setTimeout(150000);
 
     const { page, apiContext, afterAction } = await createNewPage(browser);
-    await user.create(apiContext);
-    await table.create(apiContext);
-    await topic.create(apiContext);
+    await Promise.all([
+      user.create(apiContext),
+      table.create(apiContext),
+      topic.create(apiContext),
+    ]);
 
     // Add Owner & Tag to the table
     await table.visitEntityPage(page);

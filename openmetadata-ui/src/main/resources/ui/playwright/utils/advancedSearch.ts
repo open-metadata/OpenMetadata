@@ -126,8 +126,7 @@ export const fillRule = async (
   await page
     .locator(`.rule:nth-child(${index}) .rule--field .ant-select input`)
     .fill(field.id);
-
-  await page.locator(`.ant-select-dropdown [title="${field.id}"]`).click();
+  await page.click(`.ant-select-dropdown [title="${field.id}"]`);
 
   // perform click on operator
   await page.click(`.rule:nth-child(${index}) .rule--operator .ant-select`);
@@ -186,7 +185,7 @@ export const checkMustPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
   );
   await page.getByTestId('apply-btn').click();
   await searchRes.then(async (res) => {
@@ -218,7 +217,7 @@ export const checkMustNotPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
   );
   await page.getByTestId('apply-btn').click();
   await searchRes.then(async (res) => {
@@ -250,7 +249,7 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
   );
   await page.getByTestId('apply-btn').click();
   await searchRes.then(async (res) => {
