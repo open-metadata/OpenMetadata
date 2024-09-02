@@ -295,7 +295,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
    * @author Eric Wen@2023-07-16 17:23:57
    */
   private void getRoleForLdap(User user, Boolean reAssign)
-      throws LDAPException, JsonProcessingException {
+      throws JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
       Filter groupFilter =

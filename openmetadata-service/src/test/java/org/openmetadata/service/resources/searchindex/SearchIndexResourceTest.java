@@ -358,7 +358,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
+  void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a searchIndex, carry it forward from the search service
     SearchServiceResourceTest serviceTest = new SearchServiceResourceTest();
     CreateSearchService createService =

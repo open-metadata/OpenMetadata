@@ -227,7 +227,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     pushAppStatusUpdates(jobExecutionContext, appRecord, true);
   }
 
-  private void performReindex(JobExecutionContext jobExecutionContext) throws SearchIndexException {
+  private void performReindex(JobExecutionContext jobExecutionContext) {
     Map<String, Object> contextData = new HashMap<>();
     for (Source paginatedSource : paginatedSources) {
       List<String> entityName = new ArrayList<>();

@@ -2321,8 +2321,7 @@ public class EventSubscriptionResourceTest
   }
 
   @Override
-  protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList)
-      throws IOException {
+  protected void assertFieldLists(List<FieldChange> expectedList, List<FieldChange> actualList) {
     expectedList.sort(EntityUtil.compareFieldChange);
     actualList.sort(EntityUtil.compareFieldChange);
 

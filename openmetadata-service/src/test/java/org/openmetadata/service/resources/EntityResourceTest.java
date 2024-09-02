@@ -809,7 +809,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   protected void validateEntityListFromSearchWithPagination(
       Map<String, String> queryParams, Integer maxEntities)
-      throws IOException, InterruptedException {
+      throws IOException {
     // List all entities and use it for checking pagination
     Random rand = new Random();
 
@@ -1055,8 +1055,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityWithNullDescriptionFromSearch(TestInfo test)
-      throws InterruptedException, IOException {
+  void get_entityWithNullDescriptionFromSearch(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(
         Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
@@ -1112,8 +1111,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityWithEmptyDescriptionFromSearch(TestInfo test)
-      throws InterruptedException, IOException {
+  void get_entityWithEmptyDescriptionFromSearch(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     Assumptions.assumeTrue(
         Arrays.asList(entityClass.getInterfaces()).contains(EntityInterface.class));
@@ -2193,7 +2191,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void checkCreatedEntity(TestInfo test) throws IOException, InterruptedException {
+  protected void checkCreatedEntity(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -2213,8 +2211,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void checkDeletedEntity(TestInfo test)
-      throws HttpResponseException, InterruptedException {
+  protected void checkDeletedEntity(TestInfo test) throws HttpResponseException {
     Assumptions.assumeTrue(supportsSearchIndex);
     // create entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -2249,8 +2246,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void updateDescriptionAndCheckInSearch(TestInfo test)
-      throws IOException, InterruptedException {
+  protected void updateDescriptionAndCheckInSearch(TestInfo test) throws IOException {
     Assumptions.assumeTrue(supportsSearchIndex);
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
@@ -2268,8 +2264,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
-      throws HttpResponseException, InterruptedException {
+  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test) throws HttpResponseException {
     Assumptions.assumeTrue(supportsSearchIndex && supportsTags);
     // create an entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
@@ -3825,7 +3820,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public T assertDomainInheritance(K createRequest, EntityReference expectedDomain)
-      throws HttpResponseException, IOException, InterruptedException, InterruptedException {
+      throws IOException {
     T entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomain()); // Inherited owner
     entity = getEntity(entity.getId(), "domain", ADMIN_AUTH_HEADERS);
@@ -3839,7 +3834,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public void assertDomainInheritanceOverride(T entity, K updateRequest, EntityReference newDomain)
-      throws HttpResponseException, IOException, InterruptedException {
+      throws IOException {
     // When an entity has domain set, it does not inherit domain from the parent
     String json = JsonUtils.pojoToJson(entity);
     entity.setDomain(newDomain);

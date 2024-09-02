@@ -192,7 +192,7 @@ public class WebAnalyticsWorkflow {
   private Optional<String> processEntityViewData(
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData,
       Map<String, Object> contextData)
-      throws SearchIndexException {
+      {
     Optional<String> error = Optional.empty();
 
     contextData.put(
@@ -242,7 +242,7 @@ public class WebAnalyticsWorkflow {
       Map<UUID, UserActivityData> userActivityData,
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData,
       Map<String, Object> contextData)
-      throws SearchIndexException {
+      {
     Optional<String> error = Optional.empty();
 
     contextData.put(

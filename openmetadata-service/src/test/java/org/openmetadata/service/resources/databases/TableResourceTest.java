@@ -2163,7 +2163,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, IOException {
+  void test_ownershipInheritance(TestInfo test) throws IOException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     CreateDatabase createDb = dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF));
@@ -2226,7 +2226,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   void test_domainInheritance(TestInfo test)
-      throws HttpResponseException, IOException, InterruptedException {
+      throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
         dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
@@ -2408,7 +2408,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void get_entityWithoutDescriptionFromSearch(TestInfo test)
-      throws InterruptedException, IOException {
+      throws IOException {
     // Create Database
     CreateDatabase createDatabase = dbTest.createRequest(getEntityName(test));
     Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);

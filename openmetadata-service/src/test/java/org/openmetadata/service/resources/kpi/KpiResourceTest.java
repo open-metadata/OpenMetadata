@@ -90,8 +90,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     }
   }
 
-  public void setupKpi() throws IOException {
-
+  public void setupKpi() {
     createDataAssetsDataStream();
     KPI_TARGET = new KpiTarget().withName("Percentage").withValue("80.0");
   }

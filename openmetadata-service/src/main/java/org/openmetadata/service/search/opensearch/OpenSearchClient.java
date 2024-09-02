@@ -1775,7 +1775,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @SneakyThrows
-  public void deleteByQuery(String index, String query) throws IOException {
+  public void deleteByQuery(String index, String query) {
     DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
     // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
     // first token from the Parser

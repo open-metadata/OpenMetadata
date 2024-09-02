@@ -8,7 +8,6 @@ import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -212,9 +211,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     contextData.put(CURRENT_TOTAL_ASSET_COUNT, currentCount);
 
     dateWithCount.forEach(
-        (key, value) -> {
-          dateMap.put(key, value.intValue());
-        });
+        (key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     if (previousCount == 0D) {
@@ -235,7 +232,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String team,
       TimeConfig timeConfig,
       Map<String, Object> contextData)
-      throws ParseException, IOException {
+      throws IOException {
     // Create A Date Map
     Map<String, Integer> dateMap = new LinkedHashMap<>();
     Utilities.getLastSevenDays(timeConfig.endTime()).forEach(day -> dateMap.put(day, 0));
@@ -255,9 +252,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
     dateWithCount.forEach(
-        (key, value) -> {
-          dateMap.put(key, value.intValue());
-        });
+        (key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     // Previous Percent
@@ -306,9 +301,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
     dateWithCount.forEach(
-        (key, value) -> {
-          dateMap.put(key, value.intValue());
-        });
+        (key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     // Previous Percent
@@ -337,7 +330,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       String team,
       TimeConfig timeConfig,
       Map<String, Object> contextData)
-      throws ParseException, IOException {
+      throws IOException {
     // Create A Date Map
     Map<String, Integer> dateMap = new LinkedHashMap<>();
     Utilities.getLastSevenDays(timeConfig.endTime()).forEach(day -> dateMap.put(day, 0));
@@ -355,9 +348,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
     dateWithCount.forEach(
-        (key, value) -> {
-          dateMap.put(key, value.intValue());
-        });
+        (key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     // Previous Percent
@@ -460,8 +451,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
-      Map<String, Integer> dateMap)
-      throws IOException {
+      Map<String, Integer> dateMap) {
 
     List<Kpi> kpiList = getAvailableKpi();
     Kpi validKpi = null;

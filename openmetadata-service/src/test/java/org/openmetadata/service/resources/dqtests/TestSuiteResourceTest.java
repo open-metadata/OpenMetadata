@@ -174,7 +174,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
   }
 
   @Test
-  void list_testSuitesIncludeEmpty_200(TestInfo test) throws IOException, ParseException {
+  void list_testSuitesIncludeEmpty_200(TestInfo test) throws IOException {
     List<CreateTestSuite> testSuites = new ArrayList<>();
     TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
     TableResourceTest tableResourceTest = new TableResourceTest();
@@ -842,7 +842,7 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   @Test
   void get_listTestSuiteFromSearchWithPagination(TestInfo testInfo)
-      throws IOException, InterruptedException {
+      throws IOException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;

@@ -304,7 +304,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void put_testCaseResults_200(TestInfo test)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException, ParseException {
     CreateTestCase create = createRequest(test);
     create
         .withEntityLink(TABLE_COLUMN_LINK)
@@ -449,7 +449,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void test_resultSummaryCascadeToAllSuites(TestInfo test)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException, ParseException {
     TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     TestCase testCase1 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
 
@@ -673,7 +673,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void get_listTestCasesFromSearchWithPagination(TestInfo testInfo)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException, ParseException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
@@ -934,7 +934,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_testCaseInheritedFields(TestInfo testInfo) throws HttpResponseException, IOException {
+  void test_testCaseInheritedFields(TestInfo testInfo) throws IOException {
     // Set up the test case
     TableResourceTest tableResourceTest = new TableResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
@@ -1911,7 +1911,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void get_listTestCaseWithStatusAndType(TestInfo test)
-      throws HttpResponseException, ParseException, IOException {
+      throws ParseException, IOException {
     TestSuite testSuite = createExecutableTestSuite(test);
 
     int testCaseEntries = 15;
@@ -2119,13 +2119,13 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCase.class, authHeaders);
   }
 
-  private TestSummary getTestSummary(String testSuiteId) throws IOException, InterruptedException {
+  private TestSummary getTestSummary(String testSuiteId) throws IOException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     return testSuiteResourceTest.getTestSummary(ADMIN_AUTH_HEADERS, testSuiteId);
   }
 
   private void getAndValidateTestSummary(String testSuiteId)
-      throws IOException, InterruptedException {
+      throws IOException {
     // Retry logic to handle ES async operations
     int maxRetries = 5;
     int retries = 0;
