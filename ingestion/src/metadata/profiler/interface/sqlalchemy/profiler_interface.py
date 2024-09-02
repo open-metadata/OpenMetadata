@@ -442,7 +442,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 sample,
             )
             row = None
-
             try:
                 row = self._get_metric_fn[metric_func.metric_type.value](
                     metric_func.metrics,
@@ -451,11 +450,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     column=metric_func.column,
                     sample=sample,
                 )
-                if row and isinstance(row, dict):
+                if isinstance(row, dict):
                     row = self._validate_nulls(row)
-
-                # System metrics return a list of dictionaries, with UPDATE, INSERT or DELETE ops results
-                if row and metric_func.metric_type == MetricTypes.System:
+                if isinstance(row, list):
                     row = [
                         self._validate_nulls(r) if isinstance(r, dict) else r
                         for r in row
@@ -537,6 +534,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
                     raise concurrent.futures.TimeoutError
+                except KeyboardInterrupt:
+                    pool.shutdown(wait=True, cancel_futures=True)
+                    raise
 
         return profile_results
 

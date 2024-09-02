@@ -15,7 +15,7 @@ Tests utils function for the profiler
 import uuid
 from datetime import datetime
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from sqlalchemy import Column
@@ -38,10 +38,12 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.profiler.metrics.hybrid.histogram import Histogram
-from metadata.profiler.metrics.system.queries.snowflake import (
+from metadata.ingestion.source.database.snowflake.models import SnowflakeQueryLogEntry
+from metadata.ingestion.source.database.snowflake.profiler.system_metrics import (
+    SnowflakeTableResovler,
     get_snowflake_system_queries,
 )
+from metadata.profiler.metrics.hybrid.histogram import Histogram
 from metadata.profiler.metrics.system.system import recursive_dic
 from metadata.utils.profiler_utils import (
     get_identifiers_from_string,
@@ -125,7 +127,7 @@ def test_is_array():
 
 def test_get_snowflake_system_queries():
     """Test get snowflake system queries"""
-    row = Row(
+    row = SnowflakeQueryLogEntry(
         query_id="1",
         query_type="INSERT",
         start_time=datetime.now(),
@@ -133,8 +135,10 @@ def test_get_snowflake_system_queries():
     )
 
     # We don't need the ometa_client nor the db_service if we have all the db.schema.table in the query
+    resolver = SnowflakeTableResovler(Mock())
     query_result = get_snowflake_system_queries(
-        row=row, database="DATABASE", schema="SCHEMA", ometa_client=..., db_service=...
+        query_log_entry=row,
+        resolver=resolver,
     )  # type: ignore
     assert query_result
     assert query_result.query_id == "1"
@@ -143,15 +147,16 @@ def test_get_snowflake_system_queries():
     assert query_result.schema_name == "schema"
     assert query_result.table_name == "table1"
 
-    row = Row(
-        query_id=1,
+    row = SnowflakeQueryLogEntry(
+        query_id="1",
         query_type="INSERT",
         start_time=datetime.now(),
         query_text="INSERT INTO SCHEMA.TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
     )
 
     query_result = get_snowflake_system_queries(
-        row=row, database="DATABASE", schema="SCHEMA", ometa_client=..., db_service=...
+        query_log_entry=row,
+        resolver=resolver,
     )  # type: ignore
 
     assert not query_result
@@ -184,15 +189,17 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
     """test we ca get all ddl queries
     reference https://docs.snowflake.com/en/sql-reference/sql-dml
     """
-    row = Row(
+    row = SnowflakeQueryLogEntry(
         query_id="1",
         query_type=expected,
         start_time=datetime.now(),
         query_text=query,
     )
-
+    resolver = Mock()
+    resolver.resolve_snowflake_fqn = Mock(return_value=("database", "schema", "table1"))
     query_result = get_snowflake_system_queries(
-        row=row, database="DATABASE", schema="SCHEMA", ometa_client=..., db_service=...
+        query_log_entry=row,
+        resolver=resolver,
     )  # type: ignore
 
     assert query_result
@@ -202,7 +209,8 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
     assert query_result.table_name == "table1"
 
     query_result = get_snowflake_system_queries(
-        row=row, database="DATABASE", schema="SCHEMA", ometa_client=..., db_service=...
+        query_log_entry=SnowflakeQueryLogEntry.model_validate(row),
+        resolver=resolver,
     )  # type: ignore
 
     assert query_result
@@ -251,7 +259,7 @@ def test_get_snowflake_system_queries_from_es():
             query_text="INSERT INTO TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
         )
         query_result = get_snowflake_system_queries(
-            row=row,
+            query_log_entry=row,
             database="DATABASE",
             schema="SCHEMA",
             ometa_client=ometa_client,
@@ -268,7 +276,7 @@ def test_get_snowflake_system_queries_from_es():
             query_text="INSERT INTO TABLE2 (col1, col2) VALUES (1, 'a'), (2, 'b')",
         )
         query_result = get_snowflake_system_queries(
-            row=row,
+            query_log_entry=row,
             database="DATABASE",
             schema="SCHEMA",
             ometa_client=ometa_client,
