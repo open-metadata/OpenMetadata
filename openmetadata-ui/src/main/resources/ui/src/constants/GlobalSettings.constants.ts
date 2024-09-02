@@ -74,6 +74,7 @@ export enum GlobalSettingOptions {
   APIS = 'apiServices',
   API_COLLECTIONS = 'apiCollections',
   API_ENDPOINTS = 'apiEndpoints',
+  DATA_PRODUCT = 'dataProducts',
 }
 
 export const GLOBAL_SETTING_PERMISSION_RESOURCES = [
