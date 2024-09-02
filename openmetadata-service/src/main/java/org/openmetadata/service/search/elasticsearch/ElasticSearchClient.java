@@ -1600,7 +1600,7 @@ public class ElasticSearchClient implements SearchClient {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new DeleteByQueryRequest(indexName.toArray(new String[0]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1625,7 +1625,7 @@ public class ElasticSearchClient implements SearchClient {
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1738,7 +1738,7 @@ public class ElasticSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }

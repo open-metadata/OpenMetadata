@@ -120,7 +120,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Test
   void validate_data_insights_workflow_is_correct_for_a_simple_case()
       throws IOException, InterruptedException {
-    Long MILLISECONDS_IN_AN_HOUR = (long) 1000 * 60 * 60;
+    long MILLISECONDS_IN_AN_HOUR = (long) 1000 * 60 * 60;
 
     Long timestamp = System.currentTimeMillis();
 

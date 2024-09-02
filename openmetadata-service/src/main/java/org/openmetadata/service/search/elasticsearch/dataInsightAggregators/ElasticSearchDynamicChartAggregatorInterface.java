@@ -202,7 +202,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
         processAggregationsInternal(aggregations, group);
     List<DataInsightCustomChartResult> finalResult = new ArrayList<>();
     for (List<DataInsightCustomChartResult> diResultList : rawResultList) {
-      diResultList.forEach((result) -> finalResult.add(result));
+      finalResult.addAll(diResultList);
     }
     return finalResult;
   }

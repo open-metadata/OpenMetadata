@@ -120,9 +120,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   private void inheritTags(TestCase testCase, Fields fields, Table table) {
     if (fields.contains(FIELD_TAGS)) {
-      List<TagLabel> tags = new ArrayList<>();
       EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-      tags.addAll(table.getTags());
+      List<TagLabel> tags = new ArrayList<>(table.getTags());
       if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
         // if we have a column test case get the columns tags as well
         table.getColumns().stream()
@@ -659,10 +658,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private List<TagLabel> getTestCaseTags(TestCase test) {
-    List<TagLabel> tags = new ArrayList<>();
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     Table table = Entity.getEntity(entityLink, "tags,columns", ALL);
-    tags.addAll(table.getTags());
+    List<TagLabel> tags = new ArrayList<>(table.getTags());
     if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
       // if we have a column test case get the columns tags as well
       table.getColumns().stream()
