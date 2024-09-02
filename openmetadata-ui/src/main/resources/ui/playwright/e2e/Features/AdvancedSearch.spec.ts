@@ -77,10 +77,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await afterAction();
   });
 
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.EXPLORE);
+  });
+
   FIELDS.forEach((field) => {
     test(`Verify All conditions for ${field.id} field`, async ({ page }) => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.EXPLORE);
       await verifyAllConditions(page, field, searchCriteria[field.name]);
     });
   });

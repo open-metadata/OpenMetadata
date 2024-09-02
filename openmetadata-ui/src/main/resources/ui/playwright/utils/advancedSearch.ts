@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { SidebarItem } from '../constant/sidebar';
-import { sidebarClick } from './sidebar';
 
 type EntityFields = {
   id: string;
@@ -110,23 +108,30 @@ export const NULL_CONDITIONS = {
   },
 };
 
-export const goToAdvanceSearch = async (page: Page) => {
-  await sidebarClick(page, SidebarItem.SETTINGS);
-  await page.click('[data-testid="advance-search-button"]');
-  await page.click('[data-testid="reset-btn"]');
+export const showAdvancedSearchDialog = async (page: Page) => {
+  await page.getByTestId('advance-search-button').click();
+
+  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };
 
 export const fillRule = async (
   page: Page,
   { condition, field, searchCriteria, index }
 ) => {
-  await page.locator('.rule .rule--field .ant-select').nth(index).click();
+  // perform click on rule
   await page
-    .locator(`.ant-select-dropdown:visible [title="${field.id}"]`)
+    .locator(`.rule:nth-child(${index}) .rule--field .ant-select`)
     .click();
 
-  await page.locator('.rule .rule--operator .ant-select').nth(index).click();
-  await page.locator(`.ant-select-dropdown [title="${condition}"]`).click();
+  await page
+    .locator(`.rule:nth-child(${index}) .rule--field .ant-select input`)
+    .fill(field.id);
+
+  await page.locator(`.ant-select-dropdown [title="${field.id}"]`).click();
+
+  // perform click on operator
+  await page.click(`.rule:nth-child(${index}) .rule--operator .ant-select`);
+  await page.click(`.ant-select-dropdown [title="${condition}"]`);
 
   if (searchCriteria) {
     const inputElement = page.locator('.rule--widget--TEXT input[type="text"]');
@@ -302,36 +307,36 @@ export const verifyAllConditions = async (
 ) => {
   // Check for Must conditions
   for (const condition of Object.values(CONDITIONS_MUST)) {
-    await page.getByTestId('advance-search-button').click();
+    await showAdvancedSearchDialog(page);
     await checkMustPaths(page, {
       condition: condition.name,
       field,
       searchCriteria: searchCriteria,
-      index: 0,
+      index: 1,
     });
     await page.getByTestId('clear-filters').click();
   }
 
   // Check for Must Not conditions
   for (const condition of Object.values(CONDITIONS_MUST_NOT)) {
-    await page.getByTestId('advance-search-button').click();
+    await showAdvancedSearchDialog(page);
     await checkMustNotPaths(page, {
       condition: condition.name,
       field,
       searchCriteria: searchCriteria,
-      index: 0,
+      index: 1,
     });
     await page.getByTestId('clear-filters').click();
   }
 
   // Check for Null and Not Null conditions
   for (const condition of Object.values(NULL_CONDITIONS)) {
-    await page.getByTestId('advance-search-button').click();
+    await showAdvancedSearchDialog(page);
     await checkNullPaths(page, {
       condition: condition.name,
       field,
       searchCriteria: undefined,
-      index: 0,
+      index: 1,
     });
     await page.getByTestId('clear-filters').click();
   }
