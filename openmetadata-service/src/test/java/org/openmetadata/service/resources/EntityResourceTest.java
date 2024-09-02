@@ -394,7 +394,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private static final int RUN_SLACK_TEST = 1;
   private static final int RUN_MS_TEAMS_TEST = 2;
   public static boolean EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG = true;
-  private static int selectedTestCategory = new Random().nextInt(3);
+  private static final int SELECTED_TEST_CATEGORY = new Random().nextInt(3);
 
   protected boolean supportsSearchIndex = false;
 
@@ -469,7 +469,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new APICollectionResourceTest().setupAPICollection(test);
 
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
-      switch (selectedTestCategory) {
+      switch (SELECTED_TEST_CATEGORY) {
         case RUN_WEBHOOK_TEST:
           webhookCallbackResource.clearEvents();
           EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
@@ -495,7 +495,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   @AfterAll
   public void afterAllTests() throws Exception {
     if (EVENT_SUBSCRIPTION_TEST_CONTROL_FLAG) {
-      switch (selectedTestCategory) {
+      switch (SELECTED_TEST_CATEGORY) {
         case RUN_WEBHOOK_TEST:
           EventSubscriptionResourceTest webhookTest = new EventSubscriptionResourceTest();
           webhookTest.validateWebhookEvents();

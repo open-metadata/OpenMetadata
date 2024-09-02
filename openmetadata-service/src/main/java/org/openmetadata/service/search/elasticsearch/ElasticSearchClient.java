@@ -1743,10 +1743,6 @@ public class ElasticSearchClient implements SearchClient {
     }
   }
 
-  /**
-   * @param indexName
-   * @param fieldAndValue
-   */
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineageData) {

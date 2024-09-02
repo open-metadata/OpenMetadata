@@ -1735,11 +1735,6 @@ public class OpenSearchClient implements SearchClient {
     }
   }
 
-  /**
-   * @param indexName
-   * @param fieldAndValue
-   * @param
-   */
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData) {
@@ -1858,8 +1853,7 @@ public class OpenSearchClient implements SearchClient {
 
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName)
-      throws ParseException {
+      DataInsightChartResult.DataInsightChartType dataInsightChartName) {
     DataInsightAggregatorInterface processor =
         createDataAggregator(searchResponse, dataInsightChartName);
     return processor.process(dataInsightChartName);

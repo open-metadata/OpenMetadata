@@ -82,7 +82,7 @@ public class EventSubscriptionResourceTest
   private static final UUID DESTINATION_ID = UUID.randomUUID();
   public static final FilteringRules PASS_ALL_FILTERING =
       new FilteringRules().withResources(List.of("all"));
-  private static AtomicLong counter = new AtomicLong(System.currentTimeMillis());
+  private static final AtomicLong COUNTER = new AtomicLong(System.currentTimeMillis());
 
   public EventSubscriptionResourceTest() {
     super(
@@ -1301,7 +1301,7 @@ public class EventSubscriptionResourceTest
   }
 
   public static String generateUniqueNumberAsString() {
-    return Long.toString(counter.getAndIncrement());
+    return Long.toString(COUNTER.getAndIncrement());
   }
 
   @Test
