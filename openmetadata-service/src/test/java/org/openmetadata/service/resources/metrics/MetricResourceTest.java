@@ -6,8 +6,10 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -16,6 +18,7 @@ import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.Expression;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -50,16 +53,23 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
   @Test
   void patch_MetricEntity() throws IOException {
     // Create a new Metric with different fields
-    CreateMetric createRequest = createRequest("test_metric", "test description", "test owner", null);
+    CreateMetric createRequest =
+        createRequest("test_metric", "test description", "test owner", null);
     Metric metric = createEntity(createRequest, ADMIN_AUTH_HEADERS);
     validateCreatedEntity(metric, createRequest, ADMIN_AUTH_HEADERS);
     String origJson = JsonUtils.pojoToJson(metric);
-    //add expression and other elements
-    metric.withExpression(new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java))
-        .withGranularity(MetricGranularity.DAY).withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT)
+    // add expression and other elements
+    metric
+        .withExpression(
+            new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java))
+        .withGranularity(MetricGranularity.DAY)
+        .withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT)
         .withMetricType(MetricType.AVERAGE);
     ChangeDescription change = getChangeDescription(metric, MINOR_UPDATE);
-    fieldAdded(change, "expression", new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java));
+    fieldAdded(
+        change,
+        "expression",
+        new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java));
     fieldAdded(change, "granularity", MetricGranularity.DAY);
     fieldAdded(change, "unitOfMeasurement", MetricUnitOfMeasurement.COUNT);
     fieldAdded(change, "metricType", MetricType.AVERAGE);
@@ -109,6 +119,24 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException {
-    assertCommonFieldChange(fieldName, expected, actual);
+    if (expected != null && actual != null) {
+      if (fieldName.equals("relatedMetrics")) {
+        TestUtils.assertEntityReferences(
+            (List<EntityReference>) expected, (List<EntityReference>) actual);
+      } else if (fieldName.equals("expression")) {
+        Expression expectedExpression = (Expression) expected;
+        Expression actualExpression = JsonUtils.readOrConvertValue(actual, Expression.class);
+        Assertions.assertEquals(expectedExpression.getCode(), actualExpression.getCode());
+        Assertions.assertEquals(expectedExpression.getLanguage(), actualExpression.getLanguage());
+      } else if (fieldName.equals("granularity")) {
+        Assertions.assertEquals(expected, MetricGranularity.valueOf(actual.toString()));
+      } else if (fieldName.equals("unitOfMeasurement")) {
+        Assertions.assertEquals(expected, MetricUnitOfMeasurement.valueOf(actual.toString()));
+      } else if (fieldName.equals("metricType")) {
+        Assertions.assertEquals(expected, MetricType.valueOf(actual.toString()));
+      } else {
+        assertCommonFieldChange(fieldName, expected, actual);
+      }
+    }
   }
 }
