@@ -22,56 +22,6 @@ export const visitProfilerTab = async (page: Page, table: TableClass) => {
   await page.click('[data-testid="profiler"]');
 };
 
-export const triggerTestSuitePipeline = async (data: {
-  page: Page;
-  apiContext: APIRequestContext;
-  table: TableClass;
-}) => {
-  const { page, apiContext, table } = data;
-  await visitProfilerTab(page, table);
-  const testCaseResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testCases?fields=*'
-  );
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
-  await testCaseResponse;
-
-  const pipelineResponse = page.waitForResponse(
-    '/api/v1/services/ingestionPipelines/*/pipelineStatus?startTs=*&endTs=*'
-  );
-  await page.click('[id*="tab-pipeline"]');
-  await pipelineResponse;
-
-  await page.click('[data-testid="more-actions"]');
-  await page.click(
-    '[data-testid="actions-dropdown"]:visible [data-testid="run-button"]'
-  );
-  // Wait for the run to complete
-  await page.waitForTimeout(2000);
-
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&testSuite=${table.testSuiteResponseData?.['fullyQualifiedName']}&pipelineType=TestSuite`
-          )
-          .then((res) => res.json());
-
-        return response.data?.[0]?.pipelineStatuses?.pipelineState;
-      },
-      {
-        // Custom expect message for reporting, optional.
-        message: 'Wait for the pipeline to be successful',
-        timeout: 60_000,
-        intervals: [5_000, 10_000],
-      }
-    )
-    .toBe('success');
-};
-
 export const acknowledgeTask = async (data: {
   testCase: string;
   page: Page;
@@ -132,4 +82,41 @@ export const assignIncident = async (data: {
       `[data-testid="${testCaseName}-status"] [data-testid="badge-container"]`
     )
   ).toContainText('Assigned');
+};
+
+export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
+  page: Page;
+  apiContext: APIRequestContext;
+  table: TableClass;
+  pipeline: { id: string };
+}) => {
+  const { page, apiContext, table, pipeline } = data;
+  // wait for 2s before the pipeline to be run
+  await page.waitForTimeout(2000);
+  await apiContext.post(
+    `/api/v1/services/ingestionPipelines/trigger/${pipeline.id}`
+  );
+
+  // Wait for the run to complete
+  await page.waitForTimeout(2000);
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext
+          .get(
+            `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&testSuite=${table.testSuiteResponseData?.['fullyQualifiedName']}&pipelineType=TestSuite`
+          )
+          .then((res) => res.json());
+
+        return response.data?.[0]?.pipelineStatuses?.pipelineState;
+      },
+      {
+        // Custom expect message for reporting, optional.
+        message: 'Wait for the pipeline to be successful',
+        timeout: 60_000,
+        intervals: [5_000, 10_000],
+      }
+    )
+    .toBe('success');
 };

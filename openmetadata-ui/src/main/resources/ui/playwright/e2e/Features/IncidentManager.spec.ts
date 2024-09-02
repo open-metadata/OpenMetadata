@@ -11,14 +11,22 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   descriptionBox,
+  getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
-import { acknowledgeTask, assignIncident } from '../../utils/incidentManager';
+import {
+  acknowledgeTask,
+  assignIncident,
+  triggerTestSuitePipelineAndWaitForSuccess,
+  visitProfilerTab,
+} from '../../utils/incidentManager';
+import { sidebarClick } from '../../utils/sidebar';
 
 const user1 = new UserClass();
 const user2 = new UserClass();
@@ -48,34 +56,12 @@ test.beforeAll(async ({ browser }) => {
   await apiContext.post(
     `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
   );
-  // wait for 2s before the pipeline to be run
-  await page.waitForTimeout(2000);
-  await apiContext.post(
-    `/api/v1/services/ingestionPipelines/trigger/${pipeline.id}`
-  );
-
-  // Wait for the run to complete
-  await page.waitForTimeout(2000);
-
-  await expect
-    .poll(
-      async () => {
-        const response = await apiContext
-          .get(
-            `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&testSuite=${table1.testSuiteResponseData?.['fullyQualifiedName']}&pipelineType=TestSuite`
-          )
-          .then((res) => res.json());
-
-        return response.data?.[0]?.pipelineStatuses?.pipelineState;
-      },
-      {
-        // Custom expect message for reporting, optional.
-        message: 'Wait for the pipeline to be successful',
-        timeout: 60_000,
-        intervals: [5_000, 10_000],
-      }
-    )
-    .toBe('success');
+  await triggerTestSuitePipelineAndWaitForSuccess({
+    page,
+    table: table1,
+    pipeline: { id: pipeline.id },
+    apiContext,
+  });
 
   for (const user of users) {
     await user.create(apiContext);
@@ -222,5 +208,179 @@ test('Basic Scenario', async ({ page }) => {
     );
     await page.click('.ant-modal-footer >> text=Submit');
     await updateIncident;
+  });
+});
+
+test('Resolving incident & re-run pipeline', async ({ page }) => {
+  const testCase = table1.testCasesResponseData[1];
+  const testCaseName = testCase?.['name'];
+  const pipeline = table1.testSuitePipelineResponseData[0];
+  const { apiContext } = await getApiContext(page);
+
+  await test.step("Acknowledge table test case's failure", async () => {
+    await acknowledgeTask({
+      page,
+      testCase: testCaseName,
+      table: table1,
+    });
+  });
+
+  await test.step('Resolve task from incident list page', async () => {
+    await visitProfilerTab(page, table1);
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases?fields=*'
+    );
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Data Quality')
+      .click();
+    await testCaseResponse;
+
+    await expect(
+      page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
+    ).toBeVisible();
+    await expect(page.getByTestId(`${testCaseName}-status`)).toContainText(
+      'Ack'
+    );
+
+    const incidentDetailsRes = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus?latest=true&startTs=*&endTs=*&limit=*'
+    );
+    await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+    await incidentDetailsRes;
+
+    await expect(
+      page.locator(`[data-testid="test-case-${testCaseName}"]`)
+    ).toBeVisible();
+
+    await page.click(
+      `[data-testid="${testCaseName}-status"] [data-testid="edit-resolution-icon"]`
+    );
+    await page.click(`[data-testid="test-case-resolution-status-type"]`);
+    await page.click(`[title="Resolved"]`);
+    await page.click('#testCaseResolutionStatusDetails_testCaseFailureReason');
+    await page.click('[title="Missing Data"]');
+    await page.click(descriptionBox);
+    await page.fill(descriptionBox, 'test');
+    const updateTestCaseIncidentStatus = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus'
+    );
+    await page.click('.ant-modal-footer >> text=Submit');
+    await updateTestCaseIncidentStatus;
+  });
+
+  await test.step('Task should be closed', async () => {
+    await visitProfilerTab(page, table1);
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases?fields=*'
+    );
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Data Quality')
+      .click();
+    await testCaseResponse;
+
+    await expect(
+      page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
+    ).toBeVisible();
+
+    await page.click(`[data-testid="${testCaseName}"] >> text=${testCaseName}`);
+    await page.click('[data-testid="incident"]');
+    await page.click('[data-testid="closed-task"]');
+    await page.waitForSelector('[data-testid="task-feed-card"]');
+
+    await expect(page.locator('[data-testid="task-tab"]')).toContainText(
+      'Resolved the Task.'
+    );
+  });
+
+  await test.step('Re-run pipeline', async () => {
+    await triggerTestSuitePipelineAndWaitForSuccess({
+      page,
+      table: table1,
+      pipeline: { id: pipeline?.['id'] },
+      apiContext,
+    });
+  });
+
+  await test.step('Verify open and closed task', async () => {
+    await acknowledgeTask({
+      page,
+      testCase: testCaseName,
+      table: table1,
+    });
+    await page.reload();
+
+    await page.click('[data-testid="incident"]');
+
+    await expect(page.locator(`[data-testid="open-task"]`)).toHaveText(
+      '1 Open'
+    );
+    await expect(page.locator(`[data-testid="closed-task"]`)).toHaveText(
+      '1 Closed'
+    );
+  });
+});
+
+test('Rerunning pipeline for an open incident', async ({ page }) => {
+  const testCase = table1.testCasesResponseData[2];
+  const testCaseName = testCase?.['name'];
+  const pipeline = table1.testSuitePipelineResponseData[0];
+  const assignee = {
+    name: user1.data.email.split('@')[0],
+    displayName: user1.getUserName(),
+  };
+  const { apiContext } = await getApiContext(page);
+
+  await test.step('Ack incident and verify open task', async () => {
+    await acknowledgeTask({
+      page,
+      testCase: testCaseName,
+      table: table1,
+    });
+
+    await page.reload();
+
+    await page.click('[data-testid="incident"]');
+
+    await expect(page.locator(`[data-testid="open-task"]`)).toHaveText(
+      '1 Open'
+    );
+  });
+
+  await test.step('Assign incident to user', async () => {
+    await assignIncident({
+      page,
+      testCaseName,
+      user: assignee,
+    });
+  });
+
+  await test.step('Re-run pipeline', async () => {
+    await triggerTestSuitePipelineAndWaitForSuccess({
+      page,
+      table: table1,
+      pipeline: { id: pipeline?.['id'] },
+      apiContext,
+    });
+  });
+
+  await test.step("Verify incident's status on DQ page", async () => {
+    await visitProfilerTab(page, table1);
+    const testCaseResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases?fields=*'
+    );
+    await page
+      .getByTestId('profiler-tab-left-panel')
+      .getByText('Data Quality')
+      .click();
+    await testCaseResponse;
+
+    await expect(
+      page.locator(`[data-testid="${testCaseName}"] .last-run-box.failed`)
+    ).toBeVisible();
+    await expect(page.getByTestId(`${testCaseName}-status`)).toContainText(
+      'Assigned'
+    );
   });
 });
