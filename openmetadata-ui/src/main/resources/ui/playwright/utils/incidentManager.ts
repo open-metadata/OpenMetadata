@@ -93,9 +93,15 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   const { page, apiContext, table, pipeline } = data;
   // wait for 2s before the pipeline to be run
   await page.waitForTimeout(2000);
-  await apiContext.post(
-    `/api/v1/services/ingestionPipelines/trigger/${pipeline.id}`
-  );
+  await apiContext
+    .post(`/api/v1/services/ingestionPipelines/trigger/${pipeline.id}`)
+    .then((res) => {
+      if (res.status() !== 200) {
+        return apiContext.post(
+          `/api/v1/services/ingestionPipelines/trigger/${pipeline.id}`
+        );
+      }
+    });
 
   // Wait for the run to complete
   await page.waitForTimeout(2000);
