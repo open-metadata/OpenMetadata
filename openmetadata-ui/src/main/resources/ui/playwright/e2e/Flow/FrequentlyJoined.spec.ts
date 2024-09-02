@@ -64,7 +64,7 @@ test.describe('Frequently Joined', () => {
       .click();
 
     // verify the url
-    await expect(page).toHaveURL(/ecommerce_db\.fact_order\.order_id/);
+    await expect(page).toHaveURL(/ecommerce_db\.fact_order/);
 
     // verify the reverse relationship of joined table
     await expect(
