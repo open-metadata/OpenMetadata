@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { visitUserProfilePage } from './common';
+import { visitOwnProfilePage } from './common';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
@@ -95,7 +95,7 @@ export const setUserDefaultPersona = async (
   page: Page,
   personaName: string
 ) => {
-  await visitUserProfilePage(page);
+  await visitOwnProfilePage(page);
 
   await page
     .locator(
