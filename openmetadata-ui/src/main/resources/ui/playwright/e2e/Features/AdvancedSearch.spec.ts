@@ -61,8 +61,8 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       'tags.tagFQN': 'PersonalData.Personal',
       'tier.tagFQN': 'Tier.Tier1',
       'service.displayName.keyword': table.service.name,
-      'database.name.keyword': table.database.name,
-      'databaseSchema.name.keyword': table.schema.name,
+      'database.displayName.keyword': table.database.name,
+      'databaseSchema.displayName.keyword': table.schema.name,
       'columns.name.keyword': 'email',
     };
 
