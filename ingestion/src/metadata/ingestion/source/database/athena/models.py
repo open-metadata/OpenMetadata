@@ -22,19 +22,19 @@ class QueryExecutionIdsResponse(BaseModel):
     QueryExecutionIds: Optional[List[str]] = None
 
 
-class Status(BaseModel):
+class AthenaStatus(BaseModel):
     State: Optional[str] = "FAILED"  # Default value
     SubmissionDateTime: Optional[datetime] = None
 
 
-class Statistics(BaseModel):
+class AthenaStatistics(BaseModel):
     TotalExecutionTimeInMillis: Optional[int] = None
 
 
 class AthenaQueryExecution(BaseModel):
     Query: Optional[str] = None
-    Statistics: Optional[Statistics] = None
-    Status: Optional[Status] = None
+    Statistics: Optional[AthenaStatistics] = None
+    Status: Optional[AthenaStatus] = None
 
 
 class AthenaQueryExecutionList(BaseModel):
