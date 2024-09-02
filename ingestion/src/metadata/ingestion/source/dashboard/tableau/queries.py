@@ -23,9 +23,15 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
     nodes {{
       id
       name
+      hasExtracts
       upstreamDatasources{{
         id
         name
+        description
+        hasExtracts
+        tags {{
+          name
+        }}
         fields {{
           id
           name
