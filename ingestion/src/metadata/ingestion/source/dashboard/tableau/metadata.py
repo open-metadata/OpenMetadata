@@ -151,11 +151,11 @@ class TableauSource(DashboardServiceSource):
     @staticmethod
     def _get_data_models_tags(dataModels: [DataSource]) -> Set[str]:
         """
-        Get the tags from the data model
+        Get the tags from the data model in the upstreamDatasources
         """
         tags = set()
         for data_model in dataModels:
-            # we fetch the tags only from the upstream data sources
+            # we fetch tags only from upstream data sources
             for upstream_source in data_model.upstreamDatasources:
                 for tag in upstream_source.tags:
                     tags.update(tag.name)
@@ -177,7 +177,7 @@ class TableauSource(DashboardServiceSource):
             _tags = {tag.label for tag in tags}
             logger.debug(f"Tags: {_tags}")
 
-            # we fetch tags from the data models upstream datasources
+            # retrieve tags from data models
             _data_models_tags = self._get_data_models_tags(dashboard_details.dataModels)
             logger.debug(f"Data Models Tags: {_data_models_tags}")
 
