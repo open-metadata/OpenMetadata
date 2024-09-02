@@ -1,18 +1,28 @@
 package org.openmetadata.service.resources.metrics;
 
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 
 import java.io.IOException;
 import java.util.Map;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateMetric;
+import org.openmetadata.schema.api.data.Expression;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.MetricExpressionLanguage;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricType;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -35,6 +45,25 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
 
     createMetric = createRequest("metric2", "", "", null);
     Metric2 = createEntity(createMetric, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void patch_MetricEntity() throws IOException {
+    // Create a new Metric with different fields
+    CreateMetric createRequest = createRequest("test_metric", "test description", "test owner", null);
+    Metric metric = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+    validateCreatedEntity(metric, createRequest, ADMIN_AUTH_HEADERS);
+    String origJson = JsonUtils.pojoToJson(metric);
+    //add expression and other elements
+    metric.withExpression(new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java))
+        .withGranularity(MetricGranularity.DAY).withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT)
+        .withMetricType(MetricType.AVERAGE);
+    ChangeDescription change = getChangeDescription(metric, MINOR_UPDATE);
+    fieldAdded(change, "expression", new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java));
+    fieldAdded(change, "granularity", MetricGranularity.DAY);
+    fieldAdded(change, "unitOfMeasurement", MetricUnitOfMeasurement.COUNT);
+    fieldAdded(change, "metricType", MetricType.AVERAGE);
+    metric = patchEntityAndCheck(metric, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Override

@@ -44,7 +44,8 @@
           "description": "This schema defines the type of the language used for Metric Formula's Code.",
           "type": "string"
         }
-      }
+      },
+      "additionalProperties": false
     },
     "metricType": {
       "javaType": "org.openmetadata.schema.type.MetricType",
