@@ -191,8 +191,7 @@ public class SystemResource {
   public Response sendTestEmail(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid EmailRequest emailRequest)
-      {
+      @Valid EmailRequest emailRequest) {
     if (nullOrEmpty(emailRequest.getEmail())) {
       throw new IllegalArgumentException("Email address is required.");
     }

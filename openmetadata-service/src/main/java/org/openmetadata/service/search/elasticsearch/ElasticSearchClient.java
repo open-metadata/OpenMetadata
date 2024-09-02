@@ -1844,7 +1844,7 @@ public class ElasticSearchClient implements SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(
             startTs,
@@ -1864,8 +1864,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartType)
-      throws ParseException {
+      DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     DataInsightAggregatorInterface processor =
         createDataAggregator(searchResponse, dataInsightChartType);
     return processor.process(dataInsightChartType);

@@ -230,7 +230,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private void performReindex(JobExecutionContext jobExecutionContext) {
     Map<String, Object> contextData = new HashMap<>();
     for (Source paginatedSource : paginatedSources) {
-      List<String> entityName = new ArrayList<>();
+      List<String> entityName;
       reCreateIndexes(paginatedSource.getEntityType());
       contextData.put(ENTITY_TYPE_KEY, paginatedSource.getEntityType());
       Object resultList;

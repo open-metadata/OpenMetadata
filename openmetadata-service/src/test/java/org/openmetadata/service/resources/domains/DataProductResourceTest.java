@@ -172,8 +172,7 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     EntityReference entityReference = new EntityReference().withId(rdnUUID);
     TableRepository entityRepository = (TableRepository) Entity.getEntityRepository(TABLE);
 
-    assertThatThrownBy(
-            () -> entityRepository.validateDataProducts(List.of(entityReference)))
+    assertThatThrownBy(() -> entityRepository.validateDataProducts(List.of(entityReference)))
         .isInstanceOf(EntityNotFoundException.class)
         .hasMessage(String.format("dataProduct instance for %s not found", rdnUUID));
   }

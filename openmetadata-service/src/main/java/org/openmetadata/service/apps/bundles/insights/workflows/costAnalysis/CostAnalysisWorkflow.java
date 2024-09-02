@@ -49,14 +49,12 @@ public class CostAnalysisWorkflow {
 
   public record CostAnalysisTableData(
       Table table, Optional<LifeCycle> oLifeCycle, Optional<Double> oSize) {}
-  ;
 
   public record AggregatedCostAnalysisData(
       Double totalSize,
       Double totalCount,
       DataAssetMetrics unusedDataAssets,
       DataAssetMetrics frequentlyUsedDataAssets) {}
-  ;
 
   @Getter private DatabaseServiceTablesProcessor databaseServiceTablesProcessor;
   @Getter private RawCostAnalysisReportDataProcessor rawCostAnalysisReportDataProcessor;

@@ -348,7 +348,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             throw new AssertionError(ex);
           }
         },
-            APP_TRIGGER_RETRY);
+        APP_TRIGGER_RETRY);
     assertEventually(
         "appSuccess",
         () -> {
@@ -356,7 +356,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
               .getStatus()
               .equals(AppRunRecord.Status.SUCCESS);
         },
-            APP_TRIGGER_RETRY);
+        APP_TRIGGER_RETRY);
   }
 
   @Test

@@ -1280,8 +1280,8 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertEquals(term1.getChildren().size(), children.size());
 
     for (GlossaryTerm responseChild : children) {
-      GlossaryTerm child = responseChild;
-      assertTrue(child.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
+      assertTrue(
+          responseChild.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
     }
 
     GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);

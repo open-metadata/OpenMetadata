@@ -2225,8 +2225,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_domainInheritance(TestInfo test)
-      throws IOException {
+  void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
         dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
@@ -2407,8 +2406,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityWithoutDescriptionFromSearch(TestInfo test)
-      throws IOException {
+  void get_entityWithoutDescriptionFromSearch(TestInfo test) throws IOException {
     // Create Database
     CreateDatabase createDatabase = dbTest.createRequest(getEntityName(test));
     Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);

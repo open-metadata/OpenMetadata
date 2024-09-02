@@ -38,7 +38,7 @@ public class WebAnalyticsWorkflow {
   private final Long startTimestamp;
   private final Long endTimestamp;
   private final int batchSize;
-  private final static int WEB_ANALYTIC_EVENTS_RETENTION_DAYS = 7;
+  private static final int WEB_ANALYTIC_EVENTS_RETENTION_DAYS = 7;
   private final List<PaginatedWebAnalyticEventDataSource> sources = new ArrayList<>();
   private WebAnalyticsEntityViewProcessor webAnalyticsEntityViewProcessor;
   private WebAnalyticsUserActivityProcessor webAnalyticsUserActivityProcessor;
@@ -190,8 +190,7 @@ public class WebAnalyticsWorkflow {
 
   private Optional<String> processEntityViewData(
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData,
-      Map<String, Object> contextData)
-      {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(
@@ -240,8 +239,7 @@ public class WebAnalyticsWorkflow {
   private Optional<String> processUserActivityData(
       Map<UUID, UserActivityData> userActivityData,
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData,
-      Map<String, Object> contextData)
-      {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(
@@ -316,7 +314,8 @@ public class WebAnalyticsWorkflow {
     for (WebAnalyticEventType eventType : WebAnalyticEventType.values()) {
       ((WebAnalyticEventRepository) Entity.getEntityRepository(Entity.WEB_ANALYTIC_EVENT))
           .deleteWebAnalyticEventData(
-              eventType, TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
+              eventType,
+              TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
     }
   }
 

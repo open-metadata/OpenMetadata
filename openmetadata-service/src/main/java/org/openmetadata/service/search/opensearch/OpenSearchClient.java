@@ -34,7 +34,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1833,7 +1832,7 @@ public class OpenSearchClient implements SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(
             startTs,

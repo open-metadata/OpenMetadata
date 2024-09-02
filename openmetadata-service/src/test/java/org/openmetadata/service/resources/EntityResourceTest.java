@@ -528,9 +528,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   public final K createRequest(TestInfo test, int index) {
-    K createRequest =
-        createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null);
-    return createRequest;
+    return createRequest(getEntityName(test, index)).withDescription("").withDisplayName(null);
   }
 
   public final K createRequest(
@@ -808,8 +806,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   protected void validateEntityListFromSearchWithPagination(
-      Map<String, String> queryParams, Integer maxEntities)
-      throws IOException {
+      Map<String, String> queryParams, Integer maxEntities) throws IOException {
     // List all entities and use it for checking pagination
     Random rand = new Random();
 
@@ -825,8 +822,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
       ResultList<T> forwardPage;
       ResultList<T> backwardPage;
-      int offset = 0;
-      int cumEntityCount = 0;
+      int offset;
+      int cumEntityCount;
       // List entity with "limit" set from 1 to maxEntities size with random jumps
       for (int limit = 1; limit <= maxEntities; limit += rand.nextInt(5) + 1) {
         offset = 0;
@@ -2250,7 +2247,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     Assumptions.assumeTrue(supportsSearchIndex);
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
     EntityReference entityReference = getEntityReference(entity);
-    String desc = "";
+    String desc;
     String original = JsonUtils.pojoToJson(entity);
     entity.setDescription("update description");
     entity = patchEntity(entity.getId(), original, entity, ADMIN_AUTH_HEADERS);
@@ -2264,7 +2261,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   }
 
   @Test
-  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test) throws HttpResponseException {
+  protected void deleteTagAndCheckRelationshipsInSearch(TestInfo test)
+      throws HttpResponseException {
     Assumptions.assumeTrue(supportsSearchIndex && supportsTags);
     // create an entity
     T entity = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);

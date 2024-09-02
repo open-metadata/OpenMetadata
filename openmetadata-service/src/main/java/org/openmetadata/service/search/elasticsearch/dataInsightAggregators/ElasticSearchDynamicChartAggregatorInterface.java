@@ -105,7 +105,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
     List<List<DataInsightCustomChartResult>> results =
         processAggregationsInternal(aggregations, group);
     for (List<DataInsightCustomChartResult> result : results) {
-      String formulaCopy = new String(formula);
+      String formulaCopy = formula;
       if (holder.size() != result.size()) {
         continue;
       }
@@ -241,8 +241,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedValueCount parsedValueCount = aggregation;
-    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    Double value = Double.valueOf((double) aggregation.getValue());
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
           new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
@@ -255,8 +254,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedCardinality parsedValueCount = aggregation;
-    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    Double value = Double.valueOf((double) aggregation.getValue());
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
           new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
@@ -269,8 +267,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedSingleValueNumericMetricsAggregation parsedValueCount = aggregation;
-    Double value = parsedValueCount.value();
+    Double value = aggregation.value();
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
           new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
@@ -283,8 +280,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedFilter parsedValueCount = aggregation;
-    for (Aggregation agg : parsedValueCount.getAggregations().asList()) {
+    for (Aggregation agg : aggregation.getAggregations().asList()) {
       addByAggregationType(agg, diChartResults, day, group);
     }
   }

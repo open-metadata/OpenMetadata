@@ -210,8 +210,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     contextData.put(PREVIOUS_TOTAL_ASSET_COUNT, previousCount);
     contextData.put(CURRENT_TOTAL_ASSET_COUNT, currentCount);
 
-    dateWithCount.forEach(
-        (key, value) -> dateMap.put(key, value.intValue()));
+    dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     if (previousCount == 0D) {
@@ -251,8 +250,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     Double previousTotalAssetCount = (double) contextData.get(PREVIOUS_TOTAL_ASSET_COUNT);
     Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
-    dateWithCount.forEach(
-        (key, value) -> dateMap.put(key, value.intValue()));
+    dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     // Previous Percent
@@ -300,8 +298,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     Double previousTotalAssetCount = (double) contextData.get(PREVIOUS_TOTAL_ASSET_COUNT);
     Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
-    dateWithCount.forEach(
-        (key, value) -> dateMap.put(key, value.intValue()));
+    dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     // Previous Percent
@@ -347,8 +344,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     Double previousTotalAssetCount = (double) contextData.get(PREVIOUS_TOTAL_ASSET_COUNT);
     Double currentTotalAssetCount = (double) contextData.get(CURRENT_TOTAL_ASSET_COUNT);
 
-    dateWithCount.forEach(
-        (key, value) -> dateMap.put(key, value.intValue()));
+    dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
     // Previous Percent

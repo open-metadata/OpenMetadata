@@ -261,11 +261,11 @@ public final class SearchIndexUtils {
           String[] kvPairs = part.split("=");
           if (kvPairs[0].equals("field")) {
             aggregationString
-                    .append("\"")
-                    .append(kvPairs[0])
-                    .append("\":\"")
-                    .append(kvPairs[1])
-                    .append("\"");
+                .append("\"")
+                .append(kvPairs[0])
+                .append("\":\"")
+                .append(kvPairs[1])
+                .append("\"");
             aggregationString.append("}");
           } else {
             aggregationString.append("\"").append(kvPairs[1]).append("\":{");

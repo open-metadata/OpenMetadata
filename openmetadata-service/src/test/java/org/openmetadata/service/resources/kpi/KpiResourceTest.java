@@ -121,11 +121,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
 
   @Override
   public CreateKpiRequest createRequest(String name) {
-    try {
-      this.setupKpi();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    this.setupKpi();
     return new CreateKpiRequest()
         .withName(name)
         .withDescription(name)
