@@ -61,12 +61,7 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { TAG_START_WITH } from '../constants/Tag.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import {
-  AssetsType,
-  EntityTabs,
-  EntityType,
-  FqnPart,
-} from '../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -1218,12 +1213,6 @@ export const isColumnTestSupported = (dataType: string) => {
 
 export const getTitleCase = (text?: string) => {
   return text ? startCase(text) : '';
-};
-
-export const filterEntityAssets = (data: EntityReference[]) => {
-  const includedEntity = Object.values(AssetsType);
-
-  return data.filter((d) => includedEntity.includes(d.type as AssetsType));
 };
 
 export const getResourceEntityFromEntityType = (entityType: string) => {

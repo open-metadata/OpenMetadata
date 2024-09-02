@@ -12,19 +12,19 @@
  */
 import { test } from '@playwright/test';
 import { toLower } from 'lodash';
-import { ContainerClass } from '../../support/entity/ContainerClass';
-import { DashboardClass } from '../../support/entity/DashboardClass';
-import { MlModelClass } from '../../support/entity/MlModelClass';
-import { PipelineClass } from '../../support/entity/PipelineClass';
-import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
-import { TableClass } from '../../support/entity/TableClass';
-import { TopicClass } from '../../support/entity/TopicClass';
+import { ContainerClass } from '../../../support/entity/ContainerClass';
+import { DashboardClass } from '../../../support/entity/DashboardClass';
+import { MlModelClass } from '../../../support/entity/MlModelClass';
+import { PipelineClass } from '../../../support/entity/PipelineClass';
+import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
+import { TableClass } from '../../../support/entity/TableClass';
+import { TopicClass } from '../../../support/entity/TopicClass';
 import {
   createNewPage,
   getEntityTypeSearchIndexMapping,
   redirectToHomePage,
-} from '../../utils/common';
-import { checkDataAssetWidget } from '../../utils/entity';
+} from '../../../utils/common';
+import { checkDataAssetWidget } from '../../../utils/entity';
 
 const entities = [
   TableClass,
