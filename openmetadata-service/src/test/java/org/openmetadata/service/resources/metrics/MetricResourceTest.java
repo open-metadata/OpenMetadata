@@ -68,7 +68,7 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
             : getEntity(entity.getId(), fields, ADMIN_AUTH_HEADERS);
     assertListNull(entity.getOwners(), entity.getTags());
 
-    fields = "owners,tags";
+    fields = "owners,followers,tags";
     entity =
         byName
             ? getEntityByName(entity.getFullyQualifiedName(), fields, ADMIN_AUTH_HEADERS)

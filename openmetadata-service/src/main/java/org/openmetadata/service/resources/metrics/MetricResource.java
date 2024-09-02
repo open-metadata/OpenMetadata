@@ -72,7 +72,7 @@ import org.openmetadata.service.util.ResultList;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "metrics")
 public class MetricResource extends EntityResource<Metric, MetricRepository> {
-  public static final String COLLECTION_PATH = "/v1/metrics/";
+  public static final String COLLECTION_PATH = "v1/metrics/";
   static final String FIELDS = "owners,relatedMetrics,followers,tags,extension,domain,dataProducts";
 
   public MetricResource(Authorizer authorizer, Limits limits) {
@@ -121,8 +121,14 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
               description = "Returns list of metrics after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
-    ListFilter filter = new ListFilter();
+          String after,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -501,7 +507,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Successfully restored the Metric. ",
+            description = "Successfully restored the Metric.",
             content =
                 @Content(
                     mediaType = "application/json",

@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.METRIC;
 
 import java.util.Comparator;
@@ -53,7 +52,6 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void setFields(Metric metric, EntityUtil.Fields fields) {
-    metric.setFollowers(fields.contains(FIELD_FOLLOWERS) ? getFollowers(metric) : null);
     metric.setRelatedMetrics(fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : null);
   }
 
