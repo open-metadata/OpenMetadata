@@ -38,7 +38,9 @@ export const sidebarClick = async (page: Page, id: string) => {
 
 export const settingClick = async (
   page: Page,
-  dataTestId: string,
+  dataTestId:
+    | keyof typeof SETTINGS_OPTIONS_PATH
+    | keyof typeof SETTING_CUSTOM_PROPERTIES_PATH,
   isCustomProperty?: boolean
 ) => {
   let paths = SETTINGS_OPTIONS_PATH[dataTestId];

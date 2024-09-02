@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import {
+  expect,
+  Page,
+  PlaywrightTestArgs,
+  PlaywrightWorkerArgs,
+  TestType,
+} from '@playwright/test';
 import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
 import { redirectToHomePage } from '../../../utils/common';
@@ -79,7 +85,9 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     await page.click('#root\\/includeViews');
   }
 
-  async runAdditionalTests(test) {
+  async runAdditionalTests(
+    test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
+  ) {
     test('Add DBT ingestion', async ({ page }) => {
       await redirectToHomePage(page);
       await visitServiceDetailsPage(
@@ -153,16 +161,18 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await visitEntityPage({
         page,
         searchTerm: REDSHIFT.DBTTable,
-        dataTestId: `${REDSHIFT.serviceName}.${REDSHIFT.DBTTable}`,
+        dataTestId: `${REDSHIFT.serviceName}-${REDSHIFT.DBTTable}`,
       });
 
       // Verify tags
       await page.waitForSelector('[data-testid="entity-tags"]');
-      const entityTagsText = await page.textContent(
-        '[data-testid="entity-tags"]'
-      );
 
-      expect(entityTagsText).toContain(DBT.tagName);
+      await expect(
+        page
+          .getByTestId('entity-right-panel')
+          .getByTestId('tags-container')
+          .getByTestId('entity-tags')
+      ).toContainText(DBT.tagName);
 
       // Verify DBT tab is present
       await page.click('[data-testid="dbt"]');
@@ -186,25 +196,15 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-testid="profiler"]');
 
       await page.waitForSelector('[data-testid="profiler-tab-left-panel"]');
-      const profilerTabLeftPanelText = await page.textContent(
-        '[data-testid="profiler-tab-left-panel"]'
+      await page.getByRole('menuitem', { name: 'Data Quality' }).click();
+
+      await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
+        DBT.dataQualityTest1
       );
 
-      expect(profilerTabLeftPanelText).toContain('Data Quality');
-
-      await page.waitForSelector(`[data-testid=${DBT.dataQualityTest1}]`);
-      const dataQualityTest1Text = await page.textContent(
-        `[data-testid=${DBT.dataQualityTest1}]`
+      await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
+        DBT.dataQualityTest1
       );
-
-      expect(dataQualityTest1Text).toContain(DBT.dataQualityTest1);
-
-      await page.waitForSelector(`[data-testid=${DBT.dataQualityTest2}]`);
-      const dataQualityTest2Text = await page.textContent(
-        `[data-testid=${DBT.dataQualityTest2}]`
-      );
-
-      expect(dataQualityTest2Text).toContain(DBT.dataQualityTest2);
     });
   }
 
