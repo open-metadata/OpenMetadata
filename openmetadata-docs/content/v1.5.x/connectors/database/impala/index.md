@@ -15,8 +15,8 @@ In this section, we provide guides and references to use the Impala connector.
 
 Configure and schedule Impala metadata and profiler workflows from the OpenMetadata UI:
 - [Metadata Ingestion](#metadata-ingestion)
-- [Data Profiler](/connectors/ingestion/workflows/profiler)
-- [Data Quality](/connectors/ingestion/workflows/data-quality)
+- [Data Profiler](/how-to-guides/data-quality-observability/profiler/workflow)
+- [Data Quality](/how-to-guides/data-quality-observability/quality)
 - [dbt Integration](/connectors/ingestion/workflows/dbt)
 - [Enable Security](#securing-impala-connection-with-ssl-in-openmetadata)
 
