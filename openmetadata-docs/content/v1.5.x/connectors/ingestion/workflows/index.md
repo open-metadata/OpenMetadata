@@ -40,14 +40,14 @@ Configure dbt metadata
 {%inlineCallout
   icon="fit_screen"
   bold="Data Profiler"
-  href="/connectors/ingestion/workflows/profiler"%}
+  href="/how-to-guides/data-quality-observability/profiler/workflow"%}
 Compute metrics and ingest sample data.
 {%/inlineCallout%}
 
 {%inlineCallout
   icon="fit_screen"
   bold="Data Quality"
-  href="/connectors/ingestion/workflows/data-quality"%}
+  href="/how-to-guides/data-quality-observability/quality"%}
 Monitor your data and avoid surprises.
 {%/inlineCallout%}
 
