@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Locator, Page } from '@playwright/test';
+import { clickOutside } from './common';
 
 type EntityFields = {
   id: string;
@@ -184,6 +185,8 @@ export const fillRule = async (
         .locator(`.ant-select-dropdown [title="${searchData}"]`)
         .click();
     }
+
+    await clickOutside(page);
   }
 };
 
@@ -359,7 +362,7 @@ export const verifyAllConditions = async (
   }
 };
 
-export const checkAddRuleWithOperator = async (
+export const checkAddRuleOrGroupWithOperator = async (
   page,
   {
     field,
@@ -375,7 +378,8 @@ export const checkAddRuleWithOperator = async (
     condition2: string;
     searchCriteria1: string;
     searchCriteria2: string;
-  }
+  },
+  isGroupTest = false
 ) => {
   await showAdvancedSearchDialog(page);
   await fillRule(page, {
@@ -385,7 +389,11 @@ export const checkAddRuleWithOperator = async (
     index: 1,
   });
 
-  await page.getByTestId('advanced-search-add-rule').nth(1).click();
+  if (!isGroupTest) {
+    await page.getByTestId('advanced-search-add-rule').nth(1).click();
+  } else {
+    await page.getByTestId('advanced-search-add-group').first().click();
+  }
 
   await fillRule(page, {
     condition: condition2,
@@ -407,7 +415,6 @@ export const checkAddRuleWithOperator = async (
   await searchRes;
   await searchRes.then(async (res) => {
     await res.json().then(async (json) => {
-      // await verifyResult(JSON.stringify(json.hits.hits));
       if (field.id !== 'Column') {
         if (operator === 'Or') {
           await expect(JSON.stringify(json)).toContain(searchCriteria1);
@@ -419,4 +426,46 @@ export const checkAddRuleWithOperator = async (
       }
     });
   });
+};
+
+export const runRuleGroupTests = async (
+  page: Page,
+  field: EntityFields,
+  operator: string,
+  isGroupTest: boolean,
+  searchCriteria: Record<string, string[]>
+) => {
+  const searchCriteria1 = searchCriteria[field.name][0];
+  const searchCriteria2 = searchCriteria[field.name][1];
+
+  const testCases = [
+    {
+      condition1: CONDITIONS_MUST.equalTo.name,
+      condition2: CONDITIONS_MUST_NOT.notEqualTo.name,
+    },
+    {
+      condition1: CONDITIONS_MUST.contains.name,
+      condition2: CONDITIONS_MUST_NOT.notContains.name,
+    },
+    {
+      condition1: CONDITIONS_MUST.anyIn.name,
+      condition2: CONDITIONS_MUST_NOT.notIn.name,
+    },
+  ];
+
+  for (const { condition1, condition2 } of testCases) {
+    await checkAddRuleOrGroupWithOperator(
+      page,
+      {
+        field,
+        operator,
+        condition1,
+        condition2,
+        searchCriteria1,
+        searchCriteria2,
+      },
+      isGroupTest
+    );
+    await page.getByTestId('clear-filters').click();
+  }
 };

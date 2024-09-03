@@ -16,11 +16,9 @@ import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
-  checkAddRuleWithOperator,
-  CONDITIONS_MUST,
-  CONDITIONS_MUST_NOT,
   FIELDS,
   OPERATOR,
+  runRuleGroupTests,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -130,47 +128,24 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     });
   });
 
-  // Rule based search
   Object.values(OPERATOR).forEach(({ name: operator }) => {
     FIELDS.forEach((field) => {
-      test(`Verify Add Rule functionality for field ${field.id} with ${operator} operator`, async ({
+      // Rule based search
+      test(`Verify Rule functionality for field ${field.id} with ${operator} operator`, async ({
         page,
       }) => {
-        const searchCriteria1 = searchCriteria[field.name][0];
-        const searchCriteria2 = searchCriteria[field.name][1];
-
         test.slow(true);
 
-        await checkAddRuleWithOperator(page, {
-          field,
-          operator,
-          condition1: CONDITIONS_MUST.equalTo.name,
-          condition2: CONDITIONS_MUST_NOT.notEqualTo.name,
-          searchCriteria1,
-          searchCriteria2,
-        });
+        await runRuleGroupTests(page, field, operator, false, searchCriteria);
+      });
 
-        await page.getByTestId('clear-filters').click();
+      // Group based search
+      test(`Verify Group functionality for field ${field.id} with ${operator} operator`, async ({
+        page,
+      }) => {
+        test.slow(true);
 
-        await checkAddRuleWithOperator(page, {
-          field,
-          operator,
-          condition1: CONDITIONS_MUST.contains.name,
-          condition2: CONDITIONS_MUST_NOT.notContains.name,
-          searchCriteria1,
-          searchCriteria2,
-        });
-
-        await page.getByTestId('clear-filters').click();
-
-        await checkAddRuleWithOperator(page, {
-          field,
-          operator,
-          condition1: CONDITIONS_MUST.anyIn.name,
-          condition2: CONDITIONS_MUST_NOT.notIn.name,
-          searchCriteria1,
-          searchCriteria2,
-        });
+        await runRuleGroupTests(page, field, operator, true, searchCriteria);
       });
     });
   });
