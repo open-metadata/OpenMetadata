@@ -154,11 +154,15 @@ class TableauSource(DashboardServiceSource):
         Get the tags from the data model in the upstreamDatasources
         """
         tags = set()
-        for data_model in dataModels:
-            # we fetch tags only from upstream data sources
-            for upstream_source in data_model.upstreamDatasources:
-                for tag in upstream_source.tags:
-                    tags.update(tag.name)
+        try:
+            for data_model in dataModels:
+                # tags seems to be available for upstreamDatasources only, not for dataModels
+                for upstream_source in data_model.upstreamDatasources or []:
+                    for tag in upstream_source.tags:
+                        tags.add(tag.name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching tags from data models: {exc}")
 
         return tags
 
@@ -175,11 +179,8 @@ class TableauSource(DashboardServiceSource):
                     tags.update(elem.tags)
 
             _tags = {tag.label for tag in tags}
-            logger.debug(f"Tags: {_tags}")
-
             # retrieve tags from data models
             _data_models_tags = self._get_data_models_tags(dashboard_details.dataModels)
-            logger.debug(f"Data Models Tags: {_data_models_tags}")
 
             _all_tags = _tags.union(_data_models_tags)
 
