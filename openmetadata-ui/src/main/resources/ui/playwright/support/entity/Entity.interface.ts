@@ -37,6 +37,7 @@ export enum EntityTypeEndpoint {
   User = 'users',
   API_COLLECTION = 'apiCollections',
   API_ENDPOINT = 'apiEndpoints',
+  DATA_PRODUCT = 'dataProducts',
 }
 
 export type EntityDataType = {
@@ -62,4 +63,10 @@ export enum ENTITY_PATH {
   'dashboard/datamodels' = 'dashboardDataModel',
   'apiCollections' = 'apiCollection',
   'apiEndpoints' = 'apiEndpoint',
+  'dataProducts' = 'dataProduct',
 }
+
+export type TestCaseData = {
+  parameterValues: unknown[];
+  testDefinition: string;
+};

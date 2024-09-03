@@ -100,7 +100,7 @@ To update the `Derby` information. More information about this in a great [SO th
 
 - You can find all supported configurations [here](https://spark.apache.org/docs/latest/configuration.html)
 - If you need further information regarding the Hive metastore, you can find
-  it [here](https://spark.apache.org/docs/3.0.0-preview/sql-data-sources-hive-tables.html), and in The Internals of
+  it [here](https://spark.apache.org/docs/latest/sql-data-sources-hive-tables.html), and in The Internals of
   Spark SQL [book](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html).
 
 
