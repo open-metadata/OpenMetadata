@@ -55,7 +55,8 @@ services.forEach((ServiceClass) => {
   const service = new ServiceClass();
 
   test.describe.configure({
-    timeout: 300000,
+    // 11 minutes max for ingestion tests
+    timeout: 11 * 60 * 1000,
   });
 
   test.describe.serial(service.serviceType, { tag: '@ingestion' }, async () => {

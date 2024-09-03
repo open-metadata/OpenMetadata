@@ -221,20 +221,35 @@ class ServiceBaseClass {
     // Queued status are not stored in DB. cc: @ulixius9
     await page.waitForTimeout(2000);
 
+    const response = await apiContext
+      .get(
+        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+          this.serviceName
+        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
+          this.category
+        )}`
+      )
+      .then((res) => res.json());
+
+    const workflowData = response.data.filter(
+      (d) => d.pipelineType === ingestionType
+    )[0];
+
+    const dateNow = Date.now();
+    const oneHourBefore = dateNow - 60 * 60 * 1000;
+
     await expect
       .poll(
         async () => {
           const response = await apiContext
             .get(
-              `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
-                this.serviceName
-              }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
-                this.category
-              )}`
+              `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+                workflowData.fullyQualifiedName
+              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${dateNow}`
             )
             .then((res) => res.json());
 
-          return response.data[0]?.pipelineStatuses?.pipelineState;
+          return response.data[0].pipelineState;
         },
         {
           // Custom expect message for reporting, optional.
