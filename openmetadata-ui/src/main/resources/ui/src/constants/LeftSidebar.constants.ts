@@ -105,6 +105,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         icon: ClassificationIcon,
         dataTestId: `app-bar-item-${SidebarItem.TAGS}`,
       },
+      {
+        key: ROUTES.METRICS,
+        label: i18next.t('label.metric-plural'),
+        redirect_url: ROUTES.METRICS,
+        icon: ClassificationIcon,
+        dataTestId: `app-bar-item-${SidebarItem.METRICS}`,
+      },
     ],
   },
 ];

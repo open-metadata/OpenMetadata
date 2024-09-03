@@ -72,6 +72,7 @@ export enum EntityType {
   API_SERVICE = 'apiService',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
+  METRIC = 'metric',
 }
 
 export enum EntityLineageDirection {

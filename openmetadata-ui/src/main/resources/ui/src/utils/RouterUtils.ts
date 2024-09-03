@@ -609,3 +609,15 @@ export const getNotificationAlertDetailsPath = (fqn: string) => {
 
   return path;
 };
+
+export const getMetricDetailsPath = (fqn: string, tab?: string) => {
+  let path = tab ? ROUTES.METRIC_DETAILS_WITH_TAB : ROUTES.METRIC_DETAILS;
+
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  if (tab) {
+    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
+  }
+
+  return path;
+};

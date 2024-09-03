@@ -254,6 +254,12 @@ const AddObservabilityPage = withSuspenseFallback(
   )
 );
 
+const MetricListPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/MetricsPage/MetricListPage/MetricListPage')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -489,6 +495,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlossaryRouter}
         path={['/glossary', '/glossary-term']}
       />
+      <Route exact component={MetricListPage} path={ROUTES.METRICS} />
       <Route component={SettingsRouter} path="/settings" />
       <Route component={DomainRouter} path="/domain" />
 

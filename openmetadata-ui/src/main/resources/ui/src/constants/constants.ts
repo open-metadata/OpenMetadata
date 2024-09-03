@@ -283,6 +283,14 @@ export const ROUTES = {
   NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,
   NOTIFICATION_ALERT_DETAILS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/alert/${PLACEHOLDER_ROUTE_FQN}`,
   EDIT_NOTIFICATION_ALERTS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}/${GlobalSettingOptions.EDIT_NOTIFICATION}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Metric Entity
+  METRICS: '/metrics',
+  METRIC_DETAILS: `/metrics/${PLACEHOLDER_ROUTE_FQN}`,
+  METRIC_DETAILS_WITH_TAB: `/metrics/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
+  METRIC_VERSION: `/metrics/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
+  ADD_METRIC: '/metrics/add-metric',
+  EDIT_METRIC: `/metrics/edit-metric/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
