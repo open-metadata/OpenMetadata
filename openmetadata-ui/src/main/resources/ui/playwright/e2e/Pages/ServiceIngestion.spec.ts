@@ -26,7 +26,7 @@ import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { INVALID_NAMES, redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
+import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const services = [
   S3IngestionClass,
@@ -46,7 +46,10 @@ if (process.env.PLAYWRIGHT_IS_OSS) {
 }
 
 // use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json', trace: 'off' });
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+});
 
 services.forEach((ServiceClass) => {
   const service = new ServiceClass();
@@ -58,7 +61,10 @@ services.forEach((ServiceClass) => {
   test.describe.serial(service.serviceType, { tag: '@ingestion' }, async () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
       await redirectToHomePage(page);
-      await settingClick(page, GlobalSettingOptions.DATABASES);
+      await settingClick(
+        page,
+        service.category as unknown as SettingOptionsType
+      );
     });
 
     test(`Create & Ingest ${service.serviceType} service`, async ({ page }) => {
@@ -78,7 +84,7 @@ services.forEach((ServiceClass) => {
     if (
       [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
     ) {
-      test.describe(`Service specific tests`, async () => {
+      test.describe.serial(`Service specific tests`, async () => {
         await service.runAdditionalTests(test);
       });
     }
