@@ -20,6 +20,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_WITH_PARENT_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.SOFT_DELETE_RESTORE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_ADDED_DELETE_GLOSSARY_TAGS;
@@ -607,6 +608,22 @@ public class SearchRepository {
           new ImmutablePair<>(
               REMOVE_TAGS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+      case Entity.CLASSIFICATION, Entity.GLOSSARY -> {
+        // Determine the tag source based on the entity type
+        String tagSource = entityType.equals(Entity.CLASSIFICATION) ? "Classification" : "Glossary";
+        searchClient.updateChildren(
+            GLOBAL_SEARCH_ALIAS,
+            new ImmutablePair<>("tags.source", tagSource),
+            new ImmutablePair<>(
+                REMOVE_TAGS_WITH_PARENT_SCRIPT,
+                Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+
+        // Delete tags and glossary terms in their particular indexes(here- tag_search_index &
+        // glossary_term_search_index) based on the entity type and document ID
+        searchClient.deleteEntityByFields(
+            indexMapping.getChildAliases(clusterAlias),
+            List.of(new ImmutablePair<>(entityType + ".id", docId)));
+      }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getExecutable())) {
