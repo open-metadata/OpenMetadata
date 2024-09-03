@@ -55,7 +55,8 @@
           "testCaseResolutionStatus",
           "apiService",
           "apiEndpoint",
-          "apiCollection"
+          "apiCollection",
+          "metric"
         ]
       },
       "default": ["all"],
