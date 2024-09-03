@@ -58,6 +58,14 @@ class TableauTag(BaseModel):
     label: str
 
 
+class TableauDataModelTag(BaseModel):
+    """
+    Aux class for Tag object for Tableau Data Model
+    """
+
+    name: str
+
+
 class TableauOwner(TableauBaseModel):
     """
     Aux class for Owner object of the tableau_api_lib response
@@ -121,6 +129,8 @@ class UpstreamTable(BaseModel):
 class DataSource(BaseModel):
     id: str
     name: Optional[str] = None
+    description: Optional[str] = None
+    tags: Optional[List[TableauDataModelTag]] = []
     fields: Optional[List[DatasourceField]] = None
     upstreamTables: Optional[List[UpstreamTable]] = None
     upstreamDatasources: Optional[List["DataSource"]] = None
