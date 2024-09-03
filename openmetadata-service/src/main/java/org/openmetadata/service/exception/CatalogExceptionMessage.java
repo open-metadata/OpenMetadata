@@ -219,6 +219,13 @@ public final class CatalogExceptionMessage {
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
   }
 
+  public static String domainPermissionNotAllowed(
+      String user, String domainName, List<MetadataOperation> operations) {
+    return String.format(
+        "Principal: CatalogPrincipal{name='%s'} does not belong to domain %s. to perform the %s ",
+        user, domainName, operations);
+  }
+
   public static String taskOperationNotAllowed(String user, String operations) {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} operations %s not allowed", user, operations);
@@ -271,6 +278,14 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Entity of type %s can't be the owner. Only Team of type Group or a User can own entities.",
         entityType);
+  }
+
+  public static String onlyOneTeamAllowed() {
+    return "Only One Team is allowed to own Data Assets.";
+  }
+
+  public static String noTeamAndUserComboAllowed() {
+    return "Data Assets can have up to 5 users or a Team but not both as owners.";
   }
 
   public static String failedToParse(String message) {

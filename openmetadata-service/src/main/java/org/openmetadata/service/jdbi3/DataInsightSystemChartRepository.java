@@ -18,10 +18,10 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   private static final SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   public static final String TIMESTAMP_FIELD = "@timestamp";
 
-  public static final String DI_SEARCH_INDEX = "di-data-assets";
+  public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
   public static final String FORMULA_FUNC_REGEX =
-      "\\b(count|sum|min|max|avg)+\\(k='([^']*)',?\\s*(q='([^']*)')?\\)?";
+      "\\b(count|sum|min|max|avg)+\\((k='([^']*)')?,?\\s*(q='([^']*)')?\\)?";
 
   public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\)\s]+";
 
@@ -75,7 +75,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   }
 
   public Map<String, DataInsightCustomChartResultList> listChartData(
-      String chartNames, long startTimestamp, long endTimestamp) throws IOException {
+      String chartNames, long startTimestamp, long endTimestamp, String filter) throws IOException {
     HashMap<String, DataInsightCustomChartResultList> result = new HashMap<>();
     if (chartNames == null) {
       return result;
@@ -84,7 +84,11 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
     for (String chartName : chartNames.split(",")) {
       DataInsightCustomChart chart =
           Entity.getEntityByName(DATA_INSIGHT_CUSTOM_CHART, chartName, "", Include.NON_DELETED);
+
       if (chart != null) {
+        if (chart.getChartDetails() != null && filter != null) {
+          ((LinkedHashMap<String, Object>) chart.getChartDetails()).put("filter", filter);
+        }
         DataInsightCustomChartResultList data =
             searchClient.buildDIChart(chart, startTimestamp, endTimestamp);
         result.put(chartName, data);

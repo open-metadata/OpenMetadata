@@ -30,6 +30,11 @@ test('TestSuite multi pipeline support', async ({ page }) => {
 
   await test.step('Create a new pipeline', async () => {
     await page.getByText('Profiler & Data Quality').click();
+    await page
+      .getByRole('menuitem', {
+        name: 'Table Profile',
+      })
+      .click();
     await page.getByTestId('profiler-add-table-test-btn').click();
     await page.getByTestId('test-case').click();
     await page.getByTestId('test-case-name').clear();
@@ -45,6 +50,7 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     );
 
     await page.getByTestId('add-ingestion-button').click();
+    await page.getByTestId('select-all-test-cases').click();
     await page.getByTestId('cron-type').getByText('Hour').click();
     await page.getByTitle('Day').click();
     await page.getByTestId('deploy-button').click();
@@ -65,7 +71,7 @@ test('TestSuite multi pipeline support', async ({ page }) => {
     await page.getByTestId('add-pipeline-button').click();
 
     await page.fill('[data-testid="pipeline-name"]', pipelineName);
-    await page.getByTestId('select-test-case').click();
+
     await page.getByTestId(testCaseName).click();
 
     await page.getByTestId('cron-type').locator('div').click();
@@ -196,7 +202,7 @@ test("Edit the pipeline's test case", async ({ page }) => {
       name: new RegExp(pipeline?.['name']),
     })
     .getByTestId('more-actions')
-    .click();
+    .click({ force: true });
 
   await page
     .locator(

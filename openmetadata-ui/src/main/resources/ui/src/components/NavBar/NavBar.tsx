@@ -23,6 +23,7 @@ import {
   Select,
   Space,
   Tooltip,
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -62,6 +63,7 @@ import {
 } from '../../utils/BrowserNotificationUtils';
 import { refreshPage } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { getEntityName } from '../../utils/EntityUtils';
 import {
   getEntityFQN,
   getEntityType,
@@ -108,7 +110,12 @@ const NavBar = ({
   const Logo = useMemo(() => brandImageClassBase.getMonogram().src, []);
 
   const history = useHistory();
-  const { domainOptions, activeDomain, updateActiveDomain } = useDomainStore();
+  const {
+    domainOptions,
+    activeDomain,
+    activeDomainEntityRef,
+    updateActiveDomain,
+  } = useDomainStore();
   const { t } = useTranslation();
   const { Option } = Select;
   const searchRef = useRef<InputRef>(null);
@@ -466,6 +473,8 @@ const NavBar = ({
             menu={{
               items: domainOptions,
               onClick: handleDomainChange,
+              className: 'domain-dropdown-menu',
+              defaultSelectedKeys: [activeDomain],
             }}
             placement="bottomRight"
             trigger={['click']}>
@@ -478,7 +487,13 @@ const NavBar = ({
                   width={24}
                 />
               </Col>
-              <Col className="flex-center">{activeDomain}</Col>
+              <Col className="flex-center">
+                <Typography.Text>
+                  {activeDomainEntityRef
+                    ? getEntityName(activeDomainEntityRef)
+                    : activeDomain}
+                </Typography.Text>
+              </Col>
               <Col className="flex-center">
                 <DropDownIcon height={14} width={14} />
               </Col>
@@ -548,6 +563,7 @@ const NavBar = ({
               <Icon
                 className="align-middle"
                 component={Help}
+                data-testid="help-icon"
                 style={{ fontSize: '24px' }}
               />
             </Tooltip>

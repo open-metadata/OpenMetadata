@@ -317,7 +317,7 @@ const DataModelDetails = ({
         label: (
           <TabsLabel
             data-testid={EntityTabs.MODEL}
-            id={EntityTabs.DETAILS}
+            id={EntityTabs.MODEL}
             name={t('label.model')}
           />
         ),
@@ -407,11 +407,11 @@ const DataModelDetails = ({
               entityDetails={dataModelData}
               entityType={EntityType.DASHBOARD_DATA_MODEL}
               handleExtensionUpdate={handelExtensionUpdate}
-              hasEditAccess={dataModelPermissions.ViewAll}
-              hasPermission={
+              hasEditAccess={
                 dataModelPermissions.EditAll ||
                 dataModelPermissions.EditCustomFields
               }
+              hasPermission={dataModelPermissions.ViewAll}
               isVersionView={false}
             />
           </div>

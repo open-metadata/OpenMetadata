@@ -181,8 +181,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<UUID> glossaryTermReviewerIds =
         GLOSSARY_TERM1.getReviewers().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
-    assertEquals(glossaryTermReviewerIds, listOf(USER1_REF.getId(), USER2_REF.getId()));
+    assertEquals(
+        glossaryTermReviewerIds,
+        listOf(USER1_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the term reviewers
     Thread approvalTask =
@@ -194,6 +197,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<UUID> taskAssigneeIds =
         approvalTask.getTask().getAssignees().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
     assertEquals(glossaryTermReviewerIds, taskAssigneeIds);
 
@@ -235,8 +239,11 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<UUID> childTermReviewerIds =
         CHILD_TERM1.getReviewers().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
-    assertEquals(childTermReviewerIds, listOf(DATA_CONSUMER_REF.getId(), USER2_REF.getId()));
+    assertEquals(
+        childTermReviewerIds,
+        listOf(DATA_CONSUMER_REF.getId(), USER2_REF.getId()).stream().sorted().toList());
 
     // Verify that the task assignees are the same as the child term reviewers
     approvalTask = glossaryTermResourceTest.assertApprovalTask(CHILD_TERM1, TaskStatus.Open);
@@ -246,6 +253,7 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     taskAssigneeIds =
         approvalTask.getTask().getAssignees().stream()
             .map(EntityReference::getId)
+            .sorted()
             .collect(Collectors.toList());
     assertEquals(childTermReviewerIds, taskAssigneeIds);
   }
@@ -534,6 +542,8 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     String user1 = USER1.getName();
     String user2 = USER2.getName();
     String team11 = TEAM11.getName();
+    List<String> reviewerRef =
+        listOf(user1, user2).stream().sorted(Comparator.naturalOrder()).toList();
 
     // CSV Header "parent" "name" "displayName" "description" "synonyms" "relatedTerms" "references"
     // "tags", "reviewers", "owners", "status"
@@ -541,27 +551,27 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<String> createRecords =
         listOf(
             String.format(
-                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user:%s,%s",
-                user1, user2, user1, "Approved"),
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s",
+                reviewerRef.get(0), user1, "Approved"),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user:%s,%s",
-                user1, user2, "Approved"),
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s",
+                user1, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s;%s,team:%s,%s",
-                user1, user2, team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s",
+                reviewerRef.get(0), team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user:%s,%s",
-                user1, user2, user1, "Approved"),
+                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s",
+                reviewerRef.get(0), user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user:%s,%s",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s;%s,team:%s,%s",
-                user1, user2, team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s",
+                reviewerRef.get(0), team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =

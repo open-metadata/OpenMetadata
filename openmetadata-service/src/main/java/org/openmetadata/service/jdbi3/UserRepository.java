@@ -14,13 +14,14 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmptyMutable;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addEntityReferences;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.FIELD_DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.ROLE;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
@@ -32,6 +33,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.ws.rs.core.SecurityContext;
@@ -58,6 +60,7 @@ import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -78,9 +81,9 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains";
   private volatile EntityReference organization;
 
   public UserRepository() {
@@ -123,8 +126,42 @@ public class UserRepository extends EntityRepository<User> {
     return super.getByName(uriInfo, EntityInterfaceUtil.quoteName(name), fields);
   }
 
+  private List<EntityReference> getDomains(UUID teamId) {
+    // Team does not have domain. 'domains' is the field for user as team can belong to multiple
+    // domains
+    return findFrom(teamId, USER, Relationship.HAS, Entity.DOMAIN);
+  }
+
+  @Override
+  protected void storeDomain(User entity, EntityReference exclude) {
+    for (EntityReference domainRef : listOrEmpty(entity.getDomains())) {
+      // Add relationship domain --- has ---> entity
+      LOG.info(
+          "Adding domain {} for user {}:{}",
+          domainRef.getFullyQualifiedName(),
+          entityType,
+          entity.getId());
+      addRelationship(
+          domainRef.getId(), entity.getId(), Entity.DOMAIN, entityType, Relationship.HAS);
+    }
+  }
+
   public User getByEmail(UriInfo uriInfo, String email, Fields fields) {
-    String userString = ((CollectionDAO.UserDAO) dao).findUserByEmail(email);
+    String userString = daoCollection.userDAO().findUserByEmail(email);
+    if (userString == null) {
+      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
+    }
+    User user = JsonUtils.readValue(userString, User.class);
+    setFieldsInternal(user, fields);
+    setInheritedFields(user, fields);
+    // Clone the entity
+    User entityClone = JsonUtils.deepCopy(user, User.class);
+    clearFieldsInternal(entityClone, fields);
+    return withHref(uriInfo, entityClone);
+  }
+
+  public User getUserByNameAndEmail(UriInfo uriInfo, String name, String email, Fields fields) {
+    String userString = daoCollection.userDAO().findUserByNameAndEmail(name, email);
     if (userString == null) {
       throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
     }
@@ -194,13 +231,19 @@ public class UserRepository extends EntityRepository<User> {
   public void setInheritedFields(User user, Fields fields) {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
-    if (fields.contains(FIELD_DOMAIN) && user.getDomain() == null) {
+    if (fields.contains(FIELD_DOMAINS)) {
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
       if (!nullOrEmpty(teams)) {
-        Team team = Entity.getEntity(TEAM, teams.get(0).getId(), "domain", ALL);
-        inheritDomain(user, fields, team);
+        for (EntityReference team : teams) {
+          Team parent = Entity.getEntity(TEAM, team.getId(), "domains", ALL);
+          combinedParent.addAll(parent.getDomains());
+        }
       }
+      user.setDomains(
+          EntityUtil.mergedInheritedEntityRefs(
+              user.getDomains(), combinedParent.stream().toList()));
     }
   }
 
@@ -220,6 +263,7 @@ public class UserRepository extends EntityRepository<User> {
         fields.contains("defaultPersonas") ? getDefaultPersona(user) : user.getDefaultPersona());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
+    user.setDomains(fields.contains("domains") ? getDomains(user.getId()) : user.getDomains());
   }
 
   @Override
@@ -285,6 +329,10 @@ public class UserRepository extends EntityRepository<User> {
     return daoCollection.userDAO().checkEmailExists(emailId) > 0;
   }
 
+  public boolean checkUserNameExists(String username) {
+    return daoCollection.userDAO().checkUserNameExists(username) > 0;
+  }
+
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
     // Create Admins
@@ -331,19 +379,45 @@ public class UserRepository extends EntityRepository<User> {
   public List<EntityReference> getGroupTeams(
       UriInfo uriInfo, SecurityContext context, String email) {
     // Cleanup
-    User user = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
-    validateLoggedInUserNameAndEmailMatches(context.getUserPrincipal().getName(), email, user);
+    User user =
+        getLoggedInUserByNameAndEmail(
+            uriInfo, context.getUserPrincipal().getName(), email, Fields.EMPTY_FIELDS);
     List<EntityReference> teams = getTeams(user);
     return getGroupTeams(teams);
   }
 
-  public void validateLoggedInUserNameAndEmailMatches(
-      String username, String email, User storedUser) {
-    String lowerCasedName = username.toLowerCase();
-    String lowerCasedEmail = email.toLowerCase();
-    if (!(lowerCasedName.equals(storedUser.getName().toLowerCase())
-        && lowerCasedEmail.equals(storedUser.getEmail().toLowerCase()))) {
-      throw EntityNotFoundException.byMessage(CatalogExceptionMessage.entityNotFound(USER, email));
+  public User getLoggedInUserByNameAndEmail(
+      UriInfo uriInfo, String username, String email, Fields fields) {
+    try {
+      return getUserByNameAndEmail(uriInfo, username, email, fields);
+    } catch (EntityNotFoundException e) {
+      boolean existByName = checkUserNameExists(username);
+      boolean existByEmail = checkEmailAlreadyExists(email);
+      if (existByName && !existByEmail) {
+        User userByName = getByName(uriInfo, username, Fields.EMPTY_FIELDS);
+        throw BadRequestException.of(
+            String.format(
+                "User with given name exists but is not associated with the provided email. "
+                    + "Matching User Found By Name [username:email] : [%s:%s], Provided User: [%s:%s]",
+                userByName.getName().toLowerCase(),
+                userByName.getEmail().toLowerCase(),
+                username,
+                email));
+      } else if (!existByName && existByEmail) {
+        User userByEmail = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
+        throw BadRequestException.of(
+            String.format(
+                "User with given email exists but is not associated with provider username. "
+                    + "Matching User Found By Email [username:email] : [%s:%s], Provided User: [%s:%s]",
+                userByEmail.getName().toLowerCase(),
+                userByEmail.getEmail().toLowerCase(),
+                username,
+                email));
+      } else {
+        throw EntityNotFoundException.byMessage(
+            String.format(
+                "User with provider name : %s and email : %s not found", username, email));
+      }
     }
   }
 
@@ -549,7 +623,7 @@ public class UserRepository extends EntityRepository<User> {
     @Override
     public void entitySpecificUpdate() {
       // LowerCase Email
-      updated.setEmail(updated.getEmail().toLowerCase());
+      updated.setEmail(original.getEmail().toLowerCase());
 
       // Updates
       updateRoles(original, updated);
@@ -561,7 +635,6 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("timezone", original.getTimezone(), updated.getTimezone());
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
-      recordChange("email", original.getEmail(), updated.getEmail().toLowerCase());
       recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
       updateAuthenticationMechanism(original, updated);
     }
@@ -581,6 +654,42 @@ public class UserRepository extends EntityRepository<User> {
       List<EntityReference> deleted = new ArrayList<>();
       recordListChange(
           ROLES_FIELD, origRoles, updatedRoles, added, deleted, EntityUtil.entityReferenceMatch);
+    }
+
+    @Override
+    protected void updateDomain() {
+      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
+        // Revert change to non-empty domain if it is being updated by a bot
+        // This is to prevent bots from overwriting the domain. Domain need to be
+        // updated with a PATCH request
+        updated.setDomains(original.getDomains());
+        return;
+      }
+
+      List<EntityReference> origDomains =
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
+      List<EntityReference> updatedDomains =
+          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+
+      // Remove Domains for the user
+      deleteTo(original.getId(), USER, Relationship.HAS, Entity.DOMAIN);
+
+      for (EntityReference domain : updatedDomains) {
+        addRelationship(domain.getId(), original.getId(), Entity.DOMAIN, USER, Relationship.HAS);
+      }
+
+      origDomains.sort(EntityUtil.compareEntityReference);
+      updatedDomains.sort(EntityUtil.compareEntityReference);
+
+      List<EntityReference> added = new ArrayList<>();
+      List<EntityReference> deleted = new ArrayList<>();
+      recordListChange(
+          FIELD_DOMAINS,
+          origDomains,
+          updatedDomains,
+          added,
+          deleted,
+          EntityUtil.entityReferenceMatch);
     }
 
     private void updateTeams(User original, User updated) {

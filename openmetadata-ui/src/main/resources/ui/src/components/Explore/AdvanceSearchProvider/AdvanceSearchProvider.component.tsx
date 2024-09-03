@@ -29,7 +29,7 @@ import {
 } from 'react-awesome-query-builder';
 import { useHistory, useLocation, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
-import { ROUTES } from '../../../constants/constants';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
@@ -52,6 +52,9 @@ const AdvancedSearchContext = React.createContext<AdvanceSearchContext>(
 
 export const AdvanceSearchProvider = ({
   children,
+  isExplorePage = true,
+  modalProps,
+  updateURL = true,
 }: AdvanceSearchProviderProps) => {
   const tierOptions = useMemo(getTierOptions, []);
 
@@ -68,16 +71,11 @@ export const AdvanceSearchProvider = ({
       ([, tabInfo]) => tabInfo.path === tab
     );
     if (isNil(tabInfo)) {
-      return SearchIndex.TABLE;
+      return SearchIndex.DATA_ASSET;
     }
 
     return tabInfo[0] as SearchIndex;
   }, [tabsInfo, tab]);
-
-  const isExplorePage = useMemo(
-    () => location.pathname.startsWith(ROUTES.EXPLORE),
-    [location]
-  );
 
   const [searchIndex, setSearchIndex] = useState<
     SearchIndex | Array<SearchIndex>
@@ -205,6 +203,27 @@ export const AdvanceSearchProvider = ({
     });
   }, [history, location.pathname]);
 
+  const fetchCustomPropertyType = async (entityType: EntityType) => {
+    const subfields: Record<
+      string,
+      { type: string; valueSources: ValueSource[] }
+    > = {};
+
+    const res = await getTypeByFQN(entityType);
+    const customAttributes = res.customProperties;
+
+    if (customAttributes) {
+      customAttributes.forEach((attr) => {
+        subfields[attr.name] = {
+          type: 'text',
+          valueSources: ['value'],
+        };
+      });
+    }
+
+    return subfields;
+  };
+
   async function getCustomAttributesSubfields() {
     const subfields: Record<
       string,
@@ -212,34 +231,39 @@ export const AdvanceSearchProvider = ({
     > = {};
 
     try {
-      if (
-        !EntitiesSupportedCustomProperties.includes(
-          isArray(searchIndex) ? searchIndex[0] : searchIndex
-        )
-      ) {
+      if (isArray(searchIndex)) {
+        for await (const index of searchIndex) {
+          if (!EntitiesSupportedCustomProperties.includes(index)) {
+            continue; // Skip if entity type does not support custom properties
+          }
+
+          const entityType = getEntityTypeFromSearchIndex(index);
+
+          if (!entityType) {
+            continue; // Skip if entity type is not found
+          }
+
+          try {
+            const propertyTypes = await fetchCustomPropertyType(entityType);
+            Object.assign(subfields, propertyTypes); // Merge the subfields after each API call
+          } catch (error) {
+            continue; // continue the loop if error occurs in one API call
+          }
+        }
+
         return subfields;
+      } else {
+        if (!EntitiesSupportedCustomProperties.includes(searchIndex)) {
+          return subfields;
+        }
+
+        const entityType = getEntityTypeFromSearchIndex(searchIndex);
+        if (!entityType) {
+          return subfields;
+        }
+
+        return await fetchCustomPropertyType(entityType);
       }
-
-      const entityType = getEntityTypeFromSearchIndex(
-        isArray(searchIndex) ? searchIndex[0] : searchIndex
-      );
-      if (!entityType) {
-        return subfields;
-      }
-
-      const res = await getTypeByFQN(entityType);
-      const customAttributes = res.customProperties;
-
-      if (customAttributes) {
-        customAttributes.forEach((attr) => {
-          subfields[attr.name] = {
-            type: 'text',
-            valueSources: ['value'],
-          };
-        });
-      }
-
-      return subfields;
     } catch (error) {
       // Error
       return subfields;
@@ -313,9 +337,9 @@ export const AdvanceSearchProvider = ({
       treeInternal ? QbUtils.sqlFormat(treeInternal, config) ?? '' : ''
     );
 
-    isExplorePage && handleTreeUpdate(treeInternal);
+    updateURL && handleTreeUpdate(treeInternal);
     setShowModal(false);
-  }, [treeInternal, config, handleTreeUpdate, isExplorePage]);
+  }, [treeInternal, config, handleTreeUpdate, updateURL]);
 
   const contextValues = useMemo(
     () => ({
@@ -331,6 +355,7 @@ export const AdvanceSearchProvider = ({
       onUpdateConfig: handleConfigUpdate,
       onChangeSearchIndex: changeSearchIndex,
       onSubmit: handleSubmit,
+      modalProps,
     }),
     [
       queryFilter,
@@ -345,6 +370,7 @@ export const AdvanceSearchProvider = ({
       handleConfigUpdate,
       changeSearchIndex,
       handleSubmit,
+      modalProps,
     ]
   );
 

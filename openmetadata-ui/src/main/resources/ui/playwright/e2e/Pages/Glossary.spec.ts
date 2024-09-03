@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -27,18 +29,37 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  addMultiOwner,
+  assignGlossaryTerm,
+  assignTag,
+  updateDescription,
+} from '../../utils/entity';
+import {
   addAssetToGlossaryTerm,
+  addReferences,
+  addRelatedTerms,
+  addSynonyms,
   approveGlossaryTermTask,
+  approveTagsTask,
+  assignTagToGlossaryTerm,
+  changeTermHierarchyFromModal,
+  confirmationDragAndDropGlossary,
+  createDescriptionTaskForGlossary,
   createGlossary,
   createGlossaryTerms,
+  createTagTaskForGlossary,
+  deleteGlossaryOrGlossaryTerm,
+  dragAndDropTerm,
   goToAssetsTab,
   renameGlossaryTerm,
   selectActiveGlossary,
+  selectActiveGlossaryTerm,
   validateGlossaryTerm,
   verifyGlossaryDetails,
   verifyGlossaryTermAssets,
 } from '../../utils/glossary';
 import { sidebarClick } from '../../utils/sidebar';
+import { TaskDetails } from '../../utils/task';
 import { performUserLogin } from '../../utils/user';
 
 const user1 = new UserClass();
@@ -58,13 +79,17 @@ test.describe('Glossary tests', () => {
   test('Glossary & terms creation for reviewer as user', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
     const glossary1 = new Glossary();
     glossary1.data.owners = [{ name: 'admin', type: 'user' }];
     glossary1.data.mutuallyExclusive = true;
-    glossary1.data.reviewers = [{ name: user1.getUserName(), type: 'user' }];
+    glossary1.data.reviewers = [
+      { name: `${user1.data.firstName}${user1.data.lastName}`, type: 'user' },
+    ];
     glossary1.data.terms = [new GlossaryTerm(glossary1)];
 
     await test.step('Create Glossary', async () => {
@@ -103,6 +128,8 @@ test.describe('Glossary tests', () => {
   test('Glossary & terms creation for reviewer as team', async ({
     browser,
   }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user2);
@@ -146,9 +173,97 @@ test.describe('Glossary tests', () => {
     await afterAction();
   });
 
-  test('Add and Remove Assets', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+  test('Update Glossary and Glossary Term', async ({ browser }) => {
+    test.slow(true);
 
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+    const user3 = new UserClass();
+    const user4 = new UserClass();
+    await glossary1.create(apiContext);
+    await glossaryTerm1.create(apiContext);
+    await glossaryTerm2.create(apiContext);
+    await user3.create(apiContext);
+    await user4.create(apiContext);
+
+    try {
+      await test.step('Update Glossary', async () => {
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+
+        // Update description
+        await updateDescription(page, 'Demo description to be updated');
+
+        // Update Owners
+        await addMultiOwner({
+          page,
+          ownerNames: [user3.getUserName()],
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'glossary-right-panel-owner-link',
+          endpoint: EntityTypeEndpoint.Glossary,
+          isSelectableInsideForm: false,
+          type: 'Users',
+        });
+
+        // Update Reviewer
+        await addMultiOwner({
+          page,
+          ownerNames: [user3.getUserName()],
+          activatorBtnDataTestId: 'Add',
+          resultTestId: 'glossary-reviewer-name',
+          endpoint: EntityTypeEndpoint.Glossary,
+          type: 'Users',
+        });
+
+        await assignTag(page, 'PersonalData.Personal');
+      });
+
+      await test.step('Update Glossary Term', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+        // Update description
+        await updateDescription(page, 'Demo description to be updated');
+
+        // Update Synonyms
+        await addSynonyms(page, [getRandomLastName(), getRandomLastName()]);
+
+        // Update References
+        const references = [
+          { name: getRandomLastName(), url: 'http://example.com' },
+          { name: getRandomLastName(), url: 'http://trial.com' },
+        ];
+        await addReferences(page, references);
+
+        // Update Related Terms
+        await addRelatedTerms(page, [glossaryTerm2]);
+
+        // Update Tag
+        await assignTagToGlossaryTerm(
+          page,
+          'PersonalData.Personal',
+          'Add',
+          'panel-container'
+        );
+      });
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await user3.delete(apiContext);
+      await user4.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Add and Remove Assets', async ({ browser }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const glossary1 = new Glossary();
     const glossaryTerm1 = new GlossaryTerm(glossary1);
     const glossaryTerm2 = new GlossaryTerm(glossary1);
@@ -360,7 +475,7 @@ test.describe('Glossary tests', () => {
         await sidebarClick(page, SidebarItem.GLOSSARY);
 
         await selectActiveGlossary(page, glossary2.data.displayName);
-        await goToAssetsTab(page, glossaryTerm3.data.displayName, '2');
+        await goToAssetsTab(page, glossaryTerm3.data.displayName, 2);
 
         // Check if the selected asset are present
         const assetContainer = await page.locator(
@@ -385,6 +500,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Rename Glossary Term and verify assets', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const table = new TableClass();
     const topic = new TopicClass();
@@ -424,7 +541,11 @@ test.describe('Glossary tests', () => {
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.GLOSSARY);
         await selectActiveGlossary(page, glossary1.data.displayName);
-        await goToAssetsTab(page, glossaryTerm1.data.displayName);
+        await goToAssetsTab(
+          page,
+          glossaryTerm1.data.displayName,
+          assets.length
+        );
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await verifyGlossaryTermAssets(
           page,
@@ -441,6 +562,309 @@ test.describe('Glossary tests', () => {
       await glossary1.delete(apiContext);
       await afterAction();
     }
+  });
+
+  test('Drag and Drop Glossary Term', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await test.step('Drag and Drop Glossary Term', async () => {
+        await dragAndDropTerm(
+          page,
+          glossaryTerm1.data.displayName,
+          glossaryTerm2.data.displayName
+        );
+
+        await confirmationDragAndDropGlossary(
+          page,
+          glossaryTerm1.data.name,
+          glossaryTerm2.data.name
+        );
+
+        await expect(
+          page.getByRole('cell', {
+            name: glossaryTerm1.responseData.displayName,
+          })
+        ).not.toBeVisible();
+
+        const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+
+        // verify the term is moved under the parent term
+        await page.getByTestId('expand-collapse-all-button').click();
+        await termRes;
+
+        await expect(
+          page.getByRole('cell', {
+            name: glossaryTerm1.responseData.displayName,
+          })
+        ).toBeVisible();
+      });
+
+      await test.step(
+        'Drag and Drop Glossary Term back at parent level',
+        async () => {
+          await redirectToHomePage(page);
+          await sidebarClick(page, SidebarItem.GLOSSARY);
+          await selectActiveGlossary(page, glossary1.data.displayName);
+          await page.getByTestId('expand-collapse-all-button').click();
+
+          await dragAndDropTerm(
+            page,
+            glossaryTerm1.data.displayName,
+            'Terms' // Header Cell
+          );
+
+          await confirmationDragAndDropGlossary(
+            page,
+            glossaryTerm1.data.name,
+            glossary1.responseData.displayName,
+            true
+          );
+
+          // verify the term is moved back at parent level
+          await expect(
+            page.getByRole('cell', {
+              name: glossaryTerm1.responseData.displayName,
+            })
+          ).toBeVisible();
+        }
+      );
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Change glossary term hierarchy using menu options', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    const glossaryTerm2 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1, glossaryTerm2];
+
+    try {
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await glossaryTerm2.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await changeTermHierarchyFromModal(
+        page,
+        glossaryTerm1.data.displayName,
+        glossaryTerm2.data.displayName
+      );
+
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      await expect(
+        page.getByRole('cell', {
+          name: glossaryTerm1.responseData.displayName,
+        })
+      ).not.toBeVisible();
+
+      const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+
+      // verify the term is moved under the parent term
+      await page.getByTestId('expand-collapse-all-button').click();
+      await termRes;
+
+      await expect(
+        page.getByRole('cell', {
+          name: glossaryTerm1.responseData.displayName,
+        })
+      ).toBeVisible();
+    } finally {
+      await glossaryTerm1.delete(apiContext);
+      await glossaryTerm2.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Assign Glossary Term to entity and check assets', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1];
+
+    try {
+      await table.create(apiContext);
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await table.visitEntityPage(page);
+      await assignGlossaryTerm(page, glossaryTerm1.responseData);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await goToAssetsTab(page, glossaryTerm1.data.displayName, 1);
+      const entityFqn = get(table, 'entityResponseData.fullyQualifiedName');
+
+      await expect(
+        page.getByTestId(`table-data-card_${entityFqn}`)
+      ).toBeVisible();
+    } finally {
+      await table.delete(apiContext);
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Request description task for Glossary', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const user1 = new UserClass();
+
+    try {
+      await user1.create(apiContext);
+      await glossary1.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      const value: TaskDetails = {
+        term: glossary1.data.name,
+        assignee: user1.responseData.name,
+      };
+
+      await page.getByTestId('request-description').click();
+
+      await createDescriptionTaskForGlossary(page, value, glossary1);
+
+      const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      await page.click(
+        '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
+      );
+      await taskResolve;
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      const viewerContainerText = await page.textContent(
+        '[data-testid="viewer-container"]'
+      );
+
+      await expect(viewerContainerText).toContain('Updated description');
+    } finally {
+      await user1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Request description task for Glossary Term', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const user1 = new UserClass();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1];
+
+    try {
+      await user1.create(apiContext);
+      await glossary1.create(apiContext);
+      await glossaryTerm1.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+      const value: TaskDetails = {
+        term: glossaryTerm1.data.name,
+        assignee: user1.responseData.name,
+      };
+
+      await page.getByTestId('request-description').click();
+
+      await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
+
+      const taskResolve = page.waitForResponse('/api/v1/feed/tasks/*/resolve');
+      await page.click(
+        '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
+      );
+      await taskResolve;
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+      const viewerContainerText = await page.textContent(
+        '[data-testid="viewer-container"]'
+      );
+
+      await expect(viewerContainerText).toContain('Updated description');
+    } finally {
+      await user1.delete(apiContext);
+      await glossaryTerm1.delete(apiContext);
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Request tags for Glossary', async ({ browser }) => {
+    test.slow(true);
+
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, user2);
+
+    const glossary1 = new Glossary();
+    try {
+      await glossary1.create(apiContext);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary1.data.displayName);
+
+      const value: TaskDetails = {
+        term: glossary1.data.name,
+        assignee: user2.responseData.name,
+        tag: 'PersonalData.Personal',
+      };
+
+      await page.getByTestId('request-entity-tags').click();
+      await createTagTaskForGlossary(page, value, glossary1);
+      await approveTagsTask(page1, value, glossary1);
+    } finally {
+      await glossary1.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('Delete Glossary and Glossary Term using Delete Modal', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const glossary1 = new Glossary();
+    const glossaryTerm1 = new GlossaryTerm(glossary1);
+    glossary1.data.terms = [glossaryTerm1];
+    await glossary1.create(apiContext);
+    await glossaryTerm1.create(apiContext);
+    await sidebarClick(page, SidebarItem.GLOSSARY);
+    await selectActiveGlossary(page, glossary1.data.displayName);
+
+    // Delete Glossary Term
+    await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+    await deleteGlossaryOrGlossaryTerm(page, glossaryTerm1.data.name, true);
+
+    // Delete Glossary
+    await deleteGlossaryOrGlossaryTerm(page, glossary1.data.name);
+    await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {

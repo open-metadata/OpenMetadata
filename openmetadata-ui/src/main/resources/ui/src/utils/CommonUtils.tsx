@@ -733,9 +733,7 @@ export const getTrimmedContent = (content: string, limit: number) => {
 };
 
 export const sortTagsCaseInsensitive = (tags: TagLabel[]) => {
-  return tags.sort((tag1, tag2) =>
-    tag1.tagFQN.toLowerCase() < tag2.tagFQN.toLowerCase() ? -1 : 1
-  );
+  return tags;
 };
 
 export const Transi18next = ({
@@ -869,4 +867,14 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
       },
     },
   });
+};
+
+export const filterSelectOptions = (
+  input: string,
+  option?: { label: string; value: string }
+) => {
+  return (
+    toLower(option?.label).includes(toLower(input)) ||
+    toLower(option?.value).includes(toLower(input))
+  );
 };

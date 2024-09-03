@@ -203,6 +203,16 @@
           }
         }
       },
+      "extension": {
+        "type": "object"
+      },
+      "totalVotes": {
+        "type": "long",
+        "null_value": 0
+      },
+      "votes" : {
+        "type": "object"
+      },
       "descriptionStatus": {
         "type": "keyword"
       }

@@ -14,10 +14,12 @@ import { Button, Card, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import {
   first,
+  get,
   groupBy,
   includes,
   last,
-  map,
+  omit,
+  reduce,
   round,
   sortBy,
   startCase,
@@ -40,7 +42,10 @@ import {
   GRAPH_HEIGHT,
   TOTAL_ENTITY_CHART_COLOR,
 } from '../../constants/DataInsight.constants';
-import { INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER } from '../../constants/explore.constants';
+import {
+  INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER,
+  NO_OWNER_ADVANCE_SEARCH_FILTER,
+} from '../../constants/explore.constants';
 
 import { SearchIndex } from '../../enums/search.enum';
 import { DataInsightChart } from '../../generated/api/dataInsight/kpi/createKpiRequest';
@@ -71,6 +76,10 @@ interface DataInsightChartCardProps {
   listAssets?: boolean;
 }
 
+interface AbsoluteValuesResult {
+  results: Array<{ count: number; day: number }>;
+}
+
 export const DataInsightChartCard = ({
   type,
   header,
@@ -79,6 +88,12 @@ export const DataInsightChartCard = ({
 }: DataInsightChartCardProps) => {
   const tabsInfo = searchClassBase.getTabsInfo();
   const [chartData, setChartData] = useState<DataInsightCustomChartResult>({
+    results: [],
+  });
+  const [totalAssets, setTotalAssets] = useState<DataInsightCustomChartResult>({
+    results: [],
+  });
+  const [absoluteValues, setAbsoluteValues] = useState<AbsoluteValuesResult>({
     results: [],
   });
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -95,40 +110,159 @@ export const DataInsightChartCard = ({
 
   const { rightSideEntityList, latestData, graphData, changeInValue } =
     useMemo(() => {
+      let changeInValue = 0;
+
       const results = chartData.results ?? [];
+      const timeStampResults = groupBy(results, 'day');
 
-      const groupedResults = groupBy(results, 'group');
-      const latestData: Record<string, number> = {};
-      let total = 0;
+      const graphResults = Object.entries(timeStampResults).map(
+        ([key, value]) => {
+          const keys = value.reduce((acc, curr) => {
+            return { ...acc, [curr.group ?? 'count']: curr.count };
+          }, {});
 
-      let firstRecordTotal = 0;
+          return {
+            day: +key,
+            ...keys,
+          };
+        }
+      );
 
-      Object.entries(groupedResults).forEach(([key, value]) => {
-        const newValues = sortBy(value, 'day');
+      const finalData = sortBy(graphResults, 'day');
 
-        latestData[key] = last(newValues)?.count ?? 0;
+      const latestData: Record<string, number> = omit(
+        last(finalData ?? {}),
+        'day'
+      );
 
-        total += latestData[key];
-        firstRecordTotal += first(newValues)?.count ?? 0;
-      });
+      const uniqueLabels = Object.entries(latestData)
+        .sort(([, valueA], [, valueB]) => valueB - valueA)
+        .map(([key]) => key);
 
-      const changeInValue = firstRecordTotal
-        ? (total - firstRecordTotal) / firstRecordTotal
-        : 0;
+      if (type === SystemChartType.TotalDataAssets) {
+        const lastValue = reduce(latestData, (acc, value) => acc + value, 0);
+        const firstValue = reduce(
+          omit(first(finalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
 
-      const graphData = map(groupedResults, (value, key) => ({
-        name: key,
-        data: value,
-      }));
+        changeInValue = firstValue
+          ? ((lastValue - firstValue) / firstValue) * 100
+          : 0;
+      } else if (type === SystemChartType.TotalDataAssetsByTier) {
+        // TotalDataAssetsByTier when Considering NoTier as well it has the TotalAssets
+        const lastTotalAssetsValue = reduce(
+          latestData,
+          (acc, value) => acc + value,
+          0
+        );
+        const firstTotalAssetsValue = reduce(
+          omit(first(finalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
 
-      const labels = Object.keys(groupedResults);
+        // Process Absolute Values for Tier
+        const graphResults = Object.entries(timeStampResults).map(
+          ([key, value]) => {
+            const keys = value
+              .filter((curr) => curr.group !== 'NoTier')
+              .reduce((acc, curr) => {
+                return { ...acc, [curr.group ?? 'count']: curr.count };
+              }, {});
+
+            return {
+              day: +key,
+              ...keys,
+            };
+          }
+        );
+
+        const tierFinalData = sortBy(graphResults, 'day');
+
+        const lastAbsoluteValue = reduce(
+          omit(last(tierFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+        const firstAbsoluteValue = reduce(
+          omit(first(tierFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        const firstPercentValue = firstTotalAssetsValue
+          ? (firstAbsoluteValue / firstTotalAssetsValue) * 100
+          : 0;
+        const lastPercentValue = lastTotalAssetsValue
+          ? (lastAbsoluteValue / lastTotalAssetsValue) * 100
+          : 0;
+
+        changeInValue = lastPercentValue - firstPercentValue;
+      } else {
+        // Process TotalAssets
+        const totalAssetsResults = totalAssets.results ?? [];
+        const totalAssetsTimeStampResults = groupBy(totalAssetsResults, 'day');
+
+        const totalAssetsGraphResults = Object.entries(
+          totalAssetsTimeStampResults
+        ).map(([key, value]) => {
+          const keys = value.reduce((acc, curr) => {
+            return { ...acc, [curr.group ?? 'count']: curr.count };
+          }, {});
+
+          return {
+            day: +key,
+            ...keys,
+          };
+        });
+
+        const totalAssetsFinalData = sortBy(totalAssetsGraphResults, 'day');
+
+        const lastTotalAssetsValue = reduce(
+          omit(last(totalAssetsFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+        const firstTotalAssetsValue = reduce(
+          omit(first(totalAssetsFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        // Process Absolute Values
+        const absoluteValuesResults = absoluteValues.results ?? [];
+
+        const absoluteValuesFinalData = sortBy(absoluteValuesResults, 'day');
+
+        const lastAbsoluteValue = reduce(
+          omit(last(absoluteValuesFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+        const firstAbsoluteValue = reduce(
+          omit(first(absoluteValuesFinalData) ?? {}, 'day'),
+          (acc, value) => acc + value,
+          0
+        );
+
+        const firstPercentValue = firstTotalAssetsValue
+          ? (firstAbsoluteValue / firstTotalAssetsValue) * 100
+          : 0;
+        const lastPercentValue = lastTotalAssetsValue
+          ? (lastAbsoluteValue / lastTotalAssetsValue) * 100
+          : 0;
+
+        changeInValue = lastPercentValue - firstPercentValue;
+      }
 
       return {
-        rightSideEntityList: labels.filter((entity) =>
+        rightSideEntityList: uniqueLabels.filter((entity) =>
           includes(toLower(entity), toLower(searchEntityKeyWord))
         ),
         latestData,
-        graphData,
+        graphData: finalData,
         changeInValue,
       };
     }, [chartData.results, searchEntityKeyWord]);
@@ -157,32 +291,32 @@ export const DataInsightChartCard = ({
   }, [kpi.data, type]);
 
   const totalValue = useMemo(() => {
+    let data = { results: [{ count: 0 }] };
     switch (type) {
       case SystemChartType.TotalDataAssets:
-        return (
-          entitiesSummary[SystemChartType.TotalDataAssetsSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data = entitiesSummary[SystemChartType.TotalDataAssetsSummaryCard];
+
+        break;
+
       case SystemChartType.PercentageOfDataAssetWithDescription:
       case SystemChartType.PercentageOfServiceWithDescription:
-        return (
-          entitiesSummary[SystemChartType.DataAssetsWithDescriptionSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data =
+          entitiesSummary[SystemChartType.DataAssetsWithDescriptionSummaryCard];
+
+        break;
       case SystemChartType.PercentageOfDataAssetWithOwner:
       case SystemChartType.PercentageOfServiceWithOwner:
-        return (
-          entitiesSummary[SystemChartType.DataAssetsWithOwnerSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data = entitiesSummary[SystemChartType.DataAssetsWithOwnerSummaryCard];
+
+        break;
       case SystemChartType.TotalDataAssetsByTier:
-        return (
-          entitiesSummary[SystemChartType.TotalDataAssetsWithTierSummaryCard]
-            ?.results[0].count ?? 0
-        );
+        data =
+          entitiesSummary[SystemChartType.TotalDataAssetsWithTierSummaryCard];
+
+        break;
     }
 
-    return 0;
+    return get(data, 'results.0.count', 0);
   }, [type, entitiesSummary]);
 
   const { t } = useTranslation();
@@ -194,12 +328,60 @@ export const DataInsightChartCard = ({
         chartFilter.team,
         chartFilter.tier
       );
+      if (
+        ![
+          SystemChartType.TotalDataAssets,
+          SystemChartType.TotalDataAssetsByTier,
+        ].includes(type)
+      ) {
+        const totalAssetsResponse = await getChartPreviewByName(
+          SystemChartType.TotalDataAssets,
+          {
+            start: chartFilter.startTs,
+            end: chartFilter.endTs,
+            filter,
+          }
+        );
+        setTotalAssets(totalAssetsResponse);
+      }
+
+      if (
+        [
+          SystemChartType.PercentageOfServiceWithDescription,
+          SystemChartType.PercentageOfDataAssetWithDescription,
+        ].includes(type)
+      ) {
+        const absoluteValuesResponse = await getChartPreviewByName(
+          SystemChartType.NumberOfDataAssetWithDescription,
+          {
+            start: chartFilter.startTs,
+            end: chartFilter.endTs,
+            filter,
+          }
+        );
+        setAbsoluteValues(absoluteValuesResponse);
+      } else if (
+        [
+          SystemChartType.PercentageOfServiceWithOwner,
+          SystemChartType.PercentageOfDataAssetWithOwner,
+        ].includes(type)
+      ) {
+        const absoluteValuesResponse = await getChartPreviewByName(
+          SystemChartType.NumberOfDataAssetWithOwner,
+          {
+            start: chartFilter.startTs,
+            end: chartFilter.endTs,
+            filter,
+          }
+        );
+        setAbsoluteValues(absoluteValuesResponse);
+      }
+
       const response = await getChartPreviewByName(type, {
         start: chartFilter.startTs,
         end: chartFilter.endTs,
         filter,
       });
-
       setChartData(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -225,6 +407,55 @@ export const DataInsightChartCard = ({
     fetchData();
   }, [chartFilter]);
 
+  const rightSidePanelLabel = useMemo(() => {
+    switch (type) {
+      case SystemChartType.TotalDataAssets:
+        return (
+          t('label.total-entity', {
+            entity: t('label.asset-plural'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfDataAssetWithDescription:
+        return (
+          t('label.completed-entity', {
+            entity: t('label.description'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfDataAssetWithOwner:
+        return (
+          t('label.assigned-entity', {
+            entity: t('label.owner'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfServiceWithDescription:
+        return (
+          t('label.completed-entity', {
+            entity: t('label.description'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.PercentageOfServiceWithOwner:
+        return (
+          t('label.assigned-entity', {
+            entity: t('label.owner'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      case SystemChartType.TotalDataAssetsByTier:
+        return (
+          t('label.assigned-entity', {
+            entity: t('label.tier'),
+          }) + (isPercentageGraph ? ' %' : '')
+        );
+
+      default:
+        return '';
+    }
+  }, [type, isPercentageGraph]);
+
   if (isLoading || kpi.isLoading || chartData.results.length === 0) {
     return (
       <Card
@@ -247,10 +478,7 @@ export const DataInsightChartCard = ({
   }
 
   return (
-    <Card
-      className="data-insight-card"
-      data-testid="entity-description-percentage-card"
-      id={type}>
+    <Card className="data-insight-card" data-testid={`${type}-graph`} id={type}>
       <Row gutter={DI_STRUCTURE.rowContainerGutter}>
         <Col span={DI_STRUCTURE.leftContainerSpan}>
           <PageHeader
@@ -266,6 +494,7 @@ export const DataInsightChartCard = ({
             id={`${type}-graph`}>
             {renderDataInsightLineChart(
               graphData,
+              rightSideEntityList,
               activeKeys,
               activeMouseHoverKey,
               isPercentageGraph
@@ -278,12 +507,15 @@ export const DataInsightChartCard = ({
               <DataInsightProgressBar
                 changeInValue={changeInValue}
                 duration={selectedDays}
-                label={`${t('label.completed-entity', {
-                  entity: t('label.description'),
-                })}${isPercentageGraph ? ' %' : ''}`}
+                label={rightSidePanelLabel}
                 progress={round(totalValue, 2)}
                 showProgress={isPercentageGraph}
-                suffix={isPercentageGraph ? '%' : ''}
+                suffix={
+                  isPercentageGraph ||
+                  type === SystemChartType.TotalDataAssetsByTier
+                    ? '%'
+                    : ''
+                }
                 target={targetValue}
               />
             </Col>
@@ -340,13 +572,20 @@ export const DataInsightChartCard = ({
         {listAssets && (
           <Col className="d-flex justify-end" span={24}>
             <Link
-              data-testid="explore-asset-with-no-description"
+              data-testid={`explore-asset-with-no-${
+                type === SystemChartType.PercentageOfDataAssetWithDescription
+                  ? 'description'
+                  : 'owner'
+              }`}
               to={getExplorePath({
                 tab: tabsInfo[SearchIndex.TABLE].path,
                 isPersistFilters: true,
                 extraParameters: {
                   queryFilter: JSON.stringify(
-                    INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER
+                    type ===
+                      SystemChartType.PercentageOfDataAssetWithDescription
+                      ? INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER
+                      : NO_OWNER_ADVANCE_SEARCH_FILTER
                   ),
                 },
               })}>

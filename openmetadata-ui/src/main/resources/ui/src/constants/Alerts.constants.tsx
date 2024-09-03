@@ -67,5 +67,5 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
   [SubscriptionType.GChat]:
     'https://chat.googleapis.com/v1/spaces/XXXXX/messages?key=XXXXX',
   [SubscriptionType.Webhook]: 'https://example.com',
-  [SubscriptionType.Email]: 'Add ↵ seprated Email addresses',
+  [SubscriptionType.Email]: 'Add ↵ separated Email addresses',
 };

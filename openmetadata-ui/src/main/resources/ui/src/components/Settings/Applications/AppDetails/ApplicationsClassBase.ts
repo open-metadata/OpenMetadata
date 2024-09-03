@@ -12,6 +12,8 @@
  */
 
 import { FC } from 'react';
+import { AppType } from '../../../../generated/entity/applications/app';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/ScheduleUtils';
 
 class ApplicationsClassBase {
   public importSchema(fqn: string) {
@@ -34,6 +36,22 @@ class ApplicationsClassBase {
 
   public importAppScreenshot(screenshotName: string) {
     return import(`../../../../assets/img/appScreenshots/${screenshotName}`);
+  }
+
+  public getScheduleOptionsForApp(
+    app: string,
+    appType: AppType,
+    pipelineSchedules?: string[]
+  ) {
+    if (app === 'DataInsightsReportApplication') {
+      return ['week'];
+    } else if (appType === AppType.External) {
+      return ['day'];
+    }
+
+    return pipelineSchedules
+      ? getScheduleOptionsFromSchedules(pipelineSchedules)
+      : undefined;
   }
 }
 

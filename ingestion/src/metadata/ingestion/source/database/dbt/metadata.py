@@ -1,3 +1,4 @@
+#  pylint: disable=too-many-lines
 #  Copyright 2021 Collate
 #  Licensed under the Apache License, Version 2.0 (the "License");
 #  you may not use this file except in compliance with the License.
@@ -92,6 +93,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import convert_timestamp_to_milliseconds
@@ -155,6 +157,13 @@ class DbtSource(DbtServiceSource):
                 owner = self.metadata.get_reference_by_name(
                     name=dbt_owner, is_owner=True
                 )
+
+                if owner:
+                    return owner
+
+                # If owner is not found, try to find the owner in OMD using email
+                owner = self.metadata.get_reference_by_email(email=dbt_owner)
+
                 if not owner:
                     logger.warning(
                         "Unable to ingest owner from DBT since no user or"
@@ -311,7 +320,8 @@ class DbtSource(DbtServiceSource):
         self.context.get().dbt_tests[key][DbtCommonEnum.RESULTS.value] = next(
             (
                 item
-                for item in dbt_objects.dbt_run_results.results
+                for run_result in dbt_objects.dbt_run_results
+                for item in run_result.results
                 if item.unique_id == key
             ),
             None,
@@ -339,12 +349,14 @@ class DbtSource(DbtServiceSource):
             self.context.get().data_model_links = []
             self.context.get().dbt_tests = {}
             self.context.get().run_results_generate_time = None
+            # Since we'll be processing multiple run_results for a single project
+            # we'll only consider the first run_results generated_at time
             if (
                 dbt_objects.dbt_run_results
-                and dbt_objects.dbt_run_results.metadata.generated_at
+                and dbt_objects.dbt_run_results[0].metadata.generated_at
             ):
                 self.context.get().run_results_generate_time = (
-                    dbt_objects.dbt_run_results.metadata.generated_at
+                    dbt_objects.dbt_run_results[0].metadata.generated_at
                 )
             for key, manifest_node in manifest_entities.items():
                 try:
@@ -868,18 +880,42 @@ class DbtSource(DbtServiceSource):
                     test_suite = check_or_create_test_suite(
                         self.metadata, entity_link_str
                     )
-                    yield Either(
-                        right=CreateTestCaseRequest(
-                            name=manifest_node.name,
-                            description=manifest_node.description,
-                            testDefinition=FullyQualifiedEntityName(manifest_node.name),
-                            entityLink=entity_link_str,
-                            testSuite=test_suite.fullyQualifiedName,
-                            parameterValues=create_test_case_parameter_values(dbt_test),
-                            displayName=None,
-                            owners=None,
-                        )
+                    table_fqn = get_table_fqn(entity_link_str)
+                    source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
+                    test_case_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=TestCase,
+                        service_name=source_elements[0],
+                        database_name=source_elements[1],
+                        schema_name=source_elements[2],
+                        table_name=source_elements[3],
+                        column_name=manifest_node.column_name
+                        if hasattr(manifest_node, "column_name")
+                        else None,
+                        test_case_name=manifest_node.name,
                     )
+
+                    test_case = self.metadata.get_by_name(
+                        TestCase, test_case_fqn, fields=["testDefinition,testSuite"]
+                    )
+                    if test_case is None:
+                        # Create the test case only if it does not exist
+                        yield Either(
+                            right=CreateTestCaseRequest(
+                                name=manifest_node.name,
+                                description=manifest_node.description,
+                                testDefinition=FullyQualifiedEntityName(
+                                    manifest_node.name
+                                ),
+                                entityLink=entity_link_str,
+                                testSuite=test_suite.fullyQualifiedName,
+                                parameterValues=create_test_case_parameter_values(
+                                    dbt_test
+                                ),
+                                displayName=None,
+                                owners=None,
+                            )
+                        )
         except Exception as err:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(

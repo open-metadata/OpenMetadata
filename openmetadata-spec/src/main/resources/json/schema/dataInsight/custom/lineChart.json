@@ -25,6 +25,10 @@
             "description": "Filter value for the data insight chart.",
             "type": "string"
         },
+        "treeFilter": {
+            "description": "Tree filter value for the data insight chart. Needed for UI to recreate advance filter tree.",
+            "type": "string"
+        },
         "formula": {
             "description": "Formula for the data insight chart calculation.",
             "type": "string"
@@ -32,6 +36,20 @@
         "groupBy": {
             "description": "Breakdown field for the data insight chart.",
             "type": "string"
+        },
+        "includeGroups": {
+            "description": "List of groups to be included in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
+        "excludeGroups": {
+            "description": "List of groups to be excluded in the data insight chart when groupBy is specified.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
         },
         "xAxisLabel": {
             "description": "X-axis label for the data insight chart.",

@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
@@ -20,12 +21,12 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
-import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.JsonUtils;
@@ -37,6 +38,7 @@ public class DataInsightsEntityEnricherProcessor
     implements Processor<List<Map<String, Object>>, ResultList<? extends EntityInterface>> {
 
   private final StepStats stats = new StepStats();
+  private static final Set<String> NON_TIER_ENTITIES = Set.of("tag", "glossaryTerm", "dataProduct");
 
   public DataInsightsEntityEnricherProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
@@ -64,7 +66,8 @@ public class DataInsightsEntityEnricherProcessor
               .withSubmittedCount(input.getData().size())
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
-              .withMessage("Entities Enricher Encountered Failure.")
+              .withMessage(
+                  String.format("Entities Enricher Encountered Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[DataInsightsEntityEnricherProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
@@ -80,38 +83,52 @@ public class DataInsightsEntityEnricherProcessor
     Long endTimestamp = (Long) contextData.get(END_TIMESTAMP_KEY);
     Long startTimestamp = (Long) contextData.get(START_TIMESTAMP_KEY);
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
-    EntityHistory entityHistory = entityRepository.listVersions(entity.getId());
 
     Long pointerTimestamp = endTimestamp;
     List<Map<String, Object>> entityVersions = new java.util.ArrayList<>();
+    boolean historyDone = false;
+    int nextOffset = 0;
 
-    for (Object version : entityHistory.getVersions()) {
-      EntityInterface versionEntity =
-          JsonUtils.readOrConvertValue(
-              version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
-      Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
-      if (versionTimestamp >= pointerTimestamp) {
-        continue;
-      } else if (versionTimestamp < startTimestamp) {
-        Map<String, Object> versionMap = new HashMap<>();
-
-        versionMap.put("endTimestamp", pointerTimestamp);
-        versionMap.put("startTimestamp", startTimestamp);
-        versionMap.put("versionEntity", versionEntity);
-
-        entityVersions.add(versionMap);
+    while (!historyDone) {
+      EntityRepository.EntityHistoryWithOffset entityHistoryWithOffset =
+          entityRepository.listVersionsWithOffset(entity.getId(), 100, nextOffset);
+      List<Object> versions = entityHistoryWithOffset.entityHistory().getVersions();
+      if (versions.isEmpty()) {
         break;
-      } else {
-        Map<String, Object> versionMap = new HashMap<>();
+      }
+      nextOffset = entityHistoryWithOffset.nextOffset();
 
-        versionMap.put("endTimestamp", pointerTimestamp);
-        versionMap.put("startTimestamp", TimestampUtils.addDays(versionTimestamp, 1));
-        versionMap.put("versionEntity", versionEntity);
+      for (Object version : versions) {
+        EntityInterface versionEntity =
+            JsonUtils.readOrConvertValue(
+                version, ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase()));
+        Long versionTimestamp = TimestampUtils.getStartOfDayTimestamp(versionEntity.getUpdatedAt());
+        if (versionTimestamp > pointerTimestamp) {
+          continue;
+        } else if (versionTimestamp < startTimestamp) {
+          Map<String, Object> versionMap = new HashMap<>();
 
-        entityVersions.add(versionMap);
-        pointerTimestamp = versionTimestamp;
+          versionMap.put("endTimestamp", pointerTimestamp);
+          versionMap.put("startTimestamp", startTimestamp);
+          versionMap.put("versionEntity", versionEntity);
+
+          entityVersions.add(versionMap);
+          historyDone = true;
+          break;
+        } else {
+          Map<String, Object> versionMap = new HashMap<>();
+
+          versionMap.put("endTimestamp", pointerTimestamp);
+          versionMap.put("startTimestamp", TimestampUtils.getEndOfDayTimestamp(versionTimestamp));
+          versionMap.put("versionEntity", versionEntity);
+
+          entityVersions.add(versionMap);
+          pointerTimestamp =
+              TimestampUtils.getEndOfDayTimestamp(TimestampUtils.subtractDays(versionTimestamp, 1));
+        }
       }
     }
+
     return entityVersions;
   }
 
@@ -145,18 +162,30 @@ public class DataInsightsEntityEnricherProcessor
       if (ownerType.equals(Entity.TEAM)) {
         entityMap.put("team", entityOwner.getName());
       } else {
-        Optional<User> oOwner =
-            Optional.ofNullable(
-                Entity.getEntityByName(
-                    Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
+        try {
+          Optional<User> oOwner =
+              Optional.ofNullable(
+                  Entity.getEntityByName(
+                      Entity.USER, entityOwner.getFullyQualifiedName(), "teams", Include.ALL));
 
-        if (oOwner.isPresent()) {
-          User owner = oOwner.get();
-          List<EntityReference> teams = owner.getTeams();
+          if (oOwner.isPresent()) {
+            User owner = oOwner.get();
+            List<EntityReference> teams = owner.getTeams();
 
-          if (!teams.isEmpty()) {
-            entityMap.put("team", teams.get(0).getName());
+            if (!teams.isEmpty()) {
+              entityMap.put("team", teams.get(0).getName());
+            }
           }
+        } catch (EntityNotFoundException ex) {
+          // Note: If the Owner is deleted we can't infer the Teams for which the Data Asset
+          // belonged.
+          LOG.debug(
+              String.format(
+                  "Owner %s for %s '%s' version '%s' not found.",
+                  entityOwner.getFullyQualifiedName(),
+                  entityType,
+                  entity.getFullyQualifiedName(),
+                  entity.getVersion()));
         }
       }
     }
@@ -167,7 +196,15 @@ public class DataInsightsEntityEnricherProcessor
     if (oEntityTags.isPresent()) {
       Optional<String> oEntityTier =
           getEntityTier(oEntityTags.get().stream().map(TagLabel::getTagFQN).toList());
-      oEntityTier.ifPresent(s -> entityMap.put("tier", s));
+      oEntityTier.ifPresentOrElse(
+          s -> entityMap.put("tier", s),
+          () -> {
+            if (!NON_TIER_ENTITIES.contains(entityType)) {
+              entityMap.put("tier", "NoTier");
+            }
+          });
+    } else if (!NON_TIER_ENTITIES.contains(entityType)) {
+      entityMap.put("tier", "NoTier");
     }
 
     // Enrich with Description Stats
@@ -181,6 +218,16 @@ public class DataInsightsEntityEnricherProcessor
                   .reduce(0, Integer::sum));
       entityMap.put("hasDescription", CommonUtil.nullOrEmpty(entity.getDescription()) ? 0 : 1);
     }
+
+    // Modify Custom Property key
+    Optional<Object> oCustomProperties = Optional.ofNullable(entityMap.remove("extension"));
+    oCustomProperties.ifPresent(
+        o -> entityMap.put(String.format("%sCustomProperty", entityType), o));
+
+    // Remove 'changeDescription' field
+    entityMap.remove("changeDescription");
+    // Remove 'sampleData'
+    entityMap.remove("sampleData");
 
     return entityMap;
   }

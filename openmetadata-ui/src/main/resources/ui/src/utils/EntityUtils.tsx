@@ -26,6 +26,7 @@ import React, { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import QueryCount from '../components/common/QueryCount/QueryCount.component';
+import { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import {
@@ -60,12 +61,7 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { TAG_START_WITH } from '../constants/Tag.constants';
 import { ResourceEntity } from '../context/PermissionProvider/PermissionProvider.interface';
-import {
-  AssetsType,
-  EntityTabs,
-  EntityType,
-  FqnPart,
-} from '../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { ServiceCategory, ServiceCategoryPlural } from '../enums/service.enum';
@@ -1219,12 +1215,6 @@ export const getTitleCase = (text?: string) => {
   return text ? startCase(text) : '';
 };
 
-export const filterEntityAssets = (data: EntityReference[]) => {
-  const includedEntity = Object.values(AssetsType);
-
-  return data.filter((d) => includedEntity.includes(d.type as AssetsType));
-};
-
 export const getResourceEntityFromEntityType = (entityType: string) => {
   switch (entityType) {
     case EntityType.TABLE:
@@ -1730,17 +1720,27 @@ export const getBreadcrumbForContainer = (data: {
   ];
 };
 
-export const getBreadcrumbForTestCase = (entity: TestCase) => [
+export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   {
     name: i18next.t('label.data-quality'),
     url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
   },
   {
     name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      (entity as SourceType)?.entityType as EntityType
-    ),
+    url: {
+      pathname: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        (entity as SourceType)?.entityType as EntityType
+      ),
+      state: {
+        breadcrumbData: [
+          {
+            name: i18next.t('label.data-quality'),
+            url: `${ROUTES.DATA_QUALITY}/${DataQualityPageTabs.TEST_CASES}`,
+          },
+        ],
+      },
+    },
   },
 ];
 
@@ -2310,5 +2310,26 @@ export const getEntityNameLabel = (entityName?: string) => {
   return (
     entityNameLabels[entityName as keyof typeof entityNameLabels] ||
     startCase(entityName)
+  );
+};
+
+export const getPluralizeEntityName = (entityType?: string) => {
+  const entityNameLabels = {
+    [EntityType.TABLE]: t('label.table-plural'),
+    [EntityType.TOPIC]: t('label.topic-plural'),
+    [EntityType.PIPELINE]: t('label.pipeline-plural'),
+    [EntityType.CONTAINER]: t('label.container-plural'),
+    [EntityType.DASHBOARD]: t('label.dashboard-plural'),
+    [EntityType.STORED_PROCEDURE]: t('label.stored-procedure-plural'),
+    [EntityType.MLMODEL]: t('label.ml-model-plural'),
+    [EntityType.DASHBOARD_DATA_MODEL]: t('label.data-model-plural'),
+    [EntityType.SEARCH_INDEX]: t('label.search-index-plural'),
+    [EntityType.API_COLLECTION]: t('label.api-collection-plural'),
+    [EntityType.API_ENDPOINT]: t('label.api-endpoint-plural'),
+  };
+
+  return (
+    entityNameLabels[entityType as keyof typeof entityNameLabels] ||
+    getEntityNameLabel(entityType)
   );
 };

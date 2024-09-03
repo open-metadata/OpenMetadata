@@ -1,7 +1,7 @@
-# 1.4.3 Release 🎉
+# 1.4.8 Release 🎉
 
 {% note noteType="Tip" %} 
-**June 15th, 2024**
+**August 21st, 2024**
 {% /note %}
 
 {% inlineCalloutContainer %}
@@ -10,13 +10,13 @@ color="violet-70"
 icon="celebration"
 bold="Upgrade OpenMetadata"
 href="/deployment/upgrade" %}
-Learn how to upgrade your OpenMetadata instance to 1.4.3!
+Learn how to upgrade your OpenMetadata instance to 1.4.8!
 {% /inlineCallout %}
 {% /inlineCalloutContainer %}
 
-You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.3-release).
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.8-release).
 
 ## Improvements
 
-- Fixed User Signup Flow Issue missing authorize.
-- Fixed vulnerabilities for azure-identity and msal4j.
+- Made DDL configuration consistent with views.
+- Made Include ddl disabled by default.

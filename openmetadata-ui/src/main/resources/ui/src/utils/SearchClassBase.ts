@@ -195,60 +195,80 @@ class SearchClassBase {
       {
         title: i18n.t('label.database-plural'),
         key: SearchIndex.DATABASE,
-        data: { isRoot: true },
+        data: {
+          isRoot: true,
+          childEntities: [
+            EntityType.DATABASE,
+            EntityType.DATABASE_SCHEMA,
+            EntityType.STORED_PROCEDURE,
+            EntityType.TABLE,
+          ],
+        },
         icon: DatabaseIcon,
       },
       {
         title: i18n.t('label.dashboard-plural'),
         key: SearchIndex.DASHBOARD,
-        data: { isRoot: true },
+        data: {
+          isRoot: true,
+          childEntities: [
+            EntityType.DASHBOARD_DATA_MODEL,
+            EntityType.DASHBOARD,
+          ],
+        },
         icon: DashboardIcon,
       },
       {
         title: i18n.t('label.pipeline-plural'),
         key: SearchIndex.PIPELINE,
-        data: { isRoot: true },
+        data: { isRoot: true, childEntities: [EntityType.PIPELINE] },
         icon: PipelineIcon,
       },
       {
         title: i18n.t('label.topic-plural'),
         key: SearchIndex.TOPIC,
-        data: { isRoot: true },
+        data: { isRoot: true, childEntities: [EntityType.TOPIC] },
         icon: TopicIcon,
       },
       {
         title: i18n.t('label.ml-model-plural'),
         key: SearchIndex.MLMODEL,
-        data: { isRoot: true },
+        data: { isRoot: true, childEntities: [EntityType.MLMODEL] },
         icon: MlModelIcon,
       },
       {
         title: i18n.t('label.container-plural'),
         key: SearchIndex.CONTAINER,
-        data: { isRoot: true },
+        data: { isRoot: true, childEntities: [EntityType.CONTAINER] },
         icon: ContainerIcon,
       },
       {
         title: i18n.t('label.search-index-plural'),
         key: SearchIndex.SEARCH_INDEX,
-        data: { isRoot: true },
+        data: { isRoot: true, childEntities: [EntityType.SEARCH_INDEX] },
         icon: SearchIcon,
       },
       {
         title: i18n.t('label.api-uppercase-plural'),
         key: SearchIndex.API_ENDPOINT_INDEX,
-        data: { isRoot: true },
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.API_ENDPOINT, EntityType.API_COLLECTION],
+        },
         icon: IconAPIService,
       },
       {
         title: i18n.t('label.governance'),
         key: 'Governance',
-        data: { isRoot: true },
+        data: {
+          isRoot: true,
+          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
+        },
         icon: GovernIcon,
         children: [
           {
             title: i18n.t('label.glossary-plural'),
-            key: '3',
+            key: EntityType.GLOSSARY_TERM,
             isLeaf: true,
             icon: GlossaryIcon,
             data: {
@@ -259,7 +279,7 @@ class SearchClassBase {
           },
           {
             title: i18n.t('label.tag-plural'),
-            key: '4',
+            key: EntityType.TAG,
             isLeaf: true,
             icon: ClassificationIcon,
             data: {
@@ -273,12 +293,12 @@ class SearchClassBase {
       {
         title: i18n.t('label.domain-plural'),
         key: 'Domain',
-        data: { isRoot: true },
+        data: { isRoot: true, childEntities: [EntityType.DATA_PRODUCT] },
         icon: DomainIcon,
         children: [
           {
             title: i18n.t('label.data-product-plural'),
-            key: '6',
+            key: EntityType.DATA_PRODUCT,
             isLeaf: true,
             icon: DataProductIcon,
             data: {
@@ -569,6 +589,14 @@ class SearchClassBase {
           GroupIcon: IconTable,
         };
     }
+  }
+
+  public notIncludeAggregationExploreTree() {
+    return [EntityType.CHART, EntityType.INGESTION_PIPELINE];
+  }
+
+  public staticKeysHavingCounts(): string[] {
+    return [EntityType.GLOSSARY_TERM, EntityType.TAG, EntityType.DATA_PRODUCT];
   }
 }
 

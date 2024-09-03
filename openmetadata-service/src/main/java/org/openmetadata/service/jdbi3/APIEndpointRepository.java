@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
+import static org.openmetadata.service.Entity.API_COLLCECTION;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -24,10 +25,8 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -73,12 +72,23 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
             apiEndpoint.getApiCollection().getFullyQualifiedName(), apiEndpoint.getName()));
     if (apiEndpoint.getRequestSchema() != null) {
       setFieldFQN(
-          apiEndpoint.getFullyQualifiedName(), apiEndpoint.getRequestSchema().getSchemaFields());
+          apiEndpoint.getFullyQualifiedName() + ".requestSchema",
+          apiEndpoint.getRequestSchema().getSchemaFields());
     }
     if (apiEndpoint.getResponseSchema() != null) {
       setFieldFQN(
-          apiEndpoint.getFullyQualifiedName(), apiEndpoint.getResponseSchema().getSchemaFields());
+          apiEndpoint.getFullyQualifiedName() + ".responseSchema",
+          apiEndpoint.getResponseSchema().getSchemaFields());
     }
+  }
+
+  @Override
+  public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
+    APICollection apiCollection =
+        Entity.getEntity(
+            API_COLLCECTION, endpoint.getApiCollection().getId(), "owners,domain", ALL);
+    inheritOwners(endpoint, fields, apiCollection);
+    inheritDomain(endpoint, fields, apiCollection);
   }
 
   @Override
@@ -137,14 +147,14 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       populateEntityFieldTags(
           entityType,
           apiEndpoint.getRequestSchema().getSchemaFields(),
-          apiEndpoint.getFullyQualifiedName(),
+          apiEndpoint.getFullyQualifiedName() + ".requestSchema",
           fields.contains(FIELD_TAGS));
     }
     if (apiEndpoint.getResponseSchema() != null) {
       populateEntityFieldTags(
           entityType,
           apiEndpoint.getResponseSchema().getSchemaFields(),
-          apiEndpoint.getFullyQualifiedName(),
+          apiEndpoint.getFullyQualifiedName() + ".responseSchema",
           fields.contains(FIELD_TAGS));
     }
   }
@@ -232,7 +242,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     // Add table level tags by adding tag to table relationship
     super.applyTags(apiEndpoint);
     if (apiEndpoint.getRequestSchema() != null) {
-      applyTags(apiEndpoint.getResponseSchema().getSchemaFields());
+      applyTags(apiEndpoint.getRequestSchema().getSchemaFields());
     }
     if (apiEndpoint.getResponseSchema() != null) {
       applyTags(apiEndpoint.getResponseSchema().getSchemaFields());
@@ -260,11 +270,18 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     List<TagLabel> allTags = new ArrayList<>();
     APIEndpoint apiEndpoint = (APIEndpoint) entity;
     EntityUtil.mergeTags(allTags, apiEndpoint.getTags());
-    List<Field> schemaFields =
+    List<Field> requestSchemaFields =
+        apiEndpoint.getRequestSchema() != null
+            ? apiEndpoint.getRequestSchema().getSchemaFields()
+            : null;
+    List<Field> responseSchemaFields =
         apiEndpoint.getResponseSchema() != null
             ? apiEndpoint.getResponseSchema().getSchemaFields()
             : null;
-    for (Field schemaField : listOrEmpty(schemaFields)) {
+    for (Field schemaField : listOrEmpty(responseSchemaFields)) {
+      EntityUtil.mergeTags(allTags, schemaField.getTags());
+    }
+    for (Field schemaField : listOrEmpty(requestSchemaFields)) {
       EntityUtil.mergeTags(allTags, schemaField.getTags());
     }
     return allTags;
@@ -339,7 +356,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
         break;
       }
     }
-    if (!"".equals(childrenSchemaName) && schemaField != null) {
+    if (childrenSchemaName.isEmpty() && schemaField != null) {
       schemaField = getChildSchemaField(schemaField.getChildren(), childrenSchemaName);
     }
     if (schemaField == null) {
@@ -368,17 +385,6 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
       }
     }
     return childrenSchemaField;
-  }
-
-  public static Set<TagLabel> getAllFieldTags(Field field) {
-    Set<TagLabel> tags = new HashSet<>();
-    if (!listOrEmpty(field.getTags()).isEmpty()) {
-      tags.addAll(field.getTags());
-    }
-    for (Field c : listOrEmpty(field.getChildren())) {
-      tags.addAll(getAllFieldTags(c));
-    }
-    return tags;
   }
 
   public class APIEndpointUpdater extends EntityUpdater {

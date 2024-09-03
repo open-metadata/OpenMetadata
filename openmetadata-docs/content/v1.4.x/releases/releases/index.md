@@ -14,6 +14,83 @@ version. To see what's coming in next releases, please check our [Roadmap](/rele
 
 {% partial file="/v1.4/releases/latest.md" /%}
 
+# 1.4.7 Release
+
+{% note noteType="Tip" %} 
+**August 6th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.7-release).
+
+## Improvements
+
+- Resolved issue with Azure login related to email principal claims.
+
+# 1.4.6 Release
+
+{% note noteType="Tip" %} 
+**August 2nd, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.6-release).
+
+## Improvements
+
+- Fix lineage PATCH API for ingestion.
+- Fix Trino Azure config secret masking.
+- Fix setuptools version due to yanked setuptools release.
+- Fix MSSQL busy connection error during test connection.
+- Fixed test case summary updates.
+- Fixed Test Suite indexing.
+- Fix repeated alerts being sent after no changes in the Entity.
+- Fixed an issue handling users with capital letters.
+- Centralize OIDC flow handling.
+- Fixed Ingestion Pipeline alert URL.
+
+# 1.4.5 Release
+
+{% note noteType="Tip" %} 
+**July 19th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.5-release).
+
+## Improvements
+
+- Improve query filtering with prepared statements.
+- Bug fix in regex to match test case when using sampled data.
+- Bug fix in global profiler config for Snowflake, Redshift, and BigQuery.
+- Bug fix for Arg mismatch for DataModels in QlikSense.
+
+# 1.4.4 Release
+
+{% note noteType="Tip" %} 
+**July 4th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.4-release).
+
+## Improvements
+
+- Introduced SSL for Salesforce
+- Fixed the claim mappings and usernames
+- Fixed issues in Salesforce connector
+- FIxed issues in Alation connector
+- Verified for changes in new env for claim mapping
+
+# 1.4.3 Release
+
+{% note noteType="Tip" %} 
+**June 15th, 2024**
+{% /note %}
+
+You can find the GitHub release [here](https://github.com/open-metadata/OpenMetadata/releases/tag/1.4.3-release).
+
+## Improvements
+
+- Fixed User Signup Flow Issue missing authorize.
+- Fixed vulnerabilities for azure-identity and msal4j.
+
 # 1.4.2 Release
 
 {% note noteType="Tip" %}

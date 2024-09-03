@@ -74,16 +74,6 @@ export enum EntityType {
   API_ENDPOINT = 'apiEndpoint',
 }
 
-export enum AssetsType {
-  TABLE = 'table',
-  TOPIC = 'topic',
-  DASHBOARD = 'dashboard',
-  PIPELINE = 'pipeline',
-  MLMODEL = 'mlmodel',
-  DASHBOARD_DATA_MODEL = 'dashboardDataModel',
-  STORED_PROCEDURE = 'storedProcedure',
-}
-
 export enum EntityLineageDirection {
   TOP_BOTTOM = 'TB',
   LEFT_RIGHT = 'LR',
@@ -126,6 +116,7 @@ export enum TabSpecificField {
   FIELDS = 'fields',
   VOTES = 'votes',
   DOMAIN = 'domain',
+  DOMAINS = 'domains',
   DATA_PRODUCTS = 'dataProducts',
   REVIEWERS = 'reviewers',
   PIPELINES = 'pipelines',

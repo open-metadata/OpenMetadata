@@ -102,7 +102,8 @@ class PowerbiSource(DashboardServiceSource):
 
     def close(self):
         self.metadata.close()
-        self.client.file_client.delete_tmp_files()
+        if self.client.file_client:
+            self.client.file_client.delete_tmp_files()
 
     def get_filtered_workspaces(self, groups: List[Group]) -> List[Group]:
         """

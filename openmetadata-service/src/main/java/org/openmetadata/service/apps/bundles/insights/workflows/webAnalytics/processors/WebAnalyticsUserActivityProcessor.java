@@ -12,10 +12,13 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
 import org.openmetadata.schema.analytics.WebAnalyticEventData;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.JsonUtils;
@@ -49,7 +52,9 @@ public class WebAnalyticsUserActivityProcessor
               .withSubmittedCount(input.getData().size())
               .withFailedCount(input.getData().size())
               .withSuccessCount(0)
-              .withMessage("WebAnalytics User Activity Processor Encounter Failure.")
+              .withMessage(
+                  String.format(
+                      "WebAnalytics User Activity Processor Encounter Failure: %s", e.getMessage()))
               .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e));
       LOG.debug(
           "[WebAnalyticsUserActivityProcessor] Failed. Details: {}", JsonUtils.pojoToJson(error));
@@ -72,18 +77,29 @@ public class WebAnalyticsUserActivityProcessor
 
     if (!userActivityDataMap.containsKey(userId)) {
       // Fetch user Info
-      var userDetails =
-          Entity.getEntityRepository(Entity.USER)
-              .get(null, userId, new EntityUtil.Fields(Set.of("teams")));
+      try {
+        User userDetails =
+            (User)
+                Entity.getEntityRepository(Entity.USER)
+                    .get(null, userId, new EntityUtil.Fields(Set.of("teams")), Include.ALL, false);
 
-      Map<UUID, List<Long>> sessions = new HashMap<>();
-      sessions.put(sessionId, List.of(timestamp));
+        Map<UUID, List<Long>> sessions = new HashMap<>();
+        sessions.put(sessionId, List.of(timestamp));
 
-      WebAnalyticsWorkflow.UserActivityData userActivityData =
-          new WebAnalyticsWorkflow.UserActivityData(
-              userDetails.getName(), userId, null, sessions, 1, 1, timestamp);
-      //                                    .withTeam(userDetails.)
-      userActivityDataMap.put(userId, userActivityData);
+        String team = null;
+        if (!userDetails.getTeams().isEmpty()) {
+          team = userDetails.getTeams().get(0).getName();
+        }
+
+        WebAnalyticsWorkflow.UserActivityData userActivityData =
+            new WebAnalyticsWorkflow.UserActivityData(
+                userDetails.getName(), userId, team, sessions, 1, 1, timestamp);
+        userActivityDataMap.put(userId, userActivityData);
+      } catch (EntityNotFoundException ex) {
+        LOG.debug(
+            String.format(
+                "Skipping user with id '%s' because it was not found in the database.", userId));
+      }
     } else {
       WebAnalyticsWorkflow.UserActivityData userActivityData = userActivityDataMap.get(userId);
       Map<UUID, List<Long>> sessions = userActivityData.sessions();

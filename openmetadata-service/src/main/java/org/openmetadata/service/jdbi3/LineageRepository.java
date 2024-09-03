@@ -17,6 +17,7 @@ import static javax.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.csv.EntityCsv.getCsvDocumentation;
+import static org.openmetadata.service.Entity.API_ENDPOINT;
 import static org.openmetadata.service.Entity.CONTAINER;
 import static org.openmetadata.service.Entity.DASHBOARD;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
@@ -44,6 +45,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvUtil;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -68,6 +70,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.RestUtil;
 
@@ -154,6 +157,7 @@ public class LineageRepository {
     details.put("id", entityRef.getId().toString());
     details.put("type", entityRef.getType());
     details.put("fqn", entityRef.getFullyQualifiedName());
+    details.put("fqnHash", FullyQualifiedName.buildHash(entityRef.getFullyQualifiedName()));
     return details;
   }
 
@@ -204,6 +208,7 @@ public class LineageRepository {
       } else {
         pipelineMap = JsonUtils.getMap(Entity.getEntity(pipelineRef, "tags,owners", Include.ALL));
       }
+      pipelineMap.remove("changeDescription");
       relationshipDetails.put("pipelineEntityType", pipelineRef.getType());
       relationshipDetails.put(PIPELINE, pipelineMap);
     }
@@ -350,6 +355,12 @@ public class LineageRepository {
                 () ->
                     new IllegalArgumentException(
                         CatalogExceptionMessage.invalidFieldName("feature", columnFQN)));
+      }
+      case API_ENDPOINT -> {
+        APIEndpoint apiEndpoint =
+            Entity.getEntity(
+                API_ENDPOINT, entityReference.getId(), "responseSchema", Include.NON_DELETED);
+        ColumnUtil.validateFieldFQN(apiEndpoint.getResponseSchema().getSchemaFields(), columnFQN);
       }
       default -> throw new IllegalArgumentException(
           String.format("Unsupported Entity Type %s for lineage", entityReference.getType()));

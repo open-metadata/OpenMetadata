@@ -9,7 +9,6 @@ import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 
 import java.io.IOException;
 import java.text.ParseException;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -72,9 +71,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     App app = collectionDAO.applicationDAO().findEntityByName(appName);
 
     // Calculate time config
-    long currentTime = Instant.now().toEpochMilli();
-    long startTime = TimestampUtils.subtractDays(currentTime, 7);
-    long endTime = TimestampUtils.subtractDays(currentTime, 1);
+    long currentTime = System.currentTimeMillis();
+    long startTime =
+        TimestampUtils.getStartOfDayTimestamp(TimestampUtils.subtractDays(currentTime, 6));
+    long endTime = TimestampUtils.getStartOfDayTimestamp(currentTime);
     TimeConfig timeConfig =
         new TimeConfig(
             startTime,
@@ -92,7 +92,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       }
 
       // Send to Teams
-      if (Boolean.FALSE.equals(insightAlertConfig.getSendToTeams())) {
+      if (Boolean.TRUE.equals(insightAlertConfig.getSendToTeams())) {
         sendReportsToTeams(searchRepository.getSearchClient(), timeConfig);
       }
     } catch (Exception e) {
@@ -203,7 +203,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // Get total Assets Data
     Map<String, Double> dateWithCount =
         getDateMapWithCountFromChart(
-            "total_data_assets", timeConfig.startTime(), timeConfig.endTime());
+            "total_data_assets", timeConfig.startTime(), timeConfig.endTime(), team);
 
     Double previousCount = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
     Double currentCount = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
@@ -220,10 +220,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     if (previousCount == 0D) {
       // it should be undefined
       return new DataInsightTotalAssetTemplate(
-          currentCount, 0D, timeConfig.numberOfDaysChange(), dateMap);
+          String.valueOf(currentCount.intValue()), 0D, timeConfig.numberOfDaysChange(), dateMap);
     } else {
       return new DataInsightTotalAssetTemplate(
-          currentCount,
+          String.valueOf(currentCount.intValue()),
           ((currentCount - previousCount) / previousCount) * 100,
           timeConfig.numberOfDaysChange(),
           dateMap);
@@ -245,7 +245,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         getDateMapWithCountFromChart(
             "number_of_data_asset_with_description_kpi",
             timeConfig.startTime(),
-            timeConfig.endTime());
+            timeConfig.endTime(),
+            team);
 
     Double previousCompletedDescription = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
     Double currentCompletedDescription = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
@@ -293,7 +294,10 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // This assumes that on a particular date the correct count per entities are given
     Map<String, Double> dateWithCount =
         getDateMapWithCountFromChart(
-            "number_of_data_asset_with_owner_kpi", timeConfig.startTime(), timeConfig.endTime());
+            "number_of_data_asset_with_owner_kpi",
+            timeConfig.startTime(),
+            timeConfig.endTime(),
+            team);
 
     Double previousHasOwner = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
     Double currentHasOwner = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
@@ -341,8 +345,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     // Get total Assets Data
     // This assumes that on a particular date the correct count per entities are given
     Map<String, Double> dateWithCount =
-        getDateMapWithCountFromChart(
-            "total_data_assets_by_tier", timeConfig.startTime(), timeConfig.endTime());
+        getDateMapWithCountFromTierChart(
+            "total_data_assets_by_tier", timeConfig.startTime(), timeConfig.endTime(), team);
 
     Double previousHasTier = dateWithCount.getOrDefault(timeConfig.startDay(), 0D);
     Double currentHasTier = dateWithCount.getOrDefault(timeConfig.endDay(), 0D);
@@ -384,10 +388,43 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         dateMap);
   }
 
-  private Map<String, Double> getDateMapWithCountFromChart(
-      String chartName, Long startTime, Long endTime) throws IOException {
+  // Hack: Because on Data Insights when a Tier is not present is set as 'NoTier', this calculation
+  // will return 100% of the entities
+  // with Tier.
+  // This should be fixed by using the .missing() attribute for ElasticSearch aggregations and
+  // should be planned for 1.6.
+  // Meanwhile this is a workaround.
+  private Map<String, Double> getDateMapWithCountFromTierChart(
+      String chartName, Long startTime, Long endTime, String team) throws IOException {
+    String filter = prepareTeamFilter(team);
     Map<String, DataInsightCustomChartResultList> systemChartMap =
-        systemChartRepository.listChartData(chartName, startTime, endTime);
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
+    return systemChartMap.get(chartName).getResults().stream()
+        .filter(
+            result ->
+                !result
+                    .getGroup()
+                    .equals(
+                        "NoTier")) // Workaround to remove Assets without Tiers from the equation
+        .map(
+            result -> {
+              Map<String, Double> dayCount = new HashMap<>();
+              dayCount.put(
+                  TimestampUtils.timestampToString(result.getDay().longValue(), "dd"),
+                  result.getCount());
+              return dayCount;
+            })
+        .flatMap(map -> map.entrySet().stream())
+        .collect(
+            Collectors.groupingBy(
+                Map.Entry::getKey, Collectors.summingDouble(Map.Entry::getValue)));
+  }
+
+  private Map<String, Double> getDateMapWithCountFromChart(
+      String chartName, Long startTime, Long endTime, String team) throws IOException {
+    String filter = prepareTeamFilter(team);
+    Map<String, DataInsightCustomChartResultList> systemChartMap =
+        systemChartRepository.listChartData(chartName, startTime, endTime, filter);
     return systemChartMap.get(chartName).getResults().stream()
         .map(
             result -> {
@@ -401,6 +438,19 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         .collect(
             Collectors.groupingBy(
                 Map.Entry::getKey, Collectors.summingDouble(Map.Entry::getValue)));
+  }
+
+  private String prepareTeamFilter(String team) {
+    String filter = null;
+
+    if (!CommonUtil.nullOrEmpty(team)) {
+      filter =
+          String.format(
+              "{\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":\"%s\"}}]}}]}}}",
+              team);
+    }
+
+    return filter;
   }
 
   private DataInsightDescriptionAndOwnerTemplate getTemplate(

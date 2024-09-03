@@ -27,6 +27,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_S
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
 import static org.openmetadata.service.util.UserUtil.getUser;
@@ -177,7 +178,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
   private boolean isSelfSignUpEnabled = false;
-  static final String FIELDS = "profile,roles,teams,follows,owns,domain,personas,defaultPersona";
+  static final String FIELDS = "profile,roles,teams,follows,owns,domains,personas,defaultPersona";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -189,6 +190,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     Entity.withHref(uriInfo, user.getOwns());
     Entity.withHref(uriInfo, user.getFollows());
     return user;
+  }
+
+  private boolean isEmailServiceEnabled() {
+    return getSmtpSettings().getEnableSmtpServer();
   }
 
   public UserResource(
@@ -445,10 +450,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
-    User user = repository.getByEmail(uriInfo, currentEmail, fields);
-
-    repository.validateLoggedInUserNameAndEmailMatches(
-        securityContext.getUserPrincipal().getName(), currentEmail, user);
+    User user =
+        repository.getLoggedInUserByNameAndEmail(
+            uriInfo, catalogSecurityContext.getUserPrincipal().getName(), currentEmail, fields);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
@@ -568,14 +572,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
-    if (Boolean.TRUE.equals(create.getIsBot())) {
+    if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
     }
 
     //
     try {
       // Email Validation
-      validateEmailAlreadyExists(create.getEmail());
+      validateEmailAlreadyExists(user.getEmail());
       addUserAuthForBasic(user, create);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
@@ -594,8 +598,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled) {
-        if (securityContext.getUserPrincipal().getName().equals(create.getName())) {
-          // User is creating himself on signup ?! :(
+        if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
           User created = addHref(uriInfo, repository.create(uriInfo, user));
           createdUserRes = Response.created(created.getHref()).entity(created).build();
         } else {
@@ -644,7 +647,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
-    if (isBasicAuth() && isEmailServiceEnabled) {
+    if (isBasicAuth() && isEmailServiceEnabled()) {
       try {
         authHandler.sendInviteMailToUser(
             uriInfo,

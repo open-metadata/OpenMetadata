@@ -37,6 +37,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
@@ -304,13 +305,13 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Update the user information using PUT
     String oldEmail = create.getEmail();
+    // Even with new field being updated, this shouuld not take effect
     CreateUser update = create.withEmail("user.xyz@email.com").withDisplayName("displayName1");
 
     ChangeDescription change = getChangeDescription(user, MINOR_UPDATE);
     fieldAdded(change, "displayName", "displayName1");
-    fieldUpdated(change, "email", oldEmail, "user.xyz@email.com");
     user = updateAndCheckEntity(update, OK, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
-
+    assertEquals(oldEmail, user.getEmail());
     // Update the user information using PUT as the logged-in user
     update = create.withDisplayName("displayName2");
     change = getChangeDescription(user, MINOR_UPDATE);
@@ -1319,12 +1320,26 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
     // When domain is not set for a user term, carry it forward from the parent team
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
-        teamResourceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+        teamResourceTest.createRequest(test).withDomains(List.of(DOMAIN.getFullyQualifiedName()));
     Team team = teamResourceTest.createEntity(createTeam, ADMIN_AUTH_HEADERS);
 
     // Create a user without domain and ensure it inherits domain from the parent
     CreateUser create = createRequest(test).withTeams(listOf(team.getId()));
     assertDomainInheritance(create, DOMAIN.getEntityReference());
+  }
+
+  public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
+      throws IOException, InterruptedException {
+    User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
+    entity = getEntityByName(entity.getFullyQualifiedName(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
+    assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
+    assertTrue(entity.getDomains().get(0).getInherited());
+    assertEntityReferenceFromSearch(entity, expectedDomain, FIELD_DOMAINS);
+    return entity;
   }
 
   @Test

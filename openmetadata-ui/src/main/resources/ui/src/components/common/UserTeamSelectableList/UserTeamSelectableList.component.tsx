@@ -61,6 +61,7 @@ export const UserTeamSelectableList = ({
   label,
   previewSelected = false,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
+  tooltipText,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -176,25 +177,10 @@ export const UserTeamSelectableList = ({
   };
 
   const handleUpdate = async (updateItems: EntityReference[]) => {
-    // const isMulti =
-    //   (activeTab === 'teams' && isMultiTeam) ||
-    //   (activeTab === 'users' && isMultiUser);
-
     let updateData: EntityReference[] = [];
     if (!isEmpty(updateItems)) {
       updateData = updateItems;
     }
-    // else if (isMulti) {
-    //   updateData = updateItems;
-    // } else {
-    //   updateData = {
-    //     id: updateItems[0].id,
-    //     type: activeTab === 'teams' ? EntityType.TEAM : EntityType.USER,
-    //     name: updateItems[0].name,
-    //     fullyQualifiedName: updateItems[0].fullyQualifiedName,
-    //     displayName: updateItems[0].displayName,
-    //   };
-    // }
 
     await onUpdate(updateData);
     setPopupVisible(false);
@@ -229,7 +215,7 @@ export const UserTeamSelectableList = ({
   };
 
   const init = async () => {
-    if (popupVisible) {
+    if (popupVisible || popoverProps?.open) {
       reset();
       if (ownerType === EntityType.USER) {
         await getTeamCount();
@@ -386,9 +372,10 @@ export const UserTeamSelectableList = ({
           <Tooltip
             title={
               !popupVisible &&
-              t('label.edit-entity', {
-                entity: t('label.owner'),
-              })
+              (tooltipText ??
+                t('label.edit-entity', {
+                  entity: t('label.owner'),
+                }))
             }>
             <Button
               className="flex-center p-0"

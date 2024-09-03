@@ -42,6 +42,7 @@ import {
   getOwnerVersionLabel,
 } from '../../../../utils/EntityVersionUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
+import { CustomPropertyTable } from '../../../common/CustomPropertyTable/CustomPropertyTable';
 import FormItemLabel from '../../../common/Form/FormItemLabel';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import TagButton from '../../../common/TagButton/TagButton.component';
@@ -54,6 +55,9 @@ import {
 const DocumentationTab = ({
   domain,
   onUpdate,
+  onExtensionUpdate,
+  editCustomAttributePermission,
+  viewAllPermission,
   isVersionsView = false,
   type = DocumentationEntity.DOMAIN,
 }: DocumentationTabProps) => {
@@ -228,7 +232,7 @@ const DocumentationTab = ({
                 )}
               </Space>
 
-              {!domain.owners && editOwnerPermission && (
+              {domain.owners?.length === 0 && editOwnerPermission && (
                 <UserTeamSelectableList
                   hasPermission
                   multiple={{ team: false, user: true }}
@@ -351,6 +355,20 @@ const DocumentationTab = ({
                     onSubmit={handleDomainTypeUpdate}
                   />
                 )}
+              </Col>
+            )}
+
+            {domain && type === DocumentationEntity.DATA_PRODUCT && (
+              <Col data-testid="custom-properties-right-panel" span="24">
+                <CustomPropertyTable<EntityType.DATA_PRODUCT>
+                  isRenderedInRightPanel
+                  entityDetails={domain as DataProduct}
+                  entityType={EntityType.DATA_PRODUCT}
+                  handleExtensionUpdate={onExtensionUpdate}
+                  hasEditAccess={Boolean(editCustomAttributePermission)}
+                  hasPermission={Boolean(viewAllPermission)}
+                  maxDataCap={5}
+                />
               </Col>
             )}
           </Row>

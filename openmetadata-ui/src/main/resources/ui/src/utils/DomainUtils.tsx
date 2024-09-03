@@ -12,28 +12,34 @@
  */
 import { Divider, Space, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import classNames from 'classnames';
 import { t } from 'i18next';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
 import {
   DEFAULT_DOMAIN_VALUE,
   NO_DATA_PLACEHOLDER,
 } from '../constants/constants';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
-import { TabSpecificField } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import { EntityChangeOperations } from '../enums/VersionPage.enum';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { ChangeDescription, EntityReference } from '../generated/entity/type';
-import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import { getEntityName } from './EntityUtils';
+import {
+  QueryFieldInterface,
+  QueryFilterInterface,
+} from '../pages/ExplorePage/ExplorePage.interface';
+import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
   getDiffValue,
 } from './EntityVersionUtils';
+import { getDomainPath } from './RouterUtils';
 
 export const getOwner = (
   hasPermission: boolean,
@@ -144,26 +150,39 @@ export const getQueryFilterToIncludeDomain = (
 });
 
 export const getQueryFilterToExcludeDomainTerms = (
-  fqn: string
-): QueryFilterInterface => ({
-  query: {
-    bool: {
-      must: [
+  fqn: string,
+  parentFqn?: string
+): QueryFilterInterface => {
+  const mustTerm: QueryFieldInterface[] = parentFqn
+    ? [
         {
-          bool: {
-            must_not: [
-              {
-                term: {
-                  'domain.fullyQualifiedName': fqn,
-                },
-              },
-            ],
+          term: {
+            'domain.fullyQualifiedName': parentFqn,
           },
         },
-      ],
+      ]
+    : [];
+
+  return {
+    query: {
+      bool: {
+        must: mustTerm.concat([
+          {
+            bool: {
+              must_not: [
+                {
+                  term: {
+                    'domain.fullyQualifiedName': fqn,
+                  },
+                },
+              ],
+            },
+          },
+        ]),
+      },
     },
-  },
-});
+  };
+};
 
 // Domain type description which will be shown in tooltip
 export const domainTypeTooltipDataRender = () => (
@@ -183,14 +202,20 @@ export const domainTypeTooltipDataRender = () => (
   </Space>
 );
 
-export const getDomainOptions = (domains: Domain[]) => {
-  const domainOptions: ItemType[] = [
-    {
-      label: t('label.all-domain-plural'),
-      key: DEFAULT_DOMAIN_VALUE,
-    },
-  ];
-  domains.forEach((domain: Domain) => {
+export const getDomainOptions = (
+  domains: Domain[] | EntityReference[],
+  isAdmin = true
+) => {
+  const domainOptions: ItemType[] =
+    isAdmin || domains.length === 0
+      ? [
+          {
+            label: t('label.all-domain-plural'),
+            key: DEFAULT_DOMAIN_VALUE,
+          },
+        ]
+      : [];
+  domains.forEach((domain) => {
     domainOptions.push({
       label: getEntityName(domain),
       key: domain.fullyQualifiedName ?? '',
@@ -198,4 +223,46 @@ export const getDomainOptions = (domains: Domain[]) => {
   });
 
   return domainOptions;
+};
+
+export const renderDomainLink = (
+  domain: EntityReference,
+  domainDisplayName: ReactNode,
+  showDomainHeading: boolean,
+  textClassName?: string
+) => (
+  <Link
+    className={classNames(
+      'text-primary no-underline domain-link',
+      { 'font-medium text-xs': !showDomainHeading },
+      textClassName
+    )}
+    data-testid="domain-link"
+    to={getDomainPath(domain?.fullyQualifiedName)}>
+    {isUndefined(domainDisplayName) ? getEntityName(domain) : domainDisplayName}
+  </Link>
+);
+
+export const initializeDomainEntityRef = (
+  domains: EntityReference[],
+  activeDomainKey: string
+) => {
+  const domain = domains.find((item) => {
+    return item.fullyQualifiedName === activeDomainKey;
+  });
+  if (domain) {
+    return getEntityReferenceFromEntity(domain, EntityType.DOMAIN);
+  }
+
+  return undefined;
+};
+
+export const getDomainFieldFromEntityType = (
+  entityType: EntityType
+): string => {
+  if (entityType === EntityType.TEAM || entityType === EntityType.USER) {
+    return 'domains';
+  } else {
+    return 'domain';
+  }
 };

@@ -79,7 +79,7 @@ import org.openmetadata.service.util.ResultList;
 @Collection(name = "dataProducts", order = 4) // initialize after user resource
 public class DataProductResource extends EntityResource<DataProduct, DataProductRepository> {
   public static final String COLLECTION_PATH = "/v1/dataProducts/";
-  static final String FIELDS = "domain,owners,experts,assets";
+  static final String FIELDS = "domain,owners,experts,assets,extension";
 
   public DataProductResource(Authorizer authorizer, Limits limits) {
     super(Entity.DATA_PRODUCT, authorizer, limits);
@@ -141,7 +141,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     if (!nullOrEmpty(domain)) {
       EntityReference domainReference =
           Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
-      filter.addQueryParam("domainId", domainReference.getId().toString());
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

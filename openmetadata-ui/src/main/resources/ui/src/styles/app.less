@@ -413,6 +413,9 @@ a[href].link-text-grey,
 .opacity-0 {
   opacity: 0;
 }
+.opacity-30 {
+  opacity: 0.3;
+}
 .opacity-50 {
   opacity: 0.5;
 }
@@ -819,4 +822,23 @@ a[href].link-text-grey,
   border: 1px solid @border-color;
   top: 50%;
   transform: translateY(-50%);
+}
+
+.reserve-right-sidebar {
+  .feed-editor {
+    // Right side padding 20 + 64 width of sidebar
+    margin-right: 84px;
+  }
+  .test-case-table-container {
+    margin-right: 64px;
+  }
+
+  .appearance-cta-buttons {
+    padding-right: 64px;
+  }
+  .policies-list-table,
+  .roles-list-table,
+  .list-table {
+    margin-right: 64px;
+  }
 }

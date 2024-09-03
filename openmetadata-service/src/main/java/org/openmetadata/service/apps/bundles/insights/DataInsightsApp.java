@@ -6,8 +6,10 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getT
 
 import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -41,20 +43,41 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataInsightsApp extends AbstractNativeApplication {
   public static final String REPORT_DATA_TYPE_KEY = "ReportDataType";
+  public static final String DATA_ASSET_INDEX_PREFIX = "di-data-assets";
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
   public record Backfill(String startDate, String endDate) {}
 
+  private Optional<Boolean> recreateDataAssetsIndex;
+
   @Getter private Optional<Backfill> backfill;
   @Getter EventPublisherJob jobData;
   private volatile boolean stopped = false;
+
+  public final Set<String> dataAssetTypes =
+      Set.of(
+          "table",
+          "storedProcedure",
+          "databaseSchema",
+          "database",
+          "chart",
+          "dashboard",
+          "dashboardDataModel",
+          "pipeline",
+          "topic",
+          "container",
+          "searchIndex",
+          "mlmodel",
+          "dataProduct",
+          "glossaryTerm",
+          "tag");
 
   public DataInsightsApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
   }
 
-  private void createDataAssetsDataStream() {
+  private DataInsightsSearchInterface getSearchInterface() {
     DataInsightsSearchInterface searchInterface;
 
     if (searchRepository
@@ -69,13 +92,40 @@ public class DataInsightsApp extends AbstractNativeApplication {
               (os.org.opensearch.client.RestClient)
                   searchRepository.getSearchClient().getLowLevelClient());
     }
+    return searchInterface;
+  }
+
+  public static String getDataStreamName(String dataAssetType) {
+    return String.format("%s-%s", DATA_ASSET_INDEX_PREFIX, dataAssetType).toLowerCase();
+  }
+
+  private void createDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     try {
-      if (!searchInterface.dataAssetDataStreamExists("di-data-assets")) {
-        searchInterface.createDataAssetsDataStream();
+      for (String dataAssetType : dataAssetTypes) {
+        String dataStreamName = getDataStreamName(dataAssetType);
+        if (!searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          searchInterface.createDataAssetsDataStream(dataStreamName);
+        }
       }
     } catch (IOException ex) {
-      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.");
+      LOG.error("Couldn't install DataInsightsApp: Can't initialize ElasticSearch Index.", ex);
+    }
+  }
+
+  private void deleteDataAssetsDataStream() {
+    DataInsightsSearchInterface searchInterface = getSearchInterface();
+
+    try {
+      for (String dataAssetType : dataAssetTypes) {
+        String dataStreamName = getDataStreamName(dataAssetType);
+        if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+          searchInterface.deleteDataAssetDataStream(dataStreamName);
+        }
+      }
+    } catch (IOException ex) {
+      LOG.error("Couldn't delete DataAssets DataStream", ex);
     }
   }
 
@@ -88,6 +138,9 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
     // Configure batchSize
     batchSize = config.getBatchSize();
+
+    // Configure recreate
+    recreateDataAssetsIndex = Optional.ofNullable(config.getRecreateDataAssetsIndex());
 
     // Configure Backfill
     Optional<BackfillConfiguration> backfillConfig =
@@ -117,11 +170,45 @@ public class DataInsightsApp extends AbstractNativeApplication {
 
       if (!runType.equals(ON_DEMAND_JOB)) {
         backfill = Optional.empty();
+        recreateDataAssetsIndex = Optional.empty();
       }
 
-      processWebAnalytics(jobExecutionContext);
-      processCostAnalysis(jobExecutionContext);
-      processDataAssets(jobExecutionContext);
+      if (recreateDataAssetsIndex.isPresent() && recreateDataAssetsIndex.get().equals(true)) {
+        deleteDataAssetsDataStream();
+        createDataAssetsDataStream();
+      }
+
+      WorkflowStats webAnalyticsStats = processWebAnalytics();
+      updateJobStatsWithWorkflowStats(webAnalyticsStats);
+
+      WorkflowStats costAnalysisStats = processCostAnalysis();
+      updateJobStatsWithWorkflowStats(costAnalysisStats);
+
+      WorkflowStats dataAssetsStats = processDataAssets();
+      updateJobStatsWithWorkflowStats(dataAssetsStats);
+
+      if (webAnalyticsStats.hasFailed()
+          || costAnalysisStats.hasFailed()
+          || dataAssetsStats.hasFailed()) {
+        String errorMessage = "Errors Found:\n";
+
+        for (WorkflowStats stats : List.of(webAnalyticsStats, costAnalysisStats, dataAssetsStats)) {
+          if (stats.hasFailed()) {
+            errorMessage = String.format("%s\n  %s\n", errorMessage, stats.getName());
+            for (String failure : stats.getFailures()) {
+              errorMessage = String.format("%s    - %s\n", errorMessage, failure);
+            }
+          }
+        }
+
+        IndexingError indexingError =
+            new IndexingError()
+                .withErrorSource(IndexingError.ErrorSource.JOB)
+                .withMessage(errorMessage);
+        LOG.error(indexingError.getMessage());
+        jobData.setStatus(EventPublisherJob.Status.FAILED);
+        jobData.setFailure(indexingError);
+      }
 
       updateJobStatus();
     } catch (Exception ex) {
@@ -130,7 +217,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
               .withErrorSource(IndexingError.ErrorSource.JOB)
               .withMessage(
                   String.format(
-                      "Reindexing Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
+                      "Data Insights Job Has Encountered an Exception. %n Job Data: %s, %n  Stack : %s ",
                       jobData.toString(), ExceptionUtils.getStackTrace(ex)));
       LOG.error(indexingError.getMessage());
       jobData.setStatus(EventPublisherJob.Status.FAILED);
@@ -144,59 +231,55 @@ public class DataInsightsApp extends AbstractNativeApplication {
     timestamp = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
   }
 
-  private void processWebAnalytics(JobExecutionContext jobExecutionContext) {
+  private WorkflowStats processWebAnalytics() {
     WebAnalyticsWorkflow workflow = new WebAnalyticsWorkflow(timestamp, batchSize, backfill);
+    WorkflowStats workflowStats = workflow.getWorkflowStats();
+
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
-    } finally {
-      WorkflowStats workflowStats = workflow.getWorkflowStats();
-      for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
-        String stepName = entry.getKey();
-        StepStats stats = entry.getValue();
-        updateStats(stepName, stats);
-      }
-      sendUpdates(jobExecutionContext);
     }
+
+    return workflowStats;
   }
 
-  private void processCostAnalysis(JobExecutionContext jobExecutionContext) {
-    // TODO: Actually implement Backfill
+  private WorkflowStats processCostAnalysis() {
     CostAnalysisWorkflow workflow = new CostAnalysisWorkflow(timestamp, batchSize, backfill);
+    WorkflowStats workflowStats = workflow.getWorkflowStats();
+
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
-    } finally {
-      WorkflowStats workflowStats = workflow.getWorkflowStats();
-      for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
-        String stepName = entry.getKey();
-        StepStats stats = entry.getValue();
-        updateStats(stepName, stats);
-      }
-      sendUpdates(jobExecutionContext);
     }
+
+    return workflowStats;
   }
 
-  private void processDataAssets(JobExecutionContext jobExecutionContext) {
+  private WorkflowStats processDataAssets() {
     DataAssetsWorkflow workflow =
-        new DataAssetsWorkflow(timestamp, batchSize, backfill, collectionDAO, searchRepository);
+        new DataAssetsWorkflow(
+            timestamp, batchSize, backfill, dataAssetTypes, collectionDAO, searchRepository);
+    WorkflowStats workflowStats = workflow.getWorkflowStats();
+
     try {
       workflow.process();
     } catch (SearchIndexException ex) {
       jobData.setStatus(EventPublisherJob.Status.FAILED);
       jobData.setFailure(ex.getIndexingError());
-    } finally {
-      WorkflowStats workflowStats = workflow.getWorkflowStats();
-      for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
-        String stepName = entry.getKey();
-        StepStats stats = entry.getValue();
-        updateStats(stepName, stats);
-      }
-      sendUpdates(jobExecutionContext);
+    }
+
+    return workflowStats;
+  }
+
+  private void updateJobStatsWithWorkflowStats(WorkflowStats workflowStats) {
+    for (Map.Entry<String, StepStats> entry : workflowStats.getWorkflowStepStats().entrySet()) {
+      String stepName = entry.getKey();
+      StepStats stats = entry.getValue();
+      updateStats(stepName, stats);
     }
   }
 

@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_4_6'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_2'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -686,6 +686,252 @@ API:
 -   Fixed an issue handling users with capital letters
 -   Centralize OIDC flow handling
 -   Fixed Ingestion Pipeline alert URL`,
+    },
+  },
+  {
+    id: 32,
+    version: 'v1.4.7',
+    description: `Released on 7th August 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Resolved issue with Azure login related to email principal claims.`,
+    },
+  },
+  {
+    id: 33,
+    version: 'v1.4.8',
+    description: `Released on 21st August 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Fix Entity listing API.
+-   Fix user profile task listing.
+-   Fix import/export UI flow ${CollateIconWithLinkMD}.
+-   Improve SAML logging backend.
+-   Add Unity Catalog Lineage Dialect.
+-   Clean idle connections during ingestion.
+-   Fix Databricks Describe Table during metadata ingestion.
+-   Glossary Upload now shows permissions errors for non-owners.
+-   Fix task not showing in the right panel after clicking, in the Activity Feed.
+-   Support multiple dbt run_results.json for a single manifest for improved performance.`,
+    },
+  },
+  {
+    id: 43,
+    version: 'v1.5.0',
+    description: `Released on 26th August 2024.`,
+    features: [
+      {
+        title: `Data Observability with Anomaly Detection (Collate)`,
+        description: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
+
+1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
+
+2.  No-code data quality tests, deploy, collect results back to see it in a dashboard all within OpenMetadata
+
+3.  Create alerts and get notified of Test results through email, Slack, NSteams, GChat, and Webhook
+
+4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream
+
+In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/BPuNC8vPcsw',
+      },
+      {
+        title: 'Enhanced Data Quality Dashboard (Collate)',
+        description: `We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/bXcQBtZuyoU',
+      },
+      {
+        title: 'Freshness Data Quality Tests (Collate)',
+        description: `Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/QRcR3m9cCGo',
+      },
+      {
+        title: 'Data Diff Data Quality Tests',
+        description: `Data quality checks are important not only within a single table but also between different tables. These data diff checks can ensure key data remains unchanged after transformation, or conversely, ensure that the transformations were actually performed.
+
+We are introducing the table difference data quality test to validate that multiple appearances of the same information remain consistent. Note that the test allows you to specify which column to use as a key and which columns you want to compare, and even add filters in the data to give you more control over multiple use cases.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/oxZVS_UGrE4',
+      },
+      {
+        title: 'Domains RBAC & Subdomains',
+        description: `OpenMetadata introduced Domains & Data Products in 1.3.0. Since then, many large organizations have started using Domains & Data Products to achieve better ownership and collaboration around domains that can span multiple teams.
+
+In the 1.5.0 release, we added support for subdomains. This will help teams to organize into multiple subdomains within each domain.
+
+**RBAC for Domains:**
+
+With the 1.5.0 release, we are adding more stricter controls around Domain. Now teams/data assets/glossaries and classification can have domain concepts and can get a policy such that only users within a domain can access the data within a domain. Domain owners can use data products as a way to publish data products and showcase publicly available data assets from a specific domain.
+
+This will help large companies to use a single OpenMetadata platform to unify all of their data and teams but also provide more stringent controls to segment the data between domains.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/r-_HaewjgTQ',
+      },
+      {
+        title: 'Improved Explore Page & Data Asset Widget',
+        description: `OpenMetadata, with its simple UI/UX and data collaboration features, is becoming more attractive to non-technical users as well. Data Governance teams are using OpenMetadata to add glossary terms and policies around metadata. Teams using Collate SaaS product are taking advantage of our Automations feature to gain productivity in their governance tasks.
+
+Our new improved navigation on the Explore page will help users navigate hierarchically and find the data they are looking for. Users will see the data assets now grouped by service name -> database -> schema -> tables/stored procedures.
+
+We are also making the discovery of data more accessible for users introducing a data asset widget, which will group the assets by platform type. This will help users find their data if they are working on a specific platform such as Looker or Snowflake they can easily click on that icon and get to the data.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/45ekUIRO1Ec',
+      },
+      {
+        title: 'API as Data Asset',
+        description: `The Internet runs using APIs, both producing and consuming data. Organizations today run many microservices and REST APIs to capture data from their users and update a transaction database in the backend.
+
+On top of the many supported connectors across Databases, Dashboards, ML Models, etc. We believe that providing support for API Services as data assets will help to get the full picture of how the data is coming through from various services and landing into databases, going to warehouses and BI tools.
+
+In 1.5.0 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.`,
+        isImage: false,
+        path: 'https://www.youtube.com/embed/b9wrVnM3u80',
+      },
+    ],
+    changeLogs: {
+      ['Backward Incompatible Changes']: `**Multi Owners:**
+        
+- OpenMetadata allows a single user or a team to be tagged as owners for any data assets. In Release 1.5.0, we allow users to tag multiple individual owners or a single team. This will allow organizations to add ownership to multiple individuals without necessarily needing to create a team around them like previously.      
+- This is a backward incompatible change, if you are using APIs, please make sure the owner field is now changed to "owners"
+        
+**Import/Export Format:**
+        
+- To support the multi-owner format, we have now changed how we export and import the CSV file in glossary, services, database, schema, table, etc. The new format will be
+        
+    user:userName;team:TeamName
+        
+    **If you are importing an older file, please make sure to make this change.**
+        
+**Pydantic V2:**
+        
+- The core of OpenMetadata are the JSON Schemas that define the metadata standard. These schemas are automatically translated into Java, Typescript, and Python code with Pydantic classes.
+- In this release, we have [migrated](https://docs.pydantic.dev/latest/migration/) the codebase from Pydantic V1 to Pydantic V2.
+        
+**Deployment Related Changes (OSS only):**
+        
+- **\`./bootstrap/bootstrap_storage.sh\` removed**
+- OpenMetadata community has built rolling upgrades to database schema and the data to make upgrades easier. This tool is now called as \`./bootstrap/openmetadata-ops.sh\` and has been part of our releases since 1.3. The bootstrap_storage.sh doesn't support new native schemas in OpenMetadata. Hence, we have deleted this tool from this release.
+- While upgrading, please refer to our Upgrade Notes in the documentation. Always follow the best practices provided there.
+        
+**Database Connection Pooling:**
+        
+- OpenMetadata uses Jdbi to handle database-related operations such as read/write/delete. In this release, we introduced additional configs to help with connection pooling, allowing the efficient use of a database with low resources.
+        
+- Please update the defaults if your cluster is running at a large scale to scale up the connections efficiently.
+        
+- For the new configuration, please refer to the [doc](https://docs.open-metadata.org/latest/deployment/database-connection-pooling) here
+        
+**Data Insights:**
+        
+- The Data Insights application is meant to give you a quick glance at your data's state and allow you to take action based on the information you receive. To continue pursuing this objective, the application was completely refactored to allow customizability.
+- Part of this refactor was making Data Insights an internal application, no longer relying on an external pipeline. This means triggering Data Insights from the Python SDK will no longer be possible.
+- With this change you will need to **run a backfill on the Data Insights** for the last couple of days since the Data Assets data changed.
+        
+**New Explore Page:**
+        
+- Explore page displays hierarchically organized data assets by grouping them into services > database > schema > tables/stored procedures. This helps users organically find the data asset they are looking for based on a known database or schema they were using. This is a new feature and changes the way the Explore page was built in previous releases.
+        
+**Connector Schema Changes:**
+
+In the latest release, several updates and enhancements have been made to the JSON schema across various connectors. These changes aim to improve security, configurability, and expand integration capabilities. Here's a detailed breakdown of the updates.
+        
+-   **KafkaConnect:** Added \`schemaRegistryTopicSuffixName\` to enhance topic configuration flexibility for schema registries.
+-   **GCS Datalake:** Introduced \`bucketNames\` field, allowing users to specify targeted storage buckets within the Google Cloud Storage environment.
+-   **OpenLineage:** Added \`saslConfig\` to enhance security by enabling SASL (Simple Authentication and Security Layer) configuration.
+-   **Salesforce:** Added \`sslConfig\` to strengthen the security layer for Salesforce connections by supporting SSL.
+-   **DeltaLake:** Updated schema by moving \`metastoreConnection\` to a newly created \`metastoreConfig.json\` file. Additionally, introduced \`configSource\` to better define source configurations, with new support for \`metastoreConfig.json\` and \`storageConfig.json\`.
+-   **Iceberg:** RestCatalog: Removed \`clientId\` and \`clientSecret\` as mandatory fields, making the schema more flexible for different authentication methods.
+-   **DBT:** Cloud Pipelines: Added as a new connector to support cloud-native data transformation workflows using DBT.
+-   **Looker:** Expanded support to include connections using GitLab integration, offering more flexible and secure version control.
+-   **Tableau:** Enhanced support by adding capabilities for connecting with \`TableauPublishedDatasource\` and \`TableauEmbeddedDatasource\`, providing more granular control over data visualization and reporting.
+
+**Include DDL:**
+        
+- During the Database Metadata ingestion, we can optionally pick up the DDL for both tables and views. During the metadata ingestion, we use the view DDLs to generate the View Lineage.
+- To reduce the processing time for out-of-the-box workflows, we are disabling the include DDL by default, whereas before, it was enabled, which potentially led to long-running workflows.
+
+**Secrets Manager**
+Starting with the release 1.5.0, the JWT Token for the bots will be sent to the Secrets Manager if you configured one. It won't appear anymore in your dag_generated_configs in Airflow.
+
+**Python SDK**
+The \`metadata insight\` command has been removed. Since Data Insights application was moved to be an internal system application instead of relying on external pipelines the SDK command to run the pipeline was removed.`,
+      [`Data Observability with Anomaly Detection ${CollateIconWithLinkMD}`]: `OpenMetadata has been driving innovation in Data Quality in Open Source. Many organizations are taking advantage of the following Data Quality features to achieve better-quality data
+
+1.  A Native Profiler to understand the shape of the data, freshness, completeness, volume, and ability to add your own metrics, including column level profiler over time-series and dashboards
+
+2.  No-code data quality tests, deploy, collect results back to see it in a dashboard all within OpenMetadata
+
+3.  Create alerts and get notified of Test results through email, Slack, NSteams, GChat, and Webhook
+
+4.  Incident Manager to collaborate around test failures and visibility to downstream consumers of failures from upstream\
+In 1.5.0, we are bringing in Anomaly Detection based on AI to predict when an anomaly happens based on our learning historical data and automatically sending notifications to the owners of the table to warn them of the impending incidents.`,
+      [`Enhanced Data Quality Dashboard ${CollateIconWithLinkMD}`]: `We also have improved the Table Data quality dashboard to showcase the tests categorized and make it easy for everyone to consume. When there are issues, the new dashboard makes it easier to understand the Data Quality coverage of your tables and the possible impact each test failure has by organizing tests into different groups.`,
+      [`Freshness Data Quality Tests ${CollateIconWithLinkMD}`]: `Working with old data can lead to making wrong decisions. With the new Freshness test, you can validate that your data arrives at the right time. Freshness tests are a critical part of any data team's toolset. Bringing these tests together with lineage information and the Incident Manager, your team will be able to quickly detect issues related to missing data or stuck pipelines.`,
+      ['Data Diff Data Quality Tests']: `Data quality checks are important not only within a single table but also between different tables. These data diff checks can ensure key data remains unchanged after transformation, or conversely, ensure that the transformations were actually performed.
+
+We are introducing the **table difference** data quality test to validate that multiple appearances of the same information remain **consistent**. Note that the test allows you to specify which column to use as a key and which columns you want to compare, and even add filters in the data to give you more control over multiple use cases.`,
+      ['Domains RBAC & Subdomains']: `OpenMetadata introduced Domains & Data Products in 1.3.0. Since then, many large organizations have started using Domains & Data Products to achieve better ownership and collaboration around domains that can span multiple teams.
+
+In the 1.5.0 release, we added support for subdomains. This will help teams to organize into multiple subdomains within each domain.
+
+**RBAC for Domains:**
+
+With the 1.5.0 release, we are adding more stricter controls around Domain. Now teams/data assets/glossaries and classification can have domain concepts and can get a policy such that only users within a domain can access the data within a domain. Domain owners can use data products as a way to publish data products and showcase publicly available data assets from a specific domain.
+
+This will help large companies to use a single OpenMetadata platform to unify all of their data and teams but also provide more stringent controls to segment the data between domains.`,
+      ['Improved Explore Page & Data Asset Widget']: `OpenMetadata, with its simple UI/UX and data collaboration features, is becoming more attractive to non-technical users as well. Data Governance teams are using OpenMetadata to add glossary terms and policies around metadata. Teams using Collate SaaS product are taking advantage of our Automations feature to gain productivity in their governance tasks.
+
+Our new improved navigation on the Explore page will help users navigate hierarchically and find the data they are looking for. Users will see the data assets now grouped by service name -> database -> schema -> tables/stored procedures.
+
+We are also making the discovery of data more accessible for users introducing a data asset widget, which will group the assets by platform type. This will help users find their data if they are working on a specific platform such as Looker or Snowflake they can easily click on that icon and get to the data.`,
+      [`Pipeline Status Widget ${CollateIconWithLinkMD}`]: `We are also adding another widget you can use to customize the Landing Page of the User Personas in your organization.
+
+With the Pipeline Status widget, Data Engineers can easily track the pipelines that are not behaving as expected. This widget, together with the obervability alerts that are already in place, will help your teams jump even faster to solving any issues in the platform.`,
+      ['API as Data Asset']: `The Internet runs using APIs, both producing and consuming data. Organizations today run many microservices and REST APIs to capture data from their users and update a transaction database in the backend.
+
+On top of the many supported connectors across Databases, Dashboards, ML Models, etc. We believe that providing support for API Services as data assets will help to get the full picture of how the data is coming through from various services and landing into databases, going to warehouses and BI tools.
+
+In 1.5.0 we are introducing APIs as another first-class entity. Teams can now capture API requests and responses payloads and use our column level lineage to capture the relation between APIs and any other asset in the platform.`,
+      ['Glossary Improvements']: `OpenMetadata supports multiple glossaries, an import/export and review process, and bulk asset tagging with glossary terms. Many teams are taking advantage of these features, and with an amazing open-source community, we are receiving great feedback on improving glossary functionality.
+
+Here are some of the improvements coming in 1.5.0
+
+1.  Glossary Reviewers can be teams
+
+2.  Updating a glossary will enforce a re-review
+
+3.  Renaming the Glossary Term while it's under review will keep the task associated with it open.`,
+      [`Data Insights ${CollateIconWithLinkMD}`]: `The Data Insights application is meant to give you a quick glance of your data's state and allow you to take action based on the information you receive.
+
+To continue pursuing this objective, the application was completely refactored to allow customizability. This is achieved by the possibility of now creating custom dashboards. On this release you can create charts based on your data assets metadata based on your needs.`,
+      ['Ingestion Connectors']: `1.  **Apache Flink** as a Pipeline Connector
+
+2.  **SAP ERP**, after a long and successful collaboration with our community and SAP experts
+
+3.  **Teradata** as a community contribution from [gbpy](https://github.com/gpby) to broaden the integration capabilities for enterprise-scale analytics and data management.
+
+4.  **GCS Storage Connector** as a community contribution from [Matt Chamberlin](https://github.com/MChamberlin)
+5.  **Synapse Connector** ${CollateIconWithLinkMD}`,
+    },
+  },
+  {
+    id: 44,
+    version: 'v1.5.2',
+    description: `Released on 2nd September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   [Fix]: Resolved issue with lineage lookup for long Fully Qualified Names (FQNs), ensuring accurate lineage tracking and display.
+-   [Improve]: Fixed the 'Edit Reviewers' permission issue, allowing correct permission management for editing reviewers.
+-   [Improve]: Addressed email update issues to ensure that email addresses are properly updated throughout the system.
+-   [Improve]: Fixed the delete lineage functionality to handle cases where override lineage is enabled, preventing errors and ensuring consistency.
+-   [Improve]: Added support for the 'Edit Assign' button in the Incident Manager, allowing for easier assignment changes.
+-   [Improve]: Introduced a resizable layout for the glossary page, improving usability and adaptability to different screen sizes.
+-   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
+-   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
+-   [Improve]: Added custom properties support in Data Product`,
     },
   },
 ];
