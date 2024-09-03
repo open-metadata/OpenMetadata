@@ -1828,17 +1828,6 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public int getSuccessFromBulkResponse(BulkResponse response) {
-    int success = 0;
-    for (BulkItemResponse bulkItemResponse : response) {
-      if (!bulkItemResponse.isFailed()) {
-        success++;
-      }
-    }
-    return success;
-  }
-
-  @Override
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -1996,24 +1985,6 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     return searchSourceBuilder;
-  }
-
-  @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
-    List<Map<String, String>> fields = new ArrayList<>();
-    GetMappingsRequest request =
-        new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
-
-    // Execute request
-    GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
-
-    // Get mappings for the index
-    for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-      // Get fields for the index
-      Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
-    }
-    return fields;
   }
 
   void getFieldNames(

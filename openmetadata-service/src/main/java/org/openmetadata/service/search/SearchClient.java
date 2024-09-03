@@ -1,8 +1,10 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+import static org.reflections.Reflections.log;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.KeyStoreException;
 import java.text.ParseException;
 import java.util.List;
@@ -135,11 +137,6 @@ public interface SearchClient {
       String entityType)
       throws IOException;
 
-  default Response listPageHierarchy(String parent, String pageType) {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
   Map<String, Object> searchLineageInternal(
       String fqn,
       int upstreamDepth,
@@ -217,16 +214,6 @@ public interface SearchClient {
       es.org.elasticsearch.action.bulk.BulkRequest data,
       es.org.elasticsearch.client.RequestOptions options)
       throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(BulkResponse response) {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  default int getSuccessFromBulkResponse(es.org.elasticsearch.action.bulk.BulkResponse response) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
