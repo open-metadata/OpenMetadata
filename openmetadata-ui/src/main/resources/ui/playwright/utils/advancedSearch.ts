@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 
 type EntityFields = {
   id: string;
@@ -114,54 +114,72 @@ export const showAdvancedSearchDialog = async (page: Page) => {
   await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
 };
 
+const selectOption = async (
+  page: Page,
+  dropdownLocator: Locator,
+  optionTitle: string
+) => {
+  await dropdownLocator.click();
+  await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
+};
+
 export const fillRule = async (
   page: Page,
-  { condition, field, searchCriteria, index }
+  {
+    condition,
+    field,
+    searchCriteria,
+    index,
+  }: {
+    condition: string;
+    field: EntityFields;
+    searchCriteria: string;
+    index: number;
+  }
 ) => {
-  // perform click on rule
-  await page
-    .locator(`.rule:nth-child(${index}) .rule--field .ant-select`)
-    .click();
+  const ruleLocator = page.locator('.rule').nth(index - 1);
 
-  await page
-    .locator(`.rule:nth-child(${index}) .rule--field .ant-select input`)
-    .fill(field.id);
-  await page.click(`.ant-select-dropdown [title="${field.id}"]`);
+  // Perform click on rule field
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--field .ant-select'),
+    field.id
+  );
 
-  // perform click on operator
-  await page.click(`.rule:nth-child(${index}) .rule--operator .ant-select`);
-  await page.click(`.ant-select-dropdown [title="${condition}"]`);
+  // Perform click on operator
+  await selectOption(
+    page,
+    ruleLocator.locator('.rule--operator .ant-select'),
+    condition
+  );
 
   if (searchCriteria) {
-    const inputElement = page.locator('.rule--widget--TEXT input[type="text"]');
-    const isVisible = await inputElement.isVisible();
-
+    const inputElement = ruleLocator.locator(
+      '.rule--widget--TEXT input[type="text"]'
+    );
     const searchData = field.localSearch
       ? searchCriteria
       : searchCriteria.toLowerCase();
-    if (isVisible) {
+
+    if (await inputElement.isVisible()) {
       await inputElement.fill(searchData);
-    } else if (field.localSearch) {
-      await page
-        .locator('.widget--widget > .ant-select > .ant-select-selector input')
-        .click();
-
-      await page
-        .locator('.widget--widget > .ant-select > .ant-select-selector input')
-        .fill(searchData);
-      await page
-        .locator(`.ant-select-dropdown [title="${searchData}"]`)
-        .click();
     } else {
-      const aggregateRes = page.waitForResponse('/api/v1/search/aggregate?*');
-      await page
-        .locator('.widget--widget > .ant-select > .ant-select-selector input')
-        .click();
+      const dropdownInput = ruleLocator.locator(
+        '.widget--widget > .ant-select > .ant-select-selector input'
+      );
+      let aggregateRes;
 
-      await page
-        .locator('.widget--widget > .ant-select > .ant-select-selector input')
-        .fill(searchData);
-      await aggregateRes;
+      if (!field.localSearch) {
+        aggregateRes = page.waitForResponse('/api/v1/search/aggregate?*');
+      }
+
+      await dropdownInput.click();
+      await dropdownInput.fill(searchData);
+
+      if (aggregateRes) {
+        await aggregateRes;
+      }
+
       await page
         .locator(`.ant-select-dropdown [title="${searchData}"]`)
         .click();
@@ -339,4 +357,66 @@ export const verifyAllConditions = async (
     });
     await page.getByTestId('clear-filters').click();
   }
+};
+
+export const checkAddRuleWithOperator = async (
+  page,
+  {
+    field,
+    operator,
+    condition1,
+    condition2,
+    searchCriteria1,
+    searchCriteria2,
+  }: {
+    field: EntityFields;
+    operator: string;
+    condition1: string;
+    condition2: string;
+    searchCriteria1: string;
+    searchCriteria2: string;
+  }
+) => {
+  await showAdvancedSearchDialog(page);
+  await fillRule(page, {
+    condition: condition1,
+    field,
+    searchCriteria: searchCriteria1,
+    index: 1,
+  });
+
+  await page.getByTestId('advanced-search-add-rule').nth(1).click();
+
+  await fillRule(page, {
+    condition: condition2,
+    field,
+    searchCriteria: searchCriteria2,
+    index: 2,
+  });
+
+  if (operator === 'OR') {
+    await page
+      .getByTestId('advanced-search-modal')
+      .getByRole('button', { name: 'Or' });
+  }
+
+  const searchRes = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset&from=0&size=10*'
+  );
+  await page.getByTestId('apply-btn').click();
+  await searchRes;
+  await searchRes.then(async (res) => {
+    await res.json().then(async (json) => {
+      // await verifyResult(JSON.stringify(json.hits.hits));
+      if (field.id !== 'Column') {
+        if (operator === 'Or') {
+          await expect(JSON.stringify(json)).toContain(searchCriteria1);
+          await expect(JSON.stringify(json)).toContain(searchCriteria2);
+        } else {
+          await expect(JSON.stringify(json)).toContain(searchCriteria1);
+          await expect(JSON.stringify(json)).not.toContain(searchCriteria2);
+        }
+      }
+    });
+  });
 };
