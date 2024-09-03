@@ -115,6 +115,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           CloseCircleOutlined as React.ForwardRefExoticComponent<any>
         }
+        data-testid="advanced-search-delete-rule"
         onClick={props?.onClick}
       />
     );
@@ -123,6 +124,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
       <Button
         ghost
         className="action action--ADD-RULE"
+        data-testid="advanced-search-add-rule"
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
@@ -133,6 +135,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
     return (
       <Button
         className="action action--ADD-GROUP"
+        data-testid="advanced-search-add-group"
         icon={<PlusOutlined />}
         type="primary"
         onClick={props?.onClick}>
@@ -147,6 +150,7 @@ export const renderAdvanceSearchButtons: RenderSettings['renderButton'] = (
         })}
         className="action action--DELETE cursor-pointer align-middle"
         component={IconDeleteColored}
+        data-testid="advanced-search-delete-group"
         style={{ fontSize: '16px' }}
         onClick={props?.onClick as () => void}
       />
