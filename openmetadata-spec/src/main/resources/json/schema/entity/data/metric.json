@@ -9,6 +9,7 @@
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
     "expression": {
+      "type": "object",
       "properties": {
         "language": {
           "javaType": "org.openmetadata.schema.type.MetricExpressionLanguage",
