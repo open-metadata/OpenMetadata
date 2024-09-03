@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.metrics;
 
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
@@ -8,6 +9,8 @@ import static org.openmetadata.service.util.TestUtils.assertListNull;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import javax.ws.rs.client.WebTarget;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
@@ -74,6 +77,31 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     fieldAdded(change, "unitOfMeasurement", MetricUnitOfMeasurement.COUNT);
     fieldAdded(change, "metricType", MetricType.AVERAGE);
     metric = patchEntityAndCheck(metric, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    Metric updatedMetric = getMetric(metric.getId(), "*", ADMIN_AUTH_HEADERS);
+    compareEntities(metric, updatedMetric, ADMIN_AUTH_HEADERS);
+    origJson = JsonUtils.pojoToJson(updatedMetric);
+    change = getChangeDescription(updatedMetric, MINOR_UPDATE);
+    updatedMetric
+        .withUnitOfMeasurement(MetricUnitOfMeasurement.DOLLARS)
+        .withMetricType(MetricType.SUM);
+    fieldUpdated(
+        change,
+        "unitOfMeasurement",
+        MetricUnitOfMeasurement.COUNT,
+        MetricUnitOfMeasurement.DOLLARS);
+    fieldUpdated(change, "metricType", MetricType.AVERAGE, MetricType.SUM);
+    patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
+    updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals(updatedMetric.getUnitOfMeasurement(), MetricUnitOfMeasurement.DOLLARS);
+    Assertions.assertEquals(updatedMetric.getMetricType(), MetricType.SUM);
+    updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
+    origJson = JsonUtils.pojoToJson(updatedMetric);
+    updatedMetric.setRelatedMetrics(
+        List.of(Metric1.getEntityReference(), Metric2.getEntityReference()));
+    patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals(2, updatedMetric.getRelatedMetrics().size());
+    Assertions.assertEquals(Metric1.getEntityReference(), updatedMetric.getRelatedMetrics().get(0));
+    Assertions.assertEquals(Metric2.getEntityReference(), updatedMetric.getRelatedMetrics().get(1));
   }
 
   @Override
@@ -138,5 +166,12 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
         assertCommonFieldChange(fieldName, expected, actual);
       }
     }
+  }
+
+  public Metric getMetric(UUID id, String fields, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getResource(id);
+    target = fields != null ? target.queryParam("fields", fields) : target;
+    return TestUtils.get(target, Metric.class, authHeaders);
   }
 }
