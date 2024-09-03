@@ -3,7 +3,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CreateAppMarketPlaceDefinitionRequest",
   "javaType": "org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
   "properties": {
@@ -93,7 +95,7 @@
     "appScreenshots": {
       "description": "Application Screenshots.",
       "type": "array",
-      "items":{
+      "items": {
         "type": "string"
       },
       "uniqueItems": true
@@ -105,9 +107,15 @@
     },
     "configSchema": {
       "description": "Configuration Schema for the application.",
-      "$ref": "./appMarketPlaceDefinition.json#/definitions/appConfigSchema"
+      "$ref": "../configuration/configForm.json"
     }
   },
   "additionalProperties": false,
-  "required": ["name", "appType", "className", "scheduleType", "permission"]
+  "required": [
+    "name",
+    "appType",
+    "className",
+    "scheduleType",
+    "permission"
+  ]
 }

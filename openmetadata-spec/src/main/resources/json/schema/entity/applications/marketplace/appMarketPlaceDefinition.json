@@ -3,14 +3,21 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AppMarketPlaceDefinition",
   "javaType": "org.openmetadata.schema.entity.app.AppMarketPlaceDefinition",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface"
+  ],
   "description": "This schema defines the applications for Open-Metadata.",
   "type": "object",
   "definitions": {
     "appConfigSchema": {
       "javaType": "org.openmetadata.schema.type.AppConfigSchema",
-      "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "description": "Configuration Schema for the application.",
+      "type": "array",
+      "items": {
+        "$ref": "../configuration/configForm.json"
+      },
+      "maxItems": 20
     }
   },
   "properties": {
@@ -149,10 +156,16 @@
       "default": false
     },
     "configSchema": {
-      "description": "Configuration Schema for the application.",
-      "$ref": "#/definitions/appConfigSchema"
+      "$ref": "../configuration/configForm.json"
     }
   },
   "additionalProperties": false,
-  "required": ["id", "name", "appType", "className", "scheduleType", "permission"]
+  "required": [
+    "id",
+    "name",
+    "appType",
+    "className",
+    "scheduleType",
+    "permission"
+  ]
 }

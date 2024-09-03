@@ -1,0 +1,51 @@
+{
+  "name": "TestCommunityApp",
+  "displayName": "Example App No Trigger",
+  "description": "An example app without manual trigger.",
+  "features": "Dont try this at home.",
+  "appType": "internal",
+  "appScreenshots": [
+  ],
+  "developer": "ACME Labs",
+  "developerUrl": "https://www.example.com",
+  "privacyPolicyUrl": "https://www.example.com",
+  "supportEmail": "use@example.com",
+  "scheduleType": "Scheduled",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
+  "runtime": {
+    "enabled": true
+  },
+  "appConfiguration": {},
+  "configSchema": {
+    "exampleString": {
+      "type": "textBox",
+      "displayName": "Example String",
+      "description": "An example string parameter",
+      "properties": {
+        "default": "the default value"
+      }
+    },
+    "exampleString2": {
+      "type": "textBox",
+      "displayName": "Another string",
+      "description": "An example string parameter without default value",
+      "properties": {}
+    },
+    "exampleInteger": {
+      "name": "exampleInteger",
+      "type": "integer",
+      "displayName": "Example Integer",
+      "description": "An example integer parameter",
+      "properties": {
+        "default": 100
+      }
+    },
+    "dropdownExample": {
+      "lookup": "user",
+      "type": "dropdown",
+      "multiple": true/false,
+
+    }
+  }
+}

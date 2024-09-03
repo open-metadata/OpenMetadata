@@ -13,9 +13,12 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import javax.json.JsonPatch;
 import javax.validation.Valid;
+import javax.validation.ValidationException;
 import javax.validation.constraints.Max;
 import javax.validation.constraints.Min;
 import javax.ws.rs.BadRequestException;
@@ -40,6 +43,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppType;
+import org.openmetadata.schema.entity.app.ConfigFormParameter;
 import org.openmetadata.schema.entity.app.CreateAppMarketPlaceDefinitionReq;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.type.EntityHistory;
@@ -54,6 +58,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.secrets.converter.AppConfigSchemaConverter;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
@@ -484,11 +489,36 @@ public class AppMarketPlaceResource
             .withConfigSchema(create.getConfigSchema());
 
     // Validate App
-    validateApplication(app);
+    try {
+      validateApplication(app);
+    } catch (BadRequestException e) {
+      LOG.error("Application validation failed for {}", app.getName(), e);
+    }
+
     return app;
   }
 
+  private void validateConfigSchema(Object o) {
+    AppConfigSchemaConverter converter = new AppConfigSchemaConverter();
+    converter.convertByType((Map<String, Object>) o);
+  }
+
   private void validateApplication(AppMarketPlaceDefinition app) {
+    Optional.ofNullable(app.getConfigSchema())
+        .orElseGet(() -> new ConfigFormParameter())
+        .getAdditionalProperties()
+        .forEach(
+            (k, v) -> {
+              try {
+                validateConfigSchema(v);
+              } catch (ValidationException e) {
+                throw new BadRequestException(
+                    String.format(
+                        "Validation error for %s.%s.%s: %s",
+                        app.getName(), "configSchema", k, e.getMessage()));
+              }
+            });
+
     // Check if the className Exists in classPath
     if (app.getAppType().equals(AppType.Internal)) {
       // Check class name exists

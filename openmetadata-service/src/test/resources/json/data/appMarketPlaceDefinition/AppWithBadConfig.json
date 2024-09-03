@@ -1,0 +1,29 @@
+{
+  "name": "AppWithBadConfig",
+  "displayName": "App with Bad Config",
+  "description": "It should not be published in the marketplace.",
+  "features": "Dont try this at home.",
+  "appType": "external",
+  "appScreenshots": [
+  ],
+  "developer": "ACME Labs",
+  "developerUrl": "https://www.example.com",
+  "privacyPolicyUrl": "https://www.example.com",
+  "supportEmail": "use@example.com",
+  "scheduleType": "Scheduled",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.searchIndex.SearchIndexApp",
+  "runtime": {
+    "enabled": true
+  },
+  "appConfiguration": {},
+  "configSchema": {
+    "nonParameter": {
+      "type": "non_existent",
+      "displayName": "Should not resolve",
+      "description": "If it does, there is a bug.",
+      "properties": {
+      }
+    }
+  }
+}

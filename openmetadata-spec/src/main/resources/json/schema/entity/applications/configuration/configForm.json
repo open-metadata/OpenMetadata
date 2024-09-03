@@ -1,0 +1,276 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/applicationConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ApplicationConfigModel",
+  "description": "Application Pipeline Configuration.",
+  "javaType": "org.openmetadata.schema.entity.app.ConfigFormParameter",
+  "type": "object",
+  "definitions": {
+    "base": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        }
+      }
+    },
+    "types": {
+      "stringParameter": {
+        "type": "string",
+        "enum": [
+          "string"
+        ],
+        "default": "string"
+      },
+      "integerParameter": {
+        "type": "string",
+        "enum": [
+          "integer"
+        ],
+        "default": "integer"
+      },
+      "secretParameter": {
+        "type": "string",
+        "enum": [
+          "secret"
+        ],
+        "default": "secret"
+      },
+      "enumParameter": {
+        "type": "string",
+        "enum": [
+          "enum"
+        ],
+        "default": "enum"
+      },
+      "booleanParameter": {
+        "type": "string",
+        "enum": [
+          "boolean"
+        ],
+        "default": "boolean"
+      },
+      "menuParameter": {
+        "type": "string",
+        "enum": [
+          "menu"
+        ],
+        "default": "menu"
+      }
+    },
+    "textBox": {
+      "type": "object",
+      "description": "A configuration parameter of type string.",
+      "javaType": "org.openmetadata.schema.entity.app.configuration.StringParameter",
+      "allOf": [
+        {
+          "$ref": "#/definitions/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/types/stringParameter"
+        },
+        "properties": {
+          "default": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "integer": {
+      "type": "object",
+      "description": "A configuration parameter of type integer",
+      "javaType": "org.openmetadata.schema.entity.app.configuration.IntParameter",
+      "allOf": [
+        {
+          "$ref": "#/definitions/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/types/integerParameter"
+        },
+        "properties": {
+          "default": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "secret": {
+      "type": "object",
+      "description": "A configuration parameter of type secret.",
+      "javaType": "org.openmetadata.schema.entity.app.configuration.SecretParameter",
+      "allOf": [
+        {
+          "$ref": "#/definitions/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/types/secretParameter"
+        }
+      }
+    },
+    "enum": {
+      "type": "object",
+      "description": "A configuration parameter of type enum.",
+      "javaType": "org.openmetadata.schema.entity.app.configuration.EnumParameter",
+      "allOf": [
+        {
+          "$ref": "#/definitions/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/types/enumParameter"
+        },
+        "properties": {
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "default": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "checkbox": {
+      "type": "object",
+      "description": "A configuration parameter of type boolean.",
+      "javaType": "org.openmetadata.schema.entity.app.configuration.BooleanParameter",
+      "allOf": [
+        {
+          "$ref": "#/definitions/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/types/booleanParameter"
+        },
+        "properties": {
+          "default": {
+            "type": "boolean",
+            "nullable": true
+          }
+        }
+      }
+    },
+    "dropdown": {
+      "type": "object",
+      "description": "A configuration parameter of type dropdown.",
+      "javaType": "org.openmetadata.schema.entity.app.configuration.MenuParameter",
+      "allOf": [
+        {
+          "$ref": "#/definitions/base"
+        }
+      ],
+      "properties": {
+        "type": {
+          "$ref": "#/definitions/types/menuParameter"
+        },
+        "properties": {
+          "multiple": {
+            "type": "boolean",
+            "default": false
+          },
+          "lookup": {
+            "type": "string",
+            "description": "Lookup for the dropdown values. Exclusive with `values`.",
+            "enum": [
+              "database",
+              "databaseSchema",
+              "table",
+              "glossary",
+              "user",
+              "domain"
+            ],
+            "nullable": true
+          },
+          "values": {
+            "type": "array",
+            "description": "Values for the dropdown. Exclusive with `lookup`.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "default": {
+            "type": "string",
+            "description": "Default value for the dropdown",
+            "nullable": true
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "stringParameter": {
+      "$ref": "#/definitions/string"
+    },
+    "integerParameter": {
+      "$ref": "#/definitions/integer"
+    },
+    "secretParameter": {
+      "$ref": "#/definitions/secret"
+    },
+    "enumParameter": {
+      "$ref": "#/definitions/enum"
+    },
+    "booleanParameter": {
+      "$ref": "#/definitions/boolean"
+    },
+    "menuParameter": {
+      "$ref": "#/definitions/menu"
+    }
+  },
+  "patternProperties": {
+    "^.*$": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/string"
+        },
+        {
+          "$ref": "#/definitions/integer"
+        },
+        {
+          "$ref": "#/definitions/secret"
+        },
+        {
+          "$ref": "#/definitions/enum"
+        },
+        {
+          "$ref": "#/definitions/boolean"
+        },
+        {
+          "$ref": "#/definitions/menu"
+        }
+      ]
+    }
+  },
+  "maxItems": 1,
+  "additionalProperties": true
+}
