@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../../constant/service';
-import { uuid } from '../../utils/common';
+import {
+  assignDomain,
+  removeDomain,
+  updateDomain,
+  uuid,
+} from '../../utils/common';
 import {
   addMultiOwner,
   addOwner,
@@ -21,6 +26,7 @@ import {
   visitEntityPage,
 } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
+import { Domain } from '../domain/Domain';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -191,7 +197,7 @@ export class DatabaseClass extends EntityClass {
     };
   }
 
-  async verifyOwnerPropagation(page: Page, owner: string) {
+  async verifyOwnerChangeInDetailsPage(page: Page, owner: string) {
     const databaseSchemaResponse = page.waitForResponse(
       `/api/v1/databaseSchemas/name/*${this.schema.name}?**`
     );
@@ -204,6 +210,42 @@ export class DatabaseClass extends EntityClass {
       dataTestId: `${this.service.name}-${this.table.name}`,
     });
     await page.getByRole('link', { name: owner }).isVisible();
+  }
+
+  async verifyOwnerChangeInES(page: Page, owner: string) {
+    // Verify owner change in ES
+    const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
+    await page.getByTestId('searchBox').fill(searchTerm);
+    await page.getByTestId('searchBox').press('Enter');
+
+    await expect(
+      page
+        .getByTestId(`table-data-card_${searchTerm}`)
+        .getByRole('link', { name: owner })
+    ).toBeVisible();
+  }
+
+  async verifyDomainChangeInES(page: Page, domain: Domain['responseData']) {
+    // Verify domain change in ES
+    const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
+    await page.getByTestId('searchBox').fill(searchTerm);
+    await page.getByTestId('searchBox').press('Enter');
+
+    await expect(
+      page
+        .getByTestId(`table-data-card_${searchTerm}`)
+        .getByTestId('domain-link')
+    ).toContainText(domain.displayName);
+  }
+
+  async verifyOwnerPropagation(page: Page, owner: string) {
+    await this.verifyOwnerChangeInDetailsPage(page, owner);
+    await this.verifyOwnerChangeInES(page, owner);
+    await this.visitEntityPage(page);
+  }
+
+  async verifyDomainPropagation(page: Page, domain: Domain['responseData']) {
+    await this.verifyDomainChangeInES(page, domain);
     await this.visitEntityPage(page);
   }
 
@@ -211,8 +253,9 @@ export class DatabaseClass extends EntityClass {
     page: Page,
     owner1: string[],
     owner2: string[],
-    type: 'Teams' | 'Users' = 'Users'
-  ): Promise<void> {
+    type: 'Teams' | 'Users' = 'Users',
+    isEditPermission = true
+  ) {
     if (type === 'Teams') {
       await addOwner({
         page,
@@ -221,22 +264,24 @@ export class DatabaseClass extends EntityClass {
         endpoint: this.endpoint,
         dataTestId: 'data-assets-header',
       });
-      await updateOwner({
-        page,
-        owner: owner2[0],
-        type,
-        endpoint: this.endpoint,
-        dataTestId: 'data-assets-header',
-      });
-      await this.verifyOwnerPropagation(page, owner2[0]);
+      if (isEditPermission) {
+        await updateOwner({
+          page,
+          owner: owner2[0],
+          type,
+          endpoint: this.endpoint,
+          dataTestId: 'data-assets-header',
+        });
+        await this.verifyOwnerPropagation(page, owner2[0]);
 
-      await removeOwner({
-        page,
-        endpoint: this.endpoint,
-        ownerName: owner2[0],
-        type,
-        dataTestId: 'data-assets-header',
-      });
+        await removeOwner({
+          page,
+          endpoint: this.endpoint,
+          ownerName: owner2[0],
+          type,
+          dataTestId: 'data-assets-header',
+        });
+      }
     } else {
       await addMultiOwner({
         page,
@@ -246,22 +291,35 @@ export class DatabaseClass extends EntityClass {
         endpoint: this.endpoint,
         type,
       });
-      await addMultiOwner({
-        page,
-        ownerNames: owner2,
-        activatorBtnDataTestId: 'edit-owner',
-        resultTestId: 'data-assets-header',
-        endpoint: this.endpoint,
-        type,
-      });
-      await this.verifyOwnerPropagation(page, owner2[0]);
-      await removeOwner({
-        page,
-        endpoint: this.endpoint,
-        ownerName: owner2[0],
-        type,
-        dataTestId: 'data-assets-header',
-      });
+      if (isEditPermission) {
+        await addMultiOwner({
+          page,
+          ownerNames: owner2,
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'data-assets-header',
+          endpoint: this.endpoint,
+          type,
+        });
+        await this.verifyOwnerPropagation(page, owner2[0]);
+        await removeOwner({
+          page,
+          endpoint: this.endpoint,
+          ownerName: owner2[0],
+          type,
+          dataTestId: 'data-assets-header',
+        });
+      }
     }
+  }
+
+  override async domain(
+    page: Page,
+    domain1: Domain['responseData'],
+    domain2: Domain['responseData']
+  ) {
+    await assignDomain(page, domain1);
+    await this.verifyDomainPropagation(page, domain1);
+    await updateDomain(page, domain2);
+    await removeDomain(page);
   }
 }

@@ -12,6 +12,7 @@
 Helpers to import python classes and modules dynamically
 """
 import importlib
+import sys
 import traceback
 from enum import Enum
 from typing import Any, Callable, Optional, Type, TypeVar
@@ -27,6 +28,7 @@ from metadata.generated.schema.metadataIngestion.workflow import Sink as Workflo
 from metadata.ingestion.api.steps import BulkSink, Processor, Sink, Source, Stage
 from metadata.utils.class_helper import get_service_type_from_source_type
 from metadata.utils.logger import utils_logger
+from metadata.utils.singleton import Singleton
 
 logger = utils_logger()
 
@@ -244,3 +246,27 @@ def import_test_case_class(
             test_definition_class,
         )
     )
+
+
+class SideEffectsLoader(metaclass=Singleton):
+    modules = set(sys.modules.keys())
+
+    def import_side_effects(self, *modules):
+        """Handles loading of side effects and caches modules that have already been imported.
+        Requires full module name."""
+        for module in modules:
+            if module not in self.modules:
+                try:
+                    module = importlib.import_module(module)
+                    SideEffectsLoader.modules.add(module.__name__)
+                except Exception as err:
+                    logger.debug(traceback.format_exc())
+                    raise DynamicImportException(
+                        f"Cannot load object from {module} due to {err}"
+                    )
+            else:
+                logger.debug(f"Module {module} already imported")
+
+
+def import_side_effects(*modules):
+    SideEffectsLoader().import_side_effects(*modules)

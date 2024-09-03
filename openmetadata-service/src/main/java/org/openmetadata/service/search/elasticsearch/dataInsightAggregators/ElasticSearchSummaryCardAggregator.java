@@ -4,14 +4,16 @@ import es.org.elasticsearch.action.search.SearchRequest;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
+import es.org.elasticsearch.search.aggregations.Aggregation;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
+import es.org.elasticsearch.search.aggregations.Aggregations;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
 import es.org.elasticsearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import java.io.IOException;
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -41,13 +43,7 @@ public class ElasticSearchSummaryCardAggregator
         dateHistogramAggregationBuilder,
         formulas);
 
-    Timestamp endTimeStamp = new Timestamp(end + MILLISECONDS_IN_DAY);
-    Timestamp startTimeStamp = new Timestamp(end - MILLISECONDS_IN_DAY);
-
-    QueryBuilder queryFilter =
-        new RangeQueryBuilder("@timestamp")
-            .gte(startTimeStamp.toLocalDateTime().toString() + "Z")
-            .lte(endTimeStamp.toLocalDateTime().toString() + "Z");
+    QueryBuilder queryFilter = new RangeQueryBuilder("@timestamp").gte(start).lte(end);
 
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.aggregation(dateHistogramAggregationBuilder);
@@ -66,9 +62,12 @@ public class ElasticSearchSummaryCardAggregator
       List<FormulaHolder> formulas) {
     DataInsightCustomChartResultList resultList = new DataInsightCustomChartResultList();
     SummaryCard summaryCard = JsonUtils.convertValue(diChart.getChartDetails(), SummaryCard.class);
+    List<Aggregation> aggregationList =
+        Optional.ofNullable(searchResponse.getAggregations())
+            .orElse(new Aggregations(new ArrayList<>()))
+            .asList();
     List<DataInsightCustomChartResult> results =
-        processAggregations(
-            searchResponse.getAggregations().asList(), summaryCard.getFormula(), null, formulas);
+        processAggregations(aggregationList, summaryCard.getFormula(), null, formulas);
 
     List<DataInsightCustomChartResult> finalResults = new ArrayList<>();
     for (int i = results.size() - 1; i >= 0; i--) {

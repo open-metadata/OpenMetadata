@@ -148,6 +148,24 @@ class TableauSource(DashboardServiceSource):
             logger.warning(f"Could not fetch owner data due to {err}")
         return None
 
+    @staticmethod
+    def _get_data_models_tags(dataModels: [DataSource]) -> Set[str]:
+        """
+        Get the tags from the data model in the upstreamDatasources
+        """
+        tags = set()
+        try:
+            for data_model in dataModels:
+                # tags seems to be available for upstreamDatasources only, not for dataModels
+                for upstream_source in data_model.upstreamDatasources or []:
+                    for tag in upstream_source.tags:
+                        tags.add(tag.name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error fetching tags from data models: {exc}")
+
+        return tags
+
     def yield_tags(
         self, dashboard_details: TableauDashboard
     ) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -160,8 +178,14 @@ class TableauSource(DashboardServiceSource):
                 for elem in container:
                     tags.update(elem.tags)
 
+            _tags = {tag.label for tag in tags}
+            # retrieve tags from data models
+            _data_models_tags = self._get_data_models_tags(dashboard_details.dataModels)
+
+            _all_tags = _tags.union(_data_models_tags)
+
             yield from get_ometa_tag_and_classification(
-                tags=[tag.label for tag in tags],
+                tags=[tag for tag in _all_tags],
                 classification_name=TABLEAU_TAG_CATEGORY,
                 tag_description="Tableau Tag",
                 classification_description="Tags associated with tableau entities",
@@ -201,13 +225,23 @@ class TableauSource(DashboardServiceSource):
             self.status.filter(data_model_name, "Data model filtered out.")
             return
         try:
+            data_model_tags = data_model.tags or []
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(data_model.id),
                 displayName=data_model_name,
+                description=Markdown(data_model.description)
+                if data_model.description
+                else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 dataModelType=data_model_type.value,
                 serviceType=DashboardServiceType.Tableau.value,
                 columns=self.get_column_info(data_model),
+                tags=get_tag_labels(
+                    metadata=self.metadata,
+                    tags=[tag.name for tag in data_model_tags],
+                    classification_name=TABLEAU_TAG_CATEGORY,
+                    include_tags=self.source_config.includeTags,
+                ),
                 sql=self._get_datamodel_sql_query(data_model=data_model),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
@@ -313,17 +347,18 @@ class TableauSource(DashboardServiceSource):
     @staticmethod
     def _get_data_model_column_fqn(
         data_model_entity: DashboardDataModel, column: str
-    ) -> Optional[str]:
+    ) -> Optional[List[str]]:
         """
         Get fqn of column if exist in table entity
         """
         if not data_model_entity:
             return None
+        columns = []
         for tbl_column in data_model_entity.columns:
             for child_column in tbl_column.children or []:
                 if column.lower() == child_column.name.root.lower():
-                    return child_column.fullyQualifiedName.root
-        return None
+                    columns.append(child_column.fullyQualifiedName.root)
+        return columns
 
     def _get_column_lineage(  # pylint: disable=arguments-differ
         self,
@@ -342,13 +377,15 @@ class TableauSource(DashboardServiceSource):
                     from_column = get_column_fqn(
                         table_entity=table_entity, column=column.name
                     )
-                    to_column = self._get_data_model_column_fqn(
+                    to_columns = self._get_data_model_column_fqn(
                         data_model_entity=data_model_entity,
                         column=column.id,
                     )
-                    column_lineage.append(
-                        ColumnLineage(fromColumns=[from_column], toColumn=to_column)
-                    )
+                    for to_column in to_columns:
+                        column_lineage.append(
+                            ColumnLineage(fromColumns=[from_column], toColumn=to_column)
+                        )
+            return column_lineage
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())

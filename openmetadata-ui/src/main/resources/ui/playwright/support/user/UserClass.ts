@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
-import { generateRandomUsername } from '../../utils/common';
+import { DATA_STEWARD_RULES } from '../../constant/permission';
+import { generateRandomUsername, uuid } from '../../utils/common';
+import { PolicyClass } from '../access-control/PoliciesClass';
+import { RolesClass } from '../access-control/RolesClass';
+import { TeamClass } from '../team/TeamClass';
 
 type ResponseDataType = {
   name: string;
@@ -22,10 +26,26 @@ type ResponseDataType = {
   fullyQualifiedName: string;
 };
 
+type UserData = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password: string;
+};
+
+const dataStewardPolicy = new PolicyClass();
+const dataStewardRoles = new RolesClass();
+let dataStewardTeam: TeamClass;
+
 export class UserClass {
-  data = generateRandomUsername();
+  data: UserData;
 
   responseData: ResponseDataType;
+  isUserDataSteward = false;
+
+  constructor(data?: UserData) {
+    this.data = data ? data : generateRandomUsername();
+  }
 
   async create(apiContext: APIRequestContext) {
     const response = await apiContext.post('/api/v1/users/signup', {
@@ -74,7 +94,33 @@ export class UserClass {
     });
   }
 
+  async setDataStewardRole(apiContext: APIRequestContext) {
+    this.isUserDataSteward = true;
+    const id = uuid();
+    await dataStewardPolicy.create(apiContext, DATA_STEWARD_RULES);
+    await dataStewardRoles.create(apiContext, [
+      dataStewardPolicy.responseData.name,
+    ]);
+    dataStewardTeam = new TeamClass({
+      name: `PW%data_steward_team-${id}`,
+      displayName: `PW Data Steward Team ${id}`,
+      description: 'playwright data steward team description',
+      teamType: 'Group',
+      users: [this.responseData.id],
+      defaultRoles: dataStewardRoles.responseData.id
+        ? [dataStewardRoles.responseData.id]
+        : [],
+    });
+    await dataStewardTeam.create(apiContext);
+  }
+
   async delete(apiContext: APIRequestContext) {
+    if (this.isUserDataSteward) {
+      await dataStewardPolicy.delete(apiContext);
+      await dataStewardRoles.delete(apiContext);
+      await dataStewardTeam.delete(apiContext);
+    }
+
     const response = await apiContext.delete(
       `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=true`
     );

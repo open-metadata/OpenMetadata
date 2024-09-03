@@ -10,12 +10,13 @@ import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
-import static org.openmetadata.service.search.SearchClient.ADD_REMOVE_OWNERS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_TAGS_CHILDREN_SCRIPT;
@@ -42,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -176,12 +176,6 @@ public class SearchRepository {
   public void updateIndexes() {
     for (IndexMapping indexMapping : entityIndexMap.values()) {
       updateIndex(indexMapping);
-    }
-  }
-
-  public void dropIndexes() {
-    for (IndexMapping indexMapping : entityIndexMap.values()) {
-      deleteIndex(indexMapping);
     }
   }
 
@@ -380,7 +374,8 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.PIPELINE_SERVICE)
             || entityType.equalsIgnoreCase(Entity.MLMODEL_SERVICE)
             || entityType.equalsIgnoreCase(Entity.STORAGE_SERVICE)
-            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)) {
+            || entityType.equalsIgnoreCase(Entity.SEARCH_SERVICE)
+            || entityType.equalsIgnoreCase(Entity.API_SERVICE)) {
           parentMatch = new ImmutablePair<>("service.id", entityId);
         } else {
           parentMatch = new ImmutablePair<>(entityType + ".id", entityId);
@@ -431,18 +426,17 @@ public class SearchRepository {
     Map<String, Object> fieldData = new HashMap<>();
 
     if (changeDescription != null) {
-      EntityRepository<?> entityRepository =
-          Entity.getEntityRepository(entity.getEntityReference().getType());
-      EntityInterface entityBeforeUpdate =
-          entityRepository.get(null, entity.getId(), entityRepository.getFields("*"));
-
       for (FieldChange field : changeDescription.getFieldsAdded()) {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
-              List<EntityReference> inheritedOwners = entity.getOwners();
+              List<EntityReference> inheritedOwners =
+                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
+              for (EntityReference inheritedOwner : inheritedOwners) {
+                inheritedOwner.setInherited(true);
+              }
               fieldData.put("updatedOwners", inheritedOwners);
-              scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
+              scriptTxt.append(ADD_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
@@ -489,9 +483,13 @@ public class SearchRepository {
         if (inheritableFields.contains(field.getName())) {
           try {
             if (field.getName().equals(FIELD_OWNERS)) {
-              List<EntityReference> inheritedOwners = entity.getOwners();
-              fieldData.put("updatedOwners", inheritedOwners);
-              scriptTxt.append(ADD_REMOVE_OWNERS_SCRIPT);
+              List<EntityReference> inheritedOwners =
+                  JsonUtils.deepCopyList(entity.getOwners(), EntityReference.class);
+              for (EntityReference inheritedOwner : inheritedOwners) {
+                inheritedOwner.setInherited(true);
+              }
+              fieldData.put("deletedOwners", inheritedOwners);
+              scriptTxt.append(REMOVE_OWNERS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
@@ -628,11 +626,9 @@ public class SearchRepository {
           Entity.PIPELINE_SERVICE,
           Entity.MLMODEL_SERVICE,
           Entity.STORAGE_SERVICE,
-          Entity.SEARCH_SERVICE -> {
-        searchClient.deleteEntityByFields(
-            indexMapping.getChildAliases(clusterAlias),
-            List.of(new ImmutablePair<>("service.id", docId)));
-      }
+          Entity.SEARCH_SERVICE -> searchClient.deleteEntityByFields(
+          indexMapping.getChildAliases(clusterAlias),
+          List.of(new ImmutablePair<>("service.id", docId)));
       default -> {
         List<String> indexNames = indexMapping.getChildAliases(clusterAlias);
         if (!indexNames.isEmpty()) {
@@ -806,16 +802,6 @@ public class SearchRepository {
     return searchClient.suggest(request);
   }
 
-  public SortedMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
-    return searchClient.getSortedDate(team, scheduleTime, currentTime, chartType, indexName);
-  }
-
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -879,9 +865,5 @@ public class SearchRepository {
       LOG.error("Error while getting entities from ES for validation", ex);
     }
     return new ArrayList<>();
-  }
-
-  public <T> T getRestHighLevelClient() {
-    return (T) searchClient;
   }
 }

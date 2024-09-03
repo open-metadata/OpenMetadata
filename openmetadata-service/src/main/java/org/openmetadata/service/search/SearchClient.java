@@ -7,7 +7,6 @@ import java.security.KeyStoreException;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import javax.json.JsonArray;
@@ -80,15 +79,16 @@ public interface SearchClient {
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "for (int i = 0; i < ctx._source.testSuites.length; i++) { if (ctx._source.testSuites[i].id == '%s') { ctx._source.testSuites.remove(i) }}";
 
-  String ADD_REMOVE_OWNERS_SCRIPT =
+  String ADD_OWNERS_SCRIPT =
       "if (ctx._source.owners == null || ctx._source.owners.isEmpty() || "
           + "(ctx._source.owners.size() > 0 && ctx._source.owners[0] != null && ctx._source.owners[0].inherited == true)) { "
-          + "ctx._source.owners = []; "
-          + "for (int i = 0; i < params.updatedOwners.size(); i++) { "
-          + "def newOwner = params.updatedOwners[i]; "
-          + "newOwner.inherited = true; "
-          + "ctx._source.owners.add(newOwner); "
-          + "} "
+          + "ctx._source.owners = params.updatedOwners; "
+          + "}";
+
+  String REMOVE_OWNERS_SCRIPT =
+      "if (ctx._source.owners != null && !ctx._source.owners.isEmpty()) { "
+          + "ctx._source.owners.removeIf(owner -> "
+          + "params.deletedOwners.stream().anyMatch(deletedOwner -> deletedOwner.id == owner.id) && owner.inherited == true); "
           + "}";
 
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
@@ -192,14 +192,6 @@ public interface SearchClient {
 
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData);
-
-  TreeMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException;
 
   Response listDataInsightChartResult(
       Long startTs,

@@ -18,8 +18,7 @@ public abstract class DailyActiveUsersAggregator<A, H, B>
     H histogramBucket = getHistogramBucket(this.aggregations);
     List<Object> data = new ArrayList<>();
     for (B bucket : getBuckets(histogramBucket)) {
-      String dateTimeString = getKeyAsString(bucket);
-      Long timestamp = convertDatTimeStringToTimestamp(dateTimeString);
+      Long timestamp = getKeyAsEpochTimestamp(bucket);
       long activeUsers = getDocCount(bucket);
 
       data.add(new DailyActiveUsers().withTimestamp(timestamp).withActiveUsers((int) activeUsers));
@@ -31,7 +30,7 @@ public abstract class DailyActiveUsersAggregator<A, H, B>
 
   protected abstract List<? extends B> getBuckets(H histogramBucket);
 
-  protected abstract String getKeyAsString(B bucket);
+  protected abstract long getKeyAsEpochTimestamp(B bucket);
 
   protected abstract Long getDocCount(B bucket);
 }
