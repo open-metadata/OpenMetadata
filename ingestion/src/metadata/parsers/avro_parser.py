@@ -27,6 +27,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 RECORD_DATATYPE_NAME = "RECORD"
+PARSED_ALREADY = dict()
 
 
 def _parse_array_children(
@@ -241,6 +242,7 @@ def parse_avro_schema(
                 description=parsed_schema.doc,
             )
         ]
+        PARSED_ALREADY.clear()
         return models
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
@@ -255,6 +257,12 @@ def get_avro_fields(
     Recursively convert the parsed schema into required models
     """
     field_models = []
+
+    if parsed_schema.name in list(PARSED_ALREADY.keys()):
+        if PARSED_ALREADY[parsed_schema.name] == parsed_schema.type:
+            return
+    else:
+        PARSED_ALREADY.update({parsed_schema.name: parsed_schema.type})
 
     for field in parsed_schema.fields:
         try:
