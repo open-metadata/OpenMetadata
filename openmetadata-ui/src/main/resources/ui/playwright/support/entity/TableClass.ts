@@ -14,7 +14,7 @@ import { APIRequestContext, Page } from '@playwright/test';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import { EntityTypeEndpoint, TestCaseData } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class TableClass extends EntityClass {
@@ -169,7 +169,7 @@ export class TableClass extends EntityClass {
 
   async createTestSuiteAndPipelines(apiContext: APIRequestContext) {
     if (!this.entityResponseData) {
-      return this.create(apiContext);
+      await this.create(apiContext);
     }
 
     const testSuiteData = await apiContext
@@ -177,7 +177,7 @@ export class TableClass extends EntityClass {
         data: {
           name: `pw-test-suite-${uuid()}`,
           executableEntityReference:
-            this.entityResponseData['fullyQualifiedName'],
+            this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
         },
       })
@@ -221,12 +221,16 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
     this.testSuitePipelineResponseData.push(pipelineData);
 
     return pipelineData;
   }
 
-  async createTestCase(apiContext: APIRequestContext) {
+  async createTestCase(
+    apiContext: APIRequestContext,
+    testCaseData?: TestCaseData
+  ) {
     if (!this.testSuiteResponseData) {
       await this.createTestSuiteAndPipelines(apiContext);
     }
@@ -236,9 +240,10 @@ export class TableClass extends EntityClass {
         data: {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
-          testDefinition: 'tableRowCountToBeBetween',
+          testDefinition:
+            testCaseData?.testDefinition ?? 'tableRowCountToBeBetween',
           testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
-          parameterValues: [
+          parameterValues: testCaseData?.parameterValues ?? [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
           ],
