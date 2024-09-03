@@ -27,7 +27,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 RECORD_DATATYPE_NAME = "RECORD"
-PARSED_ALREADY = dict()
+PARSED_ALREADY = {}
 
 
 def _parse_array_children(
@@ -258,9 +258,9 @@ def get_avro_fields(
     """
     field_models = []
 
-    if parsed_schema.name in list(PARSED_ALREADY.keys()):
+    if parsed_schema.name in PARSED_ALREADY:
         if PARSED_ALREADY[parsed_schema.name] == parsed_schema.type:
-            return
+            return None
     else:
         PARSED_ALREADY.update({parsed_schema.name: parsed_schema.type})
 
