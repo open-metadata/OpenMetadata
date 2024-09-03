@@ -82,7 +82,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
     test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
   ) {
     if (process.env.PLAYWRIGHT_IS_OSS) {
-      test.step('Add Usage ingestion', async () => {
+      await test.step('Add Usage ingestion', async () => {
         await redirectToHomePage(page);
         await visitServiceDetailsPage(
           page,
@@ -121,7 +121,10 @@ class PostgresIngestionClass extends ServiceBaseClass {
         await this.handleIngestionRetry('usage', page);
       });
 
-      test.step('Verify if usage is ingested properly', async () => {
+      await test.step('Verify if usage is ingested properly', async () => {
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'hidden',
+        });
         const entityResponse = page.waitForResponse(
           `/api/v1/tables/name/*.order_items?**`
         );

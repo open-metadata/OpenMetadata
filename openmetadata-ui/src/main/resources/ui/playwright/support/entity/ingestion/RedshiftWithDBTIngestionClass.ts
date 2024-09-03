@@ -89,7 +89,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     page: Page,
     test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
   ) {
-    test.step('Add DBT ingestion', async () => {
+    await test.step('Add DBT ingestion', async () => {
       await redirectToHomePage(page);
       await visitServiceDetailsPage(
         page,
@@ -140,7 +140,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       );
     });
 
-    test.step('Validate DBT is ingested properly', async () => {
+    await test.step('Validate DBT is ingested properly', async () => {
       await sidebarClick(page, SidebarItem.TAGS);
 
       await page.waitForSelector('[data-testid="data-summary-container"]');

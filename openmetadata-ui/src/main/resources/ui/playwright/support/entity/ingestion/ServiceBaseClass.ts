@@ -235,8 +235,7 @@ class ServiceBaseClass {
       (d) => d.pipelineType === ingestionType
     )[0];
 
-    const dateNow = Date.now();
-    const oneHourBefore = dateNow - 60 * 60 * 1000;
+    const oneHourBefore = Date.now() - 86400000;
 
     await expect
       .poll(
@@ -245,11 +244,11 @@ class ServiceBaseClass {
             .get(
               `/api/v1/services/ingestionPipelines/${encodeURIComponent(
                 workflowData.fullyQualifiedName
-              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${dateNow}`
+              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
             )
             .then((res) => res.json());
 
-          return response.data[0].pipelineState;
+          return response.data[0]?.pipelineState;
         },
         {
           // Custom expect message for reporting, optional.
