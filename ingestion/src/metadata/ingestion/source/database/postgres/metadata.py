@@ -59,6 +59,7 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_columns,
     get_etable_owner,
     get_foreign_keys,
+    get_json_fields_and_type,
     get_table_comment,
     get_table_owner,
     get_view_definition,
@@ -138,6 +139,7 @@ PGDialect.ischema_names = ischema_names
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
+Inspector.get_json_fields_and_type = get_json_fields_and_type
 
 PGDialect.get_foreign_keys = get_foreign_keys
 

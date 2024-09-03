@@ -197,6 +197,26 @@ class SqlColumnHandlerMixin:
         return Column(**parsed_string)
 
     @calculate_execution_time()
+    def process_json_type_column_fields(  # pylint: disable=too-many-locals
+        self, schema_name: str, table_name: str, column_name: str, inspector: Inspector
+    ) -> Optional[List[Column]]:
+        """
+        Parse fields column with json data types
+        """
+        try:
+            if hasattr(inspector, "get_json_fields_and_type"):
+                result = inspector.get_json_fields_and_type(
+                    table_name, column_name, schema_name
+                )
+                return result
+
+        except NotImplementedError:
+            logger.debug(
+                "Cannot parse json fields for table column [{schema_name}.{table_name}.{col_name}]: NotImplementedError"
+            )
+        return None
+
+    @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self, schema_name: str, table_name: str, db_name: str, inspector: Inspector
     ) -> Tuple[
@@ -271,6 +291,12 @@ class SqlColumnHandlerMixin:
                         precision,
                     )
                     col_data_length = 1 if col_data_length is None else col_data_length
+
+                    if col_type == "JSON":
+                        children = self.process_json_type_column_fields(
+                            schema_name, table_name, column.get("name"), inspector
+                        )
+
                     om_column = Column(
                         name=ColumnName(
                             root=column["name"]

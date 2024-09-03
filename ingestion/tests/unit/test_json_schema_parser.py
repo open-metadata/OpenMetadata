@@ -14,6 +14,7 @@ Jsonschema parser tests
 """
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.table import Column
 from metadata.parsers.json_schema_parser import parse_json_schema
 
 
@@ -47,7 +48,51 @@ class JsonSchemaParserTests(TestCase):
         }
     }"""
 
+    sample_postgres_json_schema = """{
+        "title": "review_details",
+        "type": "object",
+        "properties":
+        {
+            "staff": {
+                "title": "staff",
+                "type": "array",
+                "properties": {}
+            },
+            "services": {
+                "title": "services",
+                "type": "object",
+                "properties": {
+                    "lunch": {
+                        "title": "lunch",
+                        "type": "string",
+                        "properties": {}
+                    },
+                    "check_in": {
+                        "title": "check_in",
+                        "type": "string",
+                        "properties": {}
+                    },
+                    "check_out": {
+                        "title": "check_out",
+                        "type": "string",
+                        "properties": {}
+                    },
+                    "additional_services": {
+                        "title": "additional_services",
+                        "type": "array",
+                        "properties": {}
+                    }
+                }
+            },
+            "overall_experience": {
+                "title": "overall_experience",
+                "type": "string"
+            }
+        }
+    }"""
+
     parsed_schema = parse_json_schema(sample_json_schema)
+    parsed_postgres_schema = parse_json_schema(sample_postgres_json_schema, Column)
 
     def test_schema_name(self):
         self.assertEqual(self.parsed_schema[0].name.root, "Person")
@@ -83,3 +128,18 @@ class JsonSchemaParserTests(TestCase):
                 "Age in years which must be equal to or greater than zero.",
             },
         )
+
+    def test_parse_postgres_json_fields(self):
+        self.assertEqual(self.parsed_postgres_schema[0].name.root, "review_details")
+        self.assertEqual(self.parsed_postgres_schema[0].children[0].name.root, "staff")
+        self.assertEqual(
+            self.parsed_postgres_schema[0].children[1].name.root, "services"
+        )
+        self.assertEqual(
+            self.parsed_postgres_schema[0].children[1].children[0].name.root, "lunch"
+        )
+        self.assertEqual(
+            self.parsed_postgres_schema[0].children[1].dataType.name, "RECORD"
+        )
+        self.assertEqual(len(self.parsed_postgres_schema[0].children), 3)
+        self.assertEqual(len(self.parsed_postgres_schema[0].children[1].children), 4)

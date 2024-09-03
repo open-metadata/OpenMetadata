@@ -81,7 +81,7 @@ def get_json_schema_fields(
                     displayName=value.get("title"),
                     dataType=JsonSchemaDataTypes(value.get("type", "unknown")).name,
                     description=value.get("description"),
-                    children=get_json_schema_fields(value.get("properties"))
+                    children=get_json_schema_fields(value.get("properties"), cls=cls)
                     if value.get("type") == "object"
                     else None,
                 )
