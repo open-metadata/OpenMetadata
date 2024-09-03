@@ -57,6 +57,7 @@ class TableauTag(BaseModel):
 
     label: str
 
+
 class TableauDataModelTag(BaseModel):
     """
     Aux class for Tag object for Tableau Data Model

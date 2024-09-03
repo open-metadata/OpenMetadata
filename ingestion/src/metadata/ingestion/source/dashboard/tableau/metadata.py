@@ -229,7 +229,9 @@ class TableauSource(DashboardServiceSource):
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(data_model.id),
                 displayName=data_model_name,
-                description=Markdown(data_model.description) if data_model.description else None,
+                description=Markdown(data_model.description)
+                if data_model.description
+                else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 dataModelType=data_model_type.value,
                 serviceType=DashboardServiceType.Tableau.value,
