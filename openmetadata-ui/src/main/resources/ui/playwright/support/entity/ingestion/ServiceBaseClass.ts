@@ -457,6 +457,7 @@ class ServiceBaseClass {
   }
 
   async runAdditionalTests(
+    _page: Page,
     _test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
   ) {
     // Write service specific tests

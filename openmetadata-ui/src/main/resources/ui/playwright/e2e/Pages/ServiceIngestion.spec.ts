@@ -85,8 +85,8 @@ services.forEach((ServiceClass) => {
     if (
       [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
     ) {
-      test.describe.serial(`Service specific tests`, async () => {
-        await service.runAdditionalTests(test);
+      test(`Service specific tests`, async ({ page }) => {
+        await service.runAdditionalTests(page, test);
       });
     }
 
