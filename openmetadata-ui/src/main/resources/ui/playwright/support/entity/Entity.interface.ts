@@ -65,3 +65,8 @@ export enum ENTITY_PATH {
   'apiEndpoints' = 'apiEndpoint',
   'dataProducts' = 'dataProduct',
 }
+
+export type TestCaseData = {
+  parameterValues: unknown[];
+  testDefinition: string;
+};
