@@ -26,6 +26,10 @@ workbooks(filter:{{luid: "{workbook_id}"}}){{
       upstreamDatasources{{
         id
         name
+        description
+        tags {{
+          name
+        }}
         fields {{
           id
           name

@@ -1,5 +1,5 @@
 """
-Test Domo Dashboard using the topology
+Test Tableau Dashboard
 """
 
 from unittest import TestCase
