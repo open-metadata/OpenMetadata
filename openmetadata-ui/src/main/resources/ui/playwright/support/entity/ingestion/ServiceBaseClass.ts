@@ -199,7 +199,7 @@ class ServiceBaseClass {
     await page.waitForSelector('[data-testid="cron-type"]');
     await page.click('[data-testid="cron-type"]');
     await page.waitForSelector('.ant-select-item-option-content');
-    await page.click('.ant-select-item-option-content:has-text("Hour")');
+    await page.click('.ant-select-item-option-content:has-text("None")');
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
