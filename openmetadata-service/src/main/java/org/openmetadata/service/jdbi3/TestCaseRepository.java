@@ -318,7 +318,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
-    // Set fileds values
+    // Set fields values
     testCaseResult.setTestCaseFQN(fqn);
     testCaseResult.setId(UUID.randomUUID());
     ArrayList<String> fields =
@@ -384,7 +384,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // if we already have a non resolve status then we'll simply return it
     if (Boolean.TRUE.equals(
         testCaseResolutionStatusRepository.unresolvedIncident(storedTestCaseResolutionStatus))) {
-      return storedTestCaseResolutionStatus.getStateId();
+
+      if (storedTestCaseResolutionStatus != null) return storedTestCaseResolutionStatus.getStateId();
     }
 
     // if the test case resolution is null or resolved then we'll create a new one
