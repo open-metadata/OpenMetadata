@@ -69,6 +69,9 @@ COMMONS = {
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
         "cramjam~=2.7",
+        # TODO decouple datalake dependencies
+        "azure-storage-blob",
+        "google-cloud-storage",
     },
     "hive": {
         "presto-types-parser>=0.0.2",

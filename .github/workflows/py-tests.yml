@@ -87,6 +87,7 @@ jobs:
         source env/bin/activate
         make run_python_tests
       env:
+        NOXPYTHON: "${{ matrix.py-version }} nox"
         TESTCONTAINERS_RYUK_DISABLED: true
       
     - name: Run Python Tests & record coverage
