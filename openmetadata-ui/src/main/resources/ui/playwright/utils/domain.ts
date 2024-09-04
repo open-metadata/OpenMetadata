@@ -299,7 +299,10 @@ export const addAssetsToDomain = async (
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
     );
-    await page.getByTestId('searchbar').fill(name);
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();

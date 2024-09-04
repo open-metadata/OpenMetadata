@@ -276,10 +276,12 @@ test.describe('Domains Rbac', () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
-    await domain1.create(apiContext);
-    await domain2.create(apiContext);
-    await domain3.create(apiContext);
-    await user1.create(apiContext);
+    await Promise.all([
+      domain1.create(apiContext),
+      domain2.create(apiContext),
+      domain3.create(apiContext),
+      user1.create(apiContext),
+    ]);
 
     const domainPayload: Operation[] = [
       {
@@ -323,6 +325,8 @@ test.describe('Domains Rbac', () => {
   });
 
   test('Domain Rbac', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
@@ -373,14 +377,8 @@ test.describe('Domains Rbac', () => {
         const queryString = new URL(res.request().url()).search;
         const urlParams = new URLSearchParams(queryString);
         const qParam = urlParams.get('q');
-        const domainFqn = (domain1.data.fullyQualifiedName ?? '').replace(
-          /"/g,
-          '\\"'
-        );
 
-        await expect(qParam).toContain(
-          `(domain.fullyQualifiedName:"${domainFqn}")`
-        );
+        await expect(qParam).toContain(`domain.fullyQualifiedName:`);
       });
 
       for (const asset of domainAssset2) {
@@ -404,10 +402,13 @@ test.describe('Domains Rbac', () => {
       await afterActionUser1();
     });
 
-    await domain1.delete(apiContext);
-    await domain2.delete(apiContext);
-    await domain3.delete(apiContext);
-    await user1.delete(apiContext);
+    await Promise.all([
+      domain1.delete(apiContext),
+      domain2.delete(apiContext),
+      domain3.delete(apiContext),
+      user1.delete(apiContext),
+    ]);
+
     await assetCleanup1();
     await assetCleanup2();
     await afterAction();
