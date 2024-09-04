@@ -93,7 +93,6 @@ import org.openmetadata.service.util.ResultList;
 @Tag(
     name = "Ingestion Pipelines",
     description = "APIs related pipelines/workflows created by the system to ingest metadata.")
-@Hidden
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "IngestionPipelines")
