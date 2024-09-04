@@ -159,7 +159,7 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             extra_args={"profileSample": 100},
         )
         # wait for query log to be updated
-        sleep(120)
+        self.wait_for_query_log()
         # run profiler with new tables
         result = self.run_command("profile")
         sink_status, source_status = self.retrieve_statuses(result)
@@ -302,3 +302,20 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
                 assert_equal_pydantic_objects(expected_profile, actual_profiles)
             except AssertionError as e:
                 raise AssertionError(f"Table: {table_fqn}\n{e}")
+
+    @classmethod
+    def wait_for_query_log(cls, timeout=600):
+        start = datetime.now().timestamp()
+        cls.engine.execute("SELECT 'e2e_query_log_wait'")
+        latest = 0
+        while latest < start:
+            sleep(5)
+            latest = (
+                cls.engine.execute(
+                    'SELECT max(start_time) FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"'
+                )
+                .scalar()
+                .timestamp()
+            )
+            if (datetime.now().timestamp() - start) > timeout:
+                raise TimeoutError(f"Query log not updated for {timeout} seconds")

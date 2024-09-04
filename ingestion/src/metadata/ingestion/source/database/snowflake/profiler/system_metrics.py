@@ -1,29 +1,18 @@
 import re
 import traceback
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import sqlalchemy.orm
-from pydantic import TypeAdapter
 from sqlalchemy.orm import DeclarativeMeta, Session
 
-from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
     SnowflakeQueryResult,
 )
-from metadata.profiler.metrics.system.dml_operation import (
-    DML_OPERATION_MAP,
-    DatabaseDMLOperations,
-)
-from metadata.profiler.metrics.system.system import (
-    get_system_metrics_for_dialect,
-    logger,
-)
-from metadata.profiler.orm.registry import Dialects
+
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.profiler_utils import get_identifiers_from_string
-from metadata.utils.time_utils import datetime_to_timestamp
 
 PUBLIC_SCHEMA = "PUBLIC"
 logger = profiler_logger()
@@ -253,7 +242,7 @@ def get_snowflake_system_queries(
     return None
 
 
-def _snowflake_build_query_result(
+def build_snowflake_query_results(
     session: Session,
     table: DeclarativeMeta,
 ) -> List[SnowflakeQueryResult]:
@@ -270,80 +259,3 @@ def _snowflake_build_query_result(
         if result:
             query_results.append(result)
     return query_results
-
-
-@get_system_metrics_for_dialect.register(Dialects.Snowflake)
-def _(
-    dialect: str,
-    session: Session,
-    table: DeclarativeMeta,
-    *args,
-    **kwargs,
-) -> Optional[List[Dict]]:
-    """Fetch system metrics for Snowflake. query_history will return maximum 10K rows in one request.
-    We'll be fetching all the queries ran for the past 24 hours and filtered on specific query types
-    (INSERTS, MERGE, DELETE, UPDATE).
-
-    :waring: Unlike redshift and bigquery results are not cached as we'll be looking
-    at DDL for each table
-
-    To get the number of rows affected we'll use the specific query ID.
-
-    Args:
-        dialect (str): dialect
-        session (Session): session object
-
-    Returns:
-        Dict: system metric
-    """
-    logger.debug(f"Fetching system metrics for {dialect}")
-
-    metric_results: List[Dict] = []
-
-    query_results = _snowflake_build_query_result(
-        session=session,
-        table=table,
-    )
-
-    for query_result in query_results:
-        rows_affected = None
-        if query_result.query_type == DatabaseDMLOperations.INSERT.value:
-            rows_affected = query_result.rows_inserted
-        if query_result.query_type == DatabaseDMLOperations.DELETE.value:
-            rows_affected = query_result.rows_deleted
-        if query_result.query_type == DatabaseDMLOperations.UPDATE.value:
-            rows_affected = query_result.rows_updated
-        if query_result.query_type == DatabaseDMLOperations.MERGE.value:
-            if query_result.rows_inserted:
-                metric_results.append(
-                    {
-                        "timestamp": datetime_to_timestamp(
-                            query_result.start_time, milliseconds=True
-                        ),
-                        "operation": DatabaseDMLOperations.INSERT.value,
-                        "rowsAffected": query_result.rows_inserted,
-                    }
-                )
-            if query_result.rows_updated:
-                metric_results.append(
-                    {
-                        "timestamp": datetime_to_timestamp(
-                            query_result.start_time, milliseconds=True
-                        ),
-                        "operation": DatabaseDMLOperations.UPDATE.value,
-                        "rowsAffected": query_result.rows_updated,
-                    }
-                )
-            continue
-
-        metric_results.append(
-            {
-                "timestamp": datetime_to_timestamp(
-                    query_result.start_time, milliseconds=True
-                ),
-                "operation": DML_OPERATION_MAP.get(query_result.query_type),
-                "rowsAffected": rows_affected,
-            }
-        )
-
-    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)

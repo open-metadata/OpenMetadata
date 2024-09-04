@@ -123,9 +123,6 @@ ischema_names["GEOMETRY"] = create_sqlalchemy_type("GEOMETRY")
 
 logger = ingestion_logger()
 
-import_side_effects(
-    "metadata.ingestion.source.database.snowflake.profiler.system_metrics",
-)
 
 SnowflakeDialect._json_deserializer = json.loads  # pylint: disable=protected-access
 SnowflakeDialect.get_table_names = get_table_names
@@ -244,9 +241,9 @@ class SnowflakeSource(
         results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
         for row in results:
             if row.CLUSTERING_KEY:
-                self.partition_details[
-                    f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
-                ] = row.CLUSTERING_KEY
+                self.partition_details[f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"] = (
+                    row.CLUSTERING_KEY
+                )
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()

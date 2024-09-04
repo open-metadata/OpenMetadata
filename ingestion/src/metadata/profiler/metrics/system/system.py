@@ -26,8 +26,14 @@ from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
+from metadata.ingestion.source.database.snowflake.profiler.system_metrics import (
+    build_snowflake_query_results,
+)
 from metadata.profiler.metrics.core import SystemMetric
-from metadata.profiler.metrics.system.dml_operation import DatabaseDMLOperations
+from metadata.profiler.metrics.system.dml_operation import (
+    DatabaseDMLOperations,
+    DML_OPERATION_MAP,
+)
 from metadata.profiler.metrics.system.queries.bigquery import (
     DML_STAT_TO_DML_STATEMENT_MAPPING,
     JOBS,
@@ -43,6 +49,7 @@ from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
 from metadata.utils.profiler_utils import get_value_from_cache, set_cache
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = profiler_logger()
 
@@ -343,3 +350,80 @@ class System(SystemMetric):
         )
         self._manage_cache()
         return [s.model_dump() for s in system_metrics] if system_metrics else None
+
+
+@get_system_metrics_for_dialect.register(Dialects.Snowflake)
+def _(
+    dialect: str,
+    session: Session,
+    table: DeclarativeMeta,
+    *args,
+    **kwargs,
+) -> Optional[List[Dict]]:
+    """Fetch system metrics for Snowflake. query_history will return maximum 10K rows in one request.
+    We'll be fetching all the queries ran for the past 24 hours and filtered on specific query types
+    (INSERTS, MERGE, DELETE, UPDATE).
+
+    :waring: Unlike redshift and bigquery results are not cached as we'll be looking
+    at DDL for each table
+
+    To get the number of rows affected we'll use the specific query ID.
+
+    Args:
+        dialect (str): dialect
+        session (Session): session object
+
+    Returns:
+        Dict: system metric
+    """
+    logger.debug(f"Fetching system metrics for {dialect}")
+
+    metric_results: List[Dict] = []
+
+    query_results = build_snowflake_query_results(
+        session=session,
+        table=table,
+    )
+
+    for query_result in query_results:
+        rows_affected = None
+        if query_result.query_type == DatabaseDMLOperations.INSERT.value:
+            rows_affected = query_result.rows_inserted
+        if query_result.query_type == DatabaseDMLOperations.DELETE.value:
+            rows_affected = query_result.rows_deleted
+        if query_result.query_type == DatabaseDMLOperations.UPDATE.value:
+            rows_affected = query_result.rows_updated
+        if query_result.query_type == DatabaseDMLOperations.MERGE.value:
+            if query_result.rows_inserted:
+                metric_results.append(
+                    {
+                        "timestamp": datetime_to_timestamp(
+                            query_result.start_time, milliseconds=True
+                        ),
+                        "operation": DatabaseDMLOperations.INSERT.value,
+                        "rowsAffected": query_result.rows_inserted,
+                    }
+                )
+            if query_result.rows_updated:
+                metric_results.append(
+                    {
+                        "timestamp": datetime_to_timestamp(
+                            query_result.start_time, milliseconds=True
+                        ),
+                        "operation": DatabaseDMLOperations.UPDATE.value,
+                        "rowsAffected": query_result.rows_updated,
+                    }
+                )
+            continue
+
+        metric_results.append(
+            {
+                "timestamp": datetime_to_timestamp(
+                    query_result.start_time, milliseconds=True
+                ),
+                "operation": DML_OPERATION_MAP.get(query_result.query_type),
+                "rowsAffected": rows_affected,
+            }
+        )
+
+    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
