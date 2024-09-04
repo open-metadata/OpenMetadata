@@ -24,7 +24,7 @@ class KafkaIngestionClass extends ServiceBaseClass {
   constructor() {
     super(
       Services.Messaging,
-      `pw-kafka-${uuid()}`,
+      `pw-kafka-with-%-${uuid()}`,
       'Kafka',
       '__transaction_state'
     );

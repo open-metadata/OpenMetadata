@@ -20,7 +20,7 @@ class MetabaseIngestionClass extends ServiceBaseClass {
   constructor() {
     super(
       Services.Pipeline,
-      `pw-airflow-${uuid()}`,
+      `pw-airflow-with-%-${uuid()}`,
       'Airflow',
       'sample_lineage'
     );

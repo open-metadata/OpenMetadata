@@ -21,7 +21,7 @@ class SupersetIngestionClass extends ServiceBaseClass {
   constructor() {
     super(
       Services.Dashboard,
-      `pw-Superset-${uuid()}`,
+      `pw-Superset-with-%-${uuid()}`,
       'Superset',
       "World Bank's Data"
     );

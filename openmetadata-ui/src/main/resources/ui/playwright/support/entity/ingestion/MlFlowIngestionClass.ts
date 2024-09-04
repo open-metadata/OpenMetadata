@@ -23,7 +23,7 @@ class MlFlowIngestionClass extends ServiceBaseClass {
   constructor() {
     super(
       Services.MLModels,
-      `pw-Ml-Model-${uuid()}`,
+      `pw-Ml-Model-with-%-${uuid()}`,
       'Mlflow',
       'ElasticnetWineModel',
       false,

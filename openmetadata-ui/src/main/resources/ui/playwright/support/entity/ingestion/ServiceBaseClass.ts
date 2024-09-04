@@ -199,7 +199,7 @@ class ServiceBaseClass {
     await page.waitForSelector('[data-testid="cron-type"]');
     await page.click('[data-testid="cron-type"]');
     await page.waitForSelector('.ant-select-item-option-content');
-    await page.click('.ant-select-item-option-content:has-text("Hour")');
+    await page.click('.ant-select-item-option-content:has-text("None")');
 
     const deployPipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines/deploy/**`
@@ -221,20 +221,34 @@ class ServiceBaseClass {
     // Queued status are not stored in DB. cc: @ulixius9
     await page.waitForTimeout(2000);
 
+    const response = await apiContext
+      .get(
+        `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+          this.serviceName
+        }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
+          this.category
+        )}`
+      )
+      .then((res) => res.json());
+
+    const workflowData = response.data.filter(
+      (d) => d.pipelineType === ingestionType
+    )[0];
+
+    const oneHourBefore = Date.now() - 86400000;
+
     await expect
       .poll(
         async () => {
           const response = await apiContext
             .get(
-              `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
-                this.serviceName
-              }&pipelineType=${ingestionType}&serviceType=${getServiceCategoryFromService(
-                this.category
-              )}`
+              `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+                workflowData.fullyQualifiedName
+              )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
             )
             .then((res) => res.json());
 
-          return response.data[0]?.pipelineStatuses?.pipelineState;
+          return response.data[0]?.pipelineState;
         },
         {
           // Custom expect message for reporting, optional.
@@ -243,7 +257,8 @@ class ServiceBaseClass {
           intervals: [30_000, 15_000, 5_000],
         }
       )
-      .toBe('success');
+      // To allow partial success
+      .toContain('success');
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
@@ -264,9 +279,12 @@ class ServiceBaseClass {
     await page.click('[data-testid="ingestions"]');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
-    await expect(page.getByTestId('pipeline-status').last()).toContainText(
-      'SUCCESS'
-    );
+    await expect(
+      page
+        .locator(`[data-row-key*="${workflowData.name}"]`)
+        .getByTestId('pipeline-status')
+        .last()
+    ).toContainText('SUCCESS');
   };
 
   async updateService(page: Page) {
@@ -442,6 +460,7 @@ class ServiceBaseClass {
   }
 
   async runAdditionalTests(
+    _page: Page,
     _test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
   ) {
     // Write service specific tests

@@ -24,7 +24,7 @@ class S3IngestionClass extends ServiceBaseClass {
   constructor() {
     super(
       Services.Storage,
-      `pw-s3-storage-${uuid()}`,
+      `pw-s3-storage-with-%-${uuid()}`,
       'S3',
       'awsathena-database'
     );

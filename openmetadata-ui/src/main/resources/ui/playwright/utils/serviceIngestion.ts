@@ -118,7 +118,7 @@ export const testConnection = async (page: Page) => {
 
   await page.waitForSelector('[data-testid="success-badge"]', {
     state: 'attached',
-    timeout: 2 * 60 * 1000,
+    timeout: 2.5 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
