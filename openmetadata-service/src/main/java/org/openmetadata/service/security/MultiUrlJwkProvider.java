@@ -28,7 +28,7 @@ import org.openmetadata.service.exception.UnhandledServerException;
 
 final class MultiUrlJwkProvider implements JwkProvider {
   private final List<UrlJwkProvider> urlJwkProviders;
-  private LoadingCache<String, Jwk> CACHE =
+  private final LoadingCache<String, Jwk> CACHE =
       CacheBuilder.newBuilder()
           .maximumSize(10)
           .expireAfterWrite(24, TimeUnit.HOURS)

@@ -1316,7 +1316,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
+  void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a user term, carry it forward from the parent team
     TeamResourceTest teamResourceTest = new TeamResourceTest();
     CreateTeam createTeam =
@@ -1329,7 +1329,7 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
   }
 
   public User assertDomainInheritance(CreateUser createRequest, EntityReference expectedDomain)
-      throws IOException, InterruptedException {
+      throws IOException {
     User entity = createEntity(createRequest.withDomain(null), ADMIN_AUTH_HEADERS);
     assertReference(expectedDomain, entity.getDomains().get(0)); // Inherited owner
     entity = getEntity(entity.getId(), FIELD_DOMAINS, ADMIN_AUTH_HEADERS);
