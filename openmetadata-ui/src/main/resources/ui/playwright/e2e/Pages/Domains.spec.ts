@@ -181,12 +181,13 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test('Switch domain from navbar and check domain query call warp in quotes', async ({
+  test('Switch domain from navbar and check domain query call wrap in quotes', async ({
     page,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     await domain.create(apiContext);
+    await page.reload();
     await page.getByTestId('domain-dropdown').click();
     await page
       .locator(

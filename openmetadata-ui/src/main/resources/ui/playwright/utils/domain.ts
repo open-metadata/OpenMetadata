@@ -380,14 +380,18 @@ export const setupAssetsForDomain = async (page: Page) => {
   const table = new TableClass();
   const topic = new TopicClass();
   const dashboard = new DashboardClass();
-  await table.create(apiContext);
-  await topic.create(apiContext);
-  await dashboard.create(apiContext);
+  await Promise.all([
+    table.create(apiContext),
+    topic.create(apiContext),
+    dashboard.create(apiContext),
+  ]);
 
   const assetCleanup = async () => {
-    await table.create(apiContext);
-    await topic.create(apiContext);
-    await dashboard.create(apiContext);
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+    ]);
     await afterAction();
   };
 
