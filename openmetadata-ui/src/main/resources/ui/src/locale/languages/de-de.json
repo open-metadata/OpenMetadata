@@ -1546,7 +1546,7 @@
     "hex-code-placeholder": "Select or enter HEX color code.",
     "hex-color-validation": "Input is not valid HEX code.",
     "hi-user-welcome-to": "Hallo {{user}}, Willkommen bei",
-    "image-upload-error": "Image upload is not supported",
+    "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
     "import-entity-help": "Sparen Sie Zeit und Aufwand, indem Sie eine CSV-Datei mit mehreren {{entity}} in einem Durchgang hochladen.",
     "in-this-database": "In dieser Datenbank",
     "include-assets-message": "Aktivieren Sie das Extrahieren von {{assets}} aus der Datenquelle.",
