@@ -48,15 +48,14 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
-
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.apache.http.util.EntityUtils;
@@ -2285,7 +2284,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     try {
       verifyTestCaseResultInIndex(expected.withId(id));
     } catch (IOException e) {
-        Assertions.fail("Failed to verify test case result in index: %s" + e.getMessage());
+      Assertions.fail("Failed to verify test case result in index: %s" + e.getMessage());
     }
   }
 
@@ -2295,12 +2294,14 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     IndexMapping index = Entity.getSearchRepository().getIndexMapping(Entity.TEST_CASE_RESULTS);
     Response response;
     Request request =
-            new Request(
-                    "GET",
-                    String.format(
-                            "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+        new Request(
+            "GET",
+            String.format(
+                "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
     String query =
-            String.format("{\"size\": 10,\"query\":{\"bool\":{\"must\":[{\"term\":{\"_id\":\"%s\"}}]}}}", dbTestCaseResult.getId().toString());
+        String.format(
+            "{\"size\": 10,\"query\":{\"bool\":{\"must\":[{\"term\":{\"_id\":\"%s\"}}]}}}",
+            dbTestCaseResult.getId().toString());
     request.setJsonEntity(query);
     try {
       response = searchClient.performRequest(request);
@@ -2309,18 +2310,18 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =
-            (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+        (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
     LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
     ArrayList<LinkedHashMap<String, Object>> hitsList =
-            (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+        (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
     assertNotEquals(0, hitsList.size());
     assertTrue(
-            hitsList.stream()
-                    .allMatch(
-                            hit ->
-                                    ((LinkedHashMap<String, Object>) hit.get("_source"))
-                                            .get("id")
-                                            .equals(dbTestCaseResult.getId().toString())));
+        hitsList.stream()
+            .allMatch(
+                hit ->
+                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                        .get("id")
+                        .equals(dbTestCaseResult.getId().toString())));
   }
 
   @Override

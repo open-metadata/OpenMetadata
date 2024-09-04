@@ -36,7 +36,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
-import es.org.elasticsearch.action.bulk.BulkItemResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
@@ -54,10 +53,7 @@ import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.CreateIndexRequest;
 import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.GetIndexRequest;
-import es.org.elasticsearch.client.indices.GetMappingsRequest;
-import es.org.elasticsearch.client.indices.GetMappingsResponse;
 import es.org.elasticsearch.client.indices.PutMappingRequest;
-import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.lucene.search.function.CombineFunction;
 import es.org.elasticsearch.common.lucene.search.function.FieldValueFactorFunction;
 import es.org.elasticsearch.common.lucene.search.function.FunctionScoreQuery;
@@ -156,7 +152,6 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -1473,10 +1468,9 @@ public class ElasticSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
-  private static SearchSourceBuilder buildTestCaseResultSearch(
-          String query, int from, int size) {
+  private static SearchSourceBuilder buildTestCaseResultSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryBuilder =
-            buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
+        buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -2253,8 +2247,7 @@ public class ElasticSearchClient implements SearchClient {
       case "data_product_search_index" -> buildDataProductSearch(q, from, size);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
           q, from, size);
-      case "test_case_result_search_index" -> buildTestCaseResultSearch(
-              q, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearch(q, from, size);
       case "mlmodel_service_search_index",
           "database_service_search_index",
           "messaging_service_index",

@@ -76,7 +76,6 @@ import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -119,7 +118,6 @@ import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
-import os.org.opensearch.action.bulk.BulkItemResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
@@ -136,10 +134,7 @@ import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.CreateIndexResponse;
 import os.org.opensearch.client.indices.GetIndexRequest;
-import os.org.opensearch.client.indices.GetMappingsRequest;
-import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
-import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
 import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
@@ -1470,10 +1465,9 @@ public class OpenSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
-  private static SearchSourceBuilder buildTestCaseResultSearch(
-          String query, int from, int size) {
+  private static SearchSourceBuilder buildTestCaseResultSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
-            buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
+        buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
     FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
@@ -2232,8 +2226,7 @@ public class OpenSearchClient implements SearchClient {
       case "data_product_search_index" -> buildDataProductSearch(q, from, size);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
           q, from, size);
-      case "test_case_result_search_index" -> buildTestCaseResultSearch(
-              q, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearch(q, from, size);
       case "mlmodel_service_search_index",
           "database_service_search_index",
           "messaging_service_index",

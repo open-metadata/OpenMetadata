@@ -1,10 +1,8 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
-import static org.reflections.Reflections.log;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.KeyStoreException;
 import java.text.ParseException;
 import java.util.List;
