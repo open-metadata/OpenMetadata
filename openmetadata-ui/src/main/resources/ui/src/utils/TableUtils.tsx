@@ -278,6 +278,8 @@ export const getEntityIcon = (
     ['notification']: NotificationIcon,
     [EntityType.API_ENDPOINT]: APIEndpointIcon,
     [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
+    [EntityType.METRIC]: ClassificationIcon,
+    [SearchIndex.METRIC_SEARCH_INDEX]: ClassificationIcon,
     [EntityType.API_SERVICE]: APIServiceIcon,
     [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
     [EntityType.API_COLLECTION]: APICollectionIcon,

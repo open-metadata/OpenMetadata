@@ -286,9 +286,6 @@ export const ROUTES = {
 
   // Metric Entity
   METRICS: '/metrics',
-  METRIC_DETAILS: `/metrics/${PLACEHOLDER_ROUTE_FQN}`,
-  METRIC_DETAILS_WITH_TAB: `/metrics/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
-  METRIC_VERSION: `/metrics/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   ADD_METRIC: '/metrics/add-metric',
 };
 

@@ -13,7 +13,7 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { QueryVoteType as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
+import { QueryVote as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
 import { CreateMetric } from '../generated/api/data/createMetric';
 import { Metric } from '../generated/entity/data/metric';

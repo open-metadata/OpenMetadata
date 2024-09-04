@@ -155,6 +155,7 @@ export enum TabSpecificField {
   METRIC_TYPE = 'metricType',
   CUSTOM_PROPERTIES = 'customProperties',
   LOCATION = 'location',
+  RELATED_METRICS = 'relatedMetrics',
 }
 
 export enum FqnPart {

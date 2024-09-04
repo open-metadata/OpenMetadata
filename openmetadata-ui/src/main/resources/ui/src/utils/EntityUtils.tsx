@@ -1458,6 +1458,8 @@ export const getEntityLinkFromType = (
     case EntityType.API_COLLECTION:
     case EntityType.API_ENDPOINT:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
+    case EntityType.METRIC:
+      return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.GLOSSARY:
     case EntityType.GLOSSARY_TERM:
       return getGlossaryTermDetailsPath(fullyQualifiedName);
@@ -2145,6 +2147,19 @@ export const getEntityBreadcrumbs = (
     case EntityType.API_ENDPOINT:
       return getBreadCrumbForAPIEndpoint(entity as APIEndpoint);
 
+    case EntityType.METRIC: {
+      return [
+        {
+          name: t('label.metric-plural'),
+          url: ROUTES.METRICS,
+        },
+        {
+          name: getEntityName(entity),
+          url: '',
+        },
+      ];
+    }
+
     case EntityType.KPI:
       return getBreadCrumbForKpi(entity as Kpi);
 
@@ -2326,6 +2341,7 @@ export const getPluralizeEntityName = (entityType?: string) => {
     [EntityType.SEARCH_INDEX]: t('label.search-index-plural'),
     [EntityType.API_COLLECTION]: t('label.api-collection-plural'),
     [EntityType.API_ENDPOINT]: t('label.api-endpoint-plural'),
+    [EntityType.METRIC]: t('label.metric-plural'),
   };
 
   return (

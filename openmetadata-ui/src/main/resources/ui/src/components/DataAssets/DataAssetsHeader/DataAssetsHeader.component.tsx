@@ -160,7 +160,7 @@ export const DataAssetsHeader = ({
   const history = useHistory();
   const icon = useMemo(
     () =>
-      dataAsset?.serviceType ? (
+      'serviceType' in dataAsset ? (
         <img
           className="h-9"
           src={serviceUtilClassBase.getServiceTypeLogo(

@@ -148,6 +148,11 @@ export const AssetsFilterOptions: Array<{
     key: EntityType.API_ENDPOINT,
     value: SearchIndex.API_ENDPOINT_INDEX,
   },
+  {
+    label: i18n.t('label.metric-plural'),
+    key: EntityType.METRIC,
+    value: SearchIndex.METRIC_SEARCH_INDEX,
+  },
 ];
 
 export const ASSET_MENU_KEYS = [

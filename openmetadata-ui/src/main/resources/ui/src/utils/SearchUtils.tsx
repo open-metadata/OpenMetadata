@@ -279,6 +279,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
     [SearchIndex.DATA_PRODUCT]: EntityType.DATA_PRODUCT,
     [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
     [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+    [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
     [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
   };
 

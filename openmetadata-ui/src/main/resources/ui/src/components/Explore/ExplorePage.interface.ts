@@ -24,6 +24,7 @@ import { DashboardDataModel } from '../../generated/entity/data/dashboardDataMod
 import { Database } from '../../generated/entity/data/database';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex as SearchIndexEntity } from '../../generated/entity/data/searchIndex';
@@ -147,7 +148,8 @@ export type EntityUnion =
   | SearchService
   | APIEndpoint
   | APIService
-  | APICollection;
+  | APICollection
+  | Metric;
 
 export type EntityWithServices =
   | Topic

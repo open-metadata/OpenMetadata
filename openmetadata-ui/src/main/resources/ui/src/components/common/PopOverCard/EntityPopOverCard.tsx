@@ -40,6 +40,7 @@ import {
   getGlossariesByName,
   getGlossaryTermByFQN,
 } from '../../../rest/glossaryAPI';
+import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { getMlModelByFQN } from '../../../rest/mlModelAPI';
 import { getPipelineByFqn } from '../../../rest/pipelineAPI';
 import { getContainerByFQN } from '../../../rest/storageAPI';
@@ -192,6 +193,10 @@ export const PopoverContent: React.FC<{
 
       case EntityType.API_ENDPOINT:
         promise = getApiEndPointByFQN(entityFQN, { fields });
+
+        break;
+      case EntityType.METRIC:
+        promise = getMetricByFqn(entityFQN, { fields });
 
         break;
 

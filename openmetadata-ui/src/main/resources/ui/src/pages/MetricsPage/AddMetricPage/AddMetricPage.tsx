@@ -20,10 +20,11 @@ import ResizablePanels from '../../../components/common/ResizablePanels/Resizabl
 import ServiceDocPanel from '../../../components/common/ServiceDocPanel/ServiceDocPanel';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import SchemaEditor from '../../../components/Database/SchemaEditor/SchemaEditor';
-import { ROUTES } from '../../../constants/constants';
+import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { OPEN_METADATA } from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   CreateMetric,
   Language,
@@ -34,7 +35,6 @@ import {
 import { FieldTypes } from '../../../interface/FormUtils.interface';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
-import { getMetricDetailsPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 const AddMetricPage = () => {
@@ -54,7 +54,7 @@ const AddMetricPage = () => {
       breadcrumb: [
         {
           name: t('label.metric-plural'),
-          url: '/metrics',
+          url: ROUTES.METRICS,
         },
         {
           name: title,
@@ -246,7 +246,12 @@ const AddMetricPage = () => {
       };
 
       const response = await createMetric(createMetricPayload);
-      history.push(getMetricDetailsPath(response.fullyQualifiedName ?? ''));
+      history.push(
+        getEntityDetailsPath(
+          EntityType.METRIC,
+          response.fullyQualifiedName ?? ''
+        )
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

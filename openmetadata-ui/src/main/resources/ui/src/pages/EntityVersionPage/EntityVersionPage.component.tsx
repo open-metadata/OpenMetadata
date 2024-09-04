@@ -50,6 +50,7 @@ import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
 import { Container } from '../../generated/entity/data/container';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../generated/entity/data/dashboardDataModel';
+import { Metric } from '../../generated/entity/data/metric';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../generated/entity/data/searchIndex';
@@ -75,6 +76,11 @@ import {
   getDataModelVersion,
   getDataModelVersionsList,
 } from '../../rest/dataModelsAPI';
+import {
+  getMetricByFqn,
+  getMetricVersion,
+  getMetricVersions,
+} from '../../rest/metricsAPI';
 import {
   getMlModelByFQN,
   getMlModelVersion,
@@ -129,7 +135,8 @@ export type VersionData =
   | SearchIndex
   | StoredProcedure
   | DashboardDataModel
-  | APIEndpoint;
+  | APIEndpoint
+  | Metric;
 
 const EntityVersionPage: FunctionComponent = () => {
   const { t } = useTranslation();
@@ -352,6 +359,19 @@ const EntityVersionPage: FunctionComponent = () => {
 
           break;
         }
+        case EntityType.METRIC: {
+          const { id } = await getMetricByFqn(decodedEntityFQN, {
+            include: Include.All,
+          });
+
+          setEntityId(id ?? '');
+
+          const versions = await getMetricVersions(id ?? '');
+
+          setVersionList(versions);
+
+          break;
+        }
 
         default:
           break;
@@ -439,6 +459,13 @@ const EntityVersionPage: FunctionComponent = () => {
             }
             case EntityType.API_ENDPOINT: {
               const currentVersion = await getApiEndPointVersion(id, version);
+
+              setCurrentVersionData(currentVersion);
+
+              break;
+            }
+            case EntityType.METRIC: {
+              const currentVersion = await getMetricVersion(id, version);
 
               setCurrentVersionData(currentVersion);
 
@@ -618,7 +645,7 @@ const EntityVersionPage: FunctionComponent = () => {
         return (
           <DataModelVersion
             backHandler={backHandler}
-            currentVersionData={currentVersionData}
+            currentVersionData={currentVersionData as DashboardDataModel}
             dataProducts={currentVersionData.dataProducts}
             deleted={currentVersionData.deleted}
             domain={domain}

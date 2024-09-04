@@ -115,6 +115,7 @@ class SearchClassBase {
       [EntityType.API_SERVICE]: SearchIndex.API_SERVICE_INDEX,
       [EntityType.API_COLLECTION]: SearchIndex.API_COLLECTION_INDEX,
       [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT_INDEX,
+      [EntityType.METRIC]: SearchIndex.METRIC_SEARCH_INDEX,
     };
   }
 
@@ -155,6 +156,7 @@ class SearchClassBase {
       [SearchIndex.API_SERVICE_INDEX]: EntityType.API_SERVICE,
       [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
       [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
+      [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
     };
   }
 
@@ -286,6 +288,17 @@ class SearchClassBase {
               entityType: EntityType.TAG,
               isStatic: true,
               dataId: 'Tags',
+            },
+          },
+          {
+            title: i18n.t('label.metric-plural'),
+            key: EntityType.METRIC,
+            isLeaf: true,
+            icon: ClassificationIcon,
+            data: {
+              entityType: EntityType.METRIC,
+              isStatic: true,
+              dataId: 'Metrics',
             },
           },
         ],

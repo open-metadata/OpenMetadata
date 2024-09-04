@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -18,76 +18,68 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 
-import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
-import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
-import { getVersionPath, ROUTES } from '../../constants/constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../../../components/common/Loader/Loader';
+import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
+import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
+import { getVersionPath, ROUTES } from '../../../constants/constants';
+import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../enums/entity.enum';
-import { CreateThread } from '../../generated/api/feed/createThread';
-import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useFqn } from '../../hooks/useFqn';
+} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../enums/Axios.enum';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { CreateThread } from '../../../generated/api/feed/createThread';
+import { Metric } from '../../../generated/entity/data/metric';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useFqn } from '../../../hooks/useFqn';
+import { postThread } from '../../../rest/feedsAPI';
 import {
-  addApiEndpointFollower,
-  getApiEndPointByFQN,
-  patchApiEndPoint,
-  removeApiEndpointFollower,
-  updateApiEndPointVote,
-} from '../../rest/apiEndpointsAPI';
-import { postThread } from '../../rest/feedsAPI';
+  addMetricFollower,
+  getMetricByFqn,
+  patchMetric,
+  removeMetricFollower,
+  updateMetricVote,
+} from '../../../rest/metricsAPI';
 import {
   addToRecentViewed,
   getEntityMissingError,
   sortTagsCaseInsensitive,
-} from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+} from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
-const APIEndpointPage = () => {
+const MetricDetailsPage = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const currentUserId = currentUser?.id ?? '';
   const history = useHistory();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { fqn: apiEndpointFqn } = useFqn();
-  const [apiEndpointDetails, setApiEndpointDetails] = useState<APIEndpoint>(
-    {} as APIEndpoint
-  );
+  const { fqn: metricFqn } = useFqn();
+  const [metricDetails, setMetricDetails] = useState<Metric>({} as Metric);
   const [isLoading, setLoading] = useState<boolean>(true);
   const [isError, setIsError] = useState(false);
 
-  const [apiEndpointPermissions, setApiEndpointPermissions] =
+  const [metricPermissions, setMetricPermissions] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const { id: apiEndpointId, version: currentVersion } = apiEndpointDetails;
+  const { id: metricId, version: currentVersion } = metricDetails;
 
-  const saveUpdatedApiEndpointData = (updatedData: APIEndpoint) => {
-    const jsonPatch = compare(
-      omitBy(apiEndpointDetails, isUndefined),
-      updatedData
-    );
+  const saveUpdatedMetricData = (updatedData: Metric) => {
+    const jsonPatch = compare(omitBy(metricDetails, isUndefined), updatedData);
 
-    return patchApiEndPoint(apiEndpointId, jsonPatch);
+    return patchMetric(metricId, jsonPatch);
   };
 
-  const handleApiEndpointUpdate = async (
-    updatedData: APIEndpoint,
-    key: keyof APIEndpoint
-  ) => {
+  const handleMetricUpdate = async (updatedData: Metric, key: keyof Metric) => {
     try {
-      const res = await saveUpdatedApiEndpointData(updatedData);
+      const res = await saveUpdatedMetricData(updatedData);
 
-      setApiEndpointDetails((previous) => {
+      setMetricDetails((previous) => {
         if (key === 'tags') {
           return {
             ...previous,
@@ -111,10 +103,10 @@ const APIEndpointPage = () => {
     setLoading(true);
     try {
       const permissions = await getEntityPermissionByFqn(
-        ResourceEntity.API_ENDPOINT,
+        ResourceEntity.METRIC,
         entityFqn
       );
-      setApiEndpointPermissions(permissions);
+      setMetricPermissions(permissions);
     } catch (error) {
       showErrorToast(
         t('server.fetch-entity-permissions-error', {
@@ -126,10 +118,10 @@ const APIEndpointPage = () => {
     }
   };
 
-  const fetchApiEndPointDetail = async (apiEndpointFqn: string) => {
+  const fetchMetricDetail = async (metricFqn: string) => {
     setLoading(true);
     try {
-      const res = await getApiEndPointByFQN(apiEndpointFqn, {
+      const res = await getMetricByFqn(metricFqn, {
         fields: [
           TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
@@ -138,17 +130,17 @@ const APIEndpointPage = () => {
           TabSpecificField.DATA_PRODUCTS,
           TabSpecificField.VOTES,
           TabSpecificField.EXTENSION,
+          TabSpecificField.RELATED_METRICS,
         ].join(','),
       });
-      const { id, fullyQualifiedName, serviceType } = res;
+      const { id, fullyQualifiedName } = res;
 
-      setApiEndpointDetails(res);
+      setMetricDetails(res);
 
       addToRecentViewed({
         displayName: getEntityName(res),
-        entityType: EntityType.API_ENDPOINT,
+        entityType: EntityType.METRIC,
         fqn: fullyQualifiedName ?? '',
-        serviceType: serviceType,
         timestamp: 0,
         id: id,
       });
@@ -163,8 +155,8 @@ const APIEndpointPage = () => {
         showErrorToast(
           error as AxiosError,
           t('server.entity-details-fetch-error', {
-            entityType: t('label.api-endpoint'),
-            entityName: apiEndpointFqn,
+            entityType: t('label.metric'),
+            entityName: metricFqn,
           })
         );
       }
@@ -173,11 +165,11 @@ const APIEndpointPage = () => {
     }
   };
 
-  const followApiEndPoint = async () => {
+  const followMetric = async () => {
     try {
-      const res = await addApiEndpointFollower(apiEndpointId, currentUserId);
+      const res = await addMetricFollower(metricId, currentUserId);
       const { newValue } = res.changeDescription.fieldsAdded[0];
-      setApiEndpointDetails((prev) => ({
+      setMetricDetails((prev) => ({
         ...prev,
         followers: [...(prev?.followers ?? []), ...newValue],
       }));
@@ -185,17 +177,17 @@ const APIEndpointPage = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-follow-error', {
-          entity: getEntityName(apiEndpointDetails),
+          entity: getEntityName(metricDetails),
         })
       );
     }
   };
 
-  const unFollowApiEndPoint = async () => {
+  const unFollowMetric = async () => {
     try {
-      const res = await removeApiEndpointFollower(apiEndpointId, currentUserId);
+      const res = await removeMetricFollower(metricId, currentUserId);
       const { oldValue } = res.changeDescription.fieldsDeleted[0];
-      setApiEndpointDetails((prev) => ({
+      setMetricDetails((prev) => ({
         ...prev,
         followers: (prev?.followers ?? []).filter(
           (follower) => follower.id !== oldValue[0].id
@@ -205,7 +197,7 @@ const APIEndpointPage = () => {
       showErrorToast(
         error as AxiosError,
         t('server.entity-unfollow-error', {
-          entity: getEntityName(apiEndpointDetails),
+          entity: getEntityName(metricDetails),
         })
       );
     }
@@ -214,11 +206,7 @@ const APIEndpointPage = () => {
   const versionHandler = () => {
     currentVersion &&
       history.push(
-        getVersionPath(
-          EntityType.API_ENDPOINT,
-          apiEndpointFqn,
-          toString(currentVersion)
-        )
+        getVersionPath(EntityType.METRIC, metricFqn, toString(currentVersion))
       );
   };
 
@@ -236,7 +224,7 @@ const APIEndpointPage = () => {
   };
 
   const handleToggleDelete = (version?: number) => {
-    setApiEndpointDetails((prev) => {
+    setMetricDetails((prev) => {
       if (!prev) {
         return prev;
       }
@@ -251,8 +239,8 @@ const APIEndpointPage = () => {
 
   const handleUpdateVote = async (data: QueryVote, id: string) => {
     try {
-      await updateApiEndPointVote(id, data);
-      const details = await getApiEndPointByFQN(apiEndpointFqn, {
+      await updateMetricVote(id, data);
+      const details = await getMetricByFqn(metricFqn, {
         fields: [
           TabSpecificField.OWNERS,
           TabSpecificField.FOLLOWERS,
@@ -260,30 +248,30 @@ const APIEndpointPage = () => {
           TabSpecificField.VOTES,
         ].join(','),
       });
-      setApiEndpointDetails(details);
+      setMetricDetails(details);
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
   };
 
-  const updateApiEndpointDetails = useCallback((data) => {
-    const updatedData = data as APIEndpoint;
+  const updateMetricDetails = useCallback((data) => {
+    const updatedData = data as Metric;
 
-    setApiEndpointDetails((data) => ({
+    setMetricDetails((data) => ({
       ...(data ?? updatedData),
       version: updatedData.version,
     }));
   }, []);
 
   useEffect(() => {
-    fetchResourcePermission(apiEndpointFqn);
-  }, [apiEndpointFqn]);
+    fetchResourcePermission(metricFqn);
+  }, [metricFqn]);
 
   useEffect(() => {
-    if (apiEndpointPermissions.ViewAll || apiEndpointPermissions.ViewBasic) {
-      fetchApiEndPointDetail(apiEndpointFqn);
+    if (metricPermissions.ViewAll || metricPermissions.ViewBasic) {
+      fetchMetricDetail(metricFqn);
     }
-  }, [apiEndpointPermissions, apiEndpointFqn]);
+  }, [metricPermissions, metricFqn]);
 
   if (isLoading) {
     return <Loader />;
@@ -291,29 +279,29 @@ const APIEndpointPage = () => {
   if (isError) {
     return (
       <ErrorPlaceHolder>
-        {getEntityMissingError('apiEndpoint', apiEndpointFqn)}
+        {getEntityMissingError(EntityType.METRIC, metricFqn)}
       </ErrorPlaceHolder>
     );
   }
-  if (!apiEndpointPermissions.ViewAll && !apiEndpointPermissions.ViewBasic) {
+  if (!metricPermissions.ViewAll && !metricPermissions.ViewBasic) {
     return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
   }
 
   return (
-    <APIEndpointDetails
-      apiEndpointDetails={apiEndpointDetails}
-      apiEndpointPermissions={apiEndpointPermissions}
-      fetchAPIEndpointDetails={() => fetchApiEndPointDetail(apiEndpointFqn)}
-      onApiEndpointUpdate={handleApiEndpointUpdate}
+    <MetricDetails
+      fetchMetricDetails={() => fetchMetricDetail(metricFqn)}
+      metricDetails={metricDetails}
+      metricPermissions={metricPermissions}
       onCreateThread={handleCreateThread}
-      onFollowApiEndPoint={followApiEndPoint}
+      onFollowMetric={followMetric}
+      onMetricUpdate={handleMetricUpdate}
       onToggleDelete={handleToggleDelete}
-      onUnFollowApiEndPoint={unFollowApiEndPoint}
-      onUpdateApiEndpointDetails={updateApiEndpointDetails}
+      onUnFollowMetric={unFollowMetric}
+      onUpdateMetricDetails={updateMetricDetails}
       onUpdateVote={handleUpdateVote}
       onVersionChange={versionHandler}
     />
   );
 };
 
-export default APIEndpointPage;
+export default MetricDetailsPage;

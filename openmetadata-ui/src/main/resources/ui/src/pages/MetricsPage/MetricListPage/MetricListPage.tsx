@@ -23,7 +23,7 @@ import { PagingHandlerParams } from '../../../components/common/NextPrevious/Nex
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { ROUTES } from '../../../constants/constants';
+import { getEntityDetailsPath, ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -32,6 +32,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
+import { Include } from '../../../generated/type/include';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -39,7 +40,6 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { getMetrics } from '../../../rest/metricsAPI';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import { getMetricDetailsPath } from '../../../utils/RouterUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -75,6 +75,7 @@ const MetricListPage = () => {
         const metricResponse = await getMetrics({
           fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
           limit: pageSize,
+          include: Include.All,
         });
         setMetrics(metricResponse.data);
         handlePagingChange(metricResponse.paging);
@@ -100,6 +101,7 @@ const MetricListPage = () => {
         ...params,
         fields: [TabSpecificField.OWNERS, TabSpecificField.TAGS],
         limit: pageSize,
+        include: Include.All,
       });
       setMetrics(metricResponse.data);
       handlePagingChange(metricResponse.paging);
@@ -142,7 +144,10 @@ const MetricListPage = () => {
           return (
             <Link
               data-testid="metric-name"
-              to={getMetricDetailsPath(record.fullyQualifiedName ?? '')}>
+              to={getEntityDetailsPath(
+                EntityType.METRIC,
+                record.fullyQualifiedName ?? ''
+              )}>
               {getEntityName(record)}
             </Link>
           );
@@ -195,7 +200,7 @@ const MetricListPage = () => {
           <TableTags<Metric>
             isReadOnly
             entityFqn={record.fullyQualifiedName ?? ''}
-            entityType={EntityType.API_ENDPOINT}
+            entityType={EntityType.METRIC}
             handleTagSelection={noopWithPromise}
             hasTagEditAccess={false}
             index={index}
