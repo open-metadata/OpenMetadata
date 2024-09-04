@@ -69,7 +69,8 @@
       "testCase": {
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "ignore_above": 256
           },
           "name": {
             "type": "text",
@@ -132,15 +133,6 @@
                 "type": "text"
               }
             }
-          },
-          "testCaseType": {
-            "type": "keyword"
-          },
-          "entityType": {
-            "type": "keyword"
-          },
-          "dataQualityDimension": {
-            "type": "keyword"
           },
           "owners": {
             "properties": {
@@ -263,7 +255,8 @@
       "testDefinition": {
         "properties": {
           "id": {
-            "type": "text"
+            "type": "keyword",
+            "ignore_above": 256
           },
           "name": {
             "type": "text",
@@ -292,7 +285,10 @@
           "description": {
             "type": "text"
           },
-          "type": {
+          "entityType": {
+            "type": "keyword"
+          },
+          "dataQualityDimension": {
             "type": "keyword"
           }
         }
@@ -301,12 +297,7 @@
         "properties": {
           "id": {
             "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
+            "ignore_above": 256
           },
           "name": {
             "type": "keyword",
@@ -349,12 +340,7 @@
         "properties": {
           "id": {
             "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
+            "ignore_above": 256
           },
           "name": {
             "type": "keyword",
@@ -389,6 +375,38 @@
           },
           "executable": {
             "type": "text"
+          }
+        }
+      },
+      "table": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "service": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "databaseSchema": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
+      },
+      "database": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "ignore_above": 256
           }
         }
       }

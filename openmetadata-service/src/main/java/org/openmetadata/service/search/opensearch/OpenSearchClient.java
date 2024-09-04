@@ -97,6 +97,7 @@ import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
@@ -1469,6 +1470,15 @@ public class OpenSearchClient implements SearchClient {
     return searchBuilder(queryBuilder, hb, from, size);
   }
 
+  private static SearchSourceBuilder buildTestCaseResultSearch(
+          String query, int from, int size) {
+    QueryStringQueryBuilder queryStringBuilder =
+            buildSearchQueryBuilder(query, TestCaseResultIndex.getFields());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
+    HighlightBuilder hb = buildHighlights(new ArrayList<>());
+    return searchBuilder(queryBuilder, hb, from, size);
+  }
+
   private static QueryStringQueryBuilder buildSearchQueryBuilder(
       String query, Map<String, Float> fields) {
     return QueryBuilders.queryStringQuery(query)
@@ -2222,6 +2232,8 @@ public class OpenSearchClient implements SearchClient {
       case "data_product_search_index" -> buildDataProductSearch(q, from, size);
       case "test_case_resolution_status_search_index" -> buildTestCaseResolutionStatusSearch(
           q, from, size);
+      case "test_case_result_search_index" -> buildTestCaseResultSearch(
+              q, from, size);
       case "mlmodel_service_search_index",
           "database_service_search_index",
           "messaging_service_index",

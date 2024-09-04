@@ -53,8 +53,14 @@ import java.text.ParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 import javax.ws.rs.client.WebTarget;
+
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.apache.http.util.EntityUtils;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -97,6 +103,7 @@ import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
+import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
@@ -1035,6 +1042,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   public void putTestCaseResult(String fqn, TestCaseResult data, Map<String, String> authHeaders)
       throws HttpResponseException {
+    data.setTestCaseFQN(fqn);
     WebTarget target = getCollection().path("/" + fqn + "/testCaseResult");
     TestUtils.put(target, data, CREATED, authHeaders);
   }
@@ -2272,7 +2280,47 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void verifyTestCaseResult(TestCaseResult expected, TestCaseResult actual) {
-    assertEquals(expected, actual);
+    UUID id = expected.getId();
+    assertEquals(expected.withId(null), actual); // Ignore id as set on create
+    try {
+      verifyTestCaseResultInIndex(expected.withId(id));
+    } catch (IOException e) {
+        Assertions.fail("Failed to verify test case result in index: %s" + e.getMessage());
+    }
+  }
+
+  private void verifyTestCaseResultInIndex(TestCaseResult dbTestCaseResult) throws IOException {
+    // Try to search entity with INCOMPLETE description
+    RestClient searchClient = getSearchClient();
+    IndexMapping index = Entity.getSearchRepository().getIndexMapping(Entity.TEST_CASE_RESULTS);
+    Response response;
+    Request request =
+            new Request(
+                    "GET",
+                    String.format(
+                            "%s/_search", index.getIndexName(Entity.getSearchRepository().getClusterAlias())));
+    String query =
+            String.format("{\"size\": 10,\"query\":{\"bool\":{\"must\":[{\"term\":{\"_id\":\"%s\"}}]}}}", dbTestCaseResult.getId().toString());
+    request.setJsonEntity(query);
+    try {
+      response = searchClient.performRequest(request);
+    } finally {
+      searchClient.close();
+    }
+    String jsonString = EntityUtils.toString(response.getEntity());
+    HashMap<String, Object> map =
+            (HashMap<String, Object>) JsonUtils.readOrConvertValue(jsonString, HashMap.class);
+    LinkedHashMap<String, Object> hits = (LinkedHashMap<String, Object>) map.get("hits");
+    ArrayList<LinkedHashMap<String, Object>> hitsList =
+            (ArrayList<LinkedHashMap<String, Object>>) hits.get("hits");
+    assertNotEquals(0, hitsList.size());
+    assertTrue(
+            hitsList.stream()
+                    .allMatch(
+                            hit ->
+                                    ((LinkedHashMap<String, Object>) hit.get("_source"))
+                                            .get("id")
+                                            .equals(dbTestCaseResult.getId().toString())));
   }
 
   @Override
