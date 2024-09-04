@@ -32,7 +32,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -826,7 +825,7 @@ public class SearchRepository {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     return searchClient.listDataInsightChartResult(
         startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
   }

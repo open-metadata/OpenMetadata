@@ -4,7 +4,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 
 import java.io.IOException;
 import java.security.KeyStoreException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -202,10 +201,10 @@ public interface SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException;
+      throws IOException;
 
   // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
-  public void deleteByQuery(String index, String query) throws IOException;
+  void deleteByQuery(String index, String query);
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
