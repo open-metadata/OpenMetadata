@@ -1546,6 +1546,7 @@
     "hex-code-placeholder": "Sélectionnez un code couleur hexadécimal.",
     "hex-color-validation": "Code hexadécimal non valide.",
     "hi-user-welcome-to": "Bonjour {{user}}, Bienvenue sur",
+    "image-upload-error": "Image upload is not supported",
     "import-entity-help": "Gagnez du temps et de l'effort en téléchargeant un fichier CSV contenant plusieurs {{entityPlural}} en une seule fois.",
     "in-this-database": "Dans cette base de données",
     "include-assets-message": "Activer l'extraction des {{assets}} de la source de données.",

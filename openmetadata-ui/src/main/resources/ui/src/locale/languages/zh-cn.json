@@ -1546,6 +1546,7 @@
     "hex-code-placeholder": "选择或输入 HEX 颜色代码",
     "hex-color-validation": "输入不是有效的 HEX 颜色代码",
     "hi-user-welcome-to": "Hi {{user}}, 欢迎来到",
+    "image-upload-error": "Image upload is not supported",
     "import-entity-help": "通过上传 CSV 文件批量维护术语, 节约时间并提高效率。",
     "in-this-database": "在此数据库中",
     "include-assets-message": "启用从数据源提取{{assets}}",
