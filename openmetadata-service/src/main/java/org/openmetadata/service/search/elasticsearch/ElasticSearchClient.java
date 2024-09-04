@@ -110,7 +110,6 @@ import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1604,7 +1603,7 @@ public class ElasticSearchClient implements SearchClient {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new DeleteByQueryRequest(indexName.toArray(new String[0]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1629,7 +1628,7 @@ public class ElasticSearchClient implements SearchClient {
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1742,15 +1741,11 @@ public class ElasticSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
 
-  /**
-   * @param indexName
-   * @param fieldAndValue
-   */
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineageData) {
@@ -1806,7 +1801,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @SneakyThrows
-  public void deleteByQuery(String index, String query) throws IOException {
+  public void deleteByQuery(String index, String query) {
     DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
     // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
     // first token from the Parser
@@ -1841,7 +1836,7 @@ public class ElasticSearchClient implements SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     es.org.elasticsearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(
             startTs,
@@ -1861,8 +1856,7 @@ public class ElasticSearchClient implements SearchClient {
 
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartType)
-      throws ParseException {
+      DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     DataInsightAggregatorInterface processor =
         createDataAggregator(searchResponse, dataInsightChartType);
     return processor.process(dataInsightChartType);

@@ -34,7 +34,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1596,7 +1595,7 @@ public class OpenSearchClient implements SearchClient {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new DeleteByQueryRequest(indexName.toArray(new String[0]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1621,7 +1620,7 @@ public class OpenSearchClient implements SearchClient {
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1734,16 +1733,11 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
 
-  /**
-   * @param indexName
-   * @param fieldAndValue
-   * @param
-   */
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData) {
@@ -1779,7 +1773,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @SneakyThrows
-  public void deleteByQuery(String index, String query) throws IOException {
+  public void deleteByQuery(String index, String query) {
     DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
     // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
     // first token from the Parser
@@ -1831,7 +1825,7 @@ public class OpenSearchClient implements SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(
             startTs,
@@ -1851,8 +1845,7 @@ public class OpenSearchClient implements SearchClient {
 
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName)
-      throws ParseException {
+      DataInsightChartResult.DataInsightChartType dataInsightChartName) {
     DataInsightAggregatorInterface processor =
         createDataAggregator(searchResponse, dataInsightChartName);
     return processor.process(dataInsightChartName);

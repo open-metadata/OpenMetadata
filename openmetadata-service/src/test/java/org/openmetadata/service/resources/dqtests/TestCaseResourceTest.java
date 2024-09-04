@@ -309,8 +309,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void put_testCaseResults_200(TestInfo test)
-      throws IOException, ParseException, InterruptedException {
+  void put_testCaseResults_200(TestInfo test) throws IOException, ParseException {
     CreateTestCase create = createRequest(test);
     create
         .withEntityLink(TABLE_COLUMN_LINK)
@@ -454,8 +453,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_resultSummaryCascadeToAllSuites(TestInfo test)
-      throws IOException, ParseException, InterruptedException {
+  void test_resultSummaryCascadeToAllSuites(TestInfo test) throws IOException, ParseException {
     TestCase testCase = createAndCheckEntity(createRequest(test, 1), ADMIN_AUTH_HEADERS);
     TestCase testCase1 = createAndCheckEntity(createRequest(test, 2), ADMIN_AUTH_HEADERS);
 
@@ -679,7 +677,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void get_listTestCasesFromSearchWithPagination(TestInfo testInfo)
-      throws IOException, ParseException, InterruptedException {
+      throws IOException, ParseException {
     if (supportsSearchIndex) {
       Random rand = new Random();
       int tablesNum = rand.nextInt(3) + 3;
@@ -940,7 +938,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void test_testCaseInheritedFields(TestInfo testInfo) throws HttpResponseException, IOException {
+  void test_testCaseInheritedFields(TestInfo testInfo) throws IOException {
     // Set up the test case
     TableResourceTest tableResourceTest = new TableResourceTest();
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
@@ -1917,8 +1915,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void get_listTestCaseWithStatusAndType(TestInfo test)
-      throws HttpResponseException, ParseException, IOException {
+  void get_listTestCaseWithStatusAndType(TestInfo test) throws ParseException, IOException {
     TestSuite testSuite = createExecutableTestSuite(test);
 
     int testCaseEntries = 15;
@@ -1943,7 +1940,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     for (int i = 0; i < testCaseEntries; i++) {
       // Even number = Failed (8), Odd number = Success (7), 9 = Aborted (1)
-      TestCaseStatus result = null;
+      TestCaseStatus result;
       if (i % 2 == 0) {
         result = TestCaseStatus.Failed;
       } else if (i == 9) {
@@ -2090,10 +2087,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
     CreateTestSuite createExecutableTestSuite =
         testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
-    TestSuite executableTestSuite =
-        testSuiteResourceTest.createExecutableTestSuite(
-            createExecutableTestSuite, ADMIN_AUTH_HEADERS);
-    return executableTestSuite;
+    return testSuiteResourceTest.createExecutableTestSuite(
+        createExecutableTestSuite, ADMIN_AUTH_HEADERS);
   }
 
   private void deleteLogicalTestCase(TestSuite testSuite, UUID testCaseId) throws IOException {
@@ -2126,13 +2121,12 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCase.class, authHeaders);
   }
 
-  private TestSummary getTestSummary(String testSuiteId) throws IOException, InterruptedException {
+  private TestSummary getTestSummary(String testSuiteId) throws IOException {
     TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
     return testSuiteResourceTest.getTestSummary(ADMIN_AUTH_HEADERS, testSuiteId);
   }
 
-  private void getAndValidateTestSummary(String testSuiteId)
-      throws IOException, InterruptedException {
+  private void getAndValidateTestSummary(String testSuiteId) throws IOException {
     // Retry logic to handle ES async operations
     int maxRetries = 5;
     int retries = 0;

@@ -202,7 +202,7 @@ public final class TestUtils {
                   .withUsername("admin")
                   .withPassword("admin"));
 
-  public static RetryRegistry elasticSearchRetryRegistry =
+  public static final RetryRegistry ELASTIC_SEARCH_RETRY_REGISTRY =
       RetryRegistry.of(
           RetryConfig.custom()
               .maxAttempts(30) // about 3 seconds
@@ -667,7 +667,7 @@ public final class TestUtils {
   }
 
   public static void assertEventually(String name, CheckedRunnable runnable) {
-    assertEventually(name, runnable, elasticSearchRetryRegistry);
+    assertEventually(name, runnable, ELASTIC_SEARCH_RETRY_REGISTRY);
   }
 
   public static void assertEventually(
