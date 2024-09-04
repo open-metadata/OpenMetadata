@@ -279,7 +279,7 @@ public class LineageRepository {
         }
       }
       // remove the last ;
-      return str.toString().substring(0, str.toString().length() - 1);
+      return str.substring(0, str.toString().length() - 1);
     }
     return "";
   }
