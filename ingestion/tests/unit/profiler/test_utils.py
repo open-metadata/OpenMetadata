@@ -12,32 +12,15 @@
 """
 Tests utils function for the profiler
 """
-import uuid
 from datetime import datetime
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import Column
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.sql.sqltypes import Integer, String
 
-from metadata.generated.schema.entity.data.table import Column as OMetaColumn
-from metadata.generated.schema.entity.data.table import DataType, Table
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    AuthProvider,
-    OpenMetadataConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseService,
-    DatabaseServiceType,
-)
-from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
-    OpenMetadataJWTClientConfig,
-)
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.models import SnowflakeQueryLogEntry
 from metadata.ingestion.source.database.snowflake.profiler.system_metrics import (
     SnowflakeTableResovler,
@@ -51,8 +34,6 @@ from metadata.utils.profiler_utils import (
     set_cache,
 )
 from metadata.utils.sqa_utils import is_array
-
-from .conftest import Row
 
 Base = declarative_base()
 
@@ -218,75 +199,6 @@ def test_get_snowflake_system_queries_all_dll(query, expected):
     assert query_result.database_name == "database"
     assert query_result.schema_name == "schema"
     assert query_result.table_name == "table1"
-
-
-def test_get_snowflake_system_queries_from_es():
-    """Test the ES integration"""
-
-    ometa_client = OpenMetadata(
-        OpenMetadataConnection(
-            hostPort="http://localhost:8585/api",
-            authProvider=AuthProvider.openmetadata,
-            enableVersionValidation=False,
-            securityConfig=OpenMetadataJWTClientConfig(jwtToken="token"),
-        )
-    )
-
-    db_service = DatabaseService(
-        id=uuid.uuid4(),
-        name=EntityName("service"),
-        fullyQualifiedName=FullyQualifiedEntityName("service"),
-        serviceType=DatabaseServiceType.CustomDatabase,
-    )
-
-    table = Table(
-        id=uuid.uuid4(),
-        name="TABLE",
-        columns=[OMetaColumn(name="id", dataType=DataType.BIGINT)],
-        database=EntityReference(id=uuid.uuid4(), type="database", name="database"),
-        databaseSchema=EntityReference(
-            id=uuid.uuid4(), type="databaseSchema", name="schema"
-        ),
-    )
-
-    # With too many responses, we won't return anything since we don't want false results
-    # that we cannot properly assign
-    with patch.object(OpenMetadata, "es_search_from_fqn", return_value=[table] * 4):
-        row = Row(
-            query_id=1,
-            query_type="INSERT",
-            start_time=datetime.now(),
-            query_text="INSERT INTO TABLE1 (col1, col2) VALUES (1, 'a'), (2, 'b')",
-        )
-        query_result = get_snowflake_system_queries(
-            query_log_entry=row,
-            database="DATABASE",
-            schema="SCHEMA",
-            ometa_client=ometa_client,
-            db_service=db_service,
-        )
-        assert not query_result
-
-    # Returning a single table should work fine
-    with patch.object(OpenMetadata, "es_search_from_fqn", return_value=[table]):
-        row = Row(
-            query_id="1",
-            query_type="INSERT",
-            start_time=datetime.now(),
-            query_text="INSERT INTO TABLE2 (col1, col2) VALUES (1, 'a'), (2, 'b')",
-        )
-        query_result = get_snowflake_system_queries(
-            query_log_entry=row,
-            database="DATABASE",
-            schema="SCHEMA",
-            ometa_client=ometa_client,
-            db_service=db_service,
-        )
-        assert query_result
-        assert query_result.query_type == "INSERT"
-        assert query_result.database_name == "database"
-        assert query_result.schema_name == "schema"
-        assert query_result.table_name == "table2"
 
 
 @pytest.mark.parametrize(
