@@ -93,6 +93,15 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
       }
     }, []);
 
+    useEffect(() => {
+      if (richTextEditorRef.current) {
+        // remove the default image upload hook
+        richTextEditorRef.current
+          ?.getInstance()
+          ?.removeHook('addImageBlobHook');
+      }
+    }, []);
+
     return (
       <div className={classNames(className)} style={style}>
         {readonly ? (
