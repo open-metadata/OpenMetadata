@@ -139,7 +139,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
           ),
         }}
         pagination={false}
-        rowKey="fullyQualifiedName"
+        rowKey="name"
         size="small"
       />
       {Boolean(removeUserDetails?.state) && (
