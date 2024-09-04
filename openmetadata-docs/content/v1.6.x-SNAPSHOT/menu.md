@@ -544,6 +544,10 @@ site_menu:
     url: /connectors/ml-model/sagemaker
   - category: Connectors / ML Model / Sagemaker / Run Externally
     url: /connectors/ml-model/sagemaker/yaml
+  - category: Connectors / ML Model / VertexAI
+    url: /connectors/ml-model/vertexai
+  - category: Connectors / ML Model / VertexAI / Run Externally
+    url: /connectors/ml-model/vertexai/yaml
 
   - category: Connectors / Storage
     url: /connectors/storage
