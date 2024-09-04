@@ -24,24 +24,8 @@ import {
   uuid,
 } from '../../utils/common';
 import { validateFormNameFieldInput } from '../../utils/form';
+import { updatePersonaDisplayName } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
-
-const updatePersonaDisplayName = async ({ page, displayName }) => {
-  await page.click('[data-testid="manage-button"]');
-
-  await page.click(
-    '[data-testid="manage-dropdown-list-container"] [data-testid="rename-button"]'
-  );
-
-  await page.waitForSelector('#name', { state: 'visible' });
-
-  await expect(page.locator('#name')).toBeDisabled();
-
-  await page.waitForSelector('#displayName', { state: 'visible' });
-  await page.fill('#displayName', displayName);
-
-  await page.click('[data-testid="save-button"]');
-};
 
 const PERSONA_DETAILS = {
   name: `persona-with-%-${uuid()}`,
