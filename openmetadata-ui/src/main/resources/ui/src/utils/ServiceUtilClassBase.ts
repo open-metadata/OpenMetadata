@@ -139,6 +139,7 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Synapse,
     MetadataServiceType.Alation,
     APIServiceType.Webhook,
+    MlModelServiceType.VertexAI,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<

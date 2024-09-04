@@ -80,7 +80,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
     supportedNameCharacters = "_-.";
   }
 
-  public static RetryRegistry appTriggerRetry =
+  public static final RetryRegistry APP_TRIGGER_RETRY =
       RetryRegistry.of(
           RetryConfig.custom()
               .maxAttempts(60) // about 30 seconds
@@ -120,7 +120,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
   @Test
   void validate_data_insights_workflow_is_correct_for_a_simple_case()
       throws IOException, InterruptedException {
-    Long MILLISECONDS_IN_AN_HOUR = (long) 1000 * 60 * 60;
+    long MILLISECONDS_IN_AN_HOUR = (long) 1000 * 60 * 60;
 
     Long timestamp = System.currentTimeMillis();
 
@@ -348,7 +348,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
             throw new AssertionError(ex);
           }
         },
-        appTriggerRetry);
+        APP_TRIGGER_RETRY);
     assertEventually(
         "appSuccess",
         () -> {
@@ -356,7 +356,7 @@ public class AppsResourceTest extends EntityResourceTest<App, CreateApp> {
               .getStatus()
               .equals(AppRunRecord.Status.SUCCESS);
         },
-        appTriggerRetry);
+        APP_TRIGGER_RETRY);
   }
 
   @Test

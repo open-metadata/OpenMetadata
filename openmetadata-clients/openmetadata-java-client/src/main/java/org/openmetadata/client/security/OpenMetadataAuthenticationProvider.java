@@ -33,7 +33,7 @@ public class OpenMetadataAuthenticationProvider implements AuthenticationProvide
           "Required type to invoke is OpenMetadata for OpenMetadataAuthentication Provider");
     }
 
-    securityConfig = (OpenMetadataJWTClientConfig) iConfig.getSecurityConfig();
+    securityConfig = iConfig.getSecurityConfig();
     if (securityConfig == null) {
       LOG.error("Security Config is missing, it is required");
       throw new RuntimeException("Security Config is missing, it is required");

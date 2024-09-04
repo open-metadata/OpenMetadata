@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.ChangeEvent;
-import org.openmetadata.service.events.errors.RetriableException;
 import org.openmetadata.service.resources.events.EventResource.EventList;
 
 @Slf4j
@@ -41,14 +40,6 @@ public abstract class AbstractEventPublisher implements EventPublisher {
     try {
       publish(list);
       batch.clear();
-    } catch (RetriableException ex) {
-      setNextBackOff();
-      LOG.error(
-          "Failed to publish event {} due to {}, will try again in {} ms",
-          changeEvent,
-          ex,
-          currentBackoffTime);
-      Thread.sleep(currentBackoffTime);
     } catch (Exception e) {
       LOG.error(
           "Failed to publish event type {} for entity {}",
