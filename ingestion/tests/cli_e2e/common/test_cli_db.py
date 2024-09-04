@@ -13,6 +13,7 @@
 Test database connectors which extend from `CommonDbSourceService` with CLI
 """
 import json
+import os
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional
@@ -58,7 +59,7 @@ class CliCommonDB:
             db_service: DatabaseService = cls.openmetadata.get_by_name(
                 DatabaseService, workflow.source.serviceName
             )
-            if db_service:
+            if db_service and os.getenv("E2E_CLEAN_DB", "false") == "true":
                 cls.openmetadata.delete(
                     DatabaseService, db_service.id, hard_delete=True, recursive=True
                 )
