@@ -22,7 +22,7 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   private static final String FIXED_VERSION_ID = "latest";
   public static final String PROJECT_ID_NAME = "projectId";
   private static GCPSecretsManager instance = null;
-  private String projectId = null;
+  private String projectId;
 
   private GCPSecretsManager(SecretsConfig secretsConfig) {
     super(GCP, secretsConfig, 100);

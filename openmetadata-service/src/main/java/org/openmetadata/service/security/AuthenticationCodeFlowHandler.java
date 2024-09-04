@@ -408,8 +408,7 @@ public class AuthenticationCodeFlowHandler {
     return new HashMap<>(authParams);
   }
 
-  private Optional<OidcCredentials> getUserCredentialsFromSession(HttpServletRequest request)
-      throws URISyntaxException {
+  private Optional<OidcCredentials> getUserCredentialsFromSession(HttpServletRequest request) {
     OidcCredentials credentials =
         (OidcCredentials) request.getSession().getAttribute(OIDC_CREDENTIAL_PROFILE);
 
@@ -431,7 +430,7 @@ public class AuthenticationCodeFlowHandler {
       HttpServletRequest httpServletRequest,
       OidcCredentials oidcCredentials,
       String computedCallbackUrl)
-      throws IOException, com.nimbusds.oauth2.sdk.ParseException, URISyntaxException {
+      throws URISyntaxException {
     if (oidcCredentials.getCode() != null) {
       LOG.debug(
           "Initiating Token Request for User Session: {} ",
@@ -778,9 +777,7 @@ public class AuthenticationCodeFlowHandler {
       azureAdProfile.setAccessToken(new BearerAccessToken((String) res.get("access_token")));
       azureAdProfile.setRefreshToken(new RefreshToken((String) res.get("refresh_token")));
       azureAdProfile.setIdToken(SignedJWT.parse((String) res.get("id_token")));
-    } catch (final IOException e) {
-      throw new TechnicalException(e);
-    } catch (ParseException e) {
+    } catch (final IOException | ParseException e) {
       throw new TechnicalException(e);
     } finally {
       HttpUtils.closeConnection(connection);
@@ -885,8 +882,7 @@ public class AuthenticationCodeFlowHandler {
 
   @SneakyThrows
   private void executeAuthorizationCodeTokenRequest(
-      HttpServletRequest httpServletRequest, TokenRequest request, OidcCredentials credentials)
-      throws IOException, com.nimbusds.oauth2.sdk.ParseException {
+      HttpServletRequest httpServletRequest, TokenRequest request, OidcCredentials credentials) {
     HTTPResponse httpResponse = executeTokenHttpRequest(request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
 

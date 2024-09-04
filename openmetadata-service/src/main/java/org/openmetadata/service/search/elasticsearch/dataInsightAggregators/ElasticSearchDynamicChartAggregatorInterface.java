@@ -41,21 +41,14 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
 
   private static ValuesSourceAggregationBuilder getSubAggregationsByFunction(
       Function function, String field, int index) {
-    switch (function) {
-      case COUNT:
-        return AggregationBuilders.count(field + index).field(field);
-      case SUM:
-        return AggregationBuilders.sum(field + index).field(field);
-      case AVG:
-        return AggregationBuilders.avg(field + index).field(field);
-      case MIN:
-        return AggregationBuilders.min(field + index).field(field);
-      case MAX:
-        return AggregationBuilders.max(field + index).field(field);
-      case UNIQUE:
-        return AggregationBuilders.cardinality(field + index).field(field);
-    }
-    return null;
+    return switch (function) {
+      case COUNT -> AggregationBuilders.count(field + index).field(field);
+      case SUM -> AggregationBuilders.sum(field + index).field(field);
+      case AVG -> AggregationBuilders.avg(field + index).field(field);
+      case MIN -> AggregationBuilders.min(field + index).field(field);
+      case MAX -> AggregationBuilders.max(field + index).field(field);
+      case UNIQUE -> AggregationBuilders.cardinality(field + index).field(field);
+    };
   }
 
   static void getDateHistogramByFormula(
@@ -112,7 +105,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
     List<List<DataInsightCustomChartResult>> results =
         processAggregationsInternal(aggregations, group);
     for (List<DataInsightCustomChartResult> result : results) {
-      String formulaCopy = new String(formula);
+      String formulaCopy = formula;
       if (holder.size() != result.size()) {
         continue;
       }
@@ -202,7 +195,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
         processAggregationsInternal(aggregations, group);
     List<DataInsightCustomChartResult> finalResult = new ArrayList<>();
     for (List<DataInsightCustomChartResult> diResultList : rawResultList) {
-      diResultList.forEach((result) -> finalResult.add(result));
+      finalResult.addAll(diResultList);
     }
     return finalResult;
   }
@@ -248,8 +241,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedValueCount parsedValueCount = aggregation;
-    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    Double value = Double.valueOf((double) aggregation.getValue());
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
           new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
@@ -262,8 +254,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedCardinality parsedValueCount = aggregation;
-    Double value = Double.valueOf((double) parsedValueCount.getValue());
+    Double value = Double.valueOf((double) aggregation.getValue());
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
           new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
@@ -276,8 +267,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedSingleValueNumericMetricsAggregation parsedValueCount = aggregation;
-    Double value = parsedValueCount.value();
+    Double value = aggregation.value();
     if (!Double.isInfinite(value) && !Double.isNaN(value)) {
       DataInsightCustomChartResult diChartResult =
           new DataInsightCustomChartResult().withCount(value).withDay(day).withGroup(group);
@@ -290,8 +280,7 @@ public interface ElasticSearchDynamicChartAggregatorInterface {
       List<DataInsightCustomChartResult> diChartResults,
       Double day,
       String group) {
-    ParsedFilter parsedValueCount = aggregation;
-    for (Aggregation agg : parsedValueCount.getAggregations().asList()) {
+    for (Aggregation agg : aggregation.getAggregations().asList()) {
       addByAggregationType(agg, diChartResults, day, group);
     }
   }

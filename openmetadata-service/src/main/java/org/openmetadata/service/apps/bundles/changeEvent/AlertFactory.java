@@ -1,7 +1,5 @@
 package org.openmetadata.service.apps.bundles.changeEvent;
 
-import static org.openmetadata.schema.api.events.CreateEventSubscription.AlertType.ACTIVITY_FEED;
-
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeEvent;

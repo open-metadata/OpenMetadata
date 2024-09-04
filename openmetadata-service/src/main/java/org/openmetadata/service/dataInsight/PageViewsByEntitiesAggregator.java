@@ -1,6 +1,5 @@
 package org.openmetadata.service.dataInsight;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.dataInsight.type.PageViewsByEntities;
@@ -14,7 +13,7 @@ public abstract class PageViewsByEntitiesAggregator<A, B, M, S>
   }
 
   @Override
-  public List<Object> aggregate() throws ParseException {
+  public List<Object> aggregate() {
     M timestampBuckets = getTimestampBuckets(this.aggregations);
     List<Object> data = new ArrayList<>();
     for (B timestampBucket : getBuckets(timestampBuckets)) {

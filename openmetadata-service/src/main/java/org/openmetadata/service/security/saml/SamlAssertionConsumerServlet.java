@@ -47,7 +47,7 @@ import org.openmetadata.service.util.UserUtil;
 @WebServlet("/api/v1/saml/acs")
 @Slf4j
 public class SamlAssertionConsumerServlet extends HttpServlet {
-  private Set<String> admins;
+  private final Set<String> admins;
 
   public SamlAssertionConsumerServlet(AuthorizerConfiguration configuration) {
     admins = configuration.getAdminPrincipals();

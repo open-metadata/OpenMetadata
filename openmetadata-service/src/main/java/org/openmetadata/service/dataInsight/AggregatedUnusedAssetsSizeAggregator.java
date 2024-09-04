@@ -1,6 +1,5 @@
 package org.openmetadata.service.dataInsight;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.analytics.DataAssetValues;
@@ -15,7 +14,7 @@ public abstract class AggregatedUnusedAssetsSizeAggregator<A, H, B, S>
   }
 
   @Override
-  public List<Object> aggregate() throws ParseException {
+  public List<Object> aggregate() {
     H histogramBucket = getHistogramBucket(this.aggregations);
     List<Object> data = new ArrayList<>();
     for (B bucket : getBuckets(histogramBucket)) {

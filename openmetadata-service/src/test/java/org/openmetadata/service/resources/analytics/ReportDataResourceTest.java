@@ -47,7 +47,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   private final String collectionName = "analytics/dataInsights/data";
 
   @Test
-  void report_data_admin_200() throws ParseException, IOException, InterruptedException {
+  void report_data_admin_200() throws ParseException, IOException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -95,7 +95,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void report_data_bot_200() throws HttpResponseException, ParseException, InterruptedException {
+  void report_data_bot_200() throws HttpResponseException, ParseException {
     EntityReportData entityReportData =
         new EntityReportData()
             .withEntityType("table")
@@ -122,7 +122,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void delete_endpoint_200() throws ParseException, IOException, InterruptedException {
+  void delete_endpoint_200() throws ParseException, IOException {
     List<ReportData> createReportDataList = new ArrayList<>();
 
     // create some entity report data
@@ -247,7 +247,7 @@ class ReportDataResourceTest extends OpenMetadataApplicationTest {
   }
 
   private void assertDocumentCountEquals(String query, String index, Integer count)
-      throws IOException, InterruptedException {
+      throws IOException {
     // async client will return a future which we don't have access to, hence sleep
     JsonNode json = runSearchQuery(query, index);
     Integer docCount = json.get("hits").get("total").get("value").asInt();

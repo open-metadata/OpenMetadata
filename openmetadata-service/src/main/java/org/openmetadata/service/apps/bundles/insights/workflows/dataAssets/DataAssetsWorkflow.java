@@ -187,9 +187,7 @@ public class DataAssetsWorkflow {
               String.format(
                   "{\"@timestamp\": {\"gte\": %s, \"lte\": %s}}", startTimestamp, endTimestamp));
     } catch (Exception rx) {
-      SearchIndexException exception =
-          new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
-      throw exception;
+      throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }
   }
 

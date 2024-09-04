@@ -40,7 +40,6 @@ import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.quartz.PersistJobDataAfterExecution;
 
 @Slf4j
@@ -223,7 +222,7 @@ public abstract class AbstractEventConsumer
   }
 
   @Override
-  public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
+  public void execute(JobExecutionContext jobExecutionContext) {
     // Must Have , Before Execute the Init, Quartz Requires a Non-Arg Constructor
     this.init(jobExecutionContext);
     // Poll Events from Change Event Table

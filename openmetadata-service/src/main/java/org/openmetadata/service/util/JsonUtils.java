@@ -126,11 +126,7 @@ public final class JsonUtils {
   }
 
   public static <T> T readOrConvertValue(Object obj, Class<T> clz) {
-    if (obj instanceof String) {
-      return (T) readValue((String) obj, clz);
-    } else {
-      return (T) convertValue(obj, clz);
-    }
+    return obj instanceof String str ? readValue(str, clz) : convertValue(obj, clz);
   }
 
   public static <T> List<T> readOrConvertValues(Object obj, Class<T> clz) {

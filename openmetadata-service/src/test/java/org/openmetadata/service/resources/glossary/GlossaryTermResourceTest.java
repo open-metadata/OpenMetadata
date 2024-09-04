@@ -208,7 +208,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  void test_inheritDomain(TestInfo test) throws IOException, InterruptedException {
+  void test_inheritDomain(TestInfo test) throws IOException {
     // When domain is not set for a glossary term, carry it forward from the glossary
     CreateGlossary createGlossary =
         glossaryTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
@@ -1279,10 +1279,9 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     assertEquals(term1.getChildren().size(), children.size());
 
-    for (int i = 0; i < children.size(); i++) {
-      GlossaryTerm responseChild = children.get(i);
-      GlossaryTerm child = children.get(i);
-      assertTrue(child.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
+    for (GlossaryTerm responseChild : children) {
+      assertTrue(
+          responseChild.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
     }
 
     GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);

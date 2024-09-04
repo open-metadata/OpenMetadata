@@ -35,7 +35,7 @@ public class GreenplumConnectionClassConverter extends ClassConverter {
         (GreenplumConnection) JsonUtils.convertValue(object, this.clazz);
 
     tryToConvert(greenplumConnection.getSslConfig(), SSL_SOURCE_CLASS)
-        .ifPresent(obj -> greenplumConnection.setSslConfig((ValidateSSLClientConfig) obj));
+        .ifPresent(greenplumConnection::setSslConfig);
 
     return greenplumConnection;
   }

@@ -101,7 +101,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owners";
   private SearchRepository searchRepository;
-  public static List<ScheduleType> SCHEDULED_TYPES =
+  public static final List<ScheduleType> SCHEDULED_TYPES =
       List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
   public static final String SLACK_APPLICATION = "SlackApplication";
 

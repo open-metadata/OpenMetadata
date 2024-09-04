@@ -90,7 +90,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       }
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
-      String message = "";
+      String message;
       if (cause != null && cause.getClass() == UnknownHostException.class) {
         message =
             String.format(
@@ -126,7 +126,7 @@ public class GenericPublisher implements Destination<ChangeEvent> {
       }
     } catch (Exception ex) {
       Throwable cause = ex.getCause();
-      String message = "";
+      String message;
       if (cause != null && cause.getClass() == UnknownHostException.class) {
         message =
             String.format(

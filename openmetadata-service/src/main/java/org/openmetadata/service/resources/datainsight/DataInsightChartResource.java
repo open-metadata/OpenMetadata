@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.List;
 import java.util.UUID;
 import javax.json.JsonPatch;
@@ -530,7 +529,7 @@ public class DataInsightChartResource
               schema = @Schema(type = "number"))
           @QueryParam("endTs")
           Long endTs)
-      throws IOException, ParseException {
+      throws IOException {
     OperationContext operationContext =
         new OperationContext(Entity.DATA_INSIGHT_CHART, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());

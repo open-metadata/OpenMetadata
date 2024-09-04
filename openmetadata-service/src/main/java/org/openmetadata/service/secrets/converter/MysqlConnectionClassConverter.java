@@ -43,7 +43,7 @@ public class MysqlConnectionClassConverter extends ClassConverter {
         .ifPresent(mysqlConnection::setAuthType);
 
     tryToConvert(mysqlConnection.getSslConfig(), SSL_SOURCE_CLASS)
-        .ifPresent(obj -> mysqlConnection.setSslConfig((ValidateSSLClientConfig) obj));
+        .ifPresent(mysqlConnection::setSslConfig);
 
     return mysqlConnection;
   }

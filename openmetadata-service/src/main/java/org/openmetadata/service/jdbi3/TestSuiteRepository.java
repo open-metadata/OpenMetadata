@@ -332,18 +332,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String key = bucket.getString("key");
     Integer count = bucket.getJsonNumber("doc_count").intValue();
     switch (key) {
-      case "success":
-        testSummary.setSuccess(testSummary.getSuccess() + count);
-        break;
-      case "failed":
-        testSummary.setFailed(testSummary.getFailed() + count);
-        break;
-      case "aborted":
-        testSummary.setAborted(testSummary.getAborted() + count);
-        break;
-      case "queued":
-        testSummary.setQueued(testSummary.getQueued() + count);
-        break;
+      case "success" -> testSummary.setSuccess(testSummary.getSuccess() + count);
+      case "failed" -> testSummary.setFailed(testSummary.getFailed() + count);
+      case "aborted" -> testSummary.setAborted(testSummary.getAborted() + count);
+      case "queued" -> testSummary.setQueued(testSummary.getQueued() + count);
     }
     testSummary.setTotal(testSummary.getTotal() + count);
   }
@@ -353,18 +345,10 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     String key = bucket.getString("key");
     Integer count = bucket.getJsonNumber("doc_count").intValue();
     switch (key) {
-      case "success":
-        columnTestSummary.setSuccess(columnTestSummary.getSuccess() + count);
-        break;
-      case "failed":
-        columnTestSummary.setFailed(columnTestSummary.getFailed() + count);
-        break;
-      case "aborted":
-        columnTestSummary.setAborted(columnTestSummary.getAborted() + count);
-        break;
-      case "queued":
-        columnTestSummary.setQueued(columnTestSummary.getQueued() + count);
-        break;
+      case "success" -> columnTestSummary.setSuccess(columnTestSummary.getSuccess() + count);
+      case "failed" -> columnTestSummary.setFailed(columnTestSummary.getFailed() + count);
+      case "aborted" -> columnTestSummary.setAborted(columnTestSummary.getAborted() + count);
+      case "queued" -> columnTestSummary.setQueued(columnTestSummary.getQueued() + count);
     }
     columnTestSummary.setTotal(columnTestSummary.getTotal() + count);
   }

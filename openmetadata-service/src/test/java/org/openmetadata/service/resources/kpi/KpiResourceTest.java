@@ -90,8 +90,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
     }
   }
 
-  public void setupKpi() throws IOException {
-
+  public void setupKpi() {
     createDataAssetsDataStream();
     KPI_TARGET = new KpiTarget().withName("Percentage").withValue("80.0");
   }
@@ -122,11 +121,7 @@ public class KpiResourceTest extends EntityResourceTest<Kpi, CreateKpiRequest> {
 
   @Override
   public CreateKpiRequest createRequest(String name) {
-    try {
-      this.setupKpi();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    this.setupKpi();
     return new CreateKpiRequest()
         .withName(name)
         .withDescription(name)

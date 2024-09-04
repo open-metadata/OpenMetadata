@@ -183,7 +183,7 @@ public final class CollectionRegistry {
     // Build list of ResourceDescriptors
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
-      if (!isOperations || (isOperations && details.requiredForOps)) {
+      if (!isOperations || details.requiredForOps) {
         String resourceClass = details.resourceClass;
         try {
           createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);

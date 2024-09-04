@@ -1093,7 +1093,7 @@ public class FeedRepository {
     for (String id : teamIds) {
       result.append(" | ").append(id);
     }
-    LOG.info("result {}", result.toString());
+    LOG.info("result {}", result);
     return result.toString();
   }
 

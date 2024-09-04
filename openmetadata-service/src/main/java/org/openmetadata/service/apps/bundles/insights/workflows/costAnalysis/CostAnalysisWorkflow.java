@@ -49,14 +49,12 @@ public class CostAnalysisWorkflow {
 
   public record CostAnalysisTableData(
       Table table, Optional<LifeCycle> oLifeCycle, Optional<Double> oSize) {}
-  ;
 
   public record AggregatedCostAnalysisData(
       Double totalSize,
       Double totalCount,
       DataAssetMetrics unusedDataAssets,
       DataAssetMetrics frequentlyUsedDataAssets) {}
-  ;
 
   @Getter private DatabaseServiceTablesProcessor databaseServiceTablesProcessor;
   @Getter private RawCostAnalysisReportDataProcessor rawCostAnalysisReportDataProcessor;
@@ -197,8 +195,7 @@ public class CostAnalysisWorkflow {
 
   private Optional<String> processRawCostAnalysisReportData(
       List<RawCostAnalysisReportData> rawCostAnalysisReportDataList,
-      Map<String, Object> contextData)
-      throws SearchIndexException {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(REPORT_DATA_TYPE_KEY, ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA);
@@ -247,8 +244,7 @@ public class CostAnalysisWorkflow {
   private Optional<String> processAggregatedCostAnalysisReportData(
       Map<String, Map<String, Map<String, AggregatedCostAnalysisData>>>
           aggregatedCostAnalysisDataMap,
-      Map<String, Object> contextData)
-      throws SearchIndexException {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(

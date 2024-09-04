@@ -51,8 +51,8 @@ public class AuditEventHandler implements EventHandler {
         // We should implement a parent class that captures the common fields and then have
         // EntityInterface and EntityTimeSeriesInterface extend it.
         // TODO: if we are just interested in entity's we can just do else and return null.
-        UUID entityId = null;
-        String entityType = "";
+        UUID entityId;
+        String entityType;
         if (responseContext.getEntity()
             instanceof EntityTimeSeriesInterface entityTimeSeriesInterface) {
           entityId = entityTimeSeriesInterface.getEntityReference().getId();
