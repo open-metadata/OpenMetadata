@@ -175,6 +175,21 @@ const FeedsWidget = ({
     !isUndefined(handleRemoveWidget) && handleRemoveWidget(widgetKey);
   }, [widgetKey]);
 
+  const emptyPlaceholderText = useMemo(
+    () => (
+      <Transi18next
+        i18nKey="message.no-activity-feed"
+        renderElement={
+          <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
+        }
+        values={{
+          explored: t('message.have-not-explored-yet'),
+        }}
+      />
+    ),
+    []
+  );
+
   return (
     <div
       className="feeds-widget-container h-full"
@@ -189,20 +204,7 @@ const FeedsWidget = ({
             children: (
               <>
                 <ActivityFeedListV1
-                  emptyPlaceholderText={
-                    <Transi18next
-                      i18nKey="message.no-activity-feed"
-                      renderElement={
-                        <Link
-                          rel="noreferrer"
-                          to={{ pathname: ROUTES.EXPLORE }}
-                        />
-                      }
-                      values={{
-                        explored: t('message.have-not-explored-yet'),
-                      }}
-                    />
-                  }
+                  emptyPlaceholderText={emptyPlaceholderText}
                   feedList={isTourOpen ? mockFeedData : threads}
                   hidePopover={isEditView}
                   isLoading={loading && !isTourOpen}

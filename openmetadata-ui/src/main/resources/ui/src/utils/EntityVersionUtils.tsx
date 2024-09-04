@@ -29,7 +29,6 @@ import {
   isUndefined,
   toString,
   uniqBy,
-  uniqueId,
 } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -137,34 +136,22 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
 
 export const getAddedDiffElement = (text: string) => {
   return (
-    <Typography.Text
-      underline
-      className="diff-added"
-      data-testid="diff-added"
-      key={uniqueId()}>
+    <span className="diff-added" data-testid="diff-added">
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
 export const getRemovedDiffElement = (text: string) => {
   return (
-    <Typography.Text
-      delete
-      className="text-grey-muted"
-      data-testid="diff-removed"
-      key={uniqueId()}>
+    <span className="text-grey-muted" data-testid="diff-removed">
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
 export const getNormalDiffElement = (text: string) => {
-  return (
-    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
-      {text}
-    </Typography.Text>
-  );
+  return <span data-testid="diff-normal">{text}</span>;
 };
 
 export const getTextDiff = (
@@ -172,8 +159,16 @@ export const getTextDiff = (
   newText: string,
   latestText?: string
 ) => {
+  const imagePlaceholder = 'data:image';
   if (isEmpty(oldText) && isEmpty(newText)) {
     return latestText ?? '';
+  }
+
+  if (
+    newText.includes(imagePlaceholder) ||
+    oldText.includes(imagePlaceholder)
+  ) {
+    return newText;
   }
 
   const diffArr = diffWords(toString(oldText), toString(newText));

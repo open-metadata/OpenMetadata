@@ -12,20 +12,24 @@
  */
 
 import React, { useMemo } from 'react';
+import { FeedInfo } from '../../../../../generated/entity/feed/thread';
 import { getTextDiffCustomProperty } from '../../../../../utils/EntityVersionUtils';
 import RichTextEditorPreviewer from '../../../../common/RichTextEditor/RichTextEditorPreviewer';
 import { CustomPropertyFeedProps } from './CustomPropertyFeed.interface';
 
 function CustomPropertyFeed({ feed }: Readonly<CustomPropertyFeedProps>) {
-  const message = useMemo(
-    () =>
-      getTextDiffCustomProperty(
-        feed.feedInfo?.fieldName ?? '',
-        feed.feedInfo?.entitySpecificInfo?.previousValue ?? '',
-        feed.feedInfo?.entitySpecificInfo?.updatedValue ?? ''
-      ),
-    [feed]
-  );
+  const message = useMemo(() => {
+    const {
+      fieldName,
+      entitySpecificInfo: { previousValue, updatedValue } = {},
+    } = feed.feedInfo ?? ({} as FeedInfo);
+
+    if (fieldName && previousValue && updatedValue) {
+      return getTextDiffCustomProperty(fieldName, previousValue, updatedValue);
+    }
+
+    return feed.message;
+  }, [feed]);
 
   return (
     <RichTextEditorPreviewer
