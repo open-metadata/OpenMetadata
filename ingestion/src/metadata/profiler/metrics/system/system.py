@@ -31,8 +31,8 @@ from metadata.ingestion.source.database.snowflake.profiler.system_metrics import
 )
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.metrics.system.dml_operation import (
-    DatabaseDMLOperations,
     DML_OPERATION_MAP,
+    DatabaseDMLOperations,
 )
 from metadata.profiler.metrics.system.queries.bigquery import (
     DML_STAT_TO_DML_STATEMENT_MAPPING,

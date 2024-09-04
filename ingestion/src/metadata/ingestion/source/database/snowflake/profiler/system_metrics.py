@@ -9,7 +9,6 @@ from metadata.ingestion.source.database.snowflake.models import (
     SnowflakeQueryLogEntry,
     SnowflakeQueryResult,
 )
-
 from metadata.utils.logger import profiler_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.profiler_utils import get_identifiers_from_string

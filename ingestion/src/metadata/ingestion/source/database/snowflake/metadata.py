@@ -112,7 +112,6 @@ from metadata.ingestion.source.database.stored_procedures_mixin import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
 from metadata.utils.helpers import get_start_and_end
-from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments, get_all_table_ddls
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
@@ -241,9 +240,9 @@ class SnowflakeSource(
         results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
         for row in results:
             if row.CLUSTERING_KEY:
-                self.partition_details[f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"] = (
-                    row.CLUSTERING_KEY
-                )
+                self.partition_details[
+                    f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
+                ] = row.CLUSTERING_KEY
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
