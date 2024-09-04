@@ -38,6 +38,7 @@ export enum EntityTypeEndpoint {
   API_COLLECTION = 'apiCollections',
   API_ENDPOINT = 'apiEndpoints',
   DATA_PRODUCT = 'dataProducts',
+  TestSuites = 'dataQuality/testSuites',
 }
 
 export type EntityDataType = {
