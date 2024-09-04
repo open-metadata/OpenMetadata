@@ -218,8 +218,8 @@ test.describe('Domains', () => {
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
     await domain.create(apiContext);
-    await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
+    await sidebarClick(page, SidebarItem.DOMAIN);
     await addAssetsToDomain(page, domain.data, assets);
     await page.getByTestId('documentation').click();
     const updatedDomainName = 'PW Domain Updated';
