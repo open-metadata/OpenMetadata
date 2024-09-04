@@ -321,17 +321,8 @@ test.describe('Domains Rbac', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await domain1.delete(apiContext);
-    await domain2.delete(apiContext);
-    await domain3.delete(apiContext);
-    await user1.delete(apiContext);
-    await afterAction();
-  });
-
   test('Domain Rbac', async ({ browser }) => {
-    const { page, afterAction } = await performAdminLogin(browser);
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
 
@@ -412,6 +403,10 @@ test.describe('Domains Rbac', () => {
       await afterActionUser1();
     });
 
+    await domain1.delete(apiContext);
+    await domain2.delete(apiContext);
+    await domain3.delete(apiContext);
+    await user1.delete(apiContext);
     await assetCleanup1();
     await assetCleanup2();
     await afterAction();
