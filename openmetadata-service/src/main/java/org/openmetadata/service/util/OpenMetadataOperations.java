@@ -270,7 +270,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int batchSize,
       @Option(
               names = {"-p", "--payload-size"},
-              defaultValue = "100")
+              defaultValue = "10485760")
           int payloadSize,
       @Option(
               names = {"--recreate-indexes"},
@@ -584,6 +584,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             config.getSecretsManagerConfiguration(), config.getClusterName());
 
     collectionDAO = jdbi.onDemand(CollectionDAO.class);
+    Entity.setSearchRepository(searchRepository);
     Entity.setCollectionDAO(collectionDAO);
     Entity.initializeRepositories(config, jdbi);
   }

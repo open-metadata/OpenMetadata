@@ -107,7 +107,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
   private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
 
-  FeedRepository feedRepository = Entity.getFeedRepository();
+  final FeedRepository feedRepository = Entity.getFeedRepository();
 
   public GlossaryTermRepository() {
     super(
@@ -119,13 +119,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         UPDATE_FIELDS);
     supportsSearch = true;
     renameAllowed = true;
-  }
-
-  @Override
-  public String getCursorValue(GlossaryTerm term) {
-    Map<String, String> cursorMap =
-        Map.of("name", term.getName(), "id", String.valueOf(term.getId()));
-    return JsonUtils.pojoToJson(cursorMap);
   }
 
   @Override

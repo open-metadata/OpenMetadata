@@ -118,7 +118,6 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -178,6 +177,8 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   private final TagResourceTest tagResourceTest = new TagResourceTest();
   private final DatabaseServiceResourceTest dbServiceTest = new DatabaseServiceResourceTest();
   private final DatabaseResourceTest dbTest = new DatabaseResourceTest();
+  private final TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+  private final TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
   private final DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
 
   public TableResourceTest() {
@@ -2162,13 +2163,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, IOException {
+  void test_ownershipInheritance(TestInfo test) throws IOException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
-    Database db =
-        dbTest.createEntity(
-            dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF)),
-            ADMIN_AUTH_HEADERS);
+    CreateDatabase createDb = dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF));
+    Database db = dbTest.createEntity(createDb, ADMIN_AUTH_HEADERS);
 
     // Ensure databaseSchema owner is inherited from database
     CreateDatabaseSchema createSchema =
@@ -2180,6 +2179,42 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         createRequest(test).withDatabaseSchema(schema.getFullyQualifiedName());
     Table table = assertOwnerInheritance(createTable, USER1_REF);
 
+    // Ensure test case owner is inherited from table
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite =
+        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase =
+        testCaseResourceTest
+            .createRequest(test)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestSuite(testSuite.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
+    TestCase testCase = testCaseResourceTest.assertOwnerInheritance(createTestCase, USER1_REF);
+
+    // Check owners properly updated in search
+    verifyOwnersInSearch(db.getEntityReference(), List.of(USER1_REF));
+    verifyOwnersInSearch(schema.getEntityReference(), List.of(USER1_REF));
+    verifyOwnersInSearch(table.getEntityReference(), List.of(USER1_REF));
+    verifyOwnersInSearch(testCase.getEntityReference(), List.of(USER1_REF));
+
+    // Update owners of database within same session
+    ChangeDescription change = getChangeDescription(db, MINOR_UPDATE);
+    fieldDeleted(change, "owners", List.of(USER1_REF));
+    fieldAdded(change, "owners", List.of(DATA_CONSUMER_REF));
+    db =
+        dbTest.updateAndCheckEntity(
+            createDb.withOwners(List.of(DATA_CONSUMER_REF)),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+
+    // Check owners properly updated in search
+    verifyOwnersInSearch(schema.getEntityReference(), List.of(DATA_CONSUMER_REF));
+    verifyOwnersInSearch(table.getEntityReference(), List.of(DATA_CONSUMER_REF));
+    verifyOwnersInSearch(testCase.getEntityReference(), List.of(DATA_CONSUMER_REF));
     // Change the ownership of table and ensure further ingestion updates don't overwrite the
     // ownership
     assertOwnershipInheritanceOverride(table, createTable.withOwners(null), USER2_REF);
@@ -2190,13 +2225,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_domainInheritance(TestInfo test)
-      throws HttpResponseException, IOException, InterruptedException {
+  void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
-    DatabaseService dbService =
-        dbServiceTest.createEntity(
-            dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName()),
-            ADMIN_AUTH_HEADERS);
+    CreateDatabaseService createDbService =
+        dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
+    DatabaseService dbService = dbServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
 
     // Ensure database domain is inherited from database service
     CreateDatabase createDb =
@@ -2215,18 +2248,42 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     Table table = assertDomainInheritance(createTable, DOMAIN.getEntityReference());
 
     // Ensure test case domain is inherited from table
-    TestCaseResourceTest testCaseResourceTest = new TestCaseResourceTest();
+    CreateTestSuite createTestSuite =
+        testSuiteResourceTest.createRequest(table.getFullyQualifiedName());
+    TestSuite testSuite =
+        testSuiteResourceTest.createExecutableTestSuite(createTestSuite, ADMIN_AUTH_HEADERS);
+
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest(test)
             .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+            .withTestSuite(testSuite.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION2.getFullyQualifiedName());
     TestCase testCase =
         testCaseResourceTest.assertDomainInheritance(createTestCase, DOMAIN.getEntityReference());
+
+    // Check domain properly updated in search
+    verifyDomainInSearch(db.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainInSearch(schema.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainInSearch(table.getEntityReference(), DOMAIN.getEntityReference());
+    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN.getEntityReference());
+
+    // Update domain of service within same session
+    ChangeDescription change = getChangeDescription(dbService, MINOR_UPDATE);
+    fieldUpdated(change, "domain", DOMAIN.getEntityReference(), DOMAIN1.getEntityReference());
+    dbService =
+        dbServiceTest.updateAndCheckEntity(
+            createDbService.withDomain(DOMAIN1.getFullyQualifiedName()),
+            OK,
+            ADMIN_AUTH_HEADERS,
+            MINOR_UPDATE,
+            change);
+
+    // Check domain properly updated in search
+    verifyDomainInSearch(db.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainInSearch(schema.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainInSearch(table.getEntityReference(), DOMAIN1.getEntityReference());
+    verifyDomainInSearch(testCase.getEntityReference(), DOMAIN1.getEntityReference());
 
     // Change the domain of table and ensure further ingestion updates don't overwrite the domain
     assertDomainInheritanceOverride(
@@ -2343,14 +2400,13 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     queryParams.put("limit", "100");
 
     ResultList<Table> tables = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(3, tables.getData().size());
+    assertEquals(4, tables.getData().size());
     assertNotNull(tables.getData().get(0).getTestSuite());
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityWithoutDescriptionFromSearch(TestInfo test)
-      throws InterruptedException, IOException {
+  void get_entityWithoutDescriptionFromSearch(TestInfo test) throws IOException {
     // Create Database
     CreateDatabase createDatabase = dbTest.createRequest(getEntityName(test));
     Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
@@ -2391,7 +2447,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         createEntity(createWithEmptyColumnDescription, ADMIN_AUTH_HEADERS);
     // Create an entity with null description but with column description
     CreateTable createWithNullDescription =
-        createRequest(test, 3)
+        createRequest(test, 6)
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withDescription(null)
             .withColumns(listOf(columnWithDescription))
@@ -2421,6 +2477,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     request.setJsonEntity(query);
     response = searchClient.performRequest(request);
     searchClient.close();
+    LOG.info("Response: {}", response);
 
     String jsonString = EntityUtils.toString(response.getEntity());
     HashMap<String, Object> map =

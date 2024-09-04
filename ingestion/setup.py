@@ -65,6 +65,7 @@ COMMONS = {
         VERSIONS["boto3"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["numpy"],
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
         "cramjam~=2.7",
@@ -161,7 +162,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["numpy"],
         "sqlalchemy-bigquery>=1.2.2",
     },
-    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"]},
+    "bigtable": {"google-cloud-bigtable>=2.0.0", VERSIONS["pandas"], VERSIONS["numpy"]},
     "clickhouse": {
         "clickhouse-driver~=0.2",
         "clickhouse-sqlalchemy~=0.2",
@@ -259,7 +260,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["giturlparse"],
     },
     "mlflow": {"mlflow-skinny>=2.3.0"},
-    "mongo": {VERSIONS["mongo"], VERSIONS["pandas"]},
+    "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "couchbase": {"couchbase~=4.1"},
     "mssql": {
         "sqlalchemy-pytds~=0.3",
@@ -314,6 +315,7 @@ plugins: Dict[str, Set[str]] = {
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
+        VERSIONS["numpy"],
         "presidio-analyzer==2.2.32",
     },
 }
@@ -350,7 +352,7 @@ test = {
     "dbt-artifacts-parser",
     "freezegun",
     "testcontainers==3.7.1;python_version<'3.9'",
-    "testcontainers==4.4.0;python_version>='3.9'",
+    "testcontainers==4.8.0;python_version>='3.9'",
     "minio==7.2.5",
     "kafka-python==2.0.2",
     "requests==2.31.0",

@@ -59,6 +59,14 @@ RUN if [[ $(uname -m) == "arm64" || $(uname -m) == "aarch64" ]]; \
 
 ENV LD_LIBRARY_PATH=/instantclient
 
+# Install DB2 iAccess driver
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  curl https://public.dhe.ibm.com/software/ibmi/products/odbc/debs/dists/1.1.0/ibmi-acs-1.1.0.list | tee /etc/apt/sources.list.d/ibmi-acs-1.1.0.list \
+  && apt update \
+  && apt install ibm-iaccess; \
+  fi
+
 WORKDIR ingestion/
 
 # Required for Airflow DockerOperator, as we need to run the workflows from a `python main.py` command in the container.
@@ -73,17 +81,17 @@ ENV PIP_QUIET=1
 RUN pip install --upgrade pip
 
 ARG INGESTION_DEPENDENCY="all"
-ARG RI_VERSION="1.5.0.0.dev0"
+ARG RI_VERSION="1.6.0.0.dev0"
 RUN pip install --upgrade pip
 RUN pip install "openmetadata-ingestion[airflow]~=${RI_VERSION}"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
+
 # Temporary workaround for https://github.com/open-metadata/OpenMetadata/issues/9593
-RUN echo "Image built for $(uname -m)"
-RUN if [[ $(uname -m) == "arm64" ]]; \
-    then \
-    pip install "ibm-db-sa~=0.4"; \
-    fi
+RUN if [[ $(uname -m) == "x86_64" ]]; \
+  then \
+  pip install "openmetadata-ingestion[db2]~=${RI_VERSION}"; \
+  fi
 
 # Uninstalling psycopg2-binary and installing psycopg2 instead
 # because the psycopg2-binary generates a architecture specific error

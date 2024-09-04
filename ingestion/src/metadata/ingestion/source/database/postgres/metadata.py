@@ -59,12 +59,14 @@ from metadata.ingestion.source.database.postgres.utils import (
     get_columns,
     get_etable_owner,
     get_foreign_keys,
+    get_json_fields_and_type,
     get_table_comment,
     get_table_owner,
     get_view_definition,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database
+from metadata.utils.importer import import_side_effects
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -75,6 +77,11 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_ddl,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+import_side_effects(
+    "metadata.ingestion.source.database.postgres.converter_orm",
+    "metadata.ingestion.source.database.postgres.metrics",
+)
 
 TableKey = namedtuple("TableKey", ["schema", "table_name"])
 
@@ -132,6 +139,7 @@ PGDialect.ischema_names = ischema_names
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_table_owner = get_etable_owner
+Inspector.get_json_fields_and_type = get_json_fields_and_type
 
 PGDialect.get_foreign_keys = get_foreign_keys
 

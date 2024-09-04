@@ -17,6 +17,7 @@ Configure and schedule Kafka metadata and profiler workflows from the OpenMetada
 
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
+- [Enable Security](#securing-kafka-connection-with-ssl-in-openmetadata)
 
 {% partial file="/v1.4/connectors/external-ingestion-deployment.md" /%}
 
@@ -111,7 +112,7 @@ By default, user info is extracted from the URL if present.
 {% codeInfo srNumber=8 %}
 
 **schemaRegistryConfig**: The accepted additional values for the Schema Registry configuration can be found in the 
-following [link](https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient).
+following [link](https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html#schemaregistryclient).
 
 **Note:** To ingest the topic schema, `schemaRegistryURL` must be passed.
 
@@ -169,5 +170,16 @@ source:
 {% /codeBlock %}
 
 {% /codePreview %}
+
+## Securing Kafka Connection with SSL in OpenMetadata
+
+To establish secure connections between OpenMetadata and Kafka, in the `YAML` you can provide the CA certificate used for SSL validation by specifying the `caCertificate`. Alternatively, if both client and server require mutual authentication, you'll need to use all three parameters: `ssl key`, `ssl cert`, and `caCertificate`. In this case, `ssl_cert` is used for the client’s SSL certificate, `ssl_key` for the private key associated with the SSL certificate, and `caCertificate` for the CA certificate to validate the server’s certificate.
+
+```yaml
+      sslConfig:
+            caCertificate: "/path/to/ca_certificate"
+            sslCertificate: "/path/to/your/ssl_cert"
+            sslKey: "/path/to/your/ssl_key"
+```
 
 {% partial file="/v1.4/connectors/yaml/ingestion-cli.md" /%}

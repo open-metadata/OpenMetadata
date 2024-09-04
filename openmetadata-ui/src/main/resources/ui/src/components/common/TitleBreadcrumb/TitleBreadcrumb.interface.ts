@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
+import { LinkProps } from 'react-router-dom';
+
+export type TitleLink = {
+  name: string;
+  url: LinkProps['to'];
+  imgSrc?: string;
+  activeTitle?: boolean;
+};
 export type TitleBreadcrumbProps = {
-  titleLinks: Array<{
-    name: string;
-    url: string;
-    imgSrc?: string;
-    activeTitle?: boolean;
-  }>;
+  titleLinks: Array<TitleLink>;
   className?: string;
   noLink?: boolean;
   loading?: boolean;

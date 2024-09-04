@@ -89,7 +89,7 @@ class DomopipelineSource(PipelineServiceSource):
         self, pipeline_details
     ) -> Iterable[Either[CreatePipelineRequest]]:
         try:
-            pipeline_name = pipeline_details["id"]
+            pipeline_name = str(pipeline_details["id"])
             source_url = self.get_source_url(pipeline_id=pipeline_name)
             task = Task(
                 name=pipeline_name,

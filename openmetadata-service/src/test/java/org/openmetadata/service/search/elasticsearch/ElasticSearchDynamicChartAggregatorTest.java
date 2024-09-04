@@ -54,8 +54,8 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 
 public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplicationTest {
 
-  static final long START = 1721082271000l;
-  static final long END = 1721592271000l;
+  static final long START = 1721082271000L;
+  static final long END = 1721592271000L;
 
   private boolean compareRequest(String expectedJsonReq, Map<String, Object> chartDetails)
       throws IOException {
@@ -130,6 +130,11 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     summaryCard.put("formula", "count(k='id.keyword')");
     assertTrue(compareRequest(cardString, summaryCard));
 
+    Map<String, Object> summaryCard1 = new LinkedHashMap<>();
+    summaryCard1.put("type", "SummaryCard");
+    summaryCard1.put("formula", "count()");
+    assertTrue(compareRequest(cardString, summaryCard1));
+
     String lineString =
         "{\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
@@ -168,6 +173,12 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
         "count(k='id.keyword',q='hasDescription: 1')+count(k='id.keyword',q='owner.name.keyword: *')");
     lineChart4.put("groupBy", "entityType.keyword");
     assertTrue(compareRequest(lineString4, lineChart4));
+
+    Map<String, Object> lineChart41 = new LinkedHashMap<>();
+    lineChart41.put("type", "LineChart");
+    lineChart41.put("formula", "count(q='hasDescription: 1')+count(q='owner.name.keyword: *')");
+    lineChart41.put("groupBy", "entityType.keyword");
+    assertTrue(compareRequest(lineString4, lineChart41));
 
     String lineString5 =
         "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"from\":\"2024-07-16T03:54:31Z\",\"to\":\"2024-07-23T01:34:31Z\",\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},\"aggregations\":{\"0\":{\"terms\":{\"field\":\"entityType.keyword\",\"size\":20,\"min_doc_count\":1,\"shard_min_doc_count\":0,\"show_term_doc_count_error\":false,\"order\":[{\"_count\":\"desc\"},{\"_key\":\"asc\"}]},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"1d\",\"offset\":0,\"order\":{\"_key\":\"asc\"},\"keyed\":false,\"min_doc_count\":0},\"aggregations\":{\"filer0\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"hasDescription: 1\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}},\"filer1\":{\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"owner.name.keyword: *\",\"fields\":[],\"type\":\"best_fields\",\"default_operator\":\"or\",\"max_determinized_states\":10000,\"enable_position_increments\":true,\"fuzziness\":\"AUTO\",\"fuzzy_prefix_length\":0,\"fuzzy_max_expansions\":50,\"phrase_slop\":0,\"escape\":false,\"auto_generate_synonyms_phrase_query\":true,\"fuzzy_transpositions\":true,\"boost\":1.0}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}}}}";
@@ -387,9 +398,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
             .map(
                 (entry) ->
                     new NamedXContentRegistry.Entry(
-                        Aggregation.class,
-                        new ParseField((String) entry.getKey()),
-                        entry.getValue()))
+                        Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
             .collect(Collectors.toList());
     entries.add(
         new NamedXContentRegistry.Entry(
@@ -436,7 +445,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   @Test
   public void testSearchResponseProcessor() throws IOException {
     String sampleResponse1 =
-        "{\"took\":26,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":132,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-21T00:00:00.000Z\",\"key\":1721520000000,\"doc_count\":54,\"value_count#id.keyword0\":{\"value\":54}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":78,\"value_count#id.keyword0\":{\"value\":78}}]}}}";
+        "{\"took\":26,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":132,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-21T00:00:00.000Z\",\"key\":1721520000000,\"doc_count\":54,\"value_count#id.keyword0\":{\"value\":54}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":78,\"value_count#id.keyword0\":{\"value\":78}},{\"key_as_string\":\"2024-07-23T00:00:00.000Z\",\"key\":1721607000000,\"doc_count\":78}]}}}";
     Map<String, Object> summaryCard = new LinkedHashMap<>();
     summaryCard.put("type", "SummaryCard");
     summaryCard.put("formula", "count(k='id.keyword')");
@@ -466,7 +475,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareResponse(sampleResponse1, lineChartFunc, null, resultListLine));
 
     String sampleResponse2 =
-        "{\"took\":100,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":192,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"sterms#0\":{\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0,\"buckets\":[{\"key\":\"Table\",\"doc_count\":85,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":5,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":5}}]}},{\"key\":\"Tag\",\"doc_count\":74,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":10,\"filter#filer0\":{\"doc_count\":10,\"value_count#id.keyword0\":{\"value\":10}},\"value_count#id.keyword1\":{\"value\":10}}]}},{\"key\":\"StoredProcedure\",\"doc_count\":15,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":3,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":3}}]}},{\"key\":\"Database\",\"doc_count\":9,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}}]}},{\"key\":\"DatabaseSchema\",\"doc_count\":9,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}}]}}]}}}";
+        "{\"took\":100,\"timed_out\":false,\"_shards\":{\"total\":1,\"successful\":1,\"skipped\":0,\"failed\":0},\"hits\":{\"total\":{\"value\":192,\"relation\":\"eq\"},\"max_score\":null,\"hits\":[]},\"aggregations\":{\"sterms#0\":{\"doc_count_error_upper_bound\":0,\"sum_other_doc_count\":0,\"buckets\":[{\"key\":\"Table\",\"doc_count\":85,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":5,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":5}}]}},{\"key\":\"Tag\",\"doc_count\":74,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":10,\"filter#filer0\":{\"doc_count\":10,\"value_count#id.keyword0\":{\"value\":10}},\"value_count#id.keyword1\":{\"value\":10}}]}},{\"key\":\"StoredProcedure\",\"doc_count\":15,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":3,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":3}}]}},{\"key\":\"Database\",\"doc_count\":9,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}}]}},{\"key\":\"DatabaseSchema\",\"doc_count\":9,\"date_histogram#1\":{\"buckets\":[{\"key_as_string\":\"2024-07-18T00:00:00.000Z\",\"key\":1721260800000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":1}},{\"key_as_string\":\"2024-07-22T00:00:00.000Z\",\"key\":1721606400000,\"doc_count\":1,\"filter#filer0\":{\"doc_count\":0,\"value_count#id.keyword0\":{\"value\":0}},\"value_count#id.keyword1\":{\"value\":0}}]}}]}}}";
     Map<String, Object> lineChartFormula = new LinkedHashMap<>();
     lineChartFormula.put("type", "LineChart");
     lineChartFormula.put(

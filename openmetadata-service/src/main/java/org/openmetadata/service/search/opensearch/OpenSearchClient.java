@@ -34,7 +34,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import javax.json.JsonObject;
@@ -63,7 +61,6 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.DataInsightInterface;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -109,16 +106,11 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorFactory;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesDescriptionAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchEntitiesOwnerAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchServicesDescriptionAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchServicesOwnerAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchTotalEntitiesByTierAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
@@ -147,6 +139,8 @@ import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.indices.PutMappingRequest;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
+import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
+import os.org.opensearch.common.lucene.search.function.FunctionScoreQuery;
 import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.unit.Fuzziness;
 import os.org.opensearch.common.unit.TimeValue;
@@ -168,7 +162,6 @@ import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.TermsQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import os.org.opensearch.index.query.functionscore.ScriptScoreFunctionBuilder;
 import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
@@ -204,7 +197,7 @@ import os.org.opensearch.search.suggest.completion.context.CategoryQueryContext;
 @Slf4j
 // Not tagged with Repository annotation as it is programmatically initialized
 public class OpenSearchClient implements SearchClient {
-  private final RestHighLevelClient client;
+  protected final RestHighLevelClient client;
   public static final NamedXContentRegistry X_CONTENT_REGISTRY;
   private final boolean isClientAvailable;
 
@@ -279,11 +272,7 @@ public class OpenSearchClient implements SearchClient {
     try {
       Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
       aliases.add(indexMapping.getAlias(clusterAlias));
-      // Get the child aliases
-      List<String> childAliases = indexMapping.getChildAliases(clusterAlias);
 
-      // Add the child aliases to the set of aliases
-      aliases.addAll(childAliases);
       IndicesAliasesRequest.AliasActions aliasAction =
           IndicesAliasesRequest.AliasActions.add()
               .index(indexMapping.getIndexName(clusterAlias))
@@ -445,8 +434,14 @@ public class OpenSearchClient implements SearchClient {
     }
 
     if (!nullOrEmpty(request.getSortFieldParam()) && !request.isGetHierarchy()) {
-      searchSourceBuilder.sort(
-          request.getSortFieldParam(), SortOrder.fromString(request.getSortOrder()));
+      FieldSortBuilder fieldSortBuilder =
+          new FieldSortBuilder(request.getSortFieldParam())
+              .order(SortOrder.fromString(request.getSortOrder()));
+      // Score is an internal ES Field
+      if (!request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        fieldSortBuilder.unmappedType("integer");
+      }
+      searchSourceBuilder.sort(fieldSortBuilder);
     }
 
     if (request
@@ -736,9 +731,15 @@ public class OpenSearchClient implements SearchClient {
       responseMap.put("entity", tempMap);
     }
     getLineage(
-        fqn, downstreamDepth, edges, nodes, queryFilter, "lineage.fromEntity.fqn.keyword", deleted);
+        fqn,
+        downstreamDepth,
+        edges,
+        nodes,
+        queryFilter,
+        "lineage.fromEntity.fqnHash.keyword",
+        deleted);
     getLineage(
-        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqn.keyword", deleted);
+        fqn, upstreamDepth, edges, nodes, queryFilter, "lineage.toEntity.fqnHash.keyword", deleted);
     responseMap.put("edges", edges);
     responseMap.put("nodes", nodes);
     return responseMap;
@@ -776,11 +777,12 @@ public class OpenSearchClient implements SearchClient {
             Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
     searchSourceBuilder.query(
-        QueryBuilders.boolQuery().must(QueryBuilders.termQuery(direction, fqn)));
+        QueryBuilders.boolQuery()
+            .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn))));
     if (CommonUtil.nullOrEmpty(deleted)) {
       searchSourceBuilder.query(
           QueryBuilders.boolQuery()
-              .must(QueryBuilders.termQuery(direction, fqn))
+              .must(QueryBuilders.termQuery(direction, FullyQualifiedName.buildHash(fqn)))
               .must(QueryBuilders.termQuery("deleted", deleted)));
     }
     if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
@@ -809,7 +811,7 @@ public class OpenSearchClient implements SearchClient {
       for (Map<String, Object> lin : lineage) {
         HashMap<String, String> fromEntity = (HashMap<String, String>) lin.get("fromEntity");
         HashMap<String, String> toEntity = (HashMap<String, String>) lin.get("toEntity");
-        if (direction.equalsIgnoreCase("lineage.fromEntity.fqn.keyword")) {
+        if (direction.equalsIgnoreCase("lineage.fromEntity.fqnHash.keyword")) {
           if (!edges.contains(lin) && fromEntity.get("fqn").equals(fqn)) {
             edges.add(lin);
             getLineage(
@@ -921,14 +923,68 @@ public class OpenSearchClient implements SearchClient {
     return responseMap;
   }
 
-  private static ScriptScoreFunctionBuilder boostScore() {
-    return ScoreFunctionBuilders.scriptFunction(
-        "double score = _score;"
-            + "if (doc.containsKey('totalVotes') && doc['totalVotes'].value != null) { score = score + doc['totalVotes'].value; }"
-            + "if (doc.containsKey('usageSummary') && doc['usageSummary.weeklyStats.count'].value != null) { score = score + doc['usageSummary.weeklyStats.count'].value; }"
-            + "if (doc.containsKey('tier.tagFQN') && !doc['tier.tagFQN'].empty) { if (doc['tier.tagFQN'].value == 'Tier.Tier2') { score = score + 10; }"
-            + " else if (doc['tier.tagFQN'].value == 'Tier.Tier1') { score = score + 20; }}"
-            + "return score;");
+  private static FunctionScoreQueryBuilder boostScore(
+      QueryStringQueryBuilder queryBuilder, String query) {
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder exactMatchBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("displayName.keyword", query),
+            ScoreFunctionBuilders.weightFactorFunction(10));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder nameBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.boolQuery()
+                .mustNot(
+                    QueryBuilders.existsQuery(
+                        "displayName.keyword")) // Only use name if displayName doesn't exist
+                .must(QueryBuilders.matchQuery("name.keyword", query)),
+            ScoreFunctionBuilders.weightFactorFunction(8.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier1Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier1"),
+            ScoreFunctionBuilders.weightFactorFunction(5.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier2Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier2"),
+            ScoreFunctionBuilders.weightFactorFunction(3.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder tier3Boost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.termQuery("tier.tagFQN", "Tier3"),
+            ScoreFunctionBuilders.weightFactorFunction(1.0f));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder weeklyStatsBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.rangeQuery("usageSummary.weeklyStats.count").gt(0),
+            ScoreFunctionBuilders.fieldValueFactorFunction("usageSummary.weeklyStats.count")
+                .factor(1.5f)
+                .modifier(FieldValueFactorFunction.Modifier.SQRT)
+                .missing(1));
+
+    FunctionScoreQueryBuilder.FilterFunctionBuilder totalVotesBoost =
+        new FunctionScoreQueryBuilder.FilterFunctionBuilder(
+            QueryBuilders.rangeQuery("totalVotes").gt(0),
+            ScoreFunctionBuilders.fieldValueFactorFunction("totalVotes")
+                .factor(2.0f)
+                .modifier(FieldValueFactorFunction.Modifier.LN1P)
+                .missing(0));
+
+    // FunctionScoreQueryBuilder with an array of score functions
+    return QueryBuilders.functionScoreQuery(
+            queryBuilder,
+            new FunctionScoreQueryBuilder.FilterFunctionBuilder[] {
+              nameBoost,
+              exactMatchBoost,
+              tier1Boost,
+              tier2Boost,
+              tier3Boost,
+              weeklyStatsBoost,
+              totalVotesBoost
+            })
+        .scoreMode(FunctionScoreQuery.ScoreMode.SUM)
+        .boostMode(CombineFunction.SUM);
   }
 
   private static HighlightBuilder buildHighlights(List<String> fields) {
@@ -1175,8 +1231,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildPipelineSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, PipelineIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("tasks.name", "tasks.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder.aggregation(
@@ -1187,8 +1242,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildMlModelSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, MlModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("mlFeatures.name", "mlFeatures.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
@@ -1197,8 +1251,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTopicSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TopicIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb =
         buildHighlights(
             List.of(
@@ -1216,8 +1269,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDashboardSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("charts.name", "charts.description"));
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     searchSourceBuilder
@@ -1235,8 +1287,7 @@ public class OpenSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getAllFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, null, from, size);
     searchSourceBuilder.aggregation(
@@ -1254,8 +1305,7 @@ public class OpenSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchIndex.getDefaultFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder = searchBuilder(queryBuilder, hb, from, size);
     return addAggregation(searchSourceBuilder);
@@ -1264,8 +1314,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTableSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TableIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb =
         buildHighlights(List.of("columns.name", "columns.description", "columns.children.name"));
     queryBuilder.boostMode(CombineFunction.SUM);
@@ -1297,10 +1346,8 @@ public class OpenSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, GlossaryTermIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("synonyms"));
-    queryBuilder.boostMode(CombineFunction.SUM);
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
     searchSourceBuilder.aggregation(
@@ -1314,8 +1361,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTagSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TagIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1328,8 +1374,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildContainerSearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, ContainerIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb =
         buildHighlights(
             List.of(
@@ -1349,8 +1394,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildQuerySearchBuilder(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, QueryIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -1358,8 +1402,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildTestCaseSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TestCaseIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(List.of("testSuite.name", "testSuite.description"));
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -1367,8 +1410,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildStoredProcedureSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, StoredProcedureIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1379,8 +1421,7 @@ public class OpenSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DashboardDataModelIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1401,8 +1442,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDomainsSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DomainIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -1410,8 +1450,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildSearchEntitySearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, SearchEntityIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1424,8 +1463,7 @@ public class OpenSearchClient implements SearchClient {
       String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, TestCaseResolutionStatusIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     return searchBuilder(queryBuilder, hb, from, size);
   }
@@ -1437,7 +1475,8 @@ public class OpenSearchClient implements SearchClient {
         .type(MultiMatchQueryBuilder.Type.MOST_FIELDS)
         .defaultOperator(Operator.AND)
         .fuzziness(Fuzziness.AUTO)
-        .tieBreaker(0.9f);
+        .fuzzyPrefixLength(3)
+        .tieBreaker(0.5f);
   }
 
   private static SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
@@ -1485,8 +1524,7 @@ public class OpenSearchClient implements SearchClient {
   private static SearchSourceBuilder buildDataProductSearch(String query, int from, int size) {
     QueryStringQueryBuilder queryStringBuilder =
         buildSearchQueryBuilder(query, DataProductIndex.getFields());
-    FunctionScoreQueryBuilder queryBuilder =
-        QueryBuilders.functionScoreQuery(queryStringBuilder, boostScore());
+    FunctionScoreQueryBuilder queryBuilder = boostScore(queryStringBuilder, query);
     HighlightBuilder hb = buildHighlights(new ArrayList<>());
     SearchSourceBuilder searchSourceBuilder =
         new SearchSourceBuilder().query(queryBuilder).highlighter(hb).from(from).size(size);
@@ -1553,7 +1591,7 @@ public class OpenSearchClient implements SearchClient {
     if (isClientAvailable) {
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new DeleteByQueryRequest(indexName.toArray(new String[0]));
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
       }
@@ -1578,7 +1616,7 @@ public class OpenSearchClient implements SearchClient {
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
       for (Pair<String, String> p : fieldAndValue) {
         queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
@@ -1691,16 +1729,11 @@ public class OpenSearchClient implements SearchClient {
       Pair<String, Map<String, Object>> updates) {
     if (isClientAvailable) {
       UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[indexName.size()]));
+          new UpdateByQueryRequest(indexName.toArray(new String[0]));
       updateChildren(updateByQueryRequest, fieldAndValue, updates);
     }
   }
 
-  /**
-   * @param indexName
-   * @param fieldAndValue
-   * @param
-   */
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, Map<String, Object> lineagaData) {
@@ -1736,7 +1769,7 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @SneakyThrows
-  public void deleteByQuery(String index, String query) throws IOException {
+  public void deleteByQuery(String index, String query) {
     DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
     // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
     // first token from the Parser
@@ -1789,35 +1822,6 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
-  public TreeMap<Long, List<Object>> getSortedDate(
-      String team,
-      Long scheduleTime,
-      Long currentTime,
-      DataInsightChartResult.DataInsightChartType chartType,
-      String indexName)
-      throws IOException, ParseException {
-    os.org.opensearch.action.search.SearchRequest searchRequestTotalAssets =
-        buildSearchRequest(
-            scheduleTime, currentTime, null, team, chartType, null, null, null, indexName);
-    SearchResponse searchResponseTotalAssets =
-        client.search(searchRequestTotalAssets, RequestOptions.DEFAULT);
-    DataInsightChartResult processedDataTotalAssets =
-        processDataInsightChartResult(searchResponseTotalAssets, chartType);
-    TreeMap<Long, List<Object>> dateWithDataMap = new TreeMap<>();
-    for (Object data : processedDataTotalAssets.getData()) {
-      DataInsightInterface convertedData = (DataInsightInterface) data;
-      Long timestamp = convertedData.getTimestamp();
-      List<Object> totalEntitiesByTypeList = new ArrayList<>();
-      if (dateWithDataMap.containsKey(timestamp)) {
-        totalEntitiesByTypeList = dateWithDataMap.get(timestamp);
-      }
-      totalEntitiesByTypeList.add(convertedData);
-      dateWithDataMap.put(timestamp, totalEntitiesByTypeList);
-    }
-    return dateWithDataMap;
-  }
-
-  @Override
   public Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -1828,7 +1832,7 @@ public class OpenSearchClient implements SearchClient {
       Integer from,
       String queryFilter,
       String dataReportIndex)
-      throws IOException, ParseException {
+      throws IOException {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         buildSearchRequest(
             startTs,
@@ -1848,8 +1852,7 @@ public class OpenSearchClient implements SearchClient {
 
   private static DataInsightChartResult processDataInsightChartResult(
       SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName)
-      throws ParseException {
+      DataInsightChartResult.DataInsightChartType dataInsightChartName) {
     DataInsightAggregatorInterface processor =
         createDataAggregator(searchResponse, dataInsightChartName);
     return processor.process(dataInsightChartName);
@@ -1859,18 +1862,6 @@ public class OpenSearchClient implements SearchClient {
       SearchResponse aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
     return switch (dataInsightChartType) {
-      case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE -> new OpenSearchEntitiesDescriptionAggregator(
-          aggregations.getAggregations());
-      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION -> new OpenSearchServicesDescriptionAggregator(
-          aggregations.getAggregations());
-      case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE -> new OpenSearchEntitiesOwnerAggregator(
-          aggregations.getAggregations());
-      case PERCENTAGE_OF_SERVICES_WITH_OWNER -> new OpenSearchServicesOwnerAggregator(
-          aggregations.getAggregations());
-      case TOTAL_ENTITIES_BY_TYPE -> new OpenSearchTotalEntitiesAggregator(
-          aggregations.getAggregations());
-      case TOTAL_ENTITIES_BY_TIER -> new OpenSearchTotalEntitiesByTierAggregator(
-          aggregations.getAggregations());
       case DAILY_ACTIVE_USERS -> new OpenSearchDailyActiveUsersAggregator(
           aggregations.getAggregations());
       case PAGE_VIEWS_BY_ENTITIES -> new OpenSearchPageViewsByEntitiesAggregator(
@@ -1987,6 +1978,7 @@ public class OpenSearchClient implements SearchClient {
 
   @Override
   public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    List<Map<String, String>> fields = new ArrayList<>();
     GetMappingsRequest request =
         new GetMappingsRequest().indices(DataInsightSystemChartRepository.DI_SEARCH_INDEX);
 
@@ -1997,11 +1989,9 @@ public class OpenSearchClient implements SearchClient {
     for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
       // Get fields for the index
       Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-      List<Map<String, String>> fields = new ArrayList<>();
       getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields);
-      return fields;
     }
-    return null;
+    return fields;
   }
 
   void getFieldNames(
@@ -2022,11 +2012,13 @@ public class OpenSearchClient implements SearchClient {
           getFieldNames(
               (Map<String, Object>) subFields.get("properties"), fieldName + ".", fieldList);
         } else {
-          Map<String, String> map = new HashMap<>();
-          map.put("name", fieldName);
-          map.put("displayName", fieldNameOriginal);
-          map.put("type", type);
-          fieldList.add(map);
+          if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
+            Map<String, String> map = new HashMap<>();
+            map.put("name", fieldName);
+            map.put("displayName", fieldNameOriginal);
+            map.put("type", type);
+            fieldList.add(map);
+          }
         }
       }
     }
@@ -2061,18 +2053,6 @@ public class OpenSearchClient implements SearchClient {
             .field(DataInsightChartRepository.DATA_ENTITY_COUNT);
 
     switch (dataInsightChartName) {
-      case PERCENTAGE_OF_ENTITIES_WITH_DESCRIPTION_BY_TYPE:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
-                .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
       case AGGREGATED_UNUSED_ASSETS_COUNT, AGGREGATED_UNUSED_ASSETS_SIZE:
         boolean isSize =
             dataInsightChartName.equals(
@@ -2122,57 +2102,6 @@ public class OpenSearchClient implements SearchClient {
         return dateHistogramAggregationBuilder
             .subAggregation(totalUnusedAssets)
             .subAggregation(totalUsedAssets);
-      case PERCENTAGE_OF_SERVICES_WITH_DESCRIPTION:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
-                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.COMPLETED_DESCRIPTION_FRACTION)
-                .field(DataInsightChartRepository.DATA_COMPLETED_DESCRIPTIONS);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
-      case PERCENTAGE_OF_ENTITIES_WITH_OWNER_BY_TYPE:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
-                .field(DataInsightChartRepository.DATA_HAS_OWNER);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
-      case PERCENTAGE_OF_SERVICES_WITH_OWNER:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.SERVICE_NAME)
-                .field(DataInsightChartRepository.DATA_SERVICE_NAME)
-                .size(1000);
-        sumAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.HAS_OWNER_FRACTION)
-                .field(DataInsightChartRepository.DATA_HAS_OWNER);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder
-                .subAggregation(sumAggregationBuilder)
-                .subAggregation(sumEntityCountAggregationBuilder));
-      case TOTAL_ENTITIES_BY_TIER:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TIER)
-                .field(DataInsightChartRepository.DATA_ENTITY_TIER)
-                .missing("NoTier")
-                .size(1000);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder.subAggregation(sumEntityCountAggregationBuilder));
-      case TOTAL_ENTITIES_BY_TYPE:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder.subAggregation(sumEntityCountAggregationBuilder));
       case DAILY_ACTIVE_USERS:
         return dateHistogramAggregationBuilder;
       case PAGE_VIEWS_BY_ENTITIES:

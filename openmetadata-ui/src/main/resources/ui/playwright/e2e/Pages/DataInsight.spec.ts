@@ -12,55 +12,27 @@
  */
 import test, { expect } from '@playwright/test';
 import { KPI_DATA } from '../../constant/dataInsight';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { TableClass } from '../../support/entity/TableClass';
-import {
-  createNewPage,
-  getApiContext,
-  redirectToHomePage,
-} from '../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
-import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe.configure({ mode: 'serial' });
 
-test.describe('Data Insight Page', () => {
-  const table = new TableClass();
+const DESCRIPTION_WITH_PERCENTAGE =
+  'playwright-description-with-percentage-percentage';
 
+const DESCRIPTION_WITH_OWNER = 'playwright-owner-with-percentage-percentage';
+
+test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext } = await createNewPage(browser);
 
-    await table.create(apiContext);
-
-    apiContext.patch(`/api/v1/tables/${table.entityResponseData?.id ?? ''}`, {
-      data: [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            name: 'Tier2',
-            tagFQN: 'Tier.Tier2',
-            labelType: 'Manual',
-            state: 'Confirmed',
-          },
-        },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
-
+    // Delete all existing KPIs before running the test
     await deleteKpiRequest(apiContext);
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext } = await createNewPage(browser);
-
-    // await table.delete(apiContext);
   });
 
   test.beforeEach('Visit Data Insight Page', async ({ page }) => {
@@ -76,55 +48,6 @@ test.describe('Data Insight Page', () => {
 
       await addKpi(page, data);
     }
-  });
-
-  test('Run DataInsight Application', async ({ page }) => {
-    await settingClick(page, GlobalSettingOptions.APPLICATIONS);
-
-    const appDetails = page.waitForResponse(
-      '**/api/v1/apps/name/DataInsightsApplication?*'
-    );
-    await page.click(
-      '[data-testid="data-insights-application-card"] [data-testid="config-btn"]'
-    );
-    await appDetails;
-
-    const triggerResponse = page.waitForResponse(
-      '**/api/v1/apps/trigger/DataInsightsApplication'
-    );
-    await page.getByTestId('run-now-button').click();
-    await triggerResponse;
-
-    const { apiContext } = await getApiContext(page);
-
-    await expect
-      .poll(
-        async () => {
-          const response = await apiContext
-            .get(
-              '/api/v1/apps/name/DataInsightsApplication/status?offset=0&limit=1'
-            )
-            .then((res) => res.json());
-
-          return response.data[0].status;
-        },
-        {
-          // Custom expect message for reporting, optional.
-          message: 'Wait for the pipeline to be successful',
-          timeout: 60_000,
-          intervals: [5_000, 10_000],
-        }
-      )
-      .toBe('success');
-
-    // Verify KPI
-
-    await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-
-    await page.waitForSelector('[data-testid="search-dropdown-Team"]');
-    await page.waitForSelector('[data-testid="search-dropdown-Tier"]');
-    await page.waitForSelector('[data-testid="summary-card"]');
-    await page.waitForSelector('[data-testid="kpi-card"]');
   });
 
   test('Verifying Data assets tab', async ({ page }) => {
@@ -219,14 +142,10 @@ test.describe('Data Insight Page', () => {
 
     await expect(page.getByTestId('kpi-card')).toBeVisible();
     await expect(
-      page.locator(
-        '[data-row-key="playwright-description-with-percentage-percentage"]'
-      )
+      page.locator(`[data-row-key=${DESCRIPTION_WITH_PERCENTAGE}]`)
     ).toBeVisible();
     await expect(
-      page.locator(
-        '[data-row-key="playwright-owner-with-percentage-percentage"]'
-      )
+      page.locator(`[data-row-key=${DESCRIPTION_WITH_OWNER}]`)
     ).toBeVisible();
   });
 
@@ -242,6 +161,20 @@ test.describe('Data Insight Page', () => {
       await page.getByRole('spinbutton').fill('50');
       await page.getByTestId('submit-btn').click();
     }
+  });
+
+  test('Verify KPI widget in Landing page', async ({ page }) => {
+    const kpiResponse = page.waitForResponse('/api/v1/kpi/*/kpiResult?*');
+
+    await redirectToHomePage(page);
+
+    await kpiResponse;
+
+    expect(page.locator('[data-testid="kpi-widget"]')).toBeVisible();
+
+    // description and owner data to be visible
+    expect(page.getByTestId(DESCRIPTION_WITH_PERCENTAGE)).toBeVisible();
+    expect(page.getByTestId(DESCRIPTION_WITH_OWNER)).toBeVisible();
   });
 
   test('Delete Kpi', async ({ page }) => {

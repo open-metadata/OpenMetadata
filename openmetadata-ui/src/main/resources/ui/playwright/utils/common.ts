@@ -14,6 +14,7 @@ import { Browser, expect, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
+import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
 
 export const uuid = () => randomUUID().split('-')[0];
@@ -109,7 +110,11 @@ export const toastNotification = async (
 ) => {
   await expect(page.getByRole('alert').first()).toHaveText(message);
 
-  await page.getByLabel('close').first().click();
+  await page
+    .locator('.Toastify__toast')
+    .getByLabel('close', { exact: true })
+    .first()
+    .click();
 };
 
 export const clickOutside = async (page: Page) => {
@@ -122,7 +127,7 @@ export const clickOutside = async (page: Page) => {
   await page.mouse.move(1280, 0); // moving out side left menu bar to avoid random failure due to left menu bar
 };
 
-export const visitUserProfilePage = async (page: Page) => {
+export const visitOwnProfilePage = async (page: Page) => {
   await page.locator('[data-testid="dropdown-profile"] svg').click();
   await page.waitForSelector('[role="menu"].profile-dropdown', {
     state: 'visible',
@@ -141,13 +146,14 @@ export const assignDomain = async (
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
   await page
     .getByTestId('selectable-list')
     .getByTestId('searchbar')
     .fill(domain.name);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -162,13 +168,14 @@ export const updateDomain = async (
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
   await page
     .getByTestId('selectable-list')
     .getByTestId('searchbar')
     .fill(domain.name);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -204,9 +211,9 @@ export const getRandomLastName = () => {
   return `${nouns[Math.floor(Math.random() * nouns.length)]}${uuid()}`;
 };
 
-export const generateRandomUsername = () => {
-  const firstName = getRandomFirstName();
-  const lastName = getRandomLastName();
+export const generateRandomUsername = (prefix = '') => {
+  const firstName = `${prefix}${getRandomFirstName()}`;
+  const lastName = `${prefix}${getRandomLastName()}`;
 
   return {
     firstName,
@@ -214,4 +221,23 @@ export const generateRandomUsername = () => {
     email: `${firstName}.${lastName}@example.com`,
     password: 'User@OMD123',
   };
+};
+
+export const verifyDomainPropagation = async (
+  page: Page,
+  domain: Domain['responseData'],
+  childFqnSearchTerm: string
+) => {
+  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
+  await page.getByTestId('searchBox').press('Enter');
+
+  await expect(
+    page
+      .getByTestId(`table-data-card_${childFqnSearchTerm}`)
+      .getByTestId('domain-link')
+  ).toContainText(domain.displayName);
+};
+
+export const replaceAllSpacialCharWith_ = (text: string) => {
+  return text.replaceAll(/[&/\\#, +()$~%.'":*?<>{}]/g, '_');
 };

@@ -551,27 +551,27 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
     List<String> createRecords =
         listOf(
             String.format(
-                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user:%s,%s",
-                reviewerRef.get(0), reviewerRef.get(1), user1, "Approved"),
+                ",g1,dsp1,\"dsc1,1\",h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s",
+                reviewerRef.get(0), user1, "Approved"),
             String.format(
-                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user:%s,%s",
-                user1, user2, "Approved"),
+                ",g2,dsp2,dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,,user:%s,%s",
+                user1, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,%s;%s,team:%s,%s",
-                reviewerRef.get(0), reviewerRef.get(1), team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,dsc11,h1;h3;h3,,,,user:%s,team:%s,%s",
+                reviewerRef.get(0), team11, "Draft"));
 
     // Update terms with change in description
     List<String> updateRecords =
         listOf(
             String.format(
-                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,%s;%s,user:%s,%s",
-                reviewerRef.get(0), reviewerRef.get(1), user1, "Approved"),
+                ",g1,dsp1,new-dsc1,h1;h2;h3,,term1;http://term1,PII.None,user:%s,user:%s,%s",
+                reviewerRef.get(0), user1, "Approved"),
             String.format(
-                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,%s,user:%s,%s",
+                ",g2,dsp2,new-dsc3,h1;h3;h3,,term2;https://term2,PII.NonSensitive,user:%s,user:%s,%s",
                 user1, user2, "Approved"),
             String.format(
-                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,%s;%s,team:%s,%s",
-                reviewerRef.get(0), reviewerRef.get(1), team11, "Draft"));
+                "importExportTest.g1,g11,dsp2,new-dsc11,h1;h3;h3,,,,user:%s,team:%s,%s",
+                reviewerRef.get(0), team11, "Draft"));
 
     // Add new row to existing rows
     List<String> newRecords =

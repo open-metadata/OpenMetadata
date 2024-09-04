@@ -27,11 +27,7 @@ import Loader from '../../components/common/Loader/Loader';
 import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import {
-  AssetsType,
-  EntityType,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { Thread } from '../../generated/entity/feed/thread';
 import { PageType } from '../../generated/system/ui/page';
 import { EntityReference } from '../../generated/type/entityReference';
@@ -124,13 +120,9 @@ const MyDataPage = () => {
       });
 
       if (userData) {
-        const includeData = Object.values(AssetsType);
         const follows: EntityReference[] = userData.follows ?? [];
-        const includedFollowsData = follows.filter((data) =>
-          includeData.includes(data.type as AssetsType)
-        );
-        setFollowedDataCount(includedFollowsData.length);
-        setFollowedData(includedFollowsData.slice(0, 8));
+        setFollowedDataCount(follows.length);
+        setFollowedData(follows.slice(0, 8));
       }
     } catch (err) {
       setFollowedData([]);
@@ -215,22 +207,24 @@ const MyDataPage = () => {
             <Loader />
           </div>
         ) : (
-          <ReactGridLayout
-            className="bg-white"
-            cols={4}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={100}>
-            {widgets}
-          </ReactGridLayout>
+          <>
+            <ReactGridLayout
+              className="bg-white"
+              cols={4}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={100}>
+              {widgets}
+            </ReactGridLayout>
+            <LimitWrapper resource="dataAssets">
+              <br />
+            </LimitWrapper>
+          </>
         )}
-        <LimitWrapper resource="dataAssets">
-          <br />
-        </LimitWrapper>
       </PageLayoutV1>
     </ActivityFeedProvider>
   );
