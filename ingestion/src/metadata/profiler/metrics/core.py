@@ -79,9 +79,9 @@ def add_props(**kwargs):
         _orig = cls.__init__
 
         def _new_init(self, *args, **kw):
-            _orig(self, *args, **kw)
             for key, value in kwargs.items():
                 setattr(self, key, value)
+            _orig(self, *args, **kw)
 
         _new_cls.__init__ = _new_init
 

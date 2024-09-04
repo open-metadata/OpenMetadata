@@ -289,69 +289,6 @@ def _(
     return TypeAdapter(List[SystemProfile]).validate_python(metric_results).d
 
 
-class System(SystemMetric):
-    """System metric class to fetch:
-        1. freshness
-        2. affected rows
-
-    This is supported only for BigQuery, Snowflake, and Redshift
-    """
-
-    @classmethod
-    def is_col_metric(cls) -> bool:
-        """
-        Marks the metric as table or column metric.
-
-        By default, assume that a metric is a column
-        metric. Table metrics should override this.
-        """
-        return False
-
-    @classmethod
-    def is_system_metrics(cls) -> bool:
-        """True if returns system metrics"""
-        return True
-
-    @classmethod
-    def name(cls):
-        return MetricType.system.value
-
-    def _manage_cache(self, max_size_in_bytes: int = MAX_SIZE_IN_BYTES) -> None:
-        """manage cache and clears it if it exceeds the max size
-
-        Args:
-            max_size_in_bytes (int, optional): max size of cache in bytes. Defaults to 2147483648.
-        Returns:
-            None
-        """
-        if deep_size_of_dict(SYSTEM_QUERY_RESULT_CACHE) > max_size_in_bytes:
-            logger.debug("Clearing system cache")
-            SYSTEM_QUERY_RESULT_CACHE.clear()
-
-    def _validate_attrs(self, attr_list: List[str]) -> None:
-        """Validate the necessary attributes given via add_props"""
-        for attr in attr_list:
-            if not hasattr(self, attr):
-                raise AttributeError(
-                    f"System requires a table to be set: add_props({attr}=...)(Metrics.SYSTEM.value)"
-                )
-
-    def sql(self, session: Session, **kwargs) -> List[SystemProfile]:
-        """Implements the SQL logic to fetch system data"""
-        self._validate_attrs(["table", "ometa_client", "db_service"])
-
-        conn_config = kwargs.get("conn_config")
-
-        system_metrics = get_system_metrics_for_dialect(
-            session.get_bind().dialect.name,
-            session=session,
-            table=self.table,
-            conn_config=conn_config,
-        )
-        self._manage_cache()
-        return [s.model_dump() for s in system_metrics] if system_metrics else None
-
-
 @get_system_metrics_for_dialect.register(Dialects.Snowflake)
 def _(
     dialect: str,
@@ -427,3 +364,68 @@ def _(
         )
 
     return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
+
+
+class System(SystemMetric):
+    """System metric class to fetch:
+        1. freshness
+        2. affected rows
+
+    This is supported only for BigQuery, Snowflake, and Redshift
+    """
+
+    @classmethod
+    def is_col_metric(cls) -> bool:
+        """
+        Marks the metric as table or column metric.
+
+        By default, assume that a metric is a column
+        metric. Table metrics should override this.
+        """
+        return False
+
+    @classmethod
+    def is_system_metrics(cls) -> bool:
+        """True if returns system metrics"""
+        return True
+
+    @classmethod
+    def name(cls):
+        return MetricType.system.value
+
+    def _manage_cache(self, max_size_in_bytes: int = MAX_SIZE_IN_BYTES) -> None:
+        """manage cache and clears it if it exceeds the max size
+
+        Args:
+            max_size_in_bytes (int, optional): max size of cache in bytes. Defaults to 2147483648.
+        Returns:
+            None
+        """
+        if deep_size_of_dict(SYSTEM_QUERY_RESULT_CACHE) > max_size_in_bytes:
+            logger.debug("Clearing system cache")
+            SYSTEM_QUERY_RESULT_CACHE.clear()
+
+    def _validate_attrs(self, attr_list: List[str]) -> None:
+        """Validate the necessary attributes given via add_props"""
+        for attr in attr_list:
+            if not hasattr(self, attr):
+                raise AttributeError(
+                    f"System requires a table to be set: add_props({attr}=...)(Metrics.SYSTEM.value)"
+                )
+
+    def sql(self, session: Session, **kwargs):
+        """Implements the SQL logic to fetch system data"""
+        self._validate_attrs(["table", "ometa_client", "db_service"])
+
+        conn_config = kwargs.get("conn_config")
+
+        system_metrics = get_system_metrics_for_dialect(
+            session.get_bind().dialect.name,
+            session=session,
+            table=self.table,  # pylint: disable=no-member
+            conn_config=conn_config,
+            ometa_client=self.ometa_client,  # pylint: disable=no-member
+            db_service=self.db_service,  # pylint: disable=no-member
+        )
+        self._manage_cache()
+        return system_metrics

@@ -231,9 +231,6 @@ class SnowflakeCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         ]
 
     def custom_profiler_assertions(self):
-        # pytest.mark.xfail(
-        #     reason="fix https://github.com/open-metadata/OpenMetadata/issues/17588 so that this test succeeds"
-        # )
         cases = [
             (
                 "e2e_snowflake.E2E_DB.E2E_TEST.E2E_TABLE",
