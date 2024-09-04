@@ -103,6 +103,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
 
       await page.click('[data-testid="ingestions"]');
       await page.waitForSelector('[data-testid="ingestion-details-container"]');
+      await page.waitForTimeout(1000);
       await page.click('[data-testid="add-new-ingestion-button"]');
       await page.waitForTimeout(1000);
       await page.click('[data-menu-id*="dbt"]');
@@ -138,6 +139,8 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.waitForResponse(
         '**/api/v1/services/ingestionPipelines/status'
       );
+
+      await this.handleIngestionRetry('dbt', page);
     });
 
     await test.step('Validate DBT is ingested properly', async () => {
