@@ -30,7 +30,7 @@ const uniqueID = uuid();
 
 export const REDSHIFT = {
   serviceType: 'Redshift',
-  serviceName: `redshift-ct-test-${uniqueID}`,
+  serviceName: `redshift-ct-test-with-%-${uniqueID}`,
   tableName: 'raw_payments',
   DBTTable: 'customers',
   description: `This is Redshift-ct-test-${uniqueID} description`,
@@ -38,7 +38,7 @@ export const REDSHIFT = {
 
 export const POSTGRES = {
   serviceType: 'Postgres',
-  serviceName: `pw-postgres-test-${uuid()}`,
+  serviceName: `pw-postgres-test-with-%-${uniqueID}`,
   tableName: 'order_items',
 };
 

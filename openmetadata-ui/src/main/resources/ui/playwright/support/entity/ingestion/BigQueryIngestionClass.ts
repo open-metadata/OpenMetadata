@@ -25,7 +25,12 @@ class BigQueryIngestionClass extends ServiceBaseClass {
   filterPattern: string;
 
   constructor() {
-    super(Services.Database, `pw-bigquery-${uuid()}`, 'BigQuery', 'testtable');
+    super(
+      Services.Database,
+      `pw-bigquery-with-%-${uuid()}`,
+      'BigQuery',
+      'testtable'
+    );
 
     this.filterPattern = 'testschema';
   }
