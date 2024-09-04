@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
 import { QueryVoteType as VoteType } from '../components/Database/TableQueries/TableQueries.interface';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { CreateMetric } from '../generated/api/data/createMetric';
 import { Metric } from '../generated/entity/data/metric';
 import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -106,6 +107,15 @@ export const removeMetricFollower = async (id: string, userId: string) => {
       changeDescription: { fieldsDeleted: { oldValue: EntityReference[] }[] };
     }>
   >(`/metrics/${id}/followers/${userId}`, APPLICATION_JSON_CONTENT_TYPE_HEADER);
+
+  return response.data;
+};
+
+export const createMetric = async (data: CreateMetric) => {
+  const response = await APIClient.post<CreateMetric, AxiosResponse<Metric>>(
+    '/metrics',
+    data
+  );
 
   return response.data;
 };

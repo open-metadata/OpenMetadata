@@ -260,6 +260,12 @@ const MetricListPage = withSuspenseFallback(
   )
 );
 
+const AddMetricPage = withSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
+  )
+);
+
 const AuthenticatedAppRouter: FunctionComponent = () => {
   const { permissions } = usePermissionProvider();
 
@@ -495,9 +501,12 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         component={GlossaryRouter}
         path={['/glossary', '/glossary-term']}
       />
-      <Route exact component={MetricListPage} path={ROUTES.METRICS} />
+
       <Route component={SettingsRouter} path="/settings" />
       <Route component={DomainRouter} path="/domain" />
+
+      <Route exact component={MetricListPage} path={ROUTES.METRICS} />
+      <Route exact component={AddMetricPage} path={ROUTES.ADD_METRIC} />
 
       <Route
         component={EntityRouter}

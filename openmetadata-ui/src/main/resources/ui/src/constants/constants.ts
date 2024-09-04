@@ -290,7 +290,6 @@ export const ROUTES = {
   METRIC_DETAILS_WITH_TAB: `/metrics/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
   METRIC_VERSION: `/metrics/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
   ADD_METRIC: '/metrics/add-metric',
-  EDIT_METRIC: `/metrics/edit-metric/${PLACEHOLDER_ROUTE_FQN}`,
 };
 
 export const SOCKET_EVENTS = {
