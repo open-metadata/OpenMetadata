@@ -135,7 +135,6 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
   } = useApplicationStore();
-  const { activeDomain } = useDomainStore();
 
   const location = useLocation();
   const history = useHistory();
@@ -470,6 +469,7 @@ export const AuthProvider = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const isGetRequest = config.method === 'get';
+    const activeDomain = useDomainStore.getState().activeDomain;
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = window.location.pathname;
     const shouldNotIntercept = [

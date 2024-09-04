@@ -321,8 +321,17 @@ test.describe('Domains Rbac', () => {
     await afterAction();
   });
 
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain1.delete(apiContext);
+    await domain2.delete(apiContext);
+    await domain3.delete(apiContext);
+    await user1.delete(apiContext);
+    await afterAction();
+  });
+
   test('Domain Rbac', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser);
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
 
@@ -363,6 +372,25 @@ test.describe('Domains Rbac', () => {
           .locator('span')
       ).toBeVisible();
 
+      // Visit explore page and verify if domain is passed in the query
+      const queryRes = userPage.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await sidebarClick(userPage, SidebarItem.EXPLORE);
+      await queryRes.then(async (res) => {
+        const queryString = new URL(res.request().url()).search;
+        const urlParams = new URLSearchParams(queryString);
+        const qParam = urlParams.get('q');
+        const domainFqn = (domain1.data.fullyQualifiedName ?? '').replace(
+          /"/g,
+          '\\"'
+        );
+
+        await expect(qParam).toContain(
+          `(domain.fullyQualifiedName:"${domainFqn}")`
+        );
+      });
+
       for (const asset of domainAssset2) {
         const fqn = encodeURIComponent(
           get(asset, 'entityResponseData.fullyQualifiedName', '')
@@ -384,10 +412,6 @@ test.describe('Domains Rbac', () => {
       await afterActionUser1();
     });
 
-    await domain1.delete(apiContext);
-    await domain2.delete(apiContext);
-    await domain3.delete(apiContext);
-    await user1.delete(apiContext);
     await assetCleanup1();
     await assetCleanup2();
     await afterAction();
