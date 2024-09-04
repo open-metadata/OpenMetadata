@@ -157,7 +157,7 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Error trying to PATCH {get_log_name(source)}: {exc}")
+            logger.warning(f"Error trying to PATCH {get_log_name(source)}: {exc}")
 
         return None
 

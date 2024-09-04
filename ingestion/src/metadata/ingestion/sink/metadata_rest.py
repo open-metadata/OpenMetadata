@@ -586,11 +586,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 table=record.table, column_tags=record.column_tags
             )
             if not patched:
-                self.status.failed(
-                    StackTraceError(
-                        name=table.fullyQualifiedName.root,
-                        error="Error patching tags for table",
-                    )
+                self.status.warning(
+                    key=table.fullyQualifiedName.root,
+                    reason="Error patching tags for table",
                 )
             else:
                 logger.debug(

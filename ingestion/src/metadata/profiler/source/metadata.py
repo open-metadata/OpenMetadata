@@ -12,7 +12,7 @@
 OpenMetadata source for the profiler
 """
 import traceback
-from typing import Iterable, Optional, cast
+from typing import Iterable, List, Optional, cast
 
 from pydantic import BaseModel, ConfigDict
 
@@ -265,6 +265,14 @@ class OpenMetadataSource(Source):
 
         return databases
 
+    def _get_fields(self) -> List[str]:
+        """Get the fields required to process the tables"""
+        return (
+            TABLE_FIELDS
+            if not self.source_config.processPiiSensitive
+            else TABLE_FIELDS + TAGS_FIELD
+        )
+
     def get_table_entities(self, database):
         """
         List and filter OpenMetadata tables based on the
@@ -282,9 +290,7 @@ class OpenMetadataSource(Source):
         """
         tables = self.metadata.list_all_entities(
             entity=Table,
-            fields=TABLE_FIELDS
-            if not self.source_config.processPiiSensitive
-            else TABLE_FIELDS + TAGS_FIELD,
+            fields=self._get_fields(),
             params={
                 "service": self.config.source.serviceName,
                 "database": fqn.build(

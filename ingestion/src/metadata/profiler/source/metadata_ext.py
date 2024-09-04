@@ -26,7 +26,6 @@ from typing import Iterable, cast
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -138,7 +137,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             service_name=None,
                             schema_name=schema_name,
                             table_name=table_name,
-                            fields="tableProfilerConfig",
+                            fields=",".join(self._get_fields()),
                         )
                         if not table_entity:
                             logger.debug(
@@ -226,36 +225,3 @@ class OpenMetadataSourceExt(OpenMetadataSource):
         except Exception as exc:
             logger.debug(f"Failed to fetch database names {exc}")
             logger.debug(traceback.format_exc())
-
-    def get_table_entities(self, database):
-        """
-        List and filter OpenMetadata tables based on the
-        source configuration.
-
-        The listing will be based on the entities from the
-        informed service name in the source configuration.
-
-        Note that users can specify `table_filter_pattern` to
-        either be `includes` or `excludes`. This means
-        that we will either what is specified in `includes`
-        or we will use everything but the tables excluded.
-
-        Same with `schema_filter_pattern`.
-        """
-        tables = self.metadata.list_all_entities(
-            entity=Table,
-            fields=[
-                "tableProfilerConfig",
-            ],
-            params={
-                "service": self.config.source.serviceName,
-                "database": fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.config.source.serviceName,
-                    database_name=database.name.root,
-                ),
-            },  # type: ignore
-        )
-
-        yield from self.filter_entities(tables)
