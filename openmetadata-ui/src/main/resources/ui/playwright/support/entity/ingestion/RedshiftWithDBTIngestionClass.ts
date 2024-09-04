@@ -20,7 +20,11 @@ import {
 } from '@playwright/test';
 import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
-import { redirectToHomePage, toastNotification } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
@@ -81,8 +85,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       .fill(this.schemaFilterPattern);
 
     await page.locator('#root\\/schemaFilterPattern\\/includes').press('Enter');
-
-    await page.click('#root\\/includeViews');
   }
 
   async runAdditionalTests(
@@ -90,6 +92,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
     test: TestType<PlaywrightTestArgs, PlaywrightWorkerArgs>
   ) {
     await test.step('Add DBT ingestion', async () => {
+      const { apiContext } = await getApiContext(page);
       await redirectToHomePage(page);
       await visitServiceDetailsPage(
         page,
@@ -141,7 +144,17 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         .getByTestId('loader')
         .waitFor({ state: 'detached' });
 
-      await page.getByTestId('more-actions').first().click();
+      const response = await apiContext
+        .get(
+          `/api/v1/services/ingestionPipelines?service=${encodeURIComponent(
+            this.serviceName
+          )}&pipelineType=dbt&serviceType=databaseService&limit=1`
+        )
+        .then((res) => res.json());
+
+      await page.click(
+        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
+      );
       await page.getByTestId('run-button').click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);

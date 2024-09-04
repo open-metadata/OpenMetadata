@@ -18,7 +18,11 @@ import {
   TestType,
 } from '@playwright/test';
 import { POSTGRES } from '../../../constant/service';
-import { redirectToHomePage, toastNotification } from '../../../utils/common';
+import {
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+} from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
@@ -83,6 +87,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
   ) {
     if (process.env.PLAYWRIGHT_IS_OSS) {
       await test.step('Add Usage ingestion', async () => {
+        const { apiContext } = await getApiContext(page);
         await redirectToHomePage(page);
         await visitServiceDetailsPage(
           page,
@@ -118,7 +123,18 @@ class PostgresIngestionClass extends ServiceBaseClass {
           .getByTestId('loader')
           .waitFor({ state: 'detached' });
 
-        await page.getByTestId('more-actions').first().click();
+        const response = await apiContext
+          .get(
+            `/api/v1/services/ingestionPipelines?service=${encodeURIComponent(
+              this.serviceName
+            )}&pipelineType=usage&serviceType=databaseService&limit=1`
+          )
+          .then((res) => res.json());
+
+        await page.click(
+          `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
+        );
+
         await page.getByTestId('run-button').click();
 
         await toastNotification(page, `Pipeline triggered successfully!`);

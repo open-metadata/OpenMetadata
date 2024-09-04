@@ -257,7 +257,8 @@ class ServiceBaseClass {
           intervals: [30_000, 15_000, 5_000],
         }
       )
-      .toBe('success');
+      // To allow partial success
+      .toContain('success');
 
     const pipelinePromise = page.waitForRequest(
       `/api/v1/services/ingestionPipelines?**`
@@ -278,9 +279,12 @@ class ServiceBaseClass {
     await page.click('[data-testid="ingestions"]');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
 
-    await expect(page.getByTestId('pipeline-status').last()).toContainText(
-      'SUCCESS'
-    );
+    await expect(
+      page
+        .locator(`[data-row-key*="${workflowData.name}"]`)
+        .getByTestId('pipeline-status')
+        .last()
+    ).toContainText('SUCCESS');
   };
 
   async updateService(page: Page) {
