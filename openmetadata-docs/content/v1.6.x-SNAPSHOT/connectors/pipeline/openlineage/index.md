@@ -18,7 +18,7 @@ Configure and schedule OpenLineage metadata workflows from the OpenMetadata UI:
 - [Requirements](#requirements)
 - [Metadata Ingestion](#metadata-ingestion)
 
-{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" variables={yamlPath: "/connectors/pipeline/openlineage/yaml"} /%}
+{% partial file="/v1.5/connectors/ingestion-modes-tiles.md" /%}
 
 ## Requirements
 

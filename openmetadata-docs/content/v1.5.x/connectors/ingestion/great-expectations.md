@@ -117,6 +117,6 @@ alt="Run Great Expectations checkpoint"
  /%}
 
 ### List of Great Expectations Supported Test
-We currently only support a certain number of Great Expectations tests. The full list can be found in the [Tests](/how-to-guides/data-quality-observability/quality/tests) section.
+We currently only support a certain number of Great Expectations tests. The full list can be found in the [Tests](/how-to-guides/data-quality-observability/quality/tests-yaml) section.
 
 If a test is not supported, there is no need to worry about the execution of your Great Expectations test. We will simply skip the tests that are not supported and continue the execution of your test suite.
