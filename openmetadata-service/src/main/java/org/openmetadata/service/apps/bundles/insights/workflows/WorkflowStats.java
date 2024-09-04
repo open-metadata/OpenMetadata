@@ -11,8 +11,8 @@ import org.openmetadata.schema.system.StepStats;
 
 public class WorkflowStats {
   @Getter private final String name;
-  @Getter private List<String> failures = new ArrayList<>();
-  @Getter private StepStats workflowStats = new StepStats();
+  @Getter private final List<String> failures = new ArrayList<>();
+  @Getter private final StepStats workflowStats = new StepStats();
   @Getter private final Map<String, StepStats> workflowStepStats = new HashMap<>();
 
   public WorkflowStats(String name) {
