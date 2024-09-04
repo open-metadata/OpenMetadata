@@ -385,7 +385,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (Boolean.TRUE.equals(
         testCaseResolutionStatusRepository.unresolvedIncident(storedTestCaseResolutionStatus))) {
 
-      if (storedTestCaseResolutionStatus != null) return storedTestCaseResolutionStatus.getStateId();
+      if (storedTestCaseResolutionStatus != null)
+        return storedTestCaseResolutionStatus.getStateId();
     }
 
     // if the test case resolution is null or resolved then we'll create a new one

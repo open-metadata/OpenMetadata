@@ -1317,7 +1317,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-15"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    if (testSuiteResultSummary != null) assertEquals(TestUtils.dateToTimestamp("2023-08-15"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-15"), testSuiteResultSummary.getTimestamp());
 
     // delete latest and check that result is the  new latest (i.e. the 14th)
     deleteTestCaseResult(
@@ -1334,7 +1335,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    if (testSuiteResultSummary != null) assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // delete the 13h and check that result is still the 14th
     deleteTestCaseResult(
@@ -1351,7 +1353,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-14"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    if (testSuiteResultSummary != null) assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-14"), testSuiteResultSummary.getTimestamp());
 
     // Patch the test case result adding the resolved status
     TestCaseResult testCaseResult = storedTestCase.getTestCaseResult();
@@ -1376,7 +1379,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(
         TestUtils.dateToTimestamp("2023-08-16"), storedTestCase.getTestCaseResult().getTimestamp());
     assertEquals(1, storedTestSuite.getSummary().getTotal());
-    if (testSuiteResultSummary != null) assertEquals(TestUtils.dateToTimestamp("2023-08-16"), testSuiteResultSummary.getTimestamp());
+    if (testSuiteResultSummary != null)
+      assertEquals(TestUtils.dateToTimestamp("2023-08-16"), testSuiteResultSummary.getTimestamp());
 
     // Add a new test case
     CreateTestCase create = createRequest(test, 3);
@@ -2747,8 +2751,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertFalse(testCase.getUseDynamicAssertion());
   }
 
-  private void putInspectionQuery(TestCase testCase, String sql)
-      throws IOException {
+  private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
     TestCase putResponse = putInspectionQuery(testCase.getId(), sql, ADMIN_AUTH_HEADERS);
     assertEquals(sql, putResponse.getInspectionQuery());
   }
@@ -2778,8 +2781,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertEquals(tableData, data);
   }
 
-  private void deleteFailedRowsSample(TestCase testCase)
-      throws IOException {
+  private void deleteFailedRowsSample(TestCase testCase) throws IOException {
     WebTarget target = getResource(testCase.getId()).path("/failedRowsSample");
     TestUtils.delete(target, TestCase.class, ADMIN_AUTH_HEADERS);
   }
