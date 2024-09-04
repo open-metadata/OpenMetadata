@@ -17,7 +17,7 @@ slug: /main-concepts/metadata-standard/schemas/entity/services/connections/messa
 - **`saslMechanism`**: sasl.mechanism Consumer Config property. Refer to *saslMechanismType.json*. Default: `PLAIN`.
 - **`basicAuthUserInfo`** *(string)*: basic.auth.user.info schema registry config property, Client HTTP credentials in the form of username:password.
 - **`consumerConfig`** *(object)*: Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md. Can contain additional properties. Default: `{}`.
-- **`schemaRegistryConfig`** *(object)*: Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient. Can contain additional properties. Default: `{}`.
+- **`schemaRegistryConfig`** *(object)*: Confluent Kafka Schema Registry Config. From https://docs.confluent.io/platform/current/clients/confluent-kafka-python/html/index.html#schemaregistryclient. Can contain additional properties. Default: `{}`.
 - **`supportsMetadataExtraction`**: Refer to *../connectionBasicType.json#/definitions/supportsMetadataExtraction*.
 ## Definitions
 

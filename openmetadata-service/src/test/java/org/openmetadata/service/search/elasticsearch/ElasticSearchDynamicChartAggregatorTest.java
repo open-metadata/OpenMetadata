@@ -54,8 +54,8 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 
 public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplicationTest {
 
-  static final long START = 1721082271000l;
-  static final long END = 1721592271000l;
+  static final long START = 1721082271000L;
+  static final long END = 1721592271000L;
 
   private boolean compareRequest(String expectedJsonReq, Map<String, Object> chartDetails)
       throws IOException {
@@ -398,9 +398,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
             .map(
                 (entry) ->
                     new NamedXContentRegistry.Entry(
-                        Aggregation.class,
-                        new ParseField((String) entry.getKey()),
-                        entry.getValue()))
+                        Aggregation.class, new ParseField(entry.getKey()), entry.getValue()))
             .collect(Collectors.toList());
     entries.add(
         new NamedXContentRegistry.Entry(
