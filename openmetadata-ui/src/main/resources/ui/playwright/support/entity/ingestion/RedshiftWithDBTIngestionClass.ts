@@ -20,7 +20,7 @@ import {
 } from '@playwright/test';
 import { DBT, HTTP_CONFIG_SOURCE, REDSHIFT } from '../../../constant/service';
 import { SidebarItem } from '../../../constant/sidebar';
-import { redirectToHomePage } from '../../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../../utils/common';
 import { visitEntityPage } from '../../../utils/entity';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
@@ -125,20 +125,26 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         '#root\\/dbtConfigSource\\/dbtRunResultsHttpPath',
         HTTP_CONFIG_SOURCE.DBT_RUN_RESULTS_FILE_PATH
       );
-      const deployResponse = page.waitForResponse(
-        '/api/v1/services/ingestionPipelines/deploy/*'
-      );
 
       await page.click('[data-testid="submit-btn"]');
-      await page.click('[data-testid="deploy-button"]');
-
-      await deployResponse;
+      // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
+      await this.scheduleIngestion(page);
 
       await page.click('[data-testid="view-service-button"]');
 
-      await page.waitForResponse(
-        '**/api/v1/services/ingestionPipelines/status'
-      );
+      // Header available once page loads
+      await page.waitForSelector('[data-testid="data-assets-header"]');
+      await page.getByTestId('loader').waitFor({ state: 'detached' });
+      await page.getByTestId('ingestions').click();
+      await page
+        .getByLabel('Ingestions')
+        .getByTestId('loader')
+        .waitFor({ state: 'detached' });
+
+      await page.getByTestId('more-actions').first().click();
+      await page.getByTestId('run-button').click();
+
+      await toastNotification(page, `Pipeline triggered successfully!`);
 
       await this.handleIngestionRetry('dbt', page);
     });
