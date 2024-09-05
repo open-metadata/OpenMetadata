@@ -1,6 +1,7 @@
 ---
 title: OneLogin SSO
 slug: /deployment/security/one-login
+collate: false
 ---
 
 # OneLogin SSO
