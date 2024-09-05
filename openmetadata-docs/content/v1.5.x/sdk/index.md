@@ -34,7 +34,7 @@ To access OpenMetadata APIs, one needs a token to authenticate and authorize API
 
 1. Go to the settings page from the navbar and then scroll down to the Integrations Section. Click on the Bots and you will see the list of bots, then click on the ingestion-bot. {% image src="/images/apis/bots/bots.png" alt="bot-list" /%}
 
-2. You will be redirected to the ingestion-bot details page. there you will get the JWT token, click on the copy button and copy the JWT token. {% image src="/images/apis/bots/bot-token.png" alt="bot-token" /%}
+2. You will be redirected to the ingestion-bot details page. there you will get the JWT token, click on the copy button and copy the JWT token. {% image src="/images/apis/bots/bots-token.png" alt="bot-token" /%}
 
 3. Optionally, You can create your own bot for specific use case.
 
