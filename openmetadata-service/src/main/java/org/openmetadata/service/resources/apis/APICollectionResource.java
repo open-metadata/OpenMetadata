@@ -50,7 +50,6 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateAPICollection;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.APICollection;
-import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -268,7 +267,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "database",
+            description = "APICollection",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -303,7 +302,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = Database.class))),
+                    schema = @Schema(implementation = APICollection.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response create(
@@ -422,7 +421,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
           @QueryParam("hardDelete")
           @DefaultValue("false")
           boolean hardDelete,
-      @Parameter(description = "Id of the database", schema = @Schema(type = "UUID"))
+      @Parameter(description = "Id of the APICollection", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
     return delete(uriInfo, securityContext, id, recursive, hardDelete);
@@ -466,7 +465,9 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
           "Delete a API Collection by `fullyQualifiedName`. API Collection can only be deleted if it has no API Endpoints.",
       responses = {
         @ApiResponse(responseCode = "200", description = "OK"),
-        @ApiResponse(responseCode = "404", description = "Database for instance {fqn} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "APIColletion for instance {fqn} is not found")
       })
   public Response delete(
       @Context UriInfo uriInfo,
@@ -481,7 +482,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
           @DefaultValue("false")
           boolean recursive,
       @Parameter(
-              description = "Fully qualified name of the database",
+              description = "Fully qualified name of the APICollection",
               schema = @Schema(type = "string"))
           @PathParam("fqn")
           String fqn) {
@@ -503,7 +504,7 @@ public class APICollectionResource extends EntityResource<APICollection, APIColl
                     mediaType = "application/json",
                     schema = @Schema(implementation = APICollection.class)))
       })
-  public Response restoreDatabase(
+  public Response restore(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {

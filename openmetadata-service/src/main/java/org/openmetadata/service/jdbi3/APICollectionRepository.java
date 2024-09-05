@@ -23,7 +23,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.databases.DatabaseResource;
+import org.openmetadata.service.resources.apis.APICollectionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -32,7 +32,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
 
   public APICollectionRepository() {
     super(
-        DatabaseResource.COLLECTION_PATH,
+        APICollectionResource.COLLECTION_PATH,
         Entity.API_COLLCECTION,
         APICollection.class,
         Entity.getCollectionDAO().apiCollectionDAO(),
