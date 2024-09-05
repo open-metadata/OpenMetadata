@@ -176,6 +176,8 @@ site_menu:
     url: /deployment/secrets-manager/supported-implementations/aws-ssm-parameter-store
   - category: Deployment / Enable Secrets Manager / Supported Implementations / Azure Key Vault
     url: /deployment/secrets-manager/supported-implementations/azure-key-vault
+  - category: Deployment / Enable Secrets Manager / Supported Implementations / GCP Secret Manager
+    url: /deployment/secrets-manager/supported-implementations/gcp-secret-manager
   - category: Deployment / Enable Secrets Manager / How to add a new implementation
     url: /deployment/secrets-manager/how-to-add-a-new-implementation
 
