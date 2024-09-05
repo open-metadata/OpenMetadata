@@ -103,11 +103,15 @@ jest.mock('../../rest/feedsAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockActiveAnnouncementData)),
 }));
-jest.mock('../../rest/userAPI', () => ({
-  getUserById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockUserData)),
-}));
+jest.mock('../../rest/searchAPI', () => {
+  return {
+    searchQuery: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ hits: { hits: [], total: { value: 0 } } })
+      ),
+  };
+});
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
 }));
