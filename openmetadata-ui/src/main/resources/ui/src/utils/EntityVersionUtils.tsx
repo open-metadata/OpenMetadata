@@ -137,33 +137,31 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
 
 export const getAddedDiffElement = (text: string) => {
   return (
-    <Typography.Text
-      underline
-      className="diff-added"
+    <span
+      className="diff-added text-underline"
       data-testid="diff-added"
       key={uniqueId()}>
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
 export const getRemovedDiffElement = (text: string) => {
   return (
-    <Typography.Text
-      delete
-      className="text-grey-muted"
+    <span
+      className="text-grey-muted text-line-through"
       data-testid="diff-removed"
       key={uniqueId()}>
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
 export const getNormalDiffElement = (text: string) => {
   return (
-    <Typography.Text data-testid="diff-normal" key={uniqueId()}>
+    <span data-testid="diff-normal" key={uniqueId()}>
       {text}
-    </Typography.Text>
+    </span>
   );
 };
 
@@ -172,8 +170,16 @@ export const getTextDiff = (
   newText: string,
   latestText?: string
 ) => {
+  const imagePlaceholder = 'data:image';
   if (isEmpty(oldText) && isEmpty(newText)) {
     return latestText ?? '';
+  }
+
+  if (
+    newText.includes(imagePlaceholder) ||
+    oldText.includes(imagePlaceholder)
+  ) {
+    return newText;
   }
 
   const diffArr = diffWords(toString(oldText), toString(newText));

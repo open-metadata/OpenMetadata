@@ -12,7 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { mockUserData } from '../../../Settings/Users/mocks/User.mocks';
 import FeedsWidget from './FeedsWidget.component';
@@ -134,7 +134,7 @@ describe('FeedsWidget', () => {
       undefined,
       undefined,
       undefined,
-      PAGE_SIZE_LARGE
+      PAGE_SIZE_MEDIUM
     );
   });
 
@@ -154,7 +154,7 @@ describe('FeedsWidget', () => {
       undefined,
       undefined,
       undefined,
-      PAGE_SIZE_LARGE
+      PAGE_SIZE_MEDIUM
     );
   });
 
