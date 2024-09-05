@@ -222,7 +222,11 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     if (previousCount == 0D) {
       // it should be undefined
       return new DataInsightTotalAssetTemplate(
-          String.valueOf(currentCount.intValue()), 0, 0d, timeConfig.numberOfDaysChange(), dateMap);
+          String.valueOf(currentCount.intValue()),
+          currentCount.intValue(),
+          0d,
+          timeConfig.numberOfDaysChange(),
+          dateMap);
     } else {
       return new DataInsightTotalAssetTemplate(
           String.valueOf(currentCount.intValue()),
@@ -271,7 +275,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentCompletedDescription / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentTotalAssetCount - previousTotalAssetCount);
+    int changeCount = (int) (currentCompletedDescription - previousCompletedDescription);
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
@@ -322,7 +326,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasOwner / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentTotalAssetCount - previousTotalAssetCount);
+    int changeCount = (int) (currentHasOwner - previousHasOwner);
 
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
@@ -371,7 +375,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasTier / currentTotalAssetCount) * 100;
     }
 
-    int changeCount = (int) (currentTotalAssetCount - previousTotalAssetCount);
+    int changeCount = (int) (currentHasTier - previousHasTier);
 
     // TODO: Understand if we actually use this tierData for anything.
     Map<String, Double> tierData = new HashMap<>();
