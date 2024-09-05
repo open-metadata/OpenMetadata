@@ -161,7 +161,9 @@ jobs:
         make E2E_TEST=$E2E_TEST run_py_e2e_tests 
         coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
-
+      env:
+        NOXPYTHON: "3.9 nox"
+        
     - name: Upload coverage artifact for Python tests
       if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
       uses: actions/upload-artifact@v3
