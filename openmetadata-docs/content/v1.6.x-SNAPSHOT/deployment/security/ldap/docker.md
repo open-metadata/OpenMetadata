@@ -1,6 +1,7 @@
 ---
 title: Ldap Authentication for Docker
 slug: /deployment/security/ldap/docker
+collate: false
 ---
 
 # Ldap Authentication for Docker

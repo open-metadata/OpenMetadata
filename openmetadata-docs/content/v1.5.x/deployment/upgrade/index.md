@@ -1,6 +1,7 @@
 ---
 title: Upgrade OpenMetadata
 slug: /deployment/upgrade
+collate: false
 ---
 
 # Upgrade OpenMetadata
