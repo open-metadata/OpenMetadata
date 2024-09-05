@@ -1,6 +1,7 @@
 ---
 title: Kubernetes On Premises Deployment
 slug: /deployment/kubernetes/on-prem
+collate: false
 ---
 
 # On Premises Kubernetes Deployment

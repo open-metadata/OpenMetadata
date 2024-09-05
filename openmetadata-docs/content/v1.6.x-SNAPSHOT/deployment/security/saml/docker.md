@@ -1,6 +1,7 @@
 ---
 title: SAML SSO for Docker
 slug: /deployment/security/saml/docker
+collate: false
 ---
 
 # Keycloak SSO for Docker

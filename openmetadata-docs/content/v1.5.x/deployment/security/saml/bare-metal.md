@@ -1,6 +1,7 @@
 ---
 title: SAML SSO for Bare Metal
 slug: /deployment/security/saml/bare-metal
+collate: false
 ---
 
 # SAML SSO for Bare Metal

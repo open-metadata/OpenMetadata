@@ -1,6 +1,7 @@
 ---
 title: One Login SSO for Docker
 slug: /deployment/security/one-login/docker
+collate: false
 ---
 
 # One Login SSO for Docker
