@@ -137,7 +137,10 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
 
 export const getAddedDiffElement = (text: string) => {
   return (
-    <span className="diff-added" data-testid="diff-added" key={uniqueId()}>
+    <span
+      className="diff-added text-underline"
+      data-testid="diff-added"
+      key={uniqueId()}>
       {text}
     </span>
   );
@@ -146,7 +149,7 @@ export const getAddedDiffElement = (text: string) => {
 export const getRemovedDiffElement = (text: string) => {
   return (
     <span
-      className="text-grey-muted"
+      className="text-grey-muted text-line-through"
       data-testid="diff-removed"
       key={uniqueId()}>
       {text}
