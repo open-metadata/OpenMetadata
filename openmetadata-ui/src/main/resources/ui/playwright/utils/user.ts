@@ -756,3 +756,7 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
     }
   }
 };
+
+export const checkEditOwnerButtonPermission = async (page: Page) => {
+  await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();
+};
