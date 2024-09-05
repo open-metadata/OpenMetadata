@@ -1,6 +1,7 @@
 ---
 title: Google SSO for Bare Metal
 slug: /deployment/security/google/bare-metal
+collate: false
 ---
 
 # Google SSO for Bare Metal
