@@ -29,4 +29,5 @@ export interface UserSelectDropdownProps {
   label?: string;
   previewSelected?: boolean;
   listHeight?: number;
+  tooltipText?: string;
 }

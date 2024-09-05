@@ -35,10 +35,10 @@ import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class WebAnalyticsWorkflow {
-  private Long startTimestamp;
-  private Long endTimestamp;
-  private int batchSize;
-  private final int webAnalyticEventsRetentionDays = 7;
+  private final Long startTimestamp;
+  private final Long endTimestamp;
+  private final int batchSize;
+  private static final int WEB_ANALYTIC_EVENTS_RETENTION_DAYS = 7;
   private final List<PaginatedWebAnalyticEventDataSource> sources = new ArrayList<>();
   private WebAnalyticsEntityViewProcessor webAnalyticsEntityViewProcessor;
   private WebAnalyticsUserActivityProcessor webAnalyticsUserActivityProcessor;
@@ -51,7 +51,6 @@ public class WebAnalyticsWorkflow {
       int totalPageView,
       int totalSessions,
       Long lastSession) {}
-  ;
 
   @Getter private final WorkflowStats workflowStats = new WorkflowStats("WebAnalyticsWorkflow");
   public static final String USER_ACTIVITY_DATA_KEY = "userActivityData";
@@ -63,7 +62,7 @@ public class WebAnalyticsWorkflow {
     if (backfill.isPresent()) {
       Long oldestPossibleTimestamp =
           TimestampUtils.getStartOfDayTimestamp(
-              TimestampUtils.subtractDays(timestamp, webAnalyticEventsRetentionDays));
+              TimestampUtils.subtractDays(timestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
 
       this.endTimestamp =
           TimestampUtils.getEndOfDayTimestamp(
@@ -191,8 +190,7 @@ public class WebAnalyticsWorkflow {
 
   private Optional<String> processEntityViewData(
       Map<String, WebAnalyticEntityViewReportData> entityViewReportData,
-      Map<String, Object> contextData)
-      throws SearchIndexException {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(
@@ -241,8 +239,7 @@ public class WebAnalyticsWorkflow {
   private Optional<String> processUserActivityData(
       Map<UUID, UserActivityData> userActivityData,
       Map<UUID, WebAnalyticUserActivityReportData> userActivityReportData,
-      Map<String, Object> contextData)
-      throws SearchIndexException {
+      Map<String, Object> contextData) {
     Optional<String> error = Optional.empty();
 
     contextData.put(
@@ -317,7 +314,8 @@ public class WebAnalyticsWorkflow {
     for (WebAnalyticEventType eventType : WebAnalyticEventType.values()) {
       ((WebAnalyticEventRepository) Entity.getEntityRepository(Entity.WEB_ANALYTIC_EVENT))
           .deleteWebAnalyticEventData(
-              eventType, TimestampUtils.subtractDays(endTimestamp, webAnalyticEventsRetentionDays));
+              eventType,
+              TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
     }
   }
 

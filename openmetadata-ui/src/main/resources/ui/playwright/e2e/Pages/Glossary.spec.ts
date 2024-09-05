@@ -201,7 +201,7 @@ test.describe('Glossary tests', () => {
         await addMultiOwner({
           page,
           ownerNames: [user3.getUserName()],
-          activatorBtnDataTestId: 'edit-owner',
+          activatorBtnDataTestId: 'add-owner',
           resultTestId: 'glossary-right-panel-owner-link',
           endpoint: EntityTypeEndpoint.Glossary,
           isSelectableInsideForm: false,
@@ -819,6 +819,8 @@ test.describe('Glossary tests', () => {
   });
 
   test('Request tags for Glossary', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: page1, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user2);

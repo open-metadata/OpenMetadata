@@ -43,7 +43,7 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   @Getter private final List<String> fields;
   @Getter private final List<String> readerErrors = new ArrayList<>();
   @Getter private final StepStats stats = new StepStats();
-  @Getter private ListFilter filter;
+  @Getter private final ListFilter filter;
   @Getter private String lastFailedCursor = null;
   @Setter private String cursor = RestUtil.encodeCursor("0");
   @Getter private boolean isDone = false;

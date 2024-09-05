@@ -358,6 +358,12 @@ site_menu:
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAP ERP
+    url: /connectors/database/sap-erp
+  - category: Connectors / Database / SAP ERP / Run Externally
+    url: /connectors/database/sap-erp/yaml
+  - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
+    url: /connectors/database/sap-erp/setup-sap-apis
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -380,6 +386,10 @@ site_menu:
     url: /connectors/database/synapse/yaml
   - category: Connectors / Database / Synapse / Troubleshooting
     url: /connectors/database/synapse/troubleshooting
+  - category: Connectors / Database / Teradata
+    url: /connectors/database/teradata
+  - category: Connectors / Database / Teradata / Run Externally
+    url: /connectors/database/teradata/yaml
   - category: Connectors / Database / Trino
     url: /connectors/database/trino
   - category: Connectors / Database / Trino / Run Externally
@@ -657,8 +667,6 @@ site_menu:
     url: /connectors/ingestion/lineage/spark-lineage
   - category: Connectors / Ingestion / Versioning
     url: /connectors/ingestion/versioning
-  - category: Connectors / Ingestion / Auto Tagging
-    url: /connectors/ingestion/auto_tagging
   - category: Connectors / Ingestion / Versioning / Change Feeds
     url: /connectors/ingestion/versioning/change-feeds
   - category: Connectors / Ingestion / Versioning / Change Events
@@ -839,6 +847,12 @@ site_menu:
     url: /how-to-guides/data-insights/ingestion
   - category: How-to Guides / Data Insights / Key Performance Indicators (KPI)
     url: /how-to-guides/data-insights/kpi
+  - category: How-to Guides / Data Insights / Run Data Insights using Airflow SDK
+    url: /how-to-guides/data-insights/airflow-sdk
+  - category: How-to Guides / Data Insights / Run Data Insights using Metadata CLI
+    url: /how-to-guides/data-insights/metadata-cli   
+  - category: How-to Guides / Data Insights / Run Elasticsearch Reindex using Airflow SDK
+    url: /how-to-guides/data-insights/elasticsearch-reindex 
   - category: How-to Guides / Data Insights / Data Insights Report
     url: /how-to-guides/data-insights/report
   - category: How-to Guides / Data Insights / Cost Analysis
@@ -903,6 +917,32 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.1 Release
+    url: /releases/all-releases/#1.5.1-release
+  - category: Releases / All Releases / 1.4.8 Release
+    url: /releases/all-releases/#1.4.8-release
+  - category: Releases / All Releases / 1.4.7 Release
+    url: /releases/all-releases/#1.4.7-release
+  - category: Releases / All Releases / 1.4.6 Release
+    url: /releases/all-releases/#1.4.6-release
+  - category: Releases / All Releases / 1.4.5 Release
+    url: /releases/all-releases/#1.4.5-release
+  - category: Releases / All Releases / 1.4.4 Release
+    url: /releases/all-releases/#1.4.4-release
+  - category: Releases / All Releases / 1.4.3 Release
+    url: /releases/all-releases/#1.4.3-release
+  - category: Releases / All Releases / 1.4.2 Release
+    url: /releases/all-releases/#1.4.2-release
+  - category: Releases / All Releases / 1.4.1 Release
+    url: /releases/all-releases/#1.4.1-release
+  - category: Releases / All Releases / 1.4.0 Release
+    url: /releases/all-releases/#1.4.0-release
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
   - category: Releases / All Releases / 1.3.1 Release
     url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release

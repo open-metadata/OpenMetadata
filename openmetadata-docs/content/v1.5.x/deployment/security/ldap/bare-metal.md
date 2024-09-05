@@ -1,6 +1,7 @@
 ---
 title: Ldap Authentication for Bare Metal
 slug: /deployment/security/ldap/bare-metal
+collate: false
 ---
 
 # Ldap Authentication for Bare Metal
@@ -59,7 +60,7 @@ Mandatory LDAP Specific Configuration:
 
 - `host`: hostName for the Ldap Server (Ex - localhost).
 - `port`: port of the Ldap Server to connect to (Ex - 10636).
-- `dnAdminPrincipal`: This is the DN Admin Principal(Complete path Example :- cn=admin,dc=example,dc=com ) with a lookup access in the Directory.
+- `dnAdminPrincipal`: This is the DN Admin Principal(Complete path Example :- cn=admin,dc=example,dc=com) with a lookup access in the Directory.
 - `dnAdminPassword`: Above Admin Principal Password.
 - `userBaseDN`: User Base DN(Complete path Example :- ou=people,dc=example,dc=com).
 

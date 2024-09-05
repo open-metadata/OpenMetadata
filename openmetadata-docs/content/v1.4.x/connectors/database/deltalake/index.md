@@ -77,7 +77,7 @@ If instead we use a local file path that contains the metastore information (e.g
 To update the `Derby` information. More information about this in a great [SO thread](https://stackoverflow.com/questions/38377188/how-to-get-rid-of-derby-log-metastore-db-from-spark-shell).
 
 - You can find all supported configurations [here](https://spark.apache.org/docs/latest/configuration.html)
-- If you need further information regarding the Hive metastore, you can find it [here](https://spark.apache.org/docs/3.0.0-preview/sql-data-sources-hive-tables.html),
+- If you need further information regarding the Hive metastore, you can find it [here](https://spark.apache.org/docs/latest/sql-data-sources-hive-tables.html),
   and in The Internals of Spark SQL [book](https://jaceklaskowski.gitbooks.io/mastering-spark-sql/content/spark-sql-hive-metastore.html).
 
 **Metastore Database**

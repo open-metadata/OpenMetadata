@@ -1,6 +1,7 @@
 ---
 title: Amazon Cognito SSO for Bare Metal
 slug: /deployment/security/amazon-cognito/bare-metal
+collate: false
 ---
 
 # Amazon Cognito SSO for Bare Metal
