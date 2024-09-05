@@ -2761,25 +2761,28 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     SearchRepository searchRepository = getSearchRepository();
     CreateTestCase create = createRequest(testInfo);
     create
-            .withEntityLink(TABLE_COLUMN_LINK)
-            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(
-                    List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+        .withEntityLink(TABLE_COLUMN_LINK)
+        .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     for (int i = 1; i < 10; i++) {
       TestCaseResult testCaseResult =
-              new TestCaseResult()
-                      .withResult("tested")
-                      .withTestCaseStatus(TestCaseStatus.Success)
-                      .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
-        putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+          new TestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(TestCaseStatus.Success)
+              .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
+      putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
     }
 
     // Test aggregation
-    String aggregationQuery = "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
-    Map<String, Object> aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
-    DataQualityReport dataQualityReport = searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+    String aggregationQuery =
+        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
+    Map<String, Object> aggregationString =
+        SearchIndexUtils.buildAggregationString(aggregationQuery);
+    DataQualityReport dataQualityReport =
+        searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
     assertNotNull(dataQualityReport.getData());
   }
 

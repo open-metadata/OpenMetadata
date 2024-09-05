@@ -450,7 +450,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     // Date histogram aggregation
     aggregationString =
-            "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d";
+        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d";
     actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
     expectedAggregationString =
         "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"}}";
@@ -458,7 +458,7 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
 
     // Date histogram aggregation with sub aggregation
     aggregationString =
-            "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d,bucketName=minPrice:aggType=min:field=price.adjusted";
+        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d,bucketName=minPrice:aggType=min:field=price.adjusted";
     actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
     expectedAggregationString =
         "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
@@ -532,9 +532,11 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
               assertTrue(m.containsKey("fullyQualifiedName"));
             });
 
-    aggregationQuery = "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
+    aggregationQuery =
+        "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
     aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
-    dataQualityReport = searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+    dataQualityReport =
+        searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
   }
 
   @Override

@@ -200,8 +200,10 @@ public final class SearchIndexUtils {
                       val.ifPresentOrElse(
                           s -> {
                             switch (s.getValueType()) {
-                              case NUMBER -> nodeData.put(dimensions.get(0), String.valueOf((JsonNumber) s));
-                              default -> nodeData.put(dimensions.get(0), ((JsonString) s).getString());
+                              case NUMBER -> nodeData.put(
+                                  dimensions.get(0), String.valueOf((JsonNumber) s));
+                              default -> nodeData.put(
+                                  dimensions.get(0), ((JsonString) s).getString());
                             }
                           },
                           () -> nodeData.put(dimensions.get(0), null));
@@ -278,11 +280,11 @@ public final class SearchIndexUtils {
               String subpart = subPartsIterator.next();
               String[] kvPairs = subpart.split("=");
               aggregationString
-                      .append("\"")
-                      .append(kvPairs[0])
-                      .append("\":\"")
-                      .append(kvPairs[1])
-                      .append("\"");
+                  .append("\"")
+                  .append(kvPairs[0])
+                  .append("\":\"")
+                  .append(kvPairs[1])
+                  .append("\"");
               if (subPartsIterator.hasNext()) aggregationString.append(",");
               aggregationMap.put(kvPairs[0], kvPairs[1]);
             }
