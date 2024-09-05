@@ -1,6 +1,7 @@
 ---
 title: Custom OIDC SSO for Bare Metal
 slug: /deployment/security/custom-oidc/bare-metal
+collate: false
 ---
 
 # Custom OIDC SSO for Bare Metal
