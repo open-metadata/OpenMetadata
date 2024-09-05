@@ -139,12 +139,12 @@ class OMetaLineageMixin(Generic[T]):
                     )
 
                     serialized_col_details = []
-                    for col_lin in data.edge.lineageDetails.columnsLineage:
+                    for col_lin in data.edge.lineageDetails.columnsLineage or []:
                         serialized_col_details.append(ColumnLineage(**col_lin))
                     data.edge.lineageDetails.columnsLineage = serialized_col_details
 
                     serialized_col_details_og = []
-                    for col_lin in original.edge.lineageDetails.columnsLineage:
+                    for col_lin in original.edge.lineageDetails.columnsLineage or []:
                         serialized_col_details_og.append(ColumnLineage(**col_lin))
                     original.edge.lineageDetails.columnsLineage = (
                         serialized_col_details_og
