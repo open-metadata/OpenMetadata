@@ -1,6 +1,7 @@
 ---
 title: Kubernetes Helm Values
 slug: /deployment/kubernetes/helm-values
+collate: false
 ---
 
 # Kubernetes Helm Values

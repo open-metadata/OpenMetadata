@@ -1,6 +1,7 @@
 ---
 title: Okta SSO for Docker
 slug: /deployment/security/okta/docker
+collate: false
 ---
 
 # Okta SSO for Docker

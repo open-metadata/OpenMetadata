@@ -1,6 +1,7 @@
 ---
 title: Ingestion Framework Deployment
 slug: /deployment/ingestion
+collate: false
 ---
 
 # Ingestion Framework Deployment

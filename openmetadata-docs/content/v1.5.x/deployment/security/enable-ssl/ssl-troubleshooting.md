@@ -1,6 +1,7 @@
 ---
 title: SSL Troubleshooting
 slug: /deployment/security/enable-ssl/ssl-troubleshooting
+collate: false
 ---
 
 # SSL Troubleshooting

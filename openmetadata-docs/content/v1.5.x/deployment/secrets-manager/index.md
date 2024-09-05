@@ -1,6 +1,7 @@
 ---
 title: Enable Secrets Manager
 slug: /deployment/secrets-manager
+collate: false
 ---
 
 # Enable Secrets Manager

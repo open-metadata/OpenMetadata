@@ -1,6 +1,7 @@
 ---
 title: Azure SSO
 slug: /deployment/security/azure
+collate: false
 ---
 
 # Azure SSO

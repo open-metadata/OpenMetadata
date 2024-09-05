@@ -1,6 +1,7 @@
 ---
 title: SAML AZURE SSO
 slug: /deployment/security/saml/azure
+collate: false
 ---
 
 # SAML AZURE SSO

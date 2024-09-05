@@ -1,6 +1,7 @@
 ---
 title: Secrets Manager
 slug: /deployment/secrets-manager/how-to-add-a-new-implementation
+collate: false
 ---
 
 # How to add a new implementation

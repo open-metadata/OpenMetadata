@@ -1,6 +1,7 @@
 ---
 title: JWT validation Troubleshooting
 slug: /deployment/security/jwt-troubleshooting
+collate: false
 ---
 # JWT Troubleshooting
 

@@ -1,6 +1,7 @@
 ---
 title: GCP Secret Manager Parameter Store
 slug: /deployment/secrets-manager/supported-implementations/gcp-secret-manager
+collate: false
 ---
 
 # GCP Secret Manager

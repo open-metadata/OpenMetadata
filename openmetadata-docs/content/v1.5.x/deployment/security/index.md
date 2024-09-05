@@ -1,6 +1,7 @@
 ---
 title: Enable Security
 slug: /deployment/security
+collate: false
 ---
 
 # Enable Security

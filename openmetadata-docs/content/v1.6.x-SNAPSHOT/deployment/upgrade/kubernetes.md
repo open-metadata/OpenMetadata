@@ -1,6 +1,7 @@
 ---
 title: Upgrade on Kubernetes
 slug: /deployment/upgrade/kubernetes
+collate: false
 ---
 
 # Upgrade on Kubernetes

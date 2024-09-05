@@ -1,6 +1,7 @@
 ---
 title: Keycloak SSO for Docker
 slug: /deployment/security/keycloak/docker
+collate: false
 ---
 
 # Keycloak SSO for Docker

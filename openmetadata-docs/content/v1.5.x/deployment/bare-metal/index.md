@@ -1,6 +1,7 @@
 ---
 title: Bare Metal Deployment
 slug: /deployment/bare-metal
+collate: false
 ---
 
 # Deploy on Bare Metal

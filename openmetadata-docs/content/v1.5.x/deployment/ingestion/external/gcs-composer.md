@@ -1,6 +1,7 @@
 ---
 title: Run the ingestion from GCS Composer
 slug: /deployment/ingestion/external/gcs-composer
+collate: false
 ---
 
 {% partial file="/v1.5/deployment/external-ingestion.md" /%}

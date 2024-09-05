@@ -1,6 +1,7 @@
 ---
 title: SAML SSO for Kubernetes
 slug: /deployment/security/saml/kubernetes
+collate: false
 ---
 
 # SAML SSO for Kubernetes

@@ -1,6 +1,7 @@
 ---
 title: Amazon Cognito SSO for Docker
 slug: /deployment/security/amazon-cognito/docker
+collate: false
 ---
 
 # Amazon Cognito SSO for Docker

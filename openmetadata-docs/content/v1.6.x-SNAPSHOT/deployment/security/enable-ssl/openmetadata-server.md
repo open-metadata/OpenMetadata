@@ -1,6 +1,7 @@
 ---
 title: Enable SSL at the OpenMetadata Server
 slug: /deployment/security/enable-ssl/openmetadata-server
+collate: false
 ---
 
 # Enable SSL at the OpenMetadata Server

@@ -1,6 +1,7 @@
 ---
 title: Auth0 SSO for Bare Metal
 slug: /deployment/security/auth0/bare-metal
+collate: false
 ---
 
 # Auth0 SSO for Bare Metal

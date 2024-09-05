@@ -1,6 +1,7 @@
 ---
 title: Server Configuration Reference
 slug: /deployment/configuration
+collate: false
 ---
 
 # Server Configuration Reference

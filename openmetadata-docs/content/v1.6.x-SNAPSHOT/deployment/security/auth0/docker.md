@@ -1,6 +1,7 @@
 ---
 title: Auth0 SSO for Docker
 slug: /deployment/security/auth0/docker
+collate: false
 ---
 
 # Auth0 SSO for Docker

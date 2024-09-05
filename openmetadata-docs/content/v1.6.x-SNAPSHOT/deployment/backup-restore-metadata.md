@@ -1,6 +1,7 @@
 ---
 title: Backup Metadata
 slug: /deployment/backup-restore-metadata
+collate: false
 ---
 
 # Backup & Restore Metadata

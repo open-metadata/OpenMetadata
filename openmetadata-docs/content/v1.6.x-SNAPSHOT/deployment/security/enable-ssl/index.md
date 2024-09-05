@@ -1,6 +1,7 @@
 ---
 title: Enable SSL
 slug: /deployment/security/enable-ssl
+collate: false
 ---
 
 # Enable SSL

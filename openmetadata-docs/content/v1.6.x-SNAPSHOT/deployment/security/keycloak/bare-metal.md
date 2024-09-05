@@ -1,6 +1,7 @@
 ---
 title: Keycloak SSO for Bare Metal
 slug: /deployment/security/keycloak/bare-metal
+collate: false
 ---
 
 # Keycloak SSO for Bare Metal

@@ -1,6 +1,7 @@
 ---
 title: Okta SSO for Kubernetes
 slug: /deployment/security/okta/kubernetes
+collate: false
 ---
 
 # Okta SSO for Kubernetes

@@ -1,6 +1,7 @@
 ---
 title: Kubernetes Deployment
 slug: /deployment/kubernetes
+collate: false
 ---
 
 # Kubernetes Deployment

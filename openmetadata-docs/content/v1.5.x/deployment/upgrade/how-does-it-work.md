@@ -1,6 +1,7 @@
 ---
 title: How do the Upgrade & Backup work?
 slug: /deployment/upgrade/how-does-it-work
+collate: false
 ---
 
 # How do the Upgrade & Backup work?

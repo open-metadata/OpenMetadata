@@ -1,6 +1,7 @@
 ---
 title: Upgrade on Docker
 slug: /deployment/upgrade/docker
+collate: false
 ---
 
 # Upgrade on Docker

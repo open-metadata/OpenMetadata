@@ -1,6 +1,7 @@
 ---
 title: Okta SSO for Bare Metal
 slug: /deployment/security/okta/bare-metal
+collate: false
 ---
 
 # Okta SSO for Bare Metal

@@ -1,6 +1,7 @@
 ---
 title: Auth0 SSO for Kubernetes
 slug: /deployment/security/auth0/kubernetes
+collate: false
 ---
 
 # Auth0 SSO for Kubernetes

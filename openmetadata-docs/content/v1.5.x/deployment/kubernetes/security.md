@@ -1,6 +1,7 @@
 ---
 title: Enable Security
 slug: /deployment/kubernetes/security
+collate: false
 ---
 
 # Kubernetes Security

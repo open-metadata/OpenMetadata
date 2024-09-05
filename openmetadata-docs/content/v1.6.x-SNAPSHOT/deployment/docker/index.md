@@ -1,6 +1,7 @@
 ---
 title: Docker Deployment
 slug: /deployment/docker
+collate: false
 ---
 
 # Docker Deployment

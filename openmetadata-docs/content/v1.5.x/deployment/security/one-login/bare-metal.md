@@ -1,6 +1,7 @@
 ---
 title: OneLogin SSO for Bare Metal
 slug: /deployment/security/one-login/bare-metal
+collate: false
 ---
 
 # OneLogin SSO for Bare Metal

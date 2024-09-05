@@ -1,6 +1,7 @@
 ---
 title: Basic Authentication
 slug: /deployment/security/basic-auth
+collate: false
 ---
 
 # UserName/Password Login

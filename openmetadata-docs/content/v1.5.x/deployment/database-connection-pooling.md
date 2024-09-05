@@ -1,6 +1,7 @@
 ---
 title: Database Connection Pooling
 slug: /deployment/database-connection-pooling
+collate: false
 ---
 
 # Database Connection Pool

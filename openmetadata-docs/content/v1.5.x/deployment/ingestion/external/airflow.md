@@ -1,6 +1,7 @@
 ---
 title: Run the ingestion from your Airflow
 slug: /deployment/ingestion/external/airflow
+collate: false
 ---
 
 {% partial file="/v1.5/deployment/external-ingestion.md" /%}

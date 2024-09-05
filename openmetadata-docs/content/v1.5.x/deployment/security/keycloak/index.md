@@ -1,6 +1,7 @@
 ---
 title: Keycloak SSO
 slug: /deployment/security/keycloak
+collate: false
 ---
 
 # Keycloak SSO

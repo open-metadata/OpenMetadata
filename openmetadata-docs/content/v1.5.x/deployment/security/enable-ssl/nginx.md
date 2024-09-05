@@ -1,6 +1,7 @@
 ---
 title: Enable SSL with Nginx
 slug: /deployment/security/enable-ssl/nginx
+collate: false
 ---
 
 # Enable SSL with Nginx

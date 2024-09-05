@@ -1,6 +1,7 @@
 ---
 title: Upgrade on Bare Metal
 slug: /deployment/upgrade/bare-metal
+collate: false
 ---
 
 # Upgrade on Bare Metal

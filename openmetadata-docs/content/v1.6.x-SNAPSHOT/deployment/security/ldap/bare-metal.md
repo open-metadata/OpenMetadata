@@ -1,6 +1,7 @@
 ---
 title: Ldap Authentication for Bare Metal
 slug: /deployment/security/ldap/bare-metal
+collate: false
 ---
 
 # Ldap Authentication for Bare Metal

@@ -1,6 +1,7 @@
 ---
 title: Enable JWT Tokens
 slug: /deployment/security/enable-jwt-tokens
+collate: false
 ---
 
 # Enable JWT Tokens

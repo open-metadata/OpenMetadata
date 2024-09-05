@@ -1,6 +1,7 @@
 ---
 title: Google SSO for Kubernetes
 slug: /deployment/security/google/kubernetes
+collate: false
 ---
 
 # Google SSO for Kubernetes

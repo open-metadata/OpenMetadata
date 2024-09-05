@@ -1,6 +1,7 @@
 ---
 title: Upgrade Version Instructions
 slug: /deployment/upgrade/versions
+collate: false
 ---
 
 ## Version Changes
