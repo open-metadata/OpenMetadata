@@ -1,6 +1,7 @@
 ---
 title: Okta SSO
 slug: /deployment/security/okta
+collate: false
 ---
 
 # Okta SSO

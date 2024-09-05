@@ -1,6 +1,7 @@
 ---
 title: Google SSO for Docker
 slug: /deployment/security/google/docker
+collate: false
 ---
 
 # Google SSO for Docker
