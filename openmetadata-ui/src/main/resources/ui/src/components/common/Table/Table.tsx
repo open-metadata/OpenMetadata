@@ -12,11 +12,25 @@
  */
 import { SpinProps, Table as AntdTable, TableProps } from 'antd';
 import React, { useMemo } from 'react';
+import { useAntdColumnResize } from 'react-antd-column-resize';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
+import './table.less';
+
+interface TableComponentProps<T> extends TableProps<T> {
+  resizableColumns?: boolean;
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/ban-types
-const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
+const Table = <T extends object = any>({
+  loading,
+  ...rest
+}: TableComponentProps<T>) => {
+  const { resizableColumns, components, tableWidth } = useAntdColumnResize(
+    () => ({ columns: rest.columns || [], minWidth: 150 }),
+    [rest.columns]
+  );
+
   const isLoading = useMemo(
     () => (loading as SpinProps)?.spinning ?? (loading as boolean) ?? false,
     [loading]
@@ -56,6 +70,14 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
   //     );
   //   }
 
+  const resizingTableProps = rest.resizableColumns
+    ? {
+        columns: resizableColumns,
+        components,
+        scroll: { x: tableWidth },
+      }
+    : {};
+
   return (
     <AntdTable
       {...rest}
@@ -68,6 +90,7 @@ const Table = <T extends object = any>({ loading, ...rest }: TableProps<T>) => {
         ...rest.locale,
         emptyText: isLoading ? null : rest.locale?.emptyText,
       }}
+      {...resizingTableProps}
     />
   );
 };
