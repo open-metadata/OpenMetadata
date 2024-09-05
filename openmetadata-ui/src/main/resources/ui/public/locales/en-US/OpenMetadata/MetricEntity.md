@@ -1,4 +1,4 @@
-# Custom Property
+# Metric
 
 Track the health of your data assets with metrics.
 
