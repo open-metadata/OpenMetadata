@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from 'antd';
+import { Card, Typography } from 'antd';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { Metric } from '../../../generated/entity/data/metric';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
@@ -21,8 +22,16 @@ const MetricExpression = ({
 }: {
   expression: Metric['expression'];
 }) => {
+  const { t } = useTranslation();
+
   if (!expression) {
-    return null;
+    return (
+      <Typography.Text data-testid="no-data-message">
+        <Typography.Text className="text-grey-body">
+          {t('message.no-data-available')}
+        </Typography.Text>
+      </Typography.Text>
+    );
   }
 
   return (
