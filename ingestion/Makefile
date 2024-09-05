@@ -65,8 +65,8 @@ unit_ingestion:  ## Run Python unit tests
 run_ometa_integration_tests:  ## Run Python integration tests
 	nox -f $(INGESTION_DIR)/noxfile.py -t integration --report nox-integration.json
 
-.PHONE: run_e2e_tests
-run_e2e_tests:
+.PHONE: run_py_e2e_tests
+run_py_e2e_tests:
 	nox -f $(INGESTION_DIR)/noxfile.py -k $(E2E_TEST) -t e2e --report nox-e2e-$(E2E_TEST).json
 
 .PHONY: run_python_tests

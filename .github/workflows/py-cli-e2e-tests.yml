@@ -158,7 +158,7 @@ jobs:
         echo "    coverage.process_startup()" >> $SITE_CUSTOMIZE_PATH
         echo "except ImportError:" >> $SITE_CUSTOMIZE_PATH
         echo "    pass" >> $SITE_CUSTOMIZE_PATH
-        make run_e2e_tests E2E_TEST=$E2E_TEST
+        make E2E_TEST=$E2E_TEST run_py_e2e_tests 
         coverage combine --data-file=.coverage.$E2E_TEST --rcfile=ingestion/pyproject.toml --keep -a .coverage*
         coverage report --rcfile ingestion/pyproject.toml --data-file .coverage.$E2E_TEST || true
 
