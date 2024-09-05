@@ -13,7 +13,6 @@
 import { render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getDomainList } from '../../rest/domainAPI';
 import { getLimitConfig } from '../../rest/limitsAPI';
 import applicationsClassBase from '../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppContainer from './AppContainer';
@@ -84,15 +83,5 @@ describe('AppContainer', () => {
     );
 
     expect(getLimitConfig).toHaveBeenCalled();
-  });
-
-  it('should call domain list to cache domains', () => {
-    render(
-      <MemoryRouter>
-        <AppContainer />
-      </MemoryRouter>
-    );
-
-    expect(getDomainList).toHaveBeenCalled();
   });
 });

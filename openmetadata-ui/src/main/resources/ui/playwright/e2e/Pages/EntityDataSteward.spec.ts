@@ -179,6 +179,10 @@ entities.forEach((EntityClass) => {
       await entity.followUnfollowEntity(page, entityName);
     });
 
+    test(`Update displayName`, async ({ page }) => {
+      await entity.renameEntity(page, entity.entity.name);
+    });
+
     test.afterAll('Cleanup', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);

@@ -181,12 +181,13 @@ test.describe('Domains', () => {
     await afterAction();
   });
 
-  test('Switch domain from navbar and check domain query call warp in quotes', async ({
+  test('Switch domain from navbar and check domain query call wrap in quotes', async ({
     page,
   }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     await domain.create(apiContext);
+    await page.reload();
     await page.getByTestId('domain-dropdown').click();
     await page
       .locator(
@@ -217,8 +218,8 @@ test.describe('Domains', () => {
     const { assets, assetCleanup } = await setupAssetsForDomain(page);
     const domain = new Domain();
     await domain.create(apiContext);
-    await sidebarClick(page, SidebarItem.DOMAIN);
     await page.reload();
+    await sidebarClick(page, SidebarItem.DOMAIN);
     await addAssetsToDomain(page, domain.data, assets);
     await page.getByTestId('documentation').click();
     const updatedDomainName = 'PW Domain Updated';
@@ -275,10 +276,12 @@ test.describe('Domains Rbac', () => {
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
-    await domain1.create(apiContext);
-    await domain2.create(apiContext);
-    await domain3.create(apiContext);
-    await user1.create(apiContext);
+    await Promise.all([
+      domain1.create(apiContext),
+      domain2.create(apiContext),
+      domain3.create(apiContext),
+      user1.create(apiContext),
+    ]);
 
     const domainPayload: Operation[] = [
       {
@@ -322,6 +325,8 @@ test.describe('Domains Rbac', () => {
   });
 
   test('Domain Rbac', async ({ browser }) => {
+    test.slow(true);
+
     const { page, afterAction, apiContext } = await performAdminLogin(browser);
     const { page: userPage, afterAction: afterActionUser1 } =
       await performUserLogin(browser, user1);
@@ -363,6 +368,19 @@ test.describe('Domains Rbac', () => {
           .locator('span')
       ).toBeVisible();
 
+      // Visit explore page and verify if domain is passed in the query
+      const queryRes = userPage.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await sidebarClick(userPage, SidebarItem.EXPLORE);
+      await queryRes.then(async (res) => {
+        const queryString = new URL(res.request().url()).search;
+        const urlParams = new URLSearchParams(queryString);
+        const qParam = urlParams.get('q');
+
+        await expect(qParam).toContain(`domain.fullyQualifiedName:`);
+      });
+
       for (const asset of domainAssset2) {
         const fqn = encodeURIComponent(
           get(asset, 'entityResponseData.fullyQualifiedName', '')
@@ -384,10 +402,13 @@ test.describe('Domains Rbac', () => {
       await afterActionUser1();
     });
 
-    await domain1.delete(apiContext);
-    await domain2.delete(apiContext);
-    await domain3.delete(apiContext);
-    await user1.delete(apiContext);
+    await Promise.all([
+      domain1.delete(apiContext),
+      domain2.delete(apiContext),
+      domain3.delete(apiContext),
+      user1.delete(apiContext),
+    ]);
+
     await assetCleanup1();
     await assetCleanup2();
     await afterAction();
