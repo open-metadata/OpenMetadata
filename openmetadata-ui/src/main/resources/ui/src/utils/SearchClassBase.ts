@@ -483,9 +483,6 @@ class SearchClassBase {
       case SearchIndex.API_ENDPOINT_INDEX:
         return [...COMMON_DROPDOWN_ITEMS, ...API_ENDPOINT_DROPDOWN_ITEMS];
 
-      case SearchIndex.METRIC_SEARCH_INDEX:
-        return [...COMMON_DROPDOWN_ITEMS];
-
       case SearchIndex.DASHBOARD:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
 
@@ -511,6 +508,7 @@ class SearchClassBase {
       case SearchIndex.DATABASE:
       case SearchIndex.DATABASE_SCHEMA:
       case SearchIndex.API_COLLECTION_INDEX:
+      case SearchIndex.METRIC_SEARCH_INDEX:
         return COMMON_DROPDOWN_ITEMS;
       case SearchIndex.DATA_ASSET:
         return DATA_ASSET_DROPDOWN_ITEMS;
