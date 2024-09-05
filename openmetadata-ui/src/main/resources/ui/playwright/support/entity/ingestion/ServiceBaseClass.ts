@@ -41,6 +41,7 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
+  protected entityFQN: string | null;
 
   constructor(
     category: Services,
@@ -56,6 +57,7 @@ class ServiceBaseClass {
     this.entityName = entity;
     this.shouldTestConnection = shouldTestConnection;
     this.shouldAddIngestion = shouldAddIngestion;
+    this.entityFQN = null;
   }
 
   visitService() {
@@ -402,7 +404,7 @@ class ServiceBaseClass {
     // Navigate to ingested table
     await visitEntityPage({
       page,
-      searchTerm: `${this.serviceName} ${this.entityName}`,
+      searchTerm: this.entityFQN ?? this.entityName,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
@@ -446,7 +448,7 @@ class ServiceBaseClass {
     // Navigate to table name
     await visitEntityPage({
       page,
-      searchTerm: `${this.serviceName} ${this.entityName}`,
+      searchTerm: this.entityFQN ?? this.entityName,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
