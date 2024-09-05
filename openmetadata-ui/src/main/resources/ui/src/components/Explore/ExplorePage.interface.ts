@@ -66,7 +66,8 @@ export type ExploreSearchIndex =
   | SearchIndex.STORED_PROCEDURE
   | SearchIndex.DASHBOARD_DATA_MODEL
   | SearchIndex.API_COLLECTION_INDEX
-  | SearchIndex.API_ENDPOINT_INDEX;
+  | SearchIndex.API_ENDPOINT_INDEX
+  | SearchIndex.METRIC_SEARCH_INDEX;
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 

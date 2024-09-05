@@ -30,6 +30,7 @@ import DataModelVersion from '../../components/Dashboard/DataModel/DataModelVers
 import StoredProcedureVersion from '../../components/Database/StoredProcedureVersion/StoredProcedureVersion.component';
 import TableVersion from '../../components/Database/TableVersion/TableVersion.component';
 import DataProductsPage from '../../components/DataProducts/DataProductsPage/DataProductsPage.component';
+import MetricVersion from '../../components/Metric/MetricVersion/MetricVersion';
 import MlModelVersion from '../../components/MlModel/MlModelVersion/MlModelVersion.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import PipelineVersion from '../../components/Pipeline/PipelineVersion/PipelineVersion.component';
@@ -691,6 +692,23 @@ const EntityVersionPage: FunctionComponent = () => {
             isVersionLoading={isVersionLoading}
             owners={owners}
             slashedApiEndpointName={slashedEntityName}
+            tier={tier as TagLabel}
+            version={version}
+            versionHandler={versionHandler}
+            versionList={versionList}
+          />
+        );
+      }
+      case EntityType.METRIC: {
+        return (
+          <MetricVersion
+            backHandler={backHandler}
+            currentVersionData={currentVersionData as Metric}
+            domain={domain}
+            entityPermissions={entityPermissions}
+            isVersionLoading={isVersionLoading}
+            owners={owners}
+            slashedMetricName={slashedEntityName}
             tier={tier as TagLabel}
             version={version}
             versionHandler={versionHandler}

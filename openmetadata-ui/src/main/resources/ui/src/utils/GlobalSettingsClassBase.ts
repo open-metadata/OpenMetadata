@@ -417,6 +417,15 @@ class GlobalSettingsClassBase {
             icon: SchemaIcon,
           },
           {
+            label: t('label.metric'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.metric'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
+            icon: SchemaIcon,
+          },
+          {
             label: t('label.table-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.table-plural'),

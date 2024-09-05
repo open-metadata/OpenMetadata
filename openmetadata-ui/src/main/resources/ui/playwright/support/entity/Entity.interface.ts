@@ -38,6 +38,7 @@ export enum EntityTypeEndpoint {
   API_COLLECTION = 'apiCollections',
   API_ENDPOINT = 'apiEndpoints',
   DATA_PRODUCT = 'dataProducts',
+  METRIC = 'metrics',
 }
 
 export type EntityDataType = {
@@ -64,6 +65,7 @@ export enum ENTITY_PATH {
   'apiCollections' = 'apiCollection',
   'apiEndpoints' = 'apiEndpoint',
   'dataProducts' = 'dataProduct',
+  'metrics' = 'metric',
 }
 
 export type TestCaseData = {

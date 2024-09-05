@@ -175,6 +175,11 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = IconApiEndpoint;
 
       break;
+    case SearchIndex.METRIC_SEARCH_INDEX:
+      label = i18next.t('label.metric-plural');
+      GroupIcon = IconTag;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =

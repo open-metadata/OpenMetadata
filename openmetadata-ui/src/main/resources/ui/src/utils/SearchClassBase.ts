@@ -189,6 +189,10 @@ class SearchClassBase {
         value: SearchIndex.API_COLLECTION_INDEX,
         label: i18n.t('label.api-collection'),
       },
+      {
+        value: SearchIndex.METRIC_SEARCH_INDEX,
+        label: i18n.t('label.metric'),
+      },
     ];
   }
 
@@ -334,6 +338,7 @@ class SearchClassBase {
       [ExplorePageTabs.MLMODELS]: [SearchIndex.MLMODEL],
       [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
       [ExplorePageTabs.API_ENDPOINT]: [SearchIndex.API_ENDPOINT_INDEX],
+      [ExplorePageTabs.METRIC]: [SearchIndex.METRIC_SEARCH_INDEX],
     };
 
     return tabMapping[tab] || [SearchIndex.DATABASE];
@@ -457,6 +462,14 @@ class SearchClassBase {
         path: ExplorePageTabs.API_ENDPOINT,
         icon: IconAPIEndpoint,
       },
+      [SearchIndex.METRIC_SEARCH_INDEX]: {
+        label: i18n.t('label.metric-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        sortOrder: TAGS_INITIAL_SORT_ORDER,
+        path: ExplorePageTabs.METRIC,
+        icon: ClassificationIcon,
+      },
     };
   }
   public getDropDownItems(index: string) {
@@ -469,6 +482,9 @@ class SearchClassBase {
 
       case SearchIndex.API_ENDPOINT_INDEX:
         return [...COMMON_DROPDOWN_ITEMS, ...API_ENDPOINT_DROPDOWN_ITEMS];
+
+      case SearchIndex.METRIC_SEARCH_INDEX:
+        return [...COMMON_DROPDOWN_ITEMS];
 
       case SearchIndex.DASHBOARD:
         return [...COMMON_DROPDOWN_ITEMS, ...DASHBOARD_DROPDOWN_ITEMS];
