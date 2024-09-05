@@ -1,6 +1,7 @@
 ---
 title: SAML SSO
 slug: /deployment/security/saml
+collate: false
 ---
 
 # SAML SSO
