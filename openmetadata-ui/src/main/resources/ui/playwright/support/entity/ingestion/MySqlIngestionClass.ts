@@ -23,7 +23,12 @@ class MysqlIngestionClass extends ServiceBaseClass {
   name: string;
   tableFilter: string[];
   constructor() {
-    super(Services.Database, `pw-mysql-${uuid()}`, 'Mysql', 'bot_entity');
+    super(
+      Services.Database,
+      `pw-mysql-with-%-${uuid()}`,
+      'Mysql',
+      'bot_entity'
+    );
     this.tableFilter = ['bot_entity', 'alert_entity', 'chart_entity'];
   }
 

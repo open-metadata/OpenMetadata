@@ -1,6 +1,7 @@
 ---
 title: Custom OIDC SSO for Kubernetes
 slug: /deployment/security/custom-oidc/kubernetes
+collate: false
 ---
 
 # Custom OIDC SSO for Kubernetes

@@ -1,6 +1,7 @@
 ---
 title: AWS Secrets Manager
 slug: /deployment/secrets-manager/supported-implementations/aws-secrets-manager
+collate: false
 ---
 
 # AWS Secrets Manager
