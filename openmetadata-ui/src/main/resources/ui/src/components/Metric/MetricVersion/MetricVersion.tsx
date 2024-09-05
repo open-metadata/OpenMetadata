@@ -34,6 +34,7 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import MetricExpression from '../MetricExpression/MetricExpression';
 import { MetricVersionProp } from './MetricVersion.interface';
 
 const MetricVersion: FC<MetricVersionProp> = ({
@@ -119,6 +120,11 @@ const MetricVersion: FC<MetricVersionProp> = ({
                     description={description}
                     entityType={EntityType.METRIC}
                     showActions={false}
+                  />
+                </Col>
+                <Col span={24}>
+                  <MetricExpression
+                    expression={currentVersionData.expression}
                   />
                 </Col>
               </Row>

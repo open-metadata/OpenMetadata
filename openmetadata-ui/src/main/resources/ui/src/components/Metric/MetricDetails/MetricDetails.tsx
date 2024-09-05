@@ -53,6 +53,7 @@ import Lineage from '../../Lineage/Lineage.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
+import MetricExpression from '../MetricExpression/MetricExpression';
 import { MetricDetailsProps } from './MetricDetails.interface';
 
 const MetricDetails: React.FC<MetricDetailsProps> = ({
@@ -302,6 +303,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
+                      <MetricExpression expression={metricDetails.expression} />
                     </div>
                   ),
                   minWidth: 800,
