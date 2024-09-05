@@ -22,6 +22,8 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
@@ -137,18 +139,49 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     public void entitySpecificUpdate() {
       recordChange("input", original.getInput(), updated.getInput(), true);
       recordChange("batchSize", original.getBatchSize(), updated.getBatchSize());
+      updateDestinationsForActivityFeedAlert(original, updated);
+      recordChange(
+          "destinations",
+          original.getDestinations(),
+          encryptWebhookSecretKey(updated.getDestinations()),
+          true,
+          objectMatch,
+          false);
+
       if (!original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
         recordChange(
             "filteringRules", original.getFilteringRules(), updated.getFilteringRules(), true);
         recordChange("enabled", original.getEnabled(), updated.getEnabled());
-        recordChange(
-            "destinations",
-            original.getDestinations(),
-            encryptWebhookSecretKey(updated.getDestinations()),
-            true,
-            objectMatch,
-            false);
         recordChange("trigger", original.getTrigger(), updated.getTrigger(), true);
+      }
+    }
+
+    public void updateDestinationsForActivityFeedAlert(
+        EventSubscription original, EventSubscription updated) {
+      if (original.getAlertType().equals(CreateEventSubscription.AlertType.ACTIVITY_FEED)) {
+
+        // Created a set of destination types in the updated destinations for quick lookups and to
+        // avoid inner loops
+        Set<SubscriptionDestination.SubscriptionType> updatedDestinationTypes =
+            updated.getDestinations().stream()
+                .map(SubscriptionDestination::getType)
+                .collect(Collectors.toSet());
+
+        original
+            .getDestinations()
+            .forEach(
+                originalDestination -> {
+                  if (originalDestination
+                      .getType()
+                      .equals(SubscriptionDestination.SubscriptionType.ACTIVITY_FEED)) {
+
+                    // check if we have the activity feed destination in the updated destinations
+                    if (!updatedDestinationTypes.contains(originalDestination.getType())) {
+                      updated.getDestinations().add(0, originalDestination);
+                      updatedDestinationTypes.add(originalDestination.getType());
+                    }
+                  }
+                });
       }
     }
   }
