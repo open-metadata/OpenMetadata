@@ -19,6 +19,7 @@ import { CreateMetric } from '../generated/api/data/createMetric';
 import { Metric } from '../generated/entity/data/metric';
 import { EntityReference } from '../generated/entity/type';
 import { EntityHistory } from '../generated/type/entityHistory';
+import { Include } from '../generated/type/include';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
@@ -39,6 +40,7 @@ export const getMetricByFqn = async (fqn: string, params?: ListParams) => {
     {
       params: {
         ...params,
+        include: params?.include ?? Include.All,
       },
     }
   );
