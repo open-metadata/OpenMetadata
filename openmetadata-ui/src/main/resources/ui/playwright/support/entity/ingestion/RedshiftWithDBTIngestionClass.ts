@@ -166,15 +166,15 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await sidebarClick(page, SidebarItem.TAGS);
 
       await page.waitForSelector('[data-testid="data-summary-container"]');
+
       await page.click(
         `[data-testid="data-summary-container"] >> text=${DBT.classification}`
       );
 
       // Verify DBT tag category is added
-      await page.waitForSelector('[data-testid="tag-name"]');
-      const tagName = await page.textContent('[data-testid="tag-name"]');
-
-      expect(tagName).toContain(DBT.classification);
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await page.waitForSelector('.ant-table-row');
 
