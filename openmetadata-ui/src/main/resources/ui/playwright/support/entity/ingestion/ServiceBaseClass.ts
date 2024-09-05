@@ -402,7 +402,7 @@ class ServiceBaseClass {
     // Navigate to ingested table
     await visitEntityPage({
       page,
-      searchTerm: this.entityName,
+      searchTerm: `${this.serviceName} ${this.entityName}`,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
@@ -446,7 +446,7 @@ class ServiceBaseClass {
     // Navigate to table name
     await visitEntityPage({
       page,
-      searchTerm: this.entityName,
+      searchTerm: `${this.serviceName} ${this.entityName}`,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
