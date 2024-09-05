@@ -134,7 +134,7 @@ class NERScanner(BaseScanner):
         # first, check if the data is JSON or we can work with strings
         is_json, value = self.is_json_data(row)
         if is_json and isinstance(value, dict):
-            for key, val in value.items():
+            for val in value.values():
                 self.process_data(row=str(val), entities_score=entities_score)
         elif is_json and isinstance(value, list):
             for val in value:
