@@ -162,8 +162,8 @@ public class SubscriptionUtil {
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
-    Team tempTeamVar = null;
-    User tempUserVar = null;
+    Team tempTeamVar;
+    User tempUserVar;
 
     if (category.equals(SubscriptionDestination.SubscriptionCategory.ASSIGNEES)) {
       List<EntityReference> assignees = thread.getTask().getAssignees();
@@ -223,8 +223,8 @@ public class SubscriptionUtil {
     Map<UUID, Team> teams = new HashMap<>();
     Map<UUID, User> users = new HashMap<>();
 
-    Team tempTeamVar = null;
-    User tempUserVar = null;
+    Team tempTeamVar;
+    User tempUserVar;
 
     if (category.equals(SubscriptionDestination.SubscriptionCategory.MENTIONS)) {
       List<MessageParser.EntityLink> mentions = MessageParser.getEntityLinks(thread.getMessage());

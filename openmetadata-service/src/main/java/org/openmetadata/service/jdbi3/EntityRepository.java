@@ -1122,7 +1122,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
-    Long total = 0L;
+    Long total;
 
     if (limit > 0) {
       SearchClient.SearchResultListMapper results =
@@ -1421,7 +1421,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-      DateTimeFormatter formatter = null;
+      DateTimeFormatter formatter;
       try {
         if ("date-cp".equals(customPropertyType)) {
           DateTimeFormatter inputFormatter =

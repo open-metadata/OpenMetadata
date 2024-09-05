@@ -182,7 +182,7 @@ export const fillRule = async (
       }
 
       await page
-        .locator(`.ant-select-dropdown [title="${searchData}"]`)
+        .locator(`.ant-select-dropdown:visible [title="${searchData}"]`)
         .click();
     }
 

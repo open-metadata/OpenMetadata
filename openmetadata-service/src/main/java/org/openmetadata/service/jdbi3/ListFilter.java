@@ -303,7 +303,7 @@ public class ListFilter extends Filter<ListFilter> {
     queryParams.put("escapedCategory", category);
     return tableName == null
         ? "category LIKE :escapedCategory"
-        : String.format(tableName + ".category LIKE :escapedCategory");
+        : tableName + ".category LIKE :escapedCategory";
   }
 
   private String getStatusPrefixCondition(String tableName, String statusPrefix) {
@@ -324,7 +324,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   protected String addCondition(List<String> conditions) {
-    StringBuffer condition = new StringBuffer();
+    StringBuilder condition = new StringBuilder();
 
     for (String c : conditions) {
       if (!c.isEmpty()) {

@@ -358,6 +358,12 @@ site_menu:
     url: /connectors/database/sap-hana
   - category: Connectors / Database / SAP Hana / Run Externally
     url: /connectors/database/sap-hana/yaml
+  - category: Connectors / Database / SAP ERP
+    url: /connectors/database/sap-erp
+  - category: Connectors / Database / SAP ERP / Run Externally
+    url: /connectors/database/sap-erp/yaml
+  - category: Connectors / Database / SAP ERP / Setup SAP ERP APIs
+    url: /connectors/database/sap-erp/setup-sap-apis
   - category: Connectors / Database / SAS
     url: /connectors/database/sas
   - category: Connectors / Database / SAS / Run Externally
@@ -911,6 +917,32 @@ site_menu:
     url: /releases/supported
   - category: Releases / All Releases
     url: /releases/all-releases
+  - category: Releases / All Releases / 1.5.1 Release
+    url: /releases/all-releases/#1.5.1-release
+  - category: Releases / All Releases / 1.4.8 Release
+    url: /releases/all-releases/#1.4.8-release
+  - category: Releases / All Releases / 1.4.7 Release
+    url: /releases/all-releases/#1.4.7-release
+  - category: Releases / All Releases / 1.4.6 Release
+    url: /releases/all-releases/#1.4.6-release
+  - category: Releases / All Releases / 1.4.5 Release
+    url: /releases/all-releases/#1.4.5-release
+  - category: Releases / All Releases / 1.4.4 Release
+    url: /releases/all-releases/#1.4.4-release
+  - category: Releases / All Releases / 1.4.3 Release
+    url: /releases/all-releases/#1.4.3-release
+  - category: Releases / All Releases / 1.4.2 Release
+    url: /releases/all-releases/#1.4.2-release
+  - category: Releases / All Releases / 1.4.1 Release
+    url: /releases/all-releases/#1.4.1-release
+  - category: Releases / All Releases / 1.4.0 Release
+    url: /releases/all-releases/#1.4.0-release
+  - category: Releases / All Releases / 1.3.4 Release
+    url: /releases/all-releases/#1.3.4-release
+  - category: Releases / All Releases / 1.3.3 Release
+    url: /releases/all-releases/#1.3.3-release
+  - category: Releases / All Releases / 1.3.2 Release
+    url: /releases/all-releases/#1.3.2-release
   - category: Releases / All Releases / 1.3.1 Release
     url: /releases/all-releases/#1.3.1-release
   - category: Releases / All Releases / 1.3.0 Release
