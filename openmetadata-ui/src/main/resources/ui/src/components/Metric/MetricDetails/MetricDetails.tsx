@@ -72,7 +72,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
-  const { tab: activeTab = EntityTabs.SCHEMA } =
+  const { tab: activeTab = EntityTabs.OVERVIEW } =
     useParams<{ tab: EntityTabs }>();
   const { fqn: decodedMetricFqn } = useFqn();
   const history = useHistory();
@@ -279,8 +279,10 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const tabs = useMemo(
     () => [
       {
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
-        key: EntityTabs.SCHEMA,
+        label: (
+          <TabsLabel id={EntityTabs.OVERVIEW} name={t('label.overview')} />
+        ),
+        key: EntityTabs.OVERVIEW,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="tab-content-height-with-resizable-panel" span={24}>
@@ -455,7 +457,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeTab ?? EntityTabs.SCHEMA}
+            activeKey={activeTab ?? EntityTabs.OVERVIEW}
             className="entity-details-page-tabs"
             data-testid="tabs"
             items={tabs}

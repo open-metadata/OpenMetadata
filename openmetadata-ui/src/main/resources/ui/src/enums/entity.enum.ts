@@ -202,6 +202,7 @@ export enum EntityTabs {
   CODE = 'code',
   API_COLLECTION = 'apiCollection',
   API_ENDPOINT = 'apiEndpoint',
+  OVERVIEW = 'overview',
 }
 
 export enum EntityAction {

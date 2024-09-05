@@ -109,8 +109,10 @@ const MetricVersion: FC<MetricVersionProp> = ({
   const tabItems: TabsProps['items'] = useMemo(
     () => [
       {
-        key: EntityTabs.SCHEMA,
-        label: <TabsLabel id={EntityTabs.SCHEMA} name={t('label.schema')} />,
+        label: (
+          <TabsLabel id={EntityTabs.OVERVIEW} name={t('label.overview')} />
+        ),
+        key: EntityTabs.OVERVIEW,
         children: (
           <Row gutter={[0, 16]} wrap={false}>
             <Col className="p-t-sm m-x-lg" flex="auto">
@@ -201,7 +203,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
             </Col>
             <Col span={24}>
               <Tabs
-                defaultActiveKey={tab ?? EntityTabs.SCHEMA}
+                defaultActiveKey={tab ?? EntityTabs.OVERVIEW}
                 items={tabItems}
                 onChange={handleTabChange}
               />
