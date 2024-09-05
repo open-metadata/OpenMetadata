@@ -28,6 +28,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.schema.type.ColumnDataType.BIGINT;
 import static org.openmetadata.schema.type.MetadataOperation.EDIT_TESTS;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.getSearchRepository;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -75,6 +76,7 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
@@ -101,6 +103,8 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.models.IndexMapping;
 import org.openmetadata.service.util.JsonUtils;
@@ -2749,6 +2753,34 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     updateEntity(update, OK, ADMIN_AUTH_HEADERS);
     testCase = getTestCase(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
     assertFalse(testCase.getUseDynamicAssertion());
+  }
+
+  @Test
+  void aggregate_testCaseResults(TestInfo testInfo) throws IOException, ParseException {
+    // Set up tests
+    SearchRepository searchRepository = getSearchRepository();
+    CreateTestCase create = createRequest(testInfo);
+    create
+            .withEntityLink(TABLE_COLUMN_LINK)
+            .withTestSuite(TEST_SUITE1.getFullyQualifiedName())
+            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+            .withParameterValues(
+                    List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    for (int i = 1; i < 10; i++) {
+      TestCaseResult testCaseResult =
+              new TestCaseResult()
+                      .withResult("tested")
+                      .withTestCaseStatus(TestCaseStatus.Success)
+                      .withTimestamp(TestUtils.dateToTimestamp("2021-09-0%s".formatted(i)));
+        putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS);
+    }
+
+    // Test aggregation
+    String aggregationQuery = "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
+    Map<String, Object> aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    DataQualityReport dataQualityReport = searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
+    assertNotNull(dataQualityReport.getData());
   }
 
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {

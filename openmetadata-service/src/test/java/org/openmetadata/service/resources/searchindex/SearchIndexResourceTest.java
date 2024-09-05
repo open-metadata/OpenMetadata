@@ -447,6 +447,22 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
     expectedAggregationString =
         "\"entityLinks\":{\"terms\":{\"field\":\"entityLinks.nonNormalized\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
     assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Date histogram aggregation
+    aggregationString =
+            "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    expectedAggregationString =
+        "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"}}";
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
+
+    // Date histogram aggregation with sub aggregation
+    aggregationString =
+            "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=2d,bucketName=minPrice:aggType=min:field=price.adjusted";
+    actualAggregationstring = SearchIndexUtils.buildAggregationString(aggregationString);
+    expectedAggregationString =
+        "\"dates\":{\"date_histogram\":{\"field\":\"timestamp\",\"calendar_interval\":\"2d\"},\"aggs\":{\"minPrice\":{\"min\":{\"field\":\"price.adjusted\"}}}}";
+    assertEquals(expectedAggregationString, actualAggregationstring.get("aggregationStr"));
   }
 
   @Test
@@ -515,6 +531,10 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
               Map<String, String> m = datum.getAdditionalProperties();
               assertTrue(m.containsKey("fullyQualifiedName"));
             });
+
+    aggregationQuery = "bucketName=dates:aggType=date_histogram:field=timestamp&calendar_interval=1d,bucketName=dimesion:aggType=terms:field=testDefinition.dataQualityDimension";
+    aggregationString = SearchIndexUtils.buildAggregationString(aggregationQuery);
+    dataQualityReport = searchRepository.genericAggregation(null, "testCaseResult", aggregationString);
   }
 
   @Override
