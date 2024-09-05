@@ -535,7 +535,7 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
                     raise concurrent.futures.TimeoutError
                 except KeyboardInterrupt:
-                    pool.shutdown(wait=True, cancel_futures=True)
+                    pool.shutdown39(wait=True, cancel_futures=True)
                     raise
 
         return profile_results
