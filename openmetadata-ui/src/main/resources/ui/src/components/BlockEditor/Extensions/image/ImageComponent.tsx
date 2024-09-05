@@ -23,10 +23,7 @@ import {
   Space,
   Tabs,
   Typography,
-  Upload,
-  UploadProps,
 } from 'antd';
-import { UploadChangeParam } from 'antd/lib/upload';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import React, { FC, useState } from 'react';
@@ -48,36 +45,10 @@ const PopoverContent: FC<PopoverContentProps> = ({
   updateAttributes,
   onPopupVisibleChange,
   onUploadingChange,
-  isUploading,
-  deleteNode,
-  isValidSource,
   src,
+  deleteNode,
 }) => {
   const { t } = useTranslation();
-  const handleFileUploadChange = async (info: UploadChangeParam) => {
-    try {
-      const srcUrl = info.file.response?.result;
-      if (srcUrl) {
-        updateAttributes({ src: srcUrl, alt: info.file.fileName });
-        onPopupVisibleChange(false);
-      }
-    } catch (error) {
-      // handle error
-    } finally {
-      onUploadingChange(false);
-    }
-  };
-
-  const handleRequestUpload: UploadProps['customRequest'] = (options) => {
-    onUploadingChange(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(options.file as Blob);
-    reader.addEventListener('load', (e) => {
-      setTimeout(() => {
-        options?.onSuccess?.(e.target);
-      }, 1000);
-    });
-  };
 
   const handleEmbedImage: FormProps['onFinish'] = (values) => {
     onPopupVisibleChange(false);
@@ -86,35 +57,6 @@ const PopoverContent: FC<PopoverContentProps> = ({
     updateAttributes({ src: Url });
     onUploadingChange(false);
   };
-
-  const uploadElement = (
-    <Upload
-      accept="image/jpeg, image/png, image/webp"
-      className="om-node-image-upload"
-      customRequest={handleRequestUpload}
-      data-testid="image-upload-form"
-      multiple={false}
-      showUploadList={false}
-      onChange={handleFileUploadChange}>
-      <Space className="om-image-node-action">
-        <Button className="w-full" disabled={isUploading}>
-          {isValidSource ? t('label.update-image') : t('label.upload-image')}
-        </Button>
-        {isValidSource && (
-          <Button
-            className="w-full"
-            disabled={isUploading}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              deleteNode();
-            }}>
-            {t('label.delete')}
-          </Button>
-        )}
-      </Space>
-    </Upload>
-  );
 
   const embedLinkElement = (
     <Form
@@ -142,6 +84,16 @@ const PopoverContent: FC<PopoverContentProps> = ({
           </Form.Item>
         </Col>
         <Col className="om-image-node-embed-link-btn-col" span={24}>
+          <Space className="om-image-node-action">
+            <Button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                deleteNode();
+              }}>
+              {t('label.delete')}
+            </Button>
+          </Space>
           <Button htmlType="submit" type="primary">
             {t('label.embed-image')}
           </Button>
@@ -152,13 +104,8 @@ const PopoverContent: FC<PopoverContentProps> = ({
 
   return (
     <Tabs
-      defaultActiveKey="upload"
+      defaultActiveKey="embed"
       items={[
-        {
-          label: t('label.upload'),
-          key: 'upload',
-          children: uploadElement,
-        },
         {
           label: t('label.embed-link'),
           key: 'embed',
