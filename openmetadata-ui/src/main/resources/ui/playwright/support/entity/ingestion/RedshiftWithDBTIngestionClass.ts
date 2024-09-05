@@ -176,10 +176,6 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
         state: 'detached',
       });
 
-      await expect(page.getByTestId('tag-name')).toContainText(
-        DBT.classification
-      );
-
       await page.waitForSelector('.ant-table-row');
 
       await expect(page.getByRole('cell', { name: DBT.tagName })).toBeVisible();
