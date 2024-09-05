@@ -235,8 +235,9 @@ test('Query Entity', async ({ page }) => {
     await page.click(`[data-testid="query-btn"]`);
     await page.waitForSelector('.ant-dropdown', { state: 'visible' });
     await page.click(`[data-menu-id*="delete-query"]`);
+    const deleteQueryResponse = page.waitForResponse('/api/v1/queries/*');
     await page.click(`[data-testid="save-button"]`);
-    await page.waitForResponse('/api/v1/queries/*');
+    await deleteQueryResponse;
   });
 });
 

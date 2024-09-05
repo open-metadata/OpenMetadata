@@ -80,7 +80,7 @@ test('Glossary', async ({ page }) => {
     await addMultiOwner({
       page,
       ownerNames: [user.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
+      activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
       isSelectableInsideForm: true,
@@ -179,7 +179,7 @@ test('GlossaryTerm', async ({ page }) => {
     await addMultiOwner({
       page,
       ownerNames: [user.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
+      activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
       isSelectableInsideForm: true,

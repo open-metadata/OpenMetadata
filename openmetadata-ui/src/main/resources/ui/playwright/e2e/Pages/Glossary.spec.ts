@@ -201,7 +201,7 @@ test.describe('Glossary tests', () => {
         await addMultiOwner({
           page,
           ownerNames: [user3.getUserName()],
-          activatorBtnDataTestId: 'edit-owner',
+          activatorBtnDataTestId: 'add-owner',
           resultTestId: 'glossary-right-panel-owner-link',
           endpoint: EntityTypeEndpoint.Glossary,
           isSelectableInsideForm: false,

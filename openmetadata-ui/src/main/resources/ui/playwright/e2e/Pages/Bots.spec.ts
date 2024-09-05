@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { BotClass } from '../../support/bot/BotClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -19,15 +18,15 @@ import {
   createBot,
   deleteBot,
   getCreatedBot,
+  redirectToBotPage,
   tokenExpirationForDays,
   tokenExpirationUnlimitedDays,
   updateBotDetails,
 } from '../../utils/bot';
-import { redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
 const bot = new BotClass();
+const bot2 = new BotClass();
 
 const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ browser }, use) => {
@@ -44,7 +43,7 @@ test.describe('Bots Page should work properly', () => {
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await bot.create(apiContext);
-
+    await bot2.create(apiContext);
     await afterAction();
   });
 
@@ -52,15 +51,14 @@ test.describe('Bots Page should work properly', () => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
     await bot.delete(apiContext);
-
+    await bot2.delete(apiContext);
     await afterAction();
   });
 
   test('Verify ingestion bot delete button is always disabled', async ({
     adminPage,
   }) => {
-    await redirectToHomePage(adminPage);
-    await settingClick(adminPage, GlobalSettingOptions.BOTS);
+    await redirectToBotPage(adminPage);
 
     await expect(
       adminPage.getByTestId('bot-delete-ingestion-bot')
@@ -68,24 +66,21 @@ test.describe('Bots Page should work properly', () => {
   });
 
   test('Create and Delete Bot', async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
-    await settingClick(adminPage, GlobalSettingOptions.BOTS);
+    await redirectToBotPage(adminPage);
     await createBot(adminPage);
     await deleteBot(adminPage);
   });
 
   test('Update display name and description', async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
-    await settingClick(adminPage, GlobalSettingOptions.BOTS);
+    await redirectToBotPage(adminPage);
     await updateBotDetails(adminPage, bot.responseData);
   });
 
   test('Update token expiration', async ({ adminPage }) => {
     test.slow(true);
 
-    await redirectToHomePage(adminPage);
-    await settingClick(adminPage, GlobalSettingOptions.BOTS);
-    await getCreatedBot(adminPage, bot.responseData.name);
+    await redirectToBotPage(adminPage);
+    await getCreatedBot(adminPage, bot2.responseData.name);
     await tokenExpirationForDays(adminPage);
     await tokenExpirationUnlimitedDays(adminPage);
   });

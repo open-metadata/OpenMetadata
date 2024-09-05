@@ -17,7 +17,12 @@ import {
 } from '../../src/utils/date-time/DateTimeUtils';
 import { GlobalSettingOptions } from '../constant/settings';
 import { BotResponseDataType } from '../support/bot/BotClass';
-import { descriptionBox, toastNotification, uuid } from './common';
+import {
+  descriptionBox,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from './common';
 import { settingClick } from './sidebar';
 import { revokeToken } from './user';
 
@@ -207,4 +212,11 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   const tokenExpiryText = await tokenExpiry.innerText();
 
   expect(tokenExpiryText).toContain(BOT_DETAILS.unlimitedExpiryTime);
+};
+
+export const redirectToBotPage = async (page: Page) => {
+  await redirectToHomePage(page);
+  const fetchResponse = page.waitForResponse('api/v1/bots?*');
+  await settingClick(page, GlobalSettingOptions.BOTS);
+  await fetchResponse;
 };
