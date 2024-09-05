@@ -1,6 +1,7 @@
 ---
 title: Azure AKS Deployment
 slug: /deployment/kubernetes/aks
+collate: false
 ---
 # Openmetadata Deployment on Azure Kubernetes Service Cluster
 Openmetadata can be deployed on Azure Kubernetes Service. It however requires certain cloud specific configurations with regards to setting up storage accounts for Airflow which is one of its dependencies.

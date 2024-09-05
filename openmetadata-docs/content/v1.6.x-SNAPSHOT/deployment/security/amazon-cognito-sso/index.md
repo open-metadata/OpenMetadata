@@ -1,6 +1,7 @@
 ---
 title: Amazon Cognito SSO
 slug: /deployment/security/amazon-cognito
+collate: false
 ---
 
 # Amazon Cognito SSO
