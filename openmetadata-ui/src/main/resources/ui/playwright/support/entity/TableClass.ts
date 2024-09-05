@@ -240,13 +240,13 @@ export class TableClass extends EntityClass {
         data: {
           name: `pw-test-case-${uuid()}`,
           entityLink: `<#E::table::${this.entityResponseData?.['fullyQualifiedName']}>`,
-          testDefinition:
-            testCaseData?.testDefinition ?? 'tableRowCountToBeBetween',
+          testDefinition: 'tableRowCountToBeBetween',
           testSuite: this.testSuiteResponseData?.['fullyQualifiedName'],
-          parameterValues: testCaseData?.parameterValues ?? [
+          parameterValues: [
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
           ],
+          ...testCaseData,
         },
       })
       .then((res) => res.json());

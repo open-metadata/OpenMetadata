@@ -68,6 +68,9 @@ export enum ENTITY_PATH {
 }
 
 export type TestCaseData = {
-  parameterValues: unknown[];
-  testDefinition: string;
+  parameterValues?: unknown[];
+  name?: string;
+  entityLink?: string;
+  testDefinition?: string;
+  testSuite?: string;
 };
