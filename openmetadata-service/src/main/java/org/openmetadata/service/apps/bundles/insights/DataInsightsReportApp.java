@@ -123,12 +123,16 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         try {
           DataInsightTotalAssetTemplate totalAssetTemplate =
               createTotalAssetTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           DataInsightDescriptionAndOwnerTemplate descriptionTemplate =
               createDescriptionTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           DataInsightDescriptionAndOwnerTemplate ownershipTemplate =
               createOwnershipTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           DataInsightDescriptionAndOwnerTemplate tierTemplate =
               createTierTemplate(searchClient, team.getName(), timeConfig, contextData);
+
           EmailUtil.sendDataInsightEmailNotificationToUser(
               emails,
               getMonthAndDateFromEpoch(timeConfig.startTime()),
@@ -213,13 +217,16 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
     dateWithCount.forEach((key, value) -> dateMap.put(key, value.intValue()));
     processDateMapToNormalize(dateMap);
 
+    int changeInTotalAssets = (int) (currentCount - previousCount);
+
     if (previousCount == 0D) {
       // it should be undefined
       return new DataInsightTotalAssetTemplate(
-          String.valueOf(currentCount.intValue()), 0D, timeConfig.numberOfDaysChange(), dateMap);
+          String.valueOf(currentCount.intValue()), 0, 0d, timeConfig.numberOfDaysChange(), dateMap);
     } else {
       return new DataInsightTotalAssetTemplate(
           String.valueOf(currentCount.intValue()),
+          changeInTotalAssets,
           ((currentCount - previousCount) / previousCount) * 100,
           timeConfig.numberOfDaysChange(),
           dateMap);
@@ -264,10 +271,13 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentCompletedDescription / currentTotalAssetCount) * 100;
     }
 
+    int changeCount = (int) (currentTotalAssetCount - previousTotalAssetCount);
+
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.DESCRIPTION,
         "percentage_of_data_asset_with_description_kpi",
         currentPercentCompleted,
+        changeCount,
         currentPercentCompleted - previousPercentCompleted,
         currentCompletedDescription.intValue(),
         timeConfig.numberOfDaysChange(),
@@ -312,10 +322,13 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasOwner / currentTotalAssetCount) * 100;
     }
 
+    int changeCount = (int) (currentTotalAssetCount - previousTotalAssetCount);
+
     return getTemplate(
         DataInsightDescriptionAndOwnerTemplate.MetricType.OWNER,
         "percentage_of_data_asset_with_owner_kpi",
         currentPercentCompleted,
+        changeCount,
         currentPercentCompleted - previousPercentCompleted,
         currentHasOwner.intValue(),
         timeConfig.numberOfDaysChange(),
@@ -358,6 +371,8 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       currentPercentCompleted = (currentHasTier / currentTotalAssetCount) * 100;
     }
 
+    int changeCount = (int) (currentTotalAssetCount - previousTotalAssetCount);
+
     // TODO: Understand if we actually use this tierData for anything.
     Map<String, Double> tierData = new HashMap<>();
 
@@ -367,6 +382,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         String.valueOf(currentHasTier.intValue()),
         currentPercentCompleted,
         KPI_NOT_SET,
+        changeCount,
         currentPercentCompleted - previousPercentCompleted,
         false,
         "",
@@ -444,6 +460,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
       DataInsightDescriptionAndOwnerTemplate.MetricType metricType,
       String chartKpiName,
       Double percentCompleted,
+      int changeCount,
       Double percentChange,
       int totalAssets,
       int numberOfDaysChange,
@@ -490,6 +507,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
         String.valueOf(totalAssets),
         percentCompleted,
         targetKpi,
+        changeCount,
         percentChange,
         isKpiAvailable,
         totalDaysLeft,
