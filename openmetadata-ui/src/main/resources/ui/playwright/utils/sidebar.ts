@@ -17,6 +17,10 @@ import {
 } from '../constant/settings';
 import { SidebarItem, SIDEBAR_LIST_ITEMS } from '../constant/sidebar';
 
+export type SettingOptionsType =
+  | keyof typeof SETTINGS_OPTIONS_PATH
+  | keyof typeof SETTING_CUSTOM_PROPERTIES_PATH;
+
 export const clickOnLogo = async (page: Page) => {
   await page.click('#openmetadata_logo > [data-testid="image"]');
   await page.mouse.move(1280, 0); // Move mouse to top right corner
@@ -38,7 +42,7 @@ export const sidebarClick = async (page: Page, id: string) => {
 
 export const settingClick = async (
   page: Page,
-  dataTestId: string,
+  dataTestId: SettingOptionsType,
   isCustomProperty?: boolean
 ) => {
   let paths = SETTINGS_OPTIONS_PATH[dataTestId];
