@@ -70,7 +70,7 @@ const ActivityFeedListV1 = ({
 
   const feeds = useMemo(
     () =>
-      feedList.map((feed) => (
+      entityThread.map((feed) => (
         <FeedPanelBodyV1
           componentsVisibility={componentsVisibility}
           feed={feed}
@@ -83,7 +83,7 @@ const ActivityFeedListV1 = ({
         />
       )),
     [
-      feedList,
+      entityThread,
       activeFeedId,
       componentsVisibility,
       hidePopover,
@@ -96,7 +96,7 @@ const ActivityFeedListV1 = ({
     return <Loader />;
   }
 
-  if (isEmpty(feedList)) {
+  if (isEmpty(entityThread)) {
     return (
       <div
         className="h-full p-x-md"

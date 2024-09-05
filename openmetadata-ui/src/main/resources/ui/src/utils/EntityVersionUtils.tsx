@@ -29,6 +29,7 @@ import {
   isUndefined,
   toString,
   uniqBy,
+  uniqueId,
 } from 'lodash';
 import React, { Fragment, ReactNode } from 'react';
 import ReactDOMServer from 'react-dom/server';
@@ -136,7 +137,7 @@ export const getDiffValue = (oldValue: string, newValue: string) => {
 
 export const getAddedDiffElement = (text: string) => {
   return (
-    <span className="diff-added" data-testid="diff-added">
+    <span className="diff-added" data-testid="diff-added" key={uniqueId()}>
       {text}
     </span>
   );
@@ -144,14 +145,21 @@ export const getAddedDiffElement = (text: string) => {
 
 export const getRemovedDiffElement = (text: string) => {
   return (
-    <span className="text-grey-muted" data-testid="diff-removed">
+    <span
+      className="text-grey-muted"
+      data-testid="diff-removed"
+      key={uniqueId()}>
       {text}
     </span>
   );
 };
 
 export const getNormalDiffElement = (text: string) => {
-  return <span data-testid="diff-normal">{text}</span>;
+  return (
+    <span data-testid="diff-normal" key={uniqueId()}>
+      {text}
+    </span>
+  );
 };
 
 export const getTextDiff = (
