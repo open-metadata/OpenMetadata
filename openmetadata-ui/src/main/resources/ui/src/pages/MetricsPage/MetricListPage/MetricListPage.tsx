@@ -20,6 +20,7 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TableTags from '../../../components/Database/TableTags/TableTags.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -32,6 +33,7 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { Metric } from '../../../generated/entity/data/metric';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { Include } from '../../../generated/type/include';
 import { Paging } from '../../../generated/type/paging';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
@@ -210,6 +212,13 @@ const MetricListPage = () => {
             onThreadLinkSelect={noop}
           />
         ),
+      },
+      {
+        title: t('label.owner'),
+        dataIndex: 'owners',
+        key: 'owners',
+        width: 200,
+        render: (owners: EntityReference[]) => <OwnerLabel owners={owners} />,
       },
     ],
     []
