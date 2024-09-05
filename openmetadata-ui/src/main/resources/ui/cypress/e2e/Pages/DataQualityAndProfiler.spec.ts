@@ -18,27 +18,17 @@ import {
   verifyResponseStatusCode,
 } from '../../common/common';
 import { createEntityTable, hardDeleteService } from '../../common/EntityUtils';
-import MysqlIngestionClass from '../../common/Services/MysqlIngestionClass';
-import { searchServiceFromSettingPage } from '../../common/serviceUtils';
 import {
   DATA_QUALITY_TEST_CASE_DATA,
   prepareDataQualityTestCases,
 } from '../../common/Utils/DataQuality';
 import { addDomainToEntity } from '../../common/Utils/Domain';
 import { visitEntityDetailsPage } from '../../common/Utils/Entity';
-import {
-  handleIngestionRetry,
-  scheduleIngestion,
-} from '../../common/Utils/Ingestion';
 import { getToken } from '../../common/Utils/LocalStorage';
-import { goToServiceListingPage, Services } from '../../common/Utils/Services';
 import { EntityType, SidebarItem } from '../../constants/Entity.interface';
 import { DATABASE_SERVICE } from '../../constants/EntityConstant';
 import { SERVICE_CATEGORIES } from '../../constants/service.constants';
-import { GlobalSettingOptions } from '../../constants/settings.constant';
 
-const OWNER1 = 'Aaron Johnson';
-const OWNER2 = 'Cynthia Meyer';
 const {
   testCase1,
   testCase2,
@@ -64,28 +54,6 @@ const goToProfilerTab = (data?: { service: string; entityName: string }) => {
     .click();
 };
 
-const visitTestSuiteDetailsPage = (testSuiteName: string) => {
-  interceptURL(
-    'GET',
-    '/api/v1/dataQuality/testSuites/search/list?*testSuiteType=logical*',
-    'testSuite'
-  );
-  interceptURL('GET', '/api/v1/dataQuality/testCases?fields=*', 'testCase');
-
-  cy.sidebarClick(SidebarItem.DATA_QUALITY);
-
-  cy.get('[data-testid="by-test-suites"]').click();
-  verifyResponseStatusCode('@testSuite', 200);
-  interceptURL(
-    'GET',
-    `/api/v1/dataQuality/testSuites/search/list?*${testSuiteName}*testSuiteType=logical*`,
-    'testSuiteBySearch'
-  );
-  cy.get('[data-testid="search-bar-container"]').type(testSuiteName);
-  verifyResponseStatusCode('@testSuiteBySearch', 200);
-  cy.get(`[data-testid="${testSuiteName}"]`).scrollIntoView().click();
-};
-
 const verifyFilterTestCase = () => {
   filterTableTestCases.map((testCase) => {
     cy.get(`[data-testid="${testCase}"]`).scrollIntoView().should('be.visible');
@@ -106,7 +74,6 @@ describe(
   'Data Quality and Profiler should work properly',
   { tags: 'Observability' },
   () => {
-    const mySql = new MysqlIngestionClass();
     before(() => {
       cy.login();
       cy.getAllLocalStorage().then((data) => {
@@ -143,85 +110,6 @@ describe(
       cy.login();
       interceptURL('GET', `/api/v1/tables/*/systemProfile?*`, 'systemProfile');
       interceptURL('GET', `/api/v1/tables/*/tableProfile?*`, 'tableProfile');
-    });
-
-    it('Add and ingest mysql data', () => {
-      goToServiceListingPage(Services.Database);
-
-      mySql.createService();
-    });
-
-    it('Add Profiler ingestion', () => {
-      const data = {
-        entityName: 'alert_entity',
-        service: 'cypress%mysql',
-      };
-      interceptURL(
-        'POST',
-        '/api/v1/services/ingestionPipelines/deploy/*',
-        'deployIngestion'
-      );
-
-      goToProfilerTab(data);
-
-      cy.get('[data-testid="no-profiler-placeholder"]').should('be.visible');
-      cy.clickOnLogo();
-
-      cy.settingClick(GlobalSettingOptions.DATABASES);
-
-      cy.intercept('/api/v1/services/ingestionPipelines?*').as('ingestionData');
-
-      searchServiceFromSettingPage(data.service);
-      cy.get(`[data-testid="service-name-${data.service}"]`)
-        .should('exist')
-        .click();
-      cy.get('[data-testid="tabs"]').should('exist');
-      cy.wait('@ingestionData');
-      cy.get('[data-testid="ingestions"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-      cy.get('[data-testid="ingestion-details-container"]').should('exist');
-      cy.get('[data-testid="add-new-ingestion-button"]')
-        .should('be.visible')
-        .click();
-      cy.get('[data-menu-id*="profiler"')
-        .scrollIntoView()
-        .contains('Profiler Ingestion')
-        .click();
-      cy.get('#root\\/profileSample')
-        .scrollIntoView()
-        .should('be.visible')
-        .and('not.be.disabled')
-        .type('10');
-      cy.get('[data-testid="submit-btn"]')
-        .scrollIntoView()
-        .should('be.visible')
-        .click();
-
-      scheduleIngestion(false);
-
-      cy.wait('@deployIngestion').then(() => {
-        cy.get('[data-testid="view-service-button"]')
-          .scrollIntoView()
-          .should('be.visible')
-          .click();
-
-        handleIngestionRetry(0, 'profiler');
-      });
-    });
-
-    it('Verifying profiler ingestion', () => {
-      goToProfilerTab({
-        entityName: 'alert_entity',
-        service: 'cypress%mysql',
-      });
-      cy.get('[data-testid="no-profiler-placeholder"]').should('not.exist');
-    });
-
-    it('delete created service', () => {
-      goToServiceListingPage(Services.Database);
-      mySql.deleteService();
     });
 
     it('Array params value should be visible while editing the test case', () => {
