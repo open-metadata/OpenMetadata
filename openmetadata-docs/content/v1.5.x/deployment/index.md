@@ -1,6 +1,7 @@
 ---
 title: Deployment
 slug: /deployment
+collate: false
 ---
 
 # From 0 to OpenMetadata in 5 minutes

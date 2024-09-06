@@ -1,6 +1,7 @@
 ---
 title: Run the ingestion from AWS MWAA
 slug: /deployment/ingestion/external/mwaa
+collate: false
 ---
 
 {% partial file="/v1.5/deployment/external-ingestion.md" /%}
