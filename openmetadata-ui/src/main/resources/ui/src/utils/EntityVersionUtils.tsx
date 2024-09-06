@@ -176,8 +176,8 @@ export const getTextDiff = (
   }
 
   if (
-    newText.includes(imagePlaceholder) ||
-    oldText.includes(imagePlaceholder)
+    newText?.includes(imagePlaceholder) ||
+    oldText?.includes(imagePlaceholder)
   ) {
     return newText;
   }
