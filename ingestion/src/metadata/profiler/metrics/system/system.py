@@ -17,15 +17,18 @@ import traceback
 from collections import defaultdict
 from typing import Dict, List, Optional
 
+from pydantic import TypeAdapter
 from sqlalchemy import text
 from sqlalchemy.orm import DeclarativeMeta, Session
 
 from metadata.generated.schema.configuration.profilerConfiguration import MetricType
+from metadata.generated.schema.entity.data.table import SystemProfile
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.snowflake.profiler.system_metrics import (
+    build_snowflake_query_results,
+)
 from metadata.profiler.metrics.core import SystemMetric
 from metadata.profiler.metrics.system.dml_operation import (
     DML_OPERATION_MAP,
@@ -41,19 +44,12 @@ from metadata.profiler.metrics.system.queries.redshift import (
     get_metric_result,
     get_query_results,
 )
-from metadata.profiler.metrics.system.queries.snowflake import (
-    INFORMATION_SCHEMA_QUERY,
-    get_snowflake_system_queries,
-)
 from metadata.profiler.orm.registry import Dialects
 from metadata.utils.dispatch import valuedispatch
 from metadata.utils.helpers import deep_size_of_dict
 from metadata.utils.logger import profiler_logger
-from metadata.utils.profiler_utils import (
-    SnowflakeQueryResult,
-    get_value_from_cache,
-    set_cache,
-)
+from metadata.utils.profiler_utils import get_value_from_cache, set_cache
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = profiler_logger()
 
@@ -75,7 +71,7 @@ def get_system_metrics_for_dialect(
     table: DeclarativeMeta,
     *args,
     **kwargs,
-) -> Optional[Dict]:
+) -> Optional[List[SystemProfile]]:
     """_summary_
 
     Args:
@@ -91,6 +87,7 @@ def get_system_metrics_for_dialect(
             } else returns None
     """
     logger.debug(f"System metrics not support for {dialect}. Skipping processing.")
+    return None
 
 
 @get_system_metrics_for_dialect.register(Dialects.BigQuery)
@@ -101,7 +98,7 @@ def _(
     conn_config: BigQueryConnection,
     *args,
     **kwargs,
-) -> List[Dict]:
+) -> List[SystemProfile]:
     """Compute system metrics for bigquery
 
     Args:
@@ -190,7 +187,7 @@ def _(
                 }
             )
 
-    return metric_results
+    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
 
 
 @get_system_metrics_for_dialect.register(Dialects.Redshift)
@@ -200,7 +197,7 @@ def _(
     table: DeclarativeMeta,
     *args,
     **kwargs,
-) -> List[Dict]:
+) -> List[SystemProfile]:
     """List all the DML operations for reshifts tables
 
     Args:
@@ -289,42 +286,7 @@ def _(
         )
     metric_results.extend(get_metric_result(updates, table.__tablename__))  # type: ignore
 
-    return metric_results
-
-
-def _snowflake_build_query_result(
-    session: Session,
-    table: DeclarativeMeta,
-    database: str,
-    schema: str,
-    ometa_client: OpenMetadata,
-    db_service: DatabaseService,
-) -> List[SnowflakeQueryResult]:
-    """List and parse snowflake DML query results"""
-    rows = session.execute(
-        text(
-            INFORMATION_SCHEMA_QUERY.format(
-                tablename=table.__tablename__,  # type: ignore
-                insert=DatabaseDMLOperations.INSERT.value,
-                update=DatabaseDMLOperations.UPDATE.value,
-                delete=DatabaseDMLOperations.DELETE.value,
-                merge=DatabaseDMLOperations.MERGE.value,
-            )
-        )
-    )
-    query_results = []
-    for row in rows:
-        result = get_snowflake_system_queries(
-            row=row,
-            database=database,
-            schema=schema,
-            ometa_client=ometa_client,
-            db_service=db_service,
-        )
-        if result:
-            query_results.append(result)
-
-    return query_results
+    return TypeAdapter(List[SystemProfile]).validate_python(metric_results).d
 
 
 @get_system_metrics_for_dialect.register(Dialects.Snowflake)
@@ -332,8 +294,6 @@ def _(
     dialect: str,
     session: Session,
     table: DeclarativeMeta,
-    ometa_client: OpenMetadata,
-    db_service: DatabaseService,
     *args,
     **kwargs,
 ) -> Optional[List[Dict]]:
@@ -354,18 +314,12 @@ def _(
         Dict: system metric
     """
     logger.debug(f"Fetching system metrics for {dialect}")
-    database = session.get_bind().url.database
-    schema = table.__table_args__["schema"]  # type: ignore
 
     metric_results: List[Dict] = []
 
-    query_results = _snowflake_build_query_result(
+    query_results = build_snowflake_query_results(
         session=session,
         table=table,
-        database=database,
-        schema=schema,
-        ometa_client=ometa_client,
-        db_service=db_service,
     )
 
     for query_result in query_results:
@@ -380,7 +334,9 @@ def _(
             if query_result.rows_inserted:
                 metric_results.append(
                     {
-                        "timestamp": int(query_result.timestamp.timestamp() * 1000),
+                        "timestamp": datetime_to_timestamp(
+                            query_result.start_time, milliseconds=True
+                        ),
                         "operation": DatabaseDMLOperations.INSERT.value,
                         "rowsAffected": query_result.rows_inserted,
                     }
@@ -388,7 +344,9 @@ def _(
             if query_result.rows_updated:
                 metric_results.append(
                     {
-                        "timestamp": int(query_result.timestamp.timestamp() * 1000),
+                        "timestamp": datetime_to_timestamp(
+                            query_result.start_time, milliseconds=True
+                        ),
                         "operation": DatabaseDMLOperations.UPDATE.value,
                         "rowsAffected": query_result.rows_updated,
                     }
@@ -397,13 +355,15 @@ def _(
 
         metric_results.append(
             {
-                "timestamp": int(query_result.timestamp.timestamp() * 1000),
+                "timestamp": datetime_to_timestamp(
+                    query_result.start_time, milliseconds=True
+                ),
                 "operation": DML_OPERATION_MAP.get(query_result.query_type),
                 "rowsAffected": rows_affected,
             }
         )
 
-    return metric_results
+    return TypeAdapter(List[SystemProfile]).validate_python(metric_results)
 
 
 class System(SystemMetric):

@@ -355,3 +355,26 @@ ORDER BY PROCEDURE_START_TIME DESC
 SNOWFLAKE_GET_TABLE_DDL = """
 SELECT GET_DDL('TABLE','{table_name}') AS \"text\"
 """
+SNOWFLAKE_QUERY_LOG_QUERY = """
+    SELECT
+        QUERY_ID,
+        QUERY_TEXT,
+        QUERY_TYPE,
+        START_TIME,
+        DATABASE_NAME,
+        SCHEMA_NAME,
+        ROWS_INSERTED,
+        ROWS_UPDATED,
+        ROWS_DELETED
+    FROM "SNOWFLAKE"."ACCOUNT_USAGE"."QUERY_HISTORY"
+    WHERE
+    start_time>= DATEADD('DAY', -1, CURRENT_TIMESTAMP)
+    AND QUERY_TEXT ILIKE '%{tablename}%'
+    AND QUERY_TYPE IN (
+        '{insert}',
+        '{update}',
+        '{delete}',
+        '{merge}'
+    )
+    AND EXECUTION_STATUS = 'SUCCESS';
+"""

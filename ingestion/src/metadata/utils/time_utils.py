@@ -17,21 +17,25 @@ from datetime import datetime, time, timedelta, timezone
 from math import floor
 from typing import Union
 
+from metadata.utils.deprecation import deprecated
 from metadata.utils.helpers import datetime_to_ts
 
 
-def datetime_to_timestamp(datetime_value, milliseconds=False) -> int:
-    """Convert a datetime object to timestamp integer
+def datetime_to_timestamp(datetime_value: datetime, milliseconds=False) -> int:
+    """Convert a datetime object to timestamp integer. Datetime can be timezone aware or naive. Result
+    will always be in UTC.
 
     Args:
         datetime_value (_type_): datetime object
         milliseconds (bool, optional): make it a milliseconds timestamp. Defaults to False.
 
     Returns:
-        int:
+        int : timestamp in seconds or milliseconds
     """
     if not getattr(datetime_value, "timestamp", None):
-        raise TypeError(f"Object of type {datetime_value} has not method `timestamp()`")
+        raise TypeError(
+            f"Object of type {type(datetime_value).__name__} has not method `timestamp()`"
+        )
 
     tmsap = datetime_value.timestamp()
     if milliseconds:
@@ -115,6 +119,7 @@ def convert_timestamp(timestamp: str) -> Union[int, float]:
     return float(timestamp) / 1000
 
 
+@deprecated("Use `datetime_to_timestamp` instead", "1.7.0")
 def convert_timestamp_to_milliseconds(timestamp: Union[int, float]) -> int:
     """convert timestamp to milliseconds
     Args:

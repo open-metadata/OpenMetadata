@@ -1,10 +1,13 @@
 from collections import deque
+from typing import List, Union
 
 from pydantic import BaseModel
 
 
 def assert_equal_pydantic_objects(
-    expected: BaseModel, actual: BaseModel, ignore_none=True
+    expected: Union[BaseModel, List[BaseModel]],
+    actual: Union[BaseModel, List[BaseModel]],
+    ignore_none=True,
 ):
     """Compare 2 pydantic objects recursively and raise an AssertionError if they are not equal along with all
     the differences by field. If `ignore_none` is set to True, expected None values will be ignored. This can be
@@ -32,6 +35,10 @@ def assert_equal_pydantic_objects(
         Traceback (most recent call last):
         ```
         AssertionError: objects mismatched on field: [b.a], expected: [1], actual: [2]
+        >>> assert_equal_pydantic_objects([a1, a2], [a2, a1])
+        Traceback (most recent call last):
+        ```
+        AssertionError: objects mismatched on field: [0].a, expected: [1], actual: [2]
 
     Args:
         expected (BaseModel): The expected pydantic object.
@@ -69,11 +76,24 @@ def assert_equal_pydantic_objects(
                     errors.append(
                         f"objects mismatched on field: [{new_key_prefix}], expected: [{expected_value}], actual: [{actual_value}]"
                     )
+        elif isinstance(expected, list):
+            if not isinstance(actual, list):
+                errors.append(
+                    f"validation error on field: [{current_key_prefix}], expected: [list], actual: [{type(actual).__name__}]"
+                )
+            elif len(expected) != len(actual):
+                errors.append(
+                    f"mismatch length at {current_key_prefix}: expected: [{len(expected)}], actual: [{len(actual)}]"
+                )
+            else:
+                for i, (expected_item, actual_item) in enumerate(zip(expected, actual)):
+                    queue.append(
+                        (expected_item, actual_item, f"{current_key_prefix}[{i}]")
+                    )
         else:
             if expected != actual:
                 errors.append(
                     f"mismatch at {current_key_prefix}: expected: [{expected}], actual: [{actual}]"
                 )
-
     if errors:
         raise AssertionError("\n".join(errors))
