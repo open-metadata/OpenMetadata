@@ -19,7 +19,7 @@ install_dev:  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install "$(INGESTION_DIR)[test]/"
+	python -m pip install nox "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
