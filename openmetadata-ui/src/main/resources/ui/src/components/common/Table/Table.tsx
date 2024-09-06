@@ -15,7 +15,6 @@ import React, { useMemo } from 'react';
 import { useAntdColumnResize } from 'react-antd-column-resize';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import Loader from '../Loader/Loader';
-import './table.less';
 
 interface TableComponentProps<T> extends TableProps<T> {
   resizableColumns?: boolean;
