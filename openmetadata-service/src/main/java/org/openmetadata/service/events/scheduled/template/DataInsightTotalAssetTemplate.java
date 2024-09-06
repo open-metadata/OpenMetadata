@@ -23,6 +23,7 @@ import lombok.Setter;
 @SuppressWarnings("unused")
 public class DataInsightTotalAssetTemplate {
   private String totalDataAssets;
+  private final String changeInTotalAssets;
   private String percentChangeTotalAssets;
   @Setter private String percentChangeMessage;
   @Setter private String completeMessage;
@@ -31,10 +32,12 @@ public class DataInsightTotalAssetTemplate {
 
   public DataInsightTotalAssetTemplate(
       String totalDataAssets,
+      int assetsAddedOrRemoved,
       Double percentChangeTotalAssets,
       int numberOfDaysChange,
       Map<String, Integer> dateMap) {
     this.totalDataAssets = totalDataAssets;
+    this.changeInTotalAssets = String.valueOf(assetsAddedOrRemoved);
     this.percentChangeTotalAssets = String.format("%.2f", percentChangeTotalAssets);
     this.percentChangeMessage = getFormattedPercentChangeMessage(percentChangeTotalAssets);
     this.numberOfDaysChange = numberOfDaysChange;
