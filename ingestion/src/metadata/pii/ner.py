@@ -51,7 +51,8 @@ class NEREntity(Enum):
     UK_NHS = TagType.SENSITIVE.value
 
     # Spain
-    NIF = TagType.SENSITIVE.value
+    ES_NIF = TagType.SENSITIVE.value
+    ES_NIE = TagType.SENSITIVE.value
 
     # Italy
     IT_FISCAL_CODE = TagType.SENSITIVE.value
@@ -60,8 +61,25 @@ class NEREntity(Enum):
     IT_PASSPORT = TagType.SENSITIVE.value
     IT_IDENTITY_CARD = TagType.SENSITIVE.value
 
+    # Poland
+    PL_PESEL = TagType.SENSITIVE.value
+
+    # Singapore
+    SG_NRIC_FIN = TagType.SENSITIVE.value
+    SG_UEN = TagType.SENSITIVE.value
+
     # Australia
     AU_ABN = TagType.SENSITIVE.value
     AU_ACN = TagType.SENSITIVE.value
     AU_TFN = TagType.SENSITIVE.value
     AU_MEDICARE = TagType.SENSITIVE.value
+
+    # India
+    IN_PAN = TagType.SENSITIVE.value
+    IN_AADHAAR = TagType.SENSITIVE.value
+    IN_VEHICLE_REGISTRATION = TagType.SENSITIVE.value
+    IN_VOTER = TagType.SENSITIVE.value
+    IN_PASSPORT = TagType.SENSITIVE.value
+
+    # Finland
+    FI_PERSONAL_IDENTITY_CODE = TagType.SENSITIVE.value
