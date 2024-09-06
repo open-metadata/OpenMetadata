@@ -28,7 +28,7 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
 from metadata.ingestion.models.patch_request import build_patch
 from metadata.ingestion.ometa.client import REST, APIError
-from metadata.ingestion.ometa.utils import get_entity_type
+from metadata.ingestion.ometa.utils import get_entity_type, quote
 from metadata.utils.logger import ometa_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 
@@ -279,7 +279,7 @@ class OMetaLineageMixin(Generic[T]):
         """
         return self._get_lineage(
             entity=entity,
-            path=f"name/{fqn}",
+            path=f"name/{quote(fqn)}",
             up_depth=up_depth,
             down_depth=down_depth,
         )
