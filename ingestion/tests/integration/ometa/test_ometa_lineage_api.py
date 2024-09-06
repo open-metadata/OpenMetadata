@@ -25,6 +25,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -85,7 +86,7 @@ class OMetaLineageTest(TestCase):
             )
         )
 
-        create_schema_entity = cls.metadata.create_or_update(
+        cls.create_schema_entity = cls.metadata.create_or_update(
             data=get_create_entity(
                 entity=DatabaseSchema,
                 reference=create_db_entity.fullyQualifiedName,
@@ -96,14 +97,14 @@ class OMetaLineageTest(TestCase):
         cls.table1 = get_create_entity(
             name=generate_name(),
             entity=Table,
-            reference=create_schema_entity.fullyQualifiedName,
+            reference=cls.create_schema_entity.fullyQualifiedName,
         )
 
         cls.table1_entity = cls.metadata.create_or_update(data=cls.table1)
         cls.table2 = get_create_entity(
             name=generate_name(),
             entity=Table,
-            reference=create_schema_entity.fullyQualifiedName,
+            reference=cls.create_schema_entity.fullyQualifiedName,
         )
 
         cls.table2_entity = cls.metadata.create_or_update(data=cls.table2)
@@ -337,3 +338,50 @@ class OMetaLineageTest(TestCase):
         )
         entity_lineage = EntityLineage.model_validate(datamodel_lineage)
         self.assertEqual(from_id, str(entity_lineage.upstreamEdges[0].fromEntity.root))
+
+    def test_table_with_slash_in_name(self):
+        """E.g., `foo.bar/baz`"""
+        name = EntityName("foo.bar/baz")
+        new_table: Table = self.metadata.create_or_update(
+            data=get_create_entity(
+                entity=Table,
+                name=name,
+                reference=self.create_schema_entity.fullyQualifiedName,
+            )
+        )
+
+        res: Table = self.metadata.get_by_name(
+            entity=Table, fqn=new_table.fullyQualifiedName
+        )
+
+        assert res.name == name
+
+        self.metadata.add_lineage(
+            data=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
+                    toEntity=EntityReference(id=new_table.id, type="table"),
+                    lineageDetails=LineageDetails(
+                        columnsLineage=[
+                            ColumnLineage(
+                                fromColumns=[
+                                    self.table1_entity.columns[0].fullyQualifiedName
+                                ],
+                                toColumn=new_table.columns[0].fullyQualifiedName,
+                            )
+                        ]
+                    ),
+                ),
+            )
+        )
+
+        # use the SDK to get the lineage
+        lineage = self.metadata.get_lineage_by_name(
+            entity=Table,
+            fqn=new_table.fullyQualifiedName.root,
+        )
+        entity_lineage = EntityLineage.model_validate(lineage)
+        assert (
+            entity_lineage.upstreamEdges[0].fromEntity.root
+            == self.table1_entity.id.root
+        )

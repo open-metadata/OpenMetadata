@@ -19,11 +19,11 @@ import traceback
 from typing import Generic, Iterable, List, Optional, Set, Type, TypeVar
 
 from pydantic import BaseModel
-from requests.utils import quote
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.query import Query
 from metadata.ingestion.ometa.client import REST, APIError
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
 
