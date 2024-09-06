@@ -16,8 +16,7 @@ To be used by OpenMetadata class
 import traceback
 from typing import List, Optional, Type, TypeVar
 
-from pydantic import BaseModel
-from requests.utils import quote
+from pydantic import BaseModel, validate_call
 
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
@@ -39,7 +38,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.models import EntityList
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
@@ -227,6 +226,7 @@ class OMetaTableMixin:
 
         return None
 
+    @validate_call
     def get_profile_data(
         self,
         fqn: str,
@@ -253,7 +253,6 @@ class OMetaTableMixin:
         Returns:
             EntityList: EntityList list object
         """
-
         url_after = f"&after={after}" if after else ""
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
 
@@ -290,7 +289,7 @@ class OMetaTableMixin:
         Returns:
             Optional[Table]: OM table object
         """
-        return self._get(Table, f"{quote(model_str(fqn), safe='')}/tableProfile/latest")
+        return self._get(Table, f"{quote(fqn)}/tableProfile/latest")
 
     def create_or_update_custom_metric(
         self, custom_metric: CreateCustomMetricRequest, table_id: str
