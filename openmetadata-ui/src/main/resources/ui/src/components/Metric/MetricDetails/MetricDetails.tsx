@@ -450,6 +450,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
             permissions={metricPermissions}
             onDisplayNameUpdate={handleUpdateDisplayName}
             onFollowClick={followMetric}
+            onMetricUpdate={onMetricUpdate}
             onOwnerUpdate={onOwnerUpdate}
             onRestoreDataAsset={handleRestoreMetric}
             onTierUpdate={onTierUpdate}

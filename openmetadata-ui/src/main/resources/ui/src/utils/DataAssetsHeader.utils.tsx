@@ -466,32 +466,6 @@ export const getDataAssetsHeaderInfo = (
 
       returnData.breadcrumbs = getEntityBreadcrumbs(metric, EntityType.METRIC);
 
-      returnData.extraInfo = (
-        <>
-          {metric.metricType && (
-            <ExtraInfoLabel
-              dataTestId="metric-type"
-              label={t('label.metric-type')}
-              value={metric.metricType}
-            />
-          )}
-          {metric.unitOfMeasurement && (
-            <ExtraInfoLabel
-              dataTestId="unit-of-measurement"
-              label={t('label.unit-of-measurement')}
-              value={metric.unitOfMeasurement}
-            />
-          )}
-          {metric.granularity && (
-            <ExtraInfoLabel
-              dataTestId="granularity"
-              label={t('label.granularity')}
-              value={metric.granularity}
-            />
-          )}
-        </>
-      );
-
       break;
     }
 
