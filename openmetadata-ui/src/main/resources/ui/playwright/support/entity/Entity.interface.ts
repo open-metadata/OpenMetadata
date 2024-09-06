@@ -74,3 +74,9 @@ export type TestCaseData = {
   testDefinition?: string;
   testSuite?: string;
 };
+
+export type TestSuiteData = {
+  name?: string;
+  executableEntityReference?: string;
+  description?: string;
+};
