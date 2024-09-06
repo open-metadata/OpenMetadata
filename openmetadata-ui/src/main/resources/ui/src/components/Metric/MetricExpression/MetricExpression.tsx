@@ -20,7 +20,7 @@ import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 const MetricExpression = ({
   expression,
 }: {
-  expression: Metric['expression'];
+  expression: Metric['metricExpression'];
 }) => {
   const { t } = useTranslation();
 

@@ -126,7 +126,7 @@ const MetricVersion: FC<MetricVersionProp> = ({
                 </Col>
                 <Col span={24}>
                   <MetricExpression
-                    expression={currentVersionData.expression}
+                    expression={currentVersionData.metricExpression}
                   />
                 </Col>
               </Row>

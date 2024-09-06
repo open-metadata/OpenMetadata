@@ -268,7 +268,11 @@ class SearchClassBase {
         key: 'Governance',
         data: {
           isRoot: true,
-          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
+          childEntities: [
+            EntityType.TAG,
+            EntityType.GLOSSARY_TERM,
+            EntityType.METRIC,
+          ],
         },
         icon: GovernIcon,
         children: [

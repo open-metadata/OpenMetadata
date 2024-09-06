@@ -25,7 +25,7 @@ $$
 
 
 $$section
-### Expression $(id="expression")
+### Expression $(id="metricExpression")
 
 Define the expression used to compute the metric. The expression can be written in various programming languages such as SQL, Python, or Java.
 $$

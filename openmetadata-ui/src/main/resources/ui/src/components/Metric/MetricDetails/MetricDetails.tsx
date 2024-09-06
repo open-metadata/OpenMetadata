@@ -305,7 +305,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         onDescriptionUpdate={onDescriptionUpdate}
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
-                      <MetricExpression expression={metricDetails.expression} />
+                      <MetricExpression
+                        expression={metricDetails.metricExpression}
+                      />
                     </div>
                   ),
                   minWidth: 800,

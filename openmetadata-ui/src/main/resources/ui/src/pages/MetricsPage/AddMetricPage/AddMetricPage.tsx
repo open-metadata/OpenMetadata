@@ -214,14 +214,14 @@ const AddMetricPage = () => {
   const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
     let activeField = '';
     const isDescription = event.target.classList.contains('ProseMirror');
-    const isExpression =
+    const isMetricExpression =
       event.target.classList.contains('CodeMirror') ||
       event.target.id === 'root/language';
 
     if (isDescription) {
       activeField = 'root/description';
-    } else if (isExpression) {
-      activeField = 'root/expression';
+    } else if (isMetricExpression) {
+      activeField = 'root/metricExpression';
     } else {
       activeField = event.target.id;
     }
@@ -239,7 +239,7 @@ const AddMetricPage = () => {
     try {
       const createMetricPayload: CreateMetric = {
         ...omit(values, ['code', 'language']),
-        expression: {
+        metricExpression: {
           code: values.code,
           language: values.language,
         },
