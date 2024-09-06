@@ -913,6 +913,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       TestCase testCase = repository.findByName(fqn, Include.ALL);
       repository.deleteTestCaseFailedRowsSample(testCase.getId());
     }
+    RestUtil.validateTimestampMilliseconds(testCaseResult.getTimestamp());
     return repository
         .addTestCaseResult(
             securityContext.getUserPrincipal().getName(), uriInfo, fqn, testCaseResult)
