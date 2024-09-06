@@ -375,7 +375,7 @@ class OMetaTableTest(TestCase):
         )
 
         table_profile = TableProfile(
-            timestamp=Timestamp(int(datetime.now().timestamp())),
+            timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
             columnCount=1.0,
             rowCount=3.0,
         )
@@ -389,18 +389,18 @@ class OMetaTableTest(TestCase):
                 mean=1.5,
                 sum=2,
                 stddev=None,
-                timestamp=Timestamp(root=int(datetime.now().timestamp())),
+                timestamp=Timestamp(root=int(datetime.now().timestamp() * 1000)),
             )
         ]
 
         system_profile = [
             SystemProfile(
-                timestamp=Timestamp(root=int(datetime.now().timestamp())),
+                timestamp=Timestamp(root=int(datetime.now().timestamp() * 1000)),
                 operation=DmlOperationType.INSERT,
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=Timestamp(root=int(datetime.now().timestamp()) + 1),
+                timestamp=Timestamp(root=int(datetime.now().timestamp() * 1000) + 1),
                 operation=DmlOperationType.UPDATE,
                 rowsAffected=110,
             ),
