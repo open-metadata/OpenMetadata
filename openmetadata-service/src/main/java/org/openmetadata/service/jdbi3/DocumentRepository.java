@@ -62,7 +62,7 @@ public class DocumentRepository extends EntityRepository<Document> {
     SmtpSettings emailConfig =
         SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
 
-    if (emailConfig.getTemplates().equals(COLLATE)) {
+    if (emailConfig.getTemplates().value().equals(COLLATE)) {
       entitiesFromSeedData.addAll(
           getEntitiesFromSeedData(
               String.format(".*json/data/%s/emailTemplates/collate/.*\\.json$", entityType)));
