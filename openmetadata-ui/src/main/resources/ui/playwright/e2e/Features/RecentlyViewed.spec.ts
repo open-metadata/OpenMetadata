@@ -69,10 +69,7 @@ test.describe('Recently viewed data assets', () => {
       await test.step(
         `Check ${entity.getType()} in recently viewed widget `,
         async () => {
-          const entityPromise = page.waitForResponse('/api/v1/*/name/*');
           await entity.visitEntityPage(page);
-
-          await entityPromise;
 
           await page.waitForSelector(`[data-testid="breadcrumb"]`);
 
