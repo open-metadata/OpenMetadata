@@ -21,19 +21,19 @@ import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { createNewPage, redirectToHomePage } from '../../utils/common';
 
 const entities = [
-  ApiEndpointClass,
-  TableClass,
-  StoredProcedureClass,
-  DashboardClass,
-  PipelineClass,
-  TopicClass,
-  MlModelClass,
-  ContainerClass,
-  SearchIndexClass,
-  DashboardDataModelClass,
+  new ApiEndpointClass(),
+  new TableClass(),
+  new StoredProcedureClass(),
+  new DashboardClass(),
+  new PipelineClass(),
+  new TopicClass(),
+  new MlModelClass(),
+  new ContainerClass(),
+  new SearchIndexClass(),
+  new DashboardDataModelClass(),
 ] as const;
 
 // use the admin user to login
@@ -44,24 +44,47 @@ test.describe('Recently viewed data assets', () => {
     await redirectToHomePage(page);
   });
 
-  entities.forEach((Entity) => {
-    const entity = new Entity();
-
-    test(`${entity.getType()} should be added to the recently viewed list`, async ({
-      page,
-    }) => {
-      const { afterAction, apiContext } = await getApiContext(page);
+  test.beforeAll(async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+    for await (const entity of entities) {
       await entity.create(apiContext);
-      await entity.visitEntityPage(page);
-      await redirectToHomePage(page);
+    }
+    await afterAction();
+  });
 
-      const selector = `[data-testid="recently-viewed-widget"] [title="${entity.entity.name}"]`;
-
-      await expect(page.locator(selector)).toBeVisible();
-
+  test.afterAll(async ({ browser }) => {
+    const { afterAction, apiContext } = await createNewPage(browser);
+    for await (const entity of entities) {
       await entity.delete(apiContext);
+    }
+    await afterAction();
+  });
 
-      await afterAction();
-    });
+  test('Recently viewed widget should be visible on the home page', async ({
+    page,
+  }) => {
+    test.slow(true);
+
+    for await (const entity of entities) {
+      await test.step(
+        `Check ${entity.getType()} in recently viewed widget `,
+        async () => {
+          const entityPromise = page.waitForResponse('/api/v1/*/name/*');
+          await entity.visitEntityPage(page);
+
+          await entityPromise;
+
+          await page.waitForSelector(`[data-testid="breadcrumb"]`);
+
+          await redirectToHomePage(page);
+
+          await page.waitForSelector(`[data-testid="recently-viewed-widget"]`);
+
+          const selector = `[data-testid="recently-viewed-widget"] [title="${entity.entity.name}"]`;
+
+          await expect(page.locator(selector)).toBeVisible();
+        }
+      );
+    }
   });
 });
