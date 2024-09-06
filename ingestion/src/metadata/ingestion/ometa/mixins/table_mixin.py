@@ -16,7 +16,7 @@ To be used by OpenMetadata class
 import traceback
 from typing import List, Optional, Type, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, validate_call
 from requests.utils import quote
 
 from metadata.generated.schema.api.data.createTableProfile import (
@@ -227,6 +227,7 @@ class OMetaTableMixin:
 
         return None
 
+    @validate_call
     def get_profile_data(
         self,
         fqn: str,
@@ -253,7 +254,6 @@ class OMetaTableMixin:
         Returns:
             EntityList: EntityList list object
         """
-
         url_after = f"&after={after}" if after else ""
         profile_type_url = profile_type.__name__[0].lower() + profile_type.__name__[1:]
 

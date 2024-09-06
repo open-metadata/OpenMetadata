@@ -19,6 +19,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from metadata.utils.profiler_utils import QueryResult
+from metadata.utils.time_utils import datetime_to_timestamp
 
 STL_QUERY = """
     with data as (
@@ -73,7 +74,7 @@ def get_query_results(
             table_name=row.table,
             query_text=None,
             query_type=operation,
-            timestamp=row.starttime,
+            start_time=row.starttime,
             rows=row.rows,
         )
         for row in cursor
@@ -94,7 +95,7 @@ def get_metric_result(ddls: List[QueryResult], table_name: str) -> List:
     """
     return [
         {
-            "timestamp": int(ddl.timestamp.timestamp() * 1000),
+            "timestamp": datetime_to_timestamp(ddl.start_time, milliseconds=True),
             "operation": ddl.query_type,
             "rowsAffected": ddl.rows,
         }
