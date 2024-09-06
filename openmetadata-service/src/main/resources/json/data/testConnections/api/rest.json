@@ -1,0 +1,14 @@
+{
+    "name": "REST",
+    "displayName": "REST Test Connection",
+    "description": "This Test Connection validates the schema provided for openapi",
+    "steps": [
+        {
+            "name": "CheckURL",
+            "description":  "Checks if url is valid open api json schema url or not",
+            "errorMessage": "Failed to validate the url, please check the url",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}
