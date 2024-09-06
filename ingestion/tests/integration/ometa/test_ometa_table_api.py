@@ -75,7 +75,8 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
-from tests.integration.integration_base import get_create_entity
+
+from ..integration_base import get_create_entity
 
 BAD_RESPONSE = {
     "data": [
