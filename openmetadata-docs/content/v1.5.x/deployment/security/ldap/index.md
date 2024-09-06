@@ -1,6 +1,7 @@
 ---
 title: Ldap Authentication
 slug: /deployment/security/ldap
+collate: false
 ---
 
 # Setting up Ldap Authentication

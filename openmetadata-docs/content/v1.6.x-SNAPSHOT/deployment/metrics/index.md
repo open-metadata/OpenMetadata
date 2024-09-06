@@ -1,6 +1,7 @@
 ---
 title: Metrics
 slug: /deployment/metrics
+collate: false
 ---
 
 All server metrics are published to `/prometheus` on the admin port (default 8586).

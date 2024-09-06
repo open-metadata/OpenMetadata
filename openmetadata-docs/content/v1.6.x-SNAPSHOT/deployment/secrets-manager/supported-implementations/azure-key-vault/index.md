@@ -1,6 +1,7 @@
 ---
 title: Azure Key Vault
 slug: /deployment/secrets-manager/supported-implementations/azure-key-vault
+collate: false
 ---
 
 # Azure Key Vault

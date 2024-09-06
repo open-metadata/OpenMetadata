@@ -111,7 +111,7 @@
     <opensearch.version>2.5.0</opensearch.version>
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.23</openapiswagger.version>
-    <spring-security-kerberos-core.version>1.0.1.RELEASE</spring-security-kerberos-core.version>
+
     <httpclient.version>4.5.14</httpclient.version>
     <!-- Upgrading to spring version 6.x requires Java 17 -->
     <spring.version>6.1.12</spring.version>
@@ -366,11 +366,6 @@
         <groupId>io.swagger.core.v3</groupId>
         <artifactId>swagger-annotations</artifactId>
         <version>${openapiswagger.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.springframework.security.kerberos</groupId>
-        <artifactId>spring-security-kerberos-core</artifactId>
-        <version>${spring-security-kerberos-core.version}</version>
       </dependency>
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
