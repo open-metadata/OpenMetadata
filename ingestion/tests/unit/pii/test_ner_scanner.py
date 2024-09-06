@@ -141,3 +141,25 @@ def test_scanner_with_lists(scanner):
         ).tag_fqn
         == "PII.Sensitive"
     )
+
+
+def test_scan_entities(scanner):
+    """
+    We can properly validate certain entities.
+
+    > NOTE: These lists are randomly generated and not valid IDs for any actual use
+    """
+    pan_numbers = ["AFZPK7190K", "BLQSM2938L", "CWRTJ5821M", "DZXNV9045A", "EHYKG6752P"]
+    assert scanner.scan(pan_numbers).tag_fqn == "PII.Sensitive"
+
+    ssn_numbers = [
+        "123-45-6789",
+        "987-65-4321",
+        "543-21-0987",
+        "678-90-1234",
+        "876-54-3210",
+    ]
+    assert scanner.scan(ssn_numbers).tag_fqn == "PII.Sensitive"
+
+    nif_numbers = ["12345678A", "87654321B", "23456789C", "98765432D", "34567890E"]
+    assert scanner.scan(nif_numbers).tag_fqn == "PII.Sensitive"
