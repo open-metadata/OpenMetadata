@@ -1,6 +1,7 @@
 ---
 title: Cost Analysis
 slug: /how-to-guides/data-insights/cost-analysis
+collate: true
 ---
 
 # Cost Analysis (Collate Only)
