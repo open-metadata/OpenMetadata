@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable */
+ 
 const $RefParser = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');

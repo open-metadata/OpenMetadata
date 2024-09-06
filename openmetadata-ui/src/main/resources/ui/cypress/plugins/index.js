@@ -21,7 +21,7 @@ import { resolve } from 'path';
 import { Pool } from 'pg';
 import { env } from 'process';
 
-// eslint-disable-next-line no-undef
+ 
 config({ path: resolve(__dirname, './.env') });
 
 const hostPort = env.CYPRESS_POSTGRES_HOST_PORT;
@@ -33,7 +33,7 @@ const dbConfig = {
   database: env.CYPRESS_POSTGRES_DATABASE,
 };
 
-// eslint-disable-next-line no-unused-vars
+ 
 export default (on, config) => {
   // `on` is used to hook into various events Cypress emits
   // `config` is the resolved Cypress config

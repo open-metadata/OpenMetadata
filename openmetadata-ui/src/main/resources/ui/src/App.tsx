@@ -12,7 +12,8 @@
  */
 
 import { isEmpty } from 'lodash';
-import React, { FC, useEffect } from 'react';
+import type { FC } from 'react';
+import React, { useEffect } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { I18nextProvider } from 'react-i18next';
 import { Router } from 'react-router-dom';
@@ -47,13 +48,12 @@ const App: FC = () => {
         customTheme: getThemeConfig(data.customTheme),
       });
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error(error);
     }
   };
 
   useEffect(() => {
-    fetchApplicationConfig();
+    void fetchApplicationConfig();
   }, []);
 
   useEffect(() => {

@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-
 import { defaultConjunction } from 'react-awesome-query-builder/lib/utils/defaultUtils';
 import { getWidgetForFieldOp } from 'react-awesome-query-builder/lib/utils/ruleUtils';
 

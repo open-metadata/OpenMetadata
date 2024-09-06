@@ -16,27 +16,23 @@ import React from 'react';
 import App from './App';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
 
-jest.mock('./components/AppRouter/AppRouter', () => {
-  return jest.fn().mockReturnValue(<p>AppRouter</p>);
-});
+jest.mock('./components/AppRouter/AppRouter', () =>
+  jest.fn().mockReturnValue(<p>AppRouter</p>)
+);
 
-jest.mock('./components/Auth/AuthProviders/AuthProvider', () => {
-  return {
-    AuthProvider: jest
-      .fn()
-      .mockImplementation(({ children }) => <>{children}</>),
-    AuthContext: {
-      Provider: jest.fn().mockImplementation(({ children }) => <>{children}</>),
-    },
-  };
-});
+jest.mock('./components/Auth/AuthProviders/AuthProvider', () => ({
+  AuthProvider: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  AuthContext: {
+    Provider: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+  },
+}));
 
 it('renders learn react link', () => {
   const { getAllByTestId } = render(
-    <AuthProvider childComponentType={App}>
-      <App />
-    </AuthProvider>
-  );
-  const linkElement = getAllByTestId(/content-wrapper/i);
+      <AuthProvider childComponentType={App}>
+        <App />
+      </AuthProvider>
+    ),
+    linkElement = getAllByTestId(/content-wrapper/u);
   linkElement.map((elm) => expect(elm).toBeInTheDocument());
 });

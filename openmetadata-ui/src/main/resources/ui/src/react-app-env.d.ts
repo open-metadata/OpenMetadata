@@ -11,6 +11,5 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
 /// <reference types="react-scripts" />
 declare module 'react-table';
