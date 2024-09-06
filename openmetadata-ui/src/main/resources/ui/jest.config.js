@@ -44,7 +44,6 @@ module.exports = {
   // Transforms
   transform: {
     '^.+\\.ts|tsx?$': 'ts-jest',
-    '^.+\\.js|jsx?$': '<rootDir>/node_modules/babel-jest',
   },
   // "scriptPreprocessor": "<rootDir>/node_modules/babel-jest",
   // "moduleFileExtensions": ["js", "json","jsx" ],

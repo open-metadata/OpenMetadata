@@ -25,20 +25,31 @@ const APIHits = [
     },
   },
 ];
-const formatDataResponse = jest.fn().mockImplementation((hist) => {
-  const formatedData = hist.map((hit) => {
-    const newData = {};
-    newData.id = hit._source.tableId;
-    newData.name = hit._source.tableName;
-    newData.description = hit._source.description;
-    newData.fullyQualifiedName = hit._source.fqdn;
-    newData.tableType = hit._source.tableType;
 
-    return newData;
+type FormateDataResponseType = {
+  id: string;
+  name: string;
+  description: string;
+  fullyQualifiedName: string;
+  tableType: string;
+};
+
+const formatDataResponse = jest
+  .fn()
+  .mockImplementation((hist: typeof APIHits) => {
+    const formatedData = hist.map((hit) => {
+      const newData: FormateDataResponseType = {} as FormateDataResponseType;
+      newData.id = hit._source.tableId;
+      newData.name = hit._source.tableName;
+      newData.description = hit._source.description;
+      newData.fullyQualifiedName = hit._source.fqdn;
+      newData.tableType = hit._source.tableType;
+
+      return newData;
+    });
+
+    return formatedData;
   });
-
-  return formatedData;
-});
 
 describe('Test APIUtils utility', () => {
   it('Returns the proper formatted data', () => {

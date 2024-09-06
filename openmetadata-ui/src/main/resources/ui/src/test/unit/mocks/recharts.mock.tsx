@@ -12,6 +12,7 @@
  */
 
 import React from 'react';
+
 jest.mock('recharts', () => ({
   Bar: jest.fn().mockImplementation(() => <div>Bar</div>),
   Scatter: jest.fn().mockImplementation(() => <div>Scatter</div>),

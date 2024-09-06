@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,8 +117,9 @@ const TableDetailsPageV1: React.FC = () => {
     useTourProvider();
   const { currentUser } = useApplicationStore();
   const [tableDetails, setTableDetails] = useState<Table>();
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } = useParams<{
+    tab: EntityTabs;
+  }>();
   const { fqn: datasetFQN } = useFqn();
   const { t } = useTranslation();
   const history = useHistory();

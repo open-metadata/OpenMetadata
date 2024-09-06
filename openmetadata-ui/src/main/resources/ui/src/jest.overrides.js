@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint no-console: 0 */
-/* eslint prefer-rest-params: 0 */
 const error = console.error;
 
 console.error = function (message) {

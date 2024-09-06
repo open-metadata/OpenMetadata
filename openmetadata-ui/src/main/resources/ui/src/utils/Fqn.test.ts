@@ -16,22 +16,22 @@ import Fqn from './Fqn';
 describe('Test FQN', () => {
   it('should build and split', () => {
     class FQNTest {
-      constructor(parts, fqn) {
+      parts: string[];
+      fqn: string;
+      constructor(parts: string[], fqn: string) {
         this.parts = parts;
         this.fqn = fqn;
       }
-      validate(actualParts, actualFQN) {
+      validate(actualParts: string[], actualFQN: string) {
         expect(this.fqn).toStrictEqual(actualFQN);
         expect(this.parts).toHaveLength(actualParts.length);
 
         for (let i = 0; i < this.parts.length; i++) {
-          /* eslint-disable jest/no-conditional-expect */
           if (this.parts[i].includes('.')) {
             expect(Fqn.quoteName(this.parts[i])).toStrictEqual(actualParts[i]);
           } else {
             expect(this.parts[i]).toStrictEqual(actualParts[i]);
           }
-          /* eslint-enable jest/no-conditional-expect */
         }
       }
     }

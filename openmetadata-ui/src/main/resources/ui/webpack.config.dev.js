@@ -13,7 +13,6 @@
 
 const path = require('path');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
-const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackBar = require('webpackbar');
@@ -179,13 +178,6 @@ module.exports = {
     // Clean webpack output directory
     new CleanWebpackPlugin({
       verbose: true,
-    }),
-    // In development mode, fork TypeScript checking to run in another thread and not block main
-    // transpilation
-    new ForkTsCheckerWebpackPlugin({
-      typescript: {
-        configFile: 'tsconfig.json',
-      },
     }),
     // Generate index.html from template
     new HtmlWebpackPlugin({
