@@ -15,8 +15,6 @@ Oracle E2E tests
 
 from typing import List
 
-import pytest
-
 from metadata.ingestion.api.status import Status
 
 from .base.e2e_types import E2EType
@@ -48,14 +46,19 @@ class OracleCliTest(CliCommonDB.TestSuite, SQACommonMethods):
 
     insert_data_queries: List[str] = [
         """
-        INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status) WITH names AS (
-SELECT 1, 'John Doe', 12356789, 'Manager', 121, 5200.0, 5000.0, 'Amazing', 'Active' FROM dual UNION ALL
-SELECT 2, 'Jane Doe', 123467189, 'Clerk', 131, 503.0, 5000.0, 'Wow', 'Active' FROM dual UNION ALL
-SELECT 3, 'Jon Doe', 123562789, 'Assistant', 141, 5000.0, 5000.0, 'Nice', 'Active' FROM dual UNION ALL
-SELECT 4, 'Jon Doe', 13456789, 'Manager', 151, 5050.0, 5000.0, 'Excellent', 'Active' FROM dual
+        INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo) WITH names AS (
+SELECT 1, 'John Doe', 12356789, 'Manager', 121, 5200.0, 5000.0, 'Amazing', 'Active', EMPTY_BLOB() FROM dual UNION ALL
+SELECT 2, 'Jane Doe', 123467189, 'Clerk', 131, 503.0, 5000.0, 'Wow', 'Active', EMPTY_BLOB() FROM dual UNION ALL
+SELECT 3, 'Jon Doe', 123562789, 'Assistant', 141, 5000.0, 5000.0, 'Nice', 'Active', EMPTY_BLOB() FROM dual
 )
 SELECT * from names
-"""
+""",
+        """
+INSERT INTO admin.admin_emp (empno, ename, ssn, job, mgr, sal, comm, comments, status, photo) WITH names AS (
+SELECT 4, 'Jon Doe', 13456789, 'Manager', 151, 5050.0, 5000.0, 'Excellent', 'Active',  UTL_RAW.CAST_TO_RAW('your_binary_data') FROM dual
+)
+SELECT * from names
+""",
     ]
 
     drop_table_query: str = """
@@ -98,11 +101,11 @@ SELECT * from names
 
     @staticmethod
     def fqn_created_table() -> str:
-        return "e2e_oracle.default.admin.admin_emp"
+        return "e2e_oracle.default.admin.ADMIN_EMP"
 
     @staticmethod
     def _fqn_deleted_table() -> str:
-        return "e2e_oracle.default.admin.admin_emp"
+        return "e2e_oracle.default.admin.ADMIN_EMP"
 
     @staticmethod
     def get_includes_schemas() -> List[str]:
@@ -136,9 +139,6 @@ SELECT * from names
     def expected_filtered_mix() -> int:
         return 43
 
-    @pytest.mark.xfail(
-        reason="Issue Raised: https://github.com/open-metadata/OpenMetadata/issues/17085"
-    )
     def test_create_table_with_profiler(self) -> None:
         # delete table in case it exists
         self.delete_table_and_view()
