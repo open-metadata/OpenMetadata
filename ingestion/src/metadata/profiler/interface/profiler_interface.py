@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.databaseSchema import (
 )
 from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
+    SystemProfile,
     Table,
     TableData,
 )
@@ -462,7 +463,7 @@ class ProfilerInterface(ABC):
         runner,
         *args,
         **kwargs,
-    ):
+    ) -> List[SystemProfile]:
         """Get metrics"""
         raise NotImplementedError
 
