@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateMetric;
-import org.openmetadata.schema.api.data.Expression;
+import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -63,16 +63,16 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     String origJson = JsonUtils.pojoToJson(metric);
     // add expression and other elements
     metric
-        .withExpression(
-            new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java))
+        .withMetricExpression(
+            new MetricExpression().withCode("code").withLanguage(MetricExpressionLanguage.Java))
         .withGranularity(MetricGranularity.DAY)
         .withUnitOfMeasurement(MetricUnitOfMeasurement.COUNT)
         .withMetricType(MetricType.AVERAGE);
     ChangeDescription change = getChangeDescription(metric, MINOR_UPDATE);
     fieldAdded(
         change,
-        "expression",
-        new Expression().withCode("code").withLanguage(MetricExpressionLanguage.Java));
+        "metricExpression",
+        new MetricExpression().withCode("code").withLanguage(MetricExpressionLanguage.Java));
     fieldAdded(change, "granularity", MetricGranularity.DAY);
     fieldAdded(change, "unitOfMeasurement", MetricUnitOfMeasurement.COUNT);
     fieldAdded(change, "metricType", MetricType.AVERAGE);
@@ -92,8 +92,8 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     fieldUpdated(change, "metricType", MetricType.AVERAGE, MetricType.SUM);
     patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
     updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
-    Assertions.assertEquals(updatedMetric.getUnitOfMeasurement(), MetricUnitOfMeasurement.DOLLARS);
-    Assertions.assertEquals(updatedMetric.getMetricType(), MetricType.SUM);
+    Assertions.assertEquals(MetricUnitOfMeasurement.DOLLARS, updatedMetric.getUnitOfMeasurement());
+    Assertions.assertEquals(MetricType.SUM, updatedMetric.getMetricType());
     updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
     origJson = JsonUtils.pojoToJson(updatedMetric);
     updatedMetric.setRelatedMetrics(
@@ -148,22 +148,23 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
   public void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException {
     if (expected != null && actual != null) {
-      if (fieldName.equals("relatedMetrics")) {
-        TestUtils.assertEntityReferences(
+      switch (fieldName) {
+        case "relatedMetrics" -> TestUtils.assertEntityReferences(
             (List<EntityReference>) expected, (List<EntityReference>) actual);
-      } else if (fieldName.equals("expression")) {
-        Expression expectedExpression = (Expression) expected;
-        Expression actualExpression = JsonUtils.readOrConvertValue(actual, Expression.class);
-        Assertions.assertEquals(expectedExpression.getCode(), actualExpression.getCode());
-        Assertions.assertEquals(expectedExpression.getLanguage(), actualExpression.getLanguage());
-      } else if (fieldName.equals("granularity")) {
-        Assertions.assertEquals(expected, MetricGranularity.valueOf(actual.toString()));
-      } else if (fieldName.equals("unitOfMeasurement")) {
-        Assertions.assertEquals(expected, MetricUnitOfMeasurement.valueOf(actual.toString()));
-      } else if (fieldName.equals("metricType")) {
-        Assertions.assertEquals(expected, MetricType.valueOf(actual.toString()));
-      } else {
-        assertCommonFieldChange(fieldName, expected, actual);
+        case "metricExpression" -> {
+          MetricExpression expectedExpression = (MetricExpression) expected;
+          MetricExpression actualExpression =
+              JsonUtils.readOrConvertValue(actual, MetricExpression.class);
+          Assertions.assertEquals(expectedExpression.getCode(), actualExpression.getCode());
+          Assertions.assertEquals(expectedExpression.getLanguage(), actualExpression.getLanguage());
+        }
+        case "granularity" -> Assertions.assertEquals(
+            expected, MetricGranularity.valueOf(actual.toString()));
+        case "unitOfMeasurement" -> Assertions.assertEquals(
+            expected, MetricUnitOfMeasurement.valueOf(actual.toString()));
+        case "metricType" -> Assertions.assertEquals(
+            expected, MetricType.valueOf(actual.toString()));
+        default -> assertCommonFieldChange(fieldName, expected, actual);
       }
     }
   }

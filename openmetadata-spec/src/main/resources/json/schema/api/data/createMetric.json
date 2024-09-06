@@ -19,9 +19,9 @@
       "description": "Description of the metric instance.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "expression": {
+    "metricExpression": {
       "description": "Expression used to compute the metric.",
-      "$ref": "../../entity/data/metric.json#/definitions/expression"
+      "$ref": "../../entity/data/metric.json#/definitions/metricExpression"
     },
     "metricType": {
       "description": "Type of the metric.",

@@ -8,7 +8,7 @@
   "javaType": "org.openmetadata.schema.entity.data.Metric",
   "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
   "definitions": {
-    "expression": {
+    "metricExpression": {
       "type": "object",
       "properties": {
         "language": {
@@ -119,9 +119,9 @@
       "description": "Description of metrics instance, what it is, and how to use it.",
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "expression": {
+    "metricExpression": {
       "description": "Expression used to compute the metric.",
-      "$ref": "#/definitions/expression"
+      "$ref": "#/definitions/metricExpression"
     },
     "metricType": {
       "description": "Type of the metric.",

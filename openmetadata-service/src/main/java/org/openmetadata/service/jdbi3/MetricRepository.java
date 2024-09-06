@@ -101,8 +101,9 @@ public class MetricRepository extends EntityRepository<Metric> {
       recordChange("metricType", original.getMetricType(), updated.getMetricType());
       recordChange(
           "unitOfMeasurement", original.getUnitOfMeasurement(), updated.getUnitOfMeasurement());
-      if (updated.getExpression() != null) {
-        recordChange("expression", original.getExpression(), updated.getExpression());
+      if (updated.getMetricExpression() != null) {
+        recordChange(
+            "metricExpression", original.getMetricExpression(), updated.getMetricExpression());
       }
       updateRelatedMetrics(original, updated);
     }

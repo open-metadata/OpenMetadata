@@ -523,7 +523,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
   private Metric getMetric(CreateMetric create, String user) {
     return repository
         .copy(new Metric(), create, user)
-        .withExpression(create.getExpression())
+        .withMetricExpression(create.getMetricExpression())
         .withGranularity(create.getGranularity())
         .withRelatedMetrics(create.getRelatedMetrics())
         .withMetricType(create.getMetricType())
