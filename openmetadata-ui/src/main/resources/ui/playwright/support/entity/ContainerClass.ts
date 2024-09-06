@@ -18,6 +18,7 @@ import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class ContainerClass extends EntityClass {
+  private containerName = `pw-container-${uuid()}`;
   service = {
     name: `pw-storage-service-${uuid()}`,
     serviceType: 'S3',
@@ -35,8 +36,8 @@ export class ContainerClass extends EntityClass {
     },
   };
   entity = {
-    name: `pw-container-${uuid()}`,
-    displayName: `pw-container-${uuid()}`,
+    name: this.containerName,
+    displayName: this.containerName,
     service: this.service.name,
   };
 

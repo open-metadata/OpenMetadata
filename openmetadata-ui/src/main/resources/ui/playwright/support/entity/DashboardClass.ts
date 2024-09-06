@@ -18,6 +18,7 @@ import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
+  private dashboardName = `pw-dashboard-${uuid()}`;
   service = {
     name: `pw-dashboard-service-${uuid()}`,
     serviceType: 'Superset',
@@ -40,8 +41,8 @@ export class DashboardClass extends EntityClass {
     service: this.service.name,
   };
   entity = {
-    name: `pw-dashboard-${uuid()}`,
-    displayName: `pw-dashboard-${uuid()}`,
+    name: this.dashboardName,
+    displayName: this.dashboardName,
     service: this.service.name,
   };
 

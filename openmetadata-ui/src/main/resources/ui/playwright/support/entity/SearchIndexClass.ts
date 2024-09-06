@@ -84,7 +84,7 @@ export class SearchIndexClass extends EntityClass {
 
   entity = {
     name: this.searchIndexName,
-    displayName: `pw-search-index-${uuid()}`,
+    displayName: this.searchIndexName,
     service: this.service.name,
     fields: this.children,
   };
