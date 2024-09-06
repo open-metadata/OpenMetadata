@@ -16,7 +16,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.entity.data.table import Table
+from metadata.ingestion.ometa.utils import quote
 from metadata.utils import fqn
 
 
@@ -145,3 +147,11 @@ class TestFqn(TestCase):
 
         with pytest.raises(ValueError):
             fqn.split_test_case_fqn("local_redshift.dev.dbt_jaffle.customers")
+
+    def test_quote_fqns(self):
+        """We can properly quote FQNs for URL usage"""
+        assert quote(FullyQualifiedEntityName("a.b.c")) == "a.b.c"
+        # Works with strings directly
+        assert quote("a.b.c") == "a.b.c"
+        assert quote(FullyQualifiedEntityName("\"foo.bar\".baz")) == "%22foo.bar%22.baz"
+        assert quote('"foo.bar/baz".hello') == "%22foo.bar%2Fbaz%22.hello"

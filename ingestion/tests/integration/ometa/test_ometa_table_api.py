@@ -75,6 +75,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
+from tests.integration.integration_base import get_create_entity
 
 BAD_RESPONSE = {
     "data": [
@@ -643,3 +644,16 @@ class OMetaTableTest(TestCase):
 
             # We should have 2 tables, the 3rd one is broken and should be skipped
             assert len(list(res)) == 2
+
+    def test_table_with_slash_in_name(self):
+        """E.g., `foo.bar/baz`"""
+        name = EntityName("foo.bar/baz")
+        new_table: Table = self.metadata.create_or_update(
+            data=get_create_entity(entity=Table, name=name, reference=self.create_schema_entity.fullyQualifiedName)
+        )
+
+        res: Table = self.metadata.get_by_name(
+            entity=Table, fqn=new_table.fullyQualifiedName
+        )
+
+        assert res.name == name
