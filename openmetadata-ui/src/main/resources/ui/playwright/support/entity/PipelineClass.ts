@@ -19,6 +19,7 @@ import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
+  private pipelineName = `pw-pipeline-${uuid()}`;
   service = {
     name: `pw-pipeline-service-${uuid()}`,
     serviceType: 'Dagster',
@@ -36,8 +37,8 @@ export class PipelineClass extends EntityClass {
   children = [{ name: 'snowflake_task' }];
 
   entity = {
-    name: `pw-pipeline-${uuid()}`,
-    displayName: `pw-pipeline-${uuid()}`,
+    name: this.pipelineName,
+    displayName: this.pipelineName,
     service: this.service.name,
     tasks: this.children,
   };
