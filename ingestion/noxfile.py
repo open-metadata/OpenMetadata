@@ -1,7 +1,7 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import chain
-from typing import List
+from typing import List, Set, Optional
 
 import nox
 from nox import Session
@@ -16,34 +16,54 @@ class TestEnv:
     name: str
     extras: List[str]
     paths: List[str]
+    python_versions: List[str] = field(default_factory=lambda: python_versions)
 
     def install_deps(self, session: Session):
         session.install(f".[{','.join(self.extras)}]")
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "extras": self.extras,
-            "paths": self.paths,
-        }
+        return vars(self)
 
     @classmethod
     def from_dict(cls, d):
-        return cls(
-            name=d["name"],
-            extras=d["extras"],
-            paths=d["paths"],
-        )
+        return cls(**d)
 
 
 integration_test_dir = "tests/integration"
 
 
-def simple_integration_env(name: str):
+def simple_integration_env(name: str, python_versions=None):
+    kwargs = (
+        {
+            "python_versions": python_versions,
+        }
+        if python_versions
+        else {}
+    )
     return TestEnv(
         f"integration-{name}",
         ["test", name],
         [os.path.join(integration_test_dir, name)],
+        **kwargs,
+    )
+
+
+def parametrize(
+    envs: List[TestEnv], compatible_python_versions: Optional[Set[str]] = None
+):
+    compatible_python_versions = compatible_python_versions or set(python_versions)
+    return nox.parametrize(
+        "env",
+        [
+            e.to_dict()
+            for e in envs
+            if set(compatible_python_versions).intersection(set(e.python_versions))
+        ],
+        [
+            e.name
+            for e in envs
+            if set(compatible_python_versions).intersection(set(e.python_versions))
+        ],
     )
 
 
@@ -64,14 +84,21 @@ def pytest_run(session: Session, env: TestEnv):
     )
 
 
-## TEST ENVIRONMENTS
+## ENVIRONMENTS
 
-# Define the Python versions and environments
-integration_tests = [
-    simple_integration_env(x)
-    for x in ("postgres", "mysql", "kafka", "mssql", "trino", "datalake-s3")
+integration_test_envs = [
+    # these tests are not supported on 3.8 because the test containers module requires python 3.9+
+    simple_integration_env(x, python_versions=["3.9", "3.10", "3.11"])
+    for x in ("postgres", "mysql", "kafka", "mssql", "trino")
 ]
-integration_tests += [
+integration_test_envs += [
+    TestEnv(
+        name="mlflow",
+        extras=["test", "mlflow"],
+        paths=[os.path.join(integration_test_dir, "sources/mlmodels/mlflow")],
+        python_versions=["3.9", "3.10", "3.11"],
+    ),
+    simple_integration_env("datalake-s3"),
     # TODO: these should be moved to separate integration tests
     TestEnv(
         name="integration-others",
@@ -79,7 +106,7 @@ integration_tests += [
             path
             for path in os.listdir(integration_test_dir)
             if os.path.join(integration_test_dir, path)
-            not in chain(*[e.paths for e in integration_tests])
+            not in chain(*[e.paths for e in integration_test_envs])
         ],
         extras=[
             # base test dependencies
@@ -112,43 +139,45 @@ integration_tests += [
             "tableau",
             "trino",
         ],
+    ),
+]
+unit_tests = [
+    TestEnv(
+        name="unit",
+        extras=[
+            # base test dependencies
+            "test",
+            # packages tested in unit tests
+            "athena",
+            "bigquery",
+            "bigtable",
+            "clickhouse",
+            "dagster",
+            "databricks",
+            "datalake-gcs",
+            "deltalake-spark",
+            "domo",
+            "doris",
+            "hive",
+            "iceberg",
+            "kafka",
+            "lkml",
+            "looker",
+            "mongo",
+            "mssql",
+            "amundsen",
+            "oracle",
+            "pii-processor",
+            "pgspider",
+            "redshift",
+            "salesforce",
+            "snowflake",
+            "tableau",
+            "trino",
+        ],
+        paths=["tests/unit"],
     )
 ]
-unit_tests = TestEnv(
-    name="unit",
-    extras=[
-        # base test dependencies
-        "test",
-        # packages tested in unit tests
-        "athena",
-        "bigquery",
-        "bigtable",
-        "clickhouse",
-        "dagster",
-        "databricks",
-        "datalake-gcs",
-        "deltalake-spark",
-        "domo",
-        "doris",
-        "hive",
-        "iceberg",
-        "kafka",
-        "lkml",
-        "looker",
-        "mongo",
-        "mssql",
-        "amundsen",
-        "oracle",
-        "pii-processor",
-        "pgspider",
-        "redshift",
-        "salesforce",
-        "snowflake",
-        "tableau",
-        "trino",
-    ],
-    paths=["tests/unit"],
-)
 
 e2e_tests = [
     TestEnv(name=name, extras=extras, paths=["tests/cli_e2e/test_cli_" + name + ".py"])
@@ -176,20 +205,24 @@ e2e_tests = [
 ## SESSIONS
 
 
-@nox.session(python=python_versions, tags=["integration"])
-@nox.parametrize(
-    "env",
-    [t.to_dict() for t in integration_tests],
-    ids=[e.name for e in integration_tests],
-)
-def integration_tests(session, env: dict):
+@nox.session(python=list(set(python_versions) - {"3.8"}), tags=["integration"])
+@parametrize(integration_test_envs, set(python_versions) - {"3.8"})
+def integration_tests(session: Session, env: dict):
+    env = TestEnv.from_dict(env)
+    env.install_deps(session)
+    pytest_run(session, env)
+
+
+@nox.session(python=["3.8"], tags=["integration"])
+@parametrize(integration_test_envs, {"3.8"})
+def integration_tests_38(session: Session, env: dict):
     env = TestEnv.from_dict(env)
     env.install_deps(session)
     pytest_run(session, env)
 
 
 @nox.session(python=python_versions, tags=["unit"])
-@nox.parametrize("env", [unit_tests.to_dict()], ids=[e.name for e in [unit_tests]])
+@parametrize(unit_tests)
 def unit_tests(session, env: dict):
     env = TestEnv.from_dict(env)
     env.install_deps(session)
@@ -197,11 +230,7 @@ def unit_tests(session, env: dict):
 
 
 @nox.session(python=python_versions, tags=["e2e"])
-@nox.parametrize(
-    "env",
-    [t.to_dict() for t in e2e_tests],
-    ids=[e.name for e in e2e_tests],
-)
+@parametrize(e2e_tests)
 def cli_e2e_test(session, env: dict):
     env = TestEnv.from_dict(env)
     env.install_deps(session)
