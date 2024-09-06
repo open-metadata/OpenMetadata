@@ -33,7 +33,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3.0",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0",
+    "pydantic": "pydantic~=2.0,<=2.8.2",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
