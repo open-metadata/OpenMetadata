@@ -33,6 +33,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
   }
 
   @Setter private String totalAssets;
+  private final String changeCount;
   private final String percentCompleted;
   @Setter private boolean kpiAvailable;
   private String percentChange;
@@ -50,6 +51,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
       String totalAssets,
       Double percentCompleted,
       String targetKpi,
+      int changeCount,
       Double percentChange,
       boolean isKpiAvailable,
       String numberOfDaysLeft,
@@ -58,6 +60,7 @@ public class DataInsightDescriptionAndOwnerTemplate {
       Map<String, Integer> dateMap) {
     this.percentCompleted = String.format("%.2f", percentCompleted);
     this.targetKpi = targetKpi;
+    this.changeCount = String.valueOf(changeCount);
     this.percentChange = String.format("%.2f", percentChange);
     this.percentChangeMessage = getFormattedPercentChangeMessage(percentChange);
     this.totalAssets = totalAssets;
