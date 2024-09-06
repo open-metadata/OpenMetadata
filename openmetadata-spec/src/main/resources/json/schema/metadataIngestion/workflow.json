@@ -13,6 +13,9 @@
         "config": {
           "oneOf": [
             {
+              "$ref": "apiServiceMetadataPipeline.json"
+            },
+            {
               "$ref": "databaseServiceMetadataPipeline.json"
             },
             {
