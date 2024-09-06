@@ -100,8 +100,13 @@ test.describe.serial('Add role and assign it to the user', () => {
   test('Verify assigned role to new user', async ({ page }) => {
     await settingClick(page, GlobalSettingOptions.USERS);
 
+    const searchUser = page.waitForResponse(
+      `/api/v1/search/query?q=*${encodeURIComponent(userDisplayName)}*`
+    );
     await page.waitForSelector('[data-testid="searchbar"]');
     await page.fill('[data-testid="searchbar"]', userDisplayName);
+
+    await searchUser;
     await page.waitForSelector(`[data-testid="${userName}"]`);
     await page.click(`[data-testid="${userName}"]`);
     await page.waitForSelector('[data-testid="user-profile"]');
