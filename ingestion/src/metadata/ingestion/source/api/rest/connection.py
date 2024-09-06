@@ -15,8 +15,6 @@ Source connection handler
 from typing import Optional
 
 import requests
-
-# from metadata.ingestion.source.pipeline.flink.client import FlinkClient
 from requests.models import Response
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -27,6 +25,12 @@ from metadata.generated.schema.entity.services.connections.apiService.restConnec
 )
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+
+class SchemaURLError(Exception):
+    """
+    Class to indicate schema url is invalid
+    """
 
 
 def get_connection(connection: RESTConnection) -> Response:
@@ -48,7 +52,11 @@ def test_connection(
     """
 
     def custom_url_exec():
-        return [] if client.status_code == 200 else None
+        if client.status_code == 200:
+            return []
+        raise SchemaURLError(
+            f"Failed to get access to provided schema url. Please check with url and its permissions"
+        )
 
     test_fn = {"CheckURL": custom_url_exec}
 

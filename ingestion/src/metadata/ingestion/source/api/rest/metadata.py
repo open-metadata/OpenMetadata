@@ -77,9 +77,11 @@ class RestSource(ApiServiceSource):
         Method to list all collections to process.
         Here is where filtering happens
         """
-        json_response = self.connection.json()
-        if not type(json_response) == dict:
-            return None
+        json_response = {}
+        try:
+            json_response = self.connection.json()
+        except Exception as err:
+            logger.error(f"Error while fetching collections from schema URL :{err}")
 
         for collection in json_response.get("tags", []):
             if not collection.get("name"):
@@ -117,7 +119,7 @@ class RestSource(ApiServiceSource):
         self, collection: dict
     ) -> Iterable[Either[CreateAPIEndpointRequest]]:
         """Method to return api endpoint Entities"""
-        filtered_endpoints = self._filter_collection_endpoints(collection)
+        filtered_endpoints = self._filter_collection_endpoints(collection) or {}
         for path, methods in filtered_endpoints.items():
             for method_type, info in methods.items():
                 try:
@@ -152,19 +154,25 @@ class RestSource(ApiServiceSource):
                         )
                     )
 
-    def _filter_collection_endpoints(self, collection: dict) -> dict:
-        """"""
-        collection_name = collection.get("name")
-        json_response = self.connection.json().get("paths", {})
+    def _filter_collection_endpoints(self, collection: dict) -> Optional[dict]:
+        """filter endpoints related to specific collection"""
+        try:
+            collection_name = collection.get("name")
+            json_response = self.connection.json().get("paths", {})
 
-        filtered_paths = {}
-        for path, methods in json_response.items():
-            for method_type, info in methods.items():
-                if collection_name in info.get("tags", []):
-                    # path & methods are part of collection
-                    filtered_paths.update({path: methods})
-                break
-        return filtered_paths
+            filtered_paths = {}
+            for path, methods in json_response.items():
+                for method_type, info in methods.items():
+                    if collection_name in info.get("tags", []):
+                        # path & methods are part of collection
+                        filtered_paths.update({path: methods})
+                    break
+            return filtered_paths
+        except Exception as err:
+            logger.info(
+                f"Error while filtering endpoints for collection {collection_name}"
+            )
+            return None
 
     def _get_api_request_method(self, method_type: str) -> Optional[str]:
         """fetch endpoint request method"""
