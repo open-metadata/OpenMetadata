@@ -14,8 +14,6 @@ OpenMetadata high-level API Lineage test
 """
 from unittest import TestCase
 
-from metadata.generated.schema.type.basic import EntityName
-
 from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboard import Dashboard
@@ -27,6 +25,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.type.basic import EntityName
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -344,7 +343,11 @@ class OMetaLineageTest(TestCase):
         """E.g., `foo.bar/baz`"""
         name = EntityName("foo.bar/baz")
         new_table: Table = self.metadata.create_or_update(
-            data=get_create_entity(entity=Table, name=name, reference=self.create_schema_entity.fullyQualifiedName)
+            data=get_create_entity(
+                entity=Table,
+                name=name,
+                reference=self.create_schema_entity.fullyQualifiedName,
+            )
         )
 
         res: Table = self.metadata.get_by_name(
@@ -357,9 +360,7 @@ class OMetaLineageTest(TestCase):
             data=AddLineageRequest(
                 edge=EntitiesEdge(
                     fromEntity=EntityReference(id=self.table1_entity.id, type="table"),
-                    toEntity=EntityReference(
-                        id=new_table.id, type="table"
-                    ),
+                    toEntity=EntityReference(id=new_table.id, type="table"),
                     lineageDetails=LineageDetails(
                         columnsLineage=[
                             ColumnLineage(
@@ -380,4 +381,7 @@ class OMetaLineageTest(TestCase):
             fqn=new_table.fullyQualifiedName.root,
         )
         entity_lineage = EntityLineage.model_validate(lineage)
-        assert entity_lineage.upstreamEdges[0].fromEntity.root == self.table1_entity.id.root
+        assert (
+            entity_lineage.upstreamEdges[0].fromEntity.root
+            == self.table1_entity.id.root
+        )

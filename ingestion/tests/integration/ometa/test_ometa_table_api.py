@@ -649,7 +649,11 @@ class OMetaTableTest(TestCase):
         """E.g., `foo.bar/baz`"""
         name = EntityName("foo.bar/baz")
         new_table: Table = self.metadata.create_or_update(
-            data=get_create_entity(entity=Table, name=name, reference=self.create_schema_entity.fullyQualifiedName)
+            data=get_create_entity(
+                entity=Table,
+                name=name,
+                reference=self.create_schema_entity.fullyQualifiedName,
+            )
         )
 
         res: Table = self.metadata.get_by_name(

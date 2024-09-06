@@ -16,8 +16,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.ometa.utils import quote
 from metadata.utils import fqn
 
@@ -153,5 +153,5 @@ class TestFqn(TestCase):
         assert quote(FullyQualifiedEntityName("a.b.c")) == "a.b.c"
         # Works with strings directly
         assert quote("a.b.c") == "a.b.c"
-        assert quote(FullyQualifiedEntityName("\"foo.bar\".baz")) == "%22foo.bar%22.baz"
+        assert quote(FullyQualifiedEntityName('"foo.bar".baz')) == "%22foo.bar%22.baz"
         assert quote('"foo.bar/baz".hello') == "%22foo.bar%2Fbaz%22.hello"

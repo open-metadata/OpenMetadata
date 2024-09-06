@@ -15,10 +15,11 @@ Helper functions to handle OpenMetadata Entities' properties
 import re
 import string
 from typing import Any, Type, TypeVar, Union
+
+from pydantic import BaseModel
 from requests.utils import quote as url_quote
 
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
 
