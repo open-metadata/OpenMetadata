@@ -66,6 +66,7 @@ class PIIProcessor(Processor):
         )  # Used to satisfy type checked
 
         self._ner_scanner = None
+        self.name_scanner = ColumnNameScanner()
         self.confidence_threshold = self.source_config.confidence
 
     @property
@@ -128,7 +129,7 @@ class PIIProcessor(Processor):
             return None
 
         # Scan by column name. If no results there, check the sample data, if any
-        tag_and_confidence = ColumnNameScanner.scan(column.name.root) or (
+        tag_and_confidence = self.name_scanner.scan(column.name.root) or (
             self.ner_scanner.scan([row[idx] for row in table_data.rows])
             if table_data
             else None
