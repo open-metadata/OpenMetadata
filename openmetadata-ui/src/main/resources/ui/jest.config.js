@@ -64,6 +64,8 @@ module.exports = {
     '@azure/msal-react':
       '<rootDir>/node_modules/@azure/msal-react/dist/index.js',
     axios: 'axios/dist/node/axios.cjs',
+    'react-antd-column-resize':
+      '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
   },
   transformIgnorePatterns: ['node_modules/(?!@azure/msal-react)'],
 
