@@ -56,6 +56,7 @@ export default tseslint.config(
       parserOptions: {
         project: ['./tsconfig.json'],
       },
+      ecmaVersion: 2020,
     },
 
     settings: {

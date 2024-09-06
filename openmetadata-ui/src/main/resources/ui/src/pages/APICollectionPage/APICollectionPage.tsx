@@ -38,6 +38,7 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -99,8 +100,9 @@ const APICollectionPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { tab: activeTab = EntityTabs.API_ENDPOINT } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.API_ENDPOINT } = useParams<{
+    tab: EntityTabs;
+  }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const history = useHistory();
 
@@ -480,7 +482,7 @@ const APICollectionPage: FunctionComponent = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as APICollection;
 
     setAPICollection((data) => ({
@@ -697,7 +699,8 @@ const APICollectionPage: FunctionComponent = () => {
       className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(apiCollection),
-      })}>
+      })}
+    >
       {isEmpty(apiCollection) && !isAPICollectionLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(

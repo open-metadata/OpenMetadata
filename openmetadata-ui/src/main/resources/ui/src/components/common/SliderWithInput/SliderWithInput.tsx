@@ -20,7 +20,7 @@ const SliderWithInput = ({
   onChange,
   className,
 }: SliderWithInputProps) => {
-  const formatter = useCallback((value) => `${value}%`, [value]);
+  const formatter = useCallback((value?: number) => `${value}%`, [value]);
 
   return (
     <Row className={className} data-testid="percentage-input" gutter={20}>

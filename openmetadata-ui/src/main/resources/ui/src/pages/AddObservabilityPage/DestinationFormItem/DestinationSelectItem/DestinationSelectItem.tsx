@@ -66,7 +66,7 @@ function DestinationSelectItem({
     [];
 
   const handleTabChange = useCallback(
-    (key) => {
+    (key: string) => {
       setActiveTab(key);
       setDestinationOptions(getFilteredDestinationOptions(key, selectedSource));
     },
@@ -202,7 +202,8 @@ function DestinationSelectItem({
                       fieldText: t('label.destination'),
                     }),
                   },
-                ]}>
+                ]}
+              >
                 <Select
                   className="w-full"
                   data-testid={`destination-category-select-${id}`}
@@ -232,49 +233,51 @@ function DestinationSelectItem({
                 selectedDestinations[id]?.destinationType,
                 id
               )}
-            {destinationType && checkIfDestinationIsInternal(destinationType) && (
-              <Col span={24}>
-                <Form.Item
-                  required
-                  extra={
-                    destinationType &&
-                    subscriptionType && (
-                      <Alert
-                        closable
-                        className="m-t-sm"
-                        message={
-                          <Typography.Text className="font-medium text-sm">
-                            {t('message.destination-selection-warning', {
-                              subscriptionCategory: destinationType,
-                              subscriptionType,
-                            })}
-                          </Typography.Text>
-                        }
-                        type="warning"
-                      />
-                    )
-                  }
-                  name={[id, 'type']}
-                  rules={[
-                    {
-                      required: true,
-                      message: t('message.field-text-is-required', {
-                        fieldText: t('label.field'),
-                      }),
-                    },
-                  ]}>
-                  <Select
-                    className="w-full"
-                    data-testid={`destination-type-select-${id}`}
-                    options={getSubscriptionTypeOptions(destinationType)}
-                    placeholder={t('label.select-field', {
-                      field: t('label.destination'),
-                    })}
-                    popupClassName="select-options-container"
-                  />
-                </Form.Item>
-              </Col>
-            )}
+            {destinationType &&
+              checkIfDestinationIsInternal(destinationType) && (
+                <Col span={24}>
+                  <Form.Item
+                    required
+                    extra={
+                      destinationType &&
+                      subscriptionType && (
+                        <Alert
+                          closable
+                          className="m-t-sm"
+                          message={
+                            <Typography.Text className="font-medium text-sm">
+                              {t('message.destination-selection-warning', {
+                                subscriptionCategory: destinationType,
+                                subscriptionType,
+                              })}
+                            </Typography.Text>
+                          }
+                          type="warning"
+                        />
+                      )
+                    }
+                    name={[id, 'type']}
+                    rules={[
+                      {
+                        required: true,
+                        message: t('message.field-text-is-required', {
+                          fieldText: t('label.field'),
+                        }),
+                      },
+                    ]}
+                  >
+                    <Select
+                      className="w-full"
+                      data-testid={`destination-type-select-${id}`}
+                      options={getSubscriptionTypeOptions(destinationType)}
+                      placeholder={t('label.select-field', {
+                        field: t('label.destination'),
+                      })}
+                      popupClassName="select-options-container"
+                    />
+                  </Form.Item>
+                </Col>
+              )}
           </Row>
         </div>
 

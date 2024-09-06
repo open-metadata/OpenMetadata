@@ -30,6 +30,7 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
@@ -395,7 +396,7 @@ const StoredProcedurePage = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as StoredProcedure;
 
     setStoredProcedure((data) => ({
@@ -733,7 +734,8 @@ const StoredProcedurePage = () => {
       className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.stored-procedure'),
-      })}>
+      })}
+    >
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader

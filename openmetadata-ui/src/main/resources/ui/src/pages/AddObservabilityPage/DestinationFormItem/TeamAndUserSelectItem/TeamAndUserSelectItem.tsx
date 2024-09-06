@@ -77,11 +77,13 @@ function TeamAndUserSelectItem({
               <Col
                 className="w-max-90"
                 data-testid={`${label}-option-label`}
-                flex="1 1 auto">
+                flex="1 1 auto"
+              >
                 <Typography.Text
                   ellipsis
                   className="dropdown-option-label"
-                  title={label}>
+                  title={label}
+                >
                   {label}
                 </Typography.Text>
               </Col>
@@ -132,7 +134,8 @@ function TeamAndUserSelectItem({
           bodyStyle={{ padding: 0 }}
           className="team-user-select-dropdown"
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
-          ref={dropdownRef}>
+          ref={dropdownRef}
+        >
           <Row gutter={[8, 8]}>
             <Col span={24}>
               <Input
@@ -163,7 +166,7 @@ function TeamAndUserSelectItem({
   );
 
   const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
-    ({ key }) => {
+    ({ key }: { key: string }) => {
       // Find out if clicked option is present in selected key
       const selectedKey = selectedOptions.find((option) => option === key);
 
@@ -233,17 +236,20 @@ function TeamAndUserSelectItem({
       }}
       open={isDropdownOpen}
       placement="bottomRight"
-      trigger={['click']}>
+      trigger={['click']}
+    >
       <Button
         className="select-trigger"
         data-testid="dropdown-trigger-button"
         ref={triggerRef}
-        onClick={handleTriggerClick}>
+        onClick={handleTriggerClick}
+      >
         <Row gutter={[4, 4]}>
           {isEmpty(selectedOptions) ? (
             <Typography.Text
               className="text-sm p-l-xss text-grey-3"
-              data-testid="placeholder-text">
+              data-testid="placeholder-text"
+            >
               {t('label.please-select-entity', {
                 entity: entityType,
               })}
@@ -256,7 +262,8 @@ function TeamAndUserSelectItem({
                   className="m-0"
                   data-testid={`selected-tag-${option}`}
                   key={option}
-                  onClose={() => handleTagClose(option)}>
+                  onClose={() => handleTagClose(option)}
+                >
                   {option}
                 </Tag>
               </Col>

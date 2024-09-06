@@ -151,31 +151,27 @@ const ExplorePageV1: FunctionComponent = () => {
 
   // Filters that can be common for all the Entities Ex. Tables, Topics, etc.
   const commonQuickFilters = useMemo(() => {
-    const mustField: QueryFieldInterface[] = get(
-      advancesSearchQuickFilters,
-      'query.bool.must',
-      []
-    );
+    const mustField = get(advancesSearchQuickFilters, 'query.bool.must', []);
 
     // Getting the filters that can be common for all the Entities
-    const must = mustField.filter((filterCategory: QueryFieldInterface) => {
-      const shouldField: QueryFieldInterface[] = get(
-        filterCategory,
-        'bool.should',
-        []
-      );
+    const must = (Array.isArray(mustField) ? mustField : [mustField]).filter(
+      (filterCategory: QueryFieldInterface) => {
+        const shouldField = get(filterCategory, 'bool.should', []);
 
-      const terms = extractTermKeys(shouldField);
-
-      // check if the filter category is present in the common filters array
-      const isCommonFieldPresent =
-        !isEmpty(shouldField) &&
-        COMMON_FILTERS_FOR_DIFFERENT_TABS.find((value) =>
-          terms.includes(value)
+        const terms = extractTermKeys(
+          Array.isArray(shouldField) ? shouldField : [shouldField]
         );
 
-      return isCommonFieldPresent;
-    });
+        // check if the filter category is present in the common filters array
+        const isCommonFieldPresent =
+          !isEmpty(shouldField) &&
+          COMMON_FILTERS_FOR_DIFFERENT_TABS.find((value) =>
+            terms.includes(value)
+          );
+
+        return isCommonFieldPresent;
+      }
+    );
 
     return isEmpty(must)
       ? undefined
@@ -212,7 +208,7 @@ const ExplorePageV1: FunctionComponent = () => {
     );
 
   const handleQuickFilterChange = useCallback(
-    (quickFilter) => {
+    (quickFilter?: QueryFilterInterface) => {
       history.push({
         search: Qs.stringify({
           ...parsedSearch,
@@ -261,7 +257,8 @@ const ExplorePageV1: FunctionComponent = () => {
           label: (
             <div
               className="d-flex items-center justify-between"
-              data-testid={`${lowerCase(tabDetail.label)}-tab`}>
+              data-testid={`${lowerCase(tabDetail.label)}-tab`}
+            >
               <div className="d-flex items-center">
                 <span className="explore-icon d-flex m-r-xs">
                   <Icon />
@@ -269,7 +266,8 @@ const ExplorePageV1: FunctionComponent = () => {
                 <Typography.Text
                   className={
                     tabSearchIndex === searchIndex ? 'text-primary' : ''
-                  }>
+                  }
+                >
                   {tabDetail.label}
                 </Typography.Text>
               </div>

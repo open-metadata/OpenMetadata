@@ -71,7 +71,7 @@ export const DomainLabel = ({
           const api = getAPIfromSource(entityType as AssetsUnion);
           const res = await api(entityId, jsonPatch);
 
-          const entityDomains = get(res, fieldData, {});
+          const entityDomains = get(res, fieldData, {} as EntityReference);
           if (Array.isArray(entityDomains)) {
             setActiveDomain(entityDomains);
           } else {
@@ -110,7 +110,8 @@ export const DomainLabel = ({
           <Tooltip
             title={t('label.inherited-entity', {
               entity: t('label.domain'),
-            })}>
+            })}
+          >
             <InheritIcon className="inherit-icon cursor-pointer" width={14} />
           </Tooltip>
         ) : null;
@@ -144,7 +145,8 @@ export const DomainLabel = ({
             { 'font-medium text-xs': !showDomainHeading },
             textClassName
           )}
-          data-testid="no-domain-text">
+          data-testid="no-domain-text"
+        >
           {t('label.no-entity', { entity: t('label.domain') })}
         </Typography.Text>
       );
@@ -185,7 +187,8 @@ export const DomainLabel = ({
     return (
       <div
         className="d-flex items-center gap-1 flex-wrap"
-        data-testid="header-domain-container">
+        data-testid="header-domain-container"
+      >
         {domainLink}
         {selectableList}
       </div>

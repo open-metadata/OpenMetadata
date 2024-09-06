@@ -683,7 +683,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setReactFlowInstance(reactFlowInstance);
   };
 
-  const onLineageConfigUpdate = useCallback((config) => {
+  const onLineageConfigUpdate = useCallback((config: LineageConfig) => {
     setLineageConfig(config);
   }, []);
 
@@ -691,7 +691,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     setIsDrawerOpen(false);
   }, []);
 
-  const onZoomUpdate = useCallback((value) => {
+  const onZoomUpdate = useCallback((value: number) => {
     setZoomValue(value);
   }, []);
 
@@ -1287,7 +1287,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       <div
         className={classNames({
           'full-screen-lineage': isFullScreen,
-        })}>
+        })}
+      >
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
@@ -1327,7 +1328,8 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             onCancel={() => {
               setShowDeleteModal(false);
             }}
-            onOk={onRemove}>
+            onOk={onRemove}
+          >
             {getModalBodyText(selectedEdge as Edge)}
           </Modal>
         )}

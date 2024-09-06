@@ -32,6 +32,7 @@ import QueryViewer from '../../components/common/QueryViewer/QueryViewer.compone
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import SampleDataWithMessages from '../../components/Database/SampleDataWithMessages/SampleDataWithMessages';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
@@ -203,7 +204,7 @@ function SearchIndexDetailsPage() {
   );
 
   const fetchResourcePermission = useCallback(
-    async (entityFQN) => {
+    async (entityFQN: string) => {
       try {
         const searchIndexPermission = await getEntityPermissionByFqn(
           ResourceEntity.SEARCH_INDEX,
@@ -705,7 +706,7 @@ function SearchIndexDetailsPage() {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as SearchIndex;
 
     setSearchIndexDetails((data) => ({
@@ -764,7 +765,8 @@ function SearchIndexDetailsPage() {
       })}
       title={t('label.entity-detail-plural', {
         entity: t('label.search-index'),
-      })}>
+      })}
+    >
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>
           <DataAssetsHeader

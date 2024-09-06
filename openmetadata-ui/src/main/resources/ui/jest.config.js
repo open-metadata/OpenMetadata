@@ -12,6 +12,8 @@
  */
 /** @type {import('ts-jest').JestConfigWithTsJest} **/
 module.exports = {
+  // Test files
+  testMatch: ['<rootDir>/src/**/*.test.{ts,tsx,js,jsx}'], // All test files in subdirectories under /src
   testEnvironment: 'jsdom',
   transform: {
     '^.+.tsx?$': ['ts-jest', {}],
@@ -23,4 +25,5 @@ module.exports = {
     '\\.(jpg|JPG|gif|GIF|png|PNG|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
   },
+  clearMocks: true,
 };

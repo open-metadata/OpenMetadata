@@ -67,7 +67,8 @@ function AlertFormSourceItem({
       <Card
         bodyStyle={{ padding: 0 }}
         className="source-dropdown-card"
-        data-testid="drop-down-menu">
+        data-testid="drop-down-menu"
+      >
         <Typography.Text className="p-l-md text-grey-muted">
           {t('label.data-asset-plural')}
         </Typography.Text>
@@ -85,15 +86,19 @@ function AlertFormSourceItem({
     [resourcesOptions]
   );
 
-  const handleMenuItemClick: MenuItemProps['onClick'] = useCallback((info) => {
-    form.setFieldValue(['resources'], [info.key]);
-    setIsEditMode(true);
-  }, []);
+  const handleMenuItemClick: MenuItemProps['onClick'] = useCallback(
+    (info: { key: string }) => {
+      form.setFieldValue(['resources'], [info.key]);
+      setIsEditMode(true);
+    },
+    []
+  );
 
   return (
     <FormCardSection
       heading={t('label.source')}
-      subHeading={t('message.alerts-source-description')}>
+      subHeading={t('message.alerts-source-description')}
+    >
       <div className="source-input-container" ref={newRef}>
         <Form.Item
           required
@@ -113,7 +118,8 @@ function AlertFormSourceItem({
                 entity: t('label.data-asset'),
               }),
             },
-          ]}>
+          ]}
+        >
           {isEditMode || fqn ? (
             <Select
               className="w-full"
@@ -135,7 +141,8 @@ function AlertFormSourceItem({
                 onClick: handleMenuItemClick,
               }}
               placement="bottomRight"
-              trigger={['click']}>
+              trigger={['click']}
+            >
               <Button data-testid="add-source-button" type="primary">
                 {t('label.add-entity', {
                   entity: t('label.source'),

@@ -26,14 +26,6 @@ jest.mock('../../../../components/common/Loader/Loader', () =>
 );
 
 describe('TeamAndUserSelectItem Component', () => {
-  beforeEach(() => {
-    jest.useFakeTimers('modern');
-  });
-
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
   it('dropdown should be visible after clicking trigger button', async () => {
     await act(async () => {
       render(<TeamAndUserSelectItem {...MOCK_PROPS} />);

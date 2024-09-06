@@ -25,6 +25,7 @@ import { useHistory } from 'react-router-dom';
 
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
 import { getVersionPath, ROUTES } from '../../constants/constants';
@@ -260,7 +261,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     }
   };
 
-  const updateTopicDetailsState = useCallback((data) => {
+  const updateTopicDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Topic;
 
     setTopicDetails((data) => ({

@@ -40,7 +40,7 @@ export const DescriptionTabs = ({
   const [description] = useState(value);
   const [diffs, setDiffs] = useState<Change[]>([]);
   const [activeTab, setActiveTab] = useState<string>('3');
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef | null>(null);
 
   const onTabChange = useCallback(
     (key: string) => {
@@ -65,7 +65,8 @@ export const DescriptionTabs = ({
       data-testid="tabs"
       size="small"
       type="card"
-      onChange={onTabChange}>
+      onChange={onTabChange}
+    >
       <TabPane data-testid="current-tab" key="1" tab="Current">
         <div className="border border-main rounded-4 p-sm m-t-sm">
           {description.trim() ? (

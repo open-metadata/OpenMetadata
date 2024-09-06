@@ -16,7 +16,7 @@ import {
   findByRole,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Form } from 'antd';
@@ -74,8 +74,11 @@ describe('DestinationSelectItem component', () => {
       userEvent.click(categorySelect);
     });
 
-    await waitForElement(() =>
-      screen.findByTestId(`destination-category-dropdown-${selectorKey}`)
+    await waitFor(
+      async () =>
+        await screen.findByTestId(
+          `destination-category-dropdown-${selectorKey}`
+        )
     );
 
     expect(
@@ -124,8 +127,11 @@ describe('DestinationSelectItem component', () => {
       userEvent.click(categorySelect);
     });
 
-    await waitForElement(() =>
-      screen.findByTestId(`destination-category-dropdown-${selectorKey}`)
+    await waitFor(
+      async () =>
+        await screen.findByTestId(
+          `destination-category-dropdown-${selectorKey}`
+        )
     );
     screen.debug(
       await screen.findByTestId(`destination-category-dropdown-${selectorKey}`)

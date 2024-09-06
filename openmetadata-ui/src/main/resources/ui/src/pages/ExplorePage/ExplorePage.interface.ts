@@ -20,7 +20,7 @@ export type TabsInfoData = {
   sortField: string;
   sortOrder?: SORT_ORDER;
   path: string;
-  icon: React.ReactNode;
+  icon: SvgComponent;
 };
 
 export type FieldValue = string | boolean | null | number | undefined;

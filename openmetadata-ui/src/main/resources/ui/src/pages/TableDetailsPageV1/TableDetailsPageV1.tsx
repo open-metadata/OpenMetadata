@@ -33,6 +33,7 @@ import QueryViewer from '../../components/common/QueryViewer/QueryViewer.compone
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import TableProfiler from '../../components/Database/Profiler/TableProfiler/TableProfiler';
 import SampleDataTableComponent from '../../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTab from '../../components/Database/SchemaTab/SchemaTab.component';
@@ -315,7 +316,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
   const fetchResourcePermission = useCallback(
-    async (tableFqn) => {
+    async (tableFqn: string) => {
       try {
         const tablePermission = await getEntityPermissionByFqn(
           ResourceEntity.TABLE,
@@ -550,7 +551,8 @@ const TableDetailsPageV1: React.FC = () => {
         })}
         gutter={[0, 16]}
         id="schemaDetails"
-        wrap={false}>
+        wrap={false}
+      >
         <Col className="tab-content-height-with-resizable-panel" span={24}>
           <ResizablePanels
             firstPanel={{
@@ -595,7 +597,8 @@ const TableDetailsPageV1: React.FC = () => {
                       <Space
                         className="w-full m-t-lg"
                         direction="vertical"
-                        size="large">
+                        size="large"
+                      >
                         <TableConstraints
                           constraints={tableDetails?.tableConstraints}
                         />
@@ -973,7 +976,7 @@ const TableDetailsPageV1: React.FC = () => {
     []
   );
 
-  const updateTableDetailsState = useCallback((data) => {
+  const updateTableDetailsState = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Table;
 
     setTableDetails((data) => ({
@@ -1096,7 +1099,8 @@ const TableDetailsPageV1: React.FC = () => {
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.table'),
       })}
-      title="Table details">
+      title="Table details"
+    >
       <Row gutter={[0, 12]}>
         {/* Entity Heading */}
         <Col className="p-x-lg" data-testid="entity-page-header" span={24}>

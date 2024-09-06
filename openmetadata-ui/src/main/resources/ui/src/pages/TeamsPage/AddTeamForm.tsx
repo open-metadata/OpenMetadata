@@ -52,7 +52,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
   const [form] = useForm();
   const [description, setDescription] = useState<string>('');
   const [allTeam, setAllTeam] = useState<Team[]>([]);
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef | null>(null);
   const { activeDomainEntityRef } = useDomainStore();
   const selectedDomain =
     Form.useWatch<EntityReference[]>('domains', form) ?? [];
@@ -146,7 +146,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       open={visible}
       title={t('label.add-entity', { entity: t('label.team') })}
       width={750}
-      onCancel={onCancel}>
+      onCancel={onCancel}
+    >
       <Form
         form={form}
         id="add-team-form"
@@ -157,7 +158,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         layout="vertical"
         name="add-team-nest-messages"
         validateMessages={VALIDATION_MESSAGES}
-        onFinish={handleSubmit}>
+        onFinish={handleSubmit}
+      >
         <Form.Item
           label={t('label.name')}
           name="name"
@@ -178,7 +180,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                 return Promise.resolve();
               },
             },
-          ]}>
+          ]}
+        >
           <Input
             data-testid="name"
             placeholder={t('label.enter-entity', { entity: t('label.name') })}
@@ -195,7 +198,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
               min: 1,
               max: 128,
             },
-          ]}>
+          ]}
+        >
           <Input
             data-testid="display-name"
             placeholder={t('message.enter-display-name')}
@@ -204,7 +208,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
         <Form.Item
           label={t('label.email')}
           name="email"
-          rules={[{ type: 'email' }]}>
+          rules={[{ type: 'email' }]}
+        >
           <Input
             data-testid="email"
             placeholder={t('label.enter-entity', {
@@ -225,7 +230,8 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
           name="description"
           style={{
             marginBottom: 0,
-          }}>
+          }}
+        >
           <RichTextEditor
             data-testid="description"
             initialValue=""

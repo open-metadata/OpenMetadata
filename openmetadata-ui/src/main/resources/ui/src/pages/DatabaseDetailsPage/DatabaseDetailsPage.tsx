@@ -37,6 +37,7 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { DatabaseSchemaTable } from '../../components/Database/DatabaseSchema/DatabaseSchemaTable/DatabaseSchemaTable';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
@@ -95,11 +96,13 @@ const DatabaseDetails: FunctionComponent = () => {
   const { t } = useTranslation();
   const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const { getEntityPermissionByFqn } = usePermissionProvider();
-  const { withinPageSearch } =
-    useLocationSearch<{ withinPageSearch: string }>();
+  const { withinPageSearch } = useLocationSearch<{
+    withinPageSearch: string;
+  }>();
 
-  const { tab: activeTab = EntityTabs.SCHEMA } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.SCHEMA } = useParams<{
+    tab: EntityTabs;
+  }>();
   const { fqn: decodedDatabaseFQN } = useFqn();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -496,7 +499,7 @@ const DatabaseDetails: FunctionComponent = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Database;
 
     setDatabase((data) => ({
@@ -678,7 +681,8 @@ const DatabaseDetails: FunctionComponent = () => {
       className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(database),
-      })}>
+      })}
+    >
       {isEmpty(database) ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}

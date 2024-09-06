@@ -17,7 +17,7 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -25,11 +25,9 @@ import { MemoryRouter } from 'react-router-dom';
 import AddKPIPage from './AddKPIPage';
 import { KPI_CHARTS, KPI_DATA, KPI_LIST } from './KPIMock.mock';
 
-const mockPush = jest.fn();
-
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({
-    push: mockPush,
+    push: jest.fn(),
   }),
 }));
 
@@ -144,7 +142,7 @@ describe('Add KPI page', () => {
     });
 
     screen.debug(document.body);
-    await waitForElement(() => screen.getByText('Owner KPI'));
+    await waitFor(async () => await screen.findByText('Owner KPI'));
 
     await act(async () => {
       fireEvent.click(screen.getByText('Owner KPI'));
@@ -155,7 +153,7 @@ describe('Add KPI page', () => {
     });
 
     // check for percentage type
-    await waitForElement(() => screen.getByText('Percentage'));
+    await waitFor(async () => await screen.findByText('Percentage'));
 
     await act(async () => {
       fireEvent.click(screen.getByText('Percentage'));
@@ -166,7 +164,7 @@ describe('Add KPI page', () => {
     ).toBeInTheDocument();
 
     // check for number type
-    await waitForElement(() => screen.getByText('Number'));
+    await waitFor(async () => await screen.findByText('Number'));
 
     await act(async () => {
       fireEvent.click(screen.getByText('Number'));

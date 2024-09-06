@@ -18,7 +18,7 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -107,7 +107,7 @@ describe('Test SelectWidget Component', () => {
       userEvent.click(selectInput);
     });
 
-    await waitForElement(() => screen.getByTestId('select-option-JP'));
+    await waitFor(async () => await screen.findByTestId('select-option-JP'));
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('select-option-EN'));

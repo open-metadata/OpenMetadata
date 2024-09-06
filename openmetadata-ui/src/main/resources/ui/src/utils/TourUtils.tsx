@@ -12,7 +12,7 @@
  */
 
 import i18next from 'i18next';
-import React from 'react';
+import React, { FC } from 'react';
 import { EntityTabs } from '../enums/entity.enum';
 import { CurrentTourPageType } from '../enums/tour.enum';
 import { Transi18next } from './CommonUtils';
@@ -24,6 +24,24 @@ interface ArgObject {
   clearSearchTerm: () => void;
 }
 
+const ContentComponent: FC<{ key: string; text: string }> = ({
+  key,
+  text,
+}: {
+  key: string;
+  text: string;
+}) => (
+  <p>
+    <Transi18next
+      i18nKey={key}
+      renderElement={<strong />}
+      values={{
+        text,
+      }}
+    />
+  </p>
+);
+
 export const getTourSteps = ({
   searchTerm,
   clearSearchTerm,
@@ -31,31 +49,21 @@ export const getTourSteps = ({
   updateTourPage,
 }: ArgObject) => [
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-activity-feed"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.activity-feed-plural'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-activity-feed"
+        text={i18next.t('label.activity-feed-plural')}
+      />
     ),
     selector: '#feedData',
     stepInteraction: false,
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-search-for-matching-dataset"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.search'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-search-for-matching-dataset"
+        text={i18next.t('label.search')}
+      />
     ),
     selector: '#searchBox',
     stepInteraction: false,
@@ -63,17 +71,11 @@ export const getTourSteps = ({
   },
   {
     beforePrev: clearSearchTerm,
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-type-search-term"
-          renderElement={<strong />}
-          values={{
-            text: searchTerm,
-            enterText: i18next.t('label.enter'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-type-search-term"
+        text={searchTerm}
+      />
     ),
     actionType: 'enter',
     userTypeText: searchTerm,
@@ -87,28 +89,21 @@ export const getTourSteps = ({
     beforePrev: () => {
       updateTourPage(CurrentTourPageType.MY_DATA_PAGE);
     },
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-explore-summary-asset"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.explore'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-explore-summary-asset"
+        text={i18next.t('label.explore')}
+      />
     ),
     selector: '#tabledatacard0',
     stepInteraction: false,
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-click-on-link-to-view-more"
-          renderElement={<strong />}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-click-on-link-to-view-more"
+        text={i18next.t('label.schema')}
+      />
     ),
     actionType: 'click',
     selector: '[data-testid="sample_data.ecommerce_db.shopify.dim_address"]',
@@ -120,61 +115,41 @@ export const getTourSteps = ({
     beforePrev: () => {
       updateTourPage(CurrentTourPageType.EXPLORE_PAGE);
     },
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-high-level-assets-information-step"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.schema'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-high-level-assets-information-step"
+        text={i18next.t('label.schema')}
+      />
     ),
     stepInteraction: false,
     selector: '[data-testid="entity-page-header"]',
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-owner-step"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.schema'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-owner-step"
+        text={i18next.t('label.schema')}
+      />
     ),
     stepInteraction: false,
     selector: '[data-testid="owner-label"]',
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-follow-step"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.schema'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-follow-step"
+        text={i18next.t('label.schema')}
+      />
     ),
     stepInteraction: false,
     selector: '[data-testid="entity-follow-button"]',
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-get-to-know-table-schema"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.schema'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-get-to-know-table-schema"
+        text={i18next.t('label.schema')}
+      />
     ),
     stepInteraction: false,
     selector: '#schemaDetails',
@@ -184,16 +159,11 @@ export const getTourSteps = ({
       updateActiveTab(EntityTabs.SCHEMA);
     },
     actionType: 'click',
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-click-on-entity-tab"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.sample-data'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-click-on-entity-tab"
+        text={i18next.t('label.sample-data')}
+      />
     ),
     selector: `[data-testid="${EntityTabs.SAMPLE_DATA}"]`,
     beforeNext: () => {
@@ -201,16 +171,11 @@ export const getTourSteps = ({
     },
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-look-at-sample-data"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.sample-data'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-look-at-sample-data"
+        text={i18next.t('label.sample-data')}
+      />
     ),
     selector: '[data-testid="sample-data-table"]',
   },
@@ -222,32 +187,22 @@ export const getTourSteps = ({
       updateActiveTab(EntityTabs.PROFILER);
     },
     actionType: 'click',
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-click-on-entity-tab"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.profiler'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-click-on-entity-tab"
+        text={i18next.t('label.profiler')}
+      />
     ),
     selector: `[data-testid="${EntityTabs.PROFILER}"]`,
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-discover-data-assets-with-data-profile"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.data-entity', {
-              entity: i18next.t('label.profiler'),
-            }),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-discover-data-assets-with-data-profile"
+        text={i18next.t('label.data-entity', {
+          entity: i18next.t('label.profiler'),
+        })}
+      />
     ),
     stepInteraction: false,
     selector: '#profilerDetails',
@@ -260,30 +215,20 @@ export const getTourSteps = ({
       updateActiveTab(EntityTabs.LINEAGE);
     },
     actionType: 'click',
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-click-on-entity-tab"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.lineage'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-click-on-entity-tab"
+        text={i18next.t('label.lineage')}
+      />
     ),
     selector: `[data-testid="${EntityTabs.LINEAGE}"]`,
   },
   {
-    content: () => (
-      <p>
-        <Transi18next
-          i18nKey="message.tour-step-trace-path-across-tables"
-          renderElement={<strong />}
-          values={{
-            text: i18next.t('label.lineage'),
-          }}
-        />
-      </p>
+    content: (
+      <ContentComponent
+        key="message.tour-step-trace-path-across-tables"
+        text={i18next.t('label.lineage')}
+      />
     ),
     stepInteraction: false,
     selector: `[data-testid="lineage-details"]`,

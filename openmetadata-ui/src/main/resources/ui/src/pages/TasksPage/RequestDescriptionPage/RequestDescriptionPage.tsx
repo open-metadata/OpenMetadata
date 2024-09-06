@@ -61,7 +61,7 @@ const RequestDescription = () => {
   const location = useLocation();
   const history = useHistory();
   const [form] = useForm();
-  const markdownRef = useRef<EditorContentRef>();
+  const markdownRef = useRef<EditorContentRef | null>(null);
 
   const { entityType } = useParams<{ entityType: EntityType }>();
 
@@ -202,10 +202,12 @@ const RequestDescription = () => {
 
             <div
               className="m-t-0 request-description"
-              key="request-description">
+              key="request-description"
+            >
               <Typography.Paragraph
                 className="text-base"
-                data-testid="form-title">
+                data-testid="form-title"
+              >
                 {t('label.create-entity', {
                   entity: t('label.task'),
                 })}
@@ -214,13 +216,15 @@ const RequestDescription = () => {
                 data-testid="form-container"
                 form={form}
                 layout="vertical"
-                onFinish={onCreateTask}>
+                onFinish={onCreateTask}
+              >
                 <Form.Item
                   data-testid="title"
                   label={`${t('label.task-entity', {
                     entity: t('label.title'),
                   })}:`}
-                  name="title">
+                  name="title"
+                >
                   <Input
                     disabled
                     placeholder={t('label.task-entity', {
@@ -239,7 +243,8 @@ const RequestDescription = () => {
                         fieldText: t('label.assignee-plural'),
                       }),
                     },
-                  ]}>
+                  ]}
+                >
                   <Assignees
                     options={options}
                     value={assignees}
@@ -252,7 +257,8 @@ const RequestDescription = () => {
                   label={`${t('label.suggest-entity', {
                     entity: t('label.description'),
                   })}:`}
-                  name="SuggestDescription">
+                  name="SuggestDescription"
+                >
                   <RichTextEditor
                     initialValue=""
                     placeHolder={t('label.suggest-entity', {
@@ -268,7 +274,8 @@ const RequestDescription = () => {
                   <Space
                     className="w-full justify-end"
                     data-testid="cta-buttons"
-                    size={16}>
+                    size={16}
+                  >
                     <Button data-testid="cancel-btn" type="link" onClick={back}>
                       {t('label.back')}
                     </Button>
@@ -276,7 +283,8 @@ const RequestDescription = () => {
                       data-testid="submit-btn"
                       htmlType="submit"
                       loading={isLoading}
-                      type="primary">
+                      type="primary"
+                    >
                       {suggestion ? t('label.suggest') : t('label.submit')}
                     </Button>
                   </Space>

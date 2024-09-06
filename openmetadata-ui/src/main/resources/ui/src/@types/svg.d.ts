@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-type SvgComponent = React.FunctionComponent<React.SVGAttributes<SVGElement>>;
+type SvgComponent =
+  | React.ComponentType<
+      CustomIconComponentProps | React.SVGProps<SVGSVGElement>
+    >
+  | React.ForwardRefExoticComponent<CustomIconComponentProps>;
 
 // Module declaration to allow importing SVG files
 declare module '*.svg' {

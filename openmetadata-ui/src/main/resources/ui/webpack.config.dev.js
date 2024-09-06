@@ -18,6 +18,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackBar = require('webpackbar');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 
 const outputPath = path.join(__dirname, 'build');
 
@@ -179,6 +180,7 @@ module.exports = {
     new CleanWebpackPlugin({
       verbose: true,
     }),
+    new ForkTsCheckerWebpackPlugin(),
     // Generate index.html from template
     new HtmlWebpackPlugin({
       favicon: path.join(__dirname, 'public/favicon.png'),

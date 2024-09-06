@@ -4,7 +4,7 @@
     "rootDir": "./src",
     "typeRoots": ["./src/@types", "./node_modules/@types"],
     "incremental": true,
-    "target": "ES5",
+    "target": "ES6",
     "module": "esnext",
     "lib": ["dom", "dom.iterable", "ES2020.Promise", "es2021"],
     "allowJs": true,

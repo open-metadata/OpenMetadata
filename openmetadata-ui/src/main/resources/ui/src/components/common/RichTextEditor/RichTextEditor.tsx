@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-/* eslint-disable */
-
 import { Editor, Viewer } from '@toast-ui/react-editor';
 import classNames from 'classnames';
 import { uniqueId } from 'lodash';
@@ -25,12 +23,13 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../../utils/i18next/LocalUtil';
+import { EditorContentRef } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor.interface';
 import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
 import { EDITOR_TOOLBAR_ITEMS } from './EditorToolBar';
 import './rich-text-editor.less';
-import { editorRef, RichTextEditorProp } from './RichTextEditor.interface';
+import { RichTextEditorProp } from './RichTextEditor.interface';
 
-const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
+const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
   (
     {
       placeHolder = 'Write your description',
@@ -104,7 +103,8 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
               'text-right': i18n.dir() === 'rtl',
             })}
             data-testid="viewer"
-            dir={i18n.dir()}>
+            dir={i18n.dir()}
+          >
             <Viewer
               extendedAutolinks={extendedAutolinks}
               customHTMLRenderer={customHTMLRenderer}
@@ -144,7 +144,8 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
               <div style={{ display: 'flex', flexWrap: 'nowrap' }}>
                 <div
                   className="ant-form-item-explain ant-form-item-explain-connected"
-                  role="alert">
+                  role="alert"
+                >
                   <div className="ant-form-item-explain-error">
                     {imageBlobError}
                   </div>

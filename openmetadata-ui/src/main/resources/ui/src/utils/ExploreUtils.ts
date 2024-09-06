@@ -95,10 +95,10 @@ export const getSelectedValuesFromQuickFilter = (
     return null;
   }
 
-  const mustFilters: Array<QueryFieldInterface> = get(
-    queryFilter,
-    'query.bool.must',
-    []
+  const filters = get(queryFilter, 'query.bool.must', []);
+
+  const mustFilters: Array<QueryFieldInterface> = (
+    Array.isArray(filters) ? filters : [filters]
   ).flatMap((item: QueryFieldInterface) => item.bool?.should || []);
   const combinedData: Record<string, SearchDropdownOption[]> = {};
 

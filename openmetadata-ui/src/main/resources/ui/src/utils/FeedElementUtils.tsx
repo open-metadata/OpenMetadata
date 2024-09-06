@@ -48,12 +48,13 @@ export const getFieldThreadElement = (
       overlayClassName="ant-popover-request-description"
       title={t('label.list-entity', {
         entity: t('label.conversation'),
-      })}>
+      })}
+    >
       <IconComments
         {...iconsProps}
         className="hover-cell-icon cursor-pointer"
         data-testid="field-thread"
-        onClick={(e) => {
+        onClick={(e: MouseEvent) => {
           e.preventDefault();
           e.stopPropagation();
 

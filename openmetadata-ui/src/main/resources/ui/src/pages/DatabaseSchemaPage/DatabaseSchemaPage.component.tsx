@@ -38,6 +38,7 @@ import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPr
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
@@ -99,8 +100,9 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
 
-  const { tab: activeTab = EntityTabs.TABLE } =
-    useParams<{ tab: EntityTabs }>();
+  const { tab: activeTab = EntityTabs.TABLE } = useParams<{
+    tab: EntityTabs;
+  }>();
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
   const history = useHistory();
 
@@ -485,7 +487,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as DatabaseSchema;
 
     setDatabaseSchema((data) => ({
@@ -737,7 +739,8 @@ const DatabaseSchemaPage: FunctionComponent = () => {
       className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(databaseSchema),
-      })}>
+      })}
+    >
       {isEmpty(databaseSchema) && !isSchemaDetailsLoading ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(

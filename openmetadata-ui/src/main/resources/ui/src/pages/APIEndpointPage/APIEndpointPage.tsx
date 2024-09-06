@@ -21,6 +21,7 @@ import { useHistory } from 'react-router-dom';
 import APIEndpointDetails from '../../components/APIEndpoint/APIEndpointDetails/APIEndpointDetails';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { getVersionPath, ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -266,7 +267,7 @@ const APIEndpointPage = () => {
     }
   };
 
-  const updateApiEndpointDetails = useCallback((data) => {
+  const updateApiEndpointDetails = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as APIEndpoint;
 
     setApiEndpointDetails((data) => ({

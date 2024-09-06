@@ -37,6 +37,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
 import DataModelTable from '../../components/Dashboard/DataModel/DataModels/DataModelsTable';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.component';
@@ -714,7 +715,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as ServicesType;
 
     setServiceDetails((data) => ({
@@ -921,13 +922,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
                           entity: t('label.connection'),
                         })
                       : t('message.no-permission-for-action')
-                  }>
+                  }
+                >
                   <Button
                     ghost
                     data-testid="edit-connection-button"
                     disabled={!servicePermission.EditAll}
                     type="primary"
-                    onClick={goToEditConnection}>
+                    onClick={goToEditConnection}
+                  >
                     {t('label.edit-entity', {
                       entity: t('label.connection'),
                     })}
@@ -941,7 +944,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
                             entity: t('label.connection'),
                           })
                         : t('message.no-permission-for-action')
-                    }>
+                    }
+                  >
                     <TestConnection
                       connectionType={serviceDetails?.serviceType ?? ''}
                       getData={() => connectionDetails}
@@ -1088,7 +1092,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
     <PageLayoutV1
       pageTitle={t('label.entity-detail-plural', {
         entity: getEntityName(serviceDetails),
-      })}>
+      })}
+    >
       {isEmpty(serviceDetails) ? (
         <ErrorPlaceHolder className="m-0">
           {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}

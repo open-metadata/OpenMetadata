@@ -32,6 +32,7 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import ContainerChildren from '../../components/Container/ContainerChildren/ContainerChildren';
 import ContainerDataModel from '../../components/Container/ContainerDataModel/ContainerDataModel';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import EntityRightPanel from '../../components/Entity/EntityRightPanel/EntityRightPanel';
 import Lineage from '../../components/Lineage/Lineage.component';
@@ -428,7 +429,7 @@ const ContainerPage = () => {
     []
   );
 
-  const afterDomainUpdateAction = useCallback((data) => {
+  const afterDomainUpdateAction = useCallback((data: DataAssetWithDomains) => {
     const updatedData = data as Container;
 
     setContainerData((data) => ({
@@ -821,7 +822,8 @@ const ContainerPage = () => {
       className="bg-white"
       pageTitle={t('label.entity-detail-plural', {
         entity: t('label.container'),
-      })}>
+      })}
+    >
       <Row gutter={[0, 12]}>
         <Col className="p-x-lg" span={24}>
           <DataAssetsHeader
