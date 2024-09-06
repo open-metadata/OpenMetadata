@@ -2751,6 +2751,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     assertFalse(testCase.getUseDynamicAssertion());
   }
 
+  @Test
+  void createTestCaseResults_wrongTs(TestInfo testInfo) throws IOException, HttpResponseException {
+    CreateTestCase create = createRequest(testInfo);
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+    TestCaseResult testCaseResult =
+        new TestCaseResult()
+            .withResult("result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(1725521153L);
+    assertResponse(
+        () ->
+            putTestCaseResult(testCase.getFullyQualifiedName(), testCaseResult, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Timestamp 1725521153 is not valid, it should be in milliseconds since epoch");
+  }
+
   private void putInspectionQuery(TestCase testCase, String sql) throws IOException {
     TestCase putResponse = putInspectionQuery(testCase.getId(), sql, ADMIN_AUTH_HEADERS);
     assertEquals(sql, putResponse.getInspectionQuery());
