@@ -1,6 +1,7 @@
 ---
 title: How to enable AWS RDS IAM Auth
 slug: /deployment/rds-iam-auth
+collate: false
 ---
 
 # Aws resources on RDS IAM Auth

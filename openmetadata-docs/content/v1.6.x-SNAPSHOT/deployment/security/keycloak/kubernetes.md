@@ -1,6 +1,7 @@
 ---
 title: Keycloak SSO for Kubernetes
 slug: /deployment/security/keycloak/kubernetes
+collate: false
 ---
 
 # Keycloak SSO for Kubernetes

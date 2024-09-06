@@ -1,6 +1,7 @@
 ---
 title: Auth0 SSO
 slug: /deployment/security/auth0
+collate: false
 ---
 
 # Auth0 SSO
