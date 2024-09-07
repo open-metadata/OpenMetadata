@@ -181,7 +181,15 @@ test.describe('User with different Roles', () => {
     // Checks for the admins
     await redirectToHomePage(adminPage);
 
+    const fetchUserResponse = adminPage.waitForResponse('/api/v1/users?**');
+
     await settingClick(adminPage, GlobalSettingOptions.USERS);
+
+    await fetchUserResponse;
+
+    await adminPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const userSearchResponse = adminPage.waitForResponse(
       '/api/v1/search/query?q=**&from=0&size=*&index=*'
@@ -211,7 +219,15 @@ test.describe('User with different Roles', () => {
     // Checks for the normal user
     await redirectToHomePage(userPage);
 
+    const fetchUserResponse2 = userPage.waitForResponse('/api/v1/users?**');
+
     await settingClick(userPage, GlobalSettingOptions.USERS);
+
+    await fetchUserResponse2;
+
+    await userPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const userResponse = userPage.waitForResponse(
       '/api/v1/search/query?q=**&from=0&size=*&index=*'

@@ -153,7 +153,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
         dataIndex: 'name',
         key: 'name',
         ellipsis: true,
-        width: '50%',
+        width: isRenderedInRightPanel ? 150 : 400,
         render: (_, record) => getEntityName(record),
         sorter: columnSorter,
       },
@@ -279,6 +279,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
           </div>
           <Table
             bordered
+            resizableColumns
             columns={tableColumn}
             data-testid="custom-properties-table"
             dataSource={entityTypeDetail?.customProperties?.slice(
