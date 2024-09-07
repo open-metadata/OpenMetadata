@@ -230,7 +230,7 @@ const AddMetricPage = () => {
   }, []);
 
   const handleSubmit = async (
-    values: Exclude<CreateMetric, 'expression'> & {
+    values: Exclude<CreateMetric, 'metricExpression'> & {
       code?: string;
       language?: Language;
     }

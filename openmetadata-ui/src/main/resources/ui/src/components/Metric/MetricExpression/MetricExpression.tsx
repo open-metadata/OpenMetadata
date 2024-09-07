@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Card, Typography } from 'antd';
+import { isNil } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -24,7 +25,7 @@ const MetricExpression = ({
 }) => {
   const { t } = useTranslation();
 
-  if (!expression) {
+  if (isNil(expression)) {
     return (
       <Typography.Text data-testid="no-data-message">
         <Typography.Text className="text-grey-body">
@@ -38,7 +39,7 @@ const MetricExpression = ({
     <Card
       className="m-b-md"
       data-testid="code-component"
-      title={`${expression.language}`}>
+      {...(expression.language ? { title: `${expression.language}` } : {})}>
       <SchemaEditor
         editorClass="custom-code-mirror-theme"
         mode={{ name: CSMode.SQL }}

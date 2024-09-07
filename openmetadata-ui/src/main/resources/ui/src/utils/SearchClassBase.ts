@@ -268,11 +268,7 @@ class SearchClassBase {
         key: 'Governance',
         data: {
           isRoot: true,
-          childEntities: [
-            EntityType.TAG,
-            EntityType.GLOSSARY_TERM,
-            EntityType.METRIC,
-          ],
+          childEntities: [EntityType.TAG, EntityType.GLOSSARY_TERM],
         },
         icon: GovernIcon,
         children: [
@@ -298,18 +294,17 @@ class SearchClassBase {
               dataId: 'Tags',
             },
           },
-          {
-            title: i18n.t('label.metric-plural'),
-            key: EntityType.METRIC,
-            isLeaf: true,
-            icon: ClassificationIcon,
-            data: {
-              entityType: EntityType.METRIC,
-              isStatic: true,
-              dataId: 'Metrics',
-            },
-          },
         ],
+      },
+      {
+        title: i18n.t('label.metric-plural'),
+        key: EntityType.METRIC,
+        icon: ClassificationIcon,
+        data: {
+          entityType: EntityType.METRIC,
+          isRoot: true,
+          childEntities: [EntityType.METRIC],
+        },
       },
       {
         title: i18n.t('label.domain-plural'),
