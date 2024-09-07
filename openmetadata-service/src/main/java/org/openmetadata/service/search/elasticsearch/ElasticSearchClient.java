@@ -156,6 +156,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.RBACConditionEvaluator;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRequest;
@@ -191,6 +192,7 @@ import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 import org.openmetadata.service.search.models.IndexMapping;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonUtils;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -201,6 +203,8 @@ public class ElasticSearchClient implements SearchClient {
 
   @SuppressWarnings("deprecated")
   protected final RestHighLevelClient client;
+
+  private final RBACConditionEvaluator rbacConditionEvaluator;
 
   private final boolean isClientAvailable;
   public static final NamedXContentRegistry xContentRegistry;
@@ -228,6 +232,7 @@ public class ElasticSearchClient implements SearchClient {
     client = createElasticSearchClient(config);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    rbacConditionEvaluator = new RBACConditionEvaluator();
   }
 
   @Override
@@ -328,7 +333,7 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
-  public Response search(SearchRequest request) throws IOException {
+  public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
     SearchSourceBuilder searchSourceBuilder =
         getSearchSourceBuilder(
             request.getIndex(), request.getQuery(), request.getFrom(), request.getSize());
@@ -519,6 +524,15 @@ public class ElasticSearchClient implements SearchClient {
     }
 
     searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
+    if (subjectContext != null && !subjectContext.isAdmin()) {
+      // Evaluate RBAC conditions
+      QueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
+      if (rbacQuery != null) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(rbacQuery));
+      }
+    }
+
     try {
 
       SearchResponse searchResponse =

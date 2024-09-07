@@ -197,7 +197,7 @@ public class SearchResource {
             .applyDomainFilter(
                 !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .build();
-    return searchRepository.search(request);
+    return searchRepository.search(request, subjectContext);
   }
 
   @GET
