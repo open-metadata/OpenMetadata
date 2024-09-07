@@ -13,8 +13,10 @@
 import { expect, Page, test } from '@playwright/test';
 import { getCurrentMillis } from '../../../src/utils/date-time/DateTimeUtils';
 import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
 import {
+  assignDomain,
   clickOutside,
   createNewPage,
   descriptionBox,
@@ -559,7 +561,8 @@ test('TestCase filters', async ({ page }) => {
 
   const { apiContext, afterAction } = await getApiContext(page);
   const filterTable1 = new TableClass();
-  const filterTable1Response = await filterTable1.create(apiContext);
+
+  await filterTable1.create(apiContext);
   const filterTable2 = {
     ...filterTable1.entity,
     name: `${filterTable1.entity.name}-model`,
@@ -569,6 +572,12 @@ test('TestCase filters', async ({ page }) => {
       data: filterTable2,
     })
     .then((response) => response.json());
+  const domain = new Domain();
+  await domain.create(apiContext);
+
+  // Add domain to table
+  await filterTable1.visitEntityPage(page);
+  await assignDomain(page, domain.responseData);
   const testCases = [
     `pw_first_table_column_count_to_be_between_${uuid()}`,
     `pw_second_table_column_count_to_be_between_${uuid()}`,
@@ -603,9 +612,7 @@ test('TestCase filters', async ({ page }) => {
       },
     ],
   });
-  const testSuite1Response = await filterTable1.createTestSuiteAndPipelines(
-    apiContext
-  );
+  await filterTable1.createTestSuiteAndPipelines(apiContext);
   const { testSuiteData: testSuite2Response } =
     await filterTable1.createTestSuiteAndPipelines(apiContext, {
       executableEntityReference: filterTable2Response?.['fullyQualifiedName'],
@@ -650,7 +657,6 @@ test('TestCase filters', async ({ page }) => {
   const verifyFilterTestCase = async (page: Page) => {
     for (const testCase of testCases) {
       const element = page.locator(`[data-testid="${testCase}"]`);
-      await element.scrollIntoViewIfNeeded();
 
       await expect(element).toBeVisible();
     }
@@ -667,14 +673,13 @@ test('TestCase filters', async ({ page }) => {
     }
   };
 
-  await sidebarClick(page, SidebarItem.DATA_QUALITY);
-  const getTestCase = page.waitForResponse(
-    '/api/v1/dataQuality/testCases/search/list?*'
-  );
-  await page.click('[data-testid="by-test-cases"]');
-  await getTestCase;
-
   try {
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
+    const getTestCaseListData = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
+    await page.click('[data-testid="by-test-cases"]');
+    await getTestCaseListData;
     // get all the filters
     await page.click('[data-testid="advanced-filter"]');
     await page.click('[value="tableFqn"]');
@@ -910,8 +915,23 @@ test('TestCase filters', async ({ page }) => {
     await page.reload();
 
     await expect(page.locator('[value="tier"]')).not.toBeVisible();
+
+    // Apply domain globally
+    await page.locator('[data-testid="domain-dropdown"]').click();
+    await page
+      .locator(`li[data-menu-id*='${domain.responseData?.['name']}']`)
+      .click();
+    await sidebarClick(page, SidebarItem.DATA_QUALITY);
+    const getTestCaseList = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/search/list?*'
+    );
+    await page.click('[data-testid="by-test-cases"]');
+    await getTestCaseList;
+    await verifyFilterTestCase(page);
+    await verifyFilter2TestCase(page, true);
   } finally {
     await filterTable1.delete(apiContext);
+    await domain.delete(apiContext);
     await afterAction();
   }
 });
