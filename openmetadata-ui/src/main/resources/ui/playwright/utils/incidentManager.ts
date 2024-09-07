@@ -87,35 +87,37 @@ export const assignIncident = async (data: {
 export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
   page: Page;
   apiContext: APIRequestContext;
-  table: TableClass;
-  pipeline: { id: string };
+  pipeline: unknown;
 }) => {
-  const { page, apiContext, table, pipeline } = data;
+  const { page, apiContext, pipeline } = data;
   // wait for 2s before the pipeline to be run
   await page.waitForTimeout(2000);
   await apiContext
-    .post(`/api/v1/services/ingestionPipelines/trigger/${pipeline.id}`)
+    .post(`/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`)
     .then((res) => {
       if (res.status() !== 200) {
         return apiContext.post(
-          `/api/v1/services/ingestionPipelines/trigger/${pipeline.id}`
+          `/api/v1/services/ingestionPipelines/trigger/${pipeline?.['id']}`
         );
       }
     });
 
   // Wait for the run to complete
   await page.waitForTimeout(2000);
+  const oneHourBefore = Date.now() - 86400000;
 
   await expect
     .poll(
       async () => {
         const response = await apiContext
           .get(
-            `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&testSuite=${table.testSuiteResponseData?.['fullyQualifiedName']}&pipelineType=TestSuite`
+            `/api/v1/services/ingestionPipelines/${encodeURIComponent(
+              pipeline?.['fullyQualifiedName']
+            )}/pipelineStatus?startTs=${oneHourBefore}&endTs=${Date.now()}`
           )
           .then((res) => res.json());
 
-        return response.data?.[0]?.pipelineStatuses?.pipelineState;
+        return response.data[0]?.pipelineState;
       },
       {
         // Custom expect message for reporting, optional.
