@@ -61,8 +61,7 @@ test.describe('Incident Manager', () => {
     );
     await triggerTestSuitePipelineAndWaitForSuccess({
       page,
-      table: table1,
-      pipeline: { id: pipeline.id },
+      pipeline,
       apiContext,
     });
 
@@ -304,8 +303,7 @@ test.describe('Incident Manager', () => {
     await test.step('Re-run pipeline', async () => {
       await triggerTestSuitePipelineAndWaitForSuccess({
         page,
-        table: table1,
-        pipeline: { id: pipeline?.['id'] },
+        pipeline,
         apiContext,
       });
     });
@@ -366,8 +364,7 @@ test.describe('Incident Manager', () => {
     await test.step('Re-run pipeline', async () => {
       await triggerTestSuitePipelineAndWaitForSuccess({
         page,
-        table: table1,
-        pipeline: { id: pipeline?.['id'] },
+        pipeline,
         apiContext,
       });
     });
