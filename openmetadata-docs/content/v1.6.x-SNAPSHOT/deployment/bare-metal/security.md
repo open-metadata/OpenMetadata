@@ -1,6 +1,7 @@
 ---
 title: Enable Security
 slug: /deployment/bare-metal/security
+collate: false
 ---
 
 # Bare Metal Security

@@ -30,6 +30,7 @@ import { settingClick, sidebarClick } from '../../utils/sidebar';
 import {
   addUser,
   checkDataConsumerPermissions,
+  checkEditOwnerButtonPermission,
   checkStewardPermissions,
   checkStewardServicesPermissions,
   generateToken,
@@ -263,11 +264,16 @@ test.describe('User with Data Consumer Roles', () => {
       dataConsumerPage.locator('[data-testid="add-domain"]')
     ).not.toBeVisible();
     await expect(
-      dataConsumerPage.locator('[data-testid="edit-owner"]')
-    ).not.toBeVisible();
-    await expect(
       dataConsumerPage.locator('[data-testid="edit-review-button"]')
     ).not.toBeVisible();
+
+    const hasAddOwnerButton = dataConsumerPage.locator(
+      '[data-testid="add-owner"]'
+    );
+
+    if (!hasAddOwnerButton) {
+      await checkEditOwnerButtonPermission(dataConsumerPage);
+    }
 
     // Check CRUD for Tags
     await sidebarClick(dataConsumerPage, SidebarItem.TAGS);

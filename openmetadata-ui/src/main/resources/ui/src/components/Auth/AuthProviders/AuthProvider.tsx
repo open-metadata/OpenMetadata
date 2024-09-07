@@ -41,6 +41,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import {
   DEFAULT_DOMAIN_VALUE,
+  ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
@@ -57,6 +58,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
+import { getDomainList } from '../../../rest/domainAPI';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -137,7 +139,7 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
   } = useApplicationStore();
-  const { activeDomain } = useDomainStore();
+  const { updateDomains, updateDomainLoading } = useDomainStore();
 
   const location = useCustomLocation();
   const history = useHistory();
@@ -185,6 +187,21 @@ export const AuthProvider = ({
     return authenticatorRef.current?.renewIdToken();
   };
 
+  const fetchDomainList = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
+
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
       history.push(ROUTES.HOME);
@@ -225,6 +242,8 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        // Fetch domains at the start
+        await fetchDomainList();
       } else {
         resetUserDetails();
       }
@@ -399,6 +418,9 @@ export const AuthProvider = ({
             setCurrentUser(res);
           }
 
+          // Fetch domains at the start
+          await fetchDomainList();
+
           handledVerifiedUser();
           // Start expiry timer on successful login
           startTokenExpiryTimer();
@@ -472,6 +494,7 @@ export const AuthProvider = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const isGetRequest = config.method === 'get';
+    const activeDomain = useDomainStore.getState().activeDomain;
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = getPathNameFromWindowLocation();
     const shouldNotIntercept = [

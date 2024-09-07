@@ -136,6 +136,7 @@ import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
+import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
 import org.openmetadata.schema.type.TableData;
@@ -1236,6 +1237,47 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
         permissionNotAllowed(USER2.getName(), List.of(MetadataOperation.EDIT_DATA_PROFILE)));
   }
 
+  @Test
+  void create_profilerWrongTimestamp(TestInfo testInfo) throws IOException, ParseException {
+    Table table = createEntity(createRequest(testInfo), ADMIN_AUTH_HEADERS);
+    Long correctTimestamp = 1725525388000L;
+    Long wrongTimestamp = 1725525388L;
+
+    ColumnProfile c1Profile = getColumnProfile(C1, 100.0, 10.0, 100.0, wrongTimestamp);
+    ColumnProfile c2Profile = getColumnProfile(C2, 99.0, 20.0, 89.0, correctTimestamp);
+    ColumnProfile c3Profile = getColumnProfile(C3, 75.0, 25.0, 77.0, correctTimestamp);
+    List<ColumnProfile> columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+    TableProfile tableProfile =
+        new TableProfile()
+            .withRowCount(6.0)
+            .withColumnCount(3.0)
+            .withTimestamp(correctTimestamp)
+            .withProfileSample(10.0);
+
+    CreateTableProfile createTableProfile =
+        new CreateTableProfile().withTableProfile(tableProfile).withColumnProfile(columnProfiles);
+    assertResponse(
+        () -> putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Timestamp 1725525388 is not valid, it should be in milliseconds since epoch");
+
+    tableProfile = tableProfile.withTimestamp(wrongTimestamp);
+    c1Profile = c1Profile.withTimestamp(correctTimestamp);
+    columnProfiles = List.of(c1Profile, c2Profile, c3Profile);
+    createTableProfile.withTableProfile(tableProfile).withColumnProfile(columnProfiles);
+    assertResponse(
+        () -> putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Timestamp 1725525388 is not valid, it should be in milliseconds since epoch");
+    SystemProfile systemProfile = new SystemProfile().withTimestamp(wrongTimestamp);
+    tableProfile = tableProfile.withTimestamp(correctTimestamp);
+    createTableProfile.withTableProfile(tableProfile).withSystemProfile(listOf(systemProfile));
+    assertResponse(
+        () -> putTableProfileData(table.getId(), createTableProfile, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Timestamp 1725525388 is not valid, it should be in milliseconds since epoch");
+  }
+
   void putTableProfile(Table table, Table table1, Map<String, String> authHeaders)
       throws IOException, ParseException {
     Long timestamp = TestUtils.dateToTimestamp("2021-09-09");
@@ -2163,7 +2205,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_ownershipInheritance(TestInfo test) throws HttpResponseException, IOException {
+  void test_ownershipInheritance(TestInfo test) throws IOException {
     // When a databaseSchema has no owner set, it inherits the ownership from database
     // When a table has no owner set, it inherits the ownership from databaseSchema
     CreateDatabase createDb = dbTest.createRequest(test).withOwners(Lists.newArrayList(USER1_REF));
@@ -2225,8 +2267,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
   }
 
   @Test
-  void test_domainInheritance(TestInfo test)
-      throws HttpResponseException, IOException, InterruptedException {
+  void test_domainInheritance(TestInfo test) throws IOException {
     // Domain is inherited from databaseService > database > databaseSchema > table
     CreateDatabaseService createDbService =
         dbServiceTest.createRequest(test).withDomain(DOMAIN.getFullyQualifiedName());
@@ -2407,8 +2448,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void get_entityWithoutDescriptionFromSearch(TestInfo test)
-      throws InterruptedException, IOException {
+  void get_entityWithoutDescriptionFromSearch(TestInfo test) throws IOException {
     // Create Database
     CreateDatabase createDatabase = dbTest.createRequest(getEntityName(test));
     Database database = dbTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);

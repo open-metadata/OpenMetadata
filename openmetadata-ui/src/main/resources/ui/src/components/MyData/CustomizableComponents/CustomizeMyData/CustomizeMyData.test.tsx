@@ -96,9 +96,15 @@ jest.mock('../../../../rest/feedsAPI', () => ({
     .mockImplementation(() => mockActiveAnnouncementData),
 }));
 
-jest.mock('../../../../rest/userAPI', () => ({
-  getUserById: jest.fn().mockImplementation(() => mockUserData),
-}));
+jest.mock('../../../../rest/searchAPI', () => {
+  return {
+    searchQuery: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ hits: { hits: [], total: { value: 0 } } })
+      ),
+  };
+});
 
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: '/' }));

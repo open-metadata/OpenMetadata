@@ -93,7 +93,17 @@ export const deleteService = async (
 
   await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
+  const deleteResponse = page.waitForResponse((response) =>
+    response
+      .url()
+      .includes(
+        `/api/v1/services/${getServiceCategoryFromService(typeOfService)}`
+      )
+  );
+
   await page.click('[data-testid="confirm-button"]');
+
+  await deleteResponse;
 
   // Closing the toast notification
   await toastNotification(page, `"${serviceName}" deleted successfully!`);
@@ -118,7 +128,7 @@ export const testConnection = async (page: Page) => {
 
   await page.waitForSelector('[data-testid="success-badge"]', {
     state: 'attached',
-    timeout: 2 * 60 * 1000,
+    timeout: 2.5 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(

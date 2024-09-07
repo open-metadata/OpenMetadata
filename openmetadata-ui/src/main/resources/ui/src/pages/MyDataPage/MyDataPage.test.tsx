@@ -111,6 +111,15 @@ jest.mock('../../rest/userAPI', () => ({
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ pathname: '' }));
 });
+jest.mock('../../rest/searchAPI', () => {
+  return {
+    searchQuery: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ hits: { hits: [], total: { value: 0 } } })
+      ),
+  };
+});
 jest.mock('react-grid-layout', () => ({
   ...jest.requireActual('react-grid-layout'),
   WidthProvider: jest

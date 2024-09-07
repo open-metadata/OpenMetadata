@@ -79,7 +79,7 @@ OpenMetadata is a complete package for data teams to break down team silos, shar
 
 - Foster **[Team Collaboration](/how-to-guides/data-collaboration)** with conversations, tasks, announcements, and alerts in real time.
 
-- Build trust in your data with **[Data Quality Tests](/how-to-guides/data-quality-profiler)** to ensure completeness and accuracy.
+- Build trust in your data with **[Data Quality Tests](/how-to-guides/data-quality-observability)** to ensure completeness and accuracy.
 
 - Track your data evolution with end-to-end **[Data Lineage](/how-to-guides/data-lineage)**.
 

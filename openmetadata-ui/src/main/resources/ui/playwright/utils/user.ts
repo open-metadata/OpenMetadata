@@ -469,11 +469,13 @@ export const generateToken = async (page: Page) => {
   await generateToken;
 };
 
-export const revokeToken = async (page: Page) => {
+export const revokeToken = async (page: Page, isBot?: boolean) => {
   await page.click('[data-testid="revoke-button"]');
 
   await expect(page.locator('[data-testid="body-text"]')).toContainText(
-    'Are you sure you want to revoke access for Personal Access Token?'
+    `Are you sure you want to revoke access for ${
+      isBot ? 'JWT Token' : 'Personal Access Token'
+    }?`
   );
 
   await page.click('[data-testid="save-button"]');
@@ -753,4 +755,8 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
       await expectSettingEntityNotVisible(page, paths);
     }
   }
+};
+
+export const checkEditOwnerButtonPermission = async (page: Page) => {
+  await expect(page.locator('[data-testid="edit-owner"]')).not.toBeVisible();
 };
