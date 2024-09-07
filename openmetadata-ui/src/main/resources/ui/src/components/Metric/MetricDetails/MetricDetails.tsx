@@ -306,7 +306,8 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                         onThreadLinkSelect={onThreadLinkSelect}
                       />
                       <MetricExpression
-                        expression={metricDetails.metricExpression}
+                        metricDetails={metricDetails}
+                        onMetricUpdate={onMetricUpdate}
                       />
                     </div>
                   ),

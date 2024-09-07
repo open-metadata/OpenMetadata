@@ -32,7 +32,7 @@ import {
   MetricType,
   UnitOfMeasurement,
 } from '../../../generated/api/data/createMetric';
-import { FieldTypes } from '../../../interface/FormUtils.interface';
+import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { createMetric } from '../../../rest/metricsAPI';
 import { generateFormFields } from '../../../utils/formUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -65,7 +65,7 @@ const AddMetricPage = () => {
     };
   }, []);
 
-  const formFields = useMemo(() => {
+  const formFields: FieldProp[] = useMemo(() => {
     return [
       {
         name: 'name',

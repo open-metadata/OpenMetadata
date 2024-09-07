@@ -102,7 +102,7 @@ const MetricSummary = ({
 
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
-            <MetricExpression expression={entityDetails.metricExpression} />
+            <MetricExpression metricDetails={entityDetails} />
           </Col>
         </Row>
       </>
