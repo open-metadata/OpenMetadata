@@ -142,7 +142,8 @@ export const UserProfileIcon = () => {
       <Space
         className="w-full"
         data-testid="persona-label"
-        onClick={() => handleSelectedPersonaChange(item)}>
+        onClick={() => handleSelectedPersonaChange(item)}
+      >
         {getEntityName(item)}{' '}
         {selectedPersona?.id === item.id && (
           <CheckOutlined
@@ -157,11 +158,12 @@ export const UserProfileIcon = () => {
   );
 
   const teamLabelRenderer = useCallback(
-    (item) => (
+    (item: EntityReference) => (
       <Link
         className="ant-typography-ellipsis-custom text-sm m-b-0 p-0"
         component={Typography.Link}
-        to={getTeamAndUserDetailsPath(item.name as string)}>
+        to={getTeamAndUserDetailsPath(item.name as string)}
+      >
         {getEntityName(item)}
       </Link>
     ),
@@ -176,13 +178,15 @@ export const UserProfileIcon = () => {
           onClick={(e) => {
             e.stopPropagation();
             setShowAllPersona(true);
-          }}>
+          }}
+        >
           {count} {t('label.more')}
         </Typography.Text>
       ) : (
         <Link
           className="more-teams-pill"
-          to={getUserPath(currentUser?.name as string)}>
+          to={getUserPath(currentUser?.name as string)}
+        >
           {count} {t('label.more')}
         </Link>
       ),
@@ -197,10 +201,12 @@ export const UserProfileIcon = () => {
         label: (
           <Link
             data-testid="user-name"
-            to={getUserPath(currentUser?.name as string)}>
+            to={getUserPath(currentUser?.name as string)}
+          >
             <Typography.Paragraph
               className="ant-typography-ellipsis-custom font-medium cursor-pointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, tooltip: true }}>
+              ellipsis={{ rows: 1, tooltip: true }}
+            >
               {userName}
             </Typography.Paragraph>
           </Link>
@@ -293,7 +299,8 @@ export const UserProfileIcon = () => {
         label: (
           <Typography.Paragraph
             className="font-medium cursor-pointer text-link-color m-b-0"
-            onClick={onLogoutHandler}>
+            onClick={onLogoutHandler}
+          >
             {i18n.t('label.logout')}
           </Typography.Paragraph>
         ),
@@ -324,7 +331,8 @@ export const UserProfileIcon = () => {
         defaultOpenKeys: ['personas', 'roles', 'inheritedRoles', 'teams'],
         rootClassName: 'profile-dropdown',
       }}
-      trigger={['click']}>
+      trigger={['click']}
+    >
       <div className="app-user-icon" data-testid="dropdown-profile">
         <div className="d-flex gap-2 w-40 items-center">
           {isImgUrlValid ? (
@@ -348,7 +356,8 @@ export const UserProfileIcon = () => {
             <Typography.Text
               className="text-grey-muted text-xs w-28"
               data-testid="default-persona"
-              ellipsis={{ tooltip: true }}>
+              ellipsis={{ tooltip: true }}
+            >
               {isEmpty(selectedPersona)
                 ? t('label.default')
                 : getEntityName(selectedPersona)}

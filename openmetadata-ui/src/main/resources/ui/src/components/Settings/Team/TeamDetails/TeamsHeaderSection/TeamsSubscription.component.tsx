@@ -82,19 +82,21 @@ const TeamsSubscription = ({
           <div className="flex-center gap-2">
             <Typography.Text
               className="font-medium"
-              data-testid="subscription-no-data">
+              data-testid="subscription-no-data"
+            >
               {t('label.none')}
             </Typography.Text>
             <Tooltip
               title={t('label.edit-entity', {
                 entity: t('label.subscription'),
-              })}>
+              })}
+            >
               <EditIcon
                 className="cursor-pointer"
                 color={DE_ACTIVE_COLOR}
                 data-testid="edit-team-subscription"
                 width={14}
-                onClick={(e) => {
+                onClick={(e: MouseEvent) => {
                   // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                   e.stopPropagation();
                   setEditSubscription(true);
@@ -108,7 +110,8 @@ const TeamsSubscription = ({
       return (
         <Typography.Text
           className="font-medium"
-          data-testid="subscription-no-data">
+          data-testid="subscription-no-data"
+        >
           {NO_DATA_PLACEHOLDER}
         </Typography.Text>
       );
@@ -157,13 +160,14 @@ const TeamsSubscription = ({
         <Tooltip
           title={t('label.edit-entity', {
             entity: t('label.subscription'),
-          })}>
+          })}
+        >
           <EditIcon
             className="cursor-pointer align-middle"
             color={DE_ACTIVE_COLOR}
             data-testid="edit-team-subscription"
             {...ICON_DIMENSION}
-            onClick={(e) => {
+            onClick={(e: MouseEvent) => {
               // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
               e.stopPropagation();
               setEditSubscription(true);
@@ -176,7 +180,8 @@ const TeamsSubscription = ({
         // Used Button to stop click propagation event anywhere in the form to parent TeamDetailV1 collapsible panel
         <Button
           className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
+          onClick={(e) => e.stopPropagation()}
+        >
           <Modal
             centered
             open
@@ -192,13 +197,15 @@ const TeamsSubscription = ({
             title={t('label.add-entity', {
               entity: t('label.subscription'),
             })}
-            onCancel={() => setEditSubscription(false)}>
+            onCancel={() => setEditSubscription(false)}
+          >
             <Form
               data-testid="subscription-modal"
               form={form}
               id="subscription-form"
               layout="vertical"
-              onFinish={handleSave}>
+              onFinish={handleSave}
+            >
               <Form.Item label={t('label.webhook')} name="webhook">
                 <Select
                   options={SUBSCRIPTION_WEBHOOK_OPTIONS}
@@ -221,7 +228,8 @@ const TeamsSubscription = ({
                     type: 'url',
                     message: t('message.endpoint-should-be-valid'),
                   },
-                ]}>
+                ]}
+              >
                 <Input
                   disabled={isWebhookEmpty}
                   placeholder={t('label.enter-entity-value', {

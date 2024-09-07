@@ -229,11 +229,13 @@ export const getCountBadge = (
         'p-x-xss m-x-xss global-border rounded-4 text-center',
         clsBG,
         className
-      )}>
+      )}
+    >
       <span
         className="text-xs"
         data-testid="filter-count"
-        title={count.toString()}>
+        title={count.toString()}
+      >
         {count}
       </span>
     </span>
@@ -344,7 +346,8 @@ export const errorMsg = (value: string) => {
     <div>
       <strong
         className="text-xs font-italic text-failure"
-        data-testid="error-message">
+        data-testid="error-message"
+      >
         {value}
       </strong>
     </div>
@@ -744,7 +747,7 @@ export const Transi18next = ({
 }: {
   i18nKey: string;
   values?: object;
-  renderElement: JSX.Element | HTMLElement;
+  renderElement: ReactNode;
 }): JSX.Element => (
   <Trans i18nKey={i18nKey} values={values} {...otherProps}>
     {renderElement}
@@ -800,7 +803,7 @@ export const getIsErrorMatch = (error: AxiosError, key: string): boolean => {
       errorMessage = get(error, 'response.data.responseMessage', '');
     }
     if (!errorMessage) {
-      errorMessage = get(error, 'response.data', '');
+      errorMessage = get(error, 'response.data', '') as string;
       errorMessage = typeof errorMessage === 'string' ? errorMessage : '';
     }
   }

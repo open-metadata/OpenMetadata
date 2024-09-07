@@ -128,7 +128,8 @@ const UserProfileDetails = ({
             // Used to stop click propagation event to parent User.component collapsible panel
             e.stopPropagation();
             setIsChangePassword(true);
-          }}>
+          }}
+        >
           {t('label.change-entity', {
             entity: t('label.password-lowercase'),
           })}
@@ -171,13 +172,13 @@ const UserProfileDetails = ({
           <Space align="center">
             <Typography.Text
               className="text-grey-muted"
-              data-testid="user-email-label">{`${t(
-              'label.email'
-            )} :`}</Typography.Text>
+              data-testid="user-email-label"
+            >{`${t('label.email')} :`}</Typography.Text>
 
             <Typography.Paragraph
               className="m-b-0"
-              data-testid="user-email-value">
+              data-testid="user-email-value"
+            >
               {userData.email}
             </Typography.Paragraph>
           </Space>
@@ -192,9 +193,8 @@ const UserProfileDetails = ({
       <div className="d-flex items-center gap-2">
         <Typography.Text
           className="text-grey-muted"
-          data-testid="user-domain-label">{`${t(
-          'label.domain'
-        )} :`}</Typography.Text>
+          data-testid="user-domain-label"
+        >{`${t('label.domain')} :`}</Typography.Text>
         <DomainLabel
           multiple
           domain={userData?.domains}
@@ -221,7 +221,8 @@ const UserProfileDetails = ({
       <Space align="center">
         <Typography.Text
           className="text-grey-muted"
-          data-testid="default-persona-label">
+          data-testid="default-persona-label"
+        >
           {`${t('label.default-persona')} :`}
         </Typography.Text>
 
@@ -275,14 +276,16 @@ const UserProfileDetails = ({
         wrap
         className="w-full justify-between"
         data-testid="user-profile-details"
-        size="middle">
+        size="middle"
+      >
         <Space className="w-full">
           <UserProfileImage userData={userData} />
           {isDisplayNameEdit ? (
             <InlineEdit
               isLoading={isLoading}
               onCancel={handleCloseEditDisplayName}
-              onSave={handleDisplayNameSave}>
+              onSave={handleDisplayNameSave}
+            >
               <Input
                 className="w-full"
                 data-testid="displayName"
@@ -301,7 +304,8 @@ const UserProfileDetails = ({
                   className="font-medium text-md"
                   data-testid="user-name"
                   ellipsis={{ tooltip: true }}
-                  style={{ maxWidth: '400px' }}>
+                  style={{ maxWidth: '400px' }}
+                >
                   {userData.displayName}
                 </Typography.Text>
               )}
@@ -314,13 +318,14 @@ const UserProfileDetails = ({
                     {
                       entity: t('label.display-name'),
                     }
-                  )}>
+                  )}
+                >
                   <EditIcon
                     className="cursor-pointer align-middle"
                     color={DE_ACTIVE_COLOR}
                     data-testid="edit-displayName"
                     {...ICON_DIMENSION}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       /* Used to stop click propagation event to parent User.component collapsible panel*/
                       e.stopPropagation();
                       setIsDisplayNameEdit(true);

@@ -17,7 +17,7 @@ import {
   fireEvent,
   render,
   screen,
-  waitForElement,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -194,7 +194,7 @@ describe('Test User Profile Roles Component', () => {
     });
 
     // wait for list to render, checked with item having in the list
-    await waitForElement(() => screen.findByText('admin'));
+    await waitFor(async () => await screen.findByText('admin'));
 
     await act(async () => {
       userEvent.click(screen.getByText('admin'));

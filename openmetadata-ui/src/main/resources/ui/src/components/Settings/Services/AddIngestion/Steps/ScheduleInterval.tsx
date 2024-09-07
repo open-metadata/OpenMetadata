@@ -60,7 +60,7 @@ const ScheduleInterval = ({
   );
 
   const handleFormSubmit: FormProps['onFinish'] = useCallback(
-    (data) => {
+    (data: { enableDebugLog: boolean }) => {
       onDeploy({
         enableDebugLog: data.enableDebugLog,
       });
@@ -72,7 +72,8 @@ const ScheduleInterval = ({
     <Form
       data-testid="schedule-intervel-container"
       layout="vertical"
-      onFinish={handleFormSubmit}>
+      onFinish={handleFormSubmit}
+    >
       <CronEditor
         disabledCronChange={disabledCronChange}
         includePeriodOptions={includePeriodOptions}
@@ -91,7 +92,8 @@ const ScheduleInterval = ({
           className="m-r-xs"
           data-testid="back-button"
           type="link"
-          onClick={onBack}>
+          onClick={onBack}
+        >
           <span>{t('label.back')}</span>
         </Button>
 
@@ -99,7 +101,8 @@ const ScheduleInterval = ({
           <Button
             disabled
             className="w-16 opacity-100 p-x-md p-y-xxs"
-            type="primary">
+            type="primary"
+          >
             <CheckOutlined />
           </Button>
         ) : (
@@ -108,7 +111,8 @@ const ScheduleInterval = ({
             data-testid="deploy-button"
             htmlType="submit"
             loading={status === LOADING_STATE.WAITING}
-            type="primary">
+            type="primary"
+          >
             {submitButtonLabel}
           </Button>
         )}

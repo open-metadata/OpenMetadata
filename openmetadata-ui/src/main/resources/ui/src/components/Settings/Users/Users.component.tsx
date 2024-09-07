@@ -57,8 +57,9 @@ const Users = ({
   queryFilters,
   updateUserDetails,
 }: Props) => {
-  const { tab: activeTab = UserPageTabs.ACTIVITY } =
-    useParams<{ tab: UserPageTabs }>();
+  const { tab: activeTab = UserPageTabs.ACTIVITY } = useParams<{
+    tab: UserPageTabs;
+  }>();
   const { fqn: decodedUsername } = useFqn();
   const [assetCount, setAssetCount] = useState<number>(0);
   const { isAdminUser } = useAuth();
@@ -107,9 +108,12 @@ const Users = ({
     }
   };
 
-  const handleAssetClick = useCallback((asset) => {
-    setPreviewAsset(asset);
-  }, []);
+  const handleAssetClick = useCallback(
+    (asset?: EntityDetailsObjectInterface) => {
+      setPreviewAsset(asset);
+    },
+    []
+  );
 
   const handleTabRedirection = useCallback(() => {
     if (!isLoggedInUser && activeTab === UserPageTabs.ACCESS_TOKEN) {
@@ -326,11 +330,13 @@ const Users = ({
         <Collapse
           accordion
           bordered={false}
-          className="header-collapse-custom-collapse user-profile-container">
+          className="header-collapse-custom-collapse user-profile-container"
+        >
           <Collapse.Panel
             className="header-collapse-custom-panel"
             header={userProfileCollapseHeader}
-            key="1">
+            key="1"
+          >
             <Row className="border-top p-y-lg" gutter={[0, 24]}>
               <Col span={24}>
                 <Row data-testid="user-profile-accessibility-details">
@@ -361,7 +367,8 @@ const Users = ({
                         title={
                           <Typography.Text
                             className="right-panel-label items-center d-flex gap-2"
-                            data-testid="persona-list">
+                            data-testid="persona-list"
+                          >
                             {t('label.persona')}
                             <PersonaSelectableList
                               multiSelect
@@ -372,7 +379,8 @@ const Users = ({
                               onUpdate={handlePersonaUpdate}
                             />
                           </Typography.Text>
-                        }>
+                        }
+                      >
                         <Chip
                           showNoDataPlaceholder
                           data={userData.personas ?? []}

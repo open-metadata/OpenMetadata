@@ -13,7 +13,7 @@
 
 import { Button, Dropdown, DropdownProps } from 'antd';
 import { isEmpty, isNil, isUndefined } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useHistory } from 'react-router-dom';
 import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
@@ -147,7 +147,7 @@ function PipelineActionsDropdown({
   );
 
   const handleRenderDropdown: DropdownProps['dropdownRender'] = useCallback(
-    (originNode) => {
+    (originNode: ReactNode) => {
       return <div data-testid="actions-dropdown">{originNode}</div>;
     },
     []
@@ -264,7 +264,8 @@ function PipelineActionsDropdown({
         overlayClassName="pipeline-actions-dropdown"
         overlayStyle={{ width: '120px' }}
         trigger={['click']}
-        onOpenChange={(value) => setIsOpen(value)}>
+        onOpenChange={(value) => setIsOpen(value)}
+      >
         <Button
           data-testid="more-actions"
           icon={<MoreIcon />}

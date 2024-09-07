@@ -168,12 +168,14 @@ const NavBar = ({
         listHeight={300}
         popupClassName="global-search-select-menu"
         value={searchCriteria}
-        onChange={updateSearchCriteria}>
+        onChange={updateSearchCriteria}
+      >
         {searchClassBase.getGlobalSearchOptions().map(({ value, label }) => (
           <Option
             data-testid={`global-search-select-option-${label}`}
             key={value}
-            value={value}>
+            value={value}
+          >
             {label}
           </Option>
         ))}
@@ -344,12 +346,12 @@ const NavBar = ({
     return () => targetNode.removeEventListener('keydown', handleKeyPress);
   }, [handleKeyPress]);
 
-  const handleDomainChange = useCallback(({ key }) => {
+  const handleDomainChange = useCallback(({ key }: { key: string }) => {
     updateActiveDomain(key);
     refreshPage();
   }, []);
 
-  const handleLanguageChange = useCallback(({ key }) => {
+  const handleLanguageChange = useCallback(({ key }: { key: string }) => {
     i18next.changeLanguage(key);
     refreshPage();
   }, []);
@@ -368,7 +370,8 @@ const NavBar = ({
         <div
           className="m-auto relative"
           data-testid="navbar-search-container"
-          ref={searchContainerRef}>
+          ref={searchContainerRef}
+        >
           <Popover
             content={
               !isTourRoute &&
@@ -401,7 +404,8 @@ const NavBar = ({
             placement="bottomRight"
             showArrow={false}
             trigger={['click']}
-            onOpenChange={handleSearchBoxOpen}>
+            onOpenChange={handleSearchBoxOpen}
+          >
             <Input
               addonBefore={entitiesSelect}
               autoComplete="off"
@@ -477,7 +481,8 @@ const NavBar = ({
               defaultSelectedKeys: [activeDomain],
             }}
             placement="bottomRight"
-            trigger={['click']}>
+            trigger={['click']}
+          >
             <Row data-testid="domain-dropdown" gutter={6}>
               <Col className="flex-center">
                 <DomainIcon
@@ -507,7 +512,8 @@ const NavBar = ({
               onClick: handleLanguageChange,
             }}
             placement="bottomRight"
-            trigger={['click']}>
+            trigger={['click']}
+          >
             <Row gutter={2}>
               <Col>
                 {upperCase(
@@ -539,7 +545,8 @@ const NavBar = ({
             }}
             placement="bottomRight"
             trigger={['click']}
-            onOpenChange={handleBellClick}>
+            onOpenChange={handleBellClick}
+          >
             <Tooltip placement="top" title={t('label.notification-plural')}>
               <Badge dot={hasTaskNotification || hasMentionNotification}>
                 <Icon
@@ -558,7 +565,8 @@ const NavBar = ({
             }}
             overlayStyle={{ width: 175 }}
             placement="bottomRight"
-            trigger={['click']}>
+            trigger={['click']}
+          >
             <Tooltip placement="top" title={t('label.need-help')}>
               <Icon
                 className="align-middle"
