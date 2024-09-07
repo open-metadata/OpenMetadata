@@ -177,6 +177,9 @@ class ServiceBaseClass {
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
 
+    // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+    await page.waitForTimeout(2000);
+
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
