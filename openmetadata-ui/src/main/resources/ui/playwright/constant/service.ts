@@ -88,6 +88,8 @@ export const POSTGRES = {
   tableName: 'order_items',
 };
 
+export const MYSQL = 'Mysql';
+
 export const HTTP_CONFIG_SOURCE = {
   DBT_CATALOG_HTTP_PATH:
     'https://raw.githubusercontent.com/OnkarVO7/dbt_git_test/dbt_aut/catalog.json',

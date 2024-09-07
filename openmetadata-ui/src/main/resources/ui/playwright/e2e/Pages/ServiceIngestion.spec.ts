@@ -12,7 +12,7 @@
  */
 
 import test, { expect } from '@playwright/test';
-import { POSTGRES, REDSHIFT } from '../../constant/service';
+import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import BigQueryIngestionClass from '../../support/entity/ingestion/BigQueryIngestionClass';
@@ -83,7 +83,9 @@ services.forEach((ServiceClass) => {
     });
 
     if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
+      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+        service.serviceType
+      )
     ) {
       test(`Service specific tests`, async ({ page }) => {
         await service.runAdditionalTests(page, test);
