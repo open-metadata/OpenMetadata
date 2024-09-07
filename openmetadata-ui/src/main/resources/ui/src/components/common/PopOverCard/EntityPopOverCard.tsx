@@ -196,7 +196,13 @@ export const PopoverContent: React.FC<{
 
         break;
       case EntityType.METRIC:
-        promise = getMetricByFqn(entityFQN, { fields });
+        promise = getMetricByFqn(entityFQN, {
+          fields: [
+            TabSpecificField.OWNERS,
+            TabSpecificField.TAGS,
+            TabSpecificField.DOMAIN,
+          ],
+        });
 
         break;
 

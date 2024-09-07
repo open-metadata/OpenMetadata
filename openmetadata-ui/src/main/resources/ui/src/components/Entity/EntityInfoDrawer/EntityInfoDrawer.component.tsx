@@ -74,7 +74,7 @@ const EntityInfoDrawer = ({
 
   const icon = useMemo(
     () =>
-      selectedNode?.serviceType ? (
+      'serviceType' in selectedNode ? (
         <img
           className="h-9"
           src={serviceUtilClassBase.getServiceTypeLogo(

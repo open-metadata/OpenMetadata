@@ -519,7 +519,8 @@ class ServiceUtilClassBase {
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
   ) {
-    const type = searchSource?.serviceType ?? '';
+    const type =
+      'serviceType' in searchSource ? searchSource.serviceType ?? '' : '';
 
     return this.getServiceLogo(type);
   }

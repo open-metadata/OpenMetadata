@@ -12,7 +12,7 @@
  */
 
 import { Col, Divider, Row } from 'antd';
-import { get } from 'lodash';
+import { get, isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
@@ -59,6 +59,10 @@ const MetricSummary = ({
   }, [entityDetails, metricDetails]);
 
   const fetchMetricDetails = useCallback(async () => {
+    if (isEmpty(entityDetails.fullyQualifiedName)) {
+      return;
+    }
+
     try {
       const res = await getMetricByFqn(entityDetails.fullyQualifiedName ?? '', {
         fields: [TabSpecificField.TAGS, TabSpecificField.OWNERS],
@@ -68,12 +72,10 @@ const MetricSummary = ({
     } catch (error) {
       // Error
     }
-  }, [entityDetails]);
+  }, [entityDetails, componentType]);
 
   useEffect(() => {
-    if (entityDetails) {
-      fetchMetricDetails();
-    }
+    fetchMetricDetails();
   }, [entityDetails, componentType]);
 
   return (
