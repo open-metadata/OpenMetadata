@@ -25,6 +25,7 @@ import { ReactComponent as IconApiEndpoint } from '../assets/svg/ic-api-endpoint
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as IconContainer } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconMlModal } from '../assets/svg/mlmodal.svg';
 import { ReactComponent as IconPipeline } from '../assets/svg/pipeline-grey.svg';
 import { ReactComponent as IconTag } from '../assets/svg/tag-grey.svg';
@@ -177,7 +178,7 @@ export const getGroupLabel = (index: string) => {
       break;
     case SearchIndex.METRIC_SEARCH_INDEX:
       label = i18next.t('label.metric-plural');
-      GroupIcon = IconTag;
+      GroupIcon = MetricIcon;
 
       break;
 

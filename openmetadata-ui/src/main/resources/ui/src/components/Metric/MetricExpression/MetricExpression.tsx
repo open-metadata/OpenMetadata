@@ -97,7 +97,7 @@ const MetricExpression: FC<MetricExpressionProps> = ({
           ? t('label.edit-entity', { entity: t('label.expression') })
           : metricDetails?.metricExpression?.language ?? t('label.expression')}
       </Typography>
-      {!isEditing && onMetricUpdate && (
+      {!isEditing && onMetricUpdate && !metricDetails.deleted && (
         <Tooltip
           title={t('label.edit-entity', {
             entity: t('label.expression'),

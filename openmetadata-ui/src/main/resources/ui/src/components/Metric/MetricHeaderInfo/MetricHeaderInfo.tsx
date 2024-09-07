@@ -155,7 +155,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
         label={label}
         value={value ?? NO_DATA_PLACEHOLDER}
       />
-      {hasPermission && (
+      {hasPermission && !metricDetails.deleted && (
         <Popover
           destroyTooltipOnHide
           content={list}

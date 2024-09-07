@@ -31,6 +31,7 @@ import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as IconTable } from '../assets/svg/table-grey.svg';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
@@ -299,7 +300,7 @@ class SearchClassBase {
       {
         title: i18n.t('label.metric-plural'),
         key: EntityType.METRIC,
-        icon: ClassificationIcon,
+        icon: MetricIcon,
         data: {
           entityType: EntityType.METRIC,
           isRoot: true,
@@ -467,7 +468,7 @@ class SearchClassBase {
         sortField: TAGS_INITIAL_SORT_FIELD,
         sortOrder: TAGS_INITIAL_SORT_ORDER,
         path: ExplorePageTabs.METRIC,
-        icon: ClassificationIcon,
+        icon: MetricIcon,
       },
     };
   }

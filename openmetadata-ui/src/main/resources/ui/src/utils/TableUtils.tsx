@@ -71,6 +71,7 @@ import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ReactComponent as KPIIcon } from '../assets/svg/kpi.svg';
 import { ReactComponent as LocationIcon } from '../assets/svg/location.svg';
 import { ReactComponent as MetadataServiceIcon } from '../assets/svg/metadata-service.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/notification.svg';
 import { ReactComponent as PolicyIcon } from '../assets/svg/policies.svg';
 import { ReactComponent as ServicesIcon } from '../assets/svg/services.svg';
@@ -278,8 +279,8 @@ export const getEntityIcon = (
     ['notification']: NotificationIcon,
     [EntityType.API_ENDPOINT]: APIEndpointIcon,
     [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointIcon,
-    [EntityType.METRIC]: ClassificationIcon,
-    [SearchIndex.METRIC_SEARCH_INDEX]: ClassificationIcon,
+    [EntityType.METRIC]: MetricIcon,
+    [SearchIndex.METRIC_SEARCH_INDEX]: MetricIcon,
     [EntityType.API_SERVICE]: APIServiceIcon,
     [SearchIndex.API_SERVICE_INDEX]: APIServiceIcon,
     [EntityType.API_COLLECTION]: APICollectionIcon,
