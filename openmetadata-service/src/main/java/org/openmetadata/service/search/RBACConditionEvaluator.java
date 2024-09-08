@@ -19,6 +19,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public class RBACConditionEvaluator {
 
+  private static final Pattern FUNCTION_PATTERN = Pattern.compile("([a-zA-Z]+)\\((.*)\\)");
+
   public QueryBuilder evaluateConditions(SubjectContext subjectContext) {
     BoolQueryBuilder queryBuilder = QueryBuilders.boolQuery();
     User user = subjectContext.user();
@@ -39,9 +41,11 @@ public class RBACConditionEvaluator {
                 || rule.getOperations().contains(MetadataOperation.VIEW_ALL)
                 || rule.getOperations().contains(MetadataOperation.VIEW_BASIC))
             && rule.getCondition() != null) {
+
+          // Skip allow rules with ALL operations
           if (rule.getOperations().contains(MetadataOperation.ALL)
               && rule.getEffect().toString().equalsIgnoreCase("ALLOW")) {
-            continue; // Skip allow rules with ALL operations
+            continue;
           }
           if (rule.getEffect().toString().equalsIgnoreCase("DENY")) {
             queryBuilder.mustNot(evaluateComplexCondition(user, rule.getCondition()));
@@ -56,18 +60,15 @@ public class RBACConditionEvaluator {
 
   private QueryBuilder evaluateComplexCondition(User user, String condition) {
     condition = condition.trim();
-
-    // Handle parentheses and nested expressions
     return parseLogicalCondition(user, condition);
   }
 
   private QueryBuilder parseLogicalCondition(User user, String condition) {
-    // Handle parentheses for nested expressions
     if (condition.startsWith("(") && condition.endsWith(")")) {
       return parseLogicalCondition(user, condition.substring(1, condition.length() - 1).trim());
     }
 
-    // Check for `||` first (OR has lower precedence than AND)
+    // handle OR (`||`) first
     List<String> orParts = splitByOperator(condition, "||");
     if (orParts.size() > 1) {
       BoolQueryBuilder orQuery = QueryBuilders.boolQuery();
@@ -78,7 +79,7 @@ public class RBACConditionEvaluator {
       return orQuery;
     }
 
-    // Then check for `&&` (AND has higher precedence than OR)
+    // Then handle AND (`&&`)
     List<String> andParts = splitByOperator(condition, "&&");
     if (andParts.size() > 1) {
       BoolQueryBuilder andQuery = QueryBuilders.boolQuery();
@@ -88,64 +89,42 @@ public class RBACConditionEvaluator {
       return andQuery;
     }
 
-    // If no logical operators, it's a single condition, check for negation
     return evaluateRuleCondition(user, condition);
   }
 
-  // Utility method to split the condition by logical operators (&&, ||) while respecting
-  // parentheses
   private List<String> splitByOperator(String condition, String operator) {
     List<String> parts = new ArrayList<>();
     int parenthesesDepth = 0;
-    StringBuilder currentPart = new StringBuilder();
+    int lastIndex = 0;
 
     for (int i = 0; i < condition.length(); i++) {
       char c = condition.charAt(i);
+      if (c == '(') parenthesesDepth++;
+      if (c == ')') parenthesesDepth--;
 
-      if (c == '(') {
-        parenthesesDepth++;
-      } else if (c == ')') {
-        parenthesesDepth--;
-      }
-
-      // Only split when we are outside of parentheses
       if (parenthesesDepth == 0 && condition.startsWith(operator, i)) {
-        parts.add(currentPart.toString().trim());
-        currentPart = new StringBuilder();
-        i += operator.length() - 1; // Skip over the operator
-      } else {
-        currentPart.append(c);
+        parts.add(condition.substring(lastIndex, i).trim());
+        lastIndex = i + operator.length();
       }
     }
-
-    // Add the last part
-    if (currentPart.length() > 0) {
-      parts.add(currentPart.toString().trim());
-    }
-
+    parts.add(condition.substring(lastIndex).trim());
     return parts;
   }
 
-  // Evaluate individual rule condition and return the corresponding Elasticsearch query
   private QueryBuilder evaluateRuleCondition(User user, String condition) {
     boolean isNegated = false;
     if (condition.startsWith("!")) {
       isNegated = true;
-      condition = condition.substring(1).trim(); // Remove the `!` operator
+      condition = condition.substring(1).trim(); // Handle negation
     }
 
-    // Extract function name and arguments from the rule condition string
-    Pattern pattern = Pattern.compile("([a-zA-Z]+)\\((.*)\\)");
-    Matcher matcher = pattern.matcher(condition);
-
+    Matcher matcher = FUNCTION_PATTERN.matcher(condition);
     if (matcher.find()) {
       String functionName = matcher.group(1);
       String arguments = matcher.group(2);
 
-      // Parse arguments as a list, assuming they are comma-separated and enclosed in single quotes
-      List<String> argsList = Arrays.asList(arguments.replaceAll("'", "").split(",\\s*"));
+      List<String> argsList = Arrays.asList(arguments.replace("'", "").split(",\\s*"));
 
-      // Based on the function name, call the corresponding query builder method
       QueryBuilder query =
           switch (functionName) {
             case "isOwner" -> isOwner(user);
@@ -155,10 +134,8 @@ public class RBACConditionEvaluator {
             case "matchTeam" -> matchTeam(user.getTeams());
             default -> throw new IllegalArgumentException("Unsupported condition: " + functionName);
           };
-      if (isNegated) {
-        return QueryBuilders.boolQuery().mustNot(query);
-      }
-      return query;
+
+      return isNegated ? QueryBuilders.boolQuery().mustNot(query) : query;
     } else {
       throw new IllegalArgumentException("Invalid condition format: " + condition);
     }
@@ -168,7 +145,6 @@ public class RBACConditionEvaluator {
     List<EntityReference> userTeams = user.getTeams();
     BoolQueryBuilder ownerQuery = QueryBuilders.boolQuery();
 
-    // Ensure userTeams is not null or empty
     if (userTeams != null) {
       for (EntityReference team : userTeams) {
         if (team.getId() != null) {
@@ -176,8 +152,6 @@ public class RBACConditionEvaluator {
         }
       }
     }
-
-    // Ensure the user ID is not null
     ownerQuery.should(QueryBuilders.termQuery("owner.id", user.getId().toString()));
     return ownerQuery;
   }
