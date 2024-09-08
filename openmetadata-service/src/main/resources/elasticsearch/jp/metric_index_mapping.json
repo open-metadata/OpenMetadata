@@ -280,9 +280,6 @@
           }
         }
       },
-      "termCount": {
-        "type": "integer"
-      },
       "deleted": {
         "type": "text"
       },
@@ -291,6 +288,9 @@
       },
       "entityType": {
         "type": "keyword"
+      },
+      "lineage": {
+        "type" : "object"
       },
       "suggest": {
         "type": "completion",

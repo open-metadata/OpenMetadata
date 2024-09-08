@@ -277,17 +277,14 @@
           }
         }
       },
-      "termCount": {
-        "type": "integer"
-      },
       "deleted": {
-        "type": "text"
-      },
-      "status": {
         "type": "text"
       },
       "entityType": {
         "type": "keyword"
+      },
+      "lineage": {
+        "type" : "object"
       },
       "suggest": {
         "type": "completion",
