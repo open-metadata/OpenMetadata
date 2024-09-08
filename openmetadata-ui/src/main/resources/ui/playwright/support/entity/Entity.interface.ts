@@ -39,6 +39,7 @@ export enum EntityTypeEndpoint {
   API_ENDPOINT = 'apiEndpoints',
   DATA_PRODUCT = 'dataProducts',
   METRIC = 'metrics',
+  TestSuites = 'dataQuality/testSuites',
 }
 
 export type EntityDataType = {
@@ -69,6 +70,15 @@ export enum ENTITY_PATH {
 }
 
 export type TestCaseData = {
-  parameterValues: unknown[];
-  testDefinition: string;
+  parameterValues?: unknown[];
+  name?: string;
+  entityLink?: string;
+  testDefinition?: string;
+  testSuite?: string;
+};
+
+export type TestSuiteData = {
+  name?: string;
+  executableEntityReference?: string;
+  description?: string;
 };
