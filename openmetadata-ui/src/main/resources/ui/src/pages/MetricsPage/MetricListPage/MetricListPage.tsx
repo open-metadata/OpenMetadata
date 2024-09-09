@@ -232,7 +232,7 @@ const MetricListPage = () => {
     return <Loader />;
   }
 
-  if (error) {
+  if (error && !loading) {
     return (
       <ErrorPlaceHolder>
         <Typography.Paragraph className="text-center m-auto">
