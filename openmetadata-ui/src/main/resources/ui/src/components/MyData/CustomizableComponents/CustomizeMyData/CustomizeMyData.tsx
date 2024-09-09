@@ -19,12 +19,13 @@ import RGL, { Layout, WidthProvider } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useHistory } from 'react-router-dom';
 import gridBgImg from '../../../../assets/img/grid-bg-img.png';
+import { KNOWLEDGE_LIST_LENGTH } from '../../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../../constants/GlobalSettings.constants';
 import { LandingPageWidgetKeys } from '../../../../enums/CustomizablePage.enum';
-import { TabSpecificField } from '../../../../enums/entity.enum';
+import { SearchIndex } from '../../../../enums/search.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -32,7 +33,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useGridLayoutDirection } from '../../../../hooks/useGridLayoutDirection';
 import { WidgetConfig } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import '../../../../pages/MyDataPage/my-data.less';
-import { getUserById } from '../../../../rest/userAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getAddWidgetHandler,
@@ -82,7 +83,7 @@ function CustomizeMyData({
   );
   const [isWidgetModalOpen, setIsWidgetModalOpen] = useState<boolean>(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState<boolean>(false);
-  const [followedData, setFollowedData] = useState<Array<EntityReference>>();
+  const [followedData, setFollowedData] = useState<Array<EntityReference>>([]);
   const [followedDataCount, setFollowedDataCount] = useState(0);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
@@ -139,23 +140,22 @@ function CustomizeMyData({
     setIsWidgetModalOpen(false);
   }, []);
 
-  const fetchMyData = async () => {
+  const fetchUserFollowedData = async () => {
     if (!currentUser?.id) {
       return;
     }
     setIsLoadingOwnedData(true);
     try {
-      const userData = await getUserById(currentUser?.id, {
-        fields: [TabSpecificField.FOLLOWS, TabSpecificField.OWNS],
+      const res = await searchQuery({
+        pageSize: KNOWLEDGE_LIST_LENGTH,
+        searchIndex: SearchIndex.ALL,
+        query: '*',
+        filters: `followers:${currentUser.id}`,
       });
 
-      if (userData) {
-        const follows: EntityReference[] = userData.follows ?? [];
-        setFollowedDataCount(follows.length);
-        setFollowedData(follows.slice(0, 8));
-      }
+      setFollowedDataCount(res?.hits?.total.value ?? 0);
+      setFollowedData(res.hits.hits.map((hit) => hit._source));
     } catch (err) {
-      setFollowedData([]);
       showErrorToast(err as AxiosError);
     } finally {
       setIsLoadingOwnedData(false);
@@ -175,8 +175,8 @@ function CustomizeMyData({
       layout.map((widget) => (
         <div data-grid={widget} id={widget.i} key={widget.i}>
           {getWidgetFromKey({
-            followedData: followedData ?? [],
-            followedDataCount: followedDataCount,
+            followedData,
+            followedDataCount,
             isLoadingOwnedData: isLoadingOwnedData,
             widgetConfig: widget,
             handleOpenAddWidgetModal: handleOpenAddWidgetModal,
@@ -238,7 +238,7 @@ function CustomizeMyData({
   }, []);
 
   useEffect(() => {
-    fetchMyData();
+    fetchUserFollowedData();
   }, []);
 
   const handleSave = async () => {

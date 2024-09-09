@@ -53,5 +53,11 @@ def _unique_count_query_mssql(col, session, sample):
     )
 
 
+def _unique_count_query_oracle(col, session, sample):
+    count_fn = CountFn(col)
+    return _unique_count_query(count_fn, session, sample)
+
+
 _unique_count_query_mapper = defaultdict(lambda: _unique_count_query)
 _unique_count_query_mapper[Dialects.MSSQL] = _unique_count_query_mssql
+_unique_count_query_mapper[Dialects.Oracle] = _unique_count_query_oracle

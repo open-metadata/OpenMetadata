@@ -41,6 +41,7 @@ class ServiceBaseClass {
   protected entityName: string;
   protected shouldTestConnection: boolean;
   protected shouldAddIngestion: boolean;
+  protected entityFQN: string | null;
 
   constructor(
     category: Services,
@@ -56,6 +57,7 @@ class ServiceBaseClass {
     this.entityName = entity;
     this.shouldTestConnection = shouldTestConnection;
     this.shouldAddIngestion = shouldAddIngestion;
+    this.entityFQN = null;
   }
 
   visitService() {
@@ -174,7 +176,10 @@ class ServiceBaseClass {
       .getByLabel('Ingestions')
       .getByTestId('loader')
       .waitFor({ state: 'detached' });
-
+    
+    // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+    await page.waitForTimeout(2000);
+    
     await page.getByTestId('more-actions').first().click();
     await page.getByTestId('run-button').click();
 
@@ -402,7 +407,7 @@ class ServiceBaseClass {
     // Navigate to ingested table
     await visitEntityPage({
       page,
-      searchTerm: this.entityName,
+      searchTerm: this.entityFQN ?? this.entityName,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
@@ -446,7 +451,7 @@ class ServiceBaseClass {
     // Navigate to table name
     await visitEntityPage({
       page,
-      searchTerm: this.entityName,
+      searchTerm: this.entityFQN ?? this.entityName,
       dataTestId: entityDataTestId ?? `${this.serviceName}-${this.entityName}`,
     });
 
