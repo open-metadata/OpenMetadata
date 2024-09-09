@@ -15,7 +15,7 @@
       "default": "Matillion"
     },
     "matillionETL": {
-      "description": "Matillion Hub",
+      "description": "Matillion ETL Auth Config",
       "type": "object",
       "properties": {
         "type": {
