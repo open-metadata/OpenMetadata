@@ -32,12 +32,22 @@ permissions:
   contents: read
 
 jobs:
+  generate-jobs:
+    runs-on: ubuntu-latest
+    outputs:
+      session: ${{ steps.set-matrix.outputs.session }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: wntrblm/nox@main
+      - id: set-matrix
+        shell: bash
+        run: echo sesssetion=$(nox --json -l -k 'not e2e' | jq -c '[.[].session]') | tee --append $GITHUB_OUTPUT
   py-run-tests:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        py-version: ['3.8', '3.9', '3.10', '3.11']
+        session: ${{ fromJson(needs.generate-jobs.outputs.session) }}
     steps:
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
@@ -74,34 +84,53 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
 
+    - name: Extract Python Version from Session
+      id: extract-python-version
+      run: |
+        session_name="${{ matrix.session }}"
+        python_version=$(echo "$session_name" | grep -oE '[0-9]+\.[0-9]+')
+        echo "py-version=$python_version" >> $GITHUB_ENV
+        
     - name: Setup Openmetadata Test Environment
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
-        python-version: ${{ matrix.py-version}}
+        python-version: ${{ env.python-version }}
         args: "-m no-ui"
         ingestion_dependency: "mysql,elasticsearch,sample-data"
 
     - name: Run Python Tests
-      if: ${{ matrix.py-version != '3.9' }}
+      if: ${{ env.py-version != '3.9' }}
       run: |
         source env/bin/activate
-        make run_python_tests
+        make NOX_FLAGS='(-s "${{ matrix.session }}")' run_python_tests
       env:
-        NOXPYTHON: "${{ matrix.py-version }}"
         TESTCONTAINERS_RYUK_DISABLED: true
       
     - name: Run Python Tests & record coverage
-      if: ${{ matrix.py-version == '3.9' }}
+      if: ${{ env.py-version == '3.9' }}
       run: |
         source env/bin/activate
-        make coverage
+        make NOX_FLAGS='(-s "${{ matrix.session }}")' run_python_tests
         rm pom.xml
         # fix coverage xml report for github
         sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
       env:
-        NOXPYTHON: "${{ matrix.py-version }}"
         TESTCONTAINERS_RYUK_DISABLED: true
+    
+    - name: Upload tests artifact
+      if: steps.e2e-test.outcome == 'success' || steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
+      uses: actions/upload-artifact@v3
+      with:
+        name: tests-${{ matrix.e2e-test }}
+        path: ingestion/junit/**/test-results-*.xml
 
+    - name: Upload coverage artifact for Python tests
+      if: matrix.e2e-test == 'python' && steps.python-e2e-test.outcome == 'success' && env.DEBUG == 'false'
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-${{ matrix.e2e-test }}
+        path: ingestion/converage/**/.coverage.*
+    
     - name: Clean Up
       run: |
         cd ./docker/development
@@ -109,42 +138,59 @@ jobs:
         sudo rm -rf ${PWD}/docker-volume
 
       # we have to pass these args values since we are working with the 'pull_request_target' trigger
-    - name: Push Results in PR to Sonar
-      id: push-to-sonar
-      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' }}
-      continue-on-error: true
-      uses: sonarsource/sonarcloud-github-action@v2.3.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-      with:
-        projectBaseDir: ingestion/
-        args: >
-          -Dproject.settings=ingestion/sonar-project.properties
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-          -Dsonar.pullrequest.branch=${{ github.head_ref }}
-          -Dsonar.pullrequest.github.repository=OpenMetadata
-          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-          -Dsonar.pullrequest.provider=github
+  sonar-cloud-coverage-upload:
+    runs-on: ubuntu-latest
+    needs:
+      - py-run-tests
+      - check-debug
+    if: needs.check-debug.outputs.DEBUG == 'false'
+    steps:
 
-    # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
-    - name: Wait to retry 'Push Results in PR to Sonar'
-      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
-      run: sleep 20s
-      shell: bash
+      - name: Checkout
+        uses: actions/checkout@v3
 
-    - name: Retry 'Push Results in PR to Sonar'
-      uses: sonarsource/sonarcloud-github-action@master
-      if: ${{ github.event_name == 'pull_request_target' && matrix.py-version == '3.9' && steps.push-to-sonar.outcome != 'success' }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-      with:
-        projectBaseDir: ingestion/
-        args: >
-          -Dproject.settings=ingestion/sonar-project.properties
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-          -Dsonar.pullrequest.branch=${{ github.head_ref }}
-          -Dsonar.pullrequest.github.repository=OpenMetadata
-          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-          -Dsonar.pullrequest.provider=github
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.9
+
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+          unixodbc-dev libevent-dev python3-dev libkrb5-dev
+
+      - name: Install coverage dependencies
+        run: |
+          python3 -m venv env
+          source env/bin/activate
+          make install_all install_test
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
+      - name: Generate report
+        run: |
+          for folder in artifacts/coverage/3.9/coverage-*; do
+            cp -rT $folder/ . ;
+          done
+          mkdir ingestion/junit
+          for folder in artifacts/junit/3.9/tests-*; do
+            cp -rT $folder/ ingestion/junit ;
+          done
+          source env/bin/activate
+          coverage combine --rcfile=ingestion/pyproject.toml --keep -a ingestion/3.9/.coverage.*
+          coverage xml --rcfile=ingestion/pyproject.toml --data-file=.coverage -o ingestion/coverage.xml
+          sed -e "s/$(python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" ingestion/coverage.xml >> ingestion/ci-coverage.xml
+          sed -i 's/src\/metadata/\/github\/workspace\/ingestion\/src\/metadata/g' ingestion/ci-coverage.xml
+        shell: bash
+
+      - name: Push Results to Sonar
+        uses: sonarsource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+  

@@ -74,12 +74,14 @@ def pytest_run(session: Session, env: TestEnv):
         "--branch",
         "--rcfile",
         "pyproject.toml",
+        "--data-file",
+        f"coverage/{session.python}/.coverage.{env.name}",
         "-a",
         "-m",
         "pytest",
         "-c",
         "pyproject.toml",
-        f"--junitxml=junit/test-results-{env.name}.xml",
+        f"--junitxml=junit/{session.python}/test-results-{env.name}.xml",
         *[path for path in env.paths],
     )
 
@@ -203,6 +205,11 @@ e2e_tests = [
 ]
 
 ## SESSIONS
+
+
+@nox.session(python=list(set(python_versions) - {"3.8"}), tags=["integration"])
+def print2(session: Session):
+    print(session.python)
 
 
 @nox.session(python=list(set(python_versions) - {"3.8"}), tags=["integration"])
