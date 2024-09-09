@@ -48,7 +48,7 @@ jobs:
       - uses: wntrblm/nox@main
       - id: set-matrix
         shell: bash
-        run: echo sesssetion=$(nox --json -l -k 'not e2e' | jq -c '[.[].session]') | tee --append $GITHUB_OUTPUT
+        run: echo sesssetion=$(nox -f ingestion/noxfile.py --json -l -k 'not e2e' | jq -c '[.[].session]') | tee --append $GITHUB_OUTPUT
   py-run-tests:
     needs: 
       - generate-jobs
