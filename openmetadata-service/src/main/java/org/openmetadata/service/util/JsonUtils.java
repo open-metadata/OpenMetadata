@@ -15,6 +15,7 @@ package org.openmetadata.service.util;
 
 import static org.openmetadata.service.util.RestUtil.DATE_TIME_FORMAT;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -110,6 +111,20 @@ public final class JsonUtils {
       return prettyPrint
           ? OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(o)
           : OBJECT_MAPPER.writeValueAsString(o);
+    } catch (JsonProcessingException e) {
+      throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
+    }
+  }
+
+  public static String pojoToJsonIgnoreNull(Object o) {
+    if (o == null) {
+      return null;
+    }
+    try {
+      ObjectMapper objectMapperIgnoreNull = OBJECT_MAPPER.copy();
+      objectMapperIgnoreNull.setSerializationInclusion(
+          JsonInclude.Include.NON_NULL); // Ignore null values
+      return objectMapperIgnoreNull.writeValueAsString(o);
     } catch (JsonProcessingException e) {
       throw new UnhandledServerException(FAILED_TO_PROCESS_JSON, e);
     }
