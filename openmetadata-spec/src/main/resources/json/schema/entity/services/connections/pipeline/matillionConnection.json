@@ -61,8 +61,8 @@
       "default": "Matillion"
     },
     "connection": {
-      "title": "Metadata Database Connection",
-      "description": "Underlying database connection. See https://airflow.apache.org/docs/apache-airflow/stable/howto/set-up-database.html for supported backends.",
+      "title": "Matillion Connection",
+      "description": "Matillion Auth Configuration",
       "oneOf": [
         {
           "$ref": "#/definitions/matillionETL"
