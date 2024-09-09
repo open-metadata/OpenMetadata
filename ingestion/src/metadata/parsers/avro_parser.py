@@ -27,19 +27,22 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 RECORD_DATATYPE_NAME = "RECORD"
-PARSED_ALREADY = {}
 
 
 def _parse_array_children(
-    arr_item: Schema, cls: Type[BaseModel] = FieldModel
+    arr_item: Schema,
+    cls: Type[BaseModel] = FieldModel,
+    already_parsed: Optional[dict] = None,
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
     if isinstance(arr_item, ArraySchema):
-        display_type, children = _parse_array_children(arr_item.items, cls=cls)
+        display_type, children = _parse_array_children(
+            arr_item.items, cls=cls, already_parsed=already_parsed
+        )
         return f"ARRAY<{display_type}>", children
 
     if isinstance(arr_item, UnionSchema):
         display_type, children = _parse_union_children(
-            parent=None, union_field=arr_item, cls=cls
+            parent=None, union_field=arr_item, cls=cls, already_parsed=already_parsed
         )
         return f"UNION<{display_type}>", children
 
@@ -47,7 +50,7 @@ def _parse_array_children(
         child_obj = cls(
             name=arr_item.name,
             dataType=str(arr_item.type).upper(),
-            children=get_avro_fields(arr_item, cls),
+            children=get_avro_fields(arr_item, cls, already_parsed=already_parsed),
             description=arr_item.doc,
         )
         return str(arr_item.type), child_obj
@@ -56,7 +59,9 @@ def _parse_array_children(
 
 
 def parse_array_fields(
-    field: ArraySchema, cls: Type[BaseModel] = FieldModel
+    field: ArraySchema,
+    cls: Type[BaseModel] = FieldModel,
+    already_parsed: Optional[dict] = None,
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse array field for avro schema
@@ -94,7 +99,9 @@ def parse_array_fields(
         description=field.doc,
     )
 
-    display, children = _parse_array_children(arr_item=field.type.items, cls=cls)
+    display, children = _parse_array_children(
+        arr_item=field.type.items, cls=cls, already_parsed=already_parsed
+    )
 
     obj.dataTypeDisplay = f"ARRAY<{display}>"
     if cls == Column:
@@ -110,6 +117,7 @@ def _parse_union_children(
     parent: Optional[Schema],
     union_field: UnionSchema,
     cls: Type[BaseModel] = FieldModel,
+    already_parsed: Optional[dict] = None,
 ) -> Tuple[str, Optional[Union[FieldModel, Column]]]:
     non_null_schema = [
         (i, schema)
@@ -121,7 +129,9 @@ def _parse_union_children(
         field = non_null_schema[0][1]
 
         if isinstance(field, ArraySchema):
-            display, children = _parse_array_children(arr_item=field.items, cls=cls)
+            display, children = _parse_array_children(
+                arr_item=field.items, cls=cls, already_parsed=already_parsed
+            )
             sub_type = [None, None]
             sub_type[non_null_schema[0][0]] = f"ARRAY<{display}>"
             sub_type[non_null_schema[0][0] ^ 1] = "null"
@@ -132,7 +142,9 @@ def _parse_union_children(
             children = cls(
                 name=field.name,
                 dataType=str(field.type).upper(),
-                children=None if field == parent else get_avro_fields(field, cls),
+                children=None
+                if field == parent
+                else get_avro_fields(field, cls, already_parsed),
                 description=field.doc,
             )
             return sub_type, children
@@ -140,7 +152,11 @@ def _parse_union_children(
     return sub_type, None
 
 
-def parse_record_fields(field: RecordSchema, cls: Type[BaseModel] = FieldModel):
+def parse_record_fields(
+    field: RecordSchema,
+    cls: Type[BaseModel] = FieldModel,
+    already_parsed: Optional[dict] = None,
+):
     """
     Parse the nested record fields for avro
     """
@@ -151,7 +167,7 @@ def parse_record_fields(field: RecordSchema, cls: Type[BaseModel] = FieldModel):
             cls(
                 name=field.type.name,
                 dataType=RECORD_DATATYPE_NAME,
-                children=get_avro_fields(field.type, cls),
+                children=get_avro_fields(field.type, cls, already_parsed),
                 description=field.type.doc,
             )
         ],
@@ -164,6 +180,7 @@ def parse_union_fields(
     parent: Optional[Schema],
     union_field: Schema,
     cls: Type[BaseModel] = FieldModel,
+    already_parsed: Optional[dict] = None,
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Parse union field for avro schema
@@ -203,7 +220,7 @@ def parse_union_fields(
         description=union_field.doc,
     )
     sub_type, children = _parse_union_children(
-        union_field=field_type, cls=cls, parent=parent
+        union_field=field_type, cls=cls, parent=parent, already_parsed=already_parsed
     )
     obj.dataTypeDisplay = f"UNION<{sub_type}>"
     if children and cls == FieldModel:
@@ -238,11 +255,10 @@ def parse_avro_schema(
             cls(
                 name=parsed_schema.name,
                 dataType=str(parsed_schema.type).upper(),
-                children=get_avro_fields(parsed_schema, cls),
+                children=get_avro_fields(parsed_schema, cls, {}),
                 description=parsed_schema.doc,
             )
         ]
-        PARSED_ALREADY.clear()
         return models
     except Exception as exc:  # pylint: disable=broad-except
         logger.debug(traceback.format_exc())
@@ -251,29 +267,40 @@ def parse_avro_schema(
 
 
 def get_avro_fields(
-    parsed_schema: Schema, cls: Type[BaseModel] = FieldModel
+    parsed_schema: Schema,
+    cls: Type[BaseModel] = FieldModel,
+    already_parsed: Optional[dict] = None,
 ) -> Optional[List[Union[FieldModel, Column]]]:
     """
     Recursively convert the parsed schema into required models
     """
     field_models = []
 
-    if parsed_schema.name in PARSED_ALREADY:
-        if PARSED_ALREADY[parsed_schema.name] == parsed_schema.type:
+    if parsed_schema.name in already_parsed:
+        if already_parsed[parsed_schema.name] == parsed_schema.type:
             return None
     else:
-        PARSED_ALREADY.update({parsed_schema.name: parsed_schema.type})
+        already_parsed.update({parsed_schema.name: parsed_schema.type})
 
     for field in parsed_schema.fields:
         try:
             if isinstance(field.type, ArraySchema):
-                field_models.append(parse_array_fields(field, cls=cls))
+                field_models.append(
+                    parse_array_fields(field, cls=cls, already_parsed=already_parsed)
+                )
             elif isinstance(field.type, UnionSchema):
                 field_models.append(
-                    parse_union_fields(union_field=field, cls=cls, parent=parsed_schema)
+                    parse_union_fields(
+                        union_field=field,
+                        cls=cls,
+                        parent=parsed_schema,
+                        already_parsed=already_parsed,
+                    )
                 )
             elif isinstance(field.type, RecordSchema):
-                field_models.append(parse_record_fields(field, cls=cls))
+                field_models.append(
+                    parse_record_fields(field, cls=cls, already_parsed=already_parsed)
+                )
             else:
                 field_models.append(parse_single_field(field, cls=cls))
         except Exception as exc:  # pylint: disable=broad-except
