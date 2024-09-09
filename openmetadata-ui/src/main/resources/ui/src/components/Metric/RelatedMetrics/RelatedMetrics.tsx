@@ -18,7 +18,10 @@ import React, { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import {
+  DE_ACTIVE_COLOR,
+  NO_DATA_PLACEHOLDER,
+} from '../../../constants/constants';
 import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
@@ -194,13 +197,19 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
             onSubmit={handleRelatedMetricUpdate}
           />
         ) : (
-          <div
-            className="metric-entity-list-body"
-            data-testid="metric-entity-list-body">
-            {getRelatedMetricListing(visibleRelatedMetrics)}
-            {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
-            {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
-          </div>
+          <>
+            {isEmpty(relatedMetrics) && metricDetails.deleted ? (
+              <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+            ) : (
+              <div
+                className="metric-entity-list-body"
+                data-testid="metric-entity-list-body">
+                {getRelatedMetricListing(visibleRelatedMetrics)}
+                {isShowMore && getRelatedMetricListing(hiddenRelatedMetrics)}
+                {!isEmpty(hiddenRelatedMetrics) && showMoreLessElement}
+              </div>
+            )}
+          </>
         )}
       </Col>
     </Row>
