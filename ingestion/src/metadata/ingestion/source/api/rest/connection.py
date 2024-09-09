@@ -52,10 +52,10 @@ def test_connection(
     """
 
     def custom_url_exec():
-        if client.status_code == 200:
+        if client.headers.get("content-type") == "application/json":
             return []
         raise SchemaURLError(
-            f"Failed to get access to provided schema url. Please check with url and its permissions"
+            f"Failed to parse JSON schema url. Please check if provided url is valid JSON schema."
         )
 
     test_fn = {"CheckURL": custom_url_exec}

@@ -43,6 +43,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.api.api_service import ApiServiceSource
+from metadata.ingestion.source.api.rest.models import RESTCollection, RESTEndpoint
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 
@@ -93,16 +94,32 @@ class RestSource(ApiServiceSource):
     ) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""
         try:
-            collection_request = CreateAPICollectionRequest(
+            rest_collection = RESTCollection(
                 name=EntityName(collection.get("name")),
-                displayName=collection.get("name"),
+                display_name=collection.get("name"),
                 description=Markdown(collection.get("description"))
                 if collection.get("description")
                 else None,
                 service=FullyQualifiedEntityName(self.context.get().api_service),
-                endpointURL=AnyUrl(
+                endpoint_url=AnyUrl(
                     f"{self.config.serviceConnection.root.config.openAPISchemaURL}#tag/{collection.get('name')}"
                 ),
+            )
+        except Exception as err:
+            yield Either(
+                left=StackTraceError(
+                    name=collection.get("name"),
+                    error=f"Error parsing collection: {err}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+        try:
+            collection_request = CreateAPICollectionRequest(
+                name=rest_collection.name,
+                displayName=rest_collection.display_name,
+                description=rest_collection.description,
+                service=rest_collection.service,
+                endpointURL=rest_collection.endpoint_url,
             )
             yield Either(right=collection_request)
             self.register_record(collection_request=collection_request)
@@ -110,7 +127,7 @@ class RestSource(ApiServiceSource):
             yield Either(
                 left=StackTraceError(
                     name=collection.get("name"),
-                    error=f"Error creating collection: {exc}",
+                    error=f"Error creating api collection request: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -123,33 +140,51 @@ class RestSource(ApiServiceSource):
         for path, methods in filtered_endpoints.items():
             for method_type, info in methods.items():
                 try:
+                    api_endpoint = RESTEndpoint(
+                        name=EntityName(info.get("operationId")),
+                        description=Markdown(info.get("description"))
+                        if info.get("description")
+                        else None,
+                        api_collection=FullyQualifiedEntityName(
+                            fqn.build(
+                                self.metadata,
+                                entity_type=APICollection,
+                                service_name=self.context.get().api_service,
+                                api_collection_name=collection.get("name"),
+                            )
+                        ),
+                        endpoint_url=AnyUrl(
+                            f"{self.config.serviceConnection.root.config.openAPISchemaURL}#operation/{info.get('operationId')}",
+                        ),
+                        request_method=self._get_api_request_method(method_type),
+                        request_schema=self._get_request_schema(info),
+                        response_schema=self._get_response_schema(info),
+                    )
+                except Exception as err:
+                    yield Either(
+                        left=StackTraceError(
+                            name=collection.get("name"),
+                            error=f"Error parsing api endpoint: {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
+                try:
                     yield Either(
                         right=CreateAPIEndpointRequest(
-                            name=EntityName(info.get("operationId")),
-                            description=Markdown(info.get("description"))
-                            if info.get("description")
-                            else None,
-                            apiCollection=FullyQualifiedEntityName(
-                                fqn.build(
-                                    self.metadata,
-                                    entity_type=APICollection,
-                                    service_name=self.context.get().api_service,
-                                    api_collection_name=collection.get("name"),
-                                )
-                            ),
-                            endpointURL=AnyUrl(
-                                f"{self.config.serviceConnection.root.config.openAPISchemaURL}#operation/{info.get('operationId')}",
-                            ),
-                            requestMethod=self._get_api_request_method(method_type),
-                            requestSchema=self._get_request_schema(info),
-                            responseSchema=self._get_response_schema(info),
+                            name=api_endpoint.name,
+                            description=api_endpoint.description,
+                            apiCollection=api_endpoint.api_collection,
+                            endpointURL=api_endpoint.endpoint_url,
+                            requestMethod=api_endpoint.request_method,
+                            requestSchema=api_endpoint.request_schema,
+                            responseSchema=api_endpoint.response_schema,
                         )
                     )
                 except Exception as exc:  # pylint: disable=broad-except
                     yield Either(
                         left=StackTraceError(
                             name=collection.get("name"),
-                            error=f"Error creating API Endpoint [{info.get('operationId')}]: {exc}",
+                            error=f"Error creating API Endpoint request [{info.get('operationId')}]: {exc}",
                             stackTrace=traceback.format_exc(),
                         )
                     )
