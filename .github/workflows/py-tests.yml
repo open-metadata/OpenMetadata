@@ -104,7 +104,7 @@ jobs:
     - name: Setup Openmetadata Test Environment
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
-        python-version: ${{ env.python-version }}
+        python-version: ${{ env.py-version }}
         args: "-m no-ui"
         ingestion_dependency: "mysql,elasticsearch,sample-data"
 
