@@ -31,6 +31,7 @@ import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product
 import { ReactComponent as LoginIcon } from '../assets/svg/login-colored.svg';
 import { ReactComponent as OpenMetadataIcon } from '../assets/svg/logo-monogram.svg';
 import { ReactComponent as MessagingIcon } from '../assets/svg/messaging-colored.svg';
+import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ml-model-colored.svg';
 import { ReactComponent as OMHealthIcon } from '../assets/svg/om-health-colored.svg';
 import { ReactComponent as PersonasIcon } from '../assets/svg/persona-colored.svg';
@@ -423,7 +424,7 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.METRICS}`,
-            icon: SchemaIcon,
+            icon: MetricIcon,
           },
           {
             label: t('label.table-plural'),
