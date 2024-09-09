@@ -40,6 +40,7 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.processor.core import Profiler
 
 BUCKET_NAME = "MyBucket"
+REGION = "us-west-1"
 
 
 @mock_aws
@@ -56,7 +57,7 @@ class MetricsTest(TestCase):
             securityConfig=AWSCredentials(
                 awsAccessKeyId="fake_access_key",
                 awsSecretAccessKey="fake_secret_key",
-                awsRegion="us-west-1",
+                awsRegion=REGION,
             )
         )
     )
@@ -106,14 +107,14 @@ class MetricsTest(TestCase):
         boto3.DEFAULT_SESSION = None
         self.client = boto3.client(
             "s3",
-            region_name="us-weat-1",
+            region_name=REGION,
         )
 
         # check that we are not running our test against a real bucket
         try:
             s3 = boto3.resource(
                 "s3",
-                region_name="us-west-1",
+                region_name=REGION,
                 aws_access_key_id="fake_access_key",
                 aws_secret_access_key="fake_secret_key",
             )
@@ -125,7 +126,7 @@ class MetricsTest(TestCase):
             raise EnvironmentError(err)
         self.client.create_bucket(
             Bucket=BUCKET_NAME,
-            CreateBucketConfiguration={"LocationConstraint": "us-west-1"},
+            CreateBucketConfiguration={"LocationConstraint": REGION},
         )
 
         resources_paths = [
