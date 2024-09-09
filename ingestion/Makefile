@@ -1,5 +1,6 @@
 DIRECTORY_NAME := $(notdir $(CURDIR))
 PY_SOURCE ?= ./src
+NOX_FLAGS := ""
 
 ifeq (ingestion,$(DIRECTORY_NAME))
     INGESTION_DIR := .
@@ -56,15 +57,6 @@ py_format_check:  ## Check if Python sources are correctly formatted
 	black --check --diff $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 	PYTHONPATH="${PYTHONPATH}:$(INGESTION_DIR)/plugins" pylint --rcfile=$(INGESTION_DIR)/pyproject.toml --fail-under=10 $(PY_SOURCE)/metadata || (echo "PyLint error code $$?"; exit 1)
 
-.PHONY: unit_ingestion
-unit_ingestion:  ## Run Python unit tests
-	nox -f $(INGESTION_DIR)/noxfile.py -t unit --report nox-unit.json
-
-## Ingestion tests & QA
-.PHONY: run_ometa_integration_tests
-run_ometa_integration_tests:  ## Run Python integration tests
-	nox -f $(INGESTION_DIR)/noxfile.py -t integration --report nox-integration.json
-
 .PHONE: run_py_e2e_tests
 run_py_e2e_tests:
 	nox -f $(INGESTION_DIR)/noxfile.py -k $(E2E_TEST) -t e2e --report nox-e2e-$(E2E_TEST).json
@@ -73,8 +65,7 @@ run_py_e2e_tests:
 run_python_tests:  ## Run all Python tests with coverage
 	coverage erase
 	$(MAKE) static-checks
-	$(MAKE) unit_ingestion
-	$(MAKE) run_ometa_integration_tests
+	nox -f $(INGESTION_DIR)/noxfile.py $(NOX_FLAGS) --report nox-all.json
 	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
 
 .PHONY: sonar_ingestion
