@@ -11,9 +11,19 @@ Out of the box, OpenMetadata comes with a Username & Password Login Mechanism.
 The default Username and Password for Login are:
 
 ```commandline
-Username - admin@openmetadata.org
+Username - admin@open-metadata.org
 Password - admin
 ```
+When using a custom domain, configure the principal domain as follows:
+
+```yaml
+config:
+    authorizer:
+      adminPrincipals: [admin]
+      principalDomain: "yourdomain.com"
+```
+
+With this setup, the default Username will be `admin@yourdomain.com`.
 
 {%important%}
 
@@ -56,7 +66,7 @@ This configuration controls the authorizer for OpenMetadata:
 authorizerConfiguration:
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
 ```
 
 For the Basic auth we need to set:

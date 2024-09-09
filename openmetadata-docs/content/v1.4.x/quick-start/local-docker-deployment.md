@@ -184,7 +184,7 @@ OpenMetadata provides a default admin account to login.
 
 You can access OpenMetadata at [http://localhost:8585](http://localhost:8585). Use the following credentials to log in to OpenMetadata.
 
-- Username: `admin@openmetadata.org`
+- Username: `admin@open-metadata.org`
 - Password: `admin`
 
 Once you log in, you can goto Settings -> Users to add another user and make them admin as well.
