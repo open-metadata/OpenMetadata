@@ -248,10 +248,11 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
             <Transi18next
               i18nKey="message.no-custom-properties-table"
               renderElement={
-                <Link
+                <a
+                  href={CUSTOM_PROPERTIES_DOCS}
                   rel="noreferrer"
                   target="_blank"
-                  to={{ pathname: CUSTOM_PROPERTIES_DOCS }}
+                  title="Custom properties documentation"
                 />
               }
               values={{

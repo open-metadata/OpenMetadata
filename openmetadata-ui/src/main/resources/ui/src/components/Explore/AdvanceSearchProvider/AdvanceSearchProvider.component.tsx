@@ -27,10 +27,11 @@ import {
   Utils as QbUtils,
   ValueSource,
 } from 'react-awesome-query-builder';
-import { useHistory, useLocation, useParams } from 'react-router-dom';
+import { useHistory, useParams } from 'react-router-dom';
 import { emptyJsonTree } from '../../../constants/AdvancedSearch.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import advancedSearchClassBase from '../../../utils/AdvancedSearchClassBase';
 import { getTierOptions } from '../../../utils/AdvancedSearchUtils';
@@ -62,7 +63,7 @@ export const AdvanceSearchProvider = ({
     () => searchClassBase.getTabsInfo(),
     [searchClassBase]
   );
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { tab } = useParams<UrlParams>();
   const [loading, setLoading] = useState(true);
