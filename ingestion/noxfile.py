@@ -101,15 +101,22 @@ integration_test_envs += [
         python_versions=["3.9", "3.10", "3.11"],
     ),
     simple_integration_env("datalake-s3"),
+    simple_integration_env("powerbi"),
+    TestEnv(
+        name="storage-s3",
+        extras=["test", "athena"],
+        paths=[os.path.join(integration_test_dir, "storage-s3")],
+    ),
+    TestEnv(
+        name="delta_lake",
+        extras=["test", "deltalake-storage"],
+        paths=[os.path.join(integration_test_dir, "sources/database/delta_lake")],
+    ),
+]
+
+integration_test_envs += [
     # TODO: these should be moved to separate integration tests
     TestEnv(
-        name="integration-others",
-        paths=[
-            path
-            for path in os.listdir(integration_test_dir)
-            if os.path.join(integration_test_dir, path)
-            not in chain(*[e.paths for e in integration_test_envs])
-        ],
         extras=[
             # base test dependencies
             "test",
@@ -141,8 +148,20 @@ integration_test_envs += [
             "tableau",
             "trino",
         ],
-    ),
+        name=f"integration-others",
+        paths=[
+            os.path.join(integration_test_dir, path)
+            for path in os.listdir(integration_test_dir)
+            if os.path.isdir(os.path.join(integration_test_dir, path))
+            and os.path.join(integration_test_dir, path)
+            not in chain(
+                *["integration/sources"], *[env.paths for env in integration_test_envs]
+            )
+            and "__pycache__" not in path
+        ],
+    )
 ]
+
 unit_tests = [
     TestEnv(
         name="unit",

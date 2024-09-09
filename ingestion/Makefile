@@ -96,3 +96,6 @@ coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
 	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")/src/g" $(INGESTION_DIR)/coverage.xml >> $(INGESTION_DIR)/ci-coverage.xml
+
+clean:
+	rm -r $(INGESTION_DIR)/build $(INGESTION_DIR)/src/*.egg-info $(INGESTION_DIR)/coverage $(INGESTION_DIR)/junit $(INGESTION_DIR)/.nox || true

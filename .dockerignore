@@ -1,0 +1,5 @@
+**/venv
+**/.venv
+**/.nox
+**/node_modules
+**/docker-volume

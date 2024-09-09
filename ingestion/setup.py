@@ -332,6 +332,7 @@ dev = {
     "pre-commit",
     "pycln",
     "pylint~=3.0",
+    "nox",
     # For publishing
     "twine",
     "build",
