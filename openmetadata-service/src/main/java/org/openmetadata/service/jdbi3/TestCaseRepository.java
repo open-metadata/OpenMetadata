@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -32,6 +33,7 @@ import javax.ws.rs.core.UriInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Table;
@@ -92,6 +94,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    // Add the canonical name for test case results
+    // As test case result` does not have its own repository
+    EntityTimeSeriesInterface.CANONICAL_ENTITY_NAME_MAP.put(
+        Entity.TEST_CASE_RESULTS.toLowerCase(Locale.ROOT), Entity.TEST_CASE_RESULTS);
   }
 
   @Override
@@ -312,6 +318,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
     // Validate the request content
     TestCase testCase = findByName(fqn, Include.NON_DELETED);
+    // Set fields values
+    testCaseResult.setTestCaseFQN(fqn);
+    testCaseResult.setId(UUID.randomUUID());
     ArrayList<String> fields =
         new ArrayList<>(
             List.of("testDefinition", FIELD_OWNERS, FIELD_TAGS, TEST_SUITE_FIELD, "testSuites"));
@@ -344,7 +353,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             TEST_CASE_RESULT_FIELD,
             JsonUtils.pojoToJson(testCaseResult),
             incidentStateId != null ? incidentStateId.toString() : null);
-
+    // Post create actions
+    searchRepository.createTimeSeriesEntity(testCaseResult);
     setFieldsInternal(testCase, new EntityUtil.Fields(allowedFields, ImmutableSet.copyOf(fields)));
     setTestSuiteSummary(
         testCase, testCaseResult.getTimestamp(), testCaseResult.getTestCaseStatus(), false);
@@ -374,7 +384,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // if we already have a non resolve status then we'll simply return it
     if (Boolean.TRUE.equals(
         testCaseResolutionStatusRepository.unresolvedIncident(storedTestCaseResolutionStatus))) {
-      return storedTestCaseResolutionStatus.getStateId();
+
+      if (storedTestCaseResolutionStatus != null)
+        return storedTestCaseResolutionStatus.getStateId();
     }
 
     // if the test case resolution is null or resolved then we'll create a new one
@@ -438,6 +450,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       daoCollection
           .dataQualityDataTimeSeriesDao()
           .deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
+      searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
       testCase.setTestCaseResult(storedTestCaseResult);
       ChangeDescription change =
           deleteTestCaseChangeDescription(testCase.getVersion(), storedTestCaseResult);

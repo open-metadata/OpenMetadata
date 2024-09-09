@@ -109,8 +109,17 @@
     "testCaseResult": {
       "description": "Schema to capture test case result.",
       "javaType": "org.openmetadata.schema.tests.type.TestCaseResult",
+      "javaInterfaces": ["org.openmetadata.schema.EntityTimeSeriesInterface"],
       "type": "object",
       "properties": {
+        "id": {
+          "description": "Unique identifier of this failure instance",
+          "$ref": "../type/basic.json#/definitions/uuid"
+        },
+        "testCaseFQN": {
+          "description": "Fully qualified name of the test case.",
+          "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+        },
         "timestamp": {
           "description": "Data one which test case result is taken.",
           "$ref": "../type/basic.json#/definitions/timestamp"

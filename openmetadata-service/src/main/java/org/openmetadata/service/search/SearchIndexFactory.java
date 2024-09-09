@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.APICollectionIndex;
 import org.openmetadata.service.search.indexes.APIEndpointIndex;
@@ -75,6 +76,7 @@ import org.openmetadata.service.search.indexes.TagIndex;
 import org.openmetadata.service.search.indexes.TeamIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
+import org.openmetadata.service.search.indexes.TestCaseResultIndex;
 import org.openmetadata.service.search.indexes.TestSuiteIndex;
 import org.openmetadata.service.search.indexes.TopicIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
@@ -134,6 +136,7 @@ public class SearchIndexFactory {
           (ReportData) entity);
       case Entity.TEST_CASE_RESOLUTION_STATUS -> new TestCaseResolutionStatusIndex(
           (TestCaseResolutionStatus) entity);
+      case Entity.TEST_CASE_RESULTS -> new TestCaseResultIndex((TestCaseResult) entity);
       default -> buildExternalIndexes(entityType, entity);
     };
   }
