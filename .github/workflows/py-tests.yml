@@ -50,6 +50,8 @@ jobs:
         shell: bash
         run: echo sesssetion=$(nox --json -l -k 'not e2e' | jq -c '[.[].session]') | tee --append $GITHUB_OUTPUT
   py-run-tests:
+    needs: 
+      - generate-jobs
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
