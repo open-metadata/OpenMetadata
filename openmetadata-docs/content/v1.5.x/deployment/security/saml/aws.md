@@ -1,6 +1,7 @@
 ---
 title: SAML AWS SSO
 slug: /deployment/security/saml/aws
+collate: false
 ---
 
 # SAML AWS SSO

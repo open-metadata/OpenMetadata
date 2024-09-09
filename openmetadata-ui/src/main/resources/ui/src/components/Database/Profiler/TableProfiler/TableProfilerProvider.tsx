@@ -24,7 +24,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
 import { PAGE_SIZE } from '../../../../constants/constants';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_RANGE_DATA } from '../../../../constants/profiler.constant';
@@ -34,6 +33,7 @@ import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
   getLatestTableProfileByFqn,
@@ -66,7 +66,7 @@ export const TableProfilerProvider = ({
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
   const testCasePaging = usePaging(PAGE_SIZE);
-  const location = useLocation();
+  const location = useCustomLocation();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
   // customMetric is fetch from table api and has response type of Table

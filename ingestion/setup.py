@@ -319,7 +319,7 @@ plugins: Dict[str, Set[str]] = {
         VERSIONS["spacy"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
-        "presidio-analyzer==2.2.32",
+        "presidio-analyzer==2.2.355",
     },
 }
 

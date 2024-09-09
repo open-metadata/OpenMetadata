@@ -23,6 +23,7 @@ import React, {
   useImperativeHandle,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { customHTMLRenderer } from './CustomHtmlRederer/CustomHtmlRederer';
 import { EDITOR_TOOLBAR_ITEMS } from './EditorToolBar';
@@ -49,9 +50,11 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
     }: RichTextEditorProp,
     ref
   ) => {
+    const { t } = useTranslation();
     const richTextEditorRef = createRef<Editor>();
 
     const [editorValue, setEditorValue] = useState(initialValue);
+    const [imageBlobError, setImageBlobError] = useState<string | null>(null);
 
     const onChangeHandler = () => {
       const value = richTextEditorRef.current
@@ -113,6 +116,15 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
         ) : (
           <div data-testid="editor">
             <Editor
+              hooks={{
+                addImageBlobHook() {
+                  setImageBlobError(t('message.image-upload-error'));
+
+                  setTimeout(() => {
+                    setImageBlobError(null);
+                  }, 3000);
+                },
+              }}
               autofocus={autofocus}
               extendedAutolinks={extendedAutolinks}
               height={height ?? '320px'}
@@ -128,6 +140,18 @@ const RichTextEditor = forwardRef<editorRef, RichTextEditorProp>(
               useCommandShortcut={useCommandShortcut}
               onChange={onChangeHandler}
             />
+            {imageBlobError && (
+              <div style={{ display: 'flex', flexWrap: 'nowrap' }}>
+                <div
+                  className="ant-form-item-explain ant-form-item-explain-connected"
+                  role="alert">
+                  <div className="ant-form-item-explain-error">
+                    {imageBlobError}
+                  </div>
+                </div>
+                <div style={{ width: '0px', height: '24px' }}></div>
+              </div>
+            )}
           </div>
         )}
       </div>

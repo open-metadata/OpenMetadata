@@ -11,6 +11,7 @@
 """
 Test Column Name Scanner
 """
+from typing import Any
 
 import pytest
 
@@ -78,3 +79,87 @@ def test_get_highest_score_label(scanner):
             "PII.NonSensitive": StringAnalysis(score=1.0, appearances=1),
         }
     ) == ("PII.Sensitive", 1.0)
+
+
+@pytest.mark.parametrize(
+    "data,is_json",
+    [
+        ("potato", (False, None)),
+        ("1", (False, None)),
+        ('{"key": "value"}', (True, {"key": "value"})),
+        (
+            '{"key": "value", "key2": "value2"}',
+            (True, {"key": "value", "key2": "value2"}),
+        ),
+        ('["potato"]', (True, ["potato"])),
+    ],
+)
+def test_is_json_data(scanner, data: Any, is_json: bool):
+    """Assert we are flagging JSON data correctly"""
+    assert scanner.is_json_data(data) == is_json
+
+
+def test_scanner_with_json(scanner):
+    """Test the scanner with JSON data"""
+
+    assert (
+        scanner.scan(
+            [
+                '{"email": "johndoe@example.com", "address": {"street": "123 Main St"}}',
+                '{"email": "potato", "age": 30, "preferences": {"newsletter": true, "notifications": "email"}}',
+            ]
+        ).tag_fqn
+        == "PII.Sensitive"
+    )
+
+    assert (
+        scanner.scan(
+            [
+                '{"email": "foo", "address": {"street": "bar"}}',
+                '{"email": "potato", "age": 30, "preferences": {"newsletter": true, "notifications": "email"}}',
+            ]
+        )
+        is None
+    )
+
+
+def test_scanner_with_lists(scanner):
+    """Test the scanner with list data"""
+
+    assert scanner.scan(["foo", "bar", "biz"]) is None
+
+    assert (
+        scanner.scan(["foo", "bar", "johndoe@example.com"]).tag_fqn == "PII.Sensitive"
+    )
+
+    assert (
+        scanner.scan(
+            [
+                '{"emails": ["johndoe@example.com", "lima@example.com"]}',
+                '{"emails": ["foo", "bar", "biz"]}',
+            ]
+        ).tag_fqn
+        == "PII.Sensitive"
+    )
+
+
+def test_scan_entities(scanner):
+    """
+    We can properly validate certain entities.
+
+    > NOTE: These lists are randomly generated and not valid IDs for any actual use
+    """
+    pan_numbers = ["AFZPK7190K", "BLQSM2938L", "CWRTJ5821M", "DZXNV9045A", "EHYKG6752P"]
+    assert scanner.scan(pan_numbers).tag_fqn == "PII.Sensitive"
+
+    ssn_numbers = [
+        "123-45-6789",
+        "987-65-4321",
+        "543-21-0987",
+        "678-90-1234",
+        "876-54-3210",
+    ]
+    assert scanner.scan(ssn_numbers).tag_fqn == "PII.Sensitive"
+
+    nif_numbers = ["12345678A", "87654321B", "23456789C", "98765432D", "34567890E"]
+    assert scanner.scan(nif_numbers).tag_fqn == "PII.Sensitive"
