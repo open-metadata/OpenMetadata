@@ -16,12 +16,13 @@ import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './reset-password.style.less';
 
@@ -33,7 +34,7 @@ interface ResetFormData {
 const ResetPassword = () => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
-  const location = useLocation();
+  const location = useCustomLocation();
 
   const { handleResetPassword } = useBasicAuth();
 
