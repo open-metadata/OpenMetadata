@@ -1,6 +1,7 @@
 ---
 title: Custom OIDC SSO
 slug: /deployment/security/custom-oidc
+collate: false
 ---
 
 # Custom OIDC SSO

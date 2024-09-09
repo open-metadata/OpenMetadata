@@ -1,6 +1,7 @@
 ---
 title: Azure SSO for Bare Metal
 slug: /deployment/security/azure/bare-metal
+collate: false
 ---
 
 # Azure SSO for Bare Metal

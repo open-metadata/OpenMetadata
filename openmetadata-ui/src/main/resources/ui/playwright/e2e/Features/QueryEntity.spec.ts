@@ -65,8 +65,12 @@ test('Query Entity', async ({ page }) => {
       '/api/v1/search/query?q=*&index=query_search_index*'
     );
     await page.click(`[data-testid="table_queries"]`);
+    const tableResponse = page.waitForResponse(
+      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index'
+    );
     await queryResponse;
     await page.click(`[data-testid="add-query-btn"]`);
+    await tableResponse;
     await page
       .getByTestId('code-mirror-container')
       .getByRole('textbox')
@@ -79,7 +83,11 @@ test('Query Entity', async ({ page }) => {
       .locator('div')
       .filter({ hasText: 'Please Select a Query Used In' })
       .click();
+    const tableSearchResponse = page.waitForResponse(
+      `/api/v1/search/query?q=*&index=table_search_index*`
+    );
     await page.keyboard.type(queryData.queryUsedIn.table1);
+    await tableSearchResponse;
 
     await page.click(`[title="${queryData.queryUsedIn.table1}"]`);
     await clickOutside(page);
@@ -235,8 +243,9 @@ test('Query Entity', async ({ page }) => {
     await page.click(`[data-testid="query-btn"]`);
     await page.waitForSelector('.ant-dropdown', { state: 'visible' });
     await page.click(`[data-menu-id*="delete-query"]`);
+    const deleteQueryResponse = page.waitForResponse('/api/v1/queries/*');
     await page.click(`[data-testid="save-button"]`);
-    await page.waitForResponse('/api/v1/queries/*');
+    await deleteQueryResponse;
   });
 });
 

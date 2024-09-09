@@ -1,6 +1,7 @@
 ---
 title: OneLogin SSO for Kubernetes
 slug: /deployment/security/one-login/kubernetes
+collate: false
 ---
 
 # One Login SSO for Kubernetes

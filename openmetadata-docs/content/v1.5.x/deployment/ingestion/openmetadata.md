@@ -1,6 +1,7 @@
 ---
 title: Run the ingestion from the OpenMetadata UI
 slug: /deployment/ingestion/openmetadata
+collate: false
 ---
 
 # Run the ingestion from the OpenMetadata UI

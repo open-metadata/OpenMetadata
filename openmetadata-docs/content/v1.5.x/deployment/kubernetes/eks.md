@@ -1,6 +1,7 @@
 ---
 title: AWS EKS Deployment
 slug: /deployment/kubernetes/eks
+collate: false
 ---
 
 # EKS on Amazon Web Services Deployment
