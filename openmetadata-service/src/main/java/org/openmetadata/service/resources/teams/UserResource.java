@@ -27,6 +27,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.EMAIL_S
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.EmailUtil.getSmtpSettings;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
 import static org.openmetadata.service.util.UserUtil.getUser;
@@ -107,7 +108,6 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.auth.TokenType;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -172,7 +172,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
-  private boolean isEmailServiceEnabled;
   private AuthenticationConfiguration authenticationConfiguration;
   private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
@@ -212,8 +211,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
     super.initialize(config);
     this.authenticationConfiguration = config.getAuthenticationConfiguration();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.repository.initializeUsers(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
   }
@@ -445,10 +442,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
     Fields fields = getFields(fieldsParam);
     String currentEmail = ((CatalogPrincipal) catalogSecurityContext.getUserPrincipal()).getEmail();
-    User user = repository.getByEmail(uriInfo, currentEmail, fields);
-
-    repository.validateLoggedInUserNameAndEmailMatches(
-        securityContext.getUserPrincipal().getName(), currentEmail, user);
+    User user =
+        repository.getLoggedInUserByNameAndEmail(
+            uriInfo, catalogSecurityContext.getUserPrincipal().getName(), currentEmail, fields);
 
     // Sync the Roles from token to User
     if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
@@ -643,7 +639,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private void sendInviteMailToUserForBasicAuth(UriInfo uriInfo, User user, CreateUser create) {
-    if (isBasicAuth() && isEmailServiceEnabled) {
+    if (isBasicAuth() && getSmtpSettings().getEnableSmtpServer()) {
       try {
         authHandler.sendInviteMailToUser(
             uriInfo,

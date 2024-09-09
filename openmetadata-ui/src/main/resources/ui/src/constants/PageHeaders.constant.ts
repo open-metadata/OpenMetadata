@@ -118,6 +118,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.dashboard-data-model-plural'),
     }),
   },
+  DATA_PRODUCT_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.data-product-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.data-product-plural'),
+    }),
+  },
   PIPELINES_CUSTOM_ATTRIBUTES: {
     header: i18n.t('label.pipeline-plural'),
     subHeader: i18n.t('message.define-custom-property-for-entity', {

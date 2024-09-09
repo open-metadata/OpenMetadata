@@ -101,7 +101,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   private PipelineServiceClientInterface pipelineServiceClient;
   static final String FIELDS = "owners";
   private SearchRepository searchRepository;
-  public static List<ScheduleType> SCHEDULED_TYPES =
+  public static final List<ScheduleType> SCHEDULED_TYPES =
       List.of(ScheduleType.Scheduled, ScheduleType.ScheduledOrManual);
   public static final String SLACK_APPLICATION = "SlackApplication";
 
@@ -115,7 +115,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
       // Create an On Demand DAO
       CollectionDAO dao = Entity.getCollectionDAO();
-      searchRepository = new SearchRepository(config.getElasticSearchConfiguration());
+      searchRepository = Entity.getSearchRepository();
       AppScheduler.initialize(config, dao, searchRepository);
 
       // Initialize Default Apps

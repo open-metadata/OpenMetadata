@@ -84,6 +84,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -116,12 +117,10 @@ import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.VoteRequest.VoteType;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.feed.Suggestion;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -156,7 +155,6 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.ExtensionRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchListFilter;
@@ -206,6 +204,7 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 @Repository()
 public abstract class EntityRepository<T extends EntityInterface> {
+  public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
@@ -443,32 +442,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
-  public final List<T> getEntitiesFromSeedData() throws IOException {
-    List<T> entitiesFromSeedData = new ArrayList<>();
-
-    if (entityType.equals(Entity.DOCUMENT)) {
-      SmtpSettings emailConfig =
-          SettingsCache.getSetting(SettingsType.EMAIL_CONFIGURATION, SmtpSettings.class);
-
-      switch (emailConfig.getTemplates()) {
-        case COLLATE -> {
-          entitiesFromSeedData.addAll(
-              getEntitiesFromSeedData(
-                  String.format(".*json/data/%s/emailTemplates/collate/.*\\.json$", entityType)));
-        }
-        default -> {
-          entitiesFromSeedData.addAll(
-              getEntitiesFromSeedData(
-                  String.format(
-                      ".*json/data/%s/emailTemplates/openmetadata/.*\\.json$", entityType)));
-        }
-      }
-
-      entitiesFromSeedData.addAll(
-          getEntitiesFromSeedData(String.format(".*json/data/%s/docs/.*\\.json$", entityType)));
-      return entitiesFromSeedData;
-    }
-
+  public List<T> getEntitiesFromSeedData() throws IOException {
     return getEntitiesFromSeedData(String.format(".*json/data/%s/.*\\.json$", entityType));
   }
 
@@ -655,7 +629,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final List<T> listAll(Fields fields, ListFilter filter) {
     // forward scrolling, if after == null then first page is being asked
-    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "");
+    List<String> jsons = dao.listAfter(filter, Integer.MAX_VALUE, "", "");
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
       T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
@@ -672,8 +646,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<T> entities = new ArrayList<>();
     if (limitParam > 0) {
       // forward scrolling, if after == null then first page is being asked
-      List<String> jsons =
-          dao.listAfter(filter, limitParam + 1, after == null ? "" : RestUtil.decodeCursor(after));
+      Map<String, String> cursorMap =
+          parseCursorMap(after == null ? "" : RestUtil.decodeCursor(after));
+      String afterName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+      String afterId = cursorMap.get("id");
+      List<String> jsons = dao.listAfter(filter, limitParam + 1, afterName, afterId);
 
       for (String json : jsons) {
         T entity = setFieldsInternal(JsonUtils.readValue(json, entityClass), fields);
@@ -731,10 +708,26 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  Map<String, String> parseCursorMap(String param) {
+    Map<String, String> cursorMap;
+    if (param == null) {
+      cursorMap = Map.of("name", null, "id", null);
+    } else if (nullOrEmpty(param)) {
+      cursorMap = Map.of("name", "", "id", "");
+    } else {
+      cursorMap = JsonUtils.readValue(param, Map.class);
+    }
+    return cursorMap;
+  }
+
   public ResultList<T> listBefore(
       UriInfo uriInfo, Fields fields, ListFilter filter, int limitParam, String before) {
     // Reverse scrolling - Get one extra result used for computing before cursor
-    List<String> jsons = dao.listBefore(filter, limitParam + 1, RestUtil.decodeCursor(before));
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(before));
+    String beforeName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
+    String beforeId = cursorMap.get("id");
+    List<String> jsons = dao.listBefore(filter, limitParam + 1, beforeName, beforeId);
 
     List<T> entities = new ArrayList<>();
     for (String json : jsons) {
@@ -763,7 +756,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * The id is always unique, which helps to avoid pagination issues caused by duplicate names and have unique ordering.
    */
   public String getCursorValue(T entity) {
-    return entity.getName();
+    Map<String, String> cursorMap =
+        Map.of("name", entity.getName(), "id", String.valueOf(entity.getId()));
+    return JsonUtils.pojoToJson(cursorMap);
   }
 
   public final T getVersion(UUID id, String version) {
@@ -782,6 +777,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     throw EntityNotFoundException.byMessage(
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
+  }
+
+  public final EntityHistoryWithOffset listVersionsWithOffset(UUID id, int limit, int offset) {
+    T latest = setFieldsInternal(find(id, ALL), putFields);
+    setInheritedFields(latest, putFields);
+    String extensionPrefix = EntityUtil.getVersionExtensionPrefix(entityType);
+    List<ExtensionRecord> records =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionsWithOffset(id, extensionPrefix, limit, offset);
+    List<EntityVersionPair> oldVersions = new ArrayList<>();
+    records.forEach(r -> oldVersions.add(new EntityVersionPair(r)));
+    oldVersions.sort(EntityUtil.compareVersion.reversed());
+
+    final List<Object> versions = new ArrayList<>();
+
+    if (offset == 0) {
+      versions.add(JsonUtils.pojoToJson(latest));
+    }
+
+    oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+    return new EntityHistoryWithOffset(
+        new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
   }
 
   public final EntityHistory listVersions(UUID id) {
@@ -1104,7 +1122,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String q)
       throws IOException {
     List<T> entityList = new ArrayList<>();
-    Long total = 0L;
+    Long total;
 
     if (limit > 0) {
       SearchClient.SearchResultListMapper results =
@@ -1403,7 +1421,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
       String customPropertyType = TypeRegistry.getCustomPropertyType(entityType, fieldName);
       String propertyConfig = TypeRegistry.getCustomPropertyConfig(entityType, fieldName);
-      DateTimeFormatter formatter = null;
+      DateTimeFormatter formatter;
       try {
         if ("date-cp".equals(customPropertyType)) {
           DateTimeFormatter inputFormatter =
@@ -1960,6 +1978,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     // populate owner entityRefs with all fields
     List<EntityReference> refs = validateOwners(owners);
+    if (nullOrEmpty(refs)) {
+      return;
+    }
+    refs.sort(Comparator.comparing(EntityReference::getName));
+    owners.sort(Comparator.comparing(EntityReference::getName));
+
     for (int i = 0; i < owners.size(); i++) {
       EntityUtil.copy(refs.get(i), owners.get(i));
     }
@@ -2186,23 +2210,33 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (nullOrEmpty(owners)) {
       return null;
     }
-    List<EntityReference> validatedOwners = new ArrayList<>();
-    for (EntityReference owner : owners) {
-      if (!owner.getType().equals(Entity.TEAM) && !owner.getType().equals(USER)) {
-        throw new IllegalArgumentException(
-            CatalogExceptionMessage.invalidOwnerType(owner.getType()));
-      } else if (owner
-          .getType()
-          .equals(Entity.TEAM)) { // Entities can be only owned by team of type 'group'
-        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
-        if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
-          throw new IllegalArgumentException(
-              CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
-        }
-      }
-      validatedOwners.add(Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL));
+
+    long teamCount = owners.stream().filter(owner -> owner.getType().equals(Entity.TEAM)).count();
+    long userCount = owners.size() - teamCount;
+
+    if (teamCount > 1 || (teamCount > 0 && userCount > 0)) {
+      throw new IllegalArgumentException(
+          teamCount > 1
+              ? CatalogExceptionMessage.onlyOneTeamAllowed()
+              : CatalogExceptionMessage.noTeamAndUserComboAllowed());
     }
-    return validatedOwners;
+
+    return owners.stream()
+        .map(
+            owner -> {
+              if (owner.getType().equals(Entity.TEAM)) {
+                Team team = Entity.getEntity(Entity.TEAM, owner.getId(), "", ALL);
+                if (!team.getTeamType().equals(CreateTeam.TeamType.GROUP)) {
+                  throw new IllegalArgumentException(
+                      CatalogExceptionMessage.invalidTeamOwner(team.getTeamType()));
+                }
+              } else if (!owner.getType().equals(Entity.USER)) {
+                throw new IllegalArgumentException(
+                    CatalogExceptionMessage.invalidOwnerType(owner.getType()));
+              }
+              return Entity.getEntityReferenceById(owner.getType(), owner.getId(), ALL);
+            })
+        .collect(Collectors.toList());
   }
 
   protected void validateTags(T entity) {

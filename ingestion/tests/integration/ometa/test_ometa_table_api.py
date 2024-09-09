@@ -76,6 +76,8 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 
+from ..integration_base import get_create_entity
+
 BAD_RESPONSE = {
     "data": [
         {
@@ -375,7 +377,7 @@ class OMetaTableTest(TestCase):
         )
 
         table_profile = TableProfile(
-            timestamp=Timestamp(int(datetime.now().timestamp())),
+            timestamp=Timestamp(int(datetime.now().timestamp() * 1000)),
             columnCount=1.0,
             rowCount=3.0,
         )
@@ -389,18 +391,18 @@ class OMetaTableTest(TestCase):
                 mean=1.5,
                 sum=2,
                 stddev=None,
-                timestamp=Timestamp(root=int(datetime.now().timestamp())),
+                timestamp=Timestamp(root=int(datetime.now().timestamp() * 1000)),
             )
         ]
 
         system_profile = [
             SystemProfile(
-                timestamp=Timestamp(root=int(datetime.now().timestamp())),
+                timestamp=Timestamp(root=int(datetime.now().timestamp() * 1000)),
                 operation=DmlOperationType.INSERT,
                 rowsAffected=11,
             ),
             SystemProfile(
-                timestamp=Timestamp(root=int(datetime.now().timestamp()) + 1),
+                timestamp=Timestamp(root=int(datetime.now().timestamp() * 1000) + 1),
                 operation=DmlOperationType.UPDATE,
                 rowsAffected=110,
             ),
@@ -643,3 +645,20 @@ class OMetaTableTest(TestCase):
 
             # We should have 2 tables, the 3rd one is broken and should be skipped
             assert len(list(res)) == 2
+
+    def test_table_with_slash_in_name(self):
+        """E.g., `foo.bar/baz`"""
+        name = EntityName("foo.bar/baz")
+        new_table: Table = self.metadata.create_or_update(
+            data=get_create_entity(
+                entity=Table,
+                name=name,
+                reference=self.create_schema_entity.fullyQualifiedName,
+            )
+        )
+
+        res: Table = self.metadata.get_by_name(
+            entity=Table, fqn=new_table.fullyQualifiedName
+        )
+
+        assert res.name == name

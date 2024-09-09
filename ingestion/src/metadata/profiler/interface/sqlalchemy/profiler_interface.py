@@ -16,11 +16,12 @@ supporting sqlalchemy abstraction layer
 """
 
 import concurrent.futures
+import math
 import threading
 import traceback
 from collections import defaultdict
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import Column, inspect, text
 from sqlalchemy.exc import DBAPIError, ProgrammingError, ResourceClosedError
@@ -441,7 +442,6 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 sample,
             )
             row = None
-
             try:
                 row = self._get_metric_fn[metric_func.metric_type.value](
                     metric_func.metrics,
@@ -450,6 +450,14 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     column=metric_func.column,
                     sample=sample,
                 )
+                if isinstance(row, dict):
+                    row = self._validate_nulls(row)
+                if isinstance(row, list):
+                    row = [
+                        self._validate_nulls(r) if isinstance(r, dict) else r
+                        for r in row
+                    ]
+
             except Exception as exc:
                 error = (
                     f"{metric_func.column if metric_func.column is not None else metric_func.table.__tablename__} "
@@ -466,6 +474,17 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                 column = None
 
             return row, column, metric_func.metric_type.value
+
+    @staticmethod
+    def _validate_nulls(row: Dict[str, Any]) -> Dict[str, Any]:
+        """Detect if we are computing NaNs and replace them with None"""
+        for k, v in row.items():
+            if isinstance(v, float) and math.isnan(v):
+                logger.warning(
+                    "NaN data detected and will be cast to null in OpenMetadata to maintain database parity"
+                )
+                row[k] = None
+        return row
 
     # pylint: disable=use-dict-literal
     def get_all_metrics(
@@ -515,6 +534,9 @@ class SQAProfilerInterface(ProfilerInterface, SQAInterfaceMixin):
                     logger.debug(traceback.format_exc())
                     logger.error(f"Operation was cancelled due to TimeoutError - {exc}")
                     raise concurrent.futures.TimeoutError
+                except KeyboardInterrupt:
+                    pool.shutdown39(wait=True, cancel_futures=True)
+                    raise
 
         return profile_results
 

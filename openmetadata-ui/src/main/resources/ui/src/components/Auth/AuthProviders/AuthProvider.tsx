@@ -41,6 +41,7 @@ import { useTranslation } from 'react-i18next';
 import { useHistory, useLocation } from 'react-router-dom';
 import {
   DEFAULT_DOMAIN_VALUE,
+  ES_MAX_PAGE_SIZE,
   REDIRECT_PATHNAME,
   ROUTES,
 } from '../../../constants/constants';
@@ -56,6 +57,7 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import axiosClient from '../../../rest';
+import { getDomainList } from '../../../rest/domainAPI';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -67,6 +69,7 @@ import {
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isProtectedRoute,
+  prepareUserProfileFromClaims,
 } from '../../../utils/AuthProvider.util';
 import { escapeESReservedCharacters } from '../../../utils/StringsUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
@@ -122,6 +125,9 @@ export const AuthProvider = ({
     setAuthConfig,
     setAuthorizerConfig,
     setIsSigningUp,
+    authorizerConfig,
+    jwtPrincipalClaims,
+    jwtPrincipalClaimsMapping,
     setJwtPrincipalClaims,
     setJwtPrincipalClaimsMapping,
     removeRefreshToken,
@@ -131,7 +137,7 @@ export const AuthProvider = ({
     isApplicationLoading,
     setApplicationLoading,
   } = useApplicationStore();
-  const { activeDomain } = useDomainStore();
+  const { updateDomains, updateDomainLoading } = useDomainStore();
 
   const location = useLocation();
   const history = useHistory();
@@ -179,6 +185,21 @@ export const AuthProvider = ({
     return authenticatorRef.current?.renewIdToken();
   };
 
+  const fetchDomainList = useCallback(async () => {
+    try {
+      updateDomainLoading(true);
+      const { data } = await getDomainList({
+        limit: ES_MAX_PAGE_SIZE,
+        fields: 'parent',
+      });
+      updateDomains(data);
+    } catch (error) {
+      // silent fail
+    } finally {
+      updateDomainLoading(false);
+    }
+  }, []);
+
   const handledVerifiedUser = () => {
     if (!isProtectedRoute(location.pathname)) {
       history.push(ROUTES.HOME);
@@ -219,6 +240,8 @@ export const AuthProvider = ({
       if (res) {
         setCurrentUser(res);
         setIsAuthenticated(true);
+        // Fetch domains at the start
+        await fetchDomainList();
       } else {
         resetUserDetails();
       }
@@ -376,14 +399,25 @@ export const AuthProvider = ({
           ? userAPIQueryFields + ',' + isEmailVerifyField
           : userAPIQueryFields;
       try {
+        const newUser = prepareUserProfileFromClaims({
+          user,
+          jwtPrincipalClaims,
+          principalDomain: authorizerConfig?.principalDomain ?? '',
+          jwtPrincipalClaimsMapping,
+          clientType,
+        });
+
         const res = await getLoggedInUser({ fields });
         if (res) {
-          const updatedUserData = getUserDataFromOidc(res, user);
-          if (!matchUserDetails(res, updatedUserData, ['email'])) {
+          const updatedUserData = getUserDataFromOidc(res, newUser);
+          if (!matchUserDetails(res, updatedUserData, ['profile', 'email'])) {
             getUpdatedUser(updatedUserData, res);
           } else {
             setCurrentUser(res);
           }
+
+          // Fetch domains at the start
+          await fetchDomainList();
 
           handledVerifiedUser();
           // Start expiry timer on successful login
@@ -391,11 +425,16 @@ export const AuthProvider = ({
         }
       } catch (error) {
         const err = error as AxiosError;
-        if (err?.response?.status === 404 && authConfig?.enableSelfSignup) {
-          setNewUserProfile(user.profile);
-          setCurrentUser({} as User);
-          setIsSigningUp(true);
-          history.push(ROUTES.SIGNUP);
+        if (err?.response?.status === 404) {
+          if (!authConfig?.enableSelfSignup) {
+            resetUserDetails();
+            history.push(ROUTES.UNAUTHORISED);
+          } else {
+            setNewUserProfile(user.profile);
+            setCurrentUser({} as User);
+            setIsSigningUp(true);
+            history.push(ROUTES.SIGNUP);
+          }
         } else {
           // eslint-disable-next-line no-console
           console.error(err);
@@ -409,6 +448,10 @@ export const AuthProvider = ({
     },
     [
       authConfig?.enableSelfSignup,
+      clientType,
+      authorizerConfig?.principalDomain,
+      jwtPrincipalClaims,
+      jwtPrincipalClaimsMapping,
       setIsSigningUp,
       setIsAuthenticated,
       setApplicationLoading,
@@ -449,6 +492,7 @@ export const AuthProvider = ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withDomainFilter = (config: InternalAxiosRequestConfig<any>) => {
     const isGetRequest = config.method === 'get';
+    const activeDomain = useDomainStore.getState().activeDomain;
     const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
     const currentPath = window.location.pathname;
     const shouldNotIntercept = [

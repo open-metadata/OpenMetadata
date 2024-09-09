@@ -103,11 +103,15 @@ jest.mock('../../rest/feedsAPI', () => ({
     .fn()
     .mockImplementation(() => Promise.resolve(mockActiveAnnouncementData)),
 }));
-jest.mock('../../rest/userAPI', () => ({
-  getUserById: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(mockUserData)),
-}));
+jest.mock('../../rest/searchAPI', () => {
+  return {
+    searchQuery: jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ hits: { hits: [], total: { value: 0 } } })
+      ),
+  };
+});
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
 }));
@@ -130,6 +134,23 @@ jest.mock('../../hoc/LimitWrapper', () => {
   return jest
     .fn()
     .mockImplementation(({ children }) => <>LimitWrapper{children}</>);
+});
+
+jest.mock('../DataInsightPage/DataInsightProvider', async () => {
+  return jest.fn().mockImplementation(({ children }) => <>{children}</>);
+});
+
+jest.mock('../DataInsightPage/DataInsightProvider', () => {
+  return {
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children }) => <>{children}</>),
+    useDataInsightProvider: jest.fn().mockReturnValue({
+      kpi: {
+        isLoading: false,
+        data: [],
+      },
+    }),
+  };
 });
 
 describe('MyDataPage component', () => {
@@ -170,11 +191,15 @@ describe('MyDataPage component', () => {
     await act(async () => {
       render(<MyDataPage />);
 
-      expect(screen.queryByText('WelcomeScreen')).toBeNull();
-      expect(screen.queryByTestId('react-grid-layout')).toBeNull();
-      expect(screen.getByTestId('activity-feed-provider')).toBeInTheDocument();
       expect(screen.getByText('Loader')).toBeInTheDocument();
+      expect(screen.queryByTestId('react-grid-layout')).toBeNull();
     });
+
+    expect(screen.queryByText('WelcomeScreen')).toBeNull();
+
+    expect(
+      await screen.findByTestId('activity-feed-provider')
+    ).toBeInTheDocument();
   });
 
   it('MyDataPage should display all the widgets in the config and the announcements widget if there are announcements', async () => {

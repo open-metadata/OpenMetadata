@@ -26,6 +26,10 @@ setup('authenticate as admin', async ({ page }) => {
   const { apiContext, afterAction } = await getApiContext(page);
   await updateJWTTokenExpiryTime(apiContext, JWT_EXPIRY_TIME_MAP['4 hours']);
   await afterAction();
+  await admin.logout(page);
+  await page.waitForURL('**/signin');
+  await admin.login(page);
+  await page.waitForURL('**/my-data');
 
   // End of authentication steps.
   await page.context().storageState({ path: adminFile });

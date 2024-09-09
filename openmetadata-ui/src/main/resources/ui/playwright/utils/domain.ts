@@ -32,13 +32,14 @@ import { addOwner } from './entity';
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
   await page
     .getByTestId('selectable-list')
     .getByTestId('searchbar')
     .fill(domain.name);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -50,13 +51,14 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
+  const searchDomain = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
+  );
   await page
     .getByTestId('selectable-list')
     .getByTestId('searchbar')
     .fill(domain.name);
-  await page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
-  );
+  await searchDomain;
   await page.getByRole('listitem', { name: domain.displayName }).click();
 
   await expect(page.getByTestId('domain-link')).toContainText(
@@ -150,14 +152,14 @@ const fillCommonFormItems = async (
   await page.locator('[data-testid="display-name"]').fill(entity.displayName);
   await page.fill(descriptionBox, entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
-    await addOwner(
+    await addOwner({
       page,
-      entity.owners[0].name,
-      entity.owners[0].type as 'Users' | 'Teams',
-      EntityTypeEndpoint.Domain,
-      'owner-container',
-      'add-owner'
-    );
+      owner: entity.owners[0].name,
+      type: entity.owners[0].type as 'Users' | 'Teams',
+      endpoint: EntityTypeEndpoint.Domain,
+      dataTestId: 'owner-container',
+      initiatorId: 'add-owner',
+    });
   }
 };
 
@@ -297,7 +299,10 @@ export const addAssetsToDomain = async (
     const searchRes = page.waitForResponse(
       `/api/v1/search/query?q=${name}&index=all&from=0&size=25&*`
     );
-    await page.getByTestId('searchbar').fill(name);
+    await page
+      .getByTestId('asset-selection-modal')
+      .getByTestId('searchbar')
+      .fill(name);
     await searchRes;
 
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
@@ -378,14 +383,18 @@ export const setupAssetsForDomain = async (page: Page) => {
   const table = new TableClass();
   const topic = new TopicClass();
   const dashboard = new DashboardClass();
-  await table.create(apiContext);
-  await topic.create(apiContext);
-  await dashboard.create(apiContext);
+  await Promise.all([
+    table.create(apiContext),
+    topic.create(apiContext),
+    dashboard.create(apiContext),
+  ]);
 
   const assetCleanup = async () => {
-    await table.create(apiContext);
-    await topic.create(apiContext);
-    await dashboard.create(apiContext);
+    await Promise.all([
+      table.delete(apiContext),
+      topic.delete(apiContext),
+      dashboard.delete(apiContext),
+    ]);
     await afterAction();
   };
 

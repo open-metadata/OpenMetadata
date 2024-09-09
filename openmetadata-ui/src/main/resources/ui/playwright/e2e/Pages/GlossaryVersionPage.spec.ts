@@ -41,6 +41,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('Glossary', async ({ page }) => {
+  test.slow(true);
+
   const glossary = new Glossary();
   const { afterAction, apiContext } = await getApiContext(page);
   await glossary.create(apiContext);
@@ -78,10 +80,11 @@ test('Glossary', async ({ page }) => {
     await addMultiOwner({
       page,
       ownerNames: [user.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
+      activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
       isSelectableInsideForm: true,
+      type: 'Users',
     });
 
     await page.reload();
@@ -109,6 +112,7 @@ test('Glossary', async ({ page }) => {
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.Glossary,
+      type: 'Users',
     });
 
     await page.reload();
@@ -127,6 +131,8 @@ test('Glossary', async ({ page }) => {
 });
 
 test('GlossaryTerm', async ({ page }) => {
+  test.slow(true);
+
   const { term1, term2, cleanup } = await setupGlossaryAndTerms(page);
 
   await test.step('Version changes', async () => {
@@ -173,10 +179,11 @@ test('GlossaryTerm', async ({ page }) => {
     await addMultiOwner({
       page,
       ownerNames: [user.getUserName()],
-      activatorBtnDataTestId: 'edit-owner',
+      activatorBtnDataTestId: 'add-owner',
       resultTestId: 'glossary-right-panel-owner-link',
       endpoint: EntityTypeEndpoint.Glossary,
       isSelectableInsideForm: true,
+      type: 'Users',
     });
 
     await page.reload();
@@ -204,6 +211,7 @@ test('GlossaryTerm', async ({ page }) => {
       activatorBtnDataTestId: 'Add',
       resultTestId: 'glossary-reviewer-name',
       endpoint: EntityTypeEndpoint.GlossaryTerm,
+      type: 'Users',
     });
 
     await page.reload();

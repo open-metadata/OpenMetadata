@@ -55,14 +55,18 @@ export const navigateToCustomizeLandingPage = ({
     `/api/v1/docStore/name/persona.${personaName}.Page.LandingPage`,
     'getCustomPageData'
   );
-  interceptURL('GET', `/api/v1/users/*?fields=follows%2Cowns`, 'getMyData');
+  interceptURL(
+    'GET',
+    '/api/v1/search/query?q=*%20AND%20followers:**',
+    'getFollowersData'
+  );
 
   cy.get(
     `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
   ).click();
 
   verifyResponseStatusCode('@getCustomPageData', customPageDataResponse);
-  verifyResponseStatusCode('@getMyData', 200);
+  verifyResponseStatusCode('@getFollowersData', 200);
 };
 
 export const saveLayout = () => {
@@ -80,7 +84,7 @@ export const navigateToLandingPage = () => {
   interceptURL('GET', `/api/v1/feed*`, 'getFeedsData');
   interceptURL(
     'GET',
-    `/api/v1/analytics/dataInsights/charts/aggregate*`,
+    `/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data?*`,
     'getDataInsightReport'
   );
 

@@ -164,9 +164,7 @@ const Suggestions = ({
       <div data-testid={`group-${searchIndex}`}>
         {getGroupLabel(searchIndex)}
         {suggestions.map((suggestion: SearchSuggestions[number]) => {
-          return getSuggestionElement(suggestion, searchIndex, () =>
-            setIsOpen(false)
-          );
+          return getSuggestionElement(suggestion, () => setIsOpen(false));
         })}
       </div>
     );

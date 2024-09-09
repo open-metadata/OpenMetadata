@@ -30,9 +30,10 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 3 : undefined,
+  maxFailures: 30,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [
     ['list'],
@@ -68,6 +69,18 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
       dependencies: ['setup'],
+      grepInvert: /data-insight/,
+    },
+    {
+      name: 'data-insight-application',
+      dependencies: ['setup'],
+      testMatch: '**/dataInsightApp.ts',
+    },
+    {
+      name: 'Data Insight',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['data-insight-application'],
+      grep: /data-insight/,
     },
   ],
 

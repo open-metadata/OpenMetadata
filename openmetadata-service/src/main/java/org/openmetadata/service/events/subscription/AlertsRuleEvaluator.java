@@ -444,11 +444,6 @@ public class AlertsRuleEvaluator {
       return true;
     }
 
-    // Filter does not apply to Thread Change Events
-    if (changeEvent.getEntityType().equals(THREAD)) {
-      return true;
-    }
-
     EntityInterface entity = getEntity(changeEvent);
     EntityInterface entityWithDomainData =
         Entity.getEntity(

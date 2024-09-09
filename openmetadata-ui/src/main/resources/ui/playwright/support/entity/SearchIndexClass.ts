@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
@@ -33,11 +34,59 @@ export class SearchIndexClass extends EntityClass {
       },
     },
   };
+  private searchIndexName = `pw-search-index-${uuid()}`;
+  private fqn = `${this.service.name}.${this.searchIndexName}`;
+
+  children = [
+    {
+      name: 'name',
+      dataType: 'TEXT',
+      dataTypeDisplay: 'text',
+      description: 'Table Entity Name.',
+      fullyQualifiedName: `${this.fqn}.name`,
+      tags: [],
+    },
+    {
+      name: 'description',
+      dataType: 'TEXT',
+      dataTypeDisplay: 'text',
+      description: 'Table Entity Description.',
+      fullyQualifiedName: `${this.fqn}.description`,
+      tags: [],
+    },
+    {
+      name: 'columns',
+      dataType: 'NESTED',
+      dataTypeDisplay: 'nested',
+      description: 'Table Columns.',
+      fullyQualifiedName: `${this.fqn}.columns`,
+      tags: [],
+      children: [
+        {
+          name: 'name',
+          dataType: 'TEXT',
+          dataTypeDisplay: 'text',
+          description: 'Column Name.',
+          fullyQualifiedName: `${this.fqn}.columns.name`,
+          tags: [],
+        },
+        {
+          name: 'description',
+          dataType: 'TEXT',
+          dataTypeDisplay: 'text',
+          description: 'Column Description.',
+          fullyQualifiedName: `${this.fqn}.columns.description`,
+          tags: [],
+        },
+      ],
+    },
+  ];
+
   entity = {
-    name: `pw-search-index-${uuid()}`,
-    displayName: `pw-search-index-${uuid()}`,
+    name: this.searchIndexName,
+    displayName: this.searchIndexName,
     service: this.service.name,
-    fields: [],
+    fields: this.children,
   };
 
   serviceResponseData: unknown;
@@ -47,6 +96,9 @@ export class SearchIndexClass extends EntityClass {
     super(EntityTypeEndpoint.SearchIndex);
     this.service.name = name ?? this.service.name;
     this.type = 'SearchIndex';
+    this.childrenTabId = 'fields';
+    this.childrenSelectorId = this.children[0].fullyQualifiedName;
+    this.serviceCategory = SERVICE_TYPE.Search;
   }
 
   async create(apiContext: APIRequestContext) {

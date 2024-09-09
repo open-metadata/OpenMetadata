@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
-import { EntityTypeEndpoint } from './Entity.interface';
+import {
+  EntityTypeEndpoint,
+  TestCaseData,
+  TestSuiteData,
+} from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class TableClass extends EntityClass {
@@ -44,54 +50,56 @@ export class TableClass extends EntityClass {
     name: `pw-database-schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
+  children = [
+    {
+      name: 'user_id',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'Unique identifier for the user of your Shopify POS or your Shopify admin.',
+    },
+    {
+      name: 'shop_id',
+      dataType: 'NUMERIC',
+      dataTypeDisplay: 'numeric',
+      description:
+        'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
+    },
+    {
+      name: 'name',
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Name of the staff member.',
+      children: [
+        {
+          name: 'first_name',
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+          description: 'First name of the staff member.',
+        },
+        {
+          name: 'last_name',
+          dataType: 'VARCHAR',
+          dataLength: 100,
+          dataTypeDisplay: 'varchar',
+        },
+      ],
+    },
+    {
+      name: 'email',
+      dataType: 'VARCHAR',
+      dataLength: 100,
+      dataTypeDisplay: 'varchar',
+      description: 'Email address of the staff member.',
+    },
+  ];
+
   entity = {
     name: `pw-table-${uuid()}`,
     description: 'description',
-    columns: [
-      {
-        name: 'user_id',
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
-        description:
-          'Unique identifier for the user of your Shopify POS or your Shopify admin.',
-      },
-      {
-        name: 'shop_id',
-        dataType: 'NUMERIC',
-        dataTypeDisplay: 'numeric',
-        description:
-          'The ID of the store. This column is a foreign key reference to the shop_id column in the dim.shop table.',
-      },
-      {
-        name: 'name',
-        dataType: 'VARCHAR',
-        dataLength: 100,
-        dataTypeDisplay: 'varchar',
-        description: 'Name of the staff member.',
-        children: [
-          {
-            name: 'first_name',
-            dataType: 'VARCHAR',
-            dataLength: 100,
-            dataTypeDisplay: 'varchar',
-            description: 'First name of the staff member.',
-          },
-          {
-            name: 'last_name',
-            dataType: 'VARCHAR',
-            dataLength: 100,
-            dataTypeDisplay: 'varchar',
-          },
-        ],
-      },
-      {
-        name: 'email',
-        dataType: 'VARCHAR',
-        dataLength: 100,
-        dataTypeDisplay: 'varchar',
-        description: 'Email address of the staff member.',
-      },
-    ],
+    columns: this.children,
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
   };
 
@@ -106,7 +114,10 @@ export class TableClass extends EntityClass {
   constructor(name?: string) {
     super(EntityTypeEndpoint.Table);
     this.service.name = name ?? this.service.name;
+    this.serviceCategory = SERVICE_TYPE.Database;
     this.type = 'Table';
+    this.childrenTabId = 'schema';
+    this.childrenSelectorId = `${this.entity.databaseSchema}.${this.entity.name}.${this.children[0].name}`;
   }
 
   async create(apiContext: APIRequestContext) {
@@ -161,9 +172,12 @@ export class TableClass extends EntityClass {
     });
   }
 
-  async createTestSuiteAndPipelines(apiContext: APIRequestContext) {
+  async createTestSuiteAndPipelines(
+    apiContext: APIRequestContext,
+    testSuite?: TestSuiteData
+  ) {
     if (!this.entityResponseData) {
-      return this.create(apiContext);
+      await this.create(apiContext);
     }
 
     const testSuiteData = await apiContext
@@ -171,8 +185,9 @@ export class TableClass extends EntityClass {
         data: {
           name: `pw-test-suite-${uuid()}`,
           executableEntityReference:
-            this.entityResponseData['fullyQualifiedName'],
+            this.entityResponseData?.['fullyQualifiedName'],
           description: 'Playwright test suite for table',
+          ...testSuite,
         },
       })
       .then((res) => res.json());
@@ -215,12 +230,16 @@ export class TableClass extends EntityClass {
         },
       })
       .then((res) => res.json());
+
     this.testSuitePipelineResponseData.push(pipelineData);
 
     return pipelineData;
   }
 
-  async createTestCase(apiContext: APIRequestContext) {
+  async createTestCase(
+    apiContext: APIRequestContext,
+    testCaseData?: TestCaseData
+  ) {
     if (!this.testSuiteResponseData) {
       await this.createTestSuiteAndPipelines(apiContext);
     }
@@ -236,6 +255,7 @@ export class TableClass extends EntityClass {
             { name: 'minValue', value: 12 },
             { name: 'maxValue', value: 34 },
           ],
+          ...testCaseData,
         },
       })
       .then((res) => res.json());
@@ -243,6 +263,43 @@ export class TableClass extends EntityClass {
     this.testCasesResponseData.push(testCase);
 
     return testCase;
+  }
+
+  async addTestCaseResult(
+    apiContext: APIRequestContext,
+    testCaseFqn: string,
+    testCaseResult: unknown
+  ) {
+    const testCaseResultResponse = await apiContext.put(
+      `/api/v1/dataQuality/testCases/${testCaseFqn}/testCaseResult`,
+      { data: testCaseResult }
+    );
+
+    return await testCaseResultResponse.json();
+  }
+
+  async patch({
+    apiContext,
+    patchData,
+  }: {
+    apiContext: APIRequestContext;
+    patchData: Operation[];
+  }) {
+    const response = await apiContext.patch(
+      `/api/v1/tables/name/${this.entityResponseData?.['fullyQualifiedName']}`,
+      {
+        data: patchData,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    this.entityResponseData = await response.json();
+
+    return {
+      entity: this.entityResponseData,
+    };
   }
 
   async delete(apiContext: APIRequestContext) {

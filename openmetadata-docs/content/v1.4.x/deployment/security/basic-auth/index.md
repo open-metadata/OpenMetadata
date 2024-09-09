@@ -10,9 +10,19 @@ Out of the box, OpenMetadata comes with a Username & Password Login Mechanism.
 The default Username and Password for Login are:
 
 ```commandline
-Username - admin@openmetadata.org
+Username - admin@open-metadata.org
 Password - admin
 ```
+When using a custom domain, configure the principal domain as follows:
+
+```yaml
+config:
+    authorizer:
+      adminPrincipals: [admin]
+      principalDomain: "yourdomain.com"
+```
+
+With this setup, the default Username will be `admin@yourdomain.com`.
 
 {%important%}
 
@@ -55,7 +65,7 @@ This configuration controls the authorizer for OpenMetadata:
 authorizerConfiguration:
   adminPrincipals: ${AUTHORIZER_ADMIN_PRINCIPALS:-[admin]}
   allowedEmailRegistrationDomains: ${AUTHORIZER_ALLOWED_REGISTRATION_DOMAIN:-["all"]}
-  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"openmetadata.org"}
+  principalDomain: ${AUTHORIZER_PRINCIPAL_DOMAIN:-"open-metadata.org"}
 ```
 
 For the Basic auth we need to set:
@@ -70,9 +80,9 @@ Please note the following are the formats to bootstrap admins on server startup:
 
 This works for SMTP-enabled servers, Login Password for these are generated randomly and sent to the mail `adminName`@`principalDomain`. 
 
-If SMTP is not enabled for OpenMetadata, please use the below method to create admin users: `[admin1:password1,admin2:password2,admin3:password3]`
+If SMTP is not enabled for OpenMetadata, please use the method below to create admin users: `[admin1, admin2, admin3]`. The default password for all admin users will be admin.
 
-This allows to bootstrap the server with given password, later on can be changed by specific users by visiting profile page.
+After logging into the OpenMetadata UI, admin users can change their default password by navigating to `Settings > Members > Admins`.
 
 {%/note%}
 

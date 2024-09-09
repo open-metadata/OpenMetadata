@@ -41,7 +41,6 @@ from metadata.generated.schema.metadataIngestion.dbtconfig.dbtS3Config import (
 )
 from metadata.ingestion.source.database.dbt.constants import (
     DBT_CATALOG_FILE_NAME,
-    DBT_FILE_NAMES_LIST,
     DBT_MANIFEST_FILE_NAME,
     DBT_RUN_RESULTS_FILE_NAME,
 )
@@ -129,7 +128,7 @@ def _(config: DbtHttpConfig):
         yield DbtFiles(
             dbt_catalog=dbt_catalog.json() if dbt_catalog else None,
             dbt_manifest=dbt_manifest.json(),
-            dbt_run_results=dbt_run_results.json() if dbt_run_results else None,
+            dbt_run_results=[dbt_run_results.json()] if dbt_run_results else None,
         )
     except DBTConfigException as exc:
         raise exc
@@ -203,7 +202,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
             try:
                 logger.debug("Requesting [dbt_run_results]")
                 dbt_run_results = client.get(
-                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}"
+                    f"/accounts/{account_id}/runs/{run_id}/artifacts/{DBT_RUN_RESULTS_FILE_NAME}.json"
                 )
             except Exception as exc:
                 logger.debug(
@@ -216,7 +215,7 @@ def _(config: DbtCloudConfig):  # pylint: disable=too-many-locals
         yield DbtFiles(
             dbt_catalog=dbt_catalog,
             dbt_manifest=dbt_manifest,
-            dbt_run_results=dbt_run_results,
+            dbt_run_results=[dbt_run_results] if dbt_run_results else None,
         )
     except DBTConfigException as exc:
         raise exc
@@ -233,13 +232,12 @@ def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:
     for blob in blobs:
         subdirectory = blob.rsplit("/", 1)[0] if "/" in blob else ""
         blob_file_name = blob.rsplit("/", 1)[1] if "/" in blob else blob
-        if next(
-            (
-                file_name
-                for file_name in DBT_FILE_NAMES_LIST
-                if file_name.lower() == blob_file_name.lower()
-            ),
-            None,
+        # We'll be processing multiple run_result files from a single dir
+        # Grouping them together to process them in a single go
+        if (
+            DBT_MANIFEST_FILE_NAME == blob_file_name.lower()
+            or DBT_CATALOG_FILE_NAME == blob_file_name.lower()
+            or DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower()
         ):
             blob_grouped_by_directory[subdirectory].append(blob)
     return blob_grouped_by_directory
@@ -257,7 +255,7 @@ def download_dbt_files(
     ) in blob_grouped_by_directory.items():
         dbt_catalog = None
         dbt_manifest = None
-        dbt_run_results = None
+        dbt_run_results = []
         kwargs = {}
         if bucket_name:
             kwargs = {"bucket_name": bucket_name}
@@ -265,10 +263,11 @@ def download_dbt_files(
             for blob in blobs:
                 if blob:
                     reader = get_reader(config_source=config, client=client)
-                    if DBT_MANIFEST_FILE_NAME in blob:
+                    blob_file_name = blob.rsplit("/", 1)[1] if "/" in blob else blob
+                    if DBT_MANIFEST_FILE_NAME == blob_file_name.lower():
                         logger.debug(f"{DBT_MANIFEST_FILE_NAME} found in {key}")
                         dbt_manifest = reader.read(path=blob, **kwargs)
-                    if DBT_CATALOG_FILE_NAME in blob:
+                    if DBT_CATALOG_FILE_NAME == blob_file_name.lower():
                         try:
                             logger.debug(f"{DBT_CATALOG_FILE_NAME} found in {key}")
                             dbt_catalog = reader.read(path=blob, **kwargs)
@@ -276,10 +275,12 @@ def download_dbt_files(
                             logger.warning(
                                 f"{DBT_CATALOG_FILE_NAME} not found in {key}: {exc}"
                             )
-                    if DBT_RUN_RESULTS_FILE_NAME in blob:
+                    if DBT_RUN_RESULTS_FILE_NAME in blob_file_name.lower():
                         try:
-                            logger.debug(f"{DBT_RUN_RESULTS_FILE_NAME} found in {key}")
-                            dbt_run_results = reader.read(path=blob, **kwargs)
+                            logger.debug(f"{blob_file_name} found in {key}")
+                            dbt_run_result = reader.read(path=blob, **kwargs)
+                            if dbt_run_result:
+                                dbt_run_results.append(json.loads(dbt_run_result))
                         except Exception as exc:
                             logger.warning(
                                 f"{DBT_RUN_RESULTS_FILE_NAME} not found in {key}: {exc}"
@@ -289,9 +290,7 @@ def download_dbt_files(
             yield DbtFiles(
                 dbt_catalog=json.loads(dbt_catalog) if dbt_catalog else None,
                 dbt_manifest=json.loads(dbt_manifest),
-                dbt_run_results=json.loads(dbt_run_results)
-                if dbt_run_results
-                else None,
+                dbt_run_results=dbt_run_results if dbt_run_results else None,
             )
         except DBTConfigException as exc:
             logger.warning(exc)

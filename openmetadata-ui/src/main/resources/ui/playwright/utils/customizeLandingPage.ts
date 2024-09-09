@@ -12,7 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
-import { visitUserProfilePage } from './common';
+import { visitOwnProfilePage } from './common';
 import { settingClick } from './sidebar';
 
 export const navigateToCustomizeLandingPage = async (
@@ -25,19 +25,20 @@ export const navigateToCustomizeLandingPage = async (
 
   await getPersonas;
 
-  // Navigate to the customize landing page
-  await page.click(
-    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
-  );
-
-  const getCustomPageDataResponse = await page.waitForResponse(
+  const getCustomPageDataResponse = page.waitForResponse(
     `/api/v1/docStore/name/persona.${encodeURIComponent(
       personaName
     )}.Page.LandingPage`
   );
 
-  //   await getCustomPageDataResponse;
-  expect(getCustomPageDataResponse.status()).toBe(customPageDataResponse);
+  // Navigate to the customize landing page
+  await page.click(
+    `[data-testid="persona-details-card-${personaName}"] [data-testid="customize-page-button"]`
+  );
+
+  expect((await getCustomPageDataResponse).status()).toBe(
+    customPageDataResponse
+  );
 };
 
 export const removeAndCheckWidget = async (
@@ -94,7 +95,7 @@ export const setUserDefaultPersona = async (
   page: Page,
   personaName: string
 ) => {
-  await visitUserProfilePage(page);
+  await visitOwnProfilePage(page);
 
   await page
     .locator(

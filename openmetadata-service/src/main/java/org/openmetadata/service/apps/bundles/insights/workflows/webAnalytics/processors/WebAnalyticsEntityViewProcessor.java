@@ -3,6 +3,8 @@ package org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.pr
 import static org.openmetadata.service.apps.bundles.insights.workflows.webAnalytics.WebAnalyticsWorkflow.ENTITY_VIEW_REPORT_DATA_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +46,6 @@ public class WebAnalyticsEntityViewProcessor
           "topic");
 
   private record ProcessedUrl(String entityType, String entityFqn) {}
-  ;
 
   public WebAnalyticsEntityViewProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
@@ -95,9 +96,13 @@ public class WebAnalyticsEntityViewProcessor
       if (!entityViewData.containsKey(entityFqn)) {
         // Create a new WebAnalyticEntityViewReportData based on the Event data.
         try {
-          // TODO: How to search for URLEncoded entityFqn
           EntityInterface entity =
-              Entity.getEntityByName(entityType, entityFqn, "*", Include.NON_DELETED, true);
+              Entity.getEntityByName(
+                  URLDecoder.decode(entityType, StandardCharsets.UTF_8),
+                  entityFqn,
+                  "*",
+                  Include.NON_DELETED,
+                  true);
           WebAnalyticEntityViewReportData webAnalyticEntityViewReportData =
               new WebAnalyticEntityViewReportData()
                   .withEntityType(entityType)

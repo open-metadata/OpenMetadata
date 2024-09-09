@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
 import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
+  private dashboardName = `pw-dashboard-${uuid()}`;
   service = {
     name: `pw-dashboard-service-${uuid()}`,
     serviceType: 'Superset',
@@ -39,8 +41,8 @@ export class DashboardClass extends EntityClass {
     service: this.service.name,
   };
   entity = {
-    name: `pw-dashboard-${uuid()}`,
-    displayName: `pw-dashboard-${uuid()}`,
+    name: this.dashboardName,
+    displayName: this.dashboardName,
     service: this.service.name,
   };
 
@@ -52,6 +54,7 @@ export class DashboardClass extends EntityClass {
     super(EntityTypeEndpoint.Dashboard);
     this.service.name = name ?? this.service.name;
     this.type = 'Dashboard';
+    this.serviceCategory = SERVICE_TYPE.Dashboard;
   }
 
   async create(apiContext: APIRequestContext) {

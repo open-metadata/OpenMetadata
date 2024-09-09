@@ -269,7 +269,8 @@ export const addInternalDestination = (
 export const addExternalDestination = (
   destinationNumber: number,
   category: string,
-  input: string
+  input: string,
+  secretKey?: string
 ) => {
   // Select destination category
   cy.get(`[data-testid="destination-category-select-${destinationNumber}"]`)
@@ -296,6 +297,13 @@ export const addExternalDestination = (
     cy.get(`[data-testid="endpoint-input-${destinationNumber}"]`)
       .click()
       .type(input);
+  }
+
+  // Input the secret key value
+  if (category === 'Webhook' && secretKey) {
+    cy.get(`[data-testid="secret-key-input-${destinationNumber}"]`)
+      .click()
+      .type(secretKey);
   }
 };
 
@@ -368,6 +376,12 @@ export const verifyAlertDetails = (
   }
 
   if (!isEmpty(destinations)) {
+    // Check connection timeout details
+    cy.get('[data-testid="connection-timeout"]').should(
+      'contain',
+      destinations[0].timeout
+    );
+
     destinations.forEach((destination) => {
       // Check Destination category
       cy.get(
@@ -378,6 +392,14 @@ export const verifyAlertDetails = (
       cy.get(
         `[data-testid="destination-${destination.category}"] [data-testid="destination-type"]`
       ).should('contain', startCase(destination.type));
+
+      if (!isEmpty(destination.config?.secretKey)) {
+        // Check secret key is present
+        cy.get(`[data-testid="destination-${destination.category}"]`).should(
+          'contain',
+          'Secret Key'
+        );
+      }
 
       if (!isEmpty(destination.config?.receivers)) {
         // Check Destination receivers

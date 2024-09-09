@@ -70,7 +70,6 @@ import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
-import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.Entity;
@@ -97,7 +96,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private TokenRepository tokenRepository;
   private LoginAttemptCache loginAttemptCache;
   private AuthorizerConfiguration authorizerConfiguration;
-  private boolean isEmailServiceEnabled;
   private boolean isSelfSignUpAvailable;
 
   @Override
@@ -106,8 +104,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     this.tokenRepository = Entity.getTokenRepository();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.loginAttemptCache = new LoginAttemptCache();
-    SmtpSettings smtpSettings = config.getSmtpSettings();
-    this.isEmailServiceEnabled = smtpSettings != null && smtpSettings.getEnableSmtpServer();
     this.isSelfSignUpAvailable = config.getAuthenticationConfiguration().getEnableSelfSignup();
   }
 
@@ -173,7 +169,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void sendEmailVerification(UriInfo uriInfo, User user) throws IOException {
-    if (isEmailServiceEnabled) {
+    if (getSmtpSettings().getEnableSmtpServer()) {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
@@ -310,7 +306,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     loginAttemptCache.recordSuccessfulLogin(userName);
 
     // in case admin updates , send email to user
-    if (request.getRequestType() == USER && isEmailServiceEnabled) {
+    if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {
       // Send mail
       sendInviteMailToUser(
           uriInfo,
