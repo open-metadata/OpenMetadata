@@ -227,7 +227,7 @@ class RestSource(ApiServiceSource):
             .get("$ref")
         )
         if not schema_ref:
-            logger.info("No request schema found for the endpoint")
+            logger.debug("No request schema found for the endpoint")
             return None
         return self._process_schema(schema_ref)
 
@@ -242,7 +242,7 @@ class RestSource(ApiServiceSource):
             .get("$ref", {})
         )
         if not schema_ref:
-            logger.info("No response schema found for the endpoint")
+            logger.debug("No response schema found for the endpoint")
             return None
         return self._process_schema(schema_ref)
 

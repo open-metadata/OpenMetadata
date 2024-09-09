@@ -5,8 +5,15 @@
     "steps": [
         {
             "name": "CheckURL",
-            "description":  "Checks if url is valid open api json schema url or not",
+            "description":  "Checks if url is valid json/yaml schema url or not",
             "errorMessage": "Failed to validate the url, please check the url",
+            "shortCircuit": true,
+            "mandatory": true
+        },
+        {
+            "name": "CheckSchema",
+            "description":  "Checks if schema is valid openapi schema or not",
+            "errorMessage": "Failed to validate the schema with OpenAPI. please validate the config",
             "shortCircuit": true,
             "mandatory": true
         }

@@ -33,6 +33,12 @@ class SchemaURLError(Exception):
     """
 
 
+class InvalidOpenAPISchemaError(Exception):
+    """
+    Class to indicate openapi schema is invalid
+    """
+
+
 def get_connection(connection: RESTConnection) -> Response:
     """
     Create connection
@@ -55,10 +61,17 @@ def test_connection(
         if client.headers.get("content-type") == "application/json":
             return []
         raise SchemaURLError(
-            f"Failed to parse JSON schema url. Please check if provided url is valid JSON schema."
+            "Failed to parse JSON schema url. Please check if provided url is valid JSON schema."
         )
 
-    test_fn = {"CheckURL": custom_url_exec}
+    def custom_schema_exec():
+        if client.json().get("openapi") is not None:
+            return []
+        raise InvalidOpenAPISchemaError(
+            "Provided schema is not valid OpenAPI JSON schema"
+        )
+
+    test_fn = {"CheckURL": custom_url_exec, "CheckSchema": custom_schema_exec}
 
     test_connection_steps(
         metadata=metadata,
