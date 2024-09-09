@@ -32,6 +32,13 @@ permissions:
   contents: read
 
 jobs:
+  # Needed since env is not available on the job context: https://github.com/actions/runner/issues/2372
+  check-debug:
+    runs-on: ubuntu-latest
+    outputs:
+      DEBUG: ${{ env.DEBUG }}
+    steps:
+      - run: echo "null"
   generate-jobs:
     runs-on: ubuntu-latest
     outputs:
