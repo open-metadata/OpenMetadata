@@ -18,6 +18,7 @@ import { EntityTypeEndpoint } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
 export class DashboardDataModelClass extends EntityClass {
+  private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
   service = {
     name: `pw-dashboard-service-${uuid()}`,
     serviceType: 'Superset',
@@ -46,8 +47,8 @@ export class DashboardDataModelClass extends EntityClass {
   ];
 
   entity = {
-    name: `pw-dashboard-data-model-${uuid()}`,
-    displayName: `pw-dashboard-data-model-${uuid()}`,
+    name: this.dashboardDataModelName,
+    displayName: this.dashboardDataModelName,
     service: this.service.name,
     columns: this.children,
     dataModelType: 'SupersetDataModel',
