@@ -208,11 +208,6 @@ e2e_tests = [
 
 
 @nox.session(python=list(set(python_versions) - {"3.8"}), tags=["integration"])
-def print2(session: Session):
-    print(session.python)
-
-
-@nox.session(python=list(set(python_versions) - {"3.8"}), tags=["integration"])
 @parametrize(integration_test_envs, set(python_versions) - {"3.8"})
 def integration_tests(session: Session, env: dict):
     env = TestEnv.from_dict(env)
