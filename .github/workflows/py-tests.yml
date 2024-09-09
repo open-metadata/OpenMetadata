@@ -48,15 +48,16 @@ jobs:
       - uses: wntrblm/nox@main
       - id: set-matrix
         shell: bash
-        run: echo sessions=$(nox -f ingestion/noxfile.py --json -l -k 'not e2e' | jq -c '[.[].session]') | tee --append $GITHUB_OUTPUT
+        run: echo session=$(nox -f ingestion/noxfile.py --json -l -k 'not e2e' | jq -c '[.[].session]') | tee --append $GITHUB_OUTPUT
   py-run-tests:
+    name: Session ${{ matrix.session }}
     needs: 
       - generate-jobs
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        session: ${{ fromJson(needs.generate-jobs.outputs.sessions) }}
+        session: ${{ fromJson(needs.generate-jobs.outputs.session) }}
     steps:
     - name: Free Disk Space (Ubuntu)
       uses: jlumbroso/free-disk-space@main
