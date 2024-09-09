@@ -20,6 +20,7 @@ const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const BundleAnalyzerPlugin =
   require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const Dotenv = require('dotenv-webpack');
 
 const outputPath = path.join(__dirname, 'dist/assets');
 
@@ -35,7 +36,7 @@ module.exports = {
     path: outputPath,
     filename: 'openmetadata.[fullhash].js',
     chunkFilename: '[name].[fullhash].js',
-    publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
+    publicPath: `${process.env.APP_SUB_PATH ?? ''}/`, // Ensures bundle is served from absolute path as opposed to relative
   },
 
   // Loaders
@@ -238,5 +239,6 @@ module.exports = {
       ),
       openAnalyzer: false,
     }),
+    new Dotenv(),
   ],
 };
