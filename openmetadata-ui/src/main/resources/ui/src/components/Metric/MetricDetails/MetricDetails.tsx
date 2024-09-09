@@ -54,6 +54,7 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import MetricExpression from '../MetricExpression/MetricExpression';
+import RelatedMetrics from '../RelatedMetrics/RelatedMetrics';
 import { MetricDetailsProps } from './MetricDetails.interface';
 
 const MetricDetails: React.FC<MetricDetailsProps> = ({
@@ -318,6 +319,15 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                   children: (
                     <div data-testid="entity-right-panel">
                       <EntityRightPanel<EntityType.METRIC>
+                        afterSlot={
+                          <div className="w-full m-t-md m-b-md">
+                            <RelatedMetrics
+                              hasEditPermission={metricPermissions.EditAll}
+                              metricDetails={metricDetails}
+                              onMetricUpdate={onMetricUpdate}
+                            />
+                          </div>
+                        }
                         customProperties={metricDetails}
                         dataProducts={metricDetails?.dataProducts ?? []}
                         domain={metricDetails?.domain}
