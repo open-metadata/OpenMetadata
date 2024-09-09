@@ -17,7 +17,7 @@ import incidentManagerSampleData from '../../../assets/img/incidentManagerSample
 import profilerConfigPage from '../../../assets/img/profilerConfigPage.png';
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 
-export const COOKIE_VERSION = 'VERSION_1_5_2'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_5_3'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -932,6 +932,26 @@ To continue pursuing this objective, the application was completely refactored t
 -   [Improve]: Enhanced the display of tier tags with improved styling for better visibility and distinction.
 -   [Improve]: Pick email and name based on claim values at login. This update ensures that user details are automatically populated during the login process, streamlining user experience.
 -   [Improve]: Added custom properties support in Data Product`,
+    },
+  },
+  {
+    id: 45,
+    version: 'v1.5.3',
+    description: `Released on 10th September 2024.`,
+    features: [],
+    changeLogs: {
+      Improvements: `-   Added resizable columns for custom properties
+-   Added support for automated ingestion of Tableau data source tags and description
+-   Improved "follow data" landing page module performance
+-   Improved search result suggestion by showing display name instead of FQN
+-   Fixed Cost Analysis issue when service has no connection
+-   Improved PII classification for JSON data types
+-   Fixed issue with expand all operation on terms page
+-   Fixed feed freezing when large images are part of the feed results
+-   Fixed dbt run_results file name with dbt cloud connection
+-   Cleaned Argo logs artifacts ${CollateIconWithLinkMD}
+-   Shipped VertexAI Connector ${CollateIconWithLinkMD}
+-   Fixed automator lineage propagation issues with possible None entities ${CollateIconWithLinkMD}`,
     },
   },
 ];
