@@ -27,9 +27,11 @@ jest.mock(
       .mockImplementation(({ children }) => <div>{children}</div>);
   }
 );
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: '' })),
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '' }));
+});
 
+jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(() => <div>Link</div>),
 }));
 

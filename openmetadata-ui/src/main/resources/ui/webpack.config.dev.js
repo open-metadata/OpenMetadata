@@ -19,8 +19,10 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 const WebpackBar = require('webpackbar');
 const webpack = require('webpack');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const Dotenv = require('dotenv-webpack');
 
 const outputPath = path.join(__dirname, 'build');
+const subPath = process.env.APP_SUB_PATH ?? '';
 
 module.exports = {
   // Development mode
@@ -34,7 +36,8 @@ module.exports = {
     path: outputPath,
     filename: '[name].js',
     chunkFilename: '[name].js',
-    publicPath: '/', // Ensures bundle is served from absolute path as opposed to relative
+    publicPath: `${subPath}/`,
+    // Ensures bundle is served from absolute path as opposed to relative
   },
 
   // Loaders
@@ -233,6 +236,7 @@ module.exports = {
       process: 'process/browser',
       Buffer: ['buffer', 'Buffer'],
     }),
+    new Dotenv(),
   ],
 
   // webpack-dev-server
@@ -251,6 +255,11 @@ module.exports = {
     // Route all requests to index.html so that app gets to handle all copy pasted deep links
     historyApiFallback: {
       disableDotRule: true,
+      ...(subPath
+        ? {
+            index: `${subPath}/index.html`,
+          }
+        : {}),
     },
     // Proxy configuration
     proxy: [

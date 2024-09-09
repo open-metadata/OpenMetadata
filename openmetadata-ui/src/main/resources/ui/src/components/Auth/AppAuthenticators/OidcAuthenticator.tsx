@@ -25,6 +25,7 @@ import { Callback, makeAuthenticator, makeUserManager } from 'react-oidc';
 import { Redirect, Route, Switch, useHistory } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import SignInPage from '../../../pages/LoginPage/SignInPage';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
@@ -74,6 +75,7 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
       isApplicationLoading,
     } = useApplicationStore();
     const history = useHistory();
+    const location = useCustomLocation();
     const userManager = useMemo(
       () => makeUserManager({ ...userConfig, silentRequestTimeout: 20000 }),
       [userConfig]
@@ -176,10 +178,10 @@ const OidcAuthenticator = forwardRef<AuthenticatorRef, Props>(
             )}
           />
 
-          {!window.location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
+          {!location.pathname.includes(ROUTES.SILENT_CALLBACK) &&
             // render the children only if user is authenticated
             (isAuthenticated ? (
-              !window.location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
+              !location.pathname.includes(ROUTES.SILENT_CALLBACK) && (
                 <Fragment>{children}</Fragment>
               )
             ) : // render the sign in page if user is not authenticated and not signing up

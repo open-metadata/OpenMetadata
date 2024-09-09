@@ -19,11 +19,12 @@ import { getListTestCase } from '../../../../rest/testAPI';
 import { TableProfilerProvider } from './TableProfilerProvider';
 
 // Mock dependencies
-jest.mock('react-router-dom', () => ({
-  useLocation: jest
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
     .fn()
-    .mockReturnValue({ search: '?activeTab=Data%20Quality' }),
-}));
+    .mockImplementation(() => ({ search: '?activeTab=Data%20Quality' }));
+});
+
 jest.mock('../../../../context/TourProvider/TourProvider', () => ({
   useTourProvider: jest.fn().mockReturnValue({ isTourOpen: false }),
 }));

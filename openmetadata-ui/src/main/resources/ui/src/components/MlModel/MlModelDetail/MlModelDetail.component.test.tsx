@@ -184,9 +184,12 @@ const mockParams = {
   tab: EntityTabs.FEATURES,
 };
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'mlmodel' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'mlmodel' }),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

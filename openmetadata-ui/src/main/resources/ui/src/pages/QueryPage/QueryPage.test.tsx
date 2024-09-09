@@ -17,8 +17,11 @@ import { MOCK_QUERIES } from '../../mocks/Queries.mock';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
 import QueryPage from './QueryPage.component';
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ search: '' }));
+});
+
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockImplementation(() => ({ search: '' })),
   useParams: jest.fn().mockImplementation(() => ({
     fqn: 'testDatasetFQN',
     queryId: 'queryId',

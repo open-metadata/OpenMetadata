@@ -19,7 +19,7 @@ import { Duration } from 'luxon';
 import Qs from 'qs';
 import React, { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
 import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
@@ -35,6 +35,7 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
@@ -62,7 +63,7 @@ const QueryCard: FC<QueryCardProp> = ({
   const { t } = useTranslation();
   const QueryExtras = queryClassBase.getQueryExtras();
   const { fqn: datasetFQN } = useFqn();
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
   const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(

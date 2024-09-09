@@ -23,7 +23,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useHistory, useLocation, useParams } from 'react-router-dom';
+import { Link, useHistory, useParams } from 'react-router-dom';
 import {
   getEntityDetailsPath,
   INITIAL_PAGING_VALUE,
@@ -43,6 +43,7 @@ import {
 import { EntityReference } from '../../../../generated/entity/type';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import {
   getListTestSuitesBySearch,
@@ -69,7 +70,7 @@ export const TestSuites = ({ summaryPanel }: { summaryPanel: ReactNode }) => {
   const { tab = DataQualityPageTabs.TABLES } =
     useParams<{ tab: DataQualityPageTabs }>();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
 
   const params = useMemo(() => {
     const search = location.search;

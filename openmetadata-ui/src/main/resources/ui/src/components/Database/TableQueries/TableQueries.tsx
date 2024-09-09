@@ -33,7 +33,7 @@ import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import Qs from 'qs';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { INITIAL_PAGING_VALUE, PAGE_SIZE } from '../../../constants/constants';
 import { USAGE_DOCS } from '../../../constants/docs.constants';
@@ -54,6 +54,7 @@ import { TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import {
   getQueryById,
@@ -91,7 +92,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   tableId,
 }: TableQueriesProp) => {
   const { t } = useTranslation();
-  const location = useLocation();
+  const location = useCustomLocation();
   const { fqn: datasetFQN } = useFqn();
   const history = useHistory();
 

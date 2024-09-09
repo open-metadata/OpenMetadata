@@ -89,7 +89,6 @@ const mockParams = {
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'dashboard' }),
   useParams: jest.fn().mockImplementation(() => mockParams),
 }));
 

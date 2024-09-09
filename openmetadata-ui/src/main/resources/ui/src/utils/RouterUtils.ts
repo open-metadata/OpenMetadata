@@ -609,3 +609,7 @@ export const getNotificationAlertDetailsPath = (fqn: string) => {
 
   return path;
 };
+
+export const getPathNameFromWindowLocation = () => {
+  return window.location.pathname.replace(process.env.APP_SUB_PATH ?? '', '');
+};

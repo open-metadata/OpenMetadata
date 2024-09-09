@@ -21,7 +21,7 @@ import React, {
   useRef,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import ReactFlow, {
   Background,
   Controls,
@@ -33,6 +33,7 @@ import {
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   customEdges,
   dragHandle,
@@ -59,7 +60,7 @@ const Lineage = ({
   const history = useHistory();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const location = useLocation();
+  const location = useCustomLocation();
   const {
     nodes,
     edges,

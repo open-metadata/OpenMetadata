@@ -16,14 +16,15 @@ import { AxiosError } from 'axios';
 import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { confirmRegistration } from '../../rest/auth-API';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const AccountActivationConfirmation = () => {
   const [isAccountVerified, setIsAccountVerified] = useState(false);
-  const location = useLocation();
+  const location = useCustomLocation();
   const history = useHistory();
 
   const searchParam = new URLSearchParams(location.search);

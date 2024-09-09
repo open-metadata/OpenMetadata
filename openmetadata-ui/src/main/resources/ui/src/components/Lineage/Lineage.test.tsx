@@ -91,9 +91,12 @@ jest.mock('../../context/LineageProvider/LineageProvider', () => ({
   })),
 }));
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: 'pathname' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-  useLocation: jest.fn().mockReturnValue({ pathname: 'pathname' }),
   useParams: jest.fn().mockReturnValue({
     fqn: 'fqn',
   }),

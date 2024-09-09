@@ -28,6 +28,7 @@ import {
 import { PageViewEvent } from '../generated/analytics/webAnalyticEventType/pageViewEvent';
 import { postWebAnalyticEvent } from '../rest/WebAnalyticsAPI';
 import { AnalyticsData } from './../components/WebAnalytics/WebAnalytics.interface';
+import { getPathNameFromWindowLocation } from './RouterUtils';
 
 /**
  * Check if url is valid or not and return the pathname
@@ -140,7 +141,7 @@ export const trackCustomEvent = (eventData: AnalyticsData, userId?: string) => {
 
   if (userId) {
     const customEventData: CustomEvent = {
-      url: location.pathname,
+      url: getPathNameFromWindowLocation(),
       fullUrl: location.href,
       hostname: location.hostname,
       eventType: CustomEventTypes.Click,

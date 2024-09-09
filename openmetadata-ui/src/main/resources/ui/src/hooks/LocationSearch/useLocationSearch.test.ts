@@ -12,12 +12,13 @@
  */
 import { renderHook } from '@testing-library/react-hooks';
 import qs from 'qs';
-import { useLocation } from 'react-router-dom';
+
+import useCustomLocation from '../useCustomLocation/useCustomLocation';
 import { useLocationSearch } from './useLocationSearch';
 
-jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockReturnValue({}),
-}));
+jest.mock('../useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({}));
+});
 
 jest.mock('qs', () => ({
   parse: jest.fn(),
@@ -25,13 +26,13 @@ jest.mock('qs', () => ({
 
 describe('useLocationSearch', () => {
   it('should return an empty object if location search is empty', () => {
-    (useLocation as jest.Mock).mockReturnValueOnce({ search: '' });
+    (useCustomLocation as jest.Mock).mockReturnValueOnce({ search: '' });
     (qs.parse as jest.Mock).mockReturnValueOnce({});
 
     const { result } = renderHook(() => useLocationSearch());
 
     expect(result.current).toEqual({});
-    expect(useLocation).toHaveBeenCalled();
+    expect(useCustomLocation).toHaveBeenCalled();
     expect(qs.parse).toHaveBeenCalledWith('', { ignoreQueryPrefix: true });
   });
 
@@ -39,20 +40,22 @@ describe('useLocationSearch', () => {
     const mockSearch = '?param1=value1&param2=value2';
     const mockParsedQuery = { param1: 'value1', param2: 'value2' };
 
-    (useLocation as jest.Mock).mockReturnValueOnce({ search: mockSearch });
+    (useCustomLocation as jest.Mock).mockReturnValueOnce({
+      search: mockSearch,
+    });
     (qs.parse as jest.Mock).mockReturnValueOnce(mockParsedQuery);
 
     const { result } = renderHook(() => useLocationSearch());
 
     expect(result.current).toEqual(mockParsedQuery);
-    expect(useLocation).toHaveBeenCalled();
+    expect(useCustomLocation).toHaveBeenCalled();
     expect(qs.parse).toHaveBeenCalledWith(mockSearch, {
       ignoreQueryPrefix: true,
     });
   });
 
   it('should memoize the result based on location.search', () => {
-    (useLocation as jest.Mock).mockReturnValue({
+    (useCustomLocation as jest.Mock).mockReturnValue({
       search: '?param1=value1',
     });
 
@@ -67,7 +70,7 @@ describe('useLocationSearch', () => {
 
     // Result should be memoized and remain the same
     expect(result.current).toBe(initialResult);
-    expect(useLocation).toHaveBeenCalledTimes(2);
+    expect(useCustomLocation).toHaveBeenCalledTimes(2);
     expect(qs.parse).toHaveBeenCalledTimes(1);
   });
 });

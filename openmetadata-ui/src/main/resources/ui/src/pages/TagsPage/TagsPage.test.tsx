@@ -39,12 +39,15 @@ import {
 
 jest.useRealTimers();
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    pathname: '/my-data',
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: jest.fn(),
-  })),
-  useLocation: jest.fn().mockImplementation(() => ({
-    pathname: '/my-data',
   })),
   useParams: jest.fn().mockReturnValue({
     entityTypeFQN: 'entityTypeFQN',

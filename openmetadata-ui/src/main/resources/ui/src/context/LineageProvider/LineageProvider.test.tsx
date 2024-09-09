@@ -84,10 +84,12 @@ const DummyChildrenComponent = () => {
     </div>
   );
 };
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ ...mockLocation }));
+});
 
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockReturnValue({ push: jest.fn(), listen: jest.fn() }),
-  useLocation: jest.fn().mockImplementation(() => mockLocation),
   useParams: jest.fn().mockReturnValue({
     fqn: 'table1',
   }),

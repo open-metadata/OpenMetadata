@@ -16,6 +16,7 @@ import { Redirect, Route, Switch } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { AuthProvider } from '../../generated/configuration/authenticationConfiguration';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SamlCallback from '../../pages/SamlCallback';
 import AccountActivationConfirmation from '../../pages/SignUp/account-activation-confirmation.component';
@@ -42,6 +43,7 @@ const BasicSignupPage = withSuspenseFallback(
 );
 
 export const UnAuthenticatedAppRouter = () => {
+  const location = useCustomLocation();
   const { authConfig, isSigningUp } = useApplicationStore();
 
   const isBasicAuthProvider =

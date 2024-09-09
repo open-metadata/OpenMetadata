@@ -98,10 +98,12 @@ jest.mock(
       ),
   })
 );
-jest.mock('react-router-dom', () => ({
-  useLocation: jest
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest
     .fn()
-    .mockReturnValue({ search: 'search', pathname: '/my-data' }),
+    .mockImplementation(() => ({ search: 'search', pathname: '/my-data' }));
+});
+jest.mock('react-router-dom', () => ({
   useHistory: jest.fn(),
 }));
 

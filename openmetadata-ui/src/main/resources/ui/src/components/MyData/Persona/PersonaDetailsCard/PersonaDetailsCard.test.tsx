@@ -31,11 +31,14 @@ const personaWithoutDescription = {
   displayName: 'Jane Smith',
 };
 
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ pathname: '/' }));
+});
+
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => ({
     push: mockPush,
   })),
-  useLocation: jest.fn().mockReturnValue({ pathname: '/' }),
 }));
 
 describe('PersonaDetailsCard Component', () => {

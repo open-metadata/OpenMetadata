@@ -16,7 +16,7 @@ import { t } from 'i18next';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useHistory, useLocation } from 'react-router-dom';
+import { useHistory } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE,
@@ -27,6 +27,7 @@ import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDatabaseSchemas } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
@@ -44,7 +45,7 @@ export const DatabaseSchemaTable = ({
 }: Readonly<DatabaseSchemaTableProps>) => {
   const { fqn: decodedDatabaseFQN } = useFqn();
   const history = useHistory();
-  const location = useLocation();
+  const location = useCustomLocation();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);

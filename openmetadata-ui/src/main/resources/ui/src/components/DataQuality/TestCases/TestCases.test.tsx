@@ -59,12 +59,16 @@ jest.mock('../../../rest/searchAPI', () => {
       ),
   };
 });
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    ...mockLocation,
+  }));
+});
 jest.mock('react-router-dom', () => {
   return {
     ...jest.requireActual('react-router-dom'),
     useParams: jest.fn().mockImplementation(() => mockUseParam),
     useHistory: jest.fn().mockImplementation(() => mockUseHistory),
-    useLocation: jest.fn().mockImplementation(() => mockLocation),
   };
 });
 jest.mock('../../common/NextPrevious/NextPrevious', () => {

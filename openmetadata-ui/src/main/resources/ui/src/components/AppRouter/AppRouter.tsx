@@ -13,11 +13,12 @@
 
 import { isEmpty, isNil } from 'lodash';
 import React, { useCallback, useEffect } from 'react';
-import { Redirect, Route, Switch, useLocation } from 'react-router-dom';
+import { Redirect, Route, Switch } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { ROUTES } from '../../constants/constants';
 import { CustomEventTypes } from '../../generated/analytics/webAnalyticEventData';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import AccessNotAllowedPage from '../../pages/AccessNotAllowedPage/AccessNotAllowedPage';
 import PageNotFound from '../../pages/PageNotFound/PageNotFound';
 import SignUpPage from '../../pages/SignUp/SignUpPage';
@@ -26,7 +27,7 @@ import Loader from '../common/Loader/Loader';
 import { UnAuthenticatedAppRouter } from './UnAuthenticatedAppRouter';
 
 const AppRouter = () => {
-  const location = useLocation();
+  const location = useCustomLocation();
 
   // web analytics instance
   const analytics = useAnalytics();

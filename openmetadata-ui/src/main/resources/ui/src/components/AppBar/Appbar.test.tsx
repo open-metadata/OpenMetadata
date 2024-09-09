@@ -16,8 +16,13 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import Appbar from './Appbar';
 
+jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: 'pathname',
+  }));
+});
+
 jest.mock('react-router-dom', () => ({
-  useLocation: jest.fn().mockReturnValue({ search: 'pathname' }),
   Link: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
