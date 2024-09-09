@@ -35,7 +35,6 @@ const mockProps = {
 
 jest.mock('react-router-dom', () => ({
   Link: jest.fn().mockImplementation(({ children }) => <span>{children}</span>),
-  useLocation: jest.fn().mockImplementation(() => ({ pathname: 'test' })),
 }));
 
 jest.mock('../../../rest/tableAPI', () => ({
