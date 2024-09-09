@@ -76,6 +76,9 @@ jest.mock('../../../../rest/testAPI', () => {
       .mockImplementation(() => Promise.resolve(mockList)),
   };
 });
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({ ...mockLocation }));
+});
 jest.mock('react-router-dom', () => {
   return {
     Link: jest
@@ -83,7 +86,6 @@ jest.mock('react-router-dom', () => {
       .mockImplementation(({ children, ...rest }) => (
         <div {...rest}>{children}</div>
       )),
-    useLocation: jest.fn().mockImplementation(() => mockLocation),
     useHistory: jest.fn(),
     useParams: jest.fn().mockImplementation(() => mockUseParam),
   };
