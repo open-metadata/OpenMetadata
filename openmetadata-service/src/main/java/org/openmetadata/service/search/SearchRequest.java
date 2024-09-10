@@ -1,14 +1,13 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.schema.type.EntityReference;
-
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 @Getter
 @Setter
@@ -149,8 +148,7 @@ public class SearchRequest {
     public ElasticSearchRequestBuilder searchAfter(String searchAfter) {
       this.searchAfter = null;
       if (!nullOrEmpty(searchAfter)) {
-        this.searchAfter = Stream.of(searchAfter.split(","))
-            .toArray(Object[]::new);
+        this.searchAfter = Stream.of(searchAfter.split(",")).toArray(Object[]::new);
       }
       return this;
     }

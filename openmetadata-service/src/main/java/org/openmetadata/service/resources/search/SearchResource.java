@@ -127,7 +127,9 @@ public class SearchResource {
           @DefaultValue("10")
           @QueryParam("size")
           int size,
-      @Parameter(description = "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+      @Parameter(
+              description =
+                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
           @QueryParam("search_after")
           String searchAfter,
       @Parameter(
