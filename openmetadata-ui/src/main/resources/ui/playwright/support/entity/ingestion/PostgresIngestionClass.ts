@@ -131,6 +131,8 @@ class PostgresIngestionClass extends ServiceBaseClass {
           )
           .then((res) => res.json());
 
+        // need manual wait to settle down the deployed pipeline, before triggering the pipeline
+        await page.waitForTimeout(2000);
         await page.click(
           `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
         );

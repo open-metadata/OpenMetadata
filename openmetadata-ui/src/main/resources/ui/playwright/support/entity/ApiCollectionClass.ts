@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import { uuid } from '../../utils/common';
 import { visitEntityPage } from '../../utils/entity';
@@ -175,6 +176,24 @@ export class ApiCollectionClass extends EntityClass {
       entity,
       apiEndpoint,
     };
+  }
+
+  async patch(apiContext: APIRequestContext, payload: Operation[]) {
+    const apiCollectionResponse = await apiContext.patch(
+      `/api/v1/apiCollections/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    const apiCollection = await apiCollectionResponse.json();
+
+    this.entityResponseData = apiCollection;
+
+    return apiCollection;
   }
 
   get() {
