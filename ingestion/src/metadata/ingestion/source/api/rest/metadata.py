@@ -98,8 +98,8 @@ class RestSource(ApiServiceSource):
         self, collection: RESTCollection
     ) -> Iterable[Either[CreateAPICollectionRequest]]:
         """Method to return api collection Entities"""
-        collection.url = self._generate_collection_url(collection.name)
         try:
+            collection.url = self._generate_collection_url(collection.name.root)
             collection_request = CreateAPICollectionRequest(
                 name=collection.name,
                 displayName=collection.display_name,
@@ -112,7 +112,7 @@ class RestSource(ApiServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=collection.name,
+                    name=collection.name.root,
                     error=f"Error creating api collection request: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
@@ -172,7 +172,7 @@ class RestSource(ApiServiceSource):
             return filtered_paths
         except Exception as err:
             logger.info(
-                f"Error while filtering endpoints for collection {collection.name}"
+                f"Error while filtering endpoints for collection {collection.name.root}"
             )
             return None
 
@@ -256,7 +256,7 @@ class RestSource(ApiServiceSource):
         try:
             schema_ref = schema_ref.split("/")[-1]
             schema_fields = (
-                self.connection.json().get("components").get("schemas").get(schema_ref)
+                self.json_response.get("components").get("schemas").get(schema_ref)
             )
 
             fetched_fields = []
