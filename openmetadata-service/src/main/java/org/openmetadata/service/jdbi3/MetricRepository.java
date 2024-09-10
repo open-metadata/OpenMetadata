@@ -48,7 +48,7 @@ public class MetricRepository extends EntityRepository<Metric> {
 
   @Override
   public void prepare(Metric metric, boolean update) {
-    validateRelatedTerms(metric);
+    validateRelatedTerms(metric, metric.getRelatedMetrics());
   }
 
   @Override
@@ -88,13 +88,13 @@ public class MetricRepository extends EntityRepository<Metric> {
     return new MetricRepository.MetricUpdater(original, updated, operation);
   }
 
-  private void validateRelatedTerms(Metric metric) {
-    for (EntityReference relatedMetric : listOrEmpty(metric.getRelatedMetrics())) {
+  private void validateRelatedTerms(Metric metric, List<EntityReference> relatedMetrics) {
+    for (EntityReference relatedMetric : listOrEmpty(relatedMetrics)) {
       if (!relatedMetric.getType().equals(METRIC)) {
         throw new IllegalArgumentException(
             "Related metric " + relatedMetric.getId() + " is not a metric");
       }
-      if (relatedMetric.getId() == metric.getId()) {
+      if (relatedMetric.getId().equals(metric.getId())) {
         throw new IllegalArgumentException(
             "Related metric " + relatedMetric.getId() + " cannot be the same as the metric");
       }
@@ -124,6 +124,7 @@ public class MetricRepository extends EntityRepository<Metric> {
     private void updateRelatedMetrics(Metric original, Metric updated) {
       List<EntityReference> originalRelatedMetrics = listOrEmpty(original.getRelatedMetrics());
       List<EntityReference> updatedRelatedMetrics = listOrEmpty(updated.getRelatedMetrics());
+      validateRelatedTerms(updated, updatedRelatedMetrics);
       updateToRelationships(
           "relatedMetrics",
           METRIC,

@@ -1,10 +1,12 @@
 package org.openmetadata.service.resources.metrics;
 
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -108,6 +110,29 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     updatedMetric.setRelatedMetrics(new ArrayList<>());
     patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
     Assertions.assertEquals(0, updatedMetric.getRelatedMetrics().size());
+    updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
+    origJson = JsonUtils.pojoToJson(updatedMetric);
+    updatedMetric.setRelatedMetrics(List.of(updatedMetric.getEntityReference()));
+    Metric finalUpdatedMetric = updatedMetric;
+    String finalOrigJson = origJson;
+    assertResponse(
+        () ->
+            patchEntity(
+                finalUpdatedMetric.getId(), finalOrigJson, finalUpdatedMetric, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Related metric " + finalUpdatedMetric.getId() + " cannot be the same as the metric");
+    updatedMetric.setRelatedMetrics(List.of(USER1.getEntityReference()));
+    Metric finalUpdatedMetric1 = updatedMetric;
+    String finalOrigJson1 = origJson;
+    assertResponse(
+        () ->
+            patchEntity(
+                finalUpdatedMetric1.getId(),
+                finalOrigJson1,
+                finalUpdatedMetric1,
+                ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Related metric " + USER1.getEntityReference().getId() + " is not a metric");
   }
 
   @Override
