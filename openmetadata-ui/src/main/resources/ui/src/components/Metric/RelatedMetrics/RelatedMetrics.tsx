@@ -193,6 +193,7 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
           <RelatedMetricsForm
             defaultValue={defaultValue}
             initialOptions={initialOptions}
+            metricFqn={metricDetails.fullyQualifiedName ?? ''}
             onCancel={() => setIsEdit(false)}
             onSubmit={handleRelatedMetricUpdate}
           />

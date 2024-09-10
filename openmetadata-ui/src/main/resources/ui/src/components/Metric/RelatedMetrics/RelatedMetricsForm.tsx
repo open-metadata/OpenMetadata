@@ -19,6 +19,7 @@ import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 
 interface RelatedMetricsFormProps {
+  metricFqn: string;
   defaultValue?: string[];
   initialOptions?: DataAssetOption[];
   onSubmit: (option: DataAssetOption[]) => Promise<void>;
@@ -30,6 +31,7 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
   initialOptions,
   onCancel,
   onSubmit,
+  metricFqn,
 }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
@@ -71,6 +73,7 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
         <Col className="gutter-row" span={24}>
           <Form.Item noStyle name="relatedMetrics">
             <DataAssetAsyncSelectList
+              filterFqns={[metricFqn]}
               initialOptions={initialOptions}
               mode="multiple"
               placeholder={t('label.related-metric-plural')}
