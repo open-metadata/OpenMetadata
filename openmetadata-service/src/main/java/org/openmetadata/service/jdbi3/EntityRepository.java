@@ -68,7 +68,6 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.CacheBuilder;
@@ -1493,10 +1492,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 .collect(Collectors.toMap(node -> node.get("key").asText(), node -> node));
 
         if (fieldValue.isArray()) {
-          ArrayNode newArray = JsonNodeFactory.instance.arrayNode();
-
-          // Process each element to ensure it conforms to the expected structure and rules defined
-          // in propertyConfig
+          ArrayNode newArray = JsonUtils.getObjectNode().arrayNode();
           fieldValue.forEach(
               valueNode -> {
                 String key =
