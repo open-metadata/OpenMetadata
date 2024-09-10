@@ -722,7 +722,7 @@ public class ElasticSearchClient implements SearchClient {
     searchRequest.source(searchSourceBuilder.size(1000));
     SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
     for (var hit : searchResponse.getHits().getHits()) {
-      HashMap<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
+      Map<String, Object> tempMap = new HashMap<>(JsonUtils.getMap(hit.getSourceAsMap()));
       tempMap.keySet().removeAll(FIELDS_TO_REMOVE);
       responseMap.put("entity", tempMap);
     }
