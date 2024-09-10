@@ -7,6 +7,7 @@ import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertListNull;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -102,6 +103,11 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
     Assertions.assertEquals(2, updatedMetric.getRelatedMetrics().size());
     Assertions.assertEquals(Metric1.getEntityReference(), updatedMetric.getRelatedMetrics().get(0));
     Assertions.assertEquals(Metric2.getEntityReference(), updatedMetric.getRelatedMetrics().get(1));
+    updatedMetric = getMetric(updatedMetric.getId(), "*", ADMIN_AUTH_HEADERS);
+    origJson = JsonUtils.pojoToJson(updatedMetric);
+    updatedMetric.setRelatedMetrics(new ArrayList<>());
+    patchEntity(updatedMetric.getId(), origJson, updatedMetric, ADMIN_AUTH_HEADERS);
+    Assertions.assertEquals(0, updatedMetric.getRelatedMetrics().size());
   }
 
   @Override

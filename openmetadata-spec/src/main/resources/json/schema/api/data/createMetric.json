@@ -36,8 +36,11 @@
       "$ref": "../../entity/data/metric.json#/definitions/metricGranularity"
     },
     "relatedMetrics": {
-      "description": "Related Metrics.",
-      "$ref": "../../type/entityReferenceList.json"
+      "description": "Other array of related metric fully qualified names that are related to this Metric.",
+      "type" : "array",
+      "items": {
+        "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      }
     },
     "owners": {
       "description": "Owners of this metric",

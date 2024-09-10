@@ -525,7 +525,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
         .copy(new Metric(), create, user)
         .withMetricExpression(create.getMetricExpression())
         .withGranularity(create.getGranularity())
-        .withRelatedMetrics(create.getRelatedMetrics())
+        .withRelatedMetrics(getEntityReferences(Entity.METRIC, create.getRelatedMetrics()))
         .withMetricType(create.getMetricType())
         .withUnitOfMeasurement(create.getUnitOfMeasurement());
   }

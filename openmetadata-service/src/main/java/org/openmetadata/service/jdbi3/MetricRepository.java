@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.METRIC;
 
-import java.util.Comparator;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.data.Metric;
@@ -48,11 +47,14 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   @Override
-  public void prepare(Metric metric, boolean update) {}
+  public void prepare(Metric metric, boolean update) {
+    validateRelatedTerms(metric);
+  }
 
   @Override
   public void setFields(Metric metric, EntityUtil.Fields fields) {
-    metric.setRelatedMetrics(fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : null);
+    metric.setRelatedMetrics(
+        fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
   }
 
   @Override
@@ -78,14 +80,25 @@ public class MetricRepository extends EntityRepository<Metric> {
   }
 
   private List<EntityReference> getRelatedMetrics(Metric metric) {
-    return findBoth(metric.getId(), METRIC, Relationship.RELATED_TO, METRIC).stream()
-        .sorted(Comparator.comparing(EntityReference::getName))
-        .toList();
+    return findBoth(metric.getId(), METRIC, Relationship.RELATED_TO, METRIC);
   }
 
   @Override
   public EntityUpdater getUpdater(Metric original, Metric updated, Operation operation) {
     return new MetricRepository.MetricUpdater(original, updated, operation);
+  }
+
+  private void validateRelatedTerms(Metric metric) {
+    for (EntityReference relatedMetric : listOrEmpty(metric.getRelatedMetrics())) {
+      if (!relatedMetric.getType().equals(METRIC)) {
+        throw new IllegalArgumentException(
+            "Related metric " + relatedMetric.getId() + " is not a metric");
+      }
+      if (relatedMetric.getId() == metric.getId()) {
+        throw new IllegalArgumentException(
+            "Related metric " + relatedMetric.getId() + " cannot be the same as the metric");
+      }
+    }
   }
 
   public class MetricUpdater extends EntityUpdater {
