@@ -37,6 +37,7 @@ import { RelatedMetricsForm } from './RelatedMetricsForm';
 interface RelatedMetricsProps {
   hasEditPermission: boolean;
   metricDetails: Metric;
+  isInSummaryPanel?: boolean;
   onMetricUpdate?: (updatedData: Metric, key: keyof Metric) => Promise<void>;
 }
 
@@ -44,6 +45,7 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
   metricDetails,
   hasEditPermission,
   onMetricUpdate,
+  isInSummaryPanel = false,
 }) => {
   const { t } = useTranslation();
   const [isEdit, setIsEdit] = useState(false);
@@ -199,7 +201,8 @@ const RelatedMetrics: FC<RelatedMetricsProps> = ({
           />
         ) : (
           <>
-            {isEmpty(relatedMetrics) && metricDetails.deleted ? (
+            {isEmpty(relatedMetrics) &&
+            (metricDetails.deleted || isInSummaryPanel) ? (
               <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
             ) : (
               <div

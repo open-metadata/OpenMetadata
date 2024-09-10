@@ -27,6 +27,7 @@ import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import SummaryTagsDescription from '../../../common/SummaryTagsDescription/SummaryTagsDescription.component';
 import MetricExpression from '../../../Metric/MetricExpression/MetricExpression';
+import RelatedMetrics from '../../../Metric/RelatedMetrics/RelatedMetrics';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import CommonEntitySummaryInfo from '../CommonEntitySummaryInfo/CommonEntitySummaryInfo';
 
@@ -105,6 +106,14 @@ const MetricSummary = ({
         <Row className="m-md" gutter={[0, 8]}>
           <Col span={24}>
             <MetricExpression metricDetails={entityDetails} />
+          </Col>
+          <Divider className="m-y-xs" />
+          <Col span={24}>
+            <RelatedMetrics
+              isInSummaryPanel
+              hasEditPermission={false}
+              metricDetails={entityDetails}
+            />
           </Col>
         </Row>
       </>
