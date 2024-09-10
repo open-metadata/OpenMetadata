@@ -70,6 +70,8 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   const [popupVisible, setPopupVisible] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const modiFiedLabel = label.toLowerCase().replace(/\s+/g, '-');
+
   const sortedOptions = useMemo(
     () =>
       options.sort((a, b) => {
@@ -119,7 +121,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
                 <Icon
                   className="align-middle"
                   component={IconRemoveColored}
-                  data-testid="remove-owner"
+                  data-testid={`remove-${modiFiedLabel}-button`}
                   style={{ fontSize: '16px' }}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -149,9 +151,9 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
   );
 
   return (
-    <Space data-testid={label.toLowerCase().replace(/\s+/g, '-')}>
+    <Space data-testid={modiFiedLabel}>
       <ExtraInfoLabel
-        dataTestId={label.toLowerCase().replace(/\s+/g, '-')}
+        dataTestId={modiFiedLabel}
         label={label}
         value={value ?? NO_DATA_PLACEHOLDER}
       />
@@ -171,9 +173,7 @@ const MetricInfoItem: FC<MetricInfoItemProps> = ({
             })}>
             <Button
               className="flex-center p-0"
-              data-testid={`edit-${label
-                .toLowerCase()
-                .replace(/\s+/g, '-')}-button`}
+              data-testid={`edit-${modiFiedLabel}-button`}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
               loading={isUpdating}
               size="small"
