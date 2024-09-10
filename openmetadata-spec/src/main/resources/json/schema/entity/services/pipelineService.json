@@ -31,7 +31,8 @@
         "Spark",
         "OpenLineage",
         "KafkaConnect",
-        "DBTCloud"
+        "DBTCloud",
+        "Matillion"
       ],
       "javaEnums": [
         {
@@ -78,6 +79,9 @@
         },
         {
           "name": "DBTCloud"
+        },
+        {
+          "name": "Matillion"
         }
       ]
     },
@@ -136,6 +140,9 @@
             },
             {
               "$ref": "./connections/pipeline/dbtCloudConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/matillionConnection.json"
             }
           ]
         }
