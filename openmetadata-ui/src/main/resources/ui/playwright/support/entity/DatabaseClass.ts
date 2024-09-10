@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../constant/service';
 import {
   assignDomain,
@@ -156,6 +157,24 @@ export class DatabaseClass extends EntityClass {
       table,
       schema,
     };
+  }
+
+  async patch(apiContext: APIRequestContext, payload: Operation[]) {
+    const serviceResponse = await apiContext.patch(
+      `/api/v1/databases/${this.entityResponseData?.['id']}`,
+      {
+        data: payload,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      }
+    );
+
+    const entity = await serviceResponse.json();
+
+    this.entityResponseData = entity;
+
+    return entity;
   }
 
   get() {
