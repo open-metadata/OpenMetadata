@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
@@ -95,14 +95,37 @@ test.describe('Metric Entity Special Test Cases', () => {
   });
 });
 
-test.describe('Add Metric flow should work', () => {
+test.describe('Listing page and add Metric flow should work', () => {
   test.beforeEach('Visit home page', async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.METRICS);
   });
 
-  test('Add metric from the "Add button"', async ({ page }) => {
+  test('Metric listing page and add metric from the "Add button"', async ({
+    page,
+  }) => {
     test.slow(true);
+
+    await expect(page.getByTestId('heading')).toHaveText('Metrics');
+    await expect(page.getByTestId('sub-heading')).toHaveText(
+      'Track the health of your data assets with metrics.'
+    );
+
+    await expect(
+      page.getByRole('cell', { name: 'Name', exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('cell', { name: 'Description', exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('cell', { name: 'Tags', exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('cell', { name: 'Glossary Terms', exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('cell', { name: 'Owner', exact: true })
+    ).toBeVisible();
 
     await page.getByTestId('create-metric').click();
 
