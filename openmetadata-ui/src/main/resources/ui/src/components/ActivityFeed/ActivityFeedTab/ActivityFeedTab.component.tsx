@@ -156,9 +156,7 @@ export const ActivityFeedTab = ({
       return (
         <Transi18next
           i18nKey="message.no-activity-feed"
-          renderElement={
-            <Link rel="noreferrer" to={{ pathname: ROUTES.EXPLORE }} />
-          }
+          renderElement={<Link to={ROUTES.EXPLORE} />}
           values={{
             explored: t('message.have-not-explored-yet'),
           }}

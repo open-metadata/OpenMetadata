@@ -109,10 +109,15 @@ const mockLocation = {
 const mockHistory = {
   push: jest.fn(),
 };
+
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    ...mockLocation,
+  }));
+});
 jest.mock('react-router-dom', () => ({
   useHistory: jest.fn().mockImplementation(() => mockHistory),
   useParams: jest.fn().mockImplementation(() => mockParams),
-  useLocation: jest.fn().mockImplementation(() => mockLocation),
 }));
 jest.mock('../../../rest/teamsAPI', () => ({
   getTeamByName: jest
