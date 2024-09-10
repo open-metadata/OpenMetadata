@@ -64,6 +64,7 @@ import {
   fetchAuthorizerConfig,
 } from '../../../rest/miscAPI';
 import { getLoggedInUser, updateUserDetail } from '../../../rest/userAPI';
+import TokenService from '../../../utils/Auth/TokenService/TokenServiceUtil';
 import {
   extractDetailsFromToken,
   getAuthConfig,
@@ -140,6 +141,7 @@ export const AuthProvider = ({
     setApplicationLoading,
   } = useApplicationStore();
   const { updateDomains, updateDomainLoading } = useDomainStore();
+  const [tokenService, setTokenService] = useState<TokenService>();
 
   const location = useCustomLocation();
   const history = useHistory();
@@ -183,9 +185,10 @@ export const AuthProvider = ({
     setApplicationLoading(false);
   }, [timeoutId]);
 
-  const onRenewIdTokenHandler = () => {
-    return authenticatorRef.current?.renewIdToken();
-  };
+  useEffect(() => {
+    authenticatorRef.current?.renewIdToken &&
+      setTokenService(new TokenService(authenticatorRef.current?.renewIdToken));
+  }, [authenticatorRef.current?.renewIdToken]);
 
   const fetchDomainList = useCallback(async () => {
     try {
@@ -292,8 +295,20 @@ export const AuthProvider = ({
    */
   const renewIdToken = async () => {
     try {
-      const onRenewIdTokenHandlerPromise = onRenewIdTokenHandler();
-      onRenewIdTokenHandlerPromise && (await onRenewIdTokenHandlerPromise);
+      if (!tokenService?.isTokenUpdateInProgress()) {
+        await tokenService?.refreshToken();
+      } else {
+        // wait for renewal to complete
+        const wait = new Promise((resolve) => {
+          setTimeout(() => {
+            return resolve(true);
+          }, 500);
+        });
+        await wait;
+
+        // should have updated token after renewal
+        return getOidcToken();
+      }
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error(
