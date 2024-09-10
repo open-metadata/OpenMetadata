@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
+from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuitePipeline,
 )
@@ -36,6 +37,7 @@ from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils import fqn
+from metadata.utils.importer import import_source_class
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -104,7 +106,15 @@ class TestSuiteSource(Source):
 
     def _iter(self) -> Iterable[Either[TableAndTests]]:
         table: Table = self._get_table_entity()
-
+        source_type = table.serviceType.lower()
+        if source_type.startswith("custom"):
+            logger.warning(
+                "Data quality tests might not work as expected with custom sources"
+            )
+        else:
+            import_source_class(
+                service_type=ServiceType.Database, source_type=source_type
+            )
         if table:
             yield from self._process_table_suite(table)
 

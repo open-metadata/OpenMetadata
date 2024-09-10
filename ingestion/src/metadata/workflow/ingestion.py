@@ -21,7 +21,7 @@ To be extended by any other workflow:
 """
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Tuple, cast
+from typing import List, Tuple, Type, cast
 
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
@@ -46,6 +46,7 @@ from metadata.utils.class_helper import (
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
+from metadata.utils.importer import import_from_module, import_source_class
 from metadata.utils.logger import ingestion_logger
 from metadata.workflow.base import BaseWorkflow, InvalidWorkflowJSONException
 from metadata.workflow.workflow_status_mixin import SUCCESS_THRESHOLD_VALUE
@@ -218,3 +219,15 @@ class IngestionWorkflow(BaseWorkflow, ABC):
             raise WorkflowExecutionError(
                 f"Profiler is not supported for the service connection: {self.config.source.serviceConnection}"
             )
+
+    def import_source_class(self) -> Type[Source]:
+        source_type = self.config.source.type.lower()
+        return (
+            import_from_module(
+                self.config.source.serviceConnection.root.config.sourcePythonClass
+            )
+            if source_type.startswith("custom")
+            else import_source_class(
+                service_type=self.service_type, source_type=source_type
+            )
+        )
