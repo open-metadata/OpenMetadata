@@ -31,5 +31,10 @@ on:
 jobs:
   playwright-ci-postgresql:
     runs-on: ubuntu-latest
+    strategy:
+    fail-fast: false
+    matrix:
+      shardIndex: [1, 2]
+      shardTotal: [2]
     steps:
       - run: 'echo "Step is not required"'
