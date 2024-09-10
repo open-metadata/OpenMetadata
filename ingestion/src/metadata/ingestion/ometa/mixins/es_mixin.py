@@ -323,6 +323,7 @@ class ESMixin(Generic[T]):
                         entity=entity,
                         fqn=hit.source["fullyQualifiedName"],
                         fields=fields,
+                        nullable=False,  # Raise an error if we don't find the Entity
                     )
                 except Exception as exc:
                     logger.warning(
