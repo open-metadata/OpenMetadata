@@ -116,6 +116,7 @@ integration_test_envs += [
         name="data_quality",
         extras=["test", "mysql", "postgres"],
         paths=[os.path.join(integration_test_dir, "sources/database/delta_lake")],
+        python_versions=["3.9", "3.10", "3.11"],
     ),
 ]
 
