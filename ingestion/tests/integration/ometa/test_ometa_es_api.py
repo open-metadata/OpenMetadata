@@ -349,9 +349,9 @@ class OMetaESTest(TestCase):
                 '{"query":{"bool":{"must":[{"bool":{"should":[{"term":'
                 f'{{"service.displayName.keyword":"{self.service_entity.name.root}"}}}}]}}}}]}}}}}}'
             )
-            pages = list(
+            assets = list(
                 self.metadata.paginate_es(
                     entity=Table, query_filter=query_filter, size=2
                 )
             )
-            assert len(pages) == 10
+            assert len(assets) == 10
