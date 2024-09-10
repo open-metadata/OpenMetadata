@@ -112,6 +112,11 @@ integration_test_envs += [
         extras=["test", "deltalake-storage"],
         paths=[os.path.join(integration_test_dir, "sources/database/delta_lake")],
     ),
+    TestEnv(
+        name="data_quality",
+        extras=["test", "mysql", "postgres"],
+        paths=[os.path.join(integration_test_dir, "sources/database/delta_lake")],
+    ),
 ]
 
 integration_test_envs += [
