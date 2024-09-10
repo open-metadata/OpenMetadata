@@ -245,6 +245,10 @@ SNOWFLAKE_TEST_GET_TABLES = """
 SELECT TABLE_NAME FROM "{database_name}".information_schema.tables LIMIT 1
 """
 
+SNOWFLAKE_TEST_GET_VIEWS = """
+SELECT TABLE_NAME FROM "{database_name}".information_schema.views LIMIT 1
+"""
+
 SNOWFLAKE_GET_DATABASES = "SHOW DATABASES"
 
 
