@@ -315,7 +315,7 @@ class ESMixin(Generic[T]):
                 else:
                     break
             if not response.hits.hits:
-                logger.info("No more pages found in ES after %s", from_)
+                logger.debug("No more pages found in ES after %s", from_)
                 break
             for hit in response.hits.hits:
                 try:
